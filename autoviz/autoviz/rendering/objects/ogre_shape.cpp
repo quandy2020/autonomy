@@ -39,7 +39,7 @@ Ogre::Entity* OgreShape::createEntity(const std::string& name, Type shape_type,
 
 OgreShape::OgreShape(Type shape_type, Ogre::SceneManager* scene_manager,
                      Ogre::SceneNode* parent_node)
-    : scene_manager_(scene_manager), type_(shape_type) {
+    : OgreObject(scene_manager), type_(shape_type) {
   static uint32_t count = 0;
   const std::string entity_name = "AvizShape" + std::to_string(count++);
 
@@ -97,6 +97,14 @@ void OgreShape::setOrientation(const Ogre::Quaternion& orientation) {
 
 void OgreShape::setScale(const Ogre::Vector3& scale) {
   scene_node_->setScale(scale);
+}
+
+const Ogre::Vector3& OgreShape::getPosition() {
+  return scene_node_->getPosition();
+}
+
+const Ogre::Quaternion& OgreShape::getOrientation() {
+  return scene_node_->getOrientation();
 }
 
 const Ogre::Vector3& OgreShape::position() const {

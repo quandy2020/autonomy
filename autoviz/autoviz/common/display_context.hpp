@@ -24,7 +24,7 @@
 #include <QImage>
 #include <QMatrix4x4>
 
-#include "autoviz/integration/autolink_context.hpp"
+#include "autoviz/common/interaction/autolink_context.hpp"
 
 namespace autoviz {
 namespace rendering {
@@ -43,7 +43,9 @@ class HandlerManager;
 class PickRegistry;
 class SelectionManager;
 class ToolManager;
+namespace transformation {
 class TransformationManager;
+}
 class ViewManager;
 
 /**
@@ -67,7 +69,7 @@ class DisplayContext {
   FrameManager* frame_manager = nullptr;
 
   /** Active FrameTransformer selection (RViz TransformationManager). */
-  TransformationManager* transformation_manager = nullptr;
+  transformation::TransformationManager* transformation_manager = nullptr;
 
   /** Per-frame pick metadata. */
   PickRegistry* pick_registry = nullptr;

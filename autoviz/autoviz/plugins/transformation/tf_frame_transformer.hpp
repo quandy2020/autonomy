@@ -7,7 +7,7 @@
 
 /**
  * @file tf_frame_transformer.hpp
- * @brief Default @ref common::FrameTransformer backed by Autoviz TF buffer.
+ * @brief Default @ref common::transformation::FrameTransformer backed by Autoviz TF buffer.
  *
  * Drop-in for RViz @c TFFrameTransformer without ROS node / tf2_ros listener.
  * Registered as @c "autoviz/AutolinkTf" by @ref TransformationManager.
@@ -26,7 +26,7 @@
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 
-#include "autoviz/common/frame_transformer.hpp"
+#include "autoviz/common/transformation/frame_transformer.hpp"
 #include "autoviz/plugins/transformation/tf_wrapper.hpp"
 
 namespace autoviz {
@@ -37,7 +37,7 @@ namespace transformation {
  * @class TFFrameTransformer
  * @brief FrameTransformer implementation using @ref TFWrapper.
  */
-class TFFrameTransformer : public common::FrameTransformer {
+class TFFrameTransformer : public common::transformation::FrameTransformer {
  public:
   TFFrameTransformer();
   explicit TFFrameTransformer(std::shared_ptr<TFWrapper> wrapper);
@@ -60,7 +60,8 @@ class TFFrameTransformer : public common::FrameTransformer {
 
   bool frameHasProblems(const std::string& frame, std::string* error) const;
 
-  std::weak_ptr<TransformationLibraryConnector> getConnector() const;
+  std::weak_ptr<common::transformation::TransformationLibraryConnector>
+  getConnector() const;
 
   automsgs::msgs::geometry_msgs::TransformStamped lookupTransform(
       const std::string& target_frame, const std::string& source_frame,

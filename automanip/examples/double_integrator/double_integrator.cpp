@@ -139,9 +139,7 @@ TargetTrajectories TargetFromPose(const PoseStamped& pose, const vector_t& previ
  * @brief Publish the current observation, MPC policy, and command as visualization messages.
  *
  * Publishes:
- * - Gray sphere @c cart: current slider position;
- * - Red sphere @c target: commanded target position;
- * - Joints @c slider_to_cart / @c slider_to_target;
+ * - Joints @c slider_to_cart / @c slider_to_target (RobotModel draws the spheres);
  * - TF: @c map → @c slideBar → @c cart / @c target;
  * - Predicted path: sparsely sampled policy state trajectory (at most ~40 points).
  *
@@ -162,16 +160,13 @@ void Publish(const SystemObservation& observation, const PrimalSolution& policy,
     target = command.mpcTargetTrajectories_.stateTrajectory.front()(0);
   }
 
-  using Marker = automsgs::msgs::visualization_msgs::Marker;
-  constexpr double kDiameter = 0.4;
-  *markers->add_markers() = bolza::examples::MakeShape(
-      "cart", 0, Marker::SPHERE, position, 0.0, 0.0, kDiameter, kDiameter, kDiameter, 0.75f, 0.75f,
-      0.75f);
-  *markers->add_markers() = bolza::examples::MakeShape(
-      "target", 1, Marker::SPHERE, target, 0.0, 0.0, kDiameter, kDiameter, kDiameter, 1.0f, 0.0f,
-      0.0f);
+  // Cart / target spheres live on RobotModel via /robot_description + joints.
+  // DELETE clears latched MarkerArray copies that used to double the geometry.
+  *markers->add_markers() = bolza::examples::DeleteMarker("cart", 0);
+  *markers->add_markers() = bolza::examples::DeleteMarker("target", 1);
 
   bolza::examples::FillJoints(joints, {"slider_to_cart", "slider_to_target"}, {position, target});
+  // Root of the URDF tree so RobotModel TF lookups for "slideBar" succeed.
   bolza::examples::AddTransform(tf, "map", "slideBar", 0.0, 0.0, 0.0);
   bolza::examples::AddTransform(tf, "slideBar", "cart", position, 0.0, 0.0);
   bolza::examples::AddTransform(tf, "slideBar", "target", target, 0.0, 0.0);
@@ -213,8 +208,14 @@ int main(int argc, char** argv) {
   request.initial_input = vector_t::Zero(INPUT_DIM);
   request.publish = Publish;
   request.on_target = TargetFromPose;
-  request.robot_description =
-      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description = bolza::examples::LoadExampleRobotDescription(
+      AUTOMANIP_EXAMPLE_URDF, "double_integrator/urdf/double_integrator.urdf");
+  if (request.robot_description.empty()) {
+    std::cerr << "[double_integrator] Failed to load URDF for /robot_description "
+                 "(compile-time was '"
+              << AUTOMANIP_EXAMPLE_URDF
+              << "'). RobotModel will not show the cart/target spheres.\n";
+  }
   request.max_steps = steps;
   return bolza::examples::RunDemo(request);
 }

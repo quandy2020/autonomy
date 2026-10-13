@@ -37,14 +37,14 @@
 #include "autoviz/common/selection_handler.hpp"
 #include "autoviz/common/pick_registry.hpp"
 #include "autoviz/common/frame_manager.hpp"
-#include "autoviz/common/transformation_manager.hpp"
+#include "autoviz/common/transformation/transformation_manager.hpp"
 #include "autoviz/common/view_manager.hpp"
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
-#include "autoviz/integration/autolink_context.hpp"
-#include "autoviz/integration/channel_manager.hpp"
-#include "autoviz/integration/playback_controller.hpp"
+#include "autoviz/common/interaction/autolink_context.hpp"
+#include "autoviz/common/interaction/channel_manager.hpp"
+#include "autoviz/common/interaction/playback_controller.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/transform/listener.hpp"
 
@@ -156,7 +156,7 @@ class VisualizationManager {
    * @brief Active FrameTransformer selection manager.
    * @return Mutable @ref TransformationManager.
    */
-  TransformationManager& transformationManager() {
+  transformation::TransformationManager& transformationManager() {
     return transformation_manager_;
   }
 
@@ -164,7 +164,7 @@ class VisualizationManager {
    * @brief Const access to the transformation manager.
    * @return Const @ref TransformationManager.
    */
-  const TransformationManager& transformationManager() const {
+  const transformation::TransformationManager& transformationManager() const {
     return transformation_manager_;
   }
 
@@ -939,7 +939,7 @@ class VisualizationManager {
   ToolManager tool_manager_;
   std::vector<VariablePersistConfig> session_variables_;
   FrameManager frame_manager_;
-  TransformationManager transformation_manager_;
+  transformation::TransformationManager transformation_manager_;
   ViewManager view_manager_;
   SelectionManager selection_manager_;
   PickRegistry pick_registry_;

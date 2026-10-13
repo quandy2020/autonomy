@@ -30,8 +30,19 @@ Ogre::MaterialPtr CreateBaseMaterial(const std::string& name, bool lighting,
   Ogre::Pass* pass = technique->getNumPasses() > 0 ? technique->getPass(0)
                                                    : technique->createPass();
   pass->setLightingEnabled(lighting);
-  pass->setVertexColourTracking(Ogre::TVC_DIFFUSE | Ogre::TVC_AMBIENT);
-  pass->setCullingMode(Ogre::CULL_NONE);
+  // Unlit ManualObject paths feed colour per-vertex. Lit Entity materials
+  // (RobotModel, Shape) must use pass ambient/diffuse — TVC would ignore
+  // setDiffuse and fall back to white when the mesh has no vertex colours
+  // (ballbot blue sphere rendered white/grey).
+  if (lighting) {
+    pass->setVertexColourTracking(Ogre::TVC_NONE);
+    // Default back-face culling (RViz). CULL_NONE draws both sides of thin
+    // URDF plates and causes Z-fighting flicker on dense stacks (ballbot).
+    pass->setCullingMode(Ogre::CULL_CLOCKWISE);
+  } else {
+    pass->setVertexColourTracking(Ogre::TVC_DIFFUSE | Ogre::TVC_AMBIENT);
+    pass->setCullingMode(Ogre::CULL_NONE);
+  }
   return material;
 }
 
@@ -74,6 +85,11 @@ void OgreMaterialManager::ensureDefaultMaterials() {
   createMaterialWithNoLighting("Autoviz/FlatNoLighting");
   createMaterialWithNoLighting("Autoviz/LineNoLighting");
   createMaterialWithLighting("Autoviz/FlatLit");
+  // Semi-transparent Marker / InteractiveMarker handles (ARROW a=0.5, discs).
+  // Separate from FlatNoLighting so opaque meshes keep depth write.
+  Ogre::MaterialPtr flat_alpha =
+      createMaterialWithNoLighting("Autoviz/FlatNoLightingAlpha");
+  enableAlphaBlending(flat_alpha, 0.5f);
   Ogre::MaterialPtr overlay_line = createMaterialWithNoLighting("Autoviz/OverlayLine");
   if (overlay_line) {
     Ogre::Pass* pass = overlay_line->getTechnique(0)->getPass(0);

@@ -1,0 +1,37 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.control_msgs;
+
+// JointTolerance variant with a component selector for multi-DOF joints.
+// X/Y/Z_AXIS apply to a single axis; TRANSLATION is Euclidean distance (m);
+// ROTATION is quaternion difference (rad). Z_AXIS is only valid with a floating joint.
+message JointComponentTolerance {
+  enum Component {
+    COMPONENT_UNSPECIFIED = 0;
+    X_AXIS = 1;
+    Y_AXIS = 2;
+    Z_AXIS = 3;
+    TRANSLATION = 4;
+    ROTATION = 5;
+  }
+
+  string joint_name = 1;
+  Component component = 2;
+  double position = 3;
+  double velocity = 4;
+  double acceleration = 5;
+}

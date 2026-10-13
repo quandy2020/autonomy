@@ -6,6 +6,8 @@
 
 #ifdef AUTOVIZ_USE_ASSIMP
 
+#include <cstdint>
+
 #include <assimp/Importer.hpp>
 #include <assimp/postprocess.h>
 #include <assimp/scene.h>
@@ -122,19 +124,37 @@ Ogre::MeshPtr AssimpLoader::meshFromAssimpScene(const std::string& name,
     }
     sub->indexData->indexCount = index_count;
     sub->indexData->indexStart = 0;
+    // Match rviz_rendering::AssimpLoader::createAndFillIndexBuffer.
+    const bool use_16_bits = src->mNumVertices < (1u << 16);
     Ogre::HardwareIndexBufferSharedPtr ibuf =
         Ogre::HardwareBufferManager::getSingleton().createIndexBuffer(
-            Ogre::HardwareIndexBuffer::IT_16BIT, index_count,
-            Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY);
-    auto* idst = static_cast<uint16_t*>(ibuf->lock(Ogre::HardwareBuffer::HBL_DISCARD));
-    for (unsigned int f = 0; f < src->mNumFaces; ++f) {
-      const aiFace& face = src->mFaces[f];
-      if (face.mNumIndices != 3) {
-        continue;
+            use_16_bits ? Ogre::HardwareIndexBuffer::IT_16BIT
+                        : Ogre::HardwareIndexBuffer::IT_32BIT,
+            index_count, Ogre::HardwareBuffer::HBU_STATIC_WRITE_ONLY);
+    if (use_16_bits) {
+      auto* idst =
+          static_cast<uint16_t*>(ibuf->lock(Ogre::HardwareBuffer::HBL_DISCARD));
+      for (unsigned int f = 0; f < src->mNumFaces; ++f) {
+        const aiFace& face = src->mFaces[f];
+        if (face.mNumIndices != 3) {
+          continue;
+        }
+        *idst++ = static_cast<uint16_t>(face.mIndices[0]);
+        *idst++ = static_cast<uint16_t>(face.mIndices[1]);
+        *idst++ = static_cast<uint16_t>(face.mIndices[2]);
       }
-      *idst++ = static_cast<uint16_t>(face.mIndices[0]);
-      *idst++ = static_cast<uint16_t>(face.mIndices[1]);
-      *idst++ = static_cast<uint16_t>(face.mIndices[2]);
+    } else {
+      auto* idst =
+          static_cast<uint32_t*>(ibuf->lock(Ogre::HardwareBuffer::HBL_DISCARD));
+      for (unsigned int f = 0; f < src->mNumFaces; ++f) {
+        const aiFace& face = src->mFaces[f];
+        if (face.mNumIndices != 3) {
+          continue;
+        }
+        *idst++ = face.mIndices[0];
+        *idst++ = face.mIndices[1];
+        *idst++ = face.mIndices[2];
+      }
     }
     ibuf->unlock();
     sub->indexData->indexBuffer = ibuf;

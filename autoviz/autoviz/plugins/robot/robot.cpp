@@ -62,10 +62,11 @@ bool AppendUrdfGeometryMesh(std::vector<ColoredMeshInstance>* meshes,
   geom_transform.rotate(geometry.rotation);
 
   if (geometry.type == UrdfGeometry::Type::kBox) {
+    static const ObjMesh kUnitCube = buildCubeMesh();
     const QVector3D half = VisualHalfExtents(geometry);
     QMatrix4x4 box = geom_transform;
     box.scale(half.x() * 2.f, half.y() * 2.f, half.z() * 2.f);
-    meshes->push_back({buildCubeMesh(), box, color, wireframe});
+    meshes->push_back({&kUnitCube, box, color, wireframe});
     return true;
   }
   if (mesh != nullptr && (geometry.type == UrdfGeometry::Type::kMesh ||
@@ -75,7 +76,7 @@ bool AppendUrdfGeometryMesh(std::vector<ColoredMeshInstance>* meshes,
     if (geometry.type == UrdfGeometry::Type::kMesh) {
       mesh_transform.scale(geometry.mesh_scale);
     }
-    meshes->push_back({*mesh, mesh_transform, color, wireframe});
+    meshes->push_back({mesh, mesh_transform, color, wireframe});
     return true;
   }
   return false;
@@ -225,18 +226,32 @@ bool Robot::loadFromString(const std::string& urdf_text) {
   rebuildLinkJointMaps();
   rebuildMeshCache();
   std::ostringstream ss;
+  auto report_missing = [&](const UrdfGeometry& geometry,
+                            const std::string& link_name) {
+    if (geometry.type != UrdfGeometry::Type::kMesh ||
+        geometry.mesh_filename.empty()) {
+      return;
+    }
+    const std::string resolved = UrdfModel::resolveMeshPath(
+        model_.baseDirectory(), geometry.mesh_filename);
+    ss << "\n• for link '" << link_name << "': Could not load mesh resource '"
+       << geometry.mesh_filename << "'";
+    if (!resolved.empty() && resolved != geometry.mesh_filename) {
+      ss << " (resolved: " << resolved << ")";
+    }
+  };
   for (const auto& link : model_.links()) {
     if (!link.visuals.empty()) {
       for (std::size_t i = 0; i < link.visuals.size(); ++i) {
         if (link.visuals[i].type == UrdfGeometry::Type::kMesh &&
             visual_meshes_.count(link.name + "#" + std::to_string(i)) == 0) {
-          ss << "\n• for link '" << link.name << "': mesh not found";
+          report_missing(link.visuals[i], link.name);
         }
       }
     } else if (link.has_visual &&
                link.visual.type == UrdfGeometry::Type::kMesh &&
                visual_meshes_.count(link.name) == 0) {
-      ss << "\n• for link '" << link.name << "': mesh not found";
+      report_missing(link.visual, link.name);
     }
   }
   geometry_errors_ = ss.str();
@@ -301,7 +316,9 @@ void Robot::cacheGeometryMesh(
     (*cache)[link_name] =
         buildCylinderMesh(geometry.size.x(), geometry.size.y());
   } else if (geometry.type == UrdfGeometry::Type::kSphere) {
-    (*cache)[link_name] = buildSphereMesh(geometry.size.x());
+    // Exact URDF radius (no inflate): 1.02× pushed the ball under z=0 and
+    // Z-fought the ground grid (white flicker). Denser tessellation ≈ RViz.
+    (*cache)[link_name] = buildSphereMesh(geometry.size.x(), 32, 24);
   }
 }
 
@@ -391,8 +408,8 @@ void Robot::drawLinkGeometry(
           part_mesh.texcoords = mesh->texcoords;
           part_mesh.triangles.assign(mesh->triangles.begin() + begin,
                                      mesh->triangles.begin() + end);
-          QImage texture;
-          if (!part.texture_path.empty()) {
+          QImage texture = part.texture;
+          if (texture.isNull() && !part.texture_path.empty()) {
             const auto cached = texture_cache_.find(part.texture_path);
             if (cached != texture_cache_.end()) {
               texture = cached->second;
@@ -402,14 +419,13 @@ void Robot::drawLinkGeometry(
             }
           }
           if (!texture.isNull()) {
+            // Mesh albedo already carries the look (ANYmal DAE); keep tint white.
+            QColor tint(255, 255, 255, color.alpha());
             scene.addTriangleMeshTexturedPbr(part_mesh, mesh_transform, texture,
-                                             color, metallic, roughness);
+                                             tint, metallic, roughness);
           } else {
             QColor solid = part.diffuse;
-            solid.setRedF(std::clamp(solid.redF() * color.redF(), 0.f, 1.f));
-            solid.setGreenF(std::clamp(solid.greenF() * color.greenF(), 0.f, 1.f));
-            solid.setBlueF(std::clamp(solid.blueF() * color.blueF(), 0.f, 1.f));
-            solid.setAlphaF(color.alphaF());
+            solid.setAlphaF(color.alphaF() * solid.alphaF());
             scene.addTriangleMeshSolid(part_mesh, mesh_transform, solid);
           }
         }
@@ -501,26 +517,32 @@ void Robot::draw(rendering::SceneOverlay& scene, common::DisplayContext* context
 
   const bool use_ogre = context->ogre_scene_host != nullptr;
 
-  std::vector<ColoredMeshInstance> ogre_visual;
+  std::vector<ColoredMeshInstance> ogre_visual_meshes;
+  std::vector<ColoredMeshInstance> ogre_visual_prims;
   std::vector<PbrMeshInstance> ogre_pbr_visual;
   std::vector<PbrTexturedMeshInstance> ogre_pbr_textured;
   std::vector<rendering::OgreTexturedLinkInstance> textured_links;
-  auto textureFor = [this](const UrdfMaterial& material) -> const QImage* {
+  auto cacheImageAt = [this](const std::string& path) -> const QImage* {
+    if (path.empty()) {
+      return nullptr;
+    }
+    const auto cached = texture_cache_.find(path);
+    if (cached != texture_cache_.end()) {
+      return &cached->second;
+    }
+    QImage image(QString::fromStdString(path));
+    if (image.isNull()) {
+      return nullptr;
+    }
+    return &texture_cache_.emplace(path, std::move(image)).first->second;
+  };
+  auto textureFor = [this, &cacheImageAt](const UrdfMaterial& material) -> const QImage* {
     if (!material.has_texture || material.texture_filename.empty()) {
       return nullptr;
     }
     const std::string resolved = UrdfModel::resolveTexturePath(
         model_.baseDirectory(), material.texture_filename);
-    const auto cached = texture_cache_.find(resolved);
-    if (cached != texture_cache_.end()) {
-      return &cached->second;
-    }
-    QImage image(QString::fromStdString(resolved));
-    if (image.isNull()) {
-      return nullptr;
-    }
-    const auto inserted = texture_cache_.emplace(resolved, std::move(image));
-    return &inserted.first->second;
+    return cacheImageAt(resolved);
   };
   // Pointers into the cache are held for this frame. Reserve first so an
   // insert cannot rehash and invalidate them.
@@ -612,14 +634,52 @@ void Robot::draw(rendering::SceneOverlay& scene, common::DisplayContext* context
         textured_links.push_back(
             {mesh, texture, geom_transform, visual_color, metallic, roughness});
         ogre_visual_ok = true;
+      } else if (use_ogre && solid_visual && mesh != nullptr &&
+                 mesh->has_material_groups &&
+                 geometry.type == UrdfGeometry::Type::kMesh &&
+                 mesh->parts.size() == mesh->submeshes.size()) {
+        // COLLADA / OBJ materials (ANYmal embedded DAE albedos).
+        QMatrix4x4 geom_transform = link_transform;
+        geom_transform.translate(geometry.origin);
+        geom_transform.rotate(geometry.rotation);
+        geom_transform.scale(geometry.mesh_scale);
+        const QColor mesh_tint(255, 255, 255, visual_color.alpha());
+        for (std::size_t part_i = 0; part_i < mesh->submeshes.size(); ++part_i) {
+          const ObjSubmesh& part = mesh->submeshes[part_i];
+          const ObjMesh* part_mesh = &mesh->parts[part_i];
+          if (part_mesh->triangles.empty()) {
+            continue;
+          }
+          const QImage* part_tex = nullptr;
+          if (!part.texture.isNull()) {
+            part_tex = &part.texture;
+          } else if (!part.texture_path.empty()) {
+            part_tex = cacheImageAt(part.texture_path);
+          }
+          if (part_tex != nullptr && !part_tex->isNull()) {
+            textured_links.push_back(
+                {part_mesh, part_tex, geom_transform, mesh_tint, metallic,
+                 roughness});
+            ogre_visual_ok = true;
+          } else {
+            QColor solid = part.diffuse;
+            solid.setAlphaF(visual_color.alphaF() * solid.alphaF());
+            ogre_visual_meshes.push_back(
+                {part_mesh, geom_transform, solid, !solid_visual});
+            ogre_visual_ok = true;
+          }
+        }
       } else if (use_ogre && use_pbr) {
         ogre_visual_ok =
             AppendUrdfGeometryPbr(&ogre_pbr_visual, &ogre_pbr_textured,
                                     geometry, mesh, link_transform,
                                     visual_color, *texture, metallic, roughness);
       } else if (use_ogre) {
+        std::vector<ColoredMeshInstance>* bucket =
+            (geometry.type == UrdfGeometry::Type::kMesh) ? &ogre_visual_meshes
+                                                        : &ogre_visual_prims;
         ogre_visual_ok =
-            AppendUrdfGeometryMesh(&ogre_visual, geometry, mesh, link_transform,
+            AppendUrdfGeometryMesh(bucket, geometry, mesh, link_transform,
                                    visual_color, !solid_visual);
       }
       if (!ogre_visual_ok) {
@@ -646,6 +706,11 @@ void Robot::draw(rendering::SceneOverlay& scene, common::DisplayContext* context
 
     if (show_axes && visuals != nullptr && !visuals->empty()) {
       const UrdfGeometry& geometry = visuals->front();
+      // Sphere axes pierce the ball surface and read as RGB sparkle/flicker at
+      // the contact point (ballbot). Skip axes for pure sphere visuals.
+      if (geometry.type == UrdfGeometry::Type::kSphere && visuals->size() == 1) {
+        continue;
+      }
       QMatrix4x4 visual = link_transform;
       visual.translate(geometry.origin);
       visual.rotate(geometry.rotation);
@@ -671,7 +736,12 @@ void Robot::draw(rendering::SceneOverlay& scene, common::DisplayContext* context
   }
 
   if (use_ogre) {
-    drawEntityMeshesOgreOrGl(context, scene, display_name + "/visual", ogre_visual);
+    // File meshes first, then primitives so the URDF blue ball wins depth
+    // against coplanar base.obj socket geometry (RViz-like visibility).
+    drawEntityMeshesOgreOrGl(context, scene, display_name + "/visual/mesh",
+                             ogre_visual_meshes);
+    drawEntityMeshesOgreOrGl(context, scene, display_name + "/visual/prim",
+                             ogre_visual_prims);
     drawPbrMeshesOgreOrGl(context, scene, display_name + "/visual/pbr", ogre_pbr_visual);
     drawPbrTexturedMeshesOgreOrGl(context, scene, display_name + "/visual/pbr_tex",
                                   ogre_pbr_textured);

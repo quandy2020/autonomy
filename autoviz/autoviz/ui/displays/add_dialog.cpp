@@ -32,7 +32,7 @@
 #include "autoviz/common/display_catalog.hpp"
 #include "autoviz/common/display_factory.hpp"
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/channel_manager.hpp"
+#include "autoviz/common/interaction/channel_manager.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/theme/style.hpp"

@@ -27,9 +27,9 @@
 #include <string>
 
 #include "autoviz/plugins/displays/display.hpp"
-#include "autoviz/integration/channel_payload.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
 namespace display {

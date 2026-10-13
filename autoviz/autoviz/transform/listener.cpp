@@ -8,7 +8,7 @@
 
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 
-#include "autoviz/integration/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/transform/buffer.hpp"
 #include "autoviz/transform/buffer_utils.hpp"
 

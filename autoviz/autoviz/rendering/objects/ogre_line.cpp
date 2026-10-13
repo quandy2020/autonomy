@@ -16,7 +16,7 @@ namespace rendering {
 
 OgreLine::OgreLine(Ogre::SceneManager* scene_manager,
                    Ogre::SceneNode* parent_node)
-    : scene_manager_(scene_manager) {
+    : OgreObject(scene_manager) {
   if (parent_node == nullptr) {
     parent_node = scene_manager_->getRootSceneNode();
   }
@@ -86,6 +86,12 @@ void OgreLine::setColor(const Ogre::ColourValue& color) {
 
 void OgreLine::setColor(float r, float g, float b, float a) {
   setColor(Ogre::ColourValue(r, g, b, a));
+}
+
+const Ogre::Vector3& OgreLine::getPosition() { return scene_node_->getPosition(); }
+
+const Ogre::Quaternion& OgreLine::getOrientation() {
+  return scene_node_->getOrientation();
 }
 
 const Ogre::Vector3& OgreLine::position() const {

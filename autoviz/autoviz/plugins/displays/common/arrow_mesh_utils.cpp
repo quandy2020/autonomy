@@ -62,14 +62,14 @@ void appendSolidArrowMeshes(std::vector<ColoredMeshInstance>* meshes,
   shaft.translate(start + direction * (shaft_len * 0.5f));
   shaft *= AlignZToDirection(direction);
   shaft.scale(shaft_diameter, shaft_diameter, shaft_len);
-  meshes->push_back({UnitShaftMesh(), shaft, color, false});
+  meshes->push_back({&UnitShaftMesh(), shaft, color, false});
 
   QMatrix4x4 head;
   head.setToIdentity();
   head.translate(start + direction * shaft_len);
   head *= AlignZToDirection(direction);
   head.scale(head_diameter, head_diameter, head_len);
-  meshes->push_back({UnitHeadMesh(), head, color, false});
+  meshes->push_back({&UnitHeadMesh(), head, color, false});
 }
 
 }  // namespace display

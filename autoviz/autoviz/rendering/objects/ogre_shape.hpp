@@ -6,7 +6,7 @@
  * @file ogre_shape.hpp
  * @brief Primitive Entity shapes (cone/cube/cylinder/sphere/capsule).
  *
- * rviz_rendering::Shape subset used as building blocks for @ref OgreArrow and
+ * Port of @c rviz_rendering::Shape (derives from @ref OgreObject), used as building blocks for @ref OgreArrow and
  * Entity-based displays via MeshManager @c aviz_*.mesh resources.
  *
  * @see OgreArrow
@@ -23,6 +23,8 @@
 #include <OgreSharedPtr.h>
 #include <OgreVector.h>
 
+#include "autoviz/rendering/objects/ogre_object.hpp"
+
 namespace Ogre {
 class Any;
 class Entity;
@@ -35,12 +37,12 @@ namespace rendering {
 
 /**
  * @class OgreShape
- * @brief rviz_rendering::Shape subset — Entity + @c aviz_*.mesh primitives.
+ * @brief rviz_rendering::Shape — Entity + @c aviz_*.mesh primitives.
  *
  * Hierarchy: root @c scene_node_ → @c offset_node_ → Entity. Color is applied
  * through a unique material instance.
  */
-class OgreShape {
+class OgreShape : public OgreObject {
  public:
   /**
    * @enum Type
@@ -65,7 +67,7 @@ class OgreShape {
             Ogre::SceneNode* parent_node = nullptr);
 
   /** @brief Destroys entity, material, and nodes. */
-  ~OgreShape();
+  ~OgreShape() override;
 
   /**
    * @brief Returns the primitive type.
@@ -82,7 +84,7 @@ class OgreShape {
   /**
    * @brief Sets RGBA color on the shape material.
    */
-  void setColor(float r, float g, float b, float a);
+  void setColor(float r, float g, float b, float a) override;
 
   /**
    * @brief Sets color from an Ogre colour value.
@@ -94,25 +96,34 @@ class OgreShape {
    * @brief Sets the root node position.
    * @param position Translation.
    */
-  void setPosition(const Ogre::Vector3& position);
+  void setPosition(const Ogre::Vector3& position) override;
 
   /**
    * @brief Sets the root node orientation.
    * @param orientation Rotation.
    */
-  void setOrientation(const Ogre::Quaternion& orientation);
+  void setOrientation(const Ogre::Quaternion& orientation) override;
 
   /**
    * @brief Sets the root node scale.
    * @param scale Non-uniform scale.
    */
-  void setScale(const Ogre::Vector3& scale);
+  void setScale(const Ogre::Vector3& scale) override;
+
+  /** @brief Returns root node position (OgreObject interface). */
+  const Ogre::Vector3& getPosition() override;
+
+  /** @brief Returns root node orientation (OgreObject interface). */
+  const Ogre::Quaternion& getOrientation() override;
 
   /** @brief Returns root node position. */
   const Ogre::Vector3& position() const;
 
   /** @brief Returns root node orientation. */
   const Ogre::Quaternion& orientation() const;
+
+  /** @brief RViz-style alias of @ref rootNode(). */
+  Ogre::SceneNode* getRootNode() { return scene_node_; }
 
   /**
    * @brief Returns the root scene node.
@@ -136,7 +147,7 @@ class OgreShape {
    * @brief Attaches user data to the entity.
    * @param data Ogre Any payload.
    */
-  void setUserData(const Ogre::Any& data);
+  void setUserData(const Ogre::Any& data) override;
 
   /**
    * @brief Factory: creates an Entity for @p shape_type without an @ref OgreShape.
@@ -150,7 +161,6 @@ class OgreShape {
                                     Ogre::SceneManager* scene_manager);
 
  private:
-  Ogre::SceneManager* scene_manager_ = nullptr;
   Ogre::SceneNode* scene_node_ = nullptr;
   Ogre::SceneNode* offset_node_ = nullptr;
   Ogre::Entity* entity_ = nullptr;

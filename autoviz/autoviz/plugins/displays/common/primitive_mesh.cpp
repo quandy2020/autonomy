@@ -67,10 +67,11 @@ ObjMesh buildSphereMesh(float radius, int slices, int stacks) {
     for (int slice = 0; slice <= slices; ++slice) {
       const float u = static_cast<float>(slice) / static_cast<float>(slices);
       const float theta = u * kTwoPi;
-      const float x = radius * sin_phi * std::cos(theta);
-      const float y = radius * sin_phi * std::sin(theta);
-      const float z = radius * cos_phi;
-      mesh.vertices.emplace_back(x, y, z);
+      const float nx = sin_phi * std::cos(theta);
+      const float ny = sin_phi * std::sin(theta);
+      const float nz = cos_phi;
+      mesh.vertices.emplace_back(radius * nx, radius * ny, radius * nz);
+      mesh.normals.emplace_back(nx, ny, nz);
     }
   }
 
@@ -136,6 +137,7 @@ ObjMesh buildCubeMesh() {
   for (const auto& face : faces) {
     AddTriangle(&mesh, face[0], face[1], face[2]);
   }
+  ensureMeshNormals(&mesh);
   return mesh;
 }
 

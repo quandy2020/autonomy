@@ -13,7 +13,7 @@
  * @see ReferenceGridSettings
  * @see CameraState
  * @see RenderWindow
- * @see OgreGrid
+ * @see OgreReferenceGrid
  */
 
 #pragma once

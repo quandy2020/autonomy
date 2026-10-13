@@ -28,7 +28,7 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/channel_manager.hpp"
+#include "autoviz/common/interaction/channel_manager.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"

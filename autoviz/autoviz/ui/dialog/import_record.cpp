@@ -16,7 +16,7 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 
-#include "autoviz/integration/playback_controller.hpp"
+#include "autoviz/common/interaction/playback_controller.hpp"
 #include "autoviz/ui/dialog/record_open.hpp"
 
 namespace autoviz {

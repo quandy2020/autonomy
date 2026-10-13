@@ -1,0 +1,51 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.control_msgs;
+
+import "automsgs/msgs/geometry_msgs/quaternion.proto";
+import "automsgs/msgs/geometry_msgs/transform_stamped.proto";
+import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
+import "automsgs/msgs/geometry_msgs/wrench_stamped.proto";
+import "automsgs/msgs/sensor_msgs/joint_state.proto";
+import "automsgs/msgs/std_msgs/float64_multi_array.proto";
+import "automsgs/msgs/std_msgs/int8_multi_array.proto";
+import "automsgs/msgs/std_msgs/string.proto";
+
+// Admittance controller parameters and cartesian/joint state.
+message AdmittanceControllerState {
+  // 6-vector of mass terms used in the admittance calculation.
+  automsgs.msgs.std_msgs.Float64MultiArray mass = 1;
+  // 6-vector of damping terms used in the admittance calculation.
+  automsgs.msgs.std_msgs.Float64MultiArray damping = 2;
+  // 6-vector of stiffness terms used in the admittance calculation.
+  automsgs.msgs.std_msgs.Float64MultiArray stiffness = 3;
+
+  // Orientation of the control frame.
+  automsgs.msgs.geometry_msgs.Quaternion rot_base_control = 4;
+  // Force-torque sensor transform at the reference joint configuration.
+  automsgs.msgs.geometry_msgs.TransformStamped ref_trans_base_ft = 5;
+  // 6-vector of 0/1 describing if admittance is enabled in the corresponding control-frame axis.
+  automsgs.msgs.std_msgs.Int8MultiArray selected_axes = 6;
+  // Name of the force-torque frame.
+  automsgs.msgs.std_msgs.String ft_sensor_frame = 7;
+
+  automsgs.msgs.geometry_msgs.TransformStamped admittance_position = 8;
+  automsgs.msgs.geometry_msgs.TwistStamped admittance_acceleration = 9;
+  automsgs.msgs.geometry_msgs.TwistStamped admittance_velocity = 10;
+  automsgs.msgs.geometry_msgs.WrenchStamped wrench_base = 11;
+  automsgs.msgs.sensor_msgs.JointState joint_state = 12;
+}

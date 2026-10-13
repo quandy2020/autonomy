@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/integration/teleop_channels.hpp"
+#include "autoviz/common/interaction/teleop_channels.hpp"
 #include "autoviz/ui/teleop/teleop_control_widget.hpp"
 
 #include <algorithm>

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package automsgs.msgs.sensor_msgs;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/builtin_interfaces/time.proto";
+
+// Measurement from an external time source not synchronized with the system clock.
+message TimeReference {
+  automsgs.msgs.std_msgs.Header header = 1;
+  automsgs.msgs.builtin_interfaces.Time time_ref = 2;
+  string source = 3;
+}
+

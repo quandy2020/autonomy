@@ -20,7 +20,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/plugins/displays/display.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 
 namespace autoviz {

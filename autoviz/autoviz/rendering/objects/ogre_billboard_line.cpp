@@ -27,7 +27,7 @@ constexpr uint32_t kMaxElements = (65536 / 4);
 
 OgreBillboardLine::OgreBillboardLine(Ogre::SceneManager* scene_manager,
                                      Ogre::SceneNode* parent_node)
-    : scene_manager_(scene_manager) {
+    : OgreObject(scene_manager) {
   if (scene_manager_ == nullptr) {
     throw std::invalid_argument("OgreBillboardLine requires SceneManager");
   }
@@ -152,14 +152,42 @@ void OgreBillboardLine::setColor(float r, float g, float b, float a) {
 }
 
 void OgreBillboardLine::addPoint(const Ogre::Vector3& point) {
+  addPoint(point, color_);
+}
+
+void OgreBillboardLine::addPoint(const Ogre::Vector3& point,
+                                 const Ogre::ColourValue& color) {
   incrementChainContainerIfNecessary();
+  OgreMaterialManager::enableAlphaBlending(material_, color.a);
   Ogre::BillboardChain::Element element;
   element.position = point;
   element.width = width_;
-  element.colour = color_;
+  element.colour = color;
   chain_containers_[current_chain_container_]->addChainElement(
       current_line_ % chains_per_container_, element);
 }
+
+void OgreBillboardLine::finishLine() { ++current_line_; }
+
+void OgreBillboardLine::setPosition(const Ogre::Vector3& position) {
+  scene_node_->setPosition(position);
+}
+
+void OgreBillboardLine::setOrientation(const Ogre::Quaternion& orientation) {
+  scene_node_->setOrientation(orientation);
+}
+
+void OgreBillboardLine::setScale(const Ogre::Vector3& /*scale*/) {}
+
+const Ogre::Vector3& OgreBillboardLine::getPosition() {
+  return scene_node_->getPosition();
+}
+
+const Ogre::Quaternion& OgreBillboardLine::getOrientation() {
+  return scene_node_->getOrientation();
+}
+
+void OgreBillboardLine::setUserData(const Ogre::Any& /*data*/) {}
 
 void OgreBillboardLine::changeAllElements(
     std::function<Ogre::BillboardChain::Element(Ogre::BillboardChain::Element)>

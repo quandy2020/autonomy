@@ -166,14 +166,6 @@ TargetTrajectories TargetFromPose(const PoseStamped& pose, const vector_t& previ
 }
 
 /**
- * @brief Absolute path of the ballbot body mesh in the robotic-assets tree.
- * @return Filesystem path to @c ballbot/meshes/base.obj.
- */
-std::string MeshPath() {
-  return std::string(AUTOMANIP_ROBOTIC_ASSETS) + "/ballbot/meshes/base.obj";
-}
-
-/**
  * @brief Publish body-frame velocity for autoviz.
  * @param [in] observation: Current system observation.
  * @param [out] twist: Filled TwistStamped message.
@@ -241,25 +233,20 @@ void Publish(const SystemObservation& observation, const PrimalSolution& policy,
   bolza::examples::FillJoints(joints, {"jball_x", "jball_y", "jbase_z", "jbase_y", "jbase_x"},
                               {x, y, yaw, pitch, roll});
 
+  // Root of the URDF tree so RobotModel TF lookups for "world" succeed (RViz /
+  // robot_state_publisher style). Body pose remains map→base.
+  bolza::examples::AddTransform(tf, "map", "world", 0.0, 0.0, 0.0);
   double qw = 1.0, qx = 0.0, qy = 0.0, qz = 0.0;
   EulerZyxToQuaternion(yaw, pitch, roll, &qw, &qx, &qy, &qz);
   bolza::examples::AddTransform(tf, "map", "base", x, y, 0.125, qw, qx, qy, qz);
   EulerZyxToQuaternion(target(2), target(3), target(4), &qw, &qx, &qy, &qz);
   bolza::examples::AddTransform(tf, "map", "command", target(0), target(1), 0.0, qw, qx, qy, qz);
 
+  // Ball + body mesh live on RobotModel via /robot_description. DELETE clears
+  // any previously latched MarkerArray copies (avoids Z-fighting / flicker).
   using Marker = automsgs::msgs::visualization_msgs::Marker;
-  *markers->add_markers() =
-      bolza::examples::MakeShape("ball", 0, Marker::SPHERE, x, y, 0.125, 0.25, 0.25, 0.25, 0.0f,
-                                 0.0f, 0.8f);
-  const Eigen::Quaterniond body = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()) *
-                                  Eigen::AngleAxisd(pitch, Eigen::Vector3d::UnitY()) *
-                                  Eigen::AngleAxisd(roll, Eigen::Vector3d::UnitX()) *
-                                  Eigen::AngleAxisd(0.275, Eigen::Vector3d::UnitZ());
-  auto mesh = bolza::examples::MakeShape("body", 1, Marker::MESH_RESOURCE, x, y, 0.125, 1.0, 1.0,
-                                         1.0, 0.5f, 0.5f, 0.5f, body.w(), body.x(), body.y(),
-                                         body.z());
-  mesh.set_mesh_resource(MeshPath());
-  *markers->add_markers() = std::move(mesh);
+  *markers->add_markers() = bolza::examples::DeleteMarker("ball", 0);
+  *markers->add_markers() = bolza::examples::DeleteMarker("body", 1);
 
   const double body_vx = std::cos(yaw) * observation.state(5) + std::sin(yaw) * observation.state(6);
   const double body_vy = -std::sin(yaw) * observation.state(5) + std::cos(yaw) * observation.state(6);
@@ -267,7 +254,7 @@ void Publish(const SystemObservation& observation, const PrimalSolution& policy,
   std::ostringstream label;
   label << std::fixed << std::setprecision(2) << "v " << speed << " m/s   vx " << body_vx
         << "  vy " << body_vy << "  wz " << observation.state(7);
-  auto text = bolza::examples::MakeShape("velocity", 2, Marker::TEXT_VIEW_FACING, x, y, 1.05, 0.0,
+  auto text = bolza::examples::MakeShape("velocity", 0, Marker::TEXT_VIEW_FACING, x, y, 1.05, 0.0,
                                          0.0, 0.12, 1.0f, 0.9f, 0.2f);
   text.set_text(label.str());
   *markers->add_markers() = std::move(text);
@@ -325,8 +312,14 @@ int main(int argc, char** argv) {
   request.publish = Publish;
   request.velocity = PublishVelocity;
   request.on_target = TargetFromPose;
-  request.robot_description =
-      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description = bolza::examples::LoadExampleRobotDescription(
+      AUTOMANIP_EXAMPLE_URDF, "ballbot/urdf/ballbot.urdf");
+  if (request.robot_description.empty()) {
+    std::cerr << "[ballbot] Failed to load URDF for /robot_description "
+                 "(compile-time was '"
+              << AUTOMANIP_EXAMPLE_URDF
+              << "'). RobotModel will not show the body mesh.\n";
+  }
   request.max_steps = steps;
   return bolza::examples::RunDemo(request);
 }

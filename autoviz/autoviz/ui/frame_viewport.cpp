@@ -54,7 +54,7 @@
 #include <QVBoxLayout>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/tool_manager.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/view_controller.hpp"
@@ -180,6 +180,12 @@ void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry,
     entry.widget = nullptr;
     entry.ogre_viewport = nullptr;
   }
+}
+
+void FrameViewport::clearForQuit() {
+  viewport_panels_.clear();
+  active_viewport_dock_ = nullptr;
+  viewport_dock_ = nullptr;
 }
 
 void FrameViewport::parkRenderWindowInEntry(ViewportPanelEntry& entry) {
@@ -402,6 +408,10 @@ void FrameViewport::wireViewportPanel(ViewportPanelEntry& entry) {
   // dangling key in viewport_panels_ for syncToolContext to dereference.
   QObject::connect(entry.dock, &QObject::destroyed, frame_,
                    [this, dock = entry.dock]() {
+                     if (frame_ == nullptr || frame_->session_ == nullptr ||
+                         frame_->session_->quit_teardown_done_) {
+                       return;
+                     }
                      if (!viewport_panels_.contains(dock)) {
                        return;
                      }

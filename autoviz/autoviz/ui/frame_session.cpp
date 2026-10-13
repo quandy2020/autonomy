@@ -64,7 +64,7 @@
 #include <QVBoxLayout>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/tool_manager.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 #include "autoviz/rendering/ogre_render_window.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
@@ -1098,6 +1098,20 @@ void FrameSession::onAboutToQuit() {
   // windows still exist. Do NOT manager_->shutdown() here (Autolink/docks).
   render_timer_.stop();
   refresh_timer_.stop();
+
+  // ~VisualizationFrame destroys FrameViewport/FrameLayout members BEFORE the
+  // QWidget child walk. Dock destroyed/visibilityChanged lambdas capture those
+  // collaborators via frame_ context — disconnect every dock→frame_ link and
+  // silence docks before any hide/destroy walk.
+  const QList<QDockWidget*> docks = frame_->findChildren<QDockWidget*>();
+  for (QDockWidget* dock : docks) {
+    if (dock == nullptr) {
+      continue;
+    }
+    QObject::disconnect(dock, nullptr, frame_, nullptr);
+    dock->blockSignals(true);
+  }
+
   if (frame_->manager_ != nullptr) {
     frame_->manager_->playback().stop();
     frame_->manager_->detachDisplaysFromScene();
@@ -1115,6 +1129,7 @@ void FrameSession::onAboutToQuit() {
   frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
     frame_->viewport_->destroyRenderWindowInEntry(entry, /*synchronous=*/true);
   });
+  frame_->viewport_->clearForQuit();
 
   QSettings settings;
   settings.setValue(QStringLiteral("recent_configs"), recent_configs_);

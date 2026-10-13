@@ -1,0 +1,31 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+import "automsgs/msgs/moveit_msgs/gripper_translation.proto";
+import "automsgs/msgs/trajectory_msgs/joint_trajectory.proto";
+
+message PlaceLocation {
+  string id = 1;
+  automsgs.msgs.trajectory_msgs.JointTrajectory post_place_posture = 2;
+  automsgs.msgs.geometry_msgs.PoseStamped place_pose = 3;
+  double quality = 4;
+  GripperTranslation pre_place_approach = 5;
+  GripperTranslation post_place_retreat = 6;
+  repeated string allowed_touch_objects = 7;
+}

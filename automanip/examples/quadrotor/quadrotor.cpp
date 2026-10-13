@@ -148,14 +148,6 @@ using bolza::examples::TfMsg;
 using bolza::quadrotor::INPUT_DIM;
 
 /**
- * @brief Absolute path of the quadrotor mesh in the robotic-assets tree.
- * @return Filesystem path to @c quadrotor/meshes/quadrotor.obj.
- */
-std::string MeshPath() {
-  return std::string(AUTOMANIP_ROBOTIC_ASSETS) + "/quadrotor/meshes/quadrotor.obj";
-}
-
-/**
  * @brief Convert ZYX Euler angles to a quaternion.
  * @param [in] yaw: Yaw angle [rad].
  * @param [in] pitch: Pitch angle [rad].
@@ -224,7 +216,8 @@ TargetTrajectories TargetFromPose(const PoseStamped& pose, const vector_t& previ
 }
 
 /**
- * @brief Publish quadrotor mesh, command frame, and a short path to the hover goal.
+ * @brief Publish TF / command frame and a short path to the hover goal.
+ *        Body mesh comes from RobotModel (`/robot_description`).
  * @param [in] observation: Current system observation.
  * @param [in] policy: MPC primal solution (unused for path; command segment is drawn).
  * @param [in] command: Command data with MPC target trajectory.
@@ -250,17 +243,14 @@ void Publish(const SystemObservation& observation, const PrimalSolution& /*polic
 
   double qw = 1.0, qx = 0.0, qy = 0.0, qz = 0.0;
   EulerZyxToQuaternion(yaw, pitch, roll, &qw, &qx, &qy, &qz);
+  // Root link "base" — RobotModel shows quadrotor.obj from /robot_description.
   bolza::examples::AddTransform(tf, "map", "base", x, y, z, qw, qx, qy, qz);
   EulerZyxToQuaternion(target(5), target(4), target(3), &qw, &qx, &qy, &qz);
   bolza::examples::AddTransform(tf, "map", "command", target(0), target(1), target(2), qw, qx, qy,
                                 qz);
 
-  using Marker = automsgs::msgs::visualization_msgs::Marker;
-  EulerZyxToQuaternion(yaw, pitch, roll, &qw, &qx, &qy, &qz);
-  auto mesh = bolza::examples::MakeShape("body", 0, Marker::MESH_RESOURCE, x, y, z, 0.4, 0.4, 0.4,
-                                         0.08f, 0.08f, 0.08f, qw, qx, qy, qz);
-  mesh.set_mesh_resource(MeshPath());
-  *markers->add_markers() = std::move(mesh);
+  // Body mesh lives on RobotModel; DELETE clears latched MarkerArray copies.
+  *markers->add_markers() = bolza::examples::DeleteMarker("body", 0);
 
   const Eigen::Vector3d position = observation.state.head<3>();
   const Eigen::Vector3d goal = target.head<3>();
@@ -305,8 +295,14 @@ int main(int argc, char** argv) {
   request.initial_input = quadrotor.GetInitialInput();
   request.publish = Publish;
   request.on_target = TargetFromPose;
-  request.robot_description =
-      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description = bolza::examples::LoadExampleRobotDescription(
+      AUTOMANIP_EXAMPLE_URDF, "quadrotor/urdf/quadrotor.urdf");
+  if (request.robot_description.empty()) {
+    std::cerr << "[quadrotor] Failed to load URDF for /robot_description "
+                 "(compile-time was '"
+              << AUTOMANIP_EXAMPLE_URDF
+              << "'). RobotModel will not show the body mesh.\n";
+  }
   request.max_steps = steps;
   return bolza::examples::RunDemo(request);
 }

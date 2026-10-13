@@ -34,12 +34,15 @@ bool drawEntityMeshesOgreOrGl(common::DisplayContext* context,
     std::vector<ColoredMeshInstance> wireframe_fallback;
     entities.reserve(meshes.size());
     for (const auto& mesh : meshes) {
+      if (mesh.mesh == nullptr) {
+        continue;
+      }
       if (mesh.wireframe) {
         wireframe_fallback.push_back(mesh);
         continue;
       }
       const std::string mesh_name =
-          rendering::OgreMeshLoader::registerCachedObjMesh(mesh.mesh);
+          rendering::OgreMeshLoader::registerCachedObjMesh(*mesh.mesh);
       if (mesh_name.empty()) {
         wireframe_fallback.push_back(mesh);
         continue;

@@ -72,7 +72,10 @@ bool drawArrowOgreOrGl(common::DisplayContext* context,
   appendSolidArrowMeshes(&meshes, start, end, color, head_fraction,
                          shaft_diameter, head_diameter);
   for (const auto& m : meshes) {
-    scene.addTriangleMeshSolid(m.mesh, m.transform, m.color);
+    if (m.mesh == nullptr) {
+      continue;
+    }
+    scene.addTriangleMeshSolid(*m.mesh, m.transform, m.color);
   }
   return false;
 }

@@ -33,8 +33,8 @@
 #include <QWheelEvent>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/playback_controller.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/playback_controller.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"

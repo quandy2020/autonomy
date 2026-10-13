@@ -16,9 +16,12 @@
 #pragma once
 
 #include <OgreColourValue.h>
+#include <OgreQuaternion.h>
 #include <OgreMaterial.h>
 #include <OgreSharedPtr.h>
 #include <OgreVector.h>
+
+#include "autoviz/rendering/objects/ogre_object.hpp"
 
 namespace Ogre {
 class Any;
@@ -37,7 +40,7 @@ namespace rendering {
  * Owns a child scene node, ManualObject, and material. Endpoints are set in
  * the node's local space via @ref setPoints().
  */
-class OgreLine {
+class OgreLine : public OgreObject {
  public:
   /**
    * @brief Creates the line under an optional parent node.
@@ -49,7 +52,7 @@ class OgreLine {
                     Ogre::SceneNode* parent_node = nullptr);
 
   /** @brief Destroys ManualObject, material, and scene node. */
-  ~OgreLine();
+  ~OgreLine() override;
 
   /**
    * @brief Sets the segment endpoints in local space.
@@ -68,19 +71,19 @@ class OgreLine {
    * @brief Sets the scene-node position.
    * @param position World/parent-relative translation.
    */
-  void setPosition(const Ogre::Vector3& position);
+  void setPosition(const Ogre::Vector3& position) override;
 
   /**
    * @brief Sets the scene-node orientation.
    * @param orientation Quaternion rotation.
    */
-  void setOrientation(const Ogre::Quaternion& orientation);
+  void setOrientation(const Ogre::Quaternion& orientation) override;
 
   /**
    * @brief Sets the scene-node scale.
    * @param scale Non-uniform scale.
    */
-  void setScale(const Ogre::Vector3& scale);
+  void setScale(const Ogre::Vector3& scale) override;
 
   /**
    * @brief Sets RGBA color components.
@@ -89,7 +92,7 @@ class OgreLine {
    * @param b Blue \[0,1\].
    * @param a Alpha \[0,1\].
    */
-  void setColor(float r, float g, float b, float a);
+  void setColor(float r, float g, float b, float a) override;
 
   /**
    * @brief Sets color from an Ogre colour value.
@@ -101,6 +104,12 @@ class OgreLine {
    * @brief Returns the scene-node position.
    * @return Const reference to position.
    */
+  /** @brief Returns local position (OgreObject interface). */
+  const Ogre::Vector3& getPosition() override;
+
+  /** @brief Returns local orientation (OgreObject interface). */
+  const Ogre::Quaternion& getOrientation() override;
+
   const Ogre::Vector3& position() const;
 
   /**
@@ -113,10 +122,9 @@ class OgreLine {
    * @brief Attaches arbitrary user data to the movable.
    * @param data Ogre Any payload (e.g. pick identity).
    */
-  void setUserData(const Ogre::Any& data);
+  void setUserData(const Ogre::Any& data) override;
 
  private:
-  Ogre::SceneManager* scene_manager_ = nullptr;
   Ogre::SceneNode* scene_node_ = nullptr;
   Ogre::ManualObject* manual_object_ = nullptr;
   Ogre::MaterialPtr material_;

@@ -395,10 +395,14 @@ void SwitchedModelReferenceManager::ModifyReferences(scalar_t initTime, scalar_t
   }
 
   // GaitReceiver inserts the template at finalTime, after this horizon has been
-  // built. Replacing the modes inside [initTime, finalTime] makes trajectory
-  // spreading walk off the mode array (bad_alloc / process abort).
+  // built, and tiles until finalTime + horizon. Replacing modes inside
+  // [initTime, finalTime] makes trajectory spreading walk off the mode array
+  // (bad_alloc / process abort). The third argument is an absolute end time;
+  // the horizon duration is already behind finalTime once the node has been up,
+  // so that call stored the trot template and wrote no swing phases.
   if (switch_gait) {
-    gaitSchedulePtr_->InsertModeSequenceTemplate(walking_ ? walk : StanceGait(), finalTime, timeHorizon);
+    gaitSchedulePtr_->InsertModeSequenceTemplate(walking_ ? walk : StanceGait(), finalTime,
+                                                 finalTime + timeHorizon);
   }
 
   targetTrajectories = adaptBase(command, terrain);

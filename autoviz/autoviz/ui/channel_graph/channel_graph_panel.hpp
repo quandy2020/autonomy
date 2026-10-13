@@ -23,7 +23,7 @@
 #include <string>
 #include <unordered_map>
 
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
 
 class QLineEdit;

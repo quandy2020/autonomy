@@ -24,7 +24,7 @@ TransformerGuardBase::~TransformerGuardBase() {
 
 void TransformerGuardBase::initialize(
     common::DisplayContext* context,
-    common::TransformationManager* transformation_manager) {
+    common::transformation::TransformationManager* transformation_manager) {
   context_ = context;
   transformation_manager_ = transformation_manager;
   if (unsubscribe_) {
@@ -33,7 +33,7 @@ void TransformerGuardBase::initialize(
   }
   if (transformation_manager_ != nullptr) {
     unsubscribe_ = transformation_manager_->addTransformerChangedCallback(
-        [this](common::FrameTransformer* transformer) {
+        [this](common::transformation::FrameTransformer* transformer) {
           transformerChanged(transformer);
         });
   }

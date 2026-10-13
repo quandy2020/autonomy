@@ -25,11 +25,15 @@
 #include <OgreColourValue.h>
 #include <OgreMaterial.h>
 #include <OgreSharedPtr.h>
+#include <OgreQuaternion.h>
 #include <OgreVector3.h>
+
+#include "autoviz/rendering/objects/ogre_object.hpp"
 
 namespace Ogre {
 class SceneManager;
 class SceneNode;
+class Any;
 }  // namespace Ogre
 
 namespace autoviz {
@@ -42,7 +46,7 @@ namespace rendering {
  * Internally manages one or more @c Ogre::BillboardChain containers when the
  * point count exceeds per-chain limits.
  */
-class OgreBillboardLine {
+class OgreBillboardLine : public OgreObject {
  public:
   /**
    * @brief Creates an empty billboard line under @p parent_node.
@@ -50,10 +54,11 @@ class OgreBillboardLine {
    * @param scene_manager Non-null scene manager.
    * @param parent_node Parent scene node.
    */
-  OgreBillboardLine(Ogre::SceneManager* scene_manager, Ogre::SceneNode* parent_node);
+  OgreBillboardLine(Ogre::SceneManager* scene_manager,
+                    Ogre::SceneNode* parent_node = nullptr);
 
   /** @brief Destroys chains, material, and scene node. */
-  ~OgreBillboardLine();
+  ~OgreBillboardLine() override;
 
   /**
    * @brief Removes all points / chain elements.
@@ -67,6 +72,42 @@ class OgreBillboardLine {
   void addPoint(const Ogre::Vector3& point);
 
   /**
+   * @brief Appends a point with an explicit color to the current line.
+   * @param point Parent-space position.
+   * @param color Vertex color (also drives alpha blending).
+   */
+  void addPoint(const Ogre::Vector3& point, const Ogre::ColourValue& color);
+
+  /** @brief Finishes the current line; subsequent points start the next line. */
+  void finishLine();
+
+  /** @brief Sets the maximum number of points per line. */
+  void setMaxPointsPerLine(uint32_t max);
+
+  /** @brief Sets the number of lines. */
+  void setNumLines(uint32_t num);
+
+  void setPosition(const Ogre::Vector3& position) override;
+  void setOrientation(const Ogre::Quaternion& orientation) override;
+  /** @brief No-op (scale is meaningless for billboard chains, as in RViz). */
+  void setScale(const Ogre::Vector3& scale) override;
+  /** @brief Sets the strip colour from components. */
+  void setColor(float r, float g, float b, float a) override;
+  const Ogre::Vector3& getPosition() override;
+  const Ogre::Quaternion& getOrientation() override;
+  /** @brief No-op: there are no objects that can carry user data. */
+  void setUserData(const Ogre::Any& data) override;
+
+  /** @brief RViz-style alias of @ref sceneNode(). */
+  Ogre::SceneNode* getSceneNode() { return scene_node_; }
+
+  /** @brief Returns the shared line material. */
+  Ogre::MaterialPtr getMaterial() { return material_; }
+
+  /** @brief Returns chain containers (exposed for testing). */
+  std::vector<Ogre::BillboardChain*> getChains() { return chain_containers_; }
+
+  /**
    * @brief Sets the billboard strip width.
    * @param width Width in meters.
    */
@@ -77,11 +118,6 @@ class OgreBillboardLine {
    * @param color RGBA colour.
    */
   void setColor(const Ogre::ColourValue& color);
-
-  /**
-   * @brief Sets the strip colour from components.
-   */
-  void setColor(float r, float g, float b, float a);
 
   /**
    * @brief Replace contents with a single polyline (@c num_lines = 1).
@@ -100,8 +136,6 @@ class OgreBillboardLine {
   Ogre::SceneNode* sceneNode() const { return scene_node_; }
 
  private:
-  void setMaxPointsPerLine(uint32_t max);
-  void setNumLines(uint32_t num);
   void setupChainContainers();
   Ogre::BillboardChain* createChain();
   void setupChainsInChainContainers() const;
@@ -110,7 +144,6 @@ class OgreBillboardLine {
       std::function<Ogre::BillboardChain::Element(Ogre::BillboardChain::Element)>
           change_element);
 
-  Ogre::SceneManager* scene_manager_ = nullptr;
   Ogre::SceneNode* scene_node_ = nullptr;
   std::vector<Ogre::BillboardChain*> chain_containers_;
   Ogre::MaterialPtr material_;

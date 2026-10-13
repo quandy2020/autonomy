@@ -5,6 +5,7 @@
 #include "autoviz/rendering/ogre_mesh_loader.hpp"
 
 #include <functional>
+#include <unordered_map>
 
 #include <QFileInfo>
 #include <QString>
@@ -29,17 +30,24 @@ namespace {
 constexpr char kMeshGroup[] = "aviz_rendering";
 
 std::size_t HashMesh(const display::ObjMesh& mesh) {
+  // Sample endpoints only — full scans of 100k+ tris every frame stall RobotModel.
   std::size_t hash = mesh.vertices.size();
-  for (const QVector3D& v : mesh.vertices) {
-    hash ^= std::hash<float>{}(v.x()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-    hash ^= std::hash<float>{}(v.y()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-    hash ^= std::hash<float>{}(v.z()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+  hash ^= mesh.triangles.size() + 0x9e3779b9;
+  if (!mesh.vertices.empty()) {
+    const QVector3D& first = mesh.vertices.front();
+    const QVector3D& last = mesh.vertices.back();
+    hash ^= std::hash<float>{}(first.x()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    hash ^= std::hash<float>{}(first.y()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    hash ^= std::hash<float>{}(first.z()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    hash ^= std::hash<float>{}(last.x()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    hash ^= std::hash<float>{}(last.y()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+    hash ^= std::hash<float>{}(last.z()) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
   }
-  hash ^= mesh.triangles.size();
-  for (const auto& tri : mesh.triangles) {
-    hash ^= static_cast<std::size_t>(tri[0]) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-    hash ^= static_cast<std::size_t>(tri[1]) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-    hash ^= static_cast<std::size_t>(tri[2]) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+  if (!mesh.triangles.empty()) {
+    const auto& first = mesh.triangles.front();
+    const auto& last = mesh.triangles.back();
+    hash ^= static_cast<std::size_t>(first[0] + first[1] + first[2]);
+    hash ^= static_cast<std::size_t>(last[0] + last[1] + last[2]) << 8;
   }
   return hash;
 }
@@ -91,13 +99,22 @@ std::string OgreMeshLoader::registerCachedObjMesh(const display::ObjMesh& mesh) 
   if (mesh.vertices.empty() || mesh.triangles.empty()) {
     return {};
   }
+  // Stable CPU caches (Robot visual_meshes_, Marker stored mesh) keep the same
+  // address across frames — skip rehashing large OBJs every draw.
+  static std::unordered_map<const display::ObjMesh*, std::string> by_address;
+  const auto cached = by_address.find(&mesh);
+  if (cached != by_address.end()) {
+    return cached->second;
+  }
   const std::string primitive = primitiveMeshName(mesh);
   if (!primitive.empty()) {
+    by_address[&mesh] = primitive;
     return primitive;
   }
   const std::string name =
       "AvizMesh/" + std::to_string(HashMesh(mesh)) + ".mesh";
   registerObjMesh(name, mesh);
+  by_address[&mesh] = name;
   return name;
 }
 

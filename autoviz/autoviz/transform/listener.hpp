@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 
 namespace autoviz {
 namespace transform {

@@ -606,30 +606,41 @@ void ViewController::tick(float delta_seconds) {
   }
 }
 
-bool ViewController::pickGroundPoint(int pixel_x, int pixel_y, int viewport_width,
-                                   int viewport_height, QVector3D* hit) const {
-  if (hit == nullptr || viewport_width <= 0 || viewport_height <= 0) {
+bool ViewController::pickRay(int pixel_x, int pixel_y, int viewport_width,
+                             int viewport_height, QVector3D* origin,
+                             QVector3D* direction) const {
+  if (origin == nullptr || direction == nullptr || viewport_width <= 0 ||
+      viewport_height <= 0) {
     return false;
   }
   const float aspect =
       static_cast<float>(viewport_width) / static_cast<float>(viewport_height);
-  const QMatrix4x4 view = viewMatrix();
-  const QMatrix4x4 projection = projectionMatrix(aspect);
-  const QMatrix4x4 inverse = (projection * view).inverted();
+  const QMatrix4x4 inverse =
+      (projectionMatrix(aspect) * viewMatrix()).inverted();
   const float ndc_x =
       (2.f * static_cast<float>(pixel_x) / static_cast<float>(viewport_width)) -
       1.f;
   const float ndc_y =
       1.f -
       (2.f * static_cast<float>(pixel_y) / static_cast<float>(viewport_height));
-  // Per-pixel near/far (required for ortho: rays are parallel, so using the
-  // frustum-center origin maps every pixel to the same ground hit).
-  const QVector3D origin = UnprojectPoint(inverse, ndc_x, ndc_y, -1.f);
-  const QVector3D direction = UnprojectPixel(inverse, ndc_x, ndc_y);
-  if (direction.lengthSquared() < 1e-12f) {
+  *origin = UnprojectPoint(inverse, ndc_x, ndc_y, -1.f);
+  const QVector3D dir = UnprojectPixel(inverse, ndc_x, ndc_y);
+  if (dir.lengthSquared() < 1e-12f) {
     return false;
   }
-  return IntersectGroundPlane(origin, direction.normalized(), hit);
+  *direction = dir.normalized();
+  return true;
+}
+
+bool ViewController::pickGroundPoint(int pixel_x, int pixel_y, int viewport_width,
+                                   int viewport_height, QVector3D* hit) const {
+  QVector3D origin;
+  QVector3D direction;
+  if (!pickRay(pixel_x, pixel_y, viewport_width, viewport_height, &origin,
+               &direction)) {
+    return false;
+  }
+  return IntersectGroundPlane(origin, direction, hit);
 }
 
 void ViewController::appendFocalShape(SceneOverlay* overlay) const {

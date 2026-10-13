@@ -358,6 +358,8 @@ void SceneOverlay::addTriangleMeshWireframe(const display::ObjMesh& mesh,
 void SceneOverlay::addTriangleMeshSolid(const display::ObjMesh& mesh,
                                         const QMatrix4x4& transform,
                                         const QColor& color) {
+  const bool use_vertex_colors =
+      mesh.colors.size() == mesh.vertices.size() && !mesh.colors.empty();
   const QVector4D c_color = ToVec4(color);
   for (const auto& triangle : mesh.triangles) {
     if (triangle[0] < 0 ||
@@ -371,9 +373,18 @@ void SceneOverlay::addTriangleMeshSolid(const display::ObjMesh& mesh,
     const QVector3D a = transform.map(mesh.vertices[static_cast<std::size_t>(triangle[0])]);
     const QVector3D b = transform.map(mesh.vertices[static_cast<std::size_t>(triangle[1])]);
     const QVector3D c = transform.map(mesh.vertices[static_cast<std::size_t>(triangle[2])]);
-    triangle_vertices_.push_back({a, c_color});
-    triangle_vertices_.push_back({b, c_color});
-    triangle_vertices_.push_back({c, c_color});
+    if (use_vertex_colors) {
+      triangle_vertices_.push_back(
+          {a, ToVec4(mesh.colors[static_cast<std::size_t>(triangle[0])])});
+      triangle_vertices_.push_back(
+          {b, ToVec4(mesh.colors[static_cast<std::size_t>(triangle[1])])});
+      triangle_vertices_.push_back(
+          {c, ToVec4(mesh.colors[static_cast<std::size_t>(triangle[2])])});
+    } else {
+      triangle_vertices_.push_back({a, c_color});
+      triangle_vertices_.push_back({b, c_color});
+      triangle_vertices_.push_back({c, c_color});
+    }
     recordPick(a);
     recordPick(b);
     recordPick(c);

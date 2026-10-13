@@ -1,0 +1,8 @@
+--- # Subcommands available inside automsgs (msg CLI).
+format: 1.0.0
+library_name: automsgs
+library_version: 1.0.0
+library_path: /workspace/autonomy/src/autonomy/install/lib/ruby/automsgs
+commands:
+    - msg   : Print information about messages.
+---

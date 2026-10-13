@@ -51,7 +51,7 @@
 | Selection | Selection | ✅ |
 | Tool Properties | 工具属性 | ✅ |
 | Time | Time / Playback | ✅ `.record` |
-| Transformation | Transformation | ✅ `plugins/transformation/` + `TransformationManager` |
+| Transformation | Transformation | ✅ `common/transformation/` + `plugins/transformation/` |
 
 ## 工具
 

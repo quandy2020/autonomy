@@ -15,8 +15,8 @@
 #include "autoviz/rendering/ogre_geometry.hpp"
 #include "autoviz/rendering/ogre_materials.hpp"
 #include "autoviz/rendering/ogre_material_manager.hpp"
-#include "autoviz/rendering/ogre_grid.hpp"
-#include "autoviz/rendering/ogre_axes.hpp"
+#include "autoviz/rendering/ogre_reference_grid.hpp"
+#include "autoviz/rendering/ogre_reference_axes.hpp"
 #include "autoviz/rendering/orthographic.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
 #include "autoviz/rendering/gpu_depth_pick.hpp"
@@ -323,8 +323,8 @@ struct OgreRenderBackend::Impl {
   Ogre::Camera* camera = nullptr;
   Ogre::SceneNode* camera_node = nullptr;
   Ogre::RenderWindow* render_window = nullptr;
-  std::unique_ptr<OgreGrid> reference_grid;
-  std::unique_ptr<OgreAxes> reference_axes;
+  std::unique_ptr<OgreReferenceGrid> reference_grid;
+  std::unique_ptr<OgreReferenceAxes> reference_axes;
   Ogre::ManualObject* overlay_lines_object = nullptr;
   Ogre::ManualObject* overlay_flat_object = nullptr;
   Ogre::ManualObject* overlay_pbr_object = nullptr;
@@ -397,9 +397,9 @@ bool OgreRenderBackend::initialize() {
   viewport->setBackgroundColour(impl_->background_color);
 
   impl_->reference_grid =
-      std::make_unique<OgreGrid>(impl_->scene, nullptr);
+      std::make_unique<OgreReferenceGrid>(impl_->scene, nullptr);
   impl_->reference_axes =
-      std::make_unique<OgreAxes>(impl_->scene, nullptr);
+      std::make_unique<OgreReferenceAxes>(impl_->scene, nullptr);
   impl_->overlay_lines_object = impl_->scene->createManualObject("AvizOverlayLines");
   impl_->overlay_flat_object =
       impl_->scene->createManualObject("AvizOverlayFlat");
@@ -408,15 +408,19 @@ bool OgreRenderBackend::initialize() {
   impl_->scene->getRootSceneNode()->attachObject(impl_->overlay_flat_object);
   impl_->scene->getRootSceneNode()->attachObject(impl_->overlay_pbr_object);
 
-  impl_->scene->setAmbientLight(Ogre::ColourValue(0.35f, 0.35f, 0.4f));
+  // Brighter fill + RViz-like key light for Z-up scenes (grid on XY).
+  // Previous direction was mostly -Y, leaving upright mesh stacks underexposed.
+  impl_->scene->setAmbientLight(Ogre::ColourValue(0.5f, 0.5f, 0.52f));
   impl_->directional_light = impl_->scene->createLight("AvizDirectionalLight");
   impl_->directional_light->setType(Ogre::Light::LT_DIRECTIONAL);
-  impl_->directional_light->setDiffuseColour(Ogre::ColourValue(0.95f, 0.95f, 0.9f));
-  impl_->directional_light->setSpecularColour(Ogre::ColourValue(0.2f, 0.2f, 0.2f));
+  impl_->directional_light->setDiffuseColour(Ogre::ColourValue(1.0f, 1.0f, 1.0f));
+  impl_->directional_light->setSpecularColour(Ogre::ColourValue(0.15f, 0.15f, 0.15f));
   Ogre::SceneNode* light_node =
       impl_->scene->getRootSceneNode()->createChildSceneNode("AvizLightNode");
   light_node->attachObject(impl_->directional_light);
-  light_node->setDirection(Ogre::Vector3(0.3f, -0.85f, -0.45f),
+  // Rays travel toward (-X,-Y,-Z): from above-front (Z-up), similar to RViz
+  // MainDirectional (-1, 0, -1) remapped for Z-up.
+  light_node->setDirection(Ogre::Vector3(-0.65f, -0.35f, -0.68f),
                            Ogre::Node::TS_WORLD);
 
   impl_->ogre_scene_host_ = std::make_unique<OgreSceneHost>(impl_->scene);

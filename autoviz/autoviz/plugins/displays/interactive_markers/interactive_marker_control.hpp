@@ -28,6 +28,7 @@
 #include <QString>
 #include <QVector3D>
 
+#include <automsgs/msgs/visualization_msgs/interactive_marker.pb.h>
 #include <automsgs/msgs/visualization_msgs/interactive_marker_control.pb.h>
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
 #include "autoviz/common/display_property.hpp"
@@ -47,6 +48,15 @@ namespace display {
 class InteractiveMarker;
 
 /**
+ * @brief Fills default control handles (RViz / interactive_markers::autoComplete).
+ *
+ * Empty MOVE_AXIS → dual ARROW; ROTATE_AXIS / MOVE_PLANE / MOVE_ROTATE → disc.
+ * Mutates @p marker in place so display and registry share the same geometry.
+ */
+void autoCompleteInteractiveMarker(
+    automsgs::msgs::visualization_msgs::InteractiveMarker* marker);
+
+/**
  * @class InteractiveMarkerControl
  * @brief Single control of an @ref InteractiveMarker.
  */
@@ -60,6 +70,16 @@ class InteractiveMarkerControl
     kNoHighlight = 0,
     kHoverHighlight = 3,
     kActiveHighlight = 5,
+  };
+
+  /**
+   * @brief Visual cue family while highlighted (translate vs rotate).
+   */
+  enum class HighlightKind {
+    kAuto = 0,       /**< Derive from interaction_mode_. */
+    kTranslate = 1,  /**< Cyan tint + axis aid. */
+    kRotate = 2,     /**< Amber tint + ring aid. */
+    kBoth = 3,
   };
 
   /**
@@ -95,7 +115,10 @@ class InteractiveMarkerControl
   void setVisible(bool visible);
   bool getVisible() const { return visible_; }
 
-  void setHighlight(ControlHighlight highlight);
+  void setHighlight(ControlHighlight highlight,
+                    HighlightKind kind = HighlightKind::kAuto);
+
+  HighlightKind resolvedHighlightKind() const;
 
   InteractiveMarker* getParent() const { return parent_; }
   const std::string& getName() const { return name_; }
@@ -143,11 +166,15 @@ class InteractiveMarkerControl
   bool visible_ = true;
   bool show_visual_aids_ = false;
   float highlight_ = 0.f;
+  HighlightKind highlight_kind_ = HighlightKind::kAuto;
 
   QQuaternion control_orientation_;
   QVector3D parent_position_;
   QQuaternion parent_orientation_;
+  /** Interaction frame (RViz control_frame_node_ × control orientation). */
   QMatrix4x4 control_transform_;
+  /** Visual markers frame (RViz markers_node_). */
+  QMatrix4x4 markers_transform_;
 };
 
 }  // namespace display

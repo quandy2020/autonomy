@@ -1,0 +1,40 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.control_msgs;
+
+import "automsgs/msgs/control_msgs/motion_argument.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+
+// One motion primitive (PTP / LIN / CIRC, plus vendor-specific arguments).
+// ROS int8 constants: UNKNOWN=-1, LINEAR_JOINT=0, LINEAR_CARTESIAN=50, CIRCULAR_CARTESIAN=51.
+// Proto3 default of `type` is LINEAR_JOINT (0); use UNKNOWN for an unset primitive.
+message MotionPrimitive {
+  enum Type {
+    LINEAR_JOINT = 0;          // Often referred as PTP
+    LINEAR_CARTESIAN = 50;     // Often referred as LIN
+    CIRCULAR_CARTESIAN = 51;   // Often referred as CIRC
+    UNKNOWN = -1;
+  }
+
+  Type type = 1;
+  double blend_radius = 2;
+  // Vendor-specific arguments, e.g. (max) velocity / acceleration / efficiency.
+  repeated MotionArgument additional_arguments = 3;
+  // Cartesian targets; circular motions may include via + goal.
+  repeated automsgs.msgs.geometry_msgs.PoseStamped poses = 4;
+  repeated double joint_positions = 5;
+}

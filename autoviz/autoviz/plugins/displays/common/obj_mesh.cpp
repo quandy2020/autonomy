@@ -20,6 +20,13 @@
 
 #include <automsgs/msgs/visualization_msgs/marker.pb.h>
 
+#ifdef AUTOVIZ_USE_ASSIMP
+#include <assimp/Importer.hpp>
+#include <assimp/config.h>
+#include <assimp/postprocess.h>
+#include <assimp/scene.h>
+#endif
+
 #include "autoviz/rendering/mesh_resource.hpp"
 
 namespace autoviz {
@@ -42,23 +49,28 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
   }
   mesh->vertices.clear();
   mesh->texcoords.clear();
+  mesh->normals.clear();
   mesh->triangles.clear();
   mesh->submeshes.clear();
+  mesh->parts.clear();
   mesh->has_material_groups = false;
 
   std::vector<QVector3D> raw_vertices;
   std::vector<QVector2D> raw_texcoords;
+  std::vector<QVector3D> raw_normals;
   struct CornerKey {
     int vi = 0;
     int ti = -1;
+    int ni = -1;
     bool operator==(const CornerKey& other) const {
-      return vi == other.vi && ti == other.ti;
+      return vi == other.vi && ti == other.ti && ni == other.ni;
     }
   };
   struct CornerKeyHash {
     std::size_t operator()(const CornerKey& key) const {
       return static_cast<std::size_t>(key.vi) ^
-             (static_cast<std::size_t>(key.ti + 1) << 16);
+             (static_cast<std::size_t>(key.ti + 1) << 10) ^
+             (static_cast<std::size_t>(key.ni + 1) << 20);
     }
   };
   std::unordered_map<CornerKey, int, CornerKeyHash> corner_map;
@@ -77,8 +89,8 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
     span_begin = static_cast<int>(mesh->triangles.size());
   };
 
-  auto corner_index = [&](int vi, int ti) {
-    const CornerKey key{vi, ti};
+  auto corner_index = [&](int vi, int ti, int ni) {
+    const CornerKey key{vi, ti, ni};
     const auto found = corner_map.find(key);
     if (found != corner_map.end()) {
       return found->second;
@@ -89,6 +101,11 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
       mesh->texcoords.push_back(raw_texcoords[static_cast<std::size_t>(ti)]);
     } else {
       mesh->texcoords.emplace_back(0.f, 0.f);
+    }
+    if (ni >= 0 && ni < static_cast<int>(raw_normals.size())) {
+      mesh->normals.push_back(raw_normals[static_cast<std::size_t>(ni)]);
+    } else {
+      mesh->normals.emplace_back(0.f, 0.f, 0.f);
     }
     corner_map[key] = index;
     return index;
@@ -101,6 +118,12 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
     if (trimmed.startsWith(QLatin1String("usemtl"))) {
       flush_material();
       current_material = trimmed.mid(6).trimmed().toStdString();
+    } else if (trimmed.startsWith(QLatin1String("vn "))) {
+      const QStringList parts = trimmed.split(' ', Qt::SkipEmptyParts);
+      if (parts.size() >= 4) {
+        raw_normals.emplace_back(parts[1].toFloat(), parts[2].toFloat(),
+                                 parts[3].toFloat());
+      }
     } else if (trimmed.startsWith(QLatin1String("vt "))) {
       const QStringList parts = trimmed.split(' ', Qt::SkipEmptyParts);
       if (parts.size() >= 3) {
@@ -123,22 +146,31 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
       for (int i = 1; i < parts.size(); ++i) {
         int vi = ParseFaceIndex(parts[i], 0);
         int ti = ParseFaceIndex(parts[i], 1);
+        int ni = ParseFaceIndex(parts[i], 2);
         if (vi < 0) {
           vi = static_cast<int>(raw_vertices.size()) + vi + 1;
         }
         if (ti < 0 && ti != 0) {
           ti = static_cast<int>(raw_texcoords.size()) + ti + 1;
         }
+        if (ni < 0 && ni != 0) {
+          ni = static_cast<int>(raw_normals.size()) + ni + 1;
+        }
         if (ti == 0) {
           ti = -1;
         } else {
           ti -= 1;
         }
+        if (ni == 0) {
+          ni = -1;
+        } else {
+          ni -= 1;
+        }
         vi -= 1;
         if (vi < 0 || vi >= static_cast<int>(raw_vertices.size())) {
           continue;
         }
-        indices.push_back(corner_index(vi, ti));
+        indices.push_back(corner_index(vi, ti, ni));
       }
       for (std::size_t i = 1; i + 1 < indices.size(); ++i) {
         mesh->triangles.push_back({indices[0], indices[i], indices[i + 1]});
@@ -149,6 +181,21 @@ bool parseObjText(const std::string& text, ObjMesh* mesh) {
   if (mesh->texcoords.size() != mesh->vertices.size()) {
     mesh->texcoords.clear();
   }
+  // Keep file normals only when every expanded corner got a real vn.
+  bool has_file_normals = !raw_normals.empty() &&
+                          mesh->normals.size() == mesh->vertices.size();
+  if (has_file_normals) {
+    for (const QVector3D& n : mesh->normals) {
+      if (n.lengthSquared() < 1e-12f) {
+        has_file_normals = false;
+        break;
+      }
+    }
+  }
+  if (!has_file_normals) {
+    mesh->normals.clear();
+  }
+  ensureMeshNormals(mesh);
   return !mesh->vertices.empty();
 }
 
@@ -253,6 +300,82 @@ void ensureMeshTexcoords(ObjMesh* mesh) {
     const float u = extent.x() > 1e-6f ? (vertex.x() - min_v.x()) / extent.x() : 0.5f;
     const float v = extent.z() > 1e-6f ? (vertex.z() - min_v.z()) / extent.z() : 0.5f;
     mesh->texcoords.emplace_back(u, v);
+  }
+}
+
+void ensureMeshNormals(ObjMesh* mesh) {
+  if (mesh == nullptr || mesh->vertices.empty()) {
+    return;
+  }
+  if (mesh->normals.size() == mesh->vertices.size()) {
+    bool any = false;
+    for (QVector3D& n : mesh->normals) {
+      const float len = n.length();
+      if (len > 1e-6f) {
+        n /= len;
+        any = true;
+      }
+    }
+    if (any) {
+      return;
+    }
+  }
+  mesh->normals.assign(mesh->vertices.size(), QVector3D(0.f, 0.f, 0.f));
+  for (const auto& tri : mesh->triangles) {
+    if (tri[0] < 0 || tri[1] < 0 || tri[2] < 0 ||
+        tri[0] >= static_cast<int>(mesh->vertices.size()) ||
+        tri[1] >= static_cast<int>(mesh->vertices.size()) ||
+        tri[2] >= static_cast<int>(mesh->vertices.size())) {
+      continue;
+    }
+    const QVector3D& a = mesh->vertices[static_cast<std::size_t>(tri[0])];
+    const QVector3D& b = mesh->vertices[static_cast<std::size_t>(tri[1])];
+    const QVector3D& c = mesh->vertices[static_cast<std::size_t>(tri[2])];
+    const QVector3D face = QVector3D::crossProduct(b - a, c - a);
+    mesh->normals[static_cast<std::size_t>(tri[0])] += face;
+    mesh->normals[static_cast<std::size_t>(tri[1])] += face;
+    mesh->normals[static_cast<std::size_t>(tri[2])] += face;
+  }
+  for (QVector3D& n : mesh->normals) {
+    const float len = n.length();
+    if (len > 1e-6f) {
+      n /= len;
+    } else {
+      n = QVector3D(0.f, 0.f, 1.f);
+    }
+  }
+}
+
+/** Slice @c submeshes into stable @c parts for Ogre textured-link pointers. */
+void FinalizeMaterialParts(ObjMesh* mesh) {
+  if (mesh == nullptr) {
+    return;
+  }
+  mesh->parts.clear();
+  if (!mesh->has_material_groups || mesh->submeshes.empty()) {
+    return;
+  }
+  mesh->parts.reserve(mesh->submeshes.size());
+  for (const ObjSubmesh& part : mesh->submeshes) {
+    ObjMesh slice;
+    if (part.triangle_count <= 0) {
+      mesh->parts.push_back(std::move(slice));
+      continue;
+    }
+    const int begin = part.triangle_begin;
+    const int end = begin + part.triangle_count;
+    if (begin < 0 || end > static_cast<int>(mesh->triangles.size())) {
+      mesh->parts.push_back(std::move(slice));
+      continue;
+    }
+    slice.vertices = mesh->vertices;
+    slice.texcoords = mesh->texcoords;
+    slice.normals = mesh->normals;
+    slice.triangles.assign(mesh->triangles.begin() + begin,
+                           mesh->triangles.begin() + end);
+    ensureMeshTexcoords(&slice);
+    ensureMeshNormals(&slice);
+    mesh->parts.push_back(std::move(slice));
   }
 }
 
@@ -365,8 +488,12 @@ bool loadObjFile(const std::string& path, ObjMesh* mesh) {
     }
     part.diffuse = found->second.diffuse;
     part.texture_path = found->second.texture.toStdString();
+    if (!part.texture_path.empty()) {
+      part.texture = QImage(QString::fromStdString(part.texture_path));
+    }
   }
   mesh->has_material_groups = true;
+  FinalizeMaterialParts(mesh);
   return true;
 }
 
@@ -538,6 +665,194 @@ void AppendColladaNode(const QDomElement& node, const QMatrix4x4& parent,
   }
 }
 
+#ifdef AUTOVIZ_USE_ASSIMP
+QImage LoadAssimpTexture(const aiScene* scene, const char* tex_name,
+                         const std::string& mesh_path) {
+  if (scene == nullptr || tex_name == nullptr || tex_name[0] == '\0') {
+    return {};
+  }
+  // Embedded: "*0", "*1", …
+  if (tex_name[0] == '*') {
+    const aiTexture* embedded = scene->GetEmbeddedTexture(tex_name);
+    if (embedded == nullptr) {
+      return {};
+    }
+    if (embedded->mHeight == 0) {
+      return QImage::fromData(reinterpret_cast<const uchar*>(embedded->pcData),
+                              static_cast<int>(embedded->mWidth));
+    }
+    QImage image(static_cast<int>(embedded->mWidth),
+                 static_cast<int>(embedded->mHeight), QImage::Format_RGBA8888);
+    for (unsigned int y = 0; y < embedded->mHeight; ++y) {
+      for (unsigned int x = 0; x < embedded->mWidth; ++x) {
+        const aiTexel& texel =
+            embedded->pcData[y * embedded->mWidth + x];
+        image.setPixelColor(static_cast<int>(x), static_cast<int>(y),
+                            QColor(texel.r, texel.g, texel.b, texel.a));
+      }
+    }
+    return image;
+  }
+  QFileInfo mesh_info(QString::fromStdString(mesh_path));
+  const QString candidate =
+      mesh_info.absoluteDir().filePath(QString::fromUtf8(tex_name));
+  QImage image(candidate);
+  if (!image.isNull()) {
+    return image;
+  }
+  // Assimp may pass "hip.jpg" while COLLADA listed only the image id "hip".
+  const QString stem = QFileInfo(QString::fromUtf8(tex_name)).completeBaseName();
+  for (const char* ext : {".jpg", ".jpeg", ".png", ".JPG", ".PNG"}) {
+    image = QImage(mesh_info.absoluteDir().filePath(stem + QLatin1String(ext)));
+    if (!image.isNull()) {
+      return image;
+    }
+  }
+  return {};
+}
+
+QMatrix4x4 AssimpMatrixToQt(const aiMatrix4x4& m) {
+  return QMatrix4x4(m.a1, m.a2, m.a3, m.a4, m.b1, m.b2, m.b3, m.b4, m.c1, m.c2,
+                    m.c3, m.c4, m.d1, m.d2, m.d3, m.d4);
+}
+
+void FillSubmeshMaterial(const aiScene* scene, unsigned int material_index,
+                         const std::string& path, ObjSubmesh* part) {
+  if (part == nullptr || scene == nullptr ||
+      material_index >= scene->mNumMaterials) {
+    return;
+  }
+  const aiMaterial* mat = scene->mMaterials[material_index];
+  aiColor4D diffuse(1.f, 1.f, 1.f, 1.f);
+  if (aiGetMaterialColor(mat, AI_MATKEY_COLOR_DIFFUSE, &diffuse) == AI_SUCCESS) {
+    part->diffuse =
+        QColor::fromRgbF(diffuse.r, diffuse.g, diffuse.b, diffuse.a);
+  }
+  aiString tex_name;
+  if (mat->GetTexture(aiTextureType_DIFFUSE, 0, &tex_name) == AI_SUCCESS ||
+      mat->GetTexture(aiTextureType_BASE_COLOR, 0, &tex_name) == AI_SUCCESS) {
+    part->texture = LoadAssimpTexture(scene, tex_name.C_Str(), path);
+    if (part->texture.isNull() && tex_name.length > 0 &&
+        tex_name.C_Str()[0] != '*') {
+      part->texture_path = QFileInfo(QString::fromStdString(path))
+                               .absoluteDir()
+                               .filePath(QString::fromUtf8(tex_name.C_Str()))
+                               .toStdString();
+      part->texture = QImage(QString::fromStdString(part->texture_path));
+    }
+  }
+  if (part->name.empty()) {
+    aiString mat_name;
+    if (mat->Get(AI_MATKEY_NAME, mat_name) == AI_SUCCESS) {
+      part->name = mat_name.C_Str();
+    }
+  }
+}
+
+void AppendAssimpNode(const aiNode* node, const QMatrix4x4& parent,
+                      const aiScene* scene, const std::string& path,
+                      ObjMesh* mesh) {
+  if (node == nullptr || scene == nullptr || mesh == nullptr) {
+    return;
+  }
+  const QMatrix4x4 world = parent * AssimpMatrixToQt(node->mTransformation);
+  for (unsigned int i = 0; i < node->mNumMeshes; ++i) {
+    const unsigned int mesh_index = node->mMeshes[i];
+    if (mesh_index >= scene->mNumMeshes) {
+      continue;
+    }
+    const aiMesh* src = scene->mMeshes[mesh_index];
+    if (src == nullptr || src->mNumVertices == 0 || src->mNumFaces == 0) {
+      continue;
+    }
+    ObjSubmesh part;
+    part.name = src->mName.C_Str();
+    part.triangle_begin = static_cast<int>(mesh->triangles.size());
+    const int base = static_cast<int>(mesh->vertices.size());
+    mesh->vertices.reserve(mesh->vertices.size() + src->mNumVertices);
+    mesh->texcoords.reserve(mesh->texcoords.size() + src->mNumVertices);
+    mesh->normals.reserve(mesh->normals.size() + src->mNumVertices);
+    const bool has_uv = src->HasTextureCoords(0);
+    const bool has_n = src->HasNormals();
+    for (unsigned int vi = 0; vi < src->mNumVertices; ++vi) {
+      const QVector3D local(src->mVertices[vi].x, src->mVertices[vi].y,
+                            src->mVertices[vi].z);
+      mesh->vertices.push_back(world.map(local));
+      if (has_uv) {
+        mesh->texcoords.emplace_back(src->mTextureCoords[0][vi].x,
+                                     src->mTextureCoords[0][vi].y);
+      } else {
+        mesh->texcoords.emplace_back(0.f, 0.f);
+      }
+      if (has_n) {
+        const QVector3D n =
+            world.mapVector(QVector3D(src->mNormals[vi].x, src->mNormals[vi].y,
+                                      src->mNormals[vi].z))
+                .normalized();
+        mesh->normals.push_back(n);
+      } else {
+        mesh->normals.emplace_back(0.f, 0.f, 1.f);
+      }
+    }
+    int added = 0;
+    for (unsigned int fi = 0; fi < src->mNumFaces; ++fi) {
+      const aiFace& face = src->mFaces[fi];
+      if (face.mNumIndices != 3) {
+        continue;
+      }
+      mesh->triangles.push_back(
+          {base + static_cast<int>(face.mIndices[0]),
+           base + static_cast<int>(face.mIndices[1]),
+           base + static_cast<int>(face.mIndices[2])});
+      ++added;
+    }
+    part.triangle_count = added;
+    FillSubmeshMaterial(scene, src->mMaterialIndex, path, &part);
+    mesh->submeshes.push_back(std::move(part));
+  }
+  for (unsigned int c = 0; c < node->mNumChildren; ++c) {
+    AppendAssimpNode(node->mChildren[c], world, scene, path, mesh);
+  }
+}
+
+bool loadColladaAssimp(const std::string& path, ObjMesh* mesh) {
+  if (mesh == nullptr) {
+    return false;
+  }
+  Assimp::Importer importer;
+  // Match parseCollada: keep file up-axis / node matrices (ANYmal hip_* DAEs
+  // carry a ~90° visual_scene transform). Do not bake with
+  // PreTransformVertices — that path drifted from URDF link frames.
+  importer.SetPropertyBool(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION, true);
+  // No FlipUVs: Ogre textured links already flip V (1-v), matching OBJ path.
+  const aiScene* scene = importer.ReadFile(
+      path, aiProcess_Triangulate | aiProcess_GenSmoothNormals |
+                aiProcess_JoinIdenticalVertices | aiProcess_SortByPType |
+                aiProcess_GenUVCoords);
+  if (scene == nullptr || !scene->HasMeshes() || scene->mRootNode == nullptr) {
+    return false;
+  }
+
+  mesh->vertices.clear();
+  mesh->texcoords.clear();
+  mesh->normals.clear();
+  mesh->triangles.clear();
+  mesh->submeshes.clear();
+  mesh->parts.clear();
+  mesh->has_material_groups = false;
+
+  AppendAssimpNode(scene->mRootNode, QMatrix4x4{}, scene, path, mesh);
+
+  if (mesh->triangles.empty()) {
+    return false;
+  }
+  mesh->has_material_groups = !mesh->submeshes.empty();
+  ensureMeshNormals(mesh);
+  FinalizeMaterialParts(mesh);
+  return true;
+}
+#endif  // AUTOVIZ_USE_ASSIMP
+
 bool parseCollada(const QByteArray& bytes, ObjMesh* mesh) {
   if (mesh == nullptr) {
     return false;
@@ -546,6 +861,7 @@ bool parseCollada(const QByteArray& bytes, ObjMesh* mesh) {
   mesh->texcoords.clear();
   mesh->triangles.clear();
   mesh->submeshes.clear();
+  mesh->parts.clear();
   mesh->has_material_groups = false;
 
   QDomDocument document;
@@ -630,6 +946,12 @@ bool loadMeshFile(const std::string& path, ObjMesh* mesh) {
     return loadStlFile(resolved, mesh);
   }
   if (suffix == QLatin1String("dae")) {
+#ifdef AUTOVIZ_USE_ASSIMP
+    // Assimp reads COLLADA materials + embedded images (ANYmal C / RViz parity).
+    if (loadColladaAssimp(resolved, mesh)) {
+      return true;
+    }
+#endif
     QFile file(QString::fromStdString(resolved));
     if (!file.open(QIODevice::ReadOnly)) {
       return false;
@@ -651,6 +973,7 @@ bool parseMarkerMesh(
   if (marker.type() == kTriangleList) {
     mesh->vertices.clear();
     mesh->triangles.clear();
+    mesh->colors.clear();
     mesh->vertices.reserve(static_cast<std::size_t>(marker.points_size()));
     for (const auto& point : marker.points()) {
       mesh->vertices.emplace_back(static_cast<float>(point.x()),
@@ -659,6 +982,30 @@ bool parseMarkerMesh(
     }
     for (int i = 0; i + 2 < marker.points_size(); i += 3) {
       mesh->triangles.push_back({i, i + 1, i + 2});
+    }
+    // RViz TriangleListMarker: colors.size()==points → per-vertex;
+    // colors.size()==points/3 → per-triangle (expand to vertices).
+    const int n = marker.points_size();
+    const int nc = marker.colors_size();
+    auto to_qcolor = [](const automsgs::msgs::std_msgs::ColorRGBA& c) {
+      return QColor(static_cast<int>(std::clamp(c.r(), 0.f, 1.f) * 255.f),
+                    static_cast<int>(std::clamp(c.g(), 0.f, 1.f) * 255.f),
+                    static_cast<int>(std::clamp(c.b(), 0.f, 1.f) * 255.f),
+                    static_cast<int>(std::clamp(c.a(), 0.f, 1.f) * 255.f));
+    };
+    if (nc == n && n > 0) {
+      mesh->colors.reserve(static_cast<std::size_t>(n));
+      for (const auto& c : marker.colors()) {
+        mesh->colors.push_back(to_qcolor(c));
+      }
+    } else if (nc * 3 == n && nc > 0) {
+      mesh->colors.resize(static_cast<std::size_t>(n));
+      for (int t = 0; t < nc; ++t) {
+        const QColor qc = to_qcolor(marker.colors(t));
+        mesh->colors[static_cast<std::size_t>(t * 3 + 0)] = qc;
+        mesh->colors[static_cast<std::size_t>(t * 3 + 1)] = qc;
+        mesh->colors[static_cast<std::size_t>(t * 3 + 2)] = qc;
+      }
     }
     return !mesh->vertices.empty();
   }

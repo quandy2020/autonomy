@@ -17,13 +17,15 @@
 #pragma once
 
 #include <OgreColourValue.h>
+#include <OgreQuaternion.h>
 #include <OgreVector.h>
+
+#include "autoviz/rendering/objects/ogre_object.hpp"
 
 namespace Ogre {
 class Any;
 class SceneManager;
 class SceneNode;
-class Quaternion;
 }  // namespace Ogre
 
 namespace autoviz {
@@ -33,12 +35,13 @@ class OgreShape;
 
 /**
  * @class OgreArrow
- * @brief rviz_rendering::Arrow subset — cylinder shaft + cone head.
+ * @brief rviz_rendering::Arrow — cylinder shaft + cone head.
  *
- * Default orientation points along +X (rviz convention). Use
- * @ref setDirection() to aim the arrow at a vector.
+ * Faithful port of @c rviz_rendering::Arrow: the arrow points along -Z at
+ * identity orientation. @ref setOrientation() and @ref setDirection() change
+ * the direction the arrow points.
  */
-class OgreArrow {
+class OgreArrow : public OgreObject {
  public:
   /**
    * @brief Creates shaft and head shapes under an optional parent.
@@ -56,7 +59,7 @@ class OgreArrow {
             float head_diameter = 0.2f);
 
   /** @brief Destroys shaft, head, and scene node. */
-  ~OgreArrow();
+  ~OgreArrow() override;
 
   /**
    * @brief Resizes shaft and head dimensions.
@@ -72,7 +75,7 @@ class OgreArrow {
   /**
    * @brief Sets a uniform color on shaft and head.
    */
-  void setColor(float r, float g, float b, float a);
+  void setColor(float r, float g, float b, float a) override;
 
   /**
    * @brief Sets a uniform colour on shaft and head.
@@ -86,27 +89,33 @@ class OgreArrow {
    */
   void setHeadColor(const Ogre::ColourValue& color);
 
+  /** @brief Sets only the cone head color (RGBA components). */
+  void setHeadColor(float r, float g, float b, float a = 1.0f);
+
   /**
    * @brief Sets only the cylinder shaft color.
    * @param color Shaft colour.
    */
   void setShaftColor(const Ogre::ColourValue& color);
 
+  /** @brief Sets only the cylinder shaft color (RGBA components). */
+  void setShaftColor(float r, float g, float b, float a = 1.0f);
+
   /**
    * @brief Sets the root orientation.
    * @param orientation Rotation quaternion.
    */
-  void setOrientation(const Ogre::Quaternion& orientation);
+  void setOrientation(const Ogre::Quaternion& orientation) override;
 
   /**
    * @brief Sets the root position.
    * @param position Translation.
    */
-  void setPosition(const Ogre::Vector3& position);
+  void setPosition(const Ogre::Vector3& position) override;
 
   /**
-   * @brief Orients the arrow to point along @p direction (normalized internally).
-   * @param direction Desired axis in parent space.
+   * @brief Orients the arrow to point along @p direction.
+   * @param direction Desired axis in parent space; a zero vector is ignored.
    */
   void setDirection(const Ogre::Vector3& direction);
 
@@ -114,7 +123,13 @@ class OgreArrow {
    * @brief Sets the root scale.
    * @param scale Non-uniform scale.
    */
-  void setScale(const Ogre::Vector3& scale);
+  void setScale(const Ogre::Vector3& scale) override;
+
+  /** @brief Returns root position (OgreObject interface). */
+  const Ogre::Vector3& getPosition() override;
+
+  /** @brief Returns root orientation (OgreObject interface). */
+  const Ogre::Quaternion& getOrientation() override;
 
   /** @brief Returns root position. */
   const Ogre::Vector3& position() const;
@@ -128,11 +143,14 @@ class OgreArrow {
    */
   Ogre::SceneNode* sceneNode() { return scene_node_; }
 
+  /** @brief RViz-style alias of @ref sceneNode(). */
+  Ogre::SceneNode* getSceneNode() { return scene_node_; }
+
   /**
    * @brief Attaches user data to both shapes.
    * @param data Ogre Any payload.
    */
-  void setUserData(const Ogre::Any& data);
+  void setUserData(const Ogre::Any& data) override;
 
   /**
    * @brief Returns the shaft shape.
@@ -146,8 +164,13 @@ class OgreArrow {
    */
   OgreShape* head() { return head_; }
 
+  /** @brief RViz-style alias of @ref shaft(). */
+  OgreShape* getShaft() { return shaft_; }
+
+  /** @brief RViz-style alias of @ref head(). */
+  OgreShape* getHead() { return head_; }
+
  private:
-  Ogre::SceneManager* scene_manager_ = nullptr;
   Ogre::SceneNode* scene_node_ = nullptr;
   OgreShape* shaft_ = nullptr;
   OgreShape* head_ = nullptr;

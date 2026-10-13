@@ -37,8 +37,8 @@
 
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 #include "autoviz/ui/image/image_analysis.hpp"
 #include "autoviz/ui/image/image_annotation_parser.hpp"
 #include "autoviz/ui/image/image_calibration_utils.hpp"

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package autolink.proto;
+
+message ClassicTask {
+  string name = 1;
+  uint32 prio = 2;
+  string group_name = 3;
+}
+
+message SchedGroup {
+  string name = 1;
+  uint32 processor_num = 2;
+  string affinity = 3;
+  string cpuset = 4;
+  string processor_policy = 5;
+  int32 processor_prio = 6;
+  repeated ClassicTask tasks = 7;
+}
+
+message ClassicConf {
+  repeated SchedGroup groups = 1;
+}

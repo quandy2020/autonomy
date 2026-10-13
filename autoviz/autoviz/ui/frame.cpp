@@ -169,20 +169,9 @@ VisualizationFrame::VisualizationFrame(
 }
 
 VisualizationFrame::~VisualizationFrame() {
-  session_->render_timer_.stop();
-  session_->refresh_timer_.stop();
-  // PointCloud2 / Map / etc. hold Ogre objects that must be released while
-  // render windows still exist. manager_->shutdown() runs after ~Frame.
-  if (manager_ != nullptr) {
-    manager_->detachDisplaysFromScene();
-  }
-  viewport_->forEachViewportPanel([](ViewportPanelEntry& entry) {
-    if (entry.ogre_viewport != nullptr) {
-      if (auto* host = entry.ogre_viewport->ogreSceneHost()) {
-        host->clear();
-      }
-    }
-  });
+  // closeEvent normally tore down GLX; if we got here without it (e.g. stack
+  // unwind), finish that before QWidget destroys dock children.
+  session_->onAboutToQuit();
   if (qApp != nullptr) {
     QObject::disconnect(qApp, &QApplication::aboutToQuit, this,
                         &VisualizationFrame::onAboutToQuit);
@@ -562,6 +551,11 @@ void VisualizationFrame::onHideRightDockToggled(bool hide) {
 }
 
 void VisualizationFrame::onDockPanelVisibilityChange(bool visible) {
+  // During quit, ~QWidget hideChildren can still deliver visibilityChanged
+  // before disconnects land; never call sender() on a tearing-down frame.
+  if (session_ == nullptr || session_->quit_teardown_done_) {
+    return;
+  }
   layout_->onDockPanelVisibilityChange(visible);
 }
 
@@ -617,13 +611,17 @@ bool VisualizationFrame::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void VisualizationFrame::closeEvent(QCloseEvent* event) {
-  // Stop timers / release display GPU objects, then leave the event loop
-  // without hideChildren (NVIDIA + WA_PaintOnScreen SIGSEGV on that walk).
+  // Sync-destroy Ogre/GLX, then leave the event loop WITHOUT accepting the
+  // close. Qt's close_helper calls hide()→hideChildren() after an accepted
+  // QCloseEvent; that walk SIGSEGVs on NVIDIA with WA_PaintOnScreen children
+  // (deleting those widgets mid-Close also leaves hideChildren walking a
+  // half-updated child list).
   session_->onAboutToQuit();
-  event->accept();
+  event->ignore();
   if (qApp != nullptr) {
     qApp->setQuitOnLastWindowClosed(false);
-    QCoreApplication::exit(0);
+    // Exit after close_helper returns (still no hideChildren — event ignored).
+    QTimer::singleShot(0, qApp, []() { QCoreApplication::exit(0); });
   }
 }
 

@@ -379,6 +379,19 @@ class ViewController {
   bool pickGroundPoint(int pixel_x, int pixel_y, int viewport_width,
                        int viewport_height, QVector3D* hit) const;
 
+  /**
+   * @brief Camera ray through a viewport pixel (fixed / world frame).
+   *
+   * Used by InteractTool for interactive-marker drag (RViz ray–plane / axis
+   * intersection) instead of forcing all motion onto z=0.
+   *
+   * @param[out] origin Ray origin (near plane unprojection).
+   * @param[out] direction Normalized ray direction.
+   */
+  bool pickRay(int pixel_x, int pixel_y, int viewport_width,
+               int viewport_height, QVector3D* origin,
+               QVector3D* direction) const;
+
  private:
   /**
    * @enum ViewDragMode

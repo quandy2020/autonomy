@@ -1,0 +1,31 @@
+// Copyright 2026 The Openbot Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.moveit_msgs;
+
+import "automsgs/msgs/moveit_msgs/joint_constraint.proto";
+import "automsgs/msgs/moveit_msgs/orientation_constraint.proto";
+import "automsgs/msgs/moveit_msgs/position_constraint.proto";
+import "automsgs/msgs/moveit_msgs/visibility_constraint.proto";
+
+// A list of motion planning constraints. All must be satisfied.
+message Constraints {
+  string name = 1;
+  repeated JointConstraint joint_constraints = 2;
+  repeated PositionConstraint position_constraints = 3;
+  repeated OrientationConstraint orientation_constraints = 4;
+  repeated VisibilityConstraint visibility_constraints = 5;
+}

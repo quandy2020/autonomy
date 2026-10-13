@@ -1,0 +1,101 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.rpcs.follow;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/rpcs/common.proto";
+
+// =============================================================================
+// FollowService
+//
+// Target following (person / object / vehicle / custom). Navigation-aligned.
+//
+//   Follow — server streaming for the follow session
+//            LOST_TARGET keeps the stream open for reacquisition
+//   Pause / Resume / Cancel — unary; empty goal_id = current; Status only
+//   GetStatus — unary snapshot (FollowResponse)
+//
+// Stream closes on Cancel, FAILED, normal end, or disconnect.
+// PAUSED does not close the stream. No bidirectional streaming. No Phase enum.
+// Busy → FOLLOW_BUSY (902). At most one active goal.
+// =============================================================================
+service FollowService {
+  rpc Follow(FollowRequest) returns (stream FollowResponse);
+  rpc Pause(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Resume(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc Cancel(GoalRequest) returns (automsgs.rpcs.common.Status);
+  rpc GetStatus(GetStatusRequest) returns (FollowResponse);
+}
+
+enum FollowTargetType {
+  FOLLOW_TARGET_TYPE_UNKNOWN = 0;
+  FOLLOW_TARGET_TYPE_PERSON = 1;
+  FOLLOW_TARGET_TYPE_OBJECT = 2;
+  FOLLOW_TARGET_TYPE_VEHICLE = 3;
+  FOLLOW_TARGET_TYPE_CUSTOM = 4;
+}
+
+enum FollowState {
+  FOLLOW_STATE_UNKNOWN = 0;
+  FOLLOW_STATE_IDLE = 1;
+  FOLLOW_STATE_ACQUIRING = 2;
+  FOLLOW_STATE_FOLLOWING = 3;
+  FOLLOW_STATE_LOST_TARGET = 4;
+  FOLLOW_STATE_FAILED = 5;
+  FOLLOW_STATE_CANCELLED = 6;
+  FOLLOW_STATE_PAUSED = 7;
+}
+
+// Optional per-goal attributes. Unset fields use implementation defaults.
+message FollowOptions {
+  // Desired follow distance in meters. Unset/0 = implementation default.
+  optional float desired_distance_m = 1;
+}
+
+message FollowRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string goal_id = 2;
+  FollowTargetType target_type = 3;
+  // Empty = implementation selects a target (e.g. nearest person).
+  string target_id = 4;
+  // Optional pose hint to help lock the target.
+  automsgs.msgs.geometry_msgs.Pose hint_pose = 5;
+  FollowOptions options = 6;
+}
+
+// Shared by Pause / Resume / Cancel. Empty goal_id = current goal.
+message GoalRequest {
+  string goal_id = 1;
+}
+
+message GetStatusRequest {}
+
+// Stream element and GetStatus snapshot.
+message FollowResponse {
+  reserved 3;  // was phase (FollowPhase)
+  automsgs.rpcs.common.Status status = 1;
+  FollowState state = 2;
+  string goal_id = 4;
+  FollowTargetType target_type = 5;
+  string target_id = 6;
+  // Distance to target in meters; unknown may be 0.
+  float distance_m = 7;
+  // True while state is ACQUIRING, FOLLOWING, LOST_TARGET, or PAUSED.
+  bool active = 8;
+  string message = 9;
+}

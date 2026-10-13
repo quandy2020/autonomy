@@ -29,7 +29,7 @@
 #include <automsgs/msgs/time_utils.hpp>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/teleop_channels.hpp"
+#include "autoviz/common/interaction/teleop_channels.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"

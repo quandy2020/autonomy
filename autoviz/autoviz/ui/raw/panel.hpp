@@ -23,7 +23,7 @@
 #include <string>
 
 #include "autoviz/common/session_config.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 
 class QComboBox;
 class QDragEnterEvent;

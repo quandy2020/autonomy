@@ -115,7 +115,16 @@ void upsertMarker(
     std::map<MarkerKey, StoredMarker>* markers);
 
 /**
- * @brief Computes the marker pose transform in the fixed frame.
+ * @brief Computes the marker pose transform in the fixed frame (no scale).
+ *
+ * Used for ARROW markers with start/end @c points (RViz ArrowMarker).
+ */
+QMatrix4x4 markerPoseTransformInFixedFrame(
+    const automsgs::msgs::visualization_msgs::Marker& marker,
+    common::DisplayContext* context);
+
+/**
+ * @brief Computes the marker pose×scale transform in the fixed frame.
  *
  * @param marker Source marker (frame_id + pose).
  * @param context Context providing FrameManager / TF buffer.

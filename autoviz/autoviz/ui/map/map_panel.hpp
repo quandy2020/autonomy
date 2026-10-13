@@ -30,7 +30,7 @@
 #include <QTimer>
 #include <QtGlobal>
 
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/ui/map/map_layer_store.hpp"
 #include "autoviz/ui/map/map_types.hpp"
 

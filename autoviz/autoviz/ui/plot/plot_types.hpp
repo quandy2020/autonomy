@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
 namespace plot {

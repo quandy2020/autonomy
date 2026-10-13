@@ -19,12 +19,16 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 #include <optional>
 #include <string>
 
+#include <QMatrix4x4>
 #include <QVector3D>
 
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/visualization_msgs/interactive_marker_feedback.pb.h>
+#include "autolink/node/writer.hpp"
 #include "autoviz/common/tool.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
 
@@ -133,13 +137,23 @@ class InteractTool : public common::Tool {
                        bool mouse_point_valid, uint32_t menu_entry_id = 0);
 
   /**
-   * @brief Applies ground-plane drag to the active marker pose.
+   * @brief Applies ray–axis / ray–plane drag to the active marker pose.
    *
-   * @param ground_point Current ground pick under the cursor.
+   * @param drag_point Current 3D drag sample (fixed frame).
    * @param shift_held When @c true, may constrain / alter drag semantics.
    * @return @c true if the pose was updated.
    */
-  bool updateDraggedPose(const QVector3D& ground_point, bool shift_held);
+  bool updateDraggedPose(const QVector3D& drag_point, bool shift_held,
+                         bool ctrl_held);
+
+  /**
+   * @brief Resolves a fixed-frame drag sample under the cursor (RViz-style).
+   */
+  bool resolveDragPoint(int pixel_x, int pixel_y, QVector3D* drag_point,
+                        bool shift_held = false) const;
+
+  /** Caches Autolink writer for the active feedback channel. */
+  bool ensureFeedbackWriter(const std::string& channel);
 
   /**
    * @brief Shows a Qt context menu for marker menu entries.
@@ -155,6 +169,12 @@ class InteractTool : public common::Tool {
    */
   void maybeSendKeepAlive();
 
+  /**
+   * @brief Updates registry hover/active highlight for translate vs rotate.
+   */
+  void updateHighlight(const display::InteractiveMarkerPick* pick, bool active,
+                       bool ctrl_held = false);
+
   /** Non-owning interactive marker registry from ToolContext. */
   display::InteractiveMarkerRegistry* registry_ = nullptr;
 
@@ -167,17 +187,22 @@ class InteractTool : public common::Tool {
   /** Marker pose at drag start (for delta computation). */
   automsgs::msgs::geometry_msgs::Pose drag_initial_pose_;
 
-  /** Ground pick at drag start. */
-  QVector3D drag_initial_ground_{0.f, 0.f, 0.f};
+  /** Marker pose matrix in fixed frame at drag start. */
+  QMatrix4x4 drag_marker_fixed_;
 
-  /** Cursor offset from marker origin at drag start. */
-  QVector3D drag_offset_{0.f, 0.f, 0.f};
+  /** 3D drag sample at mouse-down (fixed frame). */
+  QVector3D drag_initial_point_{0.f, 0.f, 0.f};
 
   /** @c true while a marker drag is in progress. */
   bool dragging_ = false;
 
   /** Timestamp of the last KEEP_ALIVE feedback. */
   std::chrono::steady_clock::time_point last_keep_alive_{};
+
+  using FeedbackMsg =
+      automsgs::msgs::visualization_msgs::InteractiveMarkerFeedback;
+  std::shared_ptr<::autolink::Writer<FeedbackMsg>> feedback_writer_;
+  std::string feedback_writer_channel_;
 };
 
 }  // namespace tools

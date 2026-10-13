@@ -28,7 +28,7 @@
 
 #include <QStringList>
 
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/ui/publish/publish_types.hpp"
 
 class QCheckBox;

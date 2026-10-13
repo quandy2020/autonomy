@@ -86,7 +86,7 @@ void LinkDataMap<T>::assigndata(const T& value) {
 
 template<typename T> inline
 std::ostream& operator<<(std::ostream& out, const LinkDataMap<T>& map) {
-    Out
+    out
     << "   world = "
     << map[WORLD]
     << "   dummy_ball1 = "

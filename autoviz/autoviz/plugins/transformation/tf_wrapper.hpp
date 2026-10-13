@@ -27,6 +27,8 @@
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 
+#include "autoviz/common/transformation/frame_transformer.hpp"
+
 namespace autoviz {
 namespace transform {
 class Buffer;
@@ -36,19 +38,10 @@ namespace display {
 namespace transformation {
 
 /**
- * @class TransformationLibraryConnector
- * @brief Marker base for the active TF library (RViz connector iface subset).
- */
-class TransformationLibraryConnector {
- public:
-  virtual ~TransformationLibraryConnector() = default;
-};
-
-/**
  * @class TFWrapper
  * @brief Non-owning facade around @ref transform::Buffer.
  */
-class TFWrapper : public TransformationLibraryConnector {
+class TFWrapper : public common::transformation::TransformationLibraryConnector {
  public:
   TFWrapper();
   explicit TFWrapper(transform::Buffer* buffer);

@@ -61,7 +61,7 @@ std::vector<std::string> TFFrameTransformer::getAllFrameNames() const {
 
 void TFFrameTransformer::RethrowAsFrameTransformerException(
     const char* prefix, const std::exception& exception) {
-  throw common::FrameTransformerException(std::string(prefix) +
+  throw common::transformation::FrameTransformerException(std::string(prefix) +
                                           exception.what());
 }
 
@@ -198,7 +198,8 @@ bool TFFrameTransformer::frameHasProblems(const std::string& frame,
   return true;
 }
 
-std::weak_ptr<TransformationLibraryConnector> TFFrameTransformer::getConnector()
+std::weak_ptr<common::transformation::TransformationLibraryConnector>
+TFFrameTransformer::getConnector()
     const {
   return tf_wrapper_;
 }

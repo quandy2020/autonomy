@@ -14,6 +14,8 @@
 #include <automsgs/msgs/visualization_msgs/menu_entry.pb.h>
 #include "autoviz/common/display_context.hpp"
 #include "autoviz/plugins/displays/interactive_markers/integer_action.hpp"
+#include "autoviz/plugins/displays/common/arrow_mesh_utils.hpp"
+#include "autoviz/plugins/displays/common/ogre_mesh_draw.hpp"
 #include "autoviz/plugins/displays/marker/marker_draw_utils.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
@@ -54,8 +56,12 @@ bool InteractiveMarker::processMessage(
   pose_changed_ = false;
   has_menu_ = message.menu_entries_size() > 0;
 
+  // Bake ROS autoComplete handles into the message so registry picking and
+  // draw share the same ARROW / TRIANGLE_LIST geometry (RViz parity).
+  autoCompleteInteractiveMarker(&message_);
+
   updateReferencePose();
-  updateControls(message.controls());
+  updateControls(message_.controls());
 
   // Title / description as a VIEW_FACING TEXT control (RViz makeTitle).
   description_control_ =
@@ -75,7 +81,8 @@ bool InteractiveMarker::processMessage(
   text.mutable_color()->set_g(1.f);
   text.mutable_color()->set_b(1.f);
   text.mutable_color()->set_a(1.f);
-  text.mutable_pose()->mutable_position()->set_z(scale_ * 0.6);
+  // RViz interactive_markers::makeTitle: z = 1.4 * scale.
+  text.mutable_pose()->mutable_position()->set_z(scale_ * 1.4);
   *title.add_markers() = text;
   description_control_->processMessage(title);
   description_control_->setVisible(show_description_);
@@ -219,6 +226,25 @@ void InteractiveMarker::setShowVisualAids(bool show) {
   for (auto& [name, control] : controls_) {
     (void)name;
     control->setShowVisualAids(show);
+  }
+}
+
+void InteractiveMarker::clearControlHighlights() {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  for (auto& [name, control] : controls_) {
+    (void)name;
+    control->setHighlight(InteractiveMarkerControl::kNoHighlight);
+  }
+}
+
+void InteractiveMarker::setControlHighlight(
+    const std::string& control_name,
+    InteractiveMarkerControl::ControlHighlight highlight,
+    InteractiveMarkerControl::HighlightKind kind) {
+  std::lock_guard<std::recursive_mutex> lock(mutex_);
+  auto it = controls_.find(control_name);
+  if (it != controls_.end()) {
+    it->second->setHighlight(highlight, kind);
   }
 }
 
@@ -375,27 +401,35 @@ void InteractiveMarker::draw(rendering::SceneOverlay& scene,
   const float scale = std::max(scale_, 0.05f);
 
   if (show_axes_) {
-    automsgs::msgs::visualization_msgs::Marker axes;
-    axes.mutable_header()->set_frame_id(reference_frame_);
-    axes.mutable_pose()->mutable_position()->set_x(position_.x());
-    axes.mutable_pose()->mutable_position()->set_y(position_.y());
-    axes.mutable_pose()->mutable_position()->set_z(position_.z());
-    axes.mutable_pose()->mutable_orientation()->set_w(orientation_.scalar());
-    axes.mutable_pose()->mutable_orientation()->set_x(orientation_.x());
-    axes.mutable_pose()->mutable_orientation()->set_y(orientation_.y());
-    axes.mutable_pose()->mutable_orientation()->set_z(orientation_.z());
-    axes.set_type(automsgs::msgs::visualization_msgs::Marker::CUBE);
-    axes.set_action(automsgs::msgs::visualization_msgs::Marker::ADD);
-    axes.mutable_scale()->set_x(scale * 0.05);
-    axes.mutable_scale()->set_y(scale * 0.05);
-    axes.mutable_scale()->set_z(scale * 0.05);
-    axes.mutable_color()->set_r(1.f);
-    axes.mutable_color()->set_g(0.f);
-    axes.mutable_color()->set_b(0.f);
-    axes.mutable_color()->set_a(1.f);
-    std::map<MarkerKey, StoredMarker> axes_map;
-    upsertMarker(axes, &axes_map);
-    drawStoredMarkers(scene, context_, properties, axes_map, name_ + "/axes");
+    // RViz rviz_rendering::Axes(length=scale, radius=scale*0.05).
+    automsgs::msgs::visualization_msgs::Marker pose_marker;
+    pose_marker.mutable_header()->set_frame_id(reference_frame_);
+    pose_marker.mutable_pose()->mutable_position()->set_x(position_.x());
+    pose_marker.mutable_pose()->mutable_position()->set_y(position_.y());
+    pose_marker.mutable_pose()->mutable_position()->set_z(position_.z());
+    pose_marker.mutable_pose()->mutable_orientation()->set_w(
+        orientation_.scalar());
+    pose_marker.mutable_pose()->mutable_orientation()->set_x(orientation_.x());
+    pose_marker.mutable_pose()->mutable_orientation()->set_y(orientation_.y());
+    pose_marker.mutable_pose()->mutable_orientation()->set_z(orientation_.z());
+    const QMatrix4x4 axes_tf =
+        markerPoseTransformInFixedFrame(pose_marker, context_);
+    const QVector3D origin = axes_tf.map(QVector3D(0.f, 0.f, 0.f));
+    const QVector3D x_axis =
+        axes_tf.map(QVector3D(scale, 0.f, 0.f)) - origin;
+    const QVector3D y_axis =
+        axes_tf.map(QVector3D(0.f, scale, 0.f)) - origin;
+    const QVector3D z_axis =
+        axes_tf.map(QVector3D(0.f, 0.f, scale)) - origin;
+    const float diameter = scale * 0.1f;
+    std::vector<ColoredMeshInstance> axes_meshes;
+    appendSolidArrowMeshes(&axes_meshes, origin, origin + x_axis,
+                           QColor(255, 0, 0), 0.23f, diameter, diameter * 1.6f);
+    appendSolidArrowMeshes(&axes_meshes, origin, origin + y_axis,
+                           QColor(0, 255, 0), 0.23f, diameter, diameter * 1.6f);
+    appendSolidArrowMeshes(&axes_meshes, origin, origin + z_axis,
+                           QColor(0, 0, 255), 0.23f, diameter, diameter * 1.6f);
+    drawMeshesOgreOrGl(context_, scene, name_ + "/axes", axes_meshes);
   }
 
   int index = 0;

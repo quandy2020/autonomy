@@ -27,7 +27,7 @@
 #include <utility>
 #include <vector>
 
-#include "autoviz/integration/topology_graph_builder.hpp"
+#include "autoviz/common/interaction/topology_graph_builder.hpp"
 
 class QContextMenuEvent;
 class QGraphicsScene;

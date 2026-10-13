@@ -44,12 +44,16 @@ namespace display {
 /**
  * @struct ColoredMeshInstance
  * @brief One mesh draw call: geometry, world transform, color, and pick id.
+ *
+ * @c mesh is non-owning and must outlive the draw (e.g. Robot visual cache,
+ * Marker stored mesh, or a process-lifetime primitive). Large URDF OBJs must
+ * not be copied every frame — that stalls the viewport (ballbot @c base.obj).
  */
 struct ColoredMeshInstance {
-  ObjMesh mesh;              /**< CPU triangle mesh in local space. */
-  QMatrix4x4 transform;      /**< Local → fixed/world transform. */
-  QColor color;              /**< Flat / tint color (alpha included). */
-  bool wireframe = false;    /**< When @c true, edges instead of filled faces. */
+  const ObjMesh* mesh = nullptr; /**< CPU triangle mesh in local space. */
+  QMatrix4x4 transform;          /**< Local → fixed/world transform. */
+  QColor color;                  /**< Flat / tint color (alpha included). */
+  bool wireframe = false;        /**< When @c true, edges instead of filled faces. */
   common::PickHandle pick_handle = common::kInvalidPickHandle; /**< Selection id. */
 };
 

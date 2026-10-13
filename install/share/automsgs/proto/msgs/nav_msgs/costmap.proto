@@ -1,0 +1,54 @@
+// Copyright 2026 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.nav_msgs;
+
+import "automsgs/msgs/builtin_interfaces/time.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/std_msgs/header.proto";
+
+message CostmapMetaData {
+  automsgs.msgs.builtin_interfaces.Time map_load_time = 1;
+  automsgs.msgs.builtin_interfaces.Time update_time = 2;
+  string layer = 3;
+  float resolution = 4;
+  uint32 size_x = 5;
+  uint32 size_y = 6;
+  automsgs.msgs.geometry_msgs.Pose origin = 7;
+}
+
+message Costmap {
+  automsgs.msgs.std_msgs.Header header = 1;
+  CostmapMetaData metadata = 2;
+  bytes data = 3;
+}
+
+message CostmapUpdate {
+  automsgs.msgs.std_msgs.Header header = 1;
+  uint32 x = 2;
+  uint32 y = 3;
+  uint32 size_x = 4;
+  uint32 size_y = 5;
+  bytes data = 6;
+}
+
+message CostmapFilterInfo {
+  automsgs.msgs.std_msgs.Header header = 1;
+  uint32 type = 2;
+  string filter_mask_topic = 3;
+  float base = 4;
+  float multiplier = 5;
+}

@@ -31,8 +31,8 @@
 #include <thread>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/service_client_registry.hpp"
-#include "autoviz/integration/service_discovery.hpp"
+#include "autoviz/common/interaction/service_client_registry.hpp"
+#include "autoviz/common/interaction/service_discovery.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"

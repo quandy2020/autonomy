@@ -33,8 +33,8 @@
 #include "autoviz/plugins/robot/robot.hpp"
 #include "autoviz/plugins/transformation/tf_frame_transformer.hpp"
 #include "autoviz/plugins/transformation/transformer_guard.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
 namespace autoviz {

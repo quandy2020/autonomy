@@ -28,8 +28,8 @@
 #include <automsgs/msgs/map_msgs/occupancy_grid_update.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/channel_display.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
 namespace display {

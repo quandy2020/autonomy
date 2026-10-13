@@ -25,8 +25,8 @@
 #include <utility>
 
 #include "autoviz/common/display_context.hpp"
-#include "autoviz/common/frame_transformer.hpp"
-#include "autoviz/common/transformation_manager.hpp"
+#include "autoviz/common/transformation/frame_transformer.hpp"
+#include "autoviz/common/transformation/transformation_manager.hpp"
 #include "autoviz/plugins/displays/display.hpp"
 
 namespace autoviz {
@@ -43,7 +43,8 @@ class TransformerGuardBase {
   virtual ~TransformerGuardBase();
 
   void initialize(common::DisplayContext* context,
-                  common::TransformationManager* transformation_manager);
+                  common::transformation::TransformationManager*
+                      transformation_manager);
 
   virtual bool checkTransformer() = 0;
 
@@ -51,7 +52,8 @@ class TransformerGuardBase {
   void notifyEnabledChanged();
 
  protected:
-  virtual void transformerChanged(common::FrameTransformer* new_transformer) = 0;
+  virtual void transformerChanged(
+      common::transformation::FrameTransformer* new_transformer) = 0;
   virtual void displayEnabledChanged() = 0;
 
   Display* display_ = nullptr;
@@ -59,7 +61,8 @@ class TransformerGuardBase {
   bool using_allowed_transformer_ = true;
   bool display_disabled_by_user_ = false;
   common::DisplayContext* context_ = nullptr;
-  common::TransformationManager* transformation_manager_ = nullptr;
+  common::transformation::TransformationManager* transformation_manager_ =
+      nullptr;
   std::function<void()> unsubscribe_;
 };
 
@@ -84,7 +87,7 @@ class TransformerGuard : public TransformerGuardBase {
   }
 
   void updateDisplayAccordingToTransformerType(
-      common::FrameTransformer* transformer) {
+      common::transformation::FrameTransformer* transformer) {
     using_allowed_transformer_ = isAllowedTransformer(transformer);
     if (!using_allowed_transformer_) {
       display_disabled_by_user_ =
@@ -96,7 +99,8 @@ class TransformerGuard : public TransformerGuardBase {
   }
 
  private:
-  void transformerChanged(common::FrameTransformer* new_transformer) override {
+  void transformerChanged(
+      common::transformation::FrameTransformer* new_transformer) override {
     if (using_allowed_transformer_ != isAllowedTransformer(new_transformer)) {
       updateDisplayAccordingToTransformerType(
           transformation_manager_ != nullptr
@@ -111,7 +115,8 @@ class TransformerGuard : public TransformerGuardBase {
     }
   }
 
-  bool isAllowedTransformer(common::FrameTransformer* transformer) const {
+  bool isAllowedTransformer(
+      common::transformation::FrameTransformer* transformer) const {
     return dynamic_cast<AllowedTransformerType*>(transformer) != nullptr;
   }
 

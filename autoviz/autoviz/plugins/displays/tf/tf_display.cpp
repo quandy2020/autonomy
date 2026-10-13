@@ -11,12 +11,14 @@
 #include <vector>
 
 #include <QColor>
+#include <QMatrix4x4>
+#include <QQuaternion>
 #include <QString>
+#include <QVector3D>
 
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/display_catalog.hpp"
 #include "autoviz/common/tool_manager.hpp"
-#include "autoviz/plugins/displays/common/arrow_mesh_utils.hpp"
 #include "autoviz/plugins/displays/common/primitive_mesh.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/plugins/displays/tf/tf_display_utils.hpp"
@@ -38,36 +40,73 @@ int64_t WallNs() {
   return std::chrono::duration_cast<std::chrono::nanoseconds>(now).count();
 }
 
-const ObjMesh& UnitTfHubMesh() {
-  static const ObjMesh mesh = buildSphereMesh(0.5f);
+const ObjMesh& UnitTfAxisCylinderMesh() {
+  // Centered unit cylinder along +Z (radius 0.5, length 1) — same as RViz Shape
+  // cylinder after axis alignment.
+  static const ObjMesh mesh = buildCylinderMesh(0.5f, 1.f);
   return mesh;
 }
 
-void DrawTfSegment(rendering::SceneOverlay& scene, const QVector3D& a,
-                   const QVector3D& b, const QColor& color, float width,
-                   bool for_pick = false) {
-  scene.addLine(a, b, color, for_pick);
-  if (width > 1e-4f) {
-    scene.addViewFacingPolylineStrip({a, b}, width, color);
-  }
+const ObjMesh& UnitTfArrowHeadMesh() {
+  // Cone base at z=0, apex at z=1 — matches RViz Arrow head placement.
+  static const ObjMesh mesh = buildConeMesh(0.5f, 1.f);
+  return mesh;
 }
 
+QMatrix4x4 AlignZToDirection(const QVector3D& direction) {
+  return QMatrix4x4(
+      QQuaternion::rotationTo(QVector3D(0.f, 0.f, 1.f), direction.normalized())
+          .toRotationMatrix());
+}
+
+/** RViz2 Axes: solid RGB cylinders (no cone heads, no hub sphere). */
 void DrawSolidTfAxis(rendering::SceneOverlay& scene, const QVector3D& origin,
-                     const QVector3D& end, const QColor& color,
-                     float shaft_diameter, float head_diameter) {
+                     const QVector3D& end, const QColor& color, float radius) {
   const QVector3D delta = end - origin;
   const float axis_len = delta.length();
-  if (axis_len < 1e-5f) {
+  if (axis_len < 1e-5f || radius <= 0.f) {
     return;
   }
   const QVector3D direction = delta / axis_len;
-  const float hub_radius = std::max(shaft_diameter * 1.2f, axis_len * 0.06f);
-  const QVector3D shaft_start = origin + direction * (hub_radius * 0.75f);
-  std::vector<ColoredMeshInstance> meshes;
-  appendSolidArrowMeshes(&meshes, shaft_start, end, color, 0.18f, shaft_diameter,
-                         head_diameter);
-  for (const auto& mesh : meshes) {
-    scene.addTriangleMeshSolid(mesh.mesh, mesh.transform, mesh.color);
+  QMatrix4x4 transform;
+  transform.setToIdentity();
+  transform.translate(origin + direction * (axis_len * 0.5f));
+  transform *= AlignZToDirection(direction);
+  transform.scale(radius * 2.f, radius * 2.f, axis_len);
+  scene.addTriangleMeshSolid(UnitTfAxisCylinderMesh(), transform, color);
+}
+
+/** RViz2 TF parent Arrow: yellow shaft + magenta cone head. */
+void DrawTfParentArrow(rendering::SceneOverlay& scene, const QVector3D& origin,
+                       const QVector3D& parent_origin, float scale,
+                       const QColor& shaft_color, const QColor& head_color) {
+  const QVector3D delta = parent_origin - origin;
+  const float distance = delta.length();
+  if (distance <= 0.001f * scale) {
+    return;
+  }
+  const float head_length =
+      (distance < 0.1f * scale) ? (0.1f * scale * distance) : (0.1f * scale);
+  const float shaft_length = std::max(0.f, distance - head_length);
+  const float shaft_diameter = 0.02f * scale;
+  const float head_diameter = 0.08f * scale;
+  const QVector3D direction = delta / distance;
+
+  if (shaft_length > 1e-5f) {
+    QMatrix4x4 shaft;
+    shaft.setToIdentity();
+    shaft.translate(origin + direction * (shaft_length * 0.5f));
+    shaft *= AlignZToDirection(direction);
+    shaft.scale(shaft_diameter, shaft_diameter, shaft_length);
+    scene.addTriangleMeshSolid(UnitTfAxisCylinderMesh(), shaft, shaft_color);
+  }
+  if (head_length > 1e-5f) {
+    QMatrix4x4 head;
+    head.setToIdentity();
+    head.translate(origin + direction * shaft_length);
+    head *= AlignZToDirection(direction);
+    head.scale(head_diameter, head_diameter, head_length);
+    scene.addTriangleMeshSolid(UnitTfArrowHeadMesh(), head, head_color);
   }
 }
 
@@ -100,9 +139,8 @@ std::vector<common::DisplayPropertySpec> TfDisplay::propertySpecs() const {
   return {
       {"show_names", "Show Names", "false"},
       {"show_axes", "Show Axes", "true"},
-      // Off by default: parent→child yellow arrows clutter 2D Goal / Pose
-      // placement (look like connectors from TF frames onto the goal). Users
-      // can re-enable under TF → Show Arrows (RViz has the same property).
+      // Off by default: parent→child arrows clutter Goal / Pose tools. RViz
+      // exposes the same Show Arrows property (yellow shaft + magenta head).
       {"show_arrows", "Show Arrows", "false"},
       {"marker_scale", "Marker Scale", "1.0"},
       {"update_interval", "Update Interval", "0"},
@@ -513,11 +551,9 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
   }
   const float scale = props_.marker_scale;
   const double timeout = props_.frame_timeout;
+  // RViz2: Axes(manager, node, 0.2f, 0.02f) then setScale(scale).
   const float axis_len = kTfDefaultAxisLength * scale;
-  const float axis_shaft_diameter = std::clamp(0.022f * scale, 0.008f, 0.05f);
-  const float axis_head_diameter = std::clamp(axis_shaft_diameter * 1.8f,
-                                              0.016f, 0.09f);
-  const float arrow_width = std::clamp(0.022f * scale, 0.008f, 0.06f);
+  const float axis_radius = kTfDefaultAxisRadius * scale;
   const int64_t now_ns = WallNs();
 
   int drew = 0;
@@ -533,77 +569,50 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
                              static_cast<double>(info.last_update_ns)) *
                                 1e-9)
             : 0.0;
-    const double age_clamped =
-        timeout > 0.0 ? std::min(age, timeout * 0.99) : age;
+    // RViz ages with the raw age (frames past timeout are deleted earlier).
     const TfAgeVisual age_r =
-        TfAgeVisualForTimeout(age_clamped, timeout, QColor(220, 60, 60));
+        TfAgeVisualForTimeout(age, timeout, TfDefaultXColor());
     const TfAgeVisual age_g =
-        TfAgeVisualForTimeout(age_clamped, timeout, QColor(60, 220, 60));
+        TfAgeVisualForTimeout(age, timeout, TfDefaultYColor());
     const TfAgeVisual age_b =
-        TfAgeVisualForTimeout(age_clamped, timeout, QColor(60, 120, 220));
-    const TfAgeVisual age_arrow =
-        TfAgeVisualForTimeout(age_clamped, timeout, QColor(255, 255, 85));
+        TfAgeVisualForTimeout(age, timeout, TfDefaultZColor());
+    const TfAgeVisual age_arrow_shaft =
+        TfAgeVisualForTimeout(age, timeout, TfArrowShaftColor());
+    const TfAgeVisual age_arrow_head =
+        TfAgeVisualForTimeout(age, timeout, TfArrowHeadColor());
     const TfAgeVisual age_name =
-        TfAgeVisualForTimeout(age_clamped, timeout, QColor(230, 230, 230));
+        TfAgeVisualForTimeout(age, timeout, QColor::fromRgbF(1.f, 1.f, 1.f));
 
     const QVector3D& origin = info.position;
     const QQuaternion& ori = info.orientation;
-    // TF overlay is not click-selectable (design); skip pick sample spam.
-    constexpr bool kPick = false;
 
     if (props_.show_axes) {
-      if (age_r.visible || age_g.visible || age_b.visible) {
-        QMatrix4x4 hub;
-        hub.setToIdentity();
-        hub.translate(origin);
-        const float hub_radius =
-            std::max(axis_shaft_diameter * 1.2f, axis_len * 0.06f);
-        hub.scale(hub_radius * 2.f, hub_radius * 2.f, hub_radius * 2.f);
-        scene.addTriangleMeshSolid(UnitTfHubMesh(), hub, QColor(185, 185, 185));
-      }
       if (age_r.visible) {
         DrawSolidTfAxis(
             scene, origin,
             origin + ori.rotatedVector(QVector3D(axis_len, 0.f, 0.f)),
-            age_r.color, axis_shaft_diameter, axis_head_diameter);
+            age_r.color, axis_radius);
       }
       if (age_g.visible) {
         DrawSolidTfAxis(
             scene, origin,
             origin + ori.rotatedVector(QVector3D(0.f, axis_len, 0.f)),
-            age_g.color, axis_shaft_diameter, axis_head_diameter);
+            age_g.color, axis_radius);
       }
       if (age_b.visible) {
         DrawSolidTfAxis(
             scene, origin,
             origin + ori.rotatedVector(QVector3D(0.f, 0.f, axis_len)),
-            age_b.color, axis_shaft_diameter, axis_head_diameter);
+            age_b.color, axis_radius);
       }
     }
 
     if (props_.show_arrows && !info.parent.empty()) {
       const auto parent_it = frames_.find(info.parent);
-      if (age_arrow.visible && parent_it != frames_.end() &&
+      if (age_arrow_shaft.visible && parent_it != frames_.end() &&
           parent_it->second.have_fixed_pose) {
-        const QVector3D& parent_origin = parent_it->second.position;
-        const QVector3D delta = parent_origin - origin;
-        const float len = delta.length();
-        if (len > 1e-4f) {
-          DrawTfSegment(scene, origin, parent_origin, age_arrow.color,
-                        arrow_width, kPick);
-          const QVector3D dir = delta / len;
-          QVector3D side = QVector3D::crossProduct(dir, QVector3D(0.f, 0.f, 1.f));
-          if (side.lengthSquared() < 1e-6f) {
-            side = QVector3D::crossProduct(dir, QVector3D(0.f, 1.f, 0.f));
-          }
-          side.normalize();
-          const float head = std::min(0.15f * len, 0.12f);
-          const QVector3D base = parent_origin - dir * head;
-          DrawTfSegment(scene, parent_origin, base + side * (head * 0.35f),
-                        age_arrow.color, arrow_width, kPick);
-          DrawTfSegment(scene, parent_origin, base - side * (head * 0.35f),
-                        age_arrow.color, arrow_width, kPick);
-        }
+        DrawTfParentArrow(scene, origin, parent_it->second.position, scale,
+                          age_arrow_shaft.color, age_arrow_head.color);
       }
     }
 
@@ -631,7 +640,7 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
     }
 
     if ((props_.show_axes && (age_r.visible || age_g.visible || age_b.visible)) ||
-        (props_.show_arrows && age_arrow.visible) ||
+        (props_.show_arrows && age_arrow_shaft.visible) ||
         (props_.show_names && age_name.visible)) {
       ++drew;
     }

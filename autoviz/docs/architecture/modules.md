@@ -5,9 +5,8 @@
 ```text
 autoviz/
 ├── main.cpp                 # 应用入口（autoviz_app）
-├── common/                  # 框架与会话
+├── common/                  # 框架与会话（含 interaction/ Autolink 集成）
 ├── display/                 # Display 实现
-├── integration/             # Autolink 集成
 ├── rendering/               # 渲染后端与几何
 ├── tools/                   # 交互工具
 ├── transform/               # TF
@@ -27,12 +26,10 @@ autoviz/
 | `factory/` | RViz 风格 `Factory` / `ClassIdRecordingFactory` / `PluginFactory` |
 | `SessionConfig` + YAML IO | `.autoviz` / `.rviz` |
 | `PluginLoader` | `AUTOVIZ_PLUGIN_PATH` 动态库 |
+| `common/transformation/` | `FrameTransformer`、`TransformationManager`、Identity、tf2 时间/头转换（无 ROS） |
+| `common/interaction/` | Autolink Node、Channel、回放（命名空间 `autoviz::integration`） |
 
-## display/
-
-Channel 型 Display 多继承 `ChannelDisplay`：属性中的 Channel 名对应 Autolink channel。内建类型包括 Grid、TF、LaserScan、PointCloud2、Map、Marker、RobotModel、Image、Camera、Path、Odometry 等；完整清单见 [parity/displays-panels.md](../parity/displays-panels.md)。
-
-## integration/
+## common/interaction/
 
 | 组件 | 职责 |
 |------|------|
@@ -41,6 +38,10 @@ Channel 型 Display 多继承 `ChannelDisplay`：属性中的 Channel 名对应 
 | ChannelReader / Writer 注册表 | 订阅与发布 |
 | PlaybackController | `.record` 回放 |
 | Service / Teleop 辅助 | 面板用服务与遥控 channel 约定 |
+
+## display/
+
+Channel 型 Display 多继承 `ChannelDisplay`：属性中的 Channel 名对应 Autolink channel。内建类型包括 Grid、TF、LaserScan、PointCloud2、Map、Marker、RobotModel、Image、Camera、Path、Odometry 等；完整清单见 [parity/displays-panels.md](../parity/displays-panels.md)。
 
 ## rendering/
 

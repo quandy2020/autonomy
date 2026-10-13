@@ -14,7 +14,7 @@
 #include "autolink/common/log.hpp"
 #include <automsgs/msgs/std_msgs/string.pb.h>
 #include "autoviz/plugins/robot/tf_link_updater.hpp"
-#include "autoviz/integration/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 
 namespace autoviz {
 namespace display {
@@ -237,10 +237,24 @@ void RobotModelDisplay::display_urdf_content() {
   }
   setStatusOk("URDF parsed OK");
   if (!robot_->geometryErrors().empty()) {
+    AWARN << "robot model geometry errors:" << robot_->geometryErrors();
     setStatusWarn(std::string("Errors loading geometries:") +
                   robot_->geometryErrors());
   } else {
-    AINFO << "robot model loaded, links=" << robot_->model().links().size();
+    std::size_t mesh_visuals = 0;
+    for (const auto& link : robot_->model().links()) {
+      for (const auto& visual : link.visuals) {
+        if (visual.type == UrdfGeometry::Type::kMesh) {
+          ++mesh_visuals;
+        }
+      }
+      if (link.visuals.empty() && link.has_visual &&
+          link.visual.type == UrdfGeometry::Type::kMesh) {
+        ++mesh_visuals;
+      }
+    }
+    AINFO << "robot model loaded, links=" << robot_->model().links().size()
+          << " mesh_visuals=" << mesh_visuals;
     setStatusOk("Model loaded");
   }
   updateVisualVisible();

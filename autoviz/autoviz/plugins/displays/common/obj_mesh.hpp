@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <QColor>
+#include <QImage>
 #include <QVector2D>
 #include <QVector3D>
 
@@ -50,15 +51,17 @@ namespace display {
  *       @c QMatrix4x4 transforms when drawing.
  */
 /**
- * @brief One `usemtl` range inside an OBJ.
+ * @brief One material range inside an OBJ / COLLADA mesh.
  *
- * Triangles are a slice of @ref ObjMesh::triangles. @c texture_path is empty
- * when the MTL material has only a diffuse color (no `map_Kd`).
+ * Triangles are a slice of @ref ObjMesh::triangles. Prefer @c texture (embedded
+ * or decoded) over @c texture_path when non-null. @c texture_path is empty when
+ * the material has only a diffuse color (no `map_Kd` / COLLADA image).
  */
 struct ObjSubmesh {
   std::string name;
   QColor diffuse{255, 255, 255};
   std::string texture_path;
+  QImage texture; /**< Embedded / decoded albedo; takes precedence over path. */
   int triangle_begin = 0;
   int triangle_count = 0;
 };
@@ -66,9 +69,20 @@ struct ObjSubmesh {
 struct ObjMesh {
   std::vector<QVector3D> vertices;           /**< Vertex positions. */
   std::vector<QVector2D> texcoords;          /**< UV coordinates (may be empty). */
+  std::vector<QVector3D> normals;            /**< Per-vertex normals (may be empty). */
+  /**
+   * Optional per-vertex colors (Marker TRIANGLE_LIST). When size matches
+   * @ref vertices, solid draw paths prefer these over a flat tint.
+   */
+  std::vector<QColor> colors;
   std::vector<std::array<int, 3>> triangles; /**< Triangle index triples. */
-  /** Filled by @ref loadObjFile when the OBJ references an MTL library. */
+  /** Filled by @ref loadObjFile / Assimp COLLADA when materials are present. */
   std::vector<ObjSubmesh> submeshes;
+  /**
+   * Per-submesh geometry copies with stable addresses for Ogre textured links.
+   * Parallel to @ref submeshes when @ref has_material_groups is true.
+   */
+  std::vector<ObjMesh> parts;
   bool has_material_groups = false;
 };
 
@@ -81,6 +95,16 @@ struct ObjMesh {
  * @param mesh Mesh to mutate; no-op if @c nullptr.
  */
 void ensureMeshTexcoords(ObjMesh* mesh);
+
+/**
+ * @brief Ensures @c mesh->normals has one entry per vertex (RViz/Assimp parity).
+ *
+ * Keeps existing normals when already aligned with @c vertices; otherwise
+ * builds area-weighted smooth normals from @c triangles.
+ *
+ * @param mesh Mesh to mutate; no-op if @c nullptr or empty.
+ */
+void ensureMeshNormals(ObjMesh* mesh);
 
 /**
  * @brief Parses Wavefront OBJ text into an @ref ObjMesh.

@@ -223,8 +223,14 @@ int main(int argc, char** argv) {
   request.initial_input = vector_t::Zero(INPUT_DIM);
   request.publish = Publish;
   request.on_target = TargetFromPose;
-  request.robot_description =
-      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description = bolza::examples::LoadExampleRobotDescription(
+      AUTOMANIP_EXAMPLE_URDF, "cartpole/urdf/cartpole.urdf");
+  if (request.robot_description.empty()) {
+    std::cerr << "[cartpole] Failed to load URDF for /robot_description "
+                 "(compile-time was '"
+              << AUTOMANIP_EXAMPLE_URDF
+              << "'). RobotModel will not show the cart/pole.\n";
+  }
   request.max_steps = steps;
   return bolza::examples::RunDemo(request);
 }

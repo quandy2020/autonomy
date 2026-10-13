@@ -30,7 +30,7 @@
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/display.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
 namespace display {

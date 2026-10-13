@@ -1,0 +1,13 @@
+<!--
+  Willow Garage PR2. Wheel-based base, right gripper tool frame.
+  Fixed frame: map.
+-->
+<autolink>
+    <module>
+        <name>mobile_manipulator</name>
+        <type>binary</type>
+        <process_name>mobile_manipulator_demo pr2</process_name>
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+</autolink>

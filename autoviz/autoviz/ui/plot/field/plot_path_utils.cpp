@@ -9,7 +9,7 @@
 #include <QRegularExpression>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/channel_manager.hpp"
+#include "autoviz/common/interaction/channel_manager.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"
 
 #include "autoviz/commsgs/message_type_utils.hpp"

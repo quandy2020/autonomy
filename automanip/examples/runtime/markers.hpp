@@ -83,6 +83,20 @@ inline automsgs::msgs::visualization_msgs::Marker MakeShape(
   return marker;
 }
 
+/**
+ * Clears a previously latched MarkerArray entry. Use when geometry moved to
+ * RobotModel (`/robot_description`) so Marker + mesh do not Z-fight.
+ */
+inline automsgs::msgs::visualization_msgs::Marker DeleteMarker(
+    const std::string& ns, int id, const std::string& frame = "map") {
+  automsgs::msgs::visualization_msgs::Marker marker;
+  StampHeader(marker.mutable_header(), frame);
+  marker.set_ns(ns);
+  marker.set_id(id);
+  marker.set_action(automsgs::msgs::visualization_msgs::Marker::DELETE);
+  return marker;
+}
+
 inline void FillJoints(automsgs::msgs::sensor_msgs::JointState* joints,
                        const std::vector<std::string>& names,
                        const std::vector<double>& position) {

@@ -25,8 +25,8 @@
 #include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/plugins/displays/common/proto_payload_utils.hpp"
 #include "autoviz/plugins/displays/common/urdf_model.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
 namespace autoviz {

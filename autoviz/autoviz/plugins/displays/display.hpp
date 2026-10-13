@@ -48,7 +48,7 @@
 #include "autoviz/common/config.hpp"
 #include "autoviz/common/session_config.hpp"
 #include "autoviz/common/display_status.hpp"
-#include "autoviz/integration/autolink_context.hpp"
+#include "autoviz/common/interaction/autolink_context.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
 
 namespace autoviz {

@@ -32,7 +32,7 @@
 #include "autoviz/plugins/displays/channel_display.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
-#include "autoviz/integration/message_queue.hpp"
+#include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
 namespace display {

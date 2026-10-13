@@ -16,7 +16,7 @@ OgreArrow::OgreArrow(Ogre::SceneManager* scene_manager,
                      Ogre::SceneNode* parent_node, float shaft_length,
                      float shaft_diameter, float head_length,
                      float head_diameter)
-    : scene_manager_(scene_manager) {
+    : OgreObject(scene_manager) {
   if (parent_node == nullptr) {
     parent_node = scene_manager_->getRootSceneNode();
   }
@@ -33,6 +33,7 @@ OgreArrow::~OgreArrow() {
   delete head_;
   if (scene_manager_ != nullptr && scene_node_ != nullptr) {
     scene_manager_->destroySceneNode(scene_node_);
+    scene_node_ = nullptr;
   }
 }
 
@@ -61,8 +62,17 @@ void OgreArrow::setHeadColor(const Ogre::ColourValue& color) {
   head_->setColor(color);
 }
 
+void OgreArrow::setShaftColor(float r, float g, float b, float a) {
+  setShaftColor(Ogre::ColourValue(r, g, b, a));
+}
+
+void OgreArrow::setHeadColor(float r, float g, float b, float a) {
+  setHeadColor(Ogre::ColourValue(r, g, b, a));
+}
+
 void OgreArrow::setOrientation(const Ogre::Quaternion& orientation) {
-  // rviz_rendering::Arrow: cylinders default along +Y, display forward is -Z.
+  // "forward" (negative z) is the identity orientation; the cylinder and cone
+  // meshes point along +Y, so the orientation has to be adjusted.
   scene_node_->setOrientation(
       orientation *
       Ogre::Quaternion(Ogre::Degree(-90.f), Ogre::Vector3::UNIT_X));
@@ -73,17 +83,20 @@ void OgreArrow::setPosition(const Ogre::Vector3& position) {
 }
 
 void OgreArrow::setDirection(const Ogre::Vector3& direction) {
-  if (direction.squaredLength() < 1e-12f) {
-    return;
+  if (!direction.isZeroLength()) {
+    setOrientation(Ogre::Vector3::NEGATIVE_UNIT_Z.getRotationTo(direction));
   }
-  Ogre::Vector3 dir = direction;
-  dir.normalise();
-  const Ogre::Vector3 default_dir(0.f, 0.f, -1.f);
-  scene_node_->setOrientation(default_dir.getRotationTo(dir));
 }
 
 void OgreArrow::setScale(const Ogre::Vector3& scale) {
-  scene_node_->setScale(scale);
+  // Mangle the scale because of the default orientation of the cylinders.
+  scene_node_->setScale(Ogre::Vector3(scale.z, scale.x, scale.y));
+}
+
+const Ogre::Vector3& OgreArrow::getPosition() { return scene_node_->getPosition(); }
+
+const Ogre::Quaternion& OgreArrow::getOrientation() {
+  return scene_node_->getOrientation();
 }
 
 const Ogre::Vector3& OgreArrow::position() const {

@@ -70,12 +70,14 @@ struct OgreColoredLineSegment {
 /**
  * @struct OgreColoredMeshInstance
  * @brief Transformed ObjMesh instance (solid or wireframe ManualObject path).
+ *
+ * @c mesh is non-owning; see @ref display::ColoredMeshInstance.
  */
 struct OgreColoredMeshInstance {
-  display::ObjMesh mesh; /**< Triangle mesh. */
-  QMatrix4x4 transform;  /**< World transform. */
-  QColor color;          /**< Tint color. */
-  bool wireframe = false; /**< Draw edges instead of filled triangles. */
+  const display::ObjMesh* mesh = nullptr; /**< Triangle mesh. */
+  QMatrix4x4 transform;                   /**< World transform. */
+  QColor color;                           /**< Tint color. */
+  bool wireframe = false;                 /**< Draw edges instead of filled triangles. */
   common::PickHandle pick_handle = common::kInvalidPickHandle; /**< Optional pick. */
 };
 

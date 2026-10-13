@@ -49,17 +49,18 @@ automanip_example(quadrotor
   quadrotor/quadrotor.cpp
   quadrotor/quadrotor_system_dynamics.cpp)
 
-find_path(IIT_RBD_INCLUDE_DIR iit/rbd/rbd.h)
-if(IIT_RBD_INCLUDE_DIR)
-  automanip_example(ballbot
-    "${BOLZA_ASSETS_DIR}/ballbot/urdf/ballbot.urdf"
-    ballbot/ballbot.cpp
-    ballbot/dynamics/ballbot_system_dynamics.cpp
-    ballbot/generated/miscellaneous.cpp)
-  target_include_directories(ballbot_demo PRIVATE "${IIT_RBD_INCLUDE_DIR}")
-else()
-  message(STATUS "automanip: ballbot example skipped (iit/rbd/rbd.h not found)")
-endif()
+# Header-only RobCoGen support (BSD-2-Clause, third_party/iit_rbd). The
+# generated dynamics still include traits/DoubleTrait.h and TraitSelector.h;
+# ballbot/compat provides those names. Without this target, ballbot.launch
+# execvp fails because ballbot_demo is not installed.
+automanip_example(ballbot
+  "${BOLZA_ASSETS_DIR}/ballbot/urdf/ballbot.urdf"
+  ballbot/ballbot.cpp
+  ballbot/dynamics/ballbot_system_dynamics.cpp
+  ballbot/generated/miscellaneous.cpp)
+target_include_directories(ballbot_demo PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/ballbot/compat"
+  "${CMAKE_CURRENT_SOURCE_DIR}/ballbot/third_party/iit_rbd")
 
 if(TARGET pinocchio::pinocchio)
   file(GLOB_RECURSE _LEGGED_SOURCES CONFIGURE_DEPENDS
@@ -76,6 +77,8 @@ if(TARGET pinocchio::pinocchio)
   automanip_example(mobile_manipulator
     "${BOLZA_ASSETS_DIR}/mobile_manipulator/franka/urdf/panda.urdf"
     ${_ARM_SOURCES} mobile_manipulator/demo.cpp)
+  target_compile_definitions(mobile_manipulator_demo PRIVATE
+    AUTOMANIP_MOBILE_MANIPULATOR_DIR="${CMAKE_CURRENT_SOURCE_DIR}/mobile_manipulator")
 else()
   message(STATUS "automanip: legged_robot and mobile_manipulator examples skipped (pinocchio not found)")
 endif()

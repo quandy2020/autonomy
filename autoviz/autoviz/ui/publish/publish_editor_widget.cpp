@@ -32,9 +32,9 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
-#include "autoviz/integration/channel_payload.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
-#include "autoviz/integration/channel_writer_registry.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_writer_registry.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"

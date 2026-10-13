@@ -336,7 +336,10 @@ class VisualizationFrame : public QMainWindow {
   bool eventFilter(QObject* watched, QEvent* event) override;
 
   /**
-   * @brief Tears down Ogre/GLX surfaces before the window hierarchy is hidden.
+   * @brief Tears down Ogre/GLX, ignores the close, then exits the event loop.
+   *
+   * Accepting the close would make Qt @c hideChildren() walk
+   * @c WA_PaintOnScreen surfaces and SIGSEGV on NVIDIA/GLX.
    */
   void closeEvent(QCloseEvent* event) override;
 

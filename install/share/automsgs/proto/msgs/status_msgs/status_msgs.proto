@@ -1,0 +1,322 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.status_msgs;
+
+// Unified status / result codes for msgs (StatusPb) and RPCs (rpcs.common.Status).
+//
+// Layout (declaration order):
+//   1) Thin codes  — for rpcs.common.Status (and OK/UNKNOWN)
+//   2) Fine codes  — for internal StatusPb diagnostics
+//
+// Naming: no global CODE_/RPC_ prefix; <DOMAIN>_*; cancel spelling CANCELLED.
+// Ranges & phases: docs/superpowers/specs/2026-08-15-status-code-structure-design.md
+enum StatusCode {
+  // ===========================================================================
+  // (1) THIN CODES — use in rpcs.common.Status
+  // ===========================================================================
+
+  // Success / unset (RPC Status.code: success = 0).
+  OK = 0;
+  UNKNOWN = 1;
+
+  // ---------------------------------------------------------------------------
+  // Thin: common (2-99)
+  // ---------------------------------------------------------------------------
+  INVALID_ARGUMENT = 2;
+  UNAVAILABLE = 3;
+  DEADLINE_EXCEEDED = 4;
+  ABORTED = 5;
+  INTERNAL = 6;
+  NOT_FOUND = 7;
+  ALREADY_EXISTS = 8;
+  PERMISSION_DENIED = 9;
+
+  // ---------------------------------------------------------------------------
+  // Thin: navigation (100-199)
+  // ---------------------------------------------------------------------------
+  NAVIGATION_GOAL_REJECTED = 100;
+  NAVIGATION_PATH_BLOCKED = 101;
+  NAVIGATION_TIMEOUT = 102;
+  NAVIGATION_CANCELLED = 103;
+  NAVIGATION_NO_PATH = 104;
+  NAVIGATION_BUSY = 105;
+
+  // ---------------------------------------------------------------------------
+  // Thin: vehicle (200-299)
+  // ---------------------------------------------------------------------------
+  VEHICLE_LOW_BATTERY = 200;
+  VEHICLE_FAULT = 201;
+  VEHICLE_BUSY = 202;
+  VEHICLE_OFFLINE = 203;
+
+  // ---------------------------------------------------------------------------
+  // Thin: task surface (300-399) — distinct from fine TASK_* (9000+)
+  // ---------------------------------------------------------------------------
+  TASK_NOT_FOUND = 300;
+  TASK_ALREADY_RUNNING = 301;
+  TASK_CANCELLED = 302;
+  TASK_FAILED = 303;
+
+  // ---------------------------------------------------------------------------
+  // Thin: speech (400-499)
+  // ---------------------------------------------------------------------------
+  SPEECH_SYNTHESIS_FAILED = 400;
+  SPEECH_RECOGNITION_FAILED = 401;
+  SPEECH_TIMEOUT = 402;
+  SPEECH_LANGUAGE_NOT_SUPPORTED = 403;
+
+  // ---------------------------------------------------------------------------
+  // Thin: charge / 回充 (500-599)
+  // ---------------------------------------------------------------------------
+  CHARGING_DOCK_NOT_FOUND = 500;
+  CHARGING_DOCK_FAILED = 501;
+  CHARGING_ALREADY_DOCKED = 502;
+  CHARGING_ALREADY_UNDOCKED = 503;
+  CHARGING_BUSY = 504;
+  CHARGING_CANCELLED = 505;
+  CHARGING_TIMEOUT = 506;
+  CHARGING_NOT_READY = 507;
+
+  // ---------------------------------------------------------------------------
+  // Thin: map storage (600-699) — distinct from fine MAP_* (7000+)
+  // ---------------------------------------------------------------------------
+  MAP_NOT_FOUND = 600;
+  MAP_SAVE_FAILED = 601;
+  MAP_LOAD_FAILED = 602;
+  MAP_INVALID = 603;
+
+  // ---------------------------------------------------------------------------
+  // Thin: sensor (700-799)
+  // ---------------------------------------------------------------------------
+  SENSOR_NOT_FOUND = 700;
+  SENSOR_UNAVAILABLE = 701;
+  SENSOR_TIMEOUT = 702;
+  SENSOR_BUSY = 703;
+  SENSOR_INVALID_PARAMETER = 704;
+  SENSOR_SAVE_FAILED = 705;
+  SENSOR_LOAD_FAILED = 706;
+  SENSOR_RECORD_FAILED = 707;
+  SENSOR_CANCELLED = 708;
+
+  // ---------------------------------------------------------------------------
+  // Thin: localization RPC (800-899) — distinct from fine LOCALIZATION_* (3000+)
+  // LOCALIZATION_NOT_READY remains 3002 (fine); thin uses UNAVAILABLE at 801.
+  // ---------------------------------------------------------------------------
+  LOCALIZATION_LOST = 800;
+  LOCALIZATION_UNAVAILABLE = 801;
+  LOCALIZATION_INVALID_POSE = 802;
+  LOCALIZATION_BUSY = 803;
+
+  // ---------------------------------------------------------------------------
+  // Thin: follow (900-999)
+  // ---------------------------------------------------------------------------
+  FOLLOW_TARGET_NOT_FOUND = 900;
+  FOLLOW_FAILED = 901;
+  FOLLOW_BUSY = 902;
+  FOLLOW_CANCELLED = 903;
+
+  // ---------------------------------------------------------------------------
+  // Thin: mapping process (1100-1199) — distinct from MAP_* storage 600 / fine 7000
+  // ---------------------------------------------------------------------------
+  MAPPING_BUSY = 1100;
+  MAPPING_NOT_RUNNING = 1101;
+  MAPPING_FAILED = 1102;
+
+  // ---------------------------------------------------------------------------
+  // Thin: teleop (1200-1299)
+  // ---------------------------------------------------------------------------
+  TELEOP_BUSY = 1200;
+  TELEOP_REJECTED = 1201;
+  TELEOP_TIMEOUT = 1202;
+  TELEOP_CANCELLED = 1203;
+  TELEOP_COLLISION = 1204;
+  TELEOP_NOT_READY = 1205;
+
+  // ---------------------------------------------------------------------------
+  // Thin: exploration (1300-1399)
+  // ---------------------------------------------------------------------------
+  EXPLORATION_BUSY = 1300;
+  EXPLORATION_CANCELLED = 1301;
+  EXPLORATION_FAILED = 1302;
+  EXPLORATION_NO_AREA = 1303;
+  EXPLORATION_SAVE_FAILED = 1304;
+  EXPLORATION_NOT_RUNNING = 1305;
+
+  // ---------------------------------------------------------------------------
+  // Thin: system (2000-2099)
+  // ---------------------------------------------------------------------------
+  SYSTEM_NOT_READY = 2000;
+  SYSTEM_ESTOP = 2001;
+  SYSTEM_HARDWARE_FAULT = 2002;
+  SYSTEM_ESTOP_CLEAR_DENIED = 2003;
+
+  // ===========================================================================
+  // (2) FINE CODES — internal StatusPb diagnostics (not for third-party RPC)
+  // ===========================================================================
+
+  // ---------------------------------------------------------------------------
+  // Fine: control (1000-1099)
+  // ---------------------------------------------------------------------------
+  CONTROL_ERROR = 1000;
+  CONTROL_INIT_ERROR = 1001;
+  CONTROL_COMPUTE_ERROR = 1002;
+  CONTROL_ESTOP_ERROR = 1003;
+  CONTROL_CANCELLED = 1010;
+  CONTROL_TF_ERROR = 1011;
+  CONTROL_INVALID_PATH = 1012;
+  CONTROL_NO_VALID_CMD = 1013;
+  CONTROL_COLLISION = 1014;
+  CONTROL_OSCILLATION = 1015;
+  CONTROL_ROBOT_STUCK = 1016;
+  CONTROL_MISSED_GOAL = 1017;
+  CONTROL_MISSED_PATH = 1018;
+  CONTROL_BLOCKED_GOAL = 1019;
+  CONTROL_BLOCKED_PATH = 1020;
+  CONTROL_PATIENCE_EXCEEDED = 1021;
+  CONTROL_FAILED_TO_MAKE_PROGRESS = 1022;
+  CONTROL_CONTROLLER_TIMED_OUT = 1023;
+  CONTROL_INVALID_PLUGIN = 1024;
+  CONTROL_NOT_INITIALIZED = 1025;
+  CONTROL_INTERNAL_ERROR = 1026;
+  CONTROL_STOPPED = 1027;
+  CONTROL_UNKNOWN = 1099;
+
+  // ---------------------------------------------------------------------------
+  // Fine: localization / transform (3000+)
+  // ---------------------------------------------------------------------------
+  LOCALIZATION_ERROR = 3000;
+  LOCALIZATION_TF_ERROR = 3001;
+  LOCALIZATION_NOT_READY = 3002;
+
+  // ---------------------------------------------------------------------------
+  // Fine: recovery (4000+)
+  // ---------------------------------------------------------------------------
+  RECOVERY_ERROR = 4000;
+  RECOVERY_CANCELLED = 4001;
+  RECOVERY_TIMEOUT = 4002;
+  RECOVERY_TF_ERROR = 4003;
+  RECOVERY_NOT_INITIALIZED = 4004;
+  RECOVERY_INVALID_PLUGIN = 4005;
+  RECOVERY_INTERNAL_ERROR = 4006;
+  RECOVERY_STOPPED = 4007;
+  RECOVERY_IMPASSABLE = 4008;
+
+  // Fine: recovery behavior primitives (4500+).
+  SPIN_ERROR = 4500;
+  SPIN_TIMEOUT = 4501;
+  SPIN_TF_ERROR = 4502;
+  SPIN_COLLISION_AHEAD = 4503;
+  BACK_UP_ERROR = 4510;
+  BACK_UP_TIMEOUT = 4511;
+  BACK_UP_TF_ERROR = 4512;
+  BACK_UP_INVALID_INPUT = 4513;
+  BACK_UP_COLLISION_AHEAD = 4514;
+  DRIVE_ON_HEADING_ERROR = 4520;
+  DRIVE_ON_HEADING_TIMEOUT = 4521;
+  DRIVE_ON_HEADING_TF_ERROR = 4522;
+  DRIVE_ON_HEADING_COLLISION_AHEAD = 4523;
+  DRIVE_ON_HEADING_INVALID_INPUT = 4524;
+  ASSISTED_TELEOP_ERROR = 4530;
+  ASSISTED_TELEOP_TIMEOUT = 4531;
+  ASSISTED_TELEOP_TF_ERROR = 4532;
+  WAIT_ERROR = 4540;
+  WAIT_TIMEOUT = 4541;
+
+  // ---------------------------------------------------------------------------
+  // Fine: planning (6000+)
+  // ---------------------------------------------------------------------------
+  PLANNING_ERROR = 6000;
+  PLANNING_NOT_READY = 6001;
+  PLANNING_CANCELLED = 6002;
+  PLANNING_INVALID_START = 6003;
+  PLANNING_INVALID_GOAL = 6004;
+  PLANNING_BLOCKED_START = 6005;
+  PLANNING_BLOCKED_GOAL = 6006;
+  PLANNING_NO_PATH_FOUND = 6007;
+  PLANNING_TIMEOUT = 6008;
+  PLANNING_EMPTY_PATH = 6009;
+  PLANNING_TF_ERROR = 6010;
+  PLANNING_NOT_INITIALIZED = 6011;
+  PLANNING_INVALID_PLUGIN = 6012;
+  PLANNING_INTERNAL_ERROR = 6013;
+  PLANNING_START_OUTSIDE_MAP = 6014;
+  PLANNING_GOAL_OUTSIDE_MAP = 6015;
+  PLANNING_START_OCCUPIED = 6016;
+  PLANNING_GOAL_OCCUPIED = 6017;
+  PLANNING_NO_WAYPOINTS = 6018;
+  PLANNING_UNKNOWN = 6099;
+
+  // Fine: path smoother (6200+).
+  SMOOTHER_ERROR = 6200;
+  SMOOTHER_INVALID_PLUGIN = 6201;
+  SMOOTHER_TIMEOUT = 6202;
+  SMOOTHER_PATH_IN_COLLISION = 6203;
+  SMOOTHER_FAILED = 6204;
+  SMOOTHER_INVALID_PATH = 6205;
+  SMOOTHER_UNKNOWN = 6299;
+
+  // ---------------------------------------------------------------------------
+  // Fine: map / costmap (7000+)
+  // ---------------------------------------------------------------------------
+  MAP_ERROR = 7000;
+  MAP_DATA_ERROR = 7001;
+  MAP_OUT_OF_MAP = 7002;
+  MAP_NOT_READY = 7003;
+
+  // ---------------------------------------------------------------------------
+  // Fine: routing (8000+)
+  // ---------------------------------------------------------------------------
+  ROUTING_ERROR = 8000;
+  ROUTING_NOT_READY = 8001;
+  ROUTING_REQUEST_ERROR = 8002;
+  ROUTING_RESPONSE_ERROR = 8003;
+  ROUTING_PATH_INVALID = 8004;
+
+  // ---------------------------------------------------------------------------
+  // Fine: task / behavior-tree navigation (9000+)
+  // ---------------------------------------------------------------------------
+  TASK_ERROR = 9000;
+  TASK_NOT_INITIALIZED = 9001;
+  TASK_TIMEOUT = 9002;
+  TASK_BT_CANCELLED = 9003;
+  TASK_PREEMPTED = 9004;
+  TASK_BT_LOAD_FAILED = 9005;
+  TASK_TF_ERROR = 9006;
+  TASK_INVALID_GOAL = 9007;
+  TASK_NO_VALID_PATH = 9008;
+  TASK_PLANNER_FAILED = 9009;
+  TASK_CONTROLLER_FAILED = 9010;
+  TASK_SMOOTHER_FAILED = 9011;
+  TASK_PATH_INVALID = 9012;
+  TASK_GOAL_CHECKER_FAILED = 9013;
+  TASK_UNKNOWN = 9099;
+
+  // Fine: waypoint following (9200+).
+  WAYPOINTS_ERROR = 9200;
+  WAYPOINTS_TASK_EXECUTOR_FAILED = 9201;
+  WAYPOINTS_NO_VALID_WAYPOINTS = 9202;
+  WAYPOINTS_STOP_ON_MISSED = 9203;
+  WAYPOINTS_UNKNOWN = 9299;
+}
+
+// Generic status wrapper (aligned with apollo.common.StatusPb).
+// Shares StatusCode with automsgs.rpcs.common.Status (RPC uses field names
+// code / message; this type keeps error_code / msg for internal msgs).
+message StatusPb {
+  StatusCode error_code = 1;
+  string msg = 2;
+}

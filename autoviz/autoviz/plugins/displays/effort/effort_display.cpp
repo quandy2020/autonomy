@@ -10,7 +10,7 @@
 #include <QtMath>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
-#include "autoviz/integration/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/common/transform_utils.hpp"

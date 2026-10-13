@@ -257,14 +257,12 @@ function(autoviz_apply_ogre_backend _target)
     if(EXISTS "${_ogre_tarball}")
       message(STATUS "Autoviz: using local Ogre tarball ${_ogre_tarball}")
       FetchContent_Declare(autoviz_ogre
-        URL "file://${_ogre_tarball}"
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+        URL "${_ogre_tarball}"
         PATCH_COMMAND bash "${AUTOVIZ_ROOT}/cmake/apply_ogre_patches.sh" <SOURCE_DIR>)
     else()
       message(STATUS "Autoviz: downloading Ogre 1.12.10 release tarball")
       FetchContent_Declare(autoviz_ogre
         URL https://github.com/OGRECave/ogre/archive/refs/tags/v1.12.10.tar.gz
-        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PATCH_COMMAND bash "${AUTOVIZ_ROOT}/cmake/apply_ogre_patches.sh" <SOURCE_DIR>)
     endif()
     FetchContent_MakeAvailable(autoviz_ogre)

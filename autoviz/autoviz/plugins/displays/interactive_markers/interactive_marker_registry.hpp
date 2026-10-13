@@ -80,6 +80,32 @@ struct InteractiveMarkerPick {
 };
 
 /**
+ * @struct InteractiveMarkerHighlight
+ * @brief Hover / active control highlight for Interact tool → Display.
+ *
+ * @c kind distinguishes translation vs rotation cues while dragging
+ * (MOVE_ROTATE_3D + Ctrl flips to rotate).
+ */
+struct InteractiveMarkerHighlight {
+  enum class Level {
+    kNone = 0,
+    kHover = 1,
+    kActive = 2,
+  };
+  enum class Kind {
+    kNone = 0,
+    kTranslate = 1,  /**< MOVE_* — cyan cue + axis aid. */
+    kRotate = 2,     /**< ROTATE_* — amber cue + ring aid. */
+    kBoth = 3,       /**< MOVE_ROTATE — both cues. */
+  };
+  Level level = Level::kNone;
+  Kind kind = Kind::kNone;
+  std::string marker_name;
+  std::string control_name;
+  uint32_t interaction_mode = 0;
+};
+
+/**
  * @class InteractiveMarkerRegistry
  * @brief Process-wide (per manager) store bridging displays and Interact.
  *
@@ -149,29 +175,62 @@ class InteractiveMarkerRegistry {
                                    int viewport_width, int viewport_height,
                                    int pixel_x, int pixel_y,
                                    autoviz::common::DisplayContext* context,
-                                   float max_pixel_distance = 18.f) const;
+                                   float max_pixel_distance = 28.f) const;
 
   /**
-   * @brief Applies constrained drag from an initial pose using the control
-   *        interaction mode.
+   * @brief Applies constrained drag (RViz InteractiveMarkerControl math).
    *
-   * Ground-plane (or mode-specific) motion is derived from
-   * @p initial_ground → @p current_ground; @p shift_held may switch to
-   * alternate axes (RViz Interact parity).
+   * @p initial_drag_point / @p current_drag_point are 3D hits from
+   * @ref dragPointFromRay (axis closest-point or plane intersection) in the
+   * fixed frame. Pose translation is updated in the marker's pose frame by
+   * rotating the fixed-frame motion through @p marker_fixed_at_start.
    *
-   * @param initial_pose Pose at mouse-down.
-   * @param control_transform Control frame used for axis constraints.
-   * @param interaction_mode visualization_msgs interaction mode enum value.
-   * @param initial_ground Ground-plane hit at mouse-down.
-   * @param current_ground Ground-plane hit at current cursor.
-   * @param shift_held Whether Shift modifies the drag axes.
-   * @return Updated pose suitable for @ref updatePose / feedback.
+   * @param initial_pose Marker pose at mouse-down (reference frame).
+   * @param marker_fixed_at_start Marker pose matrix in fixed frame at down.
+   * @param control_transform Control frame in fixed frame.
+   * @param interaction_mode visualization_msgs interaction mode.
+   * @param initial_drag_point Drag sample at mouse-down (fixed frame).
+   * @param current_drag_point Drag sample at current cursor (fixed frame).
+   * @param shift_held Shift → prefer rotate for MOVE_ROTATE_3D.
    */
   static automsgs::msgs::geometry_msgs::Pose draggedPose(
       const automsgs::msgs::geometry_msgs::Pose& initial_pose,
+      const QMatrix4x4& marker_fixed_at_start,
       const QMatrix4x4& control_transform, uint32_t interaction_mode,
-      const QVector3D& initial_ground, const QVector3D& current_ground,
-      bool shift_held);
+      const QVector3D& initial_drag_point, const QVector3D& current_drag_point,
+      bool shift_held, bool ctrl_held = false);
+
+  /**
+   * @brief Resolves a 3D drag sample from a camera ray (RViz-style).
+   *
+   * MOVE_AXIS: closest point on the control X axis to the ray.
+   * MOVE_PLANE / ROTATE_*: ray ∩ plane through control origin, normal = X.
+   * MOVE_3D: ray ∩ view plane through control origin.
+   */
+  static bool dragPointFromRay(uint32_t interaction_mode,
+                               const QMatrix4x4& control_transform,
+                               const QVector3D& ray_origin,
+                               const QVector3D& ray_direction,
+                               const QVector3D& view_forward,
+                               QVector3D* drag_point,
+                               bool shift_held = false);
+
+  /**
+   * @brief Sets hover/active highlight consumed by InteractiveMarkerDisplay.
+   */
+  void setHighlight(const InteractiveMarkerHighlight& highlight) {
+    highlight_ = highlight;
+  }
+
+  void clearHighlight() { highlight_ = InteractiveMarkerHighlight{}; }
+
+  const InteractiveMarkerHighlight& highlight() const { return highlight_; }
+
+  /**
+   * @brief Maps interaction mode (+ optional Ctrl) to translate/rotate kind.
+   */
+  static InteractiveMarkerHighlight::Kind highlightKind(
+      uint32_t interaction_mode, bool ctrl_held = false);
 
  private:
   /** Aggregated marker name → state (all sources). */
@@ -179,6 +238,8 @@ class InteractiveMarkerRegistry {
 
   /** Marker name → owning source_id for remove/replace. */
   std::map<std::string, std::string> source_by_marker_;
+
+  InteractiveMarkerHighlight highlight_;
 };
 
 /**

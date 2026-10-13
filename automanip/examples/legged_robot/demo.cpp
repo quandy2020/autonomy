@@ -26,8 +26,10 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdlib>
+#include <iostream>
 #include <memory>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 #include <Eigen/Geometry>
@@ -43,7 +45,6 @@
 #include "bolza/sqp/sqp_mpc.hpp"
 #include "examples/legged_robot/gait/motion_phase_definition.hpp"
 #include "examples/legged_robot/legged_robot_interface.hpp"
-#include "examples/legged_robot/terrain/terrain.hpp"
 #include "examples/runtime/demo_loop.hpp"
 #include "examples/runtime/markers.hpp"
 
@@ -58,6 +59,8 @@ constexpr std::array<std::array<float, 3>, 4> kFootColor{{
 constexpr std::array<float, 3> kGreen{{0.4660f, 0.6740f, 0.1880f}};
 constexpr std::array<float, 3> kRed{{0.6350f, 0.0780f, 0.1840f}};
 constexpr std::array<float, 3> kBlack{{0.25f, 0.25f, 0.25f}};
+/** Center-of-pressure marker (matches common OCS2 / RViz legged overlays). */
+constexpr std::array<float, 3> kYellow{{0.9290f, 0.6940f, 0.1250f}};
 
 void AddPoint(automsgs::msgs::visualization_msgs::Marker* marker, const Eigen::Vector3d& point) {
   auto* corner = marker->add_points();
@@ -66,34 +69,81 @@ void AddPoint(automsgs::msgs::visualization_msgs::Marker* marker, const Eigen::V
   corner->set_z(point.z());
 }
 
-void AppendTerrain(bolza::examples::MarkerArray* markers, const bolza::legged_robot::Terrain& terrain) {
-  if (markers == nullptr || !terrain.hasRelief() || !(terrain.resolution() > 0.0)) {
-    return;
+void AddPlacement(bolza::examples::TfMsg* tf, const std::string& parent,
+                  const std::string& child, const pinocchio::SE3& pose) {
+  const Eigen::Vector3d& translation = pose.translation();
+  Eigen::Quaterniond rotation(pose.rotation());
+  rotation.normalize();
+  bolza::examples::AddTransform(tf, parent, child, translation.x(), translation.y(),
+                                translation.z(), rotation.w(), rotation.x(), rotation.y(),
+                                rotation.z());
+}
+
+/**
+ * True for the moving segment of one leg: hip, thigh, shank, foot.
+ *
+ * Drive housings (`LF_HAA`), `*_fixed` visuals, shells, and camera frames sit
+ * on the same joint or on the base. Publishing all of them draws a coordinate
+ * triad on every mesh. RobotModel still poses the omitted links from joint
+ * states and `map` → `base`.
+ */
+bool IsLegSegment(const std::string& name) {
+  return name.ends_with("_HIP") || name.ends_with("_THIGH") || name.ends_with("_SHANK") ||
+         name.ends_with("_FOOT");
+}
+
+/**
+ * Publishes the four leg chains on `/tf`, each link relative to `floating_base`.
+ *
+ * The centroidal model adds a 6-DoF composite joint (`root_joint`) in front of
+ * the URDF root. That joint is not a URDF link, so this function does not
+ * publish it. Callers publish `map` → `floating_base` from the centroidal
+ * base pose. Each kept link is placed from forward kinematics, so the hip,
+ * thigh, shank, and foot include the revolute angles.
+ */
+bool PublishModelFrames(const pinocchio::Model& model, const bolza::vector_t& q,
+                        bolza::examples::TfMsg* tf, const std::string& floating_base) {
+  if (tf == nullptr || floating_base.empty() || q.size() != model.nq || model.nframes < 2) {
+    return false;
   }
-  const double resolution = terrain.resolution();
-  const int stride = std::max(1, static_cast<int>(std::lround(0.1 / resolution)));
-  using Marker = automsgs::msgs::visualization_msgs::Marker;
-  auto mesh = bolza::examples::MakeShape("Terrain", 0, Marker::TRIANGLE_LIST, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 0.45f,
-                                        0.42f, 0.36f);
-  mesh.set_mesh_resource(terrain.description());
-  auto add = [&](double x, double y) { AddPoint(&mesh, Eigen::Vector3d(x, y, terrain.height(x, y))); };
-  for (int iy = 0; iy + stride < terrain.rows(); iy += stride) {
-    for (int ix = 0; ix + stride < terrain.columns(); ix += stride) {
-      const double x0 = terrain.originX() + static_cast<double>(ix) * resolution;
-      const double y0 = terrain.originY() + static_cast<double>(iy) * resolution;
-      const double x1 = terrain.originX() + static_cast<double>(ix + stride) * resolution;
-      const double y1 = terrain.originY() + static_cast<double>(iy + stride) * resolution;
-      add(x0, y0);
-      add(x0, y1);
-      add(x1, y0);
-      add(x1, y0);
-      add(x0, y1);
-      add(x1, y1);
+  pinocchio::Data data(model);
+  pinocchio::forwardKinematics(model, data, q);
+  pinocchio::updateFramePlacements(model, data);
+
+  pinocchio::FrameIndex base_frame = static_cast<pinocchio::FrameIndex>(model.nframes);
+  for (pinocchio::FrameIndex i = 1;
+       i < static_cast<pinocchio::FrameIndex>(model.nframes); ++i) {
+    const pinocchio::Frame& frame = model.frames[i];
+    if (frame.name == floating_base &&
+        (frame.type & pinocchio::FrameType::BODY) != 0) {
+      base_frame = i;
+      break;
     }
   }
-  if (mesh.points_size() >= 3) {
-    *markers->add_markers() = std::move(mesh);
+  if (base_frame >= static_cast<pinocchio::FrameIndex>(model.nframes)) {
+    return false;
   }
+
+  std::unordered_set<std::string> published;
+  published.reserve(static_cast<std::size_t>(model.nframes));
+  published.insert(floating_base);
+  for (pinocchio::FrameIndex i = 1;
+       i < static_cast<pinocchio::FrameIndex>(model.nframes); ++i) {
+    const pinocchio::Frame& frame = model.frames[i];
+    if ((frame.type & pinocchio::FrameType::BODY) == 0) {
+      continue;
+    }
+    if (frame.name.empty() || frame.name == "universe" || frame.name == floating_base ||
+        !IsLegSegment(frame.name)) {
+      continue;
+    }
+    if (!published.insert(frame.name).second) {
+      continue;
+    }
+    const pinocchio::SE3 relative = data.oMf[base_frame].inverse() * data.oMf[i];
+    AddPlacement(tf, floating_base, frame.name, relative);
+  }
+  return published.size() > 1;
 }
 
 double Yaw(const bolza::examples::PoseStamped& pose) {
@@ -160,8 +210,14 @@ int main(int argc, char** argv) {
   request.initial_target = interface.GetInitialState();
   request.initial_input = bolza::vector_t::Zero(info.inputDim);
   request.initial_mode = bolza::legged_robot::ModeNumber::STANCE;
-  request.robot_description =
-      bolza::examples::RobotDescriptionWithAbsoluteMeshes(AUTOMANIP_EXAMPLE_URDF);
+  request.robot_description = bolza::examples::LoadExampleRobotDescription(
+      AUTOMANIP_EXAMPLE_URDF, "anymal_c/urdf/anymal.urdf");
+  if (request.robot_description.empty()) {
+    std::cerr << "[legged_robot] Failed to load URDF for /robot_description "
+                 "(compile-time was '"
+              << AUTOMANIP_EXAMPLE_URDF
+              << "'). RobotModel will not show ANYmal meshes.\n";
+  }
   request.max_steps = steps;
   // A Nav Goal is an absolute base xy/yaw. One sample at the current time
   // makes DDP demand the goal immediately and the rollout diverges. Yaw and
@@ -170,7 +226,6 @@ int main(int argc, char** argv) {
   // held, at the speeds in reference.info (0.5 m/s, 0.3 rad/s).
   auto switched = interface.GetSwitchedModelReferenceManagerPtr();
   request.on_gait = [switched](const std::string& name) { switched->SetGait(name); };
-  request.on_terrain = [switched](const std::string& command) { switched->SetTerrainCommand(command); };
   request.command_from_state = true;
   request.on_target = [&](const bolza::examples::PoseStamped& pose,
                           const bolza::vector_t& previous, bolza::scalar_t time) {
@@ -282,10 +337,9 @@ int main(int argc, char** argv) {
                         bolza::examples::JointStateMsg* joints,
                         bolza::examples::PathMsg* path,
                         bolza::examples::TfMsg* tf) {
-    static int terrain_tick = 0;
-    if (terrain_tick++ % 60 == 0) {
-      AppendTerrain(markers, interface.GetSwitchedModelReferenceManagerPtr()->TerrainCopy());
-    }
+    // Clear any previously latched stair / terrain-panel TRIANGLE_LIST markers.
+    *markers->add_markers() = bolza::examples::DeleteMarker("Terrain", 0);
+
     bolza::vector_t state = observation.state;
     const auto base = bolza::centroidal_model::GetBasePose(state, info);
     const auto angles = bolza::centroidal_model::getJointAngles(state, info);
@@ -294,12 +348,18 @@ int main(int argc, char** argv) {
       positions[i] = angles(static_cast<Eigen::Index>(i));
     }
     bolza::examples::FillJoints(joints, joint_names, positions);
+    const bolza::vector_t q =
+        bolza::centroidal_model::getGeneralizedCoordinates(state, info);
+    PublishModelFrames(pinocchio_model, q, tf, "base");
+    // Authoritative torso pose. Pinocchio parks this motion on `root_joint`,
+    // which is not the URDF root RobotModel follows. Quaternion is ZYX, matching
+    // GetBasePose (x, y, z, yaw, pitch, roll). Published last so it owns `base`.
     const Eigen::Quaterniond rotation =
         Eigen::AngleAxisd(base(3), Eigen::Vector3d::UnitZ()) *
         Eigen::AngleAxisd(base(4), Eigen::Vector3d::UnitY()) *
         Eigen::AngleAxisd(base(5), Eigen::Vector3d::UnitX());
     bolza::examples::AddTransform(tf, "map", "base", base(0), base(1), base(2), rotation.w(),
-                                      rotation.x(), rotation.y(), rotation.z());
+                                  rotation.x(), rotation.y(), rotation.z());
 
     const auto& trajectory = policy.stateTrajectory_;
     const std::size_t stride = trajectory.size() > 40 ? trajectory.size() / 40 : 1;
@@ -448,7 +508,7 @@ int main(int argc, char** argv) {
       center /= force_z;
       *markers->add_markers() = bolza::examples::MakeShape(
           "Center of Pressure", 0, Marker::SPHERE, center.x(), center.y(), center.z(), 0.03, 0.03,
-          0.03, kGreen[0], kGreen[1], kGreen[2]);
+          0.03, kYellow[0], kYellow[1], kYellow[2]);
     }
     auto polygon = bolza::examples::MakeShape("Support Polygon", 0, Marker::LINE_LIST, 0.0, 0.0,
                                                   0.0, 0.005, 0.005, 0.005, kBlack[0], kBlack[1],

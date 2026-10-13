@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>autolink</name>
+  <version>0.1.0</version>
+  <description>Autolink middleware: nodes, transport, and components.</description>
+  <maintainer email="quandy2020@126.com">duyongquan</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>autocmake</buildtool_depend>
+  <build_depend>Protobuf</build_depend>
+  <build_depend>Glog</build_depend>
+  <build_depend>Threads</build_depend>
+
+  <export>
+    <build_type>autocmake</build_type>
+  </export>
+</package>

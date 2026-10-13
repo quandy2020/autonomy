@@ -32,6 +32,9 @@ bool drawMeshesOgreOrGl(common::DisplayContext* context,
     std::vector<rendering::OgreColoredMeshInstance> ogre_meshes;
     ogre_meshes.reserve(meshes.size());
     for (const auto& mesh : meshes) {
+      if (mesh.mesh == nullptr) {
+        continue;
+      }
       ogre_meshes.push_back({mesh.mesh, mesh.transform, mesh.color,
                              mesh.wireframe, mesh.pick_handle});
     }
@@ -41,11 +44,14 @@ bool drawMeshesOgreOrGl(common::DisplayContext* context,
   }
 
   for (const auto& instance : meshes) {
+    if (instance.mesh == nullptr) {
+      continue;
+    }
     if (instance.wireframe) {
-      scene.addTriangleMeshWireframe(instance.mesh, instance.transform,
+      scene.addTriangleMeshWireframe(*instance.mesh, instance.transform,
                                      instance.color);
     } else {
-      scene.addTriangleMeshSolid(instance.mesh, instance.transform,
+      scene.addTriangleMeshSolid(*instance.mesh, instance.transform,
                                  instance.color);
     }
   }

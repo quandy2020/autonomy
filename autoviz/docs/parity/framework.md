@@ -7,6 +7,7 @@
 | Display / DisplayGroup | `plugins/displays/` + Group | ✅ |
 | DisplayContext | `common/display_context` | ✅ |
 | FrameManager | `common/frame_manager` | ✅ |
+| TransformationManager / FrameTransformer | `common/transformation/` | ✅ |
 | ViewManager | `common/view_manager` | ✅ |
 | SelectionManager | `common/selection_manager` | ✅ |
 | Property 树 | Display 属性 + Displays 面板 | ✅ |

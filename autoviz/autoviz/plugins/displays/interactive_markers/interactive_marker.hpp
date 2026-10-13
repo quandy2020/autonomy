@@ -106,6 +106,24 @@ class InteractiveMarker : public QObject {
   void setShowAxes(bool show);
   void setShowVisualAids(bool show);
 
+  /**
+   * @brief Clears hover/active highlights on every control.
+   */
+  void clearControlHighlights();
+
+  /**
+   * @brief Sets RViz-style highlight on one control (by name).
+   *
+   * @param control_name Control name key.
+   * @param highlight Intensity enum.
+   * @param kind Translate / rotate visual cue (for draw aids + tint).
+   */
+  void setControlHighlight(
+      const std::string& control_name,
+      InteractiveMarkerControl::ControlHighlight highlight,
+      InteractiveMarkerControl::HighlightKind kind =
+          InteractiveMarkerControl::HighlightKind::kAuto);
+
   bool hasMenu() const { return has_menu_; }
   std::shared_ptr<QMenu> getMenu() const { return menu_; }
 

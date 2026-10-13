@@ -7,11 +7,11 @@
  * @brief Shared render enums and settings used by OpenGL and Ogre backends.
  *
  * Holds the optional built-in reference grid configuration and the point-cloud
- * draw-style enum shared by @ref GridRenderer, @ref OgreGrid, and
+ * draw-style enum shared by @ref GridRenderer, @ref OgreReferenceGrid, and
  * @ref OgrePointCloud / style parsers.
  *
  * @see GridRenderer
- * @see OgreGrid
+ * @see OgreReferenceGrid
  * @see parsePointCloudStyle()
  */
 
@@ -32,7 +32,7 @@ namespace rendering {
  *       enable a separate Grid Display instead of this built-in overlay.
  *
  * @see GridRenderer::setReferenceGridSettings()
- * @see OgreGrid::setSettings()
+ * @see OgreReferenceGrid::setSettings()
  */
 struct ReferenceGridSettings {
   /**

@@ -11,7 +11,7 @@
 #include <QStandardPaths>
 #include <QUrl>
 
-#include "autoviz/integration/playback_controller.hpp"
+#include "autoviz/common/interaction/playback_controller.hpp"
 
 namespace autoviz {
 namespace {

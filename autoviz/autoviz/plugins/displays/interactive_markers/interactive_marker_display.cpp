@@ -255,6 +255,43 @@ void InteractiveMarkerDisplay::clearReceivedData() {
 
 void InteractiveMarkerDisplay::onDraw(rendering::SceneOverlay& scene) {
   pullPosesFromRegistry();
+  // Apply Interact-tool hover/active highlight (translate=cyan, rotate=amber).
+  for (const auto& [name, marker] : interactive_markers_map_) {
+    (void)name;
+    marker->clearControlHighlights();
+  }
+  if (registry_ != nullptr) {
+    const auto& hl = registry_->highlight();
+    if (hl.level != InteractiveMarkerHighlight::Level::kNone &&
+        !hl.marker_name.empty()) {
+      auto it = interactive_markers_map_.find(hl.marker_name);
+      if (it != interactive_markers_map_.end()) {
+        InteractiveMarkerControl::ControlHighlight level =
+            InteractiveMarkerControl::kNoHighlight;
+        if (hl.level == InteractiveMarkerHighlight::Level::kHover) {
+          level = InteractiveMarkerControl::kHoverHighlight;
+        } else if (hl.level == InteractiveMarkerHighlight::Level::kActive) {
+          level = InteractiveMarkerControl::kActiveHighlight;
+        }
+        InteractiveMarkerControl::HighlightKind kind =
+            InteractiveMarkerControl::HighlightKind::kAuto;
+        switch (hl.kind) {
+          case InteractiveMarkerHighlight::Kind::kTranslate:
+            kind = InteractiveMarkerControl::HighlightKind::kTranslate;
+            break;
+          case InteractiveMarkerHighlight::Kind::kRotate:
+            kind = InteractiveMarkerControl::HighlightKind::kRotate;
+            break;
+          case InteractiveMarkerHighlight::Kind::kBoth:
+            kind = InteractiveMarkerControl::HighlightKind::kBoth;
+            break;
+          default:
+            break;
+        }
+        it->second->setControlHighlight(hl.control_name, level, kind);
+      }
+    }
+  }
   for (const auto& [name, marker] : interactive_markers_map_) {
     (void)name;
     applyShowFlags(marker.get());

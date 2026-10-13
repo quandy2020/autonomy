@@ -34,6 +34,8 @@
 #include "autolink/transport/qos/qos_profile_conf.hpp"
 
 #include <automsgs/msgs/std_msgs/string.pb.h>
+#include <automsgs/msgs/visualization_msgs/interactive_marker_feedback.pb.h>
+#include <automsgs/msgs/visualization_msgs/interactive_marker_update.pb.h>
 #include "bolza/core/reference/target_trajectories.hpp"
 #include "bolza/core/thread_support/execute_and_sleep.hpp"
 #include "bolza/core/thread_support/set_thread_priority.hpp"
@@ -158,10 +160,20 @@ int RunDemo(const DemoRequest& request) {
   auto path_writer = node->CreateWriter<PathMsg>(prefix + "/path");
   auto tf_writer = node->CreateWriter<TfMsg>("/tf");
   using DescriptionMsg = automsgs::msgs::std_msgs::String;
+  if (request.robot_description.empty() ||
+      request.robot_description.find("<robot") == std::string::npos) {
+    AERROR << request.name
+           << ": robot_description is empty or not URDF XML; "
+              "/robot_description will not be published (RobotModel shows "
+              "nothing or only cached geometry). Check AUTOMANIP_EXAMPLE_URDF "
+              "/ BOLZA_ROBOTIC_ASSETS.";
+  }
   const std::string description_payload =
       PublishableDescription(request.name, request.robot_description);
   std::shared_ptr<autolink::Writer<DescriptionMsg>> robot_description_writer;
-  if (!request.robot_description.empty()) {
+  if (!request.robot_description.empty() &&
+      (request.robot_description.find("<robot") != std::string::npos ||
+       std::filesystem::exists(description_payload))) {
     // Latched, like a transient-local /robot_description: a display that
     // subscribes after the first publish still receives the last URDF.
     autolink::proto::RoleAttributes description_attr;
@@ -170,6 +182,12 @@ int RunDemo(const DemoRequest& request) {
         autolink::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
     robot_description_writer =
         node->CreateWriter<DescriptionMsg>(description_attr);
+    AINFO << request.name << ": publishing /robot_description ("
+          << description_payload.size() << " bytes"
+          << (description_payload.find("<robot") == std::string::npos
+                  ? ", file path"
+                  : ", inline XML")
+          << ")";
   }
   auto publish_description = [&]() {
     if (!robot_description_writer || description_payload.empty()) {
@@ -201,6 +219,9 @@ int RunDemo(const DemoRequest& request) {
     target_state = target.stateTrajectory.back();
   }
   std::mutex target_mu;
+  // With a goal marker, stay at the initial state until "Send target pose".
+  std::atomic<int> target_generation{0};
+  std::atomic<bool> execution_enabled{request.goal_interactive_marker == nullptr};
 
   auto apply_pose = [&](const std::shared_ptr<PoseStamped>& pose) {
     if (!pose) {
@@ -219,6 +240,11 @@ int RunDemo(const DemoRequest& request) {
       target_state = target.stateTrajectory.back();
     }
     mrt.GetReferenceManager().SetTargetTrajectories(target);
+    if (request.goal_interactive_marker) {
+      // A solve already running still has the previous target. Rollout waits
+      // until a solve that started after this increment finishes.
+      target_generation.fetch_add(1);
+    }
     AINFO << request.name << " target updated";
   };
   std::shared_ptr<autolink::Writer<TwistStampedMsg>> twist_writer;
@@ -228,6 +254,88 @@ int RunDemo(const DemoRequest& request) {
   auto target_reader = node->CreateReader<PoseStamped>(prefix + "/target_pose", apply_pose);
   // autoviz Nav Goal publishes geometry_msgs/PoseStamped on /goal_pose.
   auto goal_reader = node->CreateReader<PoseStamped>("/goal_pose", apply_pose);
+
+  using InteractiveMarkerUpdate =
+      automsgs::msgs::visualization_msgs::InteractiveMarkerUpdate;
+  using InteractiveMarkerFeedback =
+      automsgs::msgs::visualization_msgs::InteractiveMarkerFeedback;
+  std::shared_ptr<autolink::Writer<InteractiveMarkerUpdate>> goal_marker_writer;
+  std::shared_ptr<autolink::Reader<InteractiveMarkerFeedback>> goal_marker_reader;
+  // The update channel is latched. Republishing the startup pose, or leaving
+  // that sample latched, pulls a drag back to the initial marker pose.
+  std::mutex marker_mu;
+  std::atomic<bool> goal_marker_touched{false};
+  uint64_t goal_marker_seq = 0;
+  auto write_goal_marker = [&]() {
+    if (!goal_marker_writer || !request.goal_interactive_marker) {
+      return;
+    }
+    auto update = std::make_shared<InteractiveMarkerUpdate>();
+    update->set_server_id("simple_marker");
+    update->set_seq_num(++goal_marker_seq);
+    update->set_type(InteractiveMarkerUpdate::UPDATE);
+    *update->add_markers() = *request.goal_interactive_marker;
+    goal_marker_writer->Write(update);
+  };
+  auto publish_goal_marker = [&]() {
+    std::lock_guard<std::mutex> lock(marker_mu);
+    if (goal_marker_touched.load()) {
+      return;
+    }
+    write_goal_marker();
+  };
+  if (request.goal_interactive_marker) {
+    autolink::proto::RoleAttributes marker_attr;
+    marker_attr.set_channel_name("/simple_marker/update");
+    marker_attr.mutable_qos_profile()->CopyFrom(
+        autolink::transport::QosProfileConf::QOS_PROFILE_TF_STATIC);
+    goal_marker_writer =
+        node->CreateWriter<InteractiveMarkerUpdate>(marker_attr);
+    goal_marker_reader = node->CreateReader<InteractiveMarkerFeedback>(
+        "/simple_marker/feedback",
+        [&](const std::shared_ptr<InteractiveMarkerFeedback>& feedback) {
+          if (!feedback || feedback->marker_name() != "Goal") {
+            return;
+          }
+          const auto event = feedback->event_type();
+          const bool has_pose =
+              event == InteractiveMarkerFeedback::MOUSE_DOWN ||
+              event == InteractiveMarkerFeedback::POSE_UPDATE ||
+              event == InteractiveMarkerFeedback::MOUSE_UP ||
+              event == InteractiveMarkerFeedback::MENU_SELECT;
+          if (!has_pose) {
+            return;
+          }
+          {
+            std::lock_guard<std::mutex> lock(marker_mu);
+            goal_marker_touched.store(true);
+            // Mouse-down still carries the pose from before the drag. Writing
+            // it back would latch that pose and pull the marker home.
+            if (event != InteractiveMarkerFeedback::MOUSE_DOWN &&
+                request.goal_interactive_marker) {
+              *request.goal_interactive_marker->mutable_pose() = feedback->pose();
+              write_goal_marker();
+            }
+          }
+          // OCS2 binds the command to the menu only. The marker insert
+          // callback is left unset, so a drag never starts the motion.
+          if (event != InteractiveMarkerFeedback::MENU_SELECT ||
+              feedback->menu_entry_id() != 1) {
+            return;
+          }
+          PoseStamped stamped;
+          *stamped.mutable_header() = feedback->header();
+          if (stamped.header().frame_id().empty()) {
+            stamped.mutable_header()->set_frame_id("map");
+          }
+          *stamped.mutable_pose() = feedback->pose();
+          apply_pose(std::make_shared<PoseStamped>(std::move(stamped)));
+        });
+    publish_goal_marker();
+    AINFO << request.name
+          << " interactive marker on /simple_marker/update "
+             "(Send target pose starts the motion)";
+  }
   std::shared_ptr<autolink::Reader<DescriptionMsg>> gait_reader;
   std::shared_ptr<autolink::Reader<DescriptionMsg>> terrain_reader;
   if (request.on_gait) {
@@ -247,6 +355,7 @@ int RunDemo(const DemoRequest& request) {
   }
   (void)target_reader;
   (void)goal_reader;
+  (void)goal_marker_reader;
   (void)gait_reader;
   (void)terrain_reader;
 
@@ -379,7 +488,16 @@ int RunDemo(const DemoRequest& request) {
         continue;
       }
       try {
-        ExecuteAndSleep([&]() { mrt.AdvanceMpc(); }, mpc_hz);
+        ExecuteAndSleep(
+            [&]() {
+              const int generation = target_generation.load();
+              mrt.AdvanceMpc();
+              if (request.goal_interactive_marker && generation > 0 &&
+                  target_generation.load() == generation) {
+                execution_enabled.store(true);
+              }
+            },
+            mpc_hz);
       } catch (const std::exception& ex) {
         AERROR << request.name << " mpc thread: " << ex.what();
         hold_rollout.store(true);
@@ -411,14 +529,15 @@ int RunDemo(const DemoRequest& request) {
               reset_requested.store(true);
             }
             const bool holding = hold_rollout.load();
-            if (!holding) {
+            const bool execute = execution_enabled.load();
+            if (!holding && execute) {
               mrt.SetCurrentObservation(current);
               mrt.UpdatePolicy();
             }
             SystemObservation next = current;
             const auto& policy = mrt.GetPolicy();
             const bool plan_covers =
-                !holding && !policy.timeTrajectory_.empty() &&
+                execute && !holding && !policy.timeTrajectory_.empty() &&
                 current.time + dt <= policy.timeTrajectory_.back() + 1e-8;
             // The received plan is only the solution window (0.2 s). Integrating
             // the feedforward past that end prints a warning every MRT step and
@@ -435,7 +554,7 @@ int RunDemo(const DemoRequest& request) {
                 hold_rollout.store(true);
                 reset_requested.store(true);
               }
-            } else if (!logged_plan_hold && !holding) {
+            } else if (execute && !logged_plan_hold && !holding) {
               AINFO << request.name << " waiting for the next policy";
               logged_plan_hold = true;
             }
@@ -474,6 +593,13 @@ int RunDemo(const DemoRequest& request) {
             }
             if (steps % 100 == 0) {
               publish_description();
+            }
+            // Repeat the definition until the first grab. After that the
+            // feedback callback owns the latched pose.
+            if (request.goal_interactive_marker &&
+                !goal_marker_touched.load() &&
+                steps % static_cast<int>(mrt_hz) == 0) {
+              publish_goal_marker();
             }
             ++steps;
           },

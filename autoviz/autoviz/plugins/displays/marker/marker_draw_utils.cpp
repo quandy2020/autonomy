@@ -185,7 +185,7 @@ common::PickHandle registerMarkerPick(
 
 }  // namespace
 
-QMatrix4x4 markerTransformInFixedFrame(
+QMatrix4x4 markerPoseTransformInFixedFrame(
     const automsgs::msgs::visualization_msgs::Marker& marker,
     common::DisplayContext* context) {
   QMatrix4x4 local;
@@ -199,9 +199,6 @@ QMatrix4x4 markerTransformInFixedFrame(
       static_cast<float>(pose.orientation().x()),
       static_cast<float>(pose.orientation().y()),
       static_cast<float>(pose.orientation().z())));
-  local.scale(std::max(0.01f, static_cast<float>(marker.scale().x())),
-              std::max(0.01f, static_cast<float>(marker.scale().y())),
-              std::max(0.01f, static_cast<float>(marker.scale().z())));
 
   if (context == nullptr || marker.header().frame_id().empty()) {
     return local;
@@ -214,6 +211,18 @@ QMatrix4x4 markerTransformInFixedFrame(
   } catch (...) {
     return local;
   }
+}
+
+QMatrix4x4 markerTransformInFixedFrame(
+    const automsgs::msgs::visualization_msgs::Marker& marker,
+    common::DisplayContext* context) {
+  // tf * pose * scale (scale in marker local frame).
+  QMatrix4x4 scale_m;
+  scale_m.setToIdentity();
+  scale_m.scale(std::max(0.01f, static_cast<float>(marker.scale().x())),
+                std::max(0.01f, static_cast<float>(marker.scale().y())),
+                std::max(0.01f, static_cast<float>(marker.scale().z())));
+  return markerPoseTransformInFixedFrame(marker, context) * scale_m;
 }
 
 void upsertMarker(
@@ -270,7 +279,11 @@ void drawStoredMarkers(
 
   std::vector<LineSegment3D> ogre_lines;
   std::vector<ColoredPoint3D> ogre_points;
-  std::vector<ColoredMeshInstance> ogre_meshes;
+  // Entity path: opaque MESH_RESOURCE (lit, culled). ManualObject path:
+  // TRIANGLE_LIST / vertex-colored / translucent (IM discs need CULL_NONE +
+  // FlatNoLightingAlpha; Entity CULL_CLOCKWISE hides rings after rotation).
+  std::vector<ColoredMeshInstance> ogre_entity_meshes;
+  std::vector<ColoredMeshInstance> ogre_manual_meshes;
   std::vector<TextLabelInstance> ogre_labels;
   const bool use_ogre = context != nullptr && context->ogre_scene_host != nullptr;
 
@@ -306,27 +319,52 @@ void drawStoredMarkers(
         marker.type() == kCylinder) {
       DrawScaledPrimitive(scene, marker.type(), transform, color, solid);
     } else if (marker.type() == kArrow) {
-      const QVector3D start = transform.map(QVector3D(0.f, 0.f, 0.f));
-      const QVector3D end = transform.map(QVector3D(1.f, 0.f, 0.f));
-      const float shaft_d =
-          std::max(0.01f, static_cast<float>(marker.scale().y()));
-      const float head_d =
-          std::max(0.01f, static_cast<float>(marker.scale().z()));
+      // RViz ArrowMarker: 2 points → shaft/head diameters from scale.x/y;
+      // otherwise pose+scale maps unit +X (length = scale.x).
+      QVector3D start;
+      QVector3D end;
+      float shaft_d = 0.f;
+      float head_d = 0.f;
+      float head_fraction = 0.23f;
+      if (marker.points_size() >= 2) {
+        const QMatrix4x4 pose_tf =
+            markerPoseTransformInFixedFrame(marker, context);
+        start = pose_tf.map(QVector3D(
+            static_cast<float>(marker.points(0).x()),
+            static_cast<float>(marker.points(0).y()),
+            static_cast<float>(marker.points(0).z())));
+        end = pose_tf.map(QVector3D(
+            static_cast<float>(marker.points(1).x()),
+            static_cast<float>(marker.points(1).y()),
+            static_cast<float>(marker.points(1).z())));
+        shaft_d = std::max(0.01f, static_cast<float>(marker.scale().x()));
+        head_d = std::max(0.01f, static_cast<float>(marker.scale().y()));
+        const float distance = (end - start).length();
+        if (marker.scale().z() > 0.0 && distance > 1e-6f) {
+          head_fraction = std::clamp(
+              static_cast<float>(marker.scale().z()) / distance, 0.f, 1.f);
+        }
+      } else {
+        start = transform.map(QVector3D(0.f, 0.f, 0.f));
+        end = transform.map(QVector3D(1.f, 0.f, 0.f));
+        shaft_d = std::max(0.01f, static_cast<float>(marker.scale().y()));
+        head_d = std::max(0.01f, static_cast<float>(marker.scale().z()));
+        head_fraction = 0.2f;
+      }
       if (use_ogre && solid) {
-        const std::size_t mesh_start = ogre_meshes.size();
-        appendSolidArrowMeshes(&ogre_meshes, start, end, color, 0.2f, shaft_d,
-                               head_d);
+        // Prefer ManualObject so translucent IM arrows keep FlatNoLightingAlpha.
+        const std::size_t mesh_start = ogre_manual_meshes.size();
+        appendSolidArrowMeshes(&ogre_manual_meshes, start, end, color,
+                               head_fraction, shaft_d, head_d);
         const common::PickHandle pick =
             registerMarkerPick(scene, display_prefix, marker, start);
-        for (std::size_t i = mesh_start; i < ogre_meshes.size(); ++i) {
-          ogre_meshes[i].pick_handle = pick;
+        for (std::size_t i = mesh_start; i < ogre_manual_meshes.size(); ++i) {
+          ogre_manual_meshes[i].pick_handle = pick;
         }
       } else if (use_ogre) {
         appendArrowLines(start, end, color);
       } else {
         scene.addLine(start, end, color);
-        scene.addLine(end, transform.map(QVector3D(0.8f, 0.1f, 0.f)), color);
-        scene.addLine(end, transform.map(QVector3D(0.8f, -0.1f, 0.f)), color);
       }
     } else if (marker.type() == kLineStrip && marker.points_size() >= 2) {
       std::vector<QVector3D> points;
@@ -407,10 +445,20 @@ void drawStoredMarkers(
                stored.has_mesh) {
       const bool wireframe = mesh_style == "wireframe";
       if (use_ogre) {
-        ogre_meshes.push_back(
-            {stored.mesh, transform, color, wireframe,
-             registerMarkerPick(scene, display_prefix, marker,
-                                transform.map(QVector3D(0.f, 0.f, 0.f)))});
+        const ColoredMeshInstance instance = {
+            &stored.mesh, transform, color, wireframe,
+            registerMarkerPick(scene, display_prefix, marker,
+                               transform.map(QVector3D(0.f, 0.f, 0.f)))};
+        const bool use_manual =
+            wireframe || marker.type() == kTriangleList ||
+            (!stored.mesh.colors.empty() &&
+             stored.mesh.colors.size() == stored.mesh.vertices.size()) ||
+            color.alphaF() < 0.999f;
+        if (use_manual) {
+          ogre_manual_meshes.push_back(instance);
+        } else {
+          ogre_entity_meshes.push_back(instance);
+        }
       } else if (wireframe) {
         scene.addTriangleMeshWireframe(stored.mesh, transform, color);
       } else {
@@ -421,7 +469,10 @@ void drawStoredMarkers(
 
   if (use_ogre) {
     drawLineSegmentsOgreOrGl(context, scene, display_prefix + "/lines", ogre_lines);
-    drawEntityMeshesOgreOrGl(context, scene, display_prefix + "/meshes", ogre_meshes);
+    drawEntityMeshesOgreOrGl(context, scene, display_prefix + "/meshes",
+                             ogre_entity_meshes);
+    drawMeshesOgreOrGl(context, scene, display_prefix + "/tri_meshes",
+                       ogre_manual_meshes);
     if (!ogre_points.empty()) {
       drawColoredPointsOgreOrGl(context, scene, display_prefix + "/points",
                                 "MarkerPoints", point_size,

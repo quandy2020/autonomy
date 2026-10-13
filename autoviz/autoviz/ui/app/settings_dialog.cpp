@@ -23,7 +23,7 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/display_property.hpp"
-#include "autoviz/common/transformation_manager.hpp"
+#include "autoviz/common/transformation/transformation_manager.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/transform/buffer.hpp"
 #include "autoviz/ui/app/preferences.hpp"

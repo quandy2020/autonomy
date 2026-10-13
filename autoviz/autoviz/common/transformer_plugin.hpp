@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "autoviz/common/transformation_manager.hpp"
+#include "autoviz/common/transformation/transformation_manager.hpp"
 
 /**
  * @brief Declares the C export for transformer plugins.
@@ -33,8 +33,8 @@ namespace common {
  * @param creator Factory producing a @ref FrameTransformer.
  */
 inline void RegisterTransformerPlugin(
-    TransformationManager* manager, const char* class_id,
-    FrameTransformerCreator creator) {
+    transformation::TransformationManager* manager, const char* class_id,
+    transformation::FrameTransformerCreator creator) {
   if (manager != nullptr) {
     manager->registerTransformer(class_id, std::move(creator));
   }

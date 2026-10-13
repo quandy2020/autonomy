@@ -207,6 +207,14 @@ class FrameViewport {
                                   bool synchronous = false);
 
   /**
+   * @brief Clears viewport dock registry after GLX teardown on quit.
+   *
+   * Must run while @c FrameViewport still exists; dock @c destroyed handlers
+   * capture @c this and must not run after member destruction.
+   */
+  void clearForQuit();
+
+  /**
    * @brief Detaches the native Ogre widget from its dock for mosaic reparent.
    *
    * Keeps the same GL context/scene alive (no destroy/recreate). Call

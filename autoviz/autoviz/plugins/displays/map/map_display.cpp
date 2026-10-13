@@ -15,7 +15,7 @@
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/common/transform_utils.hpp"
-#include "autoviz/integration/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 
 namespace autoviz {
 namespace display {

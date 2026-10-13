@@ -1,0 +1,12 @@
+<!--
+  Kinova Jaco2, 6-DoF arm (j2n6s300). Fixed frame: map.
+-->
+<autolink>
+    <module>
+        <name>mobile_manipulator</name>
+        <type>binary</type>
+        <process_name>mobile_manipulator_demo kinova</process_name>
+        <exception_handler>respawn</exception_handler>
+        <respawn_limit>3</respawn_limit>
+    </module>
+</autolink>

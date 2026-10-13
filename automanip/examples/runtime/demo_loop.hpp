@@ -23,6 +23,7 @@
 #define AUTOMANIP_EXAMPLES_RUNTIME_DEMO_LOOP_HPP_
 
 #include <cstddef>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <functional>
@@ -31,6 +32,7 @@
 #include <string>
 
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/visualization_msgs/interactive_marker.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/sensor_msgs/joint_state.pb.h>
@@ -66,6 +68,47 @@ inline std::string ReadTextFile(const std::string& path) {
                      std::istreambuf_iterator<char>());
 }
 
+/**
+ * Resolves a robot URDF path for demos. Prefers @p compile_time_urdf when the
+ * file exists; otherwise tries compile-time @c AUTOMANIP_ROBOTIC_ASSETS and the
+ * env vars @c BOLZA_ROBOTIC_ASSETS / @c AUTOMANIP_ROBOTIC_ASSETS /
+ * @c OCS2_ROBOTIC_ASSETS plus @p robot_relative
+ * (e.g. @c "ballbot/urdf/ballbot.urdf").
+ */
+inline std::string ResolveExampleUrdf(const std::string& compile_time_urdf,
+                                      const std::string& robot_relative) {
+  namespace fs = std::filesystem;
+  if (!compile_time_urdf.empty() && fs::exists(compile_time_urdf)) {
+    return fs::weakly_canonical(compile_time_urdf).string();
+  }
+  auto try_root = [&](const fs::path& root) -> std::string {
+    if (root.empty()) {
+      return {};
+    }
+    const fs::path candidate = root / robot_relative;
+    if (fs::exists(candidate)) {
+      return fs::weakly_canonical(candidate).string();
+    }
+    return {};
+  };
+#ifdef AUTOMANIP_ROBOTIC_ASSETS
+  if (const std::string found = try_root(AUTOMANIP_ROBOTIC_ASSETS); !found.empty()) {
+    return found;
+  }
+#endif
+  for (const char* key : {"BOLZA_ROBOTIC_ASSETS", "AUTOMANIP_ROBOTIC_ASSETS",
+                          "OCS2_ROBOTIC_ASSETS"}) {
+    if (const char* root = std::getenv(key)) {
+      if (const std::string found = try_root(root); !found.empty()) {
+        return found;
+      }
+    }
+  }
+  // Source-tree fallback next to this header's assets sibling is handled by
+  // callers that know bolza::robotic_assets::GetPath(); keep compile path last.
+  return compile_time_urdf;
+}
+
 inline void ReplaceAll(std::string* text, const std::string& from, const std::string& to) {
   if (text == nullptr || from.empty()) {
     return;
@@ -77,25 +120,81 @@ inline void ReplaceAll(std::string* text, const std::string& from, const std::st
 }
 
 /**
- * Loads a URDF for `/robot_description`, keeping RViz-compatible mesh URIs
- * (`package://ocs2_robotic_assets/resources/…` and `file://$(find …)`).
- * Autoviz resolves those via MeshResourceResolver (same role as ROS
- * resource_retriever). Relative `../meshes/` paths are still rewritten to
- * absolute paths because they are not package URIs.
+ * Loads a URDF for `/robot_description`. Mesh URIs are rewritten to absolute
+ * filesystem paths when the sibling `../meshes/` directory exists, so Autoviz
+ * (and RViz with a file-backed description) can load assets without
+ * `resource_retriever` / ament package discovery.
+ *
+ * Handles both flat robots (@c ballbot/meshes) and nested ones
+ * (@c mobile_manipulator/franka/meshes) by rewriting
+ * @c package://ocs2_robotic_assets/resources/<rel>/meshes/ when an assets root
+ * is known. Remaining package URIs are left for MeshResourceResolver.
  */
 inline std::string RobotDescriptionWithAbsoluteMeshes(const std::string& urdf_path) {
+  namespace fs = std::filesystem;
+  if (urdf_path.empty() || !fs::exists(urdf_path)) {
+    return {};
+  }
   std::string xml = ReadTextFile(urdf_path);
+  if (xml.empty() || xml.find("<robot") == std::string::npos) {
+    return {};
+  }
   // Normalize file://$(find pkg)/… → package://pkg/… (RViz / rosrun style).
   ReplaceAll(&xml, "file://$(find ocs2_robotic_assets)/",
              "package://ocs2_robotic_assets/");
-  const std::filesystem::path mesh_dir =
-      std::filesystem::path(urdf_path).parent_path() / ".." / "meshes";
-  if (std::filesystem::exists(mesh_dir)) {
-    const std::string absolute =
-        std::filesystem::weakly_canonical(mesh_dir).string() + "/";
-    ReplaceAll(&xml, "../meshes/", absolute);
+  const fs::path mesh_dir =
+      fs::path(urdf_path).parent_path() / ".." / "meshes";
+  if (!fs::exists(mesh_dir)) {
+    return xml;
+  }
+  const std::string absolute = fs::weakly_canonical(mesh_dir).string() + "/";
+  ReplaceAll(&xml, "../meshes/", absolute);
+  // package://ocs2_robotic_assets/resources/<rel>/meshes/<file>
+  // → absolute sibling meshes/ (source-tree / bolza assets layout).
+  const fs::path robot_dir = fs::path(urdf_path).parent_path().parent_path();
+  auto rewrite_package = [&](const fs::path& assets_root) {
+    if (assets_root.empty()) {
+      return false;
+    }
+    std::error_code ec;
+    const fs::path rel = fs::relative(robot_dir, assets_root, ec);
+    if (ec || rel.empty() || *rel.begin() == "..") {
+      return false;
+    }
+    ReplaceAll(&xml,
+               "package://ocs2_robotic_assets/resources/" + rel.generic_string() +
+                   "/meshes/",
+               absolute);
+    return true;
+  };
+#ifdef AUTOMANIP_ROBOTIC_ASSETS
+  rewrite_package(AUTOMANIP_ROBOTIC_ASSETS);
+#endif
+  for (const char* key : {"BOLZA_ROBOTIC_ASSETS", "AUTOMANIP_ROBOTIC_ASSETS",
+                          "OCS2_ROBOTIC_ASSETS"}) {
+    if (const char* root = std::getenv(key)) {
+      rewrite_package(root);
+    }
+  }
+  // Flat layout fallback: resources/<robot_leaf>/meshes/
+  const std::string robot_name = robot_dir.filename().string();
+  if (!robot_name.empty()) {
+    ReplaceAll(&xml,
+               "package://ocs2_robotic_assets/resources/" + robot_name +
+                   "/meshes/",
+               absolute);
   }
   return xml;
+}
+
+/**
+ * Resolve @p robot_relative under assets roots, then load URDF with absolute
+ * mesh paths for `/robot_description`.
+ */
+inline std::string LoadExampleRobotDescription(
+    const std::string& compile_time_urdf, const std::string& robot_relative) {
+  return RobotDescriptionWithAbsoluteMeshes(
+      ResolveExampleUrdf(compile_time_urdf, robot_relative));
 }
 
 /** Fills markers, joints, the predicted path, and the TF tree. */
@@ -152,6 +251,14 @@ struct DemoRequest {
   std::function<void(const std::string&)> on_gait;
   /** String on `/<name>/terrain`: `flat`, `stairs`, or a height-file path. */
   std::function<void(const std::string&)> on_terrain;
+  /**
+   * Goal marker published on `/simple_marker/update`.
+   * Dragging updates the latched pose only. Menu entry "Send target pose"
+   * (id 1) applies `on_target` and then the rollout starts, matching
+   * OCS2 `TargetTrajectoriesInteractiveMarker`.
+   */
+  std::shared_ptr<automsgs::msgs::visualization_msgs::InteractiveMarker>
+      goal_interactive_marker;
   /** 0 runs until Ctrl+C. */
   int max_steps = 0;
 };
@@ -161,7 +268,8 @@ struct DemoRequest {
  * `/joint_states`, `/tf`, `/robot_description`, plus the same streams
  * under `/<name>/`. When `velocity` is set, also publishes `/cmd_vel`.
  * Subscribes to `/<name>/target_pose` and `/goal_pose`
- * (autoviz Nav Goal).
+ * (autoviz Nav Goal). When `goal_interactive_marker` is set, also publishes
+ * `/simple_marker/update` and subscribes to `/simple_marker/feedback`.
  */
 int RunDemo(const DemoRequest& request);
 

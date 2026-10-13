@@ -34,7 +34,7 @@
 #include <QTimer>
 #include <QWheelEvent>
 
-#include "autoviz/integration/channel_stats_registry.hpp"
+#include "autoviz/common/interaction/channel_stats_registry.hpp"
 
 namespace autoviz {
 namespace channel_graph {

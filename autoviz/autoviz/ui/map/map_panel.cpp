@@ -24,7 +24,7 @@
 #include <chrono>
 
 #include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/integration/channel_reader_registry.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
 #include "autoviz/ui/map/map_settings_widget.hpp"

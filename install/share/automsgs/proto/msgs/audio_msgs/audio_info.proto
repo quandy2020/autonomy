@@ -1,0 +1,32 @@
+// Copyright 2026 The Openbot Authors （duyongquan）
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.audio_msgs;
+
+// Generic audio stream metadata (ROS audio_common_msgs / Foxglove RawAudio style).
+// Domain-specific mic-array / siren types live under autonomy/audio/proto.
+message AudioInfo {
+  // Number of interleaved channels in the accompanying PCM buffer.
+  uint32 channels = 1;
+  // Sampling rate [Hz].
+  uint32 sample_rate = 2;
+  // Sample format string (e.g. "S16LE", "F32LE").
+  string sample_format = 3;
+  // Nominal bitrate [bits/s]; 0 if unknown / uncompressed PCM.
+  uint32 bitrate = 4;
+  // Coding / container format (e.g. "PCM", "WAVE", "MP3").
+  string coding_format = 5;
+}

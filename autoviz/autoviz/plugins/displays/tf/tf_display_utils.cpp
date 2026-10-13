@@ -27,6 +27,17 @@ bool TryCompile(const std::string& pattern, std::regex* out,
   }
 }
 
+// RViz FrameInfo::lerpColor(start, end, t) = start * t + end * (1 - t).
+QColor LerpColor(const QColor& start, const QColor& end, double t) {
+  const double u = std::clamp(t, 0.0, 1.0);
+  const double v = 1.0 - u;
+  return QColor::fromRgbF(
+      static_cast<float>(start.redF() * u + end.redF() * v),
+      static_cast<float>(start.greenF() * u + end.greenF() * v),
+      static_cast<float>(start.blueF() * u + end.blueF() * v),
+      static_cast<float>(start.alphaF() * u + end.alphaF() * v));
+}
+
 }  // namespace
 
 std::vector<std::string> FilterTfFrameNames(
@@ -81,21 +92,25 @@ TfAgeVisual TfAgeVisualForTimeout(double age_sec, double timeout_sec,
     return visual;
   }
 
-  const double one_third = timeout_sec / 3.0;
-  const double two_thirds = 2.0 * one_third;
+  // Match rviz_default_plugins::FrameInfo::updateColorForAge.
+  const double one_third = timeout_sec * (1.0 / 3.0);
   if (age_sec <= one_third) {
     return visual;
   }
 
-  // Grey out after first third.
-  visual.color = QColor(160, 160, 160);
-  if (age_sec <= two_thirds) {
+  const QColor grey = QColor::fromRgbF(0.7f, 0.7f, 0.7f, 1.f);
+  if (age_sec <= one_third * 2.0) {
+    const double t =
+        std::max(0.0, (one_third * 2.0 - age_sec) / std::max(1e-9, one_third));
+    visual.color = LerpColor(base_rgb, grey, t);
+    visual.alpha = static_cast<float>(visual.color.alphaF());
     return visual;
   }
 
-  // Fade alpha to 0 over the last third.
-  const double t = (age_sec - two_thirds) / std::max(1e-9, one_third);
-  visual.alpha = static_cast<float>(std::clamp(1.0 - t, 0.0, 1.0));
+  const double a =
+      std::max(0.0, (timeout_sec - age_sec) / std::max(1e-9, one_third));
+  visual.color = grey;
+  visual.alpha = static_cast<float>(std::clamp(a, 0.0, 1.0));
   visual.color.setAlphaF(visual.alpha);
   return visual;
 }

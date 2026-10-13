@@ -359,25 +359,29 @@ void OgreSceneHost::uploadMeshes(
   object->clear();
 
   for (const OgreColoredMeshInstance& instance : meshes) {
+    if (instance.mesh == nullptr) {
+      continue;
+    }
+    const display::ObjMesh& mesh = *instance.mesh;
     if (instance.wireframe) {
       object->begin("Autoviz/LineNoLighting", Ogre::RenderOperation::OT_LINE_LIST,
                 OgreMaterialManager::resourceGroup());
       const Ogre::ColourValue color = ToOgreColor(instance.color);
-      for (const auto& triangle : instance.mesh.triangles) {
+      for (const auto& triangle : mesh.triangles) {
         if (triangle[0] < 0 ||
-            triangle[0] >= static_cast<int>(instance.mesh.vertices.size()) ||
+            triangle[0] >= static_cast<int>(mesh.vertices.size()) ||
             triangle[1] < 0 ||
-            triangle[1] >= static_cast<int>(instance.mesh.vertices.size()) ||
+            triangle[1] >= static_cast<int>(mesh.vertices.size()) ||
             triangle[2] < 0 ||
-            triangle[2] >= static_cast<int>(instance.mesh.vertices.size())) {
+            triangle[2] >= static_cast<int>(mesh.vertices.size())) {
           continue;
         }
         const QVector3D a = instance.transform.map(
-            instance.mesh.vertices[static_cast<std::size_t>(triangle[0])]);
+            mesh.vertices[static_cast<std::size_t>(triangle[0])]);
         const QVector3D b = instance.transform.map(
-            instance.mesh.vertices[static_cast<std::size_t>(triangle[1])]);
+            mesh.vertices[static_cast<std::size_t>(triangle[1])]);
         const QVector3D c = instance.transform.map(
-            instance.mesh.vertices[static_cast<std::size_t>(triangle[2])]);
+            mesh.vertices[static_cast<std::size_t>(triangle[2])]);
         const auto add_edge = [&](const QVector3D& p1, const QVector3D& p2) {
           object->position(p1.x(), p1.y(), p1.z());
           object->colour(color.r, color.g, color.b, color.a);
@@ -393,28 +397,55 @@ void OgreSceneHost::uploadMeshes(
       continue;
     }
 
-    object->begin("Autoviz/FlatNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
     const Ogre::ColourValue color = ToOgreColor(instance.color);
-    for (const auto& triangle : instance.mesh.triangles) {
+    const bool use_vertex_colors =
+        mesh.colors.size() == mesh.vertices.size() && !mesh.colors.empty();
+    // RViz InteractiveMarker handles / Marker ARROW use alpha < 1. Shared
+    // FlatNoLighting is opaque (SBT_REPLACE); route translucent draws through
+    // FlatNoLightingAlpha. Vertex-colored discs stay flat (no LitShade) so
+    // RGB stripes match RViz.
+    bool needs_alpha = color.a < OgreMaterialManager::kUnitAlphaThreshold;
+    if (!needs_alpha && use_vertex_colors) {
+      for (const QColor& vc : mesh.colors) {
+        if (vc.alphaF() < OgreMaterialManager::kUnitAlphaThreshold) {
+          needs_alpha = true;
+          break;
+        }
+      }
+    }
+    const char* material_name =
+        needs_alpha ? "Autoviz/FlatNoLightingAlpha" : "Autoviz/FlatNoLighting";
+    object->begin(material_name, Ogre::RenderOperation::OT_TRIANGLE_LIST,
+                  OgreMaterialManager::resourceGroup());
+    for (const auto& triangle : mesh.triangles) {
       if (triangle[0] < 0 ||
-          triangle[0] >= static_cast<int>(instance.mesh.vertices.size()) ||
+          triangle[0] >= static_cast<int>(mesh.vertices.size()) ||
           triangle[1] < 0 ||
-          triangle[1] >= static_cast<int>(instance.mesh.vertices.size()) ||
+          triangle[1] >= static_cast<int>(mesh.vertices.size()) ||
           triangle[2] < 0 ||
-          triangle[2] >= static_cast<int>(instance.mesh.vertices.size())) {
+          triangle[2] >= static_cast<int>(mesh.vertices.size())) {
         continue;
       }
+      const int idx[3] = {triangle[0], triangle[1], triangle[2]};
       const QVector3D corners[3] = {
           instance.transform.map(
-              instance.mesh.vertices[static_cast<std::size_t>(triangle[0])]),
+              mesh.vertices[static_cast<std::size_t>(idx[0])]),
           instance.transform.map(
-              instance.mesh.vertices[static_cast<std::size_t>(triangle[1])]),
+              mesh.vertices[static_cast<std::size_t>(idx[1])]),
           instance.transform.map(
-              instance.mesh.vertices[static_cast<std::size_t>(triangle[2])])};
-      const float shade = LitShade(corners[0], corners[1], corners[2]);
-      for (const QVector3D& vertex : corners) {
-        object->position(vertex.x(), vertex.y(), vertex.z());
-        object->colour(color.r * shade, color.g * shade, color.b * shade, color.a);
+              mesh.vertices[static_cast<std::size_t>(idx[2])])};
+      // IM discs (vertex colors) and translucent Marker ARROW handles: flat
+      // color like RViz. Opaque solids without vertex colors keep LitShade.
+      const float shade = (use_vertex_colors || needs_alpha)
+                              ? 1.f
+                              : LitShade(corners[0], corners[1], corners[2]);
+      for (int i = 0; i < 3; ++i) {
+        Ogre::ColourValue vc = color;
+        if (use_vertex_colors) {
+          vc = ToOgreColor(mesh.colors[static_cast<std::size_t>(idx[i])]);
+        }
+        object->position(corners[i].x(), corners[i].y(), corners[i].z());
+        object->colour(vc.r * shade, vc.g * shade, vc.b * shade, vc.a);
       }
     }
     object->end();
@@ -791,11 +822,30 @@ void OgreSceneHost::setDisplayEntities(
     slot.material_name = entity_name + "Mat";
     Ogre::MaterialPtr material =
         OgreMaterialManager::createMaterialWithLighting(slot.material_name);
+    material->setReceiveShadows(false);
     const Ogre::ColourValue color = ToOgreColor(instance.color);
-    material->getTechnique(0)->setAmbient(color * 0.5f);
-    material->getTechnique(0)->setDiffuse(color);
+    // Match RViz RobotLink::getMaterialForLink (ambient ≈ 0.5 * diffuse).
+    Ogre::Pass* pass = material->getTechnique(0)->getPass(0);
+    pass->setVertexColourTracking(Ogre::TVC_NONE);
+    pass->setCullingMode(Ogre::CULL_CLOCKWISE);
+    pass->setAmbient(color * 0.55f);
+    pass->setDiffuse(color);
+    // Keep specular low — dense CAD plates otherwise flicker under highlights.
+    pass->setSpecular(Ogre::ColourValue(0.02f, 0.02f, 0.02f));
+    pass->setShininess(8.f);
+    // Depth bias only on file meshes. Applying it to URDF spheres pulls the
+    // ball under the ground grid and shows white hairlines at the contact.
+    if (display_name.find("/visual/prim") == std::string::npos) {
+      pass->setDepthBias(0.1f, 0.5f);
+    } else {
+      pass->setDepthBias(0.f, 0.f);
+    }
     OgreMaterialManager::enableAlphaBlending(material, color.a);
     slot.entity->setMaterialName(slot.material_name);
+    // Force every sub-entity so mesh default materials cannot stay white.
+    for (unsigned int s = 0; s < slot.entity->getNumSubEntities(); ++s) {
+      slot.entity->getSubEntity(s)->setMaterialName(slot.material_name);
+    }
     slot.node->attachObject(slot.entity);
     ApplyPickToEntity(slot.entity, instance.pick_handle);
     entry.entities.push_back(std::move(slot));
@@ -1002,8 +1052,14 @@ void OgreSceneHost::setDisplayLabels(const std::string& display_name,
 
     const Ogre::ColourValue color(label.color.redF(), label.color.greenF(),
                                   label.color.blueF(), label.color.alphaF());
-    slot.text = std::make_unique<OgreMovableText>(
-        label.text, "Liberation Sans", label.char_height, color);
+    try {
+      slot.text = std::make_unique<OgreMovableText>(
+          label.text, "Liberation Sans", label.char_height, color);
+    } catch (const Ogre::Exception&) {
+      // Font unavailable (e.g. resources not initialised): skip this label.
+      scene_manager_->destroySceneNode(slot.node);
+      continue;
+    }
     slot.text->setTextAlignment(OgreMovableText::H_CENTER,
                                 OgreMovableText::V_CENTER);
     if (label.space_width > 0.f) {

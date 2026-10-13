@@ -64,11 +64,13 @@ QStringList CandidateAssetRoots() {
   const QStringList relative = {
       app + QStringLiteral("/../share/ocs2_robotic_assets/resources"),
       app + QStringLiteral("/../../share/ocs2_robotic_assets/resources"),
-      // Source-tree / docker bind-mount layouts.
+      // Source-tree / docker bind-mount layouts (build/.../bin and install/.../bin).
       app + QStringLiteral(
                 "/../../src/autonomy/automanip/bolza/examples/assets"),
       app + QStringLiteral(
                 "/../../../src/autonomy/automanip/bolza/examples/assets"),
+      app + QStringLiteral(
+                "/../../../../src/autonomy/automanip/bolza/examples/assets"),
   };
   for (const QString& candidate : relative) {
     const QFileInfo info(candidate);
@@ -125,10 +127,15 @@ void MeshResourceResolver::ensureDefaultPackagesRegistered() {
 
   // Source / env assets live at …/assets/<robot>/… while URDF URIs use
   // package://ocs2_robotic_assets/resources/<robot>/… (RViz / OCS2 layout).
+  auto looks_like_assets_root = [](const QString& root) {
+    return QFileInfo(root + QStringLiteral("/quadrotor")).isDir() ||
+           QFileInfo(root + QStringLiteral("/anymal_c")).isDir() ||
+           QFileInfo(root + QStringLiteral("/mobile_manipulator")).isDir() ||
+           QFileInfo(root + QStringLiteral("/ballbot")).isDir() ||
+           QFileInfo(root + QStringLiteral("/cartpole")).isDir();
+  };
   for (const QString& root : CandidateAssetRoots()) {
-    if (QFileInfo(root + QStringLiteral("/quadrotor")).isDir() ||
-        QFileInfo(root + QStringLiteral("/anymal_c")).isDir() ||
-        QFileInfo(root + QStringLiteral("/mobile_manipulator")).isDir()) {
+    if (looks_like_assets_root(root)) {
       addPackageContentRoot("ocs2_robotic_assets", root.toStdString(),
                             "resources/");
       break;
@@ -219,7 +226,11 @@ std::optional<std::string> MeshResourceResolver::resolveToPath(
 
     return std::nullopt;
   }
+  // Absolute filesystem paths (after demo_loop rewrites package:// → abs).
   if (QFileInfo(quri).isAbsolute()) {
+    if (QFileInfo(quri).exists()) {
+      return QFileInfo(quri).absoluteFilePath().toStdString();
+    }
     return uri;
   }
   return std::nullopt;

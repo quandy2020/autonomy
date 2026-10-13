@@ -21,6 +21,7 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/platform/opengl_setup.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/app/quit_signal.hpp"
 #include "autoviz/ui/app/splash.hpp"
 #include "autoviz/ui/frame.hpp"
 
@@ -155,6 +156,10 @@ int main(int argc, char** argv) {
     }
 
     frame.applyStartupWindowState();
+
+    // Ctrl+C / SIGTERM → main-window closeEvent (GLX teardown), not a raw
+    // Autolink state flip that leaves Qt tearing down WA_PaintOnScreen widgets.
+    autoviz::InstallQuitSignalHandler(&frame);
 
     if (!record_paths.isEmpty()) {
       const QString record_path = record_paths.front();
