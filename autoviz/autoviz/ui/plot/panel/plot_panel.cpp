@@ -2,26 +2,31 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_panel.hpp"
+#include "autoviz/ui/plot/panel/plot_panel.hpp"
 
 #include <chrono>
 #include <cmath>
-#include <optional>
+#include <limits>
 
 #include <QAbstractButton>
+#include <QApplication>
 #include <QButtonGroup>
 #include <QDragEnterEvent>
 #include <QHBoxLayout>
 #include <QDropEvent>
 #include <QFile>
 #include <QFileDialog>
+#include <QIODevice>
 #include <QFocusEvent>
 #include <QFrame>
+#include <QRegularExpression>
 #include <QScrollArea>
+#include <QSignalBlocker>
 #include <QMenu>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPixmap>
+#include <QStyle>
 #include <QTextStream>
 #include <QTimer>
 #include <QToolButton>
@@ -35,20 +40,19 @@
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
-#include "autoviz/ui/plot/plot_chart_widget.hpp"
-#include "autoviz/ui/plot/plot_drag_mime.hpp"
-#include "autoviz/ui/plot/plot_field_extractor.hpp"
-#include "autoviz/ui/plot/plot_field_path.hpp"
-#include "autoviz/ui/plot/plot_legend_widget.hpp"
-#include "autoviz/ui/plot/plot_path_utils.hpp"
-#include "autoviz/ui/plot/plot_settings_widget.hpp"
-#include "autoviz/ui/plot/plot_view_sync.hpp"
+#include "autoviz/ui/plot/chart/plot_chart_widget.hpp"
+#include "autoviz/ui/plot/core/plot_series_pipeline.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
+#include "autoviz/ui/plot/ui/plot_legend_widget.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
+#include "autoviz/ui/plot/ui/plot_settings_widget.hpp"
+#include "autoviz/ui/plot/sync/plot_view_sync.hpp"
+#include "autoviz/ui/plot/io/plot_xml_io.hpp"
 
 namespace autoviz {
 namespace plot {
 namespace {
 
-constexpr int kMaxPointsPerSeries = 20000;
 constexpr int kMinSettingsWidth = 180;
 constexpr int kMinChartWidth = 160;
 constexpr int kDefaultSettingsWidth = 300;
@@ -69,80 +73,24 @@ PlotSeriesRuntime* RuntimeAt(
 bool SameSeriesDataSource(const PlotSeriesConfig& a,
                           const PlotSeriesConfig& b) {
   return a.channel == b.channel && a.field_path == b.field_path &&
-         a.x_field_path == b.x_field_path &&
+         a.x_field_path == b.x_field_path && a.x_channel == b.x_channel &&
          a.custom_timestamp_path == b.custom_timestamp_path &&
+         a.channel_pattern == b.channel_pattern &&
          a.timestamp_mode == b.timestamp_mode &&
          a.binary_op == b.binary_op &&
          a.secondary_channel == b.secondary_channel &&
          a.secondary_field_path == b.secondary_field_path;
 }
 
-bool BinaryOpEnabled(const PlotSeriesConfig& config) {
-  return config.binary_op != PlotBinaryOp::kNone &&
-         !config.secondary_field_path.trimmed().isEmpty();
-}
-
-QString EffectiveSecondaryChannel(const PlotSeriesConfig& config) {
-  const QString secondary = config.secondary_channel.trimmed();
-  return secondary.isEmpty() ? config.channel : secondary;
-}
-
-bool UsesCrossChannelBinary(const PlotSeriesConfig& config) {
-  if (!BinaryOpEnabled(config)) {
+bool ChannelMatchesPattern(const QString& channel, const QString& pattern) {
+  const QString trimmed = pattern.trimmed();
+  if (trimmed.isEmpty()) {
     return false;
   }
-  return EffectiveSecondaryChannel(config) != config.channel;
-}
-
-std::optional<double> ApplyBinaryOp(PlotBinaryOp op, double a, double b) {
-  switch (op) {
-    case PlotBinaryOp::kAdd:
-      return a + b;
-    case PlotBinaryOp::kSub:
-      return a - b;
-    case PlotBinaryOp::kMul:
-      return a * b;
-    case PlotBinaryOp::kDiv:
-      if (std::abs(b) <= 1e-15) {
-        return std::nullopt;
-      }
-      return a / b;
-    case PlotBinaryOp::kNone:
-    default:
-      return a;
-  }
-}
-
-std::optional<double> NearestSecondaryY(const std::deque<PlotPoint>& samples,
-                                        double timestamp_sec, double max_dt) {
-  if (samples.empty() || max_dt < 0.0) {
-    return std::nullopt;
-  }
-  const PlotPoint* best = nullptr;
-  double best_dt = max_dt;
-  for (const PlotPoint& sample : samples) {
-    const double dt = std::abs(sample.x - timestamp_sec);
-    if (dt <= best_dt) {
-      best_dt = dt;
-      best = &sample;
-    }
-  }
-  if (best == nullptr) {
-    return std::nullopt;
-  }
-  return best->y;
-}
-
-std::optional<double> ExtractSeriesRawY(const std::string& message_type,
-                                        const std::string& payload,
-                                        const ParsedFieldPath& path,
-                                        bool has_norm) {
-  if (has_norm) {
-    return PlotFieldExtractor::instance().extractVectorNorm(
-        message_type, payload, path.base_path.toStdString());
-  }
-  return PlotFieldExtractor::instance().extractNumeric(
-      message_type, payload, path.base_path.toStdString());
+  const QRegularExpression re(
+      QRegularExpression::wildcardToRegularExpression(trimmed),
+      QRegularExpression::CaseInsensitiveOption);
+  return re.match(channel).hasMatch();
 }
 
 }  // namespace
@@ -177,6 +125,21 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
 
   legend_widget_ = new PlotLegendWidget(chart_);
   legend_widget_->raise();
+  connect(legend_widget_, &PlotLegendWidget::seriesVisibilityToggled, this,
+          [this](int index) {
+            if (index < 0 || index >= config_.series.size()) {
+              return;
+            }
+            config_.series[index].enabled = !config_.series[index].enabled;
+            if (index < static_cast<int>(runtime_series_.size()) &&
+                runtime_series_[static_cast<std::size_t>(index)] != nullptr) {
+              runtime_series_[static_cast<std::size_t>(index)]->config.enabled =
+                  config_.series[index].enabled;
+            }
+            applyConfigToUi();
+            syncSettingsWidgetFromConfig();
+            emit configChanged();
+          });
 
   connect(settings_widget_, &PlotSettingsWidget::configChanged, this, [this]() {
     if (settings_widget_ != nullptr) {
@@ -187,6 +150,10 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
           &PlotPanel::onAddSeriesRequested);
   connect(settings_widget_, &PlotSettingsWidget::removeSeriesRequested, this,
           &PlotPanel::onRemoveSeriesRequested);
+  connect(settings_widget_, &PlotSettingsWidget::importXmlRequested, this,
+          &PlotPanel::importPlotXml);
+  connect(settings_widget_, &PlotSettingsWidget::exportXmlRequested, this,
+          &PlotPanel::exportPlotXml);
 
   chart_->installEventFilter(this);
   installEventFilter(this);
@@ -219,14 +186,39 @@ PlotPanel::PlotPanel(common::VisualizationManager* manager, QWidget* parent)
     }
   });
   connect(chart_, &PlotChartWidget::viewRangeChanged, this,
-          [this](double min_x, double max_x, double /*min_y*/, double /*max_y*/) {
-            if (config_.sync_with_other_plots &&
-                config_.x_axis_mode == PlotXAxisMode::kTimestamp) {
-              PlotViewSync::instance().publishXRange(this, min_x, max_x);
+          [this](double min_x, double max_x, double min_y, double max_y) {
+            const QString group = effectiveSyncGroup();
+            if (group.isEmpty()) {
+              return;
+            }
+            if (config_.x_axis_mode == PlotXAxisMode::kTimestamp) {
+              PlotViewSync::instance().publishXRange(this, group, min_x, max_x);
+            }
+            if (config_.sync_y_axis) {
+              PlotViewSync::instance().publishYRange(this, group, min_y, max_y);
             }
           });
-  connect(chart_, &PlotChartWidget::hoverStateChanged, this,
-          &PlotPanel::updateLegendValues);
+  connect(chart_, &PlotChartWidget::hoverStateChanged, this, [this]() {
+    updateLegendValues();
+    const QString group = effectiveSyncGroup();
+    if (group.isEmpty() || !config_.sync_cursor || chart_ == nullptr) {
+      return;
+    }
+    // Prefer latched scrub cursor; fall back to live hover.
+    const bool active = chart_->latchActive() || chart_->hoverActive();
+    const double x =
+        chart_->latchActive() ? chart_->latchX() : chart_->hoverX();
+    PlotViewSync::instance().publishCursorX(this, group, active, x);
+  });
+  connect(chart_, &PlotChartWidget::latchCursorChanged, this, [this]() {
+    updateLegendValues();
+    const QString group = effectiveSyncGroup();
+    if (group.isEmpty() || !config_.sync_cursor || chart_ == nullptr) {
+      return;
+    }
+    PlotViewSync::instance().publishCursorX(this, group, chart_->latchActive(),
+                                            chart_->latchX());
+  });
   connect(chart_, &PlotChartWidget::inspectEscapeRequested, this, [this]() {
     setChartInteractionMode(PlotInteractionMode::kSelect);
   });
@@ -412,6 +404,21 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
     connect(legend_tool_button_, &QToolButton::toggled, this,
             [this](bool checked) { setLegendVisible(checked); });
 
+    layout->insertWidget(7, CreateTitleSeparator(tools.widget));
+    pause_tool_button_ = CreatePlotTitleToolButton(
+        tools.widget, QApplication::style()->standardIcon(QStyle::SP_MediaPause),
+        tr("Pause sampling"), true);
+    clear_tool_button_ = CreatePlotTitleToolButton(
+        tools.widget,
+        QApplication::style()->standardIcon(QStyle::SP_DialogResetButton),
+        tr("Clear plot data"), false);
+    layout->insertWidget(8, pause_tool_button_);
+    layout->insertWidget(9, clear_tool_button_);
+    connect(pause_tool_button_, &QToolButton::toggled, this,
+            [this](bool checked) { setPaused(checked); });
+    connect(clear_tool_button_, &QToolButton::clicked, this,
+            [this]() { clearPlotData(); });
+
     connect(select_tool_button_, &QToolButton::clicked, this, [this]() {
       setChartInteractionMode(PlotInteractionMode::kSelect);
     });
@@ -431,6 +438,7 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
 
   setChartInteractionMode(PlotInteractionMode::kSelect);
   setLegendVisible(false);
+  syncPauseToolState();
 }
 
 PlotPanelConfig PlotPanel::config() const { return config_; }
@@ -472,16 +480,29 @@ void PlotPanel::cloneConfigFrom(const PlotPanelConfig& config) {
 
 void PlotPanel::applySettings(const PlotPanelConfig& config) {
   const bool x_axis_changed = config_.x_axis_mode != config.x_axis_mode;
+  const bool xy_subscribe_changed =
+      (config_.x_axis_mode == PlotXAxisMode::kXY) !=
+      (config.x_axis_mode == PlotXAxisMode::kXY);
   config_ = config;
   if (x_axis_changed) {
     for (auto& runtime : runtime_series_) {
       if (runtime != nullptr) {
         runtime->points.clear();
+        runtime->secondary_samples.clear();
+        runtime->x_samples.clear();
+        runtime->modifier_window.clear();
+        runtime->integral_accum = 0.0;
         runtime->index_counter = 0;
+        runtime->has_last_sample = false;
       }
     }
   }
   mergeRuntimeWithConfig();
+  if (xy_subscribe_changed) {
+    for (int i = 0; i < static_cast<int>(runtime_series_.size()); ++i) {
+      subscribeSeries(i);
+    }
+  }
   applyConfigToUi();
   emit configChanged();
 }
@@ -517,12 +538,61 @@ void PlotPanel::syncSettingsToolState() {
   setSettingsButtonChecked(config_.settings_visible);
 }
 
+QString PlotPanel::effectiveSyncGroup() const {
+  // XY plots use spatial axes; do not join time-window sync groups.
+  if (config_.x_axis_mode == PlotXAxisMode::kXY) {
+    return {};
+  }
+  const QString group = config_.sync_group.trimmed();
+  if (!group.isEmpty()) {
+    return group;
+  }
+  return config_.sync_with_other_plots ? QStringLiteral("default") : QString();
+}
+
 void PlotPanel::applySyncedXRange(double min_x, double max_x) {
-  if (!config_.sync_with_other_plots ||
+  if (effectiveSyncGroup().isEmpty() ||
       config_.x_axis_mode != PlotXAxisMode::kTimestamp || chart_ == nullptr) {
     return;
   }
   chart_->applySyncedXRange(min_x, max_x);
+}
+
+void PlotPanel::applySyncedYRange(double min_y, double max_y) {
+  if (effectiveSyncGroup().isEmpty() || !config_.sync_y_axis ||
+      chart_ == nullptr) {
+    return;
+  }
+  chart_->applySyncedYRange(min_y, max_y);
+  config_.y_auto_scale = false;
+  config_.y_min = min_y;
+  config_.y_max = max_y;
+}
+
+void PlotPanel::applySyncedCursorX(bool active, double x) {
+  if (chart_ == nullptr) {
+    return;
+  }
+  chart_->setSyncedCursorX(active, x);
+}
+
+void PlotPanel::setPaused(bool paused) {
+  paused_ = paused;
+  syncPauseToolState();
+}
+
+void PlotPanel::clearPlotData() { invalidateSeriesData(); }
+
+void PlotPanel::syncPauseToolState() {
+  if (pause_tool_button_ == nullptr) {
+    return;
+  }
+  const QSignalBlocker block(pause_tool_button_);
+  pause_tool_button_->setChecked(paused_);
+  pause_tool_button_->setIcon(QApplication::style()->standardIcon(
+      paused_ ? QStyle::SP_MediaPlay : QStyle::SP_MediaPause));
+  pause_tool_button_->setToolTip(paused_ ? tr("Resume sampling")
+                                         : tr("Pause sampling"));
 }
 
 void PlotPanel::updateLegendValues() {
@@ -534,10 +604,12 @@ void PlotPanel::updateLegendValues() {
     legend_widget_->setValueRows({});
     return;
   }
-  const double x =
-      chart_->hoverActive()
-          ? chart_->hoverX()
-          : (manager_ != nullptr ? manager_->simTimeSec() : 0.0);
+  double x = manager_ != nullptr ? manager_->simTimeSec() : 0.0;
+  if (chart_->latchActive()) {
+    x = chart_->latchX();
+  } else if (chart_->hoverActive()) {
+    x = chart_->hoverX();
+  }
   legend_widget_->setValueRows(chart_->valueRowsAtX(x));
 }
 
@@ -664,6 +736,9 @@ void PlotPanel::applyConfigToUi() {
   chart_->setShowGrid(config_.show_grid);
   chart_->setShowReferenceY(config_.show_reference_y);
   chart_->setReferenceY(config_.reference_y);
+  chart_->setKeepRatioXy(config_.keep_ratio_xy);
+  chart_->setShowReferenceTracker(config_.show_reference_tracker);
+  chart_->setReferenceTrackerSec(config_.reference_tracker_sec);
   if (manager_ != nullptr) {
     chart_->setReferenceTimeSec(manager_->simTimeSec());
   }
@@ -744,6 +819,12 @@ void PlotPanel::unsubscribeSeries(PlotSeriesRuntime& runtime) {
             runtime.secondary_subscription_id));
     runtime.secondary_subscription_id = 0;
   }
+  if (runtime.x_subscription_id != 0) {
+    integration::ChannelReaderRegistry::instance().unsubscribe(
+        static_cast<integration::ChannelReaderRegistry::SubscriptionId>(
+            runtime.x_subscription_id));
+    runtime.x_subscription_id = 0;
+  }
 }
 
 void PlotPanel::subscribeSeries(int index) {
@@ -781,52 +862,26 @@ void PlotPanel::subscribeSeries(int index) {
               });
     }
   }
+
+  if (UsesCrossChannelXy(runtime->config, config_.x_axis_mode)) {
+    const std::string x_channel =
+        EffectiveXChannel(runtime->config).toStdString();
+    if (!x_channel.empty()) {
+      runtime->x_subscription_id =
+          integration::ChannelReaderRegistry::instance().subscribe(
+              x_channel, [this, index](const std::string& payload) {
+                PlotSeriesRuntime* series_runtime =
+                    RuntimeAt(runtime_series_, index);
+                if (series_runtime != nullptr) {
+                  series_runtime->x_queue.push(payload);
+                }
+              });
+    }
+  }
 }
 
 std::string PlotPanel::messageTypeForChannel(const std::string& channel) const {
   return MessageTypeForChannel(manager_, QString::fromStdString(channel));
-}
-
-void PlotPanel::trimSeriesPoints(PlotSeriesRuntime& runtime, double latest_x) {
-  while (runtime.points.size() > kMaxPointsPerSeries) {
-    runtime.points.pop_front();
-  }
-  while (runtime.secondary_samples.size() > kMaxPointsPerSeries) {
-    runtime.secondary_samples.pop_front();
-  }
-  if (config_.x_axis_mode != PlotXAxisMode::kTimestamp) {
-    return;
-  }
-  const double min_x = latest_x - config_.x_window_sec;
-  while (!runtime.points.empty() && runtime.points.front().x < min_x) {
-    runtime.points.pop_front();
-  }
-  while (!runtime.secondary_samples.empty() &&
-         runtime.secondary_samples.front().x < min_x) {
-    runtime.secondary_samples.pop_front();
-  }
-}
-
-double PlotPanel::resolveTimestampSec(
-    const PlotSeriesRuntime& runtime, const std::string& message_type,
-    const std::string& payload, double receive_time, double sim_time) const {
-  if (runtime.config.timestamp_mode == PlotTimestampMode::kReceiveTime) {
-    return receive_time;
-  }
-  const double fallback =
-      runtime.config.timestamp_mode == PlotTimestampMode::kLogTime ? sim_time
-                                                                   : receive_time;
-  if (runtime.config.timestamp_mode == PlotTimestampMode::kCustomField) {
-    const QString resolved_path = runtime.config.custom_timestamp_path;
-    const std::optional<double> custom =
-        PlotFieldExtractor::instance().extractTimestamp(
-            message_type, payload, resolved_path.toStdString(), fallback);
-    return custom.value_or(fallback);
-  }
-  const std::optional<double> header_time =
-      PlotFieldExtractor::instance().extractTimestamp(message_type, payload, "",
-                                                      fallback);
-  return header_time.value_or(fallback);
 }
 
 void PlotPanel::handleSeriesDrop(const QString& channel,
@@ -900,6 +955,7 @@ void PlotPanel::onTick() {
   if (manager_ == nullptr) {
     return;
   }
+  resolveChannelPatterns();
   const double receive_time =
       std::chrono::duration<double>(
           std::chrono::system_clock::now().time_since_epoch())
@@ -907,156 +963,31 @@ void PlotPanel::onTick() {
   const double sim_time = manager_->simTimeSec();
   chart_->setReferenceTimeSec(sim_time);
 
+  SeriesPipelineContext ctx;
+  ctx.x_axis_mode = config_.x_axis_mode;
+  ctx.message_path_mode = config_.message_path_mode;
+  ctx.x_window_sec = config_.x_window_sec;
+  ctx.max_points_per_series = config_.max_points_per_series;
+  ctx.receive_time = receive_time;
+  ctx.sim_time = sim_time;
+  ctx.message_type_for_channel = [this](const std::string& channel) {
+    return messageTypeForChannel(channel);
+  };
+
+  bool dirty = false;
   for (auto& runtime_ptr : runtime_series_) {
     if (runtime_ptr == nullptr) {
       continue;
     }
-    PlotSeriesRuntime& runtime = *runtime_ptr;
-    if (!runtime.config.enabled || runtime.config.channel.isEmpty() ||
-        runtime.config.field_path.isEmpty()) {
-      continue;
-    }
-    const std::string channel = runtime.config.channel.toStdString();
-    const std::string message_type = messageTypeForChannel(channel);
-    const ParsedFieldPath y_path = ParseFieldPath(runtime.config.field_path);
-    const ParsedFieldPath x_path = ParseFieldPath(runtime.config.x_field_path);
-    const bool y_has_norm = FieldPathHasNormModifier(y_path.modifiers);
-    const QStringList y_modifiers =
-        y_has_norm ? StripNormModifier(y_path.modifiers) : y_path.modifiers;
-    const bool y_expand = FieldPathHasArrayExpand(y_path.base_path);
-    const bool binary_enabled = BinaryOpEnabled(runtime.config);
-    const bool cross_channel = UsesCrossChannelBinary(runtime.config);
-    const ParsedFieldPath secondary_path =
-        ParseFieldPath(runtime.config.secondary_field_path);
-    const bool secondary_has_norm =
-        FieldPathHasNormModifier(secondary_path.modifiers);
-
-    if (cross_channel) {
-      const std::string secondary_channel =
-          EffectiveSecondaryChannel(runtime.config).toStdString();
-      const std::string secondary_type = messageTypeForChannel(secondary_channel);
-      while (auto secondary_payload = runtime.secondary_queue.pop()) {
-        const double timestamp_sec = resolveTimestampSec(
-            runtime, secondary_type, *secondary_payload, receive_time, sim_time);
-        const std::optional<double> raw_b = ExtractSeriesRawY(
-            secondary_type, *secondary_payload, secondary_path,
-            secondary_has_norm);
-        if (!raw_b.has_value()) {
-          continue;
-        }
-        PlotPoint sample;
-        sample.x = timestamp_sec;
-        sample.y = *raw_b;
-        runtime.secondary_samples.push_back(sample);
-        trimSeriesPoints(runtime, sample.x);
-      }
-    }
-
-    while (auto payload = runtime.queue.pop()) {
-      const double timestamp_sec = resolveTimestampSec(
-          runtime, message_type, *payload, receive_time, sim_time);
-
-      std::vector<double> raw_ys;
-      if (y_has_norm) {
-        const std::optional<double> norm =
-            PlotFieldExtractor::instance().extractVectorNorm(
-                message_type, *payload, y_path.base_path.toStdString());
-        if (!norm.has_value()) {
-          continue;
-        }
-        raw_ys.push_back(*norm);
-      } else if (y_expand) {
-        const std::optional<std::vector<double>> values =
-            PlotFieldExtractor::instance().extractNumericAll(
-                message_type, *payload, y_path.base_path.toStdString());
-        if (!values.has_value() || values->empty()) {
-          continue;
-        }
-        raw_ys = *values;
-      } else {
-        const std::optional<double> raw_y =
-            PlotFieldExtractor::instance().extractNumeric(
-                message_type, *payload, y_path.base_path.toStdString());
-        if (!raw_y.has_value()) {
-          continue;
-        }
-        raw_ys.push_back(*raw_y);
-      }
-
-      std::optional<double> same_message_secondary;
-      if (binary_enabled && !cross_channel) {
-        same_message_secondary = ExtractSeriesRawY(
-            message_type, *payload, secondary_path, secondary_has_norm);
-        if (!same_message_secondary.has_value()) {
-          continue;
-        }
-      }
-
-      if (config_.x_axis_mode == PlotXAxisMode::kIndex && y_expand) {
-        runtime.points.clear();
-        runtime.index_counter = 0;
-      }
-
-      const bool multi = raw_ys.size() > 1;
-      for (std::size_t i = 0; i < raw_ys.size(); ++i) {
-        double raw_combined = raw_ys[i];
-        if (binary_enabled) {
-          std::optional<double> raw_b;
-          if (cross_channel) {
-            raw_b = NearestSecondaryY(runtime.secondary_samples, timestamp_sec,
-                                      runtime.config.binary_max_dt_sec);
-          } else {
-            raw_b = same_message_secondary;
-          }
-          if (!raw_b.has_value()) {
-            continue;
-          }
-          const std::optional<double> combined =
-              ApplyBinaryOp(runtime.config.binary_op, raw_ys[i], *raw_b);
-          if (!combined.has_value()) {
-            continue;
-          }
-          raw_combined = *combined;
-        }
-
-        const double y = ApplyPlotModifiers(
-            raw_combined, timestamp_sec, y_modifiers,
-            multi ? nullptr : &runtime.last_raw_value,
-            multi ? nullptr : &runtime.last_timestamp_sec,
-            multi ? nullptr : &runtime.has_last_sample);
-
-        PlotPoint point;
-        if (config_.x_axis_mode == PlotXAxisMode::kIndex) {
-          point.x = runtime.index_counter++;
-          point.y = y;
-        } else if (config_.x_axis_mode == PlotXAxisMode::kMessagePath) {
-          if (x_path.base_path.isEmpty()) {
-            continue;
-          }
-          const std::optional<double> raw_x =
-              PlotFieldExtractor::instance().extractNumeric(
-                  message_type, *payload, x_path.base_path.toStdString());
-          if (!raw_x.has_value()) {
-            continue;
-          }
-          point.x = ApplyPlotModifiers(*raw_x, timestamp_sec, x_path.modifiers,
-                                       nullptr, nullptr, nullptr);
-          point.y = y;
-          if (config_.message_path_mode == PlotMessagePathMode::kCurrent &&
-              i == 0) {
-            runtime.points.clear();
-          }
-        } else {
-          point.x = timestamp_sec;
-          point.y = y;
-        }
-        runtime.points.push_back(point);
-        trimSeriesPoints(runtime, point.x);
-      }
-    }
+    dirty = DrainAndSampleSeries(*runtime_ptr, ctx, paused_) || dirty;
   }
-  chart_->update();
-  updateLegendValues();
+  const bool sim_moved = !std::isfinite(last_tick_sim_time_) ||
+                         std::abs(sim_time - last_tick_sim_time_) > 1e-9;
+  last_tick_sim_time_ = sim_time;
+  if (dirty || sim_moved) {
+    chart_->update();
+    updateLegendValues();
+  }
 }
 
 void PlotPanel::exportPlotDataAsCsv() {
@@ -1144,11 +1075,99 @@ void PlotPanel::invalidateSeriesData() {
     }
     runtime_ptr->points.clear();
     runtime_ptr->secondary_samples.clear();
+    runtime_ptr->x_samples.clear();
+    runtime_ptr->modifier_window.clear();
+    runtime_ptr->integral_accum = 0.0;
     runtime_ptr->index_counter = 0;
     runtime_ptr->has_last_sample = false;
   }
   chart_->update();
   updateLegendValues();
+}
+
+void PlotPanel::resolveChannelPatterns() {
+  if (manager_ == nullptr) {
+    return;
+  }
+  bool changed = false;
+  const auto& channels = manager_->channels();
+  for (int i = 0; i < config_.series.size(); ++i) {
+    PlotSeriesConfig& series = config_.series[i];
+    const QString pattern = series.channel_pattern.trimmed();
+    if (pattern.isEmpty()) {
+      continue;
+    }
+    QString matched;
+    for (const auto& info : channels) {
+      const QString name = QString::fromStdString(info.channel_name);
+      if (ChannelMatchesPattern(name, pattern)) {
+        matched = name;
+        break;
+      }
+    }
+    if (matched.isEmpty() || matched == series.channel) {
+      continue;
+    }
+    series.channel = matched;
+    if (i < static_cast<int>(runtime_series_.size()) &&
+        runtime_series_[i] != nullptr) {
+      runtime_series_[i]->config.channel = matched;
+    }
+    changed = true;
+  }
+  if (!changed) {
+    return;
+  }
+  mergeRuntimeWithConfig();
+  applyConfigToUi();
+  syncSettingsWidgetFromConfig();
+  emit configChanged();
+}
+
+void PlotPanel::importPlotXml() {
+  const QString path = QFileDialog::getOpenFileName(
+      this, tr("Import plot XML"), QString(),
+      tr("Plot XML (*.xml);;All files (*)"));
+  if (path.isEmpty()) {
+    return;
+  }
+  QFile file(path);
+  if (!file.open(QIODevice::ReadOnly)) {
+    QMessageBox::warning(this, tr("Import failed"),
+                         tr("Could not read %1").arg(path));
+    return;
+  }
+  QString error;
+  PlotPanelConfig imported;
+  if (!ImportPlotXml(file.readAll(), &imported, &error)) {
+    QMessageBox::warning(this, tr("Import failed"),
+                         error.isEmpty() ? tr("Invalid plot XML") : error);
+    return;
+  }
+  if (imported.title.trimmed().isEmpty()) {
+    imported.title = config_.title;
+  }
+  setConfig(imported);
+  emit configChanged();
+}
+
+void PlotPanel::exportPlotXml() {
+  const QString default_name =
+      config_.title.isEmpty() ? tr("plot.xml")
+                              : config_.title + QStringLiteral(".xml");
+  const QString path = QFileDialog::getSaveFileName(
+      this, tr("Export plot XML"), default_name,
+      tr("Plot XML (*.xml);;All files (*)"));
+  if (path.isEmpty()) {
+    return;
+  }
+  QFile file(path);
+  if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+    QMessageBox::warning(this, tr("Export failed"),
+                         tr("Could not write %1").arg(path));
+    return;
+  }
+  file.write(ExportPlotXml(config_));
 }
 
 }  // namespace plot

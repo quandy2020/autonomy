@@ -19,7 +19,7 @@
 #include "autoviz/common/protobuf_json_compat.hpp"
 #include "autoviz/common/protobuf_qt_string.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
-#include "autoviz/ui/plot/message_path_navigation.hpp"
+#include "autoviz/ui/plot/field/message_path_navigation.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
 #include "autoviz/ui/theme/style.hpp"
 

@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_value_suggest_popup.hpp"
+#include "autoviz/ui/plot/ui/plot_value_suggest_popup.hpp"
 
 #include <QAction>
 #include <QLineEdit>

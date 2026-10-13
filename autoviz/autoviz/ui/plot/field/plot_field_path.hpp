@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <deque>
+
 #include <QString>
 #include <QStringList>
 
@@ -67,7 +69,7 @@ QStringList StripNormModifier(const QStringList& modifiers);
  * radians, floor, ceil, round, sin, cos, tan.
  * Binary (arg via @c name:val, @c name(val), or next numeric token):
  * add, sub, mul, div.
- * Stateful: derivative, delta, timedelta.
+ * Stateful: derivative, delta, timedelta, movingavg/mavg:N, integral.
  * @c norm is ignored here — extract the vector norm before calling.
  *
  * @param raw_value Incoming numeric sample.
@@ -76,12 +78,16 @@ QStringList StripNormModifier(const QStringList& modifiers);
  * @param last_raw_value In/out: previous raw value for stateful modifiers.
  * @param last_timestamp_sec In/out: previous sample time.
  * @param has_last_sample In/out: whether a previous sample exists.
+ * @param modifier_window In/out: sliding window for @c movingavg (nullable).
+ * @param integral_accum In/out: running integral accumulator (nullable).
  * @return Transformed value to append to the series.
  */
 double ApplyPlotModifiers(double raw_value, double timestamp_sec,
                           const QStringList& modifiers,
                           double* last_raw_value, double* last_timestamp_sec,
-                          bool* has_last_sample);
+                          bool* has_last_sample,
+                          std::deque<double>* modifier_window = nullptr,
+                          double* integral_accum = nullptr);
 
 }  // namespace plot
 }  // namespace autoviz

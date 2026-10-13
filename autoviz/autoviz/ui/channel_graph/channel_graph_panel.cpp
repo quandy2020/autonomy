@@ -44,7 +44,7 @@
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
-#include "autoviz/ui/plot/message_field_tree.hpp"
+#include "autoviz/ui/plot/field/message_field_tree.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {

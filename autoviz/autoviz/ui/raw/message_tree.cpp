@@ -26,9 +26,9 @@
 
 #include "autoviz/common/protobuf_qt_string.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
-#include "autoviz/ui/plot/message_field_tree.hpp"
-#include "autoviz/ui/plot/message_path_navigation.hpp"
-#include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/ui/plot/field/message_field_tree.hpp"
+#include "autoviz/ui/plot/field/message_path_navigation.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 
 namespace autoviz {
 namespace raw_messages {

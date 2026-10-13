@@ -38,9 +38,9 @@
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
-#include "autoviz/ui/plot/message_path_navigation.hpp"
-#include "autoviz/ui/plot/plot_drag_mime.hpp"
-#include "autoviz/ui/plot/plot_path_utils.hpp"
+#include "autoviz/ui/plot/field/message_path_navigation.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 

@@ -36,7 +36,7 @@
 #include "autoviz/integration/channel_reader_registry.hpp"
 #include "autoviz/integration/channel_writer_registry.hpp"
 #include "autoviz/ui/theme/panel.hpp"
-#include "autoviz/ui/plot/plot_path_utils.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
 #include "autoviz/ui/theme/style.hpp"

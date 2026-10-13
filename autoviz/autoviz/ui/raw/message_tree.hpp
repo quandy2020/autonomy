@@ -24,7 +24,7 @@
 
 #include <optional>
 
-#include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 
 class QContextMenuEvent;
 class QMouseEvent;

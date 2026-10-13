@@ -43,6 +43,7 @@ using PlotSubscriptionId = std::uint64_t;
 struct PlotPoint {
   double x = 0.0;  /**< Horizontal axis value. */
   double y = 0.0;  /**< Vertical axis value (after modifiers). */
+  double t = 0.0;  /**< Sample time (sec); used by XY playback marker. */
 };
 
 /**
@@ -62,7 +63,8 @@ enum class PlotTimestampMode {
 enum class PlotXAxisMode {
   kTimestamp = 0,    /**< Time in seconds (windowed). */
   kIndex = 1,        /**< Monotonic sample index. */
-  kMessagePath = 2,  /**< X from another message field path. */
+  kMessagePath = 2,  /**< X from another message field path (same message). */
+  kXY = 3,           /**< XY plot: X/Y streams aligned by timestamp. */
 };
 
 /**
@@ -99,18 +101,39 @@ enum class PlotBinaryOp {
 };
 
 /**
+ * @enum PlotCurveStyle
+ * @brief How a series polyline is stroked (PlotJuggler-style).
+ */
+enum class PlotCurveStyle {
+  kLines = 0,         /**< Straight segments between samples. */
+  kSteps = 1,         /**< Horizontal-then-vertical steps. */
+  kSticks = 2,        /**< Vertical sticks from baseline to sample. */
+  kLinesAndDots = 3,  /**< Lines plus per-sample markers. */
+};
+
+/**
  * @struct PlotSeriesConfig
  * @brief Persisted settings for one plot series.
  */
 struct PlotSeriesConfig {
-  QString channel;  /**< Source channel name. */
+  QString channel;  /**< Source channel name (Y stream for XY mode). */
   QString field_path;  /**< Y field path (may include @modifiers). */
-  QString x_field_path;  /**< X field path when X-axis is message-path. */
+  QString x_field_path;  /**< X field path (message-path or XY mode). */
+  /**
+   * Optional X stream channel for @ref PlotXAxisMode::kXY.
+   * Empty means the same channel as @ref channel.
+   */
+  QString x_channel;
   QString custom_timestamp_path;  /**< Stamp path for @ref PlotTimestampMode::kCustomField. */
   QString label;  /**< Legend / tooltip label. */
   QColor color = QColor(QStringLiteral("#4e98e2"));  /**< Series stroke color. */
   QString line_size = QStringLiteral("auto");  /**< Stroke width hint (@c auto or px). */
-  bool show_line = true;  /**< Draw connecting line (vs points only). */
+  PlotCurveStyle curve_style = PlotCurveStyle::kLines;  /**< Stroke style. */
+  bool show_line = true;  /**< Draw connecting line (vs points / sticks only). */
+  bool show_points = true;  /**< Draw per-sample markers. */
+  double point_size = 3.0;  /**< Marker radius in screen pixels. */
+  double y_scale = 1.0;     /**< Multiply Y after modifiers / binary op. */
+  double y_offset = 0.0;    /**< Add to Y after @ref y_scale. */
   bool use_right_y = false;  /**< Plot against the right Y-axis. */
   PlotBinaryOp binary_op = PlotBinaryOp::kNone;  /**< Combine with secondary operand. */
   QString secondary_channel;  /**< Secondary channel; empty = same as @ref channel. */
@@ -118,6 +141,11 @@ struct PlotSeriesConfig {
   double binary_max_dt_sec = 0.1;  /**< Max |Δt| for cross-channel nearest match. */
   PlotTimestampMode timestamp_mode = PlotTimestampMode::kLogTime;  /**< Stamp source. */
   bool enabled = true;  /**< When @c false, series is not subscribed / drawn. */
+  /**
+   * Optional channel wildcard (@c * / @c ?). When set, the panel resolves it
+   * against live channels and writes the match into @ref channel.
+   */
+  QString channel_pattern;
 };
 
 /**
@@ -126,16 +154,23 @@ struct PlotSeriesConfig {
  */
 struct PlotSeriesRuntime {
   PlotSeriesConfig config;  /**< Mirrored series settings. */
-  integration::MessageQueue queue;  /**< Incoming payloads. */
+  integration::MessageQueue queue;  /**< Incoming payloads (Y / primary). */
   PlotSubscriptionId subscription_id = 0;  /**< Active subscription (@c 0 = none). */
   integration::MessageQueue secondary_queue;  /**< Secondary channel payloads. */
   PlotSubscriptionId secondary_subscription_id = 0;  /**< Secondary subscription. */
+  integration::MessageQueue x_queue;  /**< XY X-channel payloads (cross-channel). */
+  PlotSubscriptionId x_subscription_id = 0;  /**< XY X-channel subscription. */
   std::deque<PlotPoint> points;  /**< Ring of plotted samples. */
   std::deque<PlotPoint> secondary_samples;  /**< Recent secondary samples for join. */
+  /** Timed X-axis values for XY align (@c x=t, @c y=x_value). */
+  std::deque<PlotPoint> x_samples;
   int index_counter = 0;  /**< Next X when axis mode is index. */
   double last_raw_value = 0.0;  /**< Previous raw Y for stateful modifiers. */
   double last_timestamp_sec = 0.0;  /**< Previous stamp for derivatives. */
   bool has_last_sample = false;  /**< Whether modifier state is initialized. */
+  /** Sliding window for @c @movingavg:N modifiers. */
+  std::deque<double> modifier_window;
+  double integral_accum = 0.0;  /**< Running integral for @c @integral. */
 };
 
 /**
@@ -146,8 +181,15 @@ struct PlotPanelConfig {
   QString title = QStringLiteral("Plot");  /**< Panel / dock title. */
   PlotXAxisMode x_axis_mode = PlotXAxisMode::kTimestamp;  /**< X-axis mode. */
   PlotMessagePathMode message_path_mode = PlotMessagePathMode::kAccumulated;  /**< Path X mode. */
-  /** Opt-in X-axis sync with other plots (off by default — zoom/pan stay local). */
+  /**
+   * Legacy opt-in X sync. When true and @ref sync_group is empty, the panel
+   * joins the group named @c "default".
+   */
   bool sync_with_other_plots = false;
+  /** Non-empty group name enables X (and optional Y/cursor) sync. */
+  QString sync_group;
+  bool sync_y_axis = false;   /**< Also broadcast left Y range within the group. */
+  bool sync_cursor = true;    /**< Broadcast hover X as a shared vertical cursor. */
   bool show_legend_values = true;  /**< Show live values in the legend. */
   bool settings_visible = false;  /**< Settings pane visibility. */
   int settings_width = 300;  /**< Preferred settings width (pixels). */
@@ -161,7 +203,17 @@ struct PlotPanelConfig {
   bool show_grid = true;  /**< Draw chart grid lines. */
   bool show_reference_y = false;  /**< Draw a horizontal reference line. */
   double reference_y = 0.0;  /**< Y value for the reference line. */
+  /**
+   * Optional second vertical tracker (frozen reference time), independent of
+   * playback @c setReferenceTimeSec.
+   */
+  bool show_reference_tracker = false;
+  double reference_tracker_sec = 0.0;
   double x_window_sec = 30.0;  /**< Rolling time window (seconds). */
+  /** Max retained samples per series (ring buffer / count trim). */
+  int max_points_per_series = 20000;
+  /** When true in XY mode, keep data aspect ratio on zoom/fit. */
+  bool keep_ratio_xy = true;
   QVector<PlotSeriesConfig> series;  /**< Series list. */
 };
 

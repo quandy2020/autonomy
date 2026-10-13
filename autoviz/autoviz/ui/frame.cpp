@@ -30,7 +30,7 @@
 #include "autoviz/ui/inspector/tool_properties_panel.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel_host.hpp"
-#include "autoviz/ui/plot/plot_panel.hpp"
+#include "autoviz/ui/plot/panel/plot_panel.hpp"
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/tf_tree/panel.hpp"
 #include "autoviz/ui/theme/application.hpp"

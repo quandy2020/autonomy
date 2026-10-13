@@ -28,6 +28,8 @@
 #include <optional>
 #include <vector>
 
+#include <QPointF>
+
 #include "autoviz/ui/plot/plot_types.hpp"
 
 namespace autoviz {
@@ -174,6 +176,17 @@ class PlotChartWidget : public QWidget {
   void setReferenceTimeSec(double time_sec);
 
   /**
+   * @brief Optional frozen vertical tracker independent of playback.
+   */
+  void setShowReferenceTracker(bool visible);
+  void setReferenceTrackerSec(double time_sec);
+
+  /**
+   * @brief When true in XY mode, keep data aspect ratio on fit/zoom.
+   */
+  void setKeepRatioXy(bool enabled);
+
+  /**
    * @brief Selects the mouse interaction tool.
    *
    * @param mode Pan, zoom, select, or inspect.
@@ -193,12 +206,41 @@ class PlotChartWidget : public QWidget {
   void resetView();
 
   /**
+   * @brief Restores the previous zoom/pan snapshot (no-op if history empty).
+   *
+   * @return @c true when a snapshot was restored.
+   */
+  bool undoView();
+
+  /**
    * @brief Applies an X range from @ref PlotViewSync without re-broadcasting.
    *
    * @param min_x Synced minimum X.
    * @param max_x Synced maximum X.
    */
   void applySyncedXRange(double min_x, double max_x);
+
+  /**
+   * @brief Applies a left Y range from @ref PlotViewSync without re-broadcasting.
+   *
+   * @param min_y Synced minimum Y.
+   * @param max_y Synced maximum Y.
+   */
+  void applySyncedYRange(double min_y, double max_y);
+
+  /**
+   * @brief Shows or clears a synced vertical cursor from another plot.
+   *
+   * @param active Whether @p x is valid.
+   * @param x Cursor X when @p active is true.
+   */
+  void setSyncedCursorX(bool active, double x);
+
+  /** Local latched scrub cursor (click in Select mode). */
+  void setLatchCursorX(bool active, double x);
+  void clearLatchCursor();
+  [[nodiscard]] bool latchActive() const { return latch_active_; }
+  [[nodiscard]] double latchX() const { return latch_x_; }
 
   /**
    * @brief Clears latched inspect points A/B.
@@ -278,6 +320,9 @@ class PlotChartWidget : public QWidget {
 
   /** Hover crosshair appeared, moved, or cleared. */
   void hoverStateChanged();
+
+  /** Local latch cursor toggled or moved. */
+  void latchCursorChanged();
 
   /** Escape pressed while inspecting — clear / exit inspect. */
   void inspectEscapeRequested();
@@ -445,6 +490,9 @@ class PlotChartWidget : public QWidget {
   void applyZoomRect(const QRect& selection, const AxisRange& range,
                      const QRect& chart);
 
+  /** Push current override range onto the zoom history stack. */
+  void pushViewHistory();
+
   /** Latch brush X-range from a pixel span and recompute stats. */
   void applyBrushSpan(int pixel_a, int pixel_b, const AxisRange& range,
                       const QRect& chart);
@@ -478,6 +526,11 @@ class PlotChartWidget : public QWidget {
   bool show_reference_y_ = false;  /**< Draw horizontal reference line. */
   double reference_y_ = 0.0;  /**< Reference line Y value. */
   double reference_time_sec_ = 0.0;  /**< Playback cursor time. */
+  bool show_reference_tracker_ = false;  /**< Second frozen vertical tracker. */
+  double reference_tracker_sec_ = 0.0;    /**< Frozen tracker time. */
+  bool keep_ratio_xy_ = true;            /**< XY aspect lock. */
+  bool latch_active_ = false;            /**< Local latched scrub cursor. */
+  double latch_x_ = 0.0;                 /**< Latched cursor X. */
   PlotInteractionMode interaction_mode_ = PlotInteractionMode::kSelect;  /**< Tool. */
   bool view_override_active_ = false;  /**< User zoom/pan overrides auto range. */
   bool suppress_view_sync_ = false;  /**< Block re-entrant sync publishes. */
@@ -490,6 +543,9 @@ class PlotChartWidget : public QWidget {
   QPoint drag_start_;         /**< Gesture start pixel. */
   AxisRange drag_start_range_; /**< Axis range at gesture start. */
   QRect zoom_rect_;           /**< Current box-zoom rectangle. */
+  bool synced_cursor_active_ = false; /**< Shared cursor from another plot. */
+  double synced_cursor_x_ = 0.0;      /**< Synced cursor data X. */
+
   bool hover_active_ = false; /**< Hover crosshair visible. */
   QPoint hover_pos_;          /**< Hover pixel position. */
   double hover_x_ = 0.0;      /**< Hover data X. */
@@ -502,6 +558,19 @@ class PlotChartWidget : public QWidget {
   double brush_max_x_ = 0.0;    /**< Brush range max X. */
   int brush_drag_x_ = 0;        /**< Live brush drag end pixel X. */
   QVector<BrushSeriesStats> brush_stats_;  /**< Stats for latched brush. */
+
+  struct ViewSnapshot {
+    bool override_active = false;
+    double min_x = 0.0;
+    double max_x = 30.0;
+    double min_y = 0.0;
+    double max_y = 1.0;
+  };
+  std::vector<ViewSnapshot> view_history_;  /**< Zoom/pan undo stack. */
+
+  /** Reused each paint to avoid heap churn in drawSeries. */
+  mutable std::vector<PlotPoint> paint_visible_;
+  mutable std::vector<QPointF> paint_mapped_;
 };
 
 }  // namespace plot

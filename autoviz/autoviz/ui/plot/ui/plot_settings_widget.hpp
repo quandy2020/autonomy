@@ -26,6 +26,7 @@ class QComboBox;
 class QDoubleSpinBox;
 class QLineEdit;
 class QPushButton;
+class QSpinBox;
 class QVBoxLayout;
 
 namespace autoviz {
@@ -101,6 +102,12 @@ class PlotSettingsWidget : public QWidget {
    */
   void removeSeriesRequested(int index);
 
+  /** Request importing a plot XML file into the host panel. */
+  void importXmlRequested();
+
+  /** Request exporting the host panel config as plot XML. */
+  void exportXmlRequested();
+
  private slots:
   /** Emit @ref configChanged() from editor signals. */
   void emitConfigChanged();
@@ -165,7 +172,14 @@ class PlotSettingsWidget : public QWidget {
   QComboBox* x_axis_mode_combo_ = nullptr;  /**< X-axis mode. */
   QComboBox* message_path_mode_combo_ = nullptr;  /**< Current vs accumulated. */
   QComboBox* sync_plots_combo_ = nullptr;  /**< Sync with other plots. */
+  QLineEdit* sync_group_edit_ = nullptr;     /**< Sync group name. */
+  QCheckBox* sync_y_axis_check_ = nullptr;   /**< Sync left Y range. */
+  QCheckBox* sync_cursor_check_ = nullptr;   /**< Sync hover cursor. */
   QDoubleSpinBox* x_window_spin_ = nullptr;  /**< Timestamp window (seconds). */
+  QSpinBox* max_points_spin_ = nullptr;      /**< Sample buffer size. */
+  QCheckBox* keep_ratio_xy_check_ = nullptr; /**< XY aspect lock. */
+  QCheckBox* show_reference_tracker_check_ = nullptr; /**< Frozen tracker. */
+  QDoubleSpinBox* reference_tracker_spin_ = nullptr;  /**< Frozen tracker time. */
   QWidget* x_axis_timestamp_body_ = nullptr;  /**< Timestamp-mode options. */
   QWidget* x_axis_index_body_ = nullptr;  /**< Index-mode options. */
   QWidget* x_axis_message_path_body_ = nullptr;  /**< Message-path-mode options. */

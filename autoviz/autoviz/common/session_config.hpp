@@ -162,6 +162,9 @@ struct PlotSeriesPersistConfig {
   /** Optional X field path. */
   std::string x_field_path;
 
+  /** Optional X stream channel for XY mode (empty = same as @ref channel). */
+  std::string x_channel;
+
   /** Optional custom timestamp field path. */
   std::string custom_timestamp_path;
 
@@ -174,8 +177,26 @@ struct PlotSeriesPersistConfig {
   /** Line width mode / size (@c "auto" or numeric string). */
   std::string line_size = "auto";
 
+  /** Curve stroke style (panel enum as int: lines/steps/sticks/…). */
+  int curve_style = 0;
+
   /** Whether to draw the connecting line. */
   bool show_line = true;
+
+  /** Whether to draw per-sample markers. */
+  bool show_points = true;
+
+  /** Marker radius in screen pixels. */
+  double point_size = 3.0;
+
+  /** Multiply Y after modifiers / binary op. */
+  double y_scale = 1.0;
+
+  /** Add to Y after @ref y_scale. */
+  double y_offset = 0.0;
+
+  /** Optional channel wildcard (@c * / @c ?). */
+  std::string channel_pattern;
 
   /** Plot against the right Y-axis when true. */
   bool use_right_y = false;
@@ -219,6 +240,15 @@ struct PlotPanelPersistConfig {
   /** Sync X range with other plots. */
   bool sync_with_other_plots = false;
 
+  /** Sync group name; empty means no group (unless @ref sync_with_other_plots). */
+  std::string sync_group;
+
+  /** Also sync left Y range within the group. */
+  bool sync_y_axis = false;
+
+  /** Broadcast hover X as a shared vertical cursor. */
+  bool sync_cursor = true;
+
   /** Show numeric values in the legend. */
   bool show_legend_values = true;
 
@@ -260,6 +290,18 @@ struct PlotPanelPersistConfig {
 
   /** Rolling X window length in seconds. */
   double x_window_sec = 30.0;
+
+  /** Max retained samples per series. */
+  int max_points_per_series = 20000;
+
+  /** Keep XY aspect ratio on fit/zoom. */
+  bool keep_ratio_xy = true;
+
+  /** Show second frozen vertical tracker. */
+  bool show_reference_tracker = false;
+
+  /** Frozen tracker time (seconds). */
+  double reference_tracker_sec = 0.0;
 
   /** Series list. */
   std::vector<PlotSeriesPersistConfig> series;

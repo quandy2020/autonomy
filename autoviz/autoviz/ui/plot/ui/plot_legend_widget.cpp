@@ -2,14 +2,15 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_legend_widget.hpp"
+#include "autoviz/ui/plot/ui/plot_legend_widget.hpp"
 
 #include <algorithm>
 
 #include <QFontMetrics>
+#include <QMouseEvent>
 #include <QPainter>
 
-#include "autoviz/ui/plot/plot_path_utils.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/plot_types.hpp"
 
 namespace autoviz {
@@ -18,7 +19,8 @@ namespace plot {
 PlotLegendWidget::PlotLegendWidget(QWidget* parent) : QFrame(parent) {
   setFrameShape(QFrame::NoFrame);
   setAutoFillBackground(true);
-  setAttribute(Qt::WA_TransparentForMouseEvents, true);
+  setAttribute(Qt::WA_TransparentForMouseEvents, false);
+  setCursor(Qt::PointingHandCursor);
   QPalette pal = palette();
   pal.setColor(QPalette::Window, QColor(255, 255, 255, 230));
   setPalette(pal);
@@ -45,12 +47,14 @@ void PlotLegendWidget::setValueRows(const QVector<PlotValueRow>& rows) {
 
 QSize PlotLegendWidget::preferredSize() const { return sizeHint(); }
 
+int PlotLegendWidget::rowHeight() const { return show_values_ ? 34 : 20; }
+
 QSize PlotLegendWidget::sizeHint() const {
   int visible = 0;
   int max_label_w = 0;
   const QFontMetrics fm(font());
   for (const PlotSeriesRuntime* runtime : series_) {
-    if (runtime == nullptr || !runtime->config.enabled) {
+    if (runtime == nullptr) {
       continue;
     }
     ++visible;
@@ -67,10 +71,33 @@ QSize PlotLegendWidget::sizeHint() const {
   if (visible == 0) {
     return QSize(120, 28);
   }
-  const int row_h = show_values_ ? 34 : 20;
-  // Swatch (8+10) + gap to text (6) + right pad (12).
   const int width = std::max(180, 8 + 10 + 6 + max_label_w + 12);
-  return QSize(width, 8 + visible * row_h);
+  return QSize(width, 8 + visible * rowHeight());
+}
+
+void PlotLegendWidget::mousePressEvent(QMouseEvent* event) {
+  if (event == nullptr || event->button() != Qt::LeftButton) {
+    QFrame::mousePressEvent(event);
+    return;
+  }
+  const int y = event->position().toPoint().y() - 8;
+  if (y < 0) {
+    return;
+  }
+  const int row = y / rowHeight();
+  int visible_index = 0;
+  for (int i = 0; i < static_cast<int>(series_.size()); ++i) {
+    if (series_[static_cast<std::size_t>(i)] == nullptr) {
+      continue;
+    }
+    if (visible_index == row) {
+      emit seriesVisibilityToggled(i);
+      event->accept();
+      return;
+    }
+    ++visible_index;
+  }
+  QFrame::mousePressEvent(event);
 }
 
 void PlotLegendWidget::paintEvent(QPaintEvent* /*event*/) {
@@ -90,20 +117,30 @@ void PlotLegendWidget::paintEvent(QPaintEvent* /*event*/) {
   int y = 8;
   bool any = false;
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
-    if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
+    if (runtime_ptr == nullptr) {
       continue;
     }
     any = true;
     const PlotSeriesConfig& config = runtime_ptr->config;
     const QString label =
         SeriesLegendLabel(config.label, config.channel, config.field_path);
-
-    painter.fillRect(QRect(8, y + 4, 10, 10), config.color);
-    painter.setPen(QColor(60, 60, 60));
+    const bool enabled = config.enabled;
+    QColor swatch = config.color;
+    if (!enabled) {
+      swatch.setAlpha(90);
+    }
+    painter.fillRect(QRect(8, y + 4, 10, 10), swatch);
+    painter.setPen(enabled ? QColor(60, 60, 60) : QColor(160, 160, 160));
     painter.drawText(QRect(24, y, width() - 32, 16), Qt::AlignVCenter | Qt::AlignLeft,
                      label);
+    if (!enabled) {
+      const QFontMetrics fm(painter.font());
+      const int text_w = fm.horizontalAdvance(label);
+      painter.setPen(QColor(160, 160, 160));
+      painter.drawLine(24, y + 8, 24 + text_w, y + 8);
+    }
 
-    if (show_values_) {
+    if (show_values_ && enabled) {
       const QString value = valueForLabel(label, config.color);
       if (!value.isEmpty()) {
         painter.setPen(QColor(100, 100, 100));
@@ -112,7 +149,7 @@ void PlotLegendWidget::paintEvent(QPaintEvent* /*event*/) {
       }
     }
 
-    y += show_values_ ? 34 : 20;
+    y += rowHeight();
   }
 
   if (!any) {

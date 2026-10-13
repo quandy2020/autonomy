@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/message_field_tree.hpp"
+#include "autoviz/ui/plot/field/message_field_tree.hpp"
 
 #include <automsgs/msgs/DynamicFactory.hh>
 

@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_drag_mime.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 
 #include <QMimeData>
 

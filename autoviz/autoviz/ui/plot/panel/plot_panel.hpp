@@ -25,6 +25,7 @@
 
 #include <QWidget>
 
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -150,6 +151,54 @@ class PlotPanel : public QWidget {
    * @param max_x Synced maximum X.
    */
   void applySyncedXRange(double min_x, double max_x);
+
+  /**
+   * @brief Applies a synced left Y range from @ref PlotViewSync.
+   *
+   * @param min_y Synced minimum Y.
+   * @param max_y Synced maximum Y.
+   */
+  void applySyncedYRange(double min_y, double max_y);
+
+  /**
+   * @brief Applies or clears a shared hover cursor from @ref PlotViewSync.
+   *
+   * @param active Whether @p x is valid.
+   * @param x Cursor X when @p active is true.
+   */
+  void applySyncedCursorX(bool active, double x);
+
+  /**
+   * @brief Effective sync group name (empty when sync is off).
+   *
+   * @return Group name, or empty.
+   */
+  QString effectiveSyncGroup() const;
+
+  /** @return Whether this panel accepts synced Y ranges. */
+  bool syncYAxisEnabled() const { return config_.sync_y_axis; }
+
+  /** @return Whether this panel accepts synced cursors. */
+  bool syncCursorEnabled() const { return config_.sync_cursor; }
+
+  /**
+   * @brief Pauses or resumes sampling into the chart.
+   *
+   * @param paused @c true to freeze new samples.
+   */
+  void setPaused(bool paused);
+
+  /** @return Whether sampling is paused. */
+  bool isPaused() const { return paused_; }
+
+  /** Clears sampled points without changing series config. */
+  void clearPlotData();
+
+  /** Imports a plot XML document into this panel. */
+  void importPlotXml();
+
+  /** Exports this panel config as plot XML. */
+  void exportPlotXml();
 
   /**
    * @brief Shows or hides the settings pane.
@@ -375,14 +424,6 @@ class PlotPanel : public QWidget {
    */
   QColor nextSeriesColor() const;
 
-  /**
-   * @brief Drop points older than the X window for @p runtime.
-   *
-   * @param runtime Series to trim.
-   * @param latest_x Newest X used as the window right edge.
-   */
-  void trimSeriesPoints(PlotSeriesRuntime& runtime, double latest_x);
-
   /** Refresh legend value rows from hover / playhead. */
   void updateLegendValues();
 
@@ -404,20 +445,11 @@ class PlotPanel : public QWidget {
   /** Sync select/pan/zoom tool button checked states. */
   void syncInteractionToolState();
 
-  /**
-   * @brief Resolve the X timestamp for a sample based on series timestamp mode.
-   *
-   * @param runtime Series runtime (timestamp mode / custom path).
-   * @param message_type Schema type.
-   * @param payload Serialized bytes.
-   * @param receive_time Host receive time (seconds).
-   * @param sim_time Log / sim time (seconds).
-   * @return Timestamp used as series X (or for windowing).
-   */
-  double resolveTimestampSec(const PlotSeriesRuntime& runtime,
-                             const std::string& message_type,
-                             const std::string& payload, double receive_time,
-                             double sim_time) const;
+  /** Resolve channel_pattern against live channels and resubscribe as needed. */
+  void resolveChannelPatterns();
+
+  /** Sync pause tool button state. */
+  void syncPauseToolState();
 
   /** Non-owning visualization manager. */
   common::VisualizationManager* manager_ = nullptr;
@@ -470,11 +502,23 @@ class PlotPanel : public QWidget {
   /** Legend visibility toggle. */
   QToolButton* legend_tool_button_ = nullptr;
 
+  /** Pause / run toggle (checked = paused). */
+  QToolButton* pause_tool_button_ = nullptr;
+
+  /** Clear sampled points. */
+  QToolButton* clear_tool_button_ = nullptr;
+
   /** Mutually exclusive interaction tool group. */
   QButtonGroup* interaction_tool_group_ = nullptr;
 
+  /** When true, onTick drains queues without appending samples. */
+  bool paused_ = false;
+
   /** Cursor into the auto color palette for new series. */
   int color_cursor_ = 0;
+
+  /** Last sim time seen in onTick (dirty replot for playback tracker). */
+  double last_tick_sim_time_ = std::numeric_limits<double>::quiet_NaN();
 };
 
 }  // namespace plot

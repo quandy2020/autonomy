@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_chart_widget.hpp"
+#include "autoviz/ui/plot/chart/plot_chart_widget.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -22,7 +22,10 @@
 #include <QWheelEvent>
 #include <QtMath>
 
-#include "autoviz/ui/plot/plot_path_utils.hpp"
+#include "autoviz/ui/plot/core/plot_sample_reducer.hpp"
+#include "autoviz/ui/plot/core/plot_time_join.hpp"
+#include "autoviz/ui/plot/core/plot_xy_align.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -37,8 +40,6 @@ constexpr double kExactSampleEpsilon = 1e-6;
 constexpr double kInspectPickRadiusPx = 10.0;
 constexpr int kPanDragThresholdPx = 4;
 constexpr qreal kDefaultLineWidth = 2.0;
-constexpr int kMaxDrawPoints = 1500;
-
 qreal ResolveLineWidth(const QString& line_size) {
   const QString trimmed = line_size.trimmed();
   if (trimmed.isEmpty() ||
@@ -51,70 +52,6 @@ qreal ResolveLineWidth(const QString& line_size) {
     return kDefaultLineWidth;
   }
   return static_cast<qreal>(value);
-}
-
-/**
- * Largest-Triangle-Three-Buckets downsampling for draw-time paths.
- * Keeps first/last points; @p threshold is the target point count.
- */
-std::vector<PlotPoint> DownsampleLttb(const std::deque<PlotPoint>& points,
-                                     int threshold) {
-  const int n = static_cast<int>(points.size());
-  if (threshold <= 2 || n <= threshold) {
-    return std::vector<PlotPoint>(points.begin(), points.end());
-  }
-
-  std::vector<PlotPoint> sampled;
-  sampled.reserve(static_cast<std::size_t>(threshold));
-  sampled.push_back(points.front());
-
-  const double bucket_size =
-      static_cast<double>(n - 2) / static_cast<double>(threshold - 2);
-  int a = 0;
-  for (int i = 0; i < threshold - 2; ++i) {
-    const int range_start =
-        static_cast<int>(std::floor((i + 1) * bucket_size)) + 1;
-    int range_end =
-        static_cast<int>(std::floor((i + 2) * bucket_size)) + 1;
-    range_end = std::min(range_end, n);
-
-    const int next_start =
-        static_cast<int>(std::floor((i + 2) * bucket_size)) + 1;
-    int next_end =
-        static_cast<int>(std::floor((i + 3) * bucket_size)) + 1;
-    next_end = std::min(next_end, n);
-    if (next_start >= n) {
-      break;
-    }
-
-    double avg_x = 0.0;
-    double avg_y = 0.0;
-    const int next_count = std::max(1, next_end - next_start);
-    for (int j = next_start; j < next_end; ++j) {
-      avg_x += points[static_cast<std::size_t>(j)].x;
-      avg_y += points[static_cast<std::size_t>(j)].y;
-    }
-    avg_x /= next_count;
-    avg_y /= next_count;
-
-    const PlotPoint& point_a = points[static_cast<std::size_t>(a)];
-    double max_area = -1.0;
-    int max_index = range_start;
-    for (int j = range_start; j < range_end; ++j) {
-      const PlotPoint& p = points[static_cast<std::size_t>(j)];
-      const double area = std::abs((point_a.x - avg_x) * (p.y - point_a.y) -
-                                   (point_a.x - p.x) * (avg_y - point_a.y)) *
-                          0.5;
-      if (area > max_area) {
-        max_area = area;
-        max_index = j;
-      }
-    }
-    sampled.push_back(points[static_cast<std::size_t>(max_index)]);
-    a = max_index;
-  }
-  sampled.push_back(points.back());
-  return sampled;
 }
 
 }  // namespace
@@ -211,7 +148,28 @@ void PlotChartWidget::setReferenceY(double y) {
 }
 
 void PlotChartWidget::setReferenceTimeSec(double time_sec) {
+  // Do not call update() here — PlotPanel::onTick coalesces repaints.
   reference_time_sec_ = time_sec;
+}
+
+void PlotChartWidget::setShowReferenceTracker(bool visible) {
+  if (show_reference_tracker_ == visible) {
+    return;
+  }
+  show_reference_tracker_ = visible;
+  update();
+}
+
+void PlotChartWidget::setReferenceTrackerSec(double time_sec) {
+  reference_tracker_sec_ = time_sec;
+  update();
+}
+
+void PlotChartWidget::setKeepRatioXy(bool enabled) {
+  if (keep_ratio_xy_ == enabled) {
+    return;
+  }
+  keep_ratio_xy_ = enabled;
   update();
 }
 
@@ -257,6 +215,46 @@ void PlotChartWidget::applySyncedXRange(double min_x, double max_x) {
   update();
 }
 
+void PlotChartWidget::applySyncedYRange(double min_y, double max_y) {
+  suppress_view_sync_ = true;
+  if (!view_override_active_) {
+    const AxisRange range = effectiveAxisRange();
+    view_min_x_ = range.min_x;
+    view_max_x_ = range.max_x;
+  }
+  view_min_y_ = min_y;
+  view_max_y_ = max_y;
+  view_override_active_ = true;
+  y_auto_scale_ = false;
+  y_min_ = min_y;
+  y_max_ = max_y;
+  suppress_view_sync_ = false;
+  update();
+}
+
+void PlotChartWidget::setSyncedCursorX(bool active, double x) {
+  if (synced_cursor_active_ == active &&
+      (!active || std::abs(synced_cursor_x_ - x) < 1e-12)) {
+    return;
+  }
+  synced_cursor_active_ = active;
+  synced_cursor_x_ = x;
+  update();
+}
+
+void PlotChartWidget::setLatchCursorX(bool active, double x) {
+  if (latch_active_ == active &&
+      (!active || std::abs(latch_x_ - x) < 1e-12)) {
+    return;
+  }
+  latch_active_ = active;
+  latch_x_ = x;
+  emit latchCursorChanged();
+  update();
+}
+
+void PlotChartWidget::clearLatchCursor() { setLatchCursorX(false, 0.0); }
+
 void PlotChartWidget::clearInspection() {
   inspect_a_ = PlotInspectPoint{};
   inspect_b_ = PlotInspectPoint{};
@@ -277,7 +275,48 @@ void PlotChartWidget::emitViewRangeIfNeeded() {
   emit viewRangeChanged(view_min_x_, view_max_x_, view_min_y_, view_max_y_);
 }
 
+void PlotChartWidget::pushViewHistory() {
+  ViewSnapshot snap;
+  snap.override_active = view_override_active_;
+  if (view_override_active_) {
+    snap.min_x = view_min_x_;
+    snap.max_x = view_max_x_;
+    snap.min_y = view_min_y_;
+    snap.max_y = view_max_y_;
+  } else {
+    const AxisRange range = effectiveAxisRange();
+    snap.min_x = range.min_x;
+    snap.max_x = range.max_x;
+    snap.min_y = range.min_y;
+    snap.max_y = range.max_y;
+  }
+  view_history_.push_back(snap);
+  constexpr std::size_t kMaxHistory = 32;
+  if (view_history_.size() > kMaxHistory) {
+    view_history_.erase(view_history_.begin());
+  }
+}
+
+bool PlotChartWidget::undoView() {
+  if (view_history_.empty()) {
+    return false;
+  }
+  const ViewSnapshot snap = view_history_.back();
+  view_history_.pop_back();
+  view_override_active_ = snap.override_active;
+  view_min_x_ = snap.min_x;
+  view_max_x_ = snap.max_x;
+  view_min_y_ = snap.min_y;
+  view_max_y_ = snap.max_y;
+  emitViewRangeIfNeeded();
+  update();
+  return true;
+}
+
 void PlotChartWidget::resetView() {
+  if (view_override_active_) {
+    pushViewHistory();
+  }
   view_override_active_ = false;
   dragging_ = false;
   pan_pending_ = false;
@@ -295,6 +334,7 @@ void PlotChartWidget::beginPanGesture(const QPoint& pos, bool active_immediately
   pan_pending_ = !active_immediately;
   dragging_ = active_immediately;
   if (dragging_) {
+    pushViewHistory();
     setCursor(Qt::ClosedHandCursor);
   }
 }
@@ -303,6 +343,7 @@ void PlotChartWidget::updatePanGesture(const QPoint& pos) {
   if (pan_pending_ && exceedsDragThreshold(pos)) {
     pan_pending_ = false;
     dragging_ = true;
+    pushViewHistory();
     setCursor(Qt::ClosedHandCursor);
   }
   if (!dragging_) {
@@ -407,7 +448,8 @@ PlotChartWidget::AxisRange PlotChartWidget::baseAxisRange() const {
   bool has_right = false;
   bool has_x = false;
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
-    if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
+    if (runtime_ptr == nullptr || !runtime_ptr->config.enabled ||
+        runtime_ptr->points.empty()) {
       continue;
     }
     const bool right = runtime_ptr->config.use_right_y;
@@ -423,25 +465,6 @@ PlotChartWidget::AxisRange PlotChartWidget::baseAxisRange() const {
         range.min_x = std::min(range.min_x, point.x);
         range.max_x = std::max(range.max_x, point.x);
       }
-      if (right) {
-        if (!has_right) {
-          range.min_y_right = point.y;
-          range.max_y_right = point.y;
-          has_right = true;
-        } else {
-          range.min_y_right = std::min(range.min_y_right, point.y);
-          range.max_y_right = std::max(range.max_y_right, point.y);
-        }
-      } else {
-        if (!has_left) {
-          range.min_y = point.y;
-          range.max_y = point.y;
-          has_left = true;
-        } else {
-          range.min_y = std::min(range.min_y, point.y);
-          range.max_y = std::max(range.max_y, point.y);
-        }
-      }
     }
   }
 
@@ -449,6 +472,38 @@ PlotChartWidget::AxisRange PlotChartWidget::baseAxisRange() const {
       has_x) {
     range.max_x = reference_time_sec_;
     range.min_x = reference_time_sec_ - x_window_sec_;
+  }
+
+  // Y bounds from samples visible in the current X window (indexed scan).
+  for (const PlotSeriesRuntime* runtime_ptr : series_) {
+    if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
+      continue;
+    }
+    double ymin = 0.0;
+    double ymax = 0.0;
+    if (!VisibleYRange(runtime_ptr->points, range.min_x, range.max_x, &ymin,
+                       &ymax)) {
+      continue;
+    }
+    if (runtime_ptr->config.use_right_y) {
+      if (!has_right) {
+        range.min_y_right = ymin;
+        range.max_y_right = ymax;
+        has_right = true;
+      } else {
+        range.min_y_right = std::min(range.min_y_right, ymin);
+        range.max_y_right = std::max(range.max_y_right, ymax);
+      }
+    } else {
+      if (!has_left) {
+        range.min_y = ymin;
+        range.max_y = ymax;
+        has_left = true;
+      } else {
+        range.min_y = std::min(range.min_y, ymin);
+        range.max_y = std::max(range.max_y, ymax);
+      }
+    }
   }
 
   FitYSpan(&range.min_y, &range.max_y, y_auto_scale_, y_min_, y_max_, has_left);
@@ -461,7 +516,9 @@ PlotChartWidget::AxisRange PlotChartWidget::baseAxisRange() const {
 
 PlotChartWidget::AxisRange PlotChartWidget::applyLockedAxisScales(
     const AxisRange& range) const {
-  if (!lock_axis_scales_ || range.has_right_y) {
+  const bool force_xy_ratio =
+      keep_ratio_xy_ && x_axis_mode_ == PlotXAxisMode::kXY && !range.has_right_y;
+  if ((!lock_axis_scales_ && !force_xy_ratio) || range.has_right_y) {
     return range;
   }
   const QRect chart = chartRect();
@@ -794,6 +851,9 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
   QVector<HoverMarker> hover_markers;
 
   const double x_margin = (range.max_x - range.min_x) * 0.01;
+  const std::size_t bucket_count =
+      static_cast<std::size_t>(std::max(8, chart.width()));
+  const std::size_t sample_budget = bucket_count * 2;
 
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
     if (runtime_ptr == nullptr) {
@@ -804,57 +864,86 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
       continue;
     }
 
-    std::deque<PlotPoint> visible;
+    paint_visible_.clear();
+    paint_visible_.reserve(runtime.points.size());
     for (const PlotPoint& point : runtime.points) {
       if (point.x < range.min_x - x_margin || point.x > range.max_x + x_margin) {
         continue;
       }
-      visible.push_back(point);
+      paint_visible_.push_back(point);
     }
-    if (visible.empty()) {
+    if (paint_visible_.empty()) {
       continue;
     }
 
-    const std::vector<PlotPoint> draw_points =
-        DownsampleLttb(visible, kMaxDrawPoints);
-    // Foxglove-style: connecting segments plus point markers (not solid-only).
-    const bool draw_line =
-        runtime.config.show_line && draw_points.size() >= 2;
     const bool use_right = runtime.config.use_right_y;
-    const qreal line_width = ResolveLineWidth(runtime.config.line_size);
-    const qreal marker_r = std::max(2.0, line_width * 1.5);
-
-    QPainterPath path;
-    bool started = false;
-    QVector<QPointF> marker_pts;
-    marker_pts.reserve(static_cast<int>(draw_points.size()));
-
-    for (const PlotPoint& point : draw_points) {
-      const QPointF mapped = mapToChart(point.x, point.y, range, use_right);
-      marker_pts.push_back(mapped);
-      if (draw_line) {
-        if (!started) {
-          path.moveTo(mapped);
-          started = true;
-        } else {
-          path.lineTo(mapped);
-        }
-      }
+    paint_mapped_.clear();
+    paint_mapped_.reserve(paint_visible_.size());
+    for (const PlotPoint& point : paint_visible_) {
+      paint_mapped_.push_back(mapToChart(point.x, point.y, range, use_right));
     }
 
-    if (draw_line && !path.isEmpty()) {
+    const PlotSampleReduction reduced = ReducePlotSamples(
+        paint_mapped_.size(), sample_budget, bucket_count,
+        [this](std::size_t index) { return paint_mapped_[index]; });
+
+    const PlotCurveStyle style = runtime.config.curve_style;
+    const bool force_dots = style == PlotCurveStyle::kLinesAndDots;
+    const bool draw_line =
+        runtime.config.show_line && style != PlotCurveStyle::kSticks &&
+        reduced.samples.size() >= 2;
+    const bool draw_steps = style == PlotCurveStyle::kSteps && draw_line;
+    const bool draw_sticks = style == PlotCurveStyle::kSticks;
+    const bool draw_markers =
+        runtime.config.show_points || force_dots || draw_sticks;
+    const qreal line_width = ResolveLineWidth(runtime.config.line_size);
+    const qreal marker_r =
+        std::max(1.0, runtime.config.point_size > 0.0
+                          ? runtime.config.point_size
+                          : std::max(2.0, line_width * 1.5));
+
+    if (draw_sticks) {
+      QPen pen(runtime.config.color, line_width);
+      pen.setCosmetic(true);
+      painter.setPen(pen);
+      const double baseline_y = use_right ? 0.0 : 0.0;
+      const QPointF baseline =
+          mapToChart(range.min_x, baseline_y, range, use_right);
+      for (const ReducedPlotSample& sample : reduced.samples) {
+        painter.drawLine(QPointF(sample.point.x(), baseline.y()), sample.point);
+      }
+    } else if (draw_line) {
       QPen pen(runtime.config.color, line_width);
       pen.setCosmetic(true);
       painter.setPen(pen);
       painter.setBrush(Qt::NoBrush);
-      painter.drawPath(path);
+      QPainterPath path;
+      bool started = false;
+      QPointF prev;
+      for (const ReducedPlotSample& sample : reduced.samples) {
+        if (sample.starts_new_run || !started) {
+          path.moveTo(sample.point);
+          started = true;
+          prev = sample.point;
+        } else if (draw_steps) {
+          path.lineTo(sample.point.x(), prev.y());
+          path.lineTo(sample.point);
+          prev = sample.point;
+        } else {
+          path.lineTo(sample.point);
+          prev = sample.point;
+        }
+      }
+      if (!path.isEmpty()) {
+        painter.drawPath(path);
+      }
     }
 
-    if (!marker_pts.isEmpty()) {
+    if (draw_markers && !draw_sticks && !reduced.samples.empty()) {
       painter.setPen(Qt::NoPen);
       painter.setBrush(runtime.config.color);
-      for (const QPointF& pt : marker_pts) {
-        painter.drawEllipse(pt, marker_r, marker_r);
+      for (const ReducedPlotSample& sample : reduced.samples) {
+        painter.drawEllipse(sample.point, marker_r, marker_r);
       }
     }
 
@@ -862,8 +951,7 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
       const std::optional<HoverSample> sample = sampleAtX(runtime, hover_x_);
       if (sample.has_value()) {
         hover_markers.push_back(HoverMarker{
-            mapToChart(sample->sample_x, sample->y, range,
-                       runtime.config.use_right_y),
+            mapToChart(sample->sample_x, sample->y, range, use_right),
             runtime.config.color});
       }
     }
@@ -881,20 +969,55 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
 void PlotChartWidget::drawPlaybackLine(QPainter& painter,
                                        const AxisRange& range,
                                        const QRect& chart) const {
-  if (x_axis_mode_ != PlotXAxisMode::kTimestamp) {
-    return;
-  }
-  if (reference_time_sec_ < range.min_x || reference_time_sec_ > range.max_x) {
-    return;
+  auto drawVertical = [&](double x, const QColor& color, Qt::PenStyle style) {
+    if (x < range.min_x || x > range.max_x) {
+      return;
+    }
+    const QPointF top = mapToChart(x, range.max_y, range);
+    QPen pen(color);
+    pen.setWidth(2);
+    pen.setCosmetic(true);
+    pen.setStyle(style);
+    painter.setPen(pen);
+    painter.drawLine(QPointF(top.x(), chart.top()),
+                     QPointF(top.x(), chart.bottom()));
+  };
+
+  if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
+    drawVertical(reference_time_sec_, QColor(130, 130, 130), Qt::SolidLine);
+    if (show_reference_tracker_) {
+      drawVertical(reference_tracker_sec_, QColor(200, 80, 80), Qt::DashLine);
+    }
+    if (latch_active_) {
+      drawVertical(latch_x_, QColor(80, 140, 220), Qt::DotLine);
+    }
   }
 
-  const QPointF top = mapToChart(reference_time_sec_, range.max_y, range);
-  const QPointF bottom = mapToChart(reference_time_sec_, range.min_y, range);
-  QPen pen(QColor(130, 130, 130));
-  pen.setWidth(2);
-  pen.setCosmetic(true);
-  painter.setPen(pen);
-  painter.drawLine(QPointF(top.x(), chart.top()), QPointF(bottom.x(), chart.bottom()));
+  if (x_axis_mode_ == PlotXAxisMode::kXY) {
+    QPen pen(QColor(130, 130, 130));
+    pen.setWidth(2);
+    pen.setCosmetic(true);
+    painter.setPen(pen);
+    painter.setBrush(QColor(130, 130, 130));
+    for (const PlotSeriesRuntime* runtime_ptr : series_) {
+      if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
+        continue;
+      }
+      const std::optional<PlotPoint> sample =
+          SampleXyFromTime(runtime_ptr->points, reference_time_sec_);
+      if (!sample.has_value()) {
+        continue;
+      }
+      if (sample->x < range.min_x || sample->x > range.max_x ||
+          sample->y < range.min_y || sample->y > range.max_y) {
+        continue;
+      }
+      const QPointF mapped =
+          mapToChart(sample->x, sample->y, range, runtime_ptr->config.use_right_y);
+      painter.drawEllipse(mapped, 5.0, 5.0);
+    }
+    return;
+  }
 }
 
 void PlotChartWidget::drawHoverCrosshair(QPainter& painter,
@@ -1231,6 +1354,18 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
   drawSeries(painter, range, chart);
   drawReferenceY(painter, range, chart);
   drawPlaybackLine(painter, range, chart);
+  if (synced_cursor_active_ && synced_cursor_x_ >= range.min_x &&
+      synced_cursor_x_ <= range.max_x &&
+      !(hover_active_ && std::abs(hover_x_ - synced_cursor_x_) < 1e-12)) {
+    const QPointF top = mapToChart(synced_cursor_x_, range.max_y, range);
+    QPen pen(QColor(125, 211, 252, 200));
+    pen.setWidth(1);
+    pen.setCosmetic(true);
+    pen.setStyle(Qt::DashLine);
+    painter.setPen(pen);
+    painter.drawLine(QPointF(top.x(), chart.top()),
+                     QPointF(top.x(), chart.bottom()));
+  }
   drawHoverCrosshair(painter, range, chart);
   drawInspection(painter, range, chart);
   drawBrush(painter, range, chart);
@@ -1428,10 +1563,12 @@ void PlotChartWidget::mouseReleaseEvent(QMouseEvent* event) {
 
   if (event->button() == Qt::LeftButton &&
       interaction_mode_ == PlotInteractionMode::kSelect && pan_pending_ &&
-      !exceedsDragThreshold(event->pos()) &&
-      x_axis_mode_ == PlotXAxisMode::kTimestamp && hover_active_) {
+      !exceedsDragThreshold(event->pos()) && hover_active_) {
     pan_pending_ = false;
-    emit seekRequested(hover_x_);
+    setLatchCursorX(true, hover_x_);
+    if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
+      emit seekRequested(hover_x_);
+    }
     event->accept();
     return;
   }
@@ -1484,6 +1621,7 @@ void PlotChartWidget::leaveEvent(QEvent* /*event*/) {
 void PlotChartWidget::applyZoomRect(const QRect& selection,
                                     const AxisRange& range,
                                     const QRect& chart) {
+  pushViewHistory();
   const double dx = range.max_x - range.min_x;
   const double dy = range.max_y - range.min_y;
   const double left_ratio =
@@ -1515,6 +1653,7 @@ void PlotChartWidget::applyWheelZoom(const QPointF& position, int angle_delta,
   if (!chartRect().contains(position.toPoint())) {
     return;
   }
+  pushViewHistory();
 
   const bool shift = modifiers.testFlag(Qt::ShiftModifier);
   const bool alt = modifiers.testFlag(Qt::AltModifier);
@@ -1538,6 +1677,10 @@ void PlotChartWidget::applyWheelZoom(const QPointF& position, int angle_delta,
   } else if (alt) {
     zoom_x = true;
     zoom_y = false;
+  } else if (x_axis_mode_ == PlotXAxisMode::kXY) {
+    // Default XY wheel zoom keeps aspect by scaling both axes equally.
+    zoom_x = true;
+    zoom_y = true;
   } else if (x_axis_mode_ == PlotXAxisMode::kTimestamp ||
              x_axis_mode_ == PlotXAxisMode::kIndex) {
     zoom_x = true;
@@ -1610,6 +1753,18 @@ void PlotChartWidget::resizeEvent(QResizeEvent* event) {
 void PlotChartWidget::keyPressEvent(QKeyEvent* event) {
   if (event->key() == Qt::Key_R) {
     resetView();
+    event->accept();
+    return;
+  }
+  if (event->key() == Qt::Key_Backspace) {
+    if (undoView()) {
+      event->accept();
+      return;
+    }
+  }
+  if (event->key() == Qt::Key_Escape && latch_active_ &&
+      interaction_mode_ == PlotInteractionMode::kSelect) {
+    clearLatchCursor();
     event->accept();
     return;
   }

@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_config_io.hpp"
+#include "autoviz/ui/plot/io/plot_config_io.hpp"
 
 #include <QColor>
 
@@ -15,11 +15,18 @@ common::PlotSeriesPersistConfig ToPersistSeries(const PlotSeriesConfig& series) 
   persist.channel = series.channel.toStdString();
   persist.field_path = series.field_path.toStdString();
   persist.x_field_path = series.x_field_path.toStdString();
+  persist.x_channel = series.x_channel.toStdString();
   persist.custom_timestamp_path = series.custom_timestamp_path.toStdString();
   persist.label = series.label.toStdString();
   persist.color = series.color.name().toStdString();
   persist.line_size = series.line_size.toStdString();
+  persist.curve_style = static_cast<int>(series.curve_style);
   persist.show_line = series.show_line;
+  persist.show_points = series.show_points;
+  persist.point_size = series.point_size;
+  persist.y_scale = series.y_scale;
+  persist.y_offset = series.y_offset;
+  persist.channel_pattern = series.channel_pattern.toStdString();
   persist.use_right_y = series.use_right_y;
   persist.binary_op = static_cast<int>(series.binary_op);
   persist.secondary_channel = series.secondary_channel.toStdString();
@@ -35,12 +42,19 @@ PlotSeriesConfig FromPersistSeries(const common::PlotSeriesPersistConfig& persis
   series.channel = QString::fromStdString(persist.channel);
   series.field_path = QString::fromStdString(persist.field_path);
   series.x_field_path = QString::fromStdString(persist.x_field_path);
+  series.x_channel = QString::fromStdString(persist.x_channel);
   series.custom_timestamp_path =
       QString::fromStdString(persist.custom_timestamp_path);
   series.label = QString::fromStdString(persist.label);
   series.color = QColor(QString::fromStdString(persist.color));
   series.line_size = QString::fromStdString(persist.line_size);
+  series.curve_style = static_cast<PlotCurveStyle>(persist.curve_style);
   series.show_line = persist.show_line;
+  series.show_points = persist.show_points;
+  series.point_size = persist.point_size;
+  series.y_scale = persist.y_scale;
+  series.y_offset = persist.y_offset;
+  series.channel_pattern = QString::fromStdString(persist.channel_pattern);
   series.use_right_y = persist.use_right_y;
   series.binary_op = static_cast<PlotBinaryOp>(persist.binary_op);
   series.secondary_channel = QString::fromStdString(persist.secondary_channel);
@@ -63,6 +77,9 @@ common::PlotPanelPersistConfig ToPersistConfig(const QString& object_name,
   persist.x_axis_mode = static_cast<int>(config.x_axis_mode);
   persist.message_path_mode = static_cast<int>(config.message_path_mode);
   persist.sync_with_other_plots = config.sync_with_other_plots;
+  persist.sync_group = config.sync_group.toStdString();
+  persist.sync_y_axis = config.sync_y_axis;
+  persist.sync_cursor = config.sync_cursor;
   persist.show_legend_values = config.show_legend_values;
   persist.settings_visible = config.settings_visible;
   persist.settings_width = config.settings_width;
@@ -77,6 +94,10 @@ common::PlotPanelPersistConfig ToPersistConfig(const QString& object_name,
   persist.show_reference_y = config.show_reference_y;
   persist.reference_y = config.reference_y;
   persist.x_window_sec = config.x_window_sec;
+  persist.max_points_per_series = config.max_points_per_series;
+  persist.keep_ratio_xy = config.keep_ratio_xy;
+  persist.show_reference_tracker = config.show_reference_tracker;
+  persist.reference_tracker_sec = config.reference_tracker_sec;
   persist.series.reserve(config.series.size());
   for (const PlotSeriesConfig& series : config.series) {
     persist.series.push_back(ToPersistSeries(series));
@@ -91,6 +112,12 @@ PlotPanelConfig FromPersistConfig(const common::PlotPanelPersistConfig& persist)
   config.message_path_mode =
       static_cast<PlotMessagePathMode>(persist.message_path_mode);
   config.sync_with_other_plots = persist.sync_with_other_plots;
+  config.sync_group = QString::fromStdString(persist.sync_group);
+  config.sync_y_axis = persist.sync_y_axis;
+  config.sync_cursor = persist.sync_cursor;
+  if (config.sync_with_other_plots && config.sync_group.trimmed().isEmpty()) {
+    config.sync_group = QStringLiteral("default");
+  }
   config.show_legend_values = persist.show_legend_values;
   config.settings_visible = persist.settings_visible;
   config.settings_width = persist.settings_width > 0 ? persist.settings_width : 300;
@@ -105,6 +132,12 @@ PlotPanelConfig FromPersistConfig(const common::PlotPanelPersistConfig& persist)
   config.show_reference_y = persist.show_reference_y;
   config.reference_y = persist.reference_y;
   config.x_window_sec = persist.x_window_sec;
+  config.max_points_per_series = persist.max_points_per_series > 0
+                                     ? persist.max_points_per_series
+                                     : 20000;
+  config.keep_ratio_xy = persist.keep_ratio_xy;
+  config.show_reference_tracker = persist.show_reference_tracker;
+  config.reference_tracker_sec = persist.reference_tracker_sec;
   config.series.reserve(static_cast<int>(persist.series.size()));
   for (const common::PlotSeriesPersistConfig& series : persist.series) {
     config.series.push_back(FromPersistSeries(series));

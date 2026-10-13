@@ -23,6 +23,8 @@
 
 #include "autoviz/ui/plot/plot_types.hpp"
 
+class QMouseEvent;
+
 namespace autoviz {
 namespace plot {
 
@@ -74,6 +76,14 @@ class PlotLegendWidget : public QFrame {
    */
   QSize preferredSize() const;
 
+ signals:
+  /**
+   * @brief User clicked a legend row to toggle series visibility.
+   *
+   * @param index Index into the series list passed to @ref setSeries().
+   */
+  void seriesVisibilityToggled(int index);
+
  protected:
   /**
    * @brief Paints swatches, labels, and optional values.
@@ -81,6 +91,9 @@ class PlotLegendWidget : public QFrame {
    * @param event Paint event.
    */
   void paintEvent(QPaintEvent* event) override;
+
+  /** Click a row to toggle that series' enabled flag via signal. */
+  void mousePressEvent(QMouseEvent* event) override;
 
   /**
    * @brief Qt size hint forwarding @ref preferredSize().
@@ -90,6 +103,9 @@ class PlotLegendWidget : public QFrame {
   QSize sizeHint() const override;
 
  private:
+  /** Row height used for hit-testing / layout. */
+  [[nodiscard]] int rowHeight() const;
+
   /** Non-owning series list for labels/colors. */
   std::vector<const PlotSeriesRuntime*> series_;
 

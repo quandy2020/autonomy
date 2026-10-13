@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_settings_widget.hpp"
+#include "autoviz/ui/plot/ui/plot_settings_widget.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -13,6 +13,7 @@
 #include <QDoubleSpinBox>
 #include <QFontMetrics>
 #include <QFormLayout>
+#include <QSpinBox>
 #include <QHash>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -30,8 +31,8 @@
 #include "autoviz/integration/channel_manager.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
-#include "autoviz/ui/plot/message_field_tree.hpp"
-#include "autoviz/ui/plot/plot_path_utils.hpp"
+#include "autoviz/ui/plot/field/message_field_tree.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -260,7 +261,16 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
                               static_cast<int>(PlotXAxisMode::kIndex));
   x_axis_mode_combo_->addItem(tr("Message path"),
                               static_cast<int>(PlotXAxisMode::kMessagePath));
+  x_axis_mode_combo_->addItem(tr("XY"),
+                              static_cast<int>(PlotXAxisMode::kXY));
   general_form->addRow(tr("X-axis value type"), x_axis_mode_combo_);
+  max_points_spin_ = new QSpinBox(general_body);
+  max_points_spin_->setRange(1000, 500000);
+  max_points_spin_->setSingleStep(1000);
+  max_points_spin_->setValue(config_.max_points_per_series);
+  general_form->addRow(tr("Max points / series"), max_points_spin_);
+  connect(max_points_spin_, QOverload<int>::of(&QSpinBox::valueChanged), this,
+          &PlotSettingsWidget::emitConfigChanged);
   message_path_mode_combo_ = new QComboBox(general_body);
   message_path_mode_combo_->addItem(tr("Current"),
                                     static_cast<int>(PlotMessagePathMode::kCurrent));
@@ -272,10 +282,41 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   sync_plots_combo_ = new QComboBox(general_body);
   sync_plots_combo_->addItem(tr("Off"), false);
   sync_plots_combo_->addItem(tr("On"), true);
-  sync_plots_combo_->setCurrentIndex(config_.sync_with_other_plots ? 1 : 0);
-  general_form->addRow(tr("Sync x-axis with other plots"), sync_plots_combo_);
+  sync_plots_combo_->setCurrentIndex(
+      (!config_.sync_group.trimmed().isEmpty() || config_.sync_with_other_plots)
+          ? 1
+          : 0);
+  general_form->addRow(tr("Sync with other plots"), sync_plots_combo_);
+  sync_group_edit_ = new QLineEdit(config_.sync_group.isEmpty()
+                                       ? QStringLiteral("default")
+                                       : config_.sync_group,
+                                   general_body);
+  sync_group_edit_->setPlaceholderText(tr("default"));
+  general_form->addRow(tr("Sync group"), sync_group_edit_);
+  sync_y_axis_check_ = new QCheckBox(tr("Sync Y axis"), general_body);
+  sync_y_axis_check_->setChecked(config_.sync_y_axis);
+  sync_cursor_check_ = new QCheckBox(tr("Sync cursor"), general_body);
+  sync_cursor_check_->setChecked(config_.sync_cursor);
+  general_form->addRow(QString(), sync_y_axis_check_);
+  general_form->addRow(QString(), sync_cursor_check_);
+  auto* xml_row = new QHBoxLayout();
+  auto* import_xml = MakeFlatActionButton(tr("Import XML"), general_body);
+  auto* export_xml = MakeFlatActionButton(tr("Export XML"), general_body);
+  xml_row->addWidget(import_xml);
+  xml_row->addWidget(export_xml);
+  general_form->addRow(tr("Plot file"), xml_row);
   connect(sync_plots_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &PlotSettingsWidget::emitConfigChanged);
+  connect(sync_group_edit_, &QLineEdit::textChanged, this,
+          &PlotSettingsWidget::emitConfigChanged);
+  connect(sync_y_axis_check_, &QCheckBox::toggled, this,
+          &PlotSettingsWidget::emitConfigChanged);
+  connect(sync_cursor_check_, &QCheckBox::toggled, this,
+          &PlotSettingsWidget::emitConfigChanged);
+  connect(import_xml, &QPushButton::clicked, this,
+          &PlotSettingsWidget::importXmlRequested);
+  connect(export_xml, &QPushButton::clicked, this,
+          &PlotSettingsWidget::exportXmlRequested);
   connect(message_path_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, &PlotSettingsWidget::emitConfigChanged);
   outer->addWidget(makeCollapsibleSection(tr("General"), general_body, true));
@@ -323,12 +364,29 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
       x_axis_message_path_body_));
   x_axis_message_path_body_->setVisible(false);
 
+  auto* x_axis_xy_body = new QWidget(this);
+  auto* xy_layout = new QVBoxLayout(x_axis_xy_body);
+  xy_layout->setContentsMargins(0, 0, 0, 0);
+  xy_layout->addWidget(new QLabel(
+      tr("XY mode aligns independent X and Y streams by timestamp. "
+         "Set each series' X-value path and optional X channel "
+         "(empty X channel = same as Y). Match Δt controls pairing."),
+      x_axis_xy_body));
+  keep_ratio_xy_check_ = new QCheckBox(tr("Keep aspect ratio"), x_axis_xy_body);
+  keep_ratio_xy_check_->setChecked(config_.keep_ratio_xy);
+  xy_layout->addWidget(keep_ratio_xy_check_);
+  connect(keep_ratio_xy_check_, &QCheckBox::toggled, this,
+          &PlotSettingsWidget::emitConfigChanged);
+  x_axis_xy_body->setObjectName(QStringLiteral("x_axis_xy_body"));
+  x_axis_xy_body->setVisible(false);
+
   auto* x_axis_body = new QWidget(this);
   auto* x_axis_layout = new QVBoxLayout(x_axis_body);
   x_axis_layout->setContentsMargins(0, 0, 0, 0);
   x_axis_layout->addWidget(x_axis_timestamp_body_);
   x_axis_layout->addWidget(x_axis_index_body_);
   x_axis_layout->addWidget(x_axis_message_path_body_);
+  x_axis_layout->addWidget(x_axis_xy_body);
   outer->addWidget(makeCollapsibleSection(tr("X-axis"), x_axis_body, false));
   connect(x_axis_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
           this, [this](int /*index*/) {
@@ -379,6 +437,24 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   show_grid_check_->setChecked(config_.show_grid);
   y_axis_layout->addWidget(show_grid_check_);
   connect(show_grid_check_, &QCheckBox::toggled, this,
+          &PlotSettingsWidget::emitConfigChanged);
+
+  show_reference_tracker_check_ =
+      new QCheckBox(tr("Show reference tracker"), y_axis_body);
+  show_reference_tracker_check_->setChecked(config_.show_reference_tracker);
+  y_axis_layout->addWidget(show_reference_tracker_check_);
+  connect(show_reference_tracker_check_, &QCheckBox::toggled, this,
+          &PlotSettingsWidget::emitConfigChanged);
+  reference_tracker_spin_ = new QDoubleSpinBox(y_axis_body);
+  reference_tracker_spin_->setRange(-1.0e12, 1.0e12);
+  reference_tracker_spin_->setDecimals(6);
+  reference_tracker_spin_->setValue(config_.reference_tracker_sec);
+  reference_tracker_spin_->setEnabled(config_.show_reference_tracker);
+  y_axis_layout->addWidget(reference_tracker_spin_);
+  connect(show_reference_tracker_check_, &QCheckBox::toggled,
+          reference_tracker_spin_, &QWidget::setEnabled);
+  connect(reference_tracker_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
           &PlotSettingsWidget::emitConfigChanged);
 
   show_reference_y_check_ = new QCheckBox(tr("Reference line"), y_axis_body);
@@ -505,8 +581,14 @@ void PlotSettingsWidget::updateAxisModeVisibility() {
   if (x_axis_message_path_body_ != nullptr) {
     x_axis_message_path_body_->setVisible(mode == PlotXAxisMode::kMessagePath);
   }
+  if (QWidget* xy_body = findChild<QWidget*>(QStringLiteral("x_axis_xy_body"))) {
+    xy_body->setVisible(mode == PlotXAxisMode::kXY);
+  }
   if (message_path_mode_combo_ != nullptr) {
     message_path_mode_combo_->setEnabled(mode == PlotXAxisMode::kMessagePath);
+  }
+  if (sync_plots_combo_ != nullptr) {
+    sync_plots_combo_->setEnabled(mode != PlotXAxisMode::kXY);
   }
 }
 
@@ -521,9 +603,35 @@ void PlotSettingsWidget::setConfig(const PlotPanelConfig& config) {
     message_path_mode_combo_->setCurrentIndex(
         config_.message_path_mode == PlotMessagePathMode::kAccumulated ? 1 : 0);
   }
-  sync_plots_combo_->setCurrentIndex(config_.sync_with_other_plots ? 1 : 0);
+  {
+    const QSignalBlocker block_sync(sync_plots_combo_);
+    const QSignalBlocker block_group(sync_group_edit_);
+    const QSignalBlocker block_y(sync_y_axis_check_);
+    const QSignalBlocker block_cursor(sync_cursor_check_);
+    const bool sync_on =
+        !config_.sync_group.trimmed().isEmpty() || config_.sync_with_other_plots;
+    sync_plots_combo_->setCurrentIndex(sync_on ? 1 : 0);
+    sync_group_edit_->setText(config_.sync_group.isEmpty()
+                                  ? QStringLiteral("default")
+                                  : config_.sync_group);
+    sync_y_axis_check_->setChecked(config_.sync_y_axis);
+    sync_cursor_check_->setChecked(config_.sync_cursor);
+  }
   if (x_window_spin_ != nullptr) {
     x_window_spin_->setValue(config_.x_window_sec);
+  }
+  if (max_points_spin_ != nullptr) {
+    max_points_spin_->setValue(config_.max_points_per_series);
+  }
+  if (keep_ratio_xy_check_ != nullptr) {
+    keep_ratio_xy_check_->setChecked(config_.keep_ratio_xy);
+  }
+  if (show_reference_tracker_check_ != nullptr) {
+    show_reference_tracker_check_->setChecked(config_.show_reference_tracker);
+  }
+  if (reference_tracker_spin_ != nullptr) {
+    reference_tracker_spin_->setValue(config_.reference_tracker_sec);
+    reference_tracker_spin_->setEnabled(config_.show_reference_tracker);
   }
   if (lock_axis_scales_check_ != nullptr) {
     lock_axis_scales_check_->setChecked(config_.lock_axis_scales);
@@ -723,6 +831,23 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   StyleCompactSettingsField(line_size_edit);
   form->addRow(MakeSettingsFormLabel(tr("Line size"), card), line_size_edit);
 
+  auto* curve_style_combo = new QComboBox(card);
+  curve_style_combo->addItem(tr("Lines"),
+                             static_cast<int>(PlotCurveStyle::kLines));
+  curve_style_combo->addItem(tr("Steps"),
+                             static_cast<int>(PlotCurveStyle::kSteps));
+  curve_style_combo->addItem(tr("Sticks"),
+                             static_cast<int>(PlotCurveStyle::kSticks));
+  curve_style_combo->addItem(tr("Lines + dots"),
+                             static_cast<int>(PlotCurveStyle::kLinesAndDots));
+  {
+    const int idx =
+        curve_style_combo->findData(static_cast<int>(series.curve_style));
+    curve_style_combo->setCurrentIndex(idx >= 0 ? idx : 0);
+  }
+  StyleCompactSettingsField(curve_style_combo);
+  form->addRow(MakeSettingsFormLabel(tr("Curve style"), card), curve_style_combo);
+
   auto* show_line = MakeSegmentedToggle(
       card, {tr("Off"), tr("On")}, series.show_line ? 1 : 0,
       [this, index](int selected) {
@@ -732,6 +857,71 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
         }
       });
   form->addRow(MakeSettingsFormLabel(tr("Show line"), card), show_line);
+
+  auto* show_points = MakeSegmentedToggle(
+      card, {tr("Off"), tr("On")}, series.show_points ? 1 : 0,
+      [this, index](int selected) {
+        if (index >= 0 && index < config_.series.size()) {
+          config_.series[index].show_points = selected == 1;
+          emit configChanged();
+        }
+      });
+  form->addRow(MakeSettingsFormLabel(tr("Show points"), card), show_points);
+
+  auto* point_size_spin = new QDoubleSpinBox(card);
+  point_size_spin->setRange(1.0, 20.0);
+  point_size_spin->setDecimals(1);
+  point_size_spin->setValue(series.point_size);
+  StyleCompactSettingsField(point_size_spin);
+  form->addRow(MakeSettingsFormLabel(tr("Point size"), card), point_size_spin);
+
+  auto* y_scale_spin = new QDoubleSpinBox(card);
+  y_scale_spin->setRange(-1.0e6, 1.0e6);
+  y_scale_spin->setDecimals(6);
+  y_scale_spin->setValue(series.y_scale);
+  StyleCompactSettingsField(y_scale_spin);
+  form->addRow(MakeSettingsFormLabel(tr("Y scale"), card), y_scale_spin);
+
+  auto* y_offset_spin = new QDoubleSpinBox(card);
+  y_offset_spin->setRange(-1.0e9, 1.0e9);
+  y_offset_spin->setDecimals(6);
+  y_offset_spin->setValue(series.y_offset);
+  StyleCompactSettingsField(y_offset_spin);
+  form->addRow(MakeSettingsFormLabel(tr("Y offset"), card), y_offset_spin);
+
+  auto* pattern_edit = new QLineEdit(series.channel_pattern, card);
+  pattern_edit->setPlaceholderText(tr("/robot/*/odom"));
+  StyleCompactSettingsField(pattern_edit);
+  form->addRow(MakeSettingsFormLabel(tr("Channel pattern"), card), pattern_edit);
+
+  connect(point_size_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          card, [this, index](double value) {
+            if (index < config_.series.size()) {
+              config_.series[index].point_size = value;
+              emit configChanged();
+            }
+          });
+  connect(y_scale_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), card,
+          [this, index](double value) {
+            if (index < config_.series.size()) {
+              config_.series[index].y_scale = value;
+              emit configChanged();
+            }
+          });
+  connect(y_offset_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          card, [this, index](double value) {
+            if (index < config_.series.size()) {
+              config_.series[index].y_offset = value;
+              emit configChanged();
+            }
+          });
+  connect(pattern_edit, &QLineEdit::textChanged, card,
+          [this, index](const QString& text) {
+            if (index < config_.series.size()) {
+              config_.series[index].channel_pattern = text.trimmed();
+              emit configChanged();
+            }
+          });
 
   auto* y_axis_toggle = MakeSegmentedToggle(
       card, {tr("Left"), tr("Right")}, series.use_right_y ? 1 : 0,
@@ -803,8 +993,14 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   form->addRow(MakeSettingsFormLabel(tr("Custom timestamp"), card), custom_ts_edit);
   custom_ts_edit->setEnabled(series.timestamp_mode == PlotTimestampMode::kCustomField);
 
+  auto* x_channel_edit = new QLineEdit(series.x_channel, card);
+  x_channel_edit->setPlaceholderText(tr("X channel (XY; empty = same as Y)"));
+  StyleCompactSettingsField(x_channel_edit);
+  form->addRow(MakeSettingsFormLabel(tr("X channel"), card), x_channel_edit);
+
   auto* x_field_edit = new QLineEdit(series.x_field_path, card);
-  x_field_edit->setPlaceholderText(tr("X-value path (message path mode)"));
+  x_field_edit->setPlaceholderText(
+      tr("X-value path (message path / XY mode)"));
   StyleCompactSettingsField(x_field_edit);
   form->addRow(MakeSettingsFormLabel(tr("X-value path"), card), x_field_edit);
 
@@ -937,6 +1133,14 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
       emit configChanged();
     }
   });
+  connect(curve_style_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          card, [this, index, curve_style_combo](int /*idx*/) {
+            if (index < config_.series.size()) {
+              config_.series[index].curve_style = static_cast<PlotCurveStyle>(
+                  curve_style_combo->currentData().toInt());
+              emit configChanged();
+            }
+          });
   connect(binary_op_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), card,
           [this, index, binary_op_combo, secondary_combo, max_dt_spin](int /*idx*/) {
             if (index >= config_.series.size()) {
@@ -998,6 +1202,13 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
       emit configChanged();
     }
   });
+  connect(x_channel_edit, &QLineEdit::textChanged, card,
+          [this, index](const QString& text) {
+            if (index < config_.series.size()) {
+              config_.series[index].x_channel = text;
+              emit configChanged();
+            }
+          });
   connect(x_field_edit, &QLineEdit::textChanged, card, [this, index](const QString& text) {
     if (index < config_.series.size()) {
       config_.series[index].x_field_path = text;
@@ -1030,8 +1241,29 @@ void PlotSettingsWidget::emitConfigChanged() {
         message_path_mode_combo_->currentData().toInt());
   }
   config_.sync_with_other_plots = sync_plots_combo_->currentData().toBool();
+  config_.sync_group = sync_group_edit_->text().trimmed();
+  if (config_.sync_with_other_plots && config_.sync_group.isEmpty()) {
+    config_.sync_group = QStringLiteral("default");
+  }
+  if (!config_.sync_with_other_plots) {
+    config_.sync_group.clear();
+  }
+  config_.sync_y_axis = sync_y_axis_check_->isChecked();
+  config_.sync_cursor = sync_cursor_check_->isChecked();
   if (x_window_spin_ != nullptr) {
     config_.x_window_sec = x_window_spin_->value();
+  }
+  if (max_points_spin_ != nullptr) {
+    config_.max_points_per_series = max_points_spin_->value();
+  }
+  if (keep_ratio_xy_check_ != nullptr) {
+    config_.keep_ratio_xy = keep_ratio_xy_check_->isChecked();
+  }
+  if (show_reference_tracker_check_ != nullptr) {
+    config_.show_reference_tracker = show_reference_tracker_check_->isChecked();
+  }
+  if (reference_tracker_spin_ != nullptr) {
+    config_.reference_tracker_sec = reference_tracker_spin_->value();
   }
   if (lock_axis_scales_check_ != nullptr) {
     config_.lock_axis_scales = lock_axis_scales_check_->isChecked();

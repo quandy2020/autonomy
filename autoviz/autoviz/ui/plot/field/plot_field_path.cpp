@@ -2,8 +2,9 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_field_path.hpp"
+#include "autoviz/ui/plot/field/plot_field_path.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 #include <QRegularExpression>
@@ -62,7 +63,9 @@ bool IsBinaryMath(const QString& name) {
 
 bool IsStateful(const QString& name) {
   return name == QStringLiteral("derivative") || name == QStringLiteral("delta") ||
-         name == QStringLiteral("timedelta");
+         name == QStringLiteral("timedelta") ||
+         name == QStringLiteral("movingavg") || name == QStringLiteral("mavg") ||
+         name == QStringLiteral("integral");
 }
 
 double ApplyUnary(const QString& name, double value) {
@@ -188,7 +191,9 @@ QStringList StripNormModifier(const QStringList& modifiers) {
 double ApplyPlotModifiers(double raw_value, double timestamp_sec,
                           const QStringList& modifiers,
                           double* last_raw_value, double* last_timestamp_sec,
-                          bool* has_last_sample) {
+                          bool* has_last_sample,
+                          std::deque<double>* modifier_window,
+                          double* integral_accum) {
   double result = raw_value;
   double remember_value = raw_value;
   for (int i = 0; i < modifiers.size(); ++i) {
@@ -247,6 +252,41 @@ double ApplyPlotModifiers(double raw_value, double timestamp_sec,
       if (last_timestamp_sec != nullptr && has_last_sample != nullptr &&
           *has_last_sample) {
         result = timestamp_sec - *last_timestamp_sec;
+      } else {
+        result = 0.0;
+      }
+      continue;
+    }
+    if (token.name == QStringLiteral("movingavg") ||
+        token.name == QStringLiteral("mavg")) {
+      int window = token.has_arg ? static_cast<int>(std::llround(token.arg)) : 5;
+      window = std::max(1, window);
+      if (modifier_window != nullptr) {
+        modifier_window->push_back(result);
+        while (static_cast<int>(modifier_window->size()) > window) {
+          modifier_window->pop_front();
+        }
+        double sum = 0.0;
+        for (double v : *modifier_window) {
+          sum += v;
+        }
+        result = sum / static_cast<double>(modifier_window->size());
+      }
+      remember_value = result;
+      continue;
+    }
+    if (token.name == QStringLiteral("integral")) {
+      remember_value = result;
+      if (integral_accum != nullptr && last_raw_value != nullptr &&
+          last_timestamp_sec != nullptr && has_last_sample != nullptr &&
+          *has_last_sample) {
+        const double dt = timestamp_sec - *last_timestamp_sec;
+        if (dt > 0.0) {
+          *integral_accum += 0.5 * (result + *last_raw_value) * dt;
+        }
+        result = *integral_accum;
+      } else if (integral_accum != nullptr) {
+        result = *integral_accum;
       } else {
         result = 0.0;
       }

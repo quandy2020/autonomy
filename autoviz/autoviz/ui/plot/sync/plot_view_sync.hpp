@@ -4,17 +4,18 @@
 
 /**
  * @file plot_view_sync.hpp
- * @brief Broadcast timestamp-plot X-axis viewport changes across synced panels.
+ * @brief Broadcast plot viewport / cursor changes across synced panels.
  *
- * Singleton registry: panels with @c sync_with_other_plots call
- * @ref registerPanel() and publish range changes via @ref publishXRange(),
- * which fans out to @ref PlotPanel::applySyncedXRange().
+ * Singleton registry: panels with a non-empty sync group publish range and
+ * cursor changes, which fan out to other panels in the same group.
  *
  * @see PlotPanel
  * @see PlotChartWidget::viewRangeChanged()
  */
 
 #pragma once
+
+#include <QString>
 
 #include <vector>
 
@@ -25,7 +26,7 @@ class PlotPanel;
 
 /**
  * @class PlotViewSync
- * @brief Broadcasts timestamp plot x-axis viewport changes across synced panels.
+ * @brief Broadcasts plot x/y viewport and hover cursor across sync groups.
  *
  * @note @c publishing_ prevents re-entrant publish loops when applying a
  *       synced range triggers another @c viewRangeChanged.
@@ -40,7 +41,7 @@ class PlotViewSync {
   static PlotViewSync& instance();
 
   /**
-   * @brief Registers a panel to receive synced X ranges.
+   * @brief Registers a panel to receive synced ranges / cursors.
    *
    * @param panel Non-owning panel pointer (must @ref unregisterPanel() on destroy).
    */
@@ -54,15 +55,37 @@ class PlotViewSync {
   void unregisterPanel(PlotPanel* panel);
 
   /**
-   * @brief Publishes an X range from @p source to all other registered panels.
-   *
-   * Skips @p source and no-ops while already publishing.
+   * @brief Publishes an X range from @p source to other panels in the same group.
    *
    * @param source Panel that initiated the change.
+   * @param group Sync group name (empty = no-op).
    * @param min_x Visible minimum X.
    * @param max_x Visible maximum X.
    */
-  void publishXRange(PlotPanel* source, double min_x, double max_x);
+  void publishXRange(PlotPanel* source, const QString& group, double min_x,
+                     double max_x);
+
+  /**
+   * @brief Publishes a left Y range from @p source to other panels in the group.
+   *
+   * @param source Panel that initiated the change.
+   * @param group Sync group name (empty = no-op).
+   * @param min_y Visible minimum Y.
+   * @param max_y Visible maximum Y.
+   */
+  void publishYRange(PlotPanel* source, const QString& group, double min_y,
+                     double max_y);
+
+  /**
+   * @brief Publishes a hover cursor X, or clears it when @p active is false.
+   *
+   * @param source Panel that initiated the change.
+   * @param group Sync group name (empty = no-op).
+   * @param active Whether a cursor X is valid.
+   * @param x Cursor X when @p active is true.
+   */
+  void publishCursorX(PlotPanel* source, const QString& group, bool active,
+                      double x);
 
  private:
   /** Private default constructor for the singleton. */

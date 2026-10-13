@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_path_utils.hpp"
+#include "autoviz/ui/plot/field/plot_path_utils.hpp"
 
 #include <map>
 
@@ -10,7 +10,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/integration/channel_manager.hpp"
-#include "autoviz/ui/plot/message_field_tree.hpp"
+#include "autoviz/ui/plot/field/message_field_tree.hpp"
 
 #include "autoviz/commsgs/message_type_utils.hpp"
 

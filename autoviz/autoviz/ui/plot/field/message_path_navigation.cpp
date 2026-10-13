@@ -2,7 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/message_path_navigation.hpp"
+#include "autoviz/ui/plot/field/message_path_navigation.hpp"
 
 #include <cmath>
 #include <cstdlib>

@@ -2,11 +2,11 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/ui/plot/plot_field_extractor.hpp"
+#include "autoviz/ui/plot/field/plot_field_extractor.hpp"
 
 #include <automsgs/msgs/DynamicFactory.hh>
 
-#include "autoviz/ui/plot/message_path_navigation.hpp"
+#include "autoviz/ui/plot/field/message_path_navigation.hpp"
 
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>

@@ -165,6 +165,9 @@ void ReadPlotSeriesFromConfig(const Config& node,
   if (node.mapGetString("XFieldPath", &value)) {
     series->x_field_path = value.toStdString();
   }
+  if (node.mapGetString("XChannel", &value)) {
+    series->x_channel = value.toStdString();
+  }
   if (node.mapGetString("CustomTimestampPath", &value)) {
     series->custom_timestamp_path = value.toStdString();
   }
@@ -177,7 +180,24 @@ void ReadPlotSeriesFromConfig(const Config& node,
   if (node.mapGetString("LineSize", &value)) {
     series->line_size = value.toStdString();
   }
+  node.mapGetInt("CurveStyle", &series->curve_style);
   node.mapGetBool("ShowLine", &series->show_line);
+  node.mapGetBool("ShowPoints", &series->show_points);
+  float point_size = static_cast<float>(series->point_size);
+  if (node.mapGetFloat("PointSize", &point_size)) {
+    series->point_size = point_size;
+  }
+  float y_scale = static_cast<float>(series->y_scale);
+  if (node.mapGetFloat("YScale", &y_scale)) {
+    series->y_scale = y_scale;
+  }
+  float y_offset = static_cast<float>(series->y_offset);
+  if (node.mapGetFloat("YOffset", &y_offset)) {
+    series->y_offset = y_offset;
+  }
+  if (node.mapGetString("ChannelPattern", &value)) {
+    series->channel_pattern = value.toStdString();
+  }
   node.mapGetBool("UseRightY", &series->use_right_y);
   node.mapGetInt("BinaryOp", &series->binary_op);
   if (node.mapGetString("SecondaryChannel", &value)) {
@@ -202,12 +222,20 @@ void WritePlotSeriesToConfig(const PlotSeriesPersistConfig& series,
   node->mapSetValue("Channel", QString::fromStdString(series.channel));
   node->mapSetValue("FieldPath", QString::fromStdString(series.field_path));
   node->mapSetValue("XFieldPath", QString::fromStdString(series.x_field_path));
+  node->mapSetValue("XChannel", QString::fromStdString(series.x_channel));
   node->mapSetValue("CustomTimestampPath",
                     QString::fromStdString(series.custom_timestamp_path));
   node->mapSetValue("Label", QString::fromStdString(series.label));
   node->mapSetValue("Color", QString::fromStdString(series.color));
   node->mapSetValue("LineSize", QString::fromStdString(series.line_size));
+  node->mapSetValue("CurveStyle", series.curve_style);
   node->mapSetValue("ShowLine", series.show_line);
+  node->mapSetValue("ShowPoints", series.show_points);
+  node->mapSetValue("PointSize", series.point_size);
+  node->mapSetValue("YScale", series.y_scale);
+  node->mapSetValue("YOffset", series.y_offset);
+  node->mapSetValue("ChannelPattern",
+                    QString::fromStdString(series.channel_pattern));
   node->mapSetValue("UseRightY", series.use_right_y);
   node->mapSetValue("BinaryOp", series.binary_op);
   node->mapSetValue("SecondaryChannel",
@@ -234,6 +262,14 @@ void ReadPlotPanelFromConfig(const Config& node,
   node.mapGetInt("XAxisMode", &panel->x_axis_mode);
   node.mapGetInt("MessagePathMode", &panel->message_path_mode);
   node.mapGetBool("SyncWithOtherPlots", &panel->sync_with_other_plots);
+  if (node.mapGetString("SyncGroup", &value)) {
+    panel->sync_group = value.toStdString();
+  }
+  node.mapGetBool("SyncYAxis", &panel->sync_y_axis);
+  node.mapGetBool("SyncCursor", &panel->sync_cursor);
+  if (panel->sync_with_other_plots && panel->sync_group.empty()) {
+    panel->sync_group = "default";
+  }
   node.mapGetBool("ShowLegendValues", &panel->show_legend_values);
   node.mapGetBool("SettingsVisible", &panel->settings_visible);
   node.mapGetInt("SettingsWidth", &panel->settings_width);
@@ -265,6 +301,13 @@ void ReadPlotPanelFromConfig(const Config& node,
   float x_window_sec = static_cast<float>(panel->x_window_sec);
   if (node.mapGetFloat("XWindowSec", &x_window_sec)) {
     panel->x_window_sec = x_window_sec;
+  }
+  node.mapGetInt("MaxPointsPerSeries", &panel->max_points_per_series);
+  node.mapGetBool("KeepRatioXy", &panel->keep_ratio_xy);
+  node.mapGetBool("ShowReferenceTracker", &panel->show_reference_tracker);
+  float ref_tracker = static_cast<float>(panel->reference_tracker_sec);
+  if (node.mapGetFloat("ReferenceTrackerSec", &ref_tracker)) {
+    panel->reference_tracker_sec = ref_tracker;
   }
   panel->series.clear();
   Config series_list = node.mapGetChild("Series");
@@ -1152,6 +1195,9 @@ void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
   node->mapSetValue("XAxisMode", panel.x_axis_mode);
   node->mapSetValue("MessagePathMode", panel.message_path_mode);
   node->mapSetValue("SyncWithOtherPlots", panel.sync_with_other_plots);
+  node->mapSetValue("SyncGroup", QString::fromStdString(panel.sync_group));
+  node->mapSetValue("SyncYAxis", panel.sync_y_axis);
+  node->mapSetValue("SyncCursor", panel.sync_cursor);
   node->mapSetValue("ShowLegendValues", panel.show_legend_values);
   node->mapSetValue("SettingsVisible", panel.settings_visible);
   node->mapSetValue("SettingsWidth", panel.settings_width);
@@ -1166,6 +1212,10 @@ void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
   node->mapSetValue("ShowReferenceY", panel.show_reference_y);
   node->mapSetValue("ReferenceY", panel.reference_y);
   node->mapSetValue("XWindowSec", panel.x_window_sec);
+  node->mapSetValue("MaxPointsPerSeries", panel.max_points_per_series);
+  node->mapSetValue("KeepRatioXy", panel.keep_ratio_xy);
+  node->mapSetValue("ShowReferenceTracker", panel.show_reference_tracker);
+  node->mapSetValue("ReferenceTrackerSec", panel.reference_tracker_sec);
   if (!panel.series.empty()) {
     Config series_list = node->mapMakeChild("Series");
     for (const auto& series : panel.series) {
