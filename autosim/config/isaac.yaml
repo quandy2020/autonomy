@@ -12,14 +12,26 @@ habitat:
   # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
   isaac:
     headless: true
+    physics:
+      enabled: true           # PhysX World + robot capsule collider
+      block_motion: true      # reject set_pose when capsule overlaps scene
+      freeze_scene: true      # InteriorAgent dynamics → kinematic (no fall)
+      ensure_scene_colliders: true
+      add_ground: false       # InteriorAgent already has floor colliders
+      dt: 0.0166667
+      robot_radius: 0.12      # turtlebot3 footprint ~radius
+      robot_height: 0.28
 
   # Relative to autosim/ project root (see usd/README.md).
-  path: usd/worlds/simple_room/simple_room.usd
+  # InteriorAgent (酷家乐) sample; fallback: usd/worlds/simple_room/simple_room.usd
+  path: usd/worlds/InteriorAgent/kujiale_0021/kujiale_0021.usda
   usd:
-    robot_prim: /World/Robot
+    # InteriorAgent scenes use /Root; robot Xform is created under it if missing.
+    robot_prim: /Root/Robot
   scenario:
     enabled: false
-  spawn: [0.0, 0.0, 0.0]
+  # Living-room centroid from InteriorAgent rooms.json (map xy + yaw).
+  spawn: [7.93, -0.39, 0.0]
   gpu: 0
 
   robot:
@@ -122,8 +134,9 @@ habitat:
       noise: 0.0
 
   map:
-    enabled: false
-    publish: false
+    # GT from InteriorAgent rooms.json (beside the USD); OccupancyGrid → /map
+    enabled: true
+    publish: true
     frame: map
     rate_hz: 1.0
     ply:

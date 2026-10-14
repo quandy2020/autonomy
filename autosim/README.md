@@ -82,6 +82,8 @@ ISAACLAB_PATH=/workspace/isaaclab CONFIG=src/autonomy/autosim/config/isaac.yaml 
 # 无显示时默认 HEADLESS；需要 GUI 时可 AUTOSIM_ISAAC_HEADLESS=0
 ```
 
+Isaac 在 `sensors.camera.enabled: true` 时会在机器人 prim 下挂 `Camera`（Replicator RGB + depth），headless 下同样走 offscreen 渲染；关闭 camera 则为 pose-only（占位图）。`habitat.isaac.physics.enabled: true`（默认）会创建 PhysX `World`、给机器人挂 kinematic 胶囊碰撞体，并在 `block_motion` 时拒绝穿墙位姿。
+
 Isaac Sim 自带 **Python 3.11**，autolink 需有对应 `_core.cpython-311-*.so`（与现有 3.10 模块可并存）。若 `run.sh` 报缺少 311 绑定，用 Isaac 解释器重编 pybind 模块后拷到 `install/autonomy/python/autolink/`。
 
 机器人档案：`habitat.robot.profile` 可为 `turtlebot3_burger` 或 `husky`（填充默认 URDF / USD / `wheel_separation`）。

@@ -59,6 +59,10 @@ def ensure_simulation_app(
         else:
             headless = not bool(os.environ.get("DISPLAY"))
 
+    if enable_cameras:
+        # AppLauncher also reads ENABLE_CAMERAS; keep env aligned for kit experience.
+        os.environ.setdefault("ENABLE_CAMERAS", "1")
+
     try:
         from isaaclab.app import AppLauncher
 
@@ -69,6 +73,15 @@ def ensure_simulation_app(
             }
         )
         _APP = launcher.app
+        if enable_cameras:
+            try:
+                import carb
+
+                carb.settings.get_settings().set_bool(
+                    "/isaaclab/render/rtx_sensors", True
+                )
+            except Exception:
+                pass
         return _APP
     except ImportError:
         pass

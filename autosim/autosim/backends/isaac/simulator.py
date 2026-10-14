@@ -24,6 +24,7 @@ import numpy as np
 import atexit
 
 from autosim.backends.isaac.app import close_app, ensure_simulation_app, update_app
+from autosim.backends.isaac.physics import IsaacPhysics, physics_config_from_habitat
 from autosim.backends.isaac.sensors import IsaacSensors
 from autosim.backends.isaac.usd_stage import UsdStage, require_isaac
 from autosim.robot.profiles import apply_profile, resolve_usd_paths
@@ -58,6 +59,7 @@ class IsaacSimulator:
         self.y = 0.0
         self.yaw = 0.0
         self.map_builder: Any = None
+        self._physics: IsaacPhysics | None = None
 
     @classmethod
     def create(cls, settings: Mapping[str, Any]) -> "IsaacSimulator":
@@ -96,11 +98,16 @@ class IsaacSimulator:
             base_z=base_z,
         )
         sensors = IsaacSensors(width=width, height=height, eye_height=eye)
+        if want_camera:
+            sensors.mount_robot_camera(
+                prim,
+                hfov_deg=float(camera.get("hfov_deg", 90.0)),
+            )
         try:
             urdf = UrdfModel.load(str(robot_cfg.get("urdf") or ""))
         except (FileNotFoundError, ValueError):
             urdf = None
-        return cls(
+        sim = cls(
             settings=settings,
             stage=stage,
             sensors=sensors,
@@ -109,25 +116,102 @@ class IsaacSimulator:
             height=height,
             eye_height=eye,
         )
+        sim._attach_floorplan_map(world_usd, habitat.get("map"))
+        # PhysX after stage/robot exist; cameras already mounted for first step.
+        phys_cfg = physics_config_from_habitat(habitat)
+        sim._physics = IsaacPhysics.attach(
+            stage,
+            robot_prim_path=prim,
+            config=phys_cfg,
+            render=want_camera,
+        )
+        return sim
+
+    def _attach_floorplan_map(
+        self, world_usd: str, map_cfg: Mapping[str, Any] | None
+    ) -> None:
+        """Prefer InteriorAgent ``rooms.json`` so nav can publish GT ``/map``.
+
+        Occupancy stays floorplan-based; ``/overall/map`` prefers USD mesh
+        vertices so furniture and full walls are not missing.
+        """
+        if not isinstance(map_cfg, Mapping) or not map_cfg.get("enabled", False):
+            return
+        from autosim.backends.isaac.floorplan_map import FloorplanMap
+
+        rooms_path = FloorplanMap.find_rooms_json(world_usd)
+        if rooms_path is None:
+            return
+        rooms = FloorplanMap.load_rooms(rooms_path)
+        if not rooms:
+            return
+        built = FloorplanMap(map_cfg).build_from_rooms(rooms)
+        grid_cfg = map_cfg.get("grid") or {}
+        ply_cfg = map_cfg.get("ply") or {}
+        try:
+            # Publish-time ply.stride still downsamples; keep mesh read dense.
+            mesh_cloud = self._stage.sample_mesh_cloud(
+                z_min=float(grid_cfg.get("z_min", 0.0)),
+                z_max=float(grid_cfg.get("z_max", 2.5)),
+                stride=max(1, int(ply_cfg.get("mesh_stride", 1))),
+                max_points=int(ply_cfg.get("max_points", 2_000_000)),
+            )
+        except Exception:
+            mesh_cloud = np.zeros((0, 3), dtype=np.float32)
+        if mesh_cloud.shape[0] > 0:
+            built.set_cloud(mesh_cloud)
+        self.map_builder = built
 
     def reset(self, x: float, y: float, yaw: float) -> None:
-        self.set_pose(x, y, yaw)
+        # Spawn must teleport even if the capsule overlaps furniture initially.
+        self.set_pose(x, y, yaw, force=True)
 
-    def set_pose(self, x: float, y: float, yaw: float) -> None:
-        self.x = float(x)
-        self.y = float(y)
-        self.yaw = float(yaw)
+    def set_pose(
+        self, x: float, y: float, yaw: float, *, force: bool = False
+    ) -> None:
+        """Write planar pose to the robot Xform.
+
+        When PhysX ``block_motion`` is on, overlapping queries keep the previous
+        pose (kinematic capsule vs scene colliders).
+        """
+        nx, ny, nyaw = float(x), float(y), float(yaw)
+        physics = self._physics
+        if (
+            not force
+            and physics is not None
+            and physics.block_motion
+            and physics.overlaps(nx, ny)
+        ):
+            return
+        self.x = nx
+        self.y = ny
+        self.yaw = nyaw
         self._stage.set_pose(self.x, self.y, self.yaw)
 
     def pose(self) -> Tuple[float, float, float]:
         return self.x, self.y, self.yaw
 
     def step(self) -> None:
+        """Advance PhysX (and render) when enabled; else one Kit update."""
+        physics = self._physics
+        if physics is not None:
+            physics.step()
+            return
         update_app()
 
     def close(self) -> None:
         # Close the USD stage only; Kit app teardown is deferred to atexit so
         # SimulationApp.close() cannot abort the process mid-finally.
+        try:
+            if self._physics is not None:
+                self._physics.close()
+        except Exception:
+            pass
+        self._physics = None
+        try:
+            self._sensors.close()
+        except Exception:
+            pass
         self._stage.close()
 
     def eye_height(self) -> float:

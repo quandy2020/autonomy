@@ -16,11 +16,20 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
+
+import numpy as np
 
 from autosim.backends.isaac.app import ensure_simulation_app
 from autosim.backends.isaac.coords import map_to_world
+
+_LOG = logging.getLogger(__name__)
+
+# InteriorAgent / 酷家乐 meshes often author a single displayColor/Opacity value
+# with faceVarying interpolation; Hydra then spams "corrupted data in primvar".
+_DISPLAY_PRIMVARS = frozenset({"displayColor", "displayOpacity"})
 
 
 def require_isaac() -> None:
@@ -48,6 +57,66 @@ def require_isaac() -> None:
         ) from exc
 
 
+def mute_hydra_primvar_warnings() -> None:
+    """Drop Hydra channel below warning so residual primvar spam stays quiet."""
+    try:
+        import carb
+
+        carb.settings.get_settings().set_string(
+            "/log/channels/omni.hydra", "error"
+        )
+    except Exception:
+        pass
+
+
+def repair_display_primvars(stage: Any) -> int:
+    """Rewrite length-1 faceVarying display* primvars to constant.
+
+    Returns:
+        Number of primvars corrected.
+    """
+    from pxr import UsdGeom
+
+    fixed = 0
+    for prim in stage.Traverse():
+        if not prim.IsA(UsdGeom.Mesh):
+            continue
+        api = UsdGeom.PrimvarsAPI(prim)
+        for pv in api.GetPrimvars():
+            try:
+                name = pv.GetPrimvarName()
+            except Exception:
+                name = pv.GetBaseName()
+            if name not in _DISPLAY_PRIMVARS:
+                continue
+            try:
+                interp = pv.GetInterpolation()
+            except Exception:
+                continue
+            if interp != UsdGeom.Tokens.faceVarying:
+                continue
+            try:
+                value = pv.Get()
+            except Exception:
+                continue
+            if value is None:
+                continue
+            try:
+                length = len(value)
+            except TypeError:
+                length = 1
+            if length != 1:
+                continue
+            try:
+                pv.SetInterpolation(UsdGeom.Tokens.constant)
+                fixed += 1
+            except Exception:
+                continue
+    if fixed:
+        _LOG.info("repaired %d displayColor/Opacity primvars (constant)", fixed)
+    return fixed
+
+
 class UsdStage:
     """Thin wrapper around an Omniverse USD stage + robot Xform."""
 
@@ -71,12 +140,15 @@ class UsdStage:
         self.base_z = float(base_z)
         self._omni = omni.usd
         self._UsdGeom = UsdGeom
+        mute_hydra_primvar_warnings()
         ctx = omni.usd.get_context()
         if not ctx.open_stage(str(self.world_usd)):
             raise RuntimeError(f"failed to open USD stage: {self.world_usd}")
         self.stage: Any = ctx.get_stage()
         if self.stage is None:
             raise RuntimeError("omni.usd context has no stage after open")
+        # Fix InteriorAgent authoring before the first Hydra sync.
+        repair_display_primvars(self.stage)
         self._ensure_robot_prim()
         self._robot_xform = UsdGeom.Xformable(
             self.stage.GetPrimAtPath(self.robot_prim_path)
@@ -146,3 +218,102 @@ class UsdStage:
             ctx.close_stage()
         except Exception:
             pass
+
+    def sample_mesh_cloud(
+        self,
+        *,
+        z_min: float = 0.0,
+        z_max: float = 3.0,
+        stride: int = 1,
+        max_points: int = 2_000_000,
+        skip_prim_prefixes: Sequence[str] = (),
+    ) -> np.ndarray:
+        """Sample world-frame mesh vertices for ``/overall/map``.
+
+        InteriorAgent scenes keep geometry in referenced Mesh USDs; room
+        polygons alone only outline walls. Vertex sampling recovers furniture
+        and full wall extents.
+        """
+        return sample_mesh_cloud(
+            self.stage,
+            z_min=z_min,
+            z_max=z_max,
+            stride=stride,
+            max_points=max_points,
+            skip_prim_prefixes=(self.robot_prim_path, *skip_prim_prefixes),
+        )
+
+
+def sample_mesh_cloud(
+    stage: Any,
+    *,
+    z_min: float = 0.0,
+    z_max: float = 3.0,
+    stride: int = 1,
+    max_points: int = 2_000_000,
+    skip_prim_prefixes: Sequence[str] = (),
+) -> np.ndarray:
+    """Collect ``UsdGeom.Mesh`` points in world frame (z-up metres)."""
+    from pxr import Usd, UsdGeom
+
+    if stage is None:
+        return np.zeros((0, 3), dtype=np.float32)
+    skip = tuple(str(p) for p in skip_prim_prefixes if str(p).strip())
+    step = max(1, int(stride))
+    chunks: list[np.ndarray] = []
+    total = 0
+    time = Usd.TimeCode.Default()
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if any(path == pref or path.startswith(pref.rstrip("/") + "/") for pref in skip):
+            continue
+        if not prim.IsA(UsdGeom.Mesh):
+            continue
+        mesh = UsdGeom.Mesh(prim)
+        try:
+            points_attr = mesh.GetPointsAttr()
+            points = points_attr.Get(time) if points_attr else None
+        except Exception:
+            continue
+        if not points:
+            continue
+        try:
+            xform = UsdGeom.Xformable(prim).ComputeLocalToWorldTransform(time)
+        except Exception:
+            continue
+        local = np.asarray(points, dtype=np.float64).reshape(-1, 3)
+        if local.size == 0:
+            continue
+        if step > 1:
+            local = local[::step]
+        # USD uses row vectors: p_world = p_local * matrix.
+        matrix = np.asarray(xform, dtype=np.float64).reshape(4, 4)
+        ones = np.ones((local.shape[0], 1), dtype=np.float64)
+        world = np.hstack([local, ones]) @ matrix
+        world = world[:, :3]
+        z = world[:, 2]
+        keep = (
+            np.isfinite(world).all(axis=1)
+            & (z >= float(z_min))
+            & (z <= float(z_max))
+        )
+        world = world[keep]
+        if world.size == 0:
+            continue
+        chunks.append(world.astype(np.float32))
+        total += int(world.shape[0])
+        if total >= int(max_points):
+            break
+    if not chunks:
+        return np.zeros((0, 3), dtype=np.float32)
+    cloud = np.vstack(chunks)
+    if cloud.shape[0] > int(max_points):
+        cloud = cloud[: int(max_points)]
+    _LOG.info(
+        "sampled USD mesh cloud: %d points (z=[%.2f, %.2f], stride=%d)",
+        cloud.shape[0],
+        float(z_min),
+        float(z_max),
+        step,
+    )
+    return cloud

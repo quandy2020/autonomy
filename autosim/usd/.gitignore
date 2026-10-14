@@ -1,0 +1,7 @@
+# Large downloaded scenes (SpatialVerse / 酷家乐 InteriorAgent, etc.).
+# Keep README.md and small placeholder USD (simple_room, robots/) tracked.
+worlds/InteriorAgent/
+
+# Download / Kit caches
+**/.cache/
+**/*.zip

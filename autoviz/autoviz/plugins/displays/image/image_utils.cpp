@@ -127,20 +127,31 @@ void TurboRgb(float t, uchar* rgb) {
 }
 
 void StableDepthRange(const std::vector<float>& values, float* low, float* high) {
-  // Per-frame min/max retints the whole image when a few holes or outliers
-  // appear. 32FC1 is metres; 16UC1 arrives as millimetres.
-  float peak = 0.f;
+  // Fixed display bands — per-frame min/max (or peak) retints the whole image
+  // when a few holes / Isaac far-clip hits appear. 32FC1 is metres; 16UC1 is mm.
+  // Use the median to pick units so a handful of 1e5m outliers cannot flip the
+  // band every frame (that flicker shows up as depth "跳动" in Image panels).
+  std::vector<float> finite;
+  finite.reserve(values.size());
   for (float value : values) {
-    if (std::isfinite(value) && value > peak) {
-      peak = value;
+    if (std::isfinite(value) && value > 0.f) {
+      finite.push_back(value);
     }
   }
-  if (peak > 50.f) {
+  if (finite.empty()) {
+    *low = 0.2f;
+    *high = 10.0f;
+    return;
+  }
+  const auto mid = finite.begin() + static_cast<std::ptrdiff_t>(finite.size() / 2);
+  std::nth_element(finite.begin(), mid, finite.end());
+  const float median = *mid;
+  if (median > 50.f) {
     *low = 200.f;
     *high = 8000.f;
   } else {
-    *low = 0.25f;
-    *high = 6.0f;
+    *low = 0.2f;
+    *high = 10.0f;
   }
 }
 

@@ -688,13 +688,24 @@ class Runner:
         """Publish RGB, depth, semantic, and CameraInfo with identical ``header.stamp``."""
         frame = self.camera["frame"]
         rgb_msg = Messages.encode_image(color, stamp, frame, "rgb8")
-        depth_msg = Messages.encode_image(
-            np.asarray(depth, dtype=np.float32), stamp, frame, "32FC1"
-        )
+        # Force HxW float32 metres. A stray HxWxC buffer published as 32FC1
+        # makes autoviz stride/colorize jump frame-to-frame.
+        height, width = color.shape[:2]
+        depth_hw = np.asarray(depth, dtype=np.float32)
+        if depth_hw.ndim == 3:
+            depth_hw = depth_hw[..., 0]
+        if depth_hw.shape == (width, height):
+            depth_hw = depth_hw.T
+        elif depth_hw.shape != (height, width):
+            if depth_hw.size == height * width:
+                depth_hw = depth_hw.reshape(height, width)
+            else:
+                depth_hw = np.full((height, width), np.nan, dtype=np.float32)
+        depth_hw = np.ascontiguousarray(depth_hw, dtype=np.float32)
+        depth_msg = Messages.encode_image(depth_hw, stamp, frame, "32FC1")
         # Hard-sync stamps so Atlas / Autoviz never see RGB≠depth time.
         depth_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
         depth_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
-        height, width = color.shape[:2]
         camera_matrix = Messages.camera_intrinsics(
             width, height, float(self.camera.get("hfov_deg", 90.0))
         )
@@ -712,7 +723,7 @@ class Runner:
         if depth_points_channel and "depth_points" in self.bridge.writers:
             stride = int(self.camera.get("depth_points_stride", 1))
             points = Messages.project_depth_to_points(
-                np.asarray(depth, dtype=np.float32),
+                depth_hw,
                 camera_matrix,
                 stride=stride,
                 min_depth=0.15,
