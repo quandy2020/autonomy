@@ -1,7 +1,19 @@
 # autosim
 
-Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/cmd_vel`，并对接 TF / 仿真时钟 / 可选真值地图。  
-**不实现** MapService / NavigationService / LocalizationService RPC（建图算法由 Cartographer 等承担；`habitat.map` 仅提供场景真值栅格/PLY）。
+多后端**传感器–执行器桥**：经 Autolink 发布传感、订阅 `/cmd_vel`，并对接 TF / 仿真时钟 / 可选真值地图。  
+**不实现** MapService / NavigationService / LocalizationService RPC（建图算法由 Cartographer 等承担；`habitat.map` 仅提供场景真值栅格 / 点云）。
+
+![Isaac Sim + Autoviz](images/isaac.gif)
+
+> Isaac 后端（酷家乐 InteriorAgent）与 Autoviz：RGB-D、`/map`、`/overall/map`、PhysX 碰撞。动图见 [`images/`](images/)。
+
+## 后端一览
+
+| `habitat.backend` | 配置 | 说明 |
+|-------------------|------|------|
+| `habitat` | `config/default.yaml` | Habitat-Sim + GLB / MP3D |
+| `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario 地图 |
+| `isaac` | `config/isaac.yaml` | Isaac Sim + USD（`usd/`）；PhysX、相机、真值地图 |
 
 ## 模块（每文件一个类）
 
@@ -11,13 +23,15 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 | `clock.py` | `Clock` | 仿真时钟 |
 | `robot/plant.py` | `Robot` | 差速、积分里程计、带偏置 IMU、真值 |
 | `robot/profiles.py` | `RobotProfile` | turtlebot3 / husky 档案（URDF + USD） |
-| `backend/` | `WorldBackend` | 引擎无关传感/位姿协议 + registry |
+| `backend/` | `WorldBackend` | 引擎无关传感 / 位姿协议 + registry |
 | `backends/habitat` | — | Habitat-Sim（包装 `simulator.py`） |
 | `backends/fake` | `FakeWorld` | 过程 scenario + RGBD raycast |
-| `backends/isaac` | `IsaacSimulator` | Isaac Sim + USD |
+| `backends/isaac` | `IsaacSimulator` | Isaac Sim + USD + PhysX |
+| `backends/isaac/physics.py` | `IsaacPhysics` | PhysX World、胶囊碰撞、穿墙阻挡 |
+| `backends/isaac/floorplan_map.py` | `FloorplanMap` | InteriorAgent `rooms.json` → `/map` |
 | `sensors.py` | `Sensors` | 2D/3D lidar and camera sampling |
-| `simulator.py` | `Simulator` | Habitat scene + cast_ray（无 Mock） |
-| `map.py` | `Map` | PLY 环视点云 + 2D OccupancyGrid（自由空间雕刻） |
+| `simulator.py` | `Simulator` | Habitat scene + cast_ray |
+| `map.py` | `Map` | PLY 环视点云 + 2D OccupancyGrid |
 | `scenario/map/scenario.py` | `Scenario` | 按类型生成占据体并写出 Habitat 网格 |
 | `scenario/map/volume.py` | `Volume` | 体素占据、出生点挖空、二维栅格 |
 | `scenario/map/stage.py` | `Stage` | 占据体 → Habitat Y-up OBJ |
@@ -32,6 +46,15 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 | `bridge.py` | `Bridge` | autolink channels |
 | `runner.py` | `Runner` | main loop |
 | `teleop.py` | `Teleop` | keyboard → `/cmd_vel` |
+
+## 资源目录
+
+| 路径 | 内容 |
+|------|------|
+| [`images/`](images/) | 演示动图（如 `isaac.gif`） |
+| [`usd/`](usd/) | Isaac USD：`worlds/`、`robots/`（大场景见 `usd/.gitignore`） |
+| [`config/`](config/) | `default` / `fake` / `isaac` / `slam` / `lio` 等 |
+| [`urdf/`](urdf/) | 机器人 URDF |
 
 ## 依赖
 
@@ -66,27 +89,23 @@ src/autonomy/autosim/scripts/run.sh sim
 ./src/autonomy/autosim/scripts/run.sh teleop
 ```
 
-`habitat.backend`：
-
-| 值 | 配置 | 说明 |
-|----|------|------|
-| `habitat` | `config/default.yaml` | Habitat-Sim + GLB/MP3D |
-| `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario 地图 |
-| `isaac` | `config/isaac.yaml` | Isaac Sim + USD（`usd/` 占位资源；需 Omniverse） |
-
 ```bash
 CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
+
 # Isaac：run.sh 自动改用 ISAACLAB_PATH（默认 /workspace/isaaclab）下的 python.sh
 ISAACLAB_PATH=/workspace/isaaclab CONFIG=src/autonomy/autosim/config/isaac.yaml \
   src/autonomy/autosim/scripts/run.sh sim
 # 无显示时默认 HEADLESS；需要 GUI 时可 AUTOSIM_ISAAC_HEADLESS=0
 ```
 
-Isaac 在 `sensors.camera.enabled: true` 时会在机器人 prim 下挂 `Camera`（Replicator RGB + depth），headless 下同样走 offscreen 渲染；关闭 camera 则为 pose-only（占位图）。`habitat.isaac.physics.enabled: true`（默认）会创建 PhysX `World`、给机器人挂 kinematic 胶囊碰撞体，并在 `block_motion` 时拒绝穿墙位姿。
+### Isaac 要点
 
-Isaac Sim 自带 **Python 3.11**，autolink 需有对应 `_core.cpython-311-*.so`（与现有 3.10 模块可并存）。若 `run.sh` 报缺少 311 绑定，用 Isaac 解释器重编 pybind 模块后拷到 `install/autonomy/python/autolink/`。
-
-机器人档案：`habitat.robot.profile` 可为 `turtlebot3_burger` 或 `husky`（填充默认 URDF / USD / `wheel_separation`）。
+- `sensors.camera.enabled: true`：机器人 prim 下挂 Camera（Replicator RGB + depth）；headless 同样 offscreen 渲染。
+- `habitat.isaac.physics.enabled: true`（默认）：PhysX `World`、kinematic 胶囊碰撞；`block_motion` 时拒绝穿墙位姿。
+- 真值地图：`map.enabled/publish: true` → `/map`（OccupancyGrid，InteriorAgent `rooms.json`）与 `/overall/map`（USD 网格点云）。
+- 场景资源：默认 `usd/worlds/InteriorAgent/kujiale_*`（需自行下载，已被 `usd/.gitignore` 忽略）；占位烟测用 `usd/worlds/simple_room/`。
+- Isaac Sim 自带 **Python 3.11**，autolink 需有对应 `_core.cpython-311-*.so`。若 `run.sh` 报缺少绑定，用 Isaac 解释器重编 pybind 后拷到 `install/autonomy/python/autolink/`。
+- 机器人档案：`habitat.robot.profile` 可为 `turtlebot3_burger` 或 `husky`。
 
 **Lightning LIO 验证**（开 3D 点云 `/points` + `/imu`）：
 
@@ -105,16 +124,16 @@ cd src/autonomy/autosim
 
 键盘遥控与 `autonomy_teleop` 相同：`w`/`x` 增减线速度，`a`/`d` 增减角速度，`space`/`s` 停车；速度会保持直到下一次按键。需在交互式 TTY 中运行（`docker exec -it SpaceHero /bin/bash`），并点击该终端窗口取得焦点。
 
-`habitat.path` 为空且 `habitat.scenario.enabled: true` 时，按 [SensorSimulator](https://github.com/TJU-Aerial-Robotics/SensorSimulator) RandomScene 生成占据点云、二维栅格和 Habitat OBJ：`perlin` / `perlin2d`、`posts`、`maze`（random maze）、`maze3d`、`random_forest`、`random_room`，以及需要 `scenario.ply` 的实景 `forest` / `building`。不编译、不启动该 ROS/CUDA 包。`obstacle` / `pedestrian` 不写入这块静态网格：控制周期调用 `step`，激光取圆柱或胶囊与静态命中的更近距离；未写尺寸时继承场景的 `x_length` / `y_length` / `spawn_radius`。未启用 scenario 时仍是 Habitat 空舞台（仍需 `habitat-sim`）。默认 `habitat.mode: nav`：漂移修正的 `map→odom→base_link` + GT `/map`。`slam` 仅发 `odom→base_link`（Cartographer 负责 `map→odom`/`/map`）。
+`habitat.path` 为空且 `habitat.scenario.enabled: true` 时，按 [SensorSimulator](https://github.com/TJU-Aerial-Robotics/SensorSimulator) RandomScene 生成占据点云、二维栅格和 Habitat OBJ：`perlin` / `perlin2d`、`posts`、`maze`、`maze3d`、`random_forest`、`random_room`，以及需要 `scenario.ply` 的实景 `forest` / `building`。`obstacle` / `pedestrian` 不写入静态网格：控制周期调用 `step`，激光取圆柱或胶囊与静态命中的更近距离。默认 `habitat.mode: nav`：漂移修正的 `map→odom→base_link` + GT `/map`。`slam` 仅发 `odom→base_link`（Cartographer 负责 `map→odom`/`/map`）。
+
 测试需要已安装的 `automsgs` Python 绑定（仓库内不再附带 `stubs/`）。
 
 ## 配置要点
 
 - 噪声字段为高斯 σ；里程计为**积分噪声**（非每拍贴 GT）。
-- `habitat.mode`：`nav`（默认）发漂移修正的 `map→odom→base_link`（LaserScan 与 GT 地图对齐）；`slam` 仅发 `odom→base_link`（Cartographer 负责 `map→odom`/`/map`）。
-- `robot.tf` → `/tf` + `/tf_static`（主链见上；另附 URDF 传感器外参）。
-- `robot.clock` → `/clock`（`builtin_interfaces/Time`）。
-- `map.ply`：`source`/`file` 与/或 `channel`；`map.publish: true` 时 `map.grid` → `/map` OccupancyGrid。
+- `habitat.mode`：`nav`（默认）发漂移修正的 `map→odom→base_link`；`slam` 仅发 `odom→base_link`。
+- `robot.tf` → `/tf` + `/tf_static`；`robot.clock` → `/clock`。
+- `map.ply`：`source`/`file` 与/或 `channel`；`map.publish: true` 时 `map.grid` → `/map`。
 
 | 方向 | 通道（默认） | Proto |
 |------|------|-------|
@@ -122,7 +141,7 @@ cd src/autonomy/autosim
 | 出 | `/scan` `/points` `/camera/*` `/imu` `/odom` | 传感 |
 | 出 | `/tf` `/tf_static` | `TFMessage` |
 | 出 | `/clock` | `Time` |
-| 出 | `/map`（可选 `/map/points` 或 `/map_points`） | `OccupancyGrid` / `PointCloud2` |
+| 出 | `/map`、`/overall/map` | `OccupancyGrid` / `PointCloud2` |
 | 出 | `/gt/pose` | `PoseStamped`（默认关） |
 
 ## Habitat 场景
@@ -140,19 +159,9 @@ habitat:
 cd autosim && pytest tests -v
 ```
 
-## Autoviz 点云联调
+## Autoviz 联调
 
-1. 在 `config/default.yaml`（或副本）中设 `habitat.mode: nav`、`map.enabled: true`、`map.publish: true`，例如 `map.ply.channel: /map_points`。
-2. 启动仿真（需已安装 `habitat-sim`）：
-
-```bash
-cd /workspace/autonomy
-src/autonomy/autosim/scripts/run.sh sim
-```
-
-3. 启动 Autoviz，Fixed Frame 设为 `map`。
-4. Add Display → **PointCloud2**，Topic 与 `map.ply.channel` 一致（如 **`/map_points`**）。
-5. 推荐属性：**Color Transformer** → `Intensity`（channel 填 `intensity`）或 `AxisColor`；大点云可再设 **Decimate**。
-6. 地图点云带 `intensity` 字段（到原点距离）；可用 **Size (Pixels)** 调整点大小。
-
-`map.ply.stride` 在发布端降采样（默认 1）；Autoviz 侧 **Decimate** 可叠加使用。
+1. 配置中设 `habitat.mode: nav`、`map.enabled: true`、`map.publish: true`（Isaac 默认已开）。
+2. 启动仿真后启动 Autoviz，Fixed Frame 设为 `map`。
+3. 常用话题：`/camera/rgb/image_raw`、`/camera/depth/image_raw`、`/map`、`/overall/map`、`/scan`、`/tf`。
+4. PointCloud2（`/overall/map`）：**Color Transformer** → `Intensity` 或 `AxisColor`；大点云可设 **Decimate**；`map.ply.stride` 在发布端降采样。

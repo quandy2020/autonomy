@@ -54,7 +54,7 @@ Autonomy brings the complete robotics toolchain into one coherent runtime:
 | Tasks | `autonomy/task/` | Behavior-tree orchestration for navigation, tracking, mapping, teleoperation, and charging |
 | Audio | `autonomy/audio/` | Audio capture, inference interfaces, and an optional Sherpa-ONNX backend |
 | Hardware | `autodriver/` | Camera, LiDAR, IMU, GPS, CAN bus, and chassis HAL |
-| Simulation | `autosim/` | Habitat-Sim sensor–actuator bridge, simulation clock, ground truth, and teleoperation |
+| Simulation | `autosim/` | Multi-backend sensor–actuator bridge (Habitat-Sim, Fake, Isaac Sim + PhysX), clock, GT map, teleoperation |
 | Visualization | `autoviz/` | Native Qt / OpenGL 3D visualization connected directly to Autolink |
 
 > Module availability depends on build options and locally installed dependencies. Some hardware, inference, and bridge backends are optional.
@@ -161,6 +161,12 @@ autolink_launch autonomy.launch
 
 Send navigation goals via Bridge or an autolink Action client. Map assets live under `autonomy/map/conf/`. See [Quick Run](docs/source/04_Running/02_quickstart.md) and [Troubleshooting](docs/source/04_Running/08_troubleshooting.md).
 
+### Simulation preview (AutoSim)
+
+![Isaac Sim + Autoviz](autosim/images/isaac.gif)
+
+AutoSim bridges Habitat-Sim, a lightweight Fake world, and Isaac Sim (USD + PhysX + RGB-D) onto the same Autolink channels for Autoviz and the autonomy stack. Details and run commands: [AutoSim README](autosim/README.md).
+
 ## Project Structure
 
 ```text
@@ -171,7 +177,7 @@ autonomy/
 ├── autolink/      # Communication runtime (Git submodule)
 ├── automsgs/      # Protobuf messages, services, and actions
 ├── autodriver/    # Sensor and chassis hardware abstraction
-├── autosim/       # Habitat-Sim bridge
+├── autosim/       # Simulation bridge (Habitat / Fake / Isaac) + images/ USD assets
 ├── autoviz/       # Native 3D visualization
 ├── docker/        # Development images and dependency installation
 ├── ansible/       # Bare-metal and fleet deployment
@@ -191,7 +197,7 @@ Build modes (full / distributed / incremental):
 - [Autolink](autolink/README.md) — communication runtime
 - [AutoMsgs](automsgs/README.md) — messages and code generation
 - [AutoDriver](autodriver/README.md) — hardware abstraction layer
-- [AutoSim](autosim/README.md) — simulation bridge
+- [AutoSim](autosim/README.md) — simulation bridge ([Isaac demo](autosim/images/isaac.gif))
 - [AutoViz](autoviz/README.md) — native visualization
 - [Ansible](ansible/README.md) — build and fleet deployment
 - [Scripts](scripts/README.md) — development and CI tools
