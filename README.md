@@ -165,7 +165,7 @@ Send navigation goals via Bridge or an autolink Action client. Map assets live u
 
 ![Isaac Sim + Autoviz](autosim/images/isaac.gif)
 
-AutoSim bridges Habitat-Sim, a lightweight Fake world, and Isaac Sim (USD + PhysX + RGB-D) onto the same Autolink channels for Autoviz and the autonomy stack. Details and run commands: [AutoSim README](autosim/README.md).
+AutoSim bridges Habitat-Sim, a lightweight Fake world, and Isaac Sim (USD + PhysX + RGB-D) onto the same Autolink channels for Autoviz and the autonomy stack. Start at [AutoSim README](autosim/README.md) or the numbered guides under [autosim/docs/](autosim/docs/).
 
 ## Project Structure
 
@@ -197,7 +197,7 @@ Build modes (full / distributed / incremental):
 - [Autolink](autolink/README.md) — communication runtime
 - [AutoMsgs](automsgs/README.md) — messages and code generation
 - [AutoDriver](autodriver/README.md) — hardware abstraction layer
-- [AutoSim](autosim/README.md) — simulation bridge ([Isaac demo](autosim/images/isaac.gif))
+- [AutoSim](autosim/README.md) — simulation bridge ([docs](autosim/docs/) · [Isaac demo](autosim/images/isaac.gif))
 - [AutoViz](autoviz/README.md) — native visualization
 - [Ansible](ansible/README.md) — build and fleet deployment
 - [Scripts](scripts/README.md) — development and CI tools
