@@ -10,6 +10,12 @@ include(FindPackageHandleStandardArgs)
 
 unset(CppAD_FOUND)
 
+# Drop stale cache that points at a prefix without <cppad/cg.hpp>
+# (e.g. /usr/include after a partial reconfigure).
+if(CppAD_INCLUDE_DIRS AND NOT EXISTS "${CppAD_INCLUDE_DIRS}/cppad/cg.hpp")
+  unset(CppAD_INCLUDE_DIRS CACHE)
+endif()
+
 find_path(CppAD_INCLUDE_DIRS
   NAMES cppad/cg.hpp
   HINTS

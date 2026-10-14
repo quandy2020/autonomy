@@ -166,7 +166,8 @@ function install_ros2_packages() {
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler
     apt-get install -y ros-${ROS_DISTRO}-plotjuggler-ros
     apt-get install -y ros-${ROS_DISTRO}-derived-object-msgs
-
+    # Pinocchio: automanip / bolza RNEA + URDF dynamics (headers + libs)
+    apt-get install -y ros-${ROS_DISTRO}-pinocchio
 
     # Foxglove bridge (optional; used for Foxglove Studio visualization)
     info "Installing Foxglove bridge (optional)..."

@@ -40,7 +40,8 @@ def test_project_grid_carves_free_and_marks_occupied():
             },
         }
     )
-    cloud = np.array([[2.5, 0.5, 1.0]], dtype=np.float32)
+    # Wall (z>=0.1) + floor (z<=0) so both occupied and free cells appear.
+    cloud = np.array([[2.5, 0.5, 1.0], [1.5, 0.5, 0.0]], dtype=np.float32)
     grid, resolution, ox, oy, width, height = builder.project_grid(
         cloud, builder.settings["grid"], origin=(0.5, 0.5, 0.5)
     )
@@ -126,13 +127,14 @@ def test_sample_prefers_navmesh_grid_when_available():
     _, grid, resolution, ox, oy, width, height = builder.sample(simulator, (0.0, 0.0))
     assert resolution == 0.5
     assert (width, height) == (4, 2)
-    assert (ox, oy) == (0.0, 0.0)
+    # origin_y = -(min_habitat_z + height * resolution) after row flip.
+    assert (ox, oy) == (0.0, -1.0)
     np.testing.assert_array_equal(
         grid,
         np.array(
             [
-                [0, 100, 0, 100],
                 [0, 0, 100, 100],
+                [0, 100, 0, 100],
             ],
             dtype=np.int8,
         ),

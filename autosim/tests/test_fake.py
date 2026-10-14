@@ -225,7 +225,8 @@ def test_fake_runner_smoke_without_habitat(monkeypatch):
 
     runner = Runner(settings, max_steps=5, link=FakeLink(), simulator=None)
     assert runner.backend == "fake"
-    assert runner.simulator is None
+    assert runner.simulator is not None
+    assert hasattr(runner.simulator, "sample_depth_points")
     runner.run()
     assert "habitat_sim" not in sys.modules or "habitat_sim" in before
 

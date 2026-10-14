@@ -16,6 +16,9 @@ dependencies = [
 
 [project.optional-dependencies]
 habitat = ["habitat-sim>=0.3.0"]
+# Isaac Sim is typically provided by the Omniverse / Isaac Kit Python env.
+# The extra documents the intended install; omni.* packages are not on PyPI.
+isaac = []
 dev = ["pytest>=7.0"]
 
 [project.scripts]
@@ -29,6 +32,12 @@ include = ["autosim*"]
 [tool.setuptools.data-files]
 "share/autosim/config" = ["config/*.yaml"]
 "share/autosim/urdf" = ["urdf/*.urdf", "urdf/*.md"]
+"share/autosim/usd" = [
+  "usd/README.md",
+  "usd/worlds/simple_room/simple_room.usd",
+  "usd/robots/turtlebot3_burger/turtlebot3_burger.usd",
+  "usd/robots/husky/husky.usd",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

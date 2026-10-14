@@ -178,7 +178,7 @@ def test_load_empty_urdf():
 
 def test_default_yaml_urdf():
     settings = Config.load(ROOT / "config" / "default.yaml")
-    assert settings["habitat"]["robot"]["urdf"] == "urdf/husky.urdf"
+    assert settings["habitat"]["robot"]["urdf"] == "urdf/turtlebot3_burger.urdf"
 
 
 def test_reject_missing_urdf():

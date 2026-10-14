@@ -32,6 +32,7 @@ from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 
+from autosim.backend import create_backend
 from autosim.bridge import Bridge
 from autosim.cameras import camera_rig, resolve_surround
 from autosim.stitch import PANORAMA_UUID, panorama_spec
@@ -41,12 +42,9 @@ from autosim.config import Config
 from autosim.map import Map
 from autosim.messages import Messages
 from autosim.robot import Robot
+from autosim.robot.profiles import apply_profile
 from autosim.scenario.traffic import Traffic
 from autosim.sensors import Sensors
-from autosim.simulator import Simulator
-from autosim.fake import Map as FakeMap
-from autosim.fake import Robot as FakeRobot
-from autosim.fake import Sensor as FakeSensor
 
 from automsgs.msgs.geometry_msgs.pose_stamped_pb2 import PoseStamped
 from automsgs.msgs.geometry_msgs.polygon_stamped_pb2 import PolygonStamped
@@ -133,7 +131,7 @@ class Runner:
         settings: Config,
         max_steps: Optional[int] = None,
         link: Any = None,
-        simulator: Optional[Simulator] = None,
+        simulator: Any = None,
     ) -> None:
         """Assemble plant, sensors, and autolink I/O.
 
@@ -141,7 +139,7 @@ class Runner:
             settings: Validated :class:`~autosim.config.Config`.
             max_steps: Stop after N cycles; ``None`` runs until shutdown.
             link: Injected autolink module (tests); otherwise ``import autolink``.
-            simulator: Injected :class:`~autosim.simulator.Simulator`; else built from config.
+            simulator: Injected WorldBackend; else built via backend registry.
 
         Raises:
             ImportError: autolink is missing and ``link`` was not provided.
@@ -165,19 +163,7 @@ class Runner:
         # Accumulated /odom poses for optional Path (nav_msgs) trajectory.
         self.odom_path_poses: list[Tuple[float, float, float, Tuple[int, int]]] = []
         self.odom_path_last: Optional[Tuple[float, float]] = None
-        if self.backend == "fake":
-            self._warmup_fake_map()
-        elif self.map_cfg.get("enabled", False):
-            self.map_builder = Map(self.map_cfg)
-            # Let 2D lidar clip Habitat hits against the published occupancy grid.
-            self.simulator.map_builder = self.map_builder
-            try:
-                self.map_builder.sample(self.simulator, self._map_sample_origin())
-            except Exception as exc:
-                warnings.warn(
-                    f"autosim occupancy warmup failed (laser wall-clip disabled): {exc!r}",
-                    stacklevel=2,
-                )
+        self._warmup_map()
         # Worker for protobuf encoding + bridge publish only.
         # All Habitat GL/ray-cast calls remain on the main thread.
         self._sensor_worker = SensorWorker()
@@ -211,10 +197,10 @@ class Runner:
         """
         habitat = settings["habitat"]
         self.backend = str(habitat.get("backend", "habitat")).strip().lower()
-        if self.backend not in ("fake", "habitat"):
+        if self.backend not in ("fake", "habitat", "isaac"):
             self.backend = "habitat"
         sensors = habitat["sensors"]
-        self.robot_cfg = habitat["robot"]
+        self.robot_cfg = apply_profile(habitat["robot"])
         self.lidar_2d = sensors["lidar_2d"]
         self.lidar_3d = sensors["lidar_3d"]
         self.camera = sensors["camera"]
@@ -243,8 +229,6 @@ class Runner:
         self.mode = mode if mode in ("slam", "nav") else "nav"
         self.odom = dict(self.odom)
         self.odom["child_frame"] = "base_link"
-        self.fake_sensor: Optional[FakeSensor] = None
-        self.fake_map_points = np.zeros((0, 3), dtype=np.float32)
         if isinstance(self.footprint, dict) and self.footprint.get("enabled", False):
             self.footprint = dict(self.footprint)
             self.footprint["frame"] = "base_link"
@@ -255,15 +239,12 @@ class Runner:
             self.tf_cfg["publish_map_odom"] = True
             self.map_publish = bool(self.map_cfg.get("publish", True))
 
-    def assemble_plant(self, simulator: Optional[Simulator]) -> None:
-        """Construct robot, simulator, and sensor sampler.
+    def assemble_plant(self, simulator: Any = None) -> None:
+        """Construct robot, WorldBackend, and sensor sampler.
 
         Args:
-            simulator: Optional injected backend; otherwise :meth:`Simulator.create`.
+            simulator: Optional injected backend; otherwise ``create_backend``.
         """
-        if self.backend == "fake":
-            self._assemble_fake_plant()
-            return
         imu_noise = self.imu.get("noise") or {}
         self.robot = Robot(
             max_linear=self.robot_cfg["max_linear"],
@@ -283,8 +264,8 @@ class Runner:
             y=float(self.spawn[1]),
             yaw=float(self.spawn[2]),
         )
-        self.simulator = simulator if simulator is not None else Simulator.create(
-            self.settings.data
+        self.simulator = (
+            simulator if simulator is not None else create_backend(self.settings.data)
         )
         self.simulator.reset(*self.robot.pose())
         snap = getattr(self.simulator, "snap_to_navmesh", None)
@@ -306,42 +287,39 @@ class Runner:
             lidar_3d=self.lidar_3d,
         )
         self.robot.reset_inertial(yaw=self.robot.pose()[2], t=0.0)
+        grid = getattr(self.simulator, "scenario_grid", None)
+        if grid is None and getattr(self.simulator, "map_builder", None) is not None:
+            grid = getattr(self.simulator.map_builder, "grid", None)
         self.traffic = Traffic.from_block(
             self.settings["habitat"].get("scenario"),
-            getattr(self.simulator, "scenario_grid", None),
+            grid,
         )
         self.simulator.traffic = self.traffic
-
-    def _assemble_fake_plant(self) -> None:
-        """Differential robot + scenario map + RGBD FoV sensor (no Habitat)."""
-        self.robot = FakeRobot(
-            max_linear=self.robot_cfg["max_linear"],
-            max_angular=self.robot_cfg["max_angular"],
-            watchdog_sec=self.robot_cfg["watchdog_sec"],
-            odometry_noise=float(self.odom.get("noise", 0.0)),
-            wheel_separation=float(self.robot_cfg.get("wheel_separation", 0.5)),
-            max_linear_accel=float(self.robot_cfg.get("max_linear_accel", 0.8)),
-            max_linear_decel=float(self.robot_cfg.get("max_linear_decel", 1.2)),
-            max_angular_accel=float(self.robot_cfg.get("max_angular_accel", 2.0)),
-            x=float(self.spawn[0]),
-            y=float(self.spawn[1]),
-            yaw=float(self.spawn[2]),
-        )
-        self.simulator = None
-        self.sensors = None
-        self.traffic = Traffic.from_block(self.scenario_cfg, None)
-        self.fake_sensor = FakeSensor(self.camera)
-        # URDF mounts for TF + footprint (same as Habitat path).
         self._urdf_for_footprint = self._footprint_urdf()
 
-    def _warmup_fake_map(self) -> None:
-        """Build scenario occupancy and cache points for local RGBD sampling."""
+    def _warmup_map(self) -> None:
+        """Warm occupancy / cloud map for nav publish and laser clipping."""
         if not self.map_cfg.get("enabled", False):
             return
-        built = FakeMap(self.map_cfg).build(self.scenario_cfg)
-        self.map_builder = built
-        self.fake_map_points = built.points
-        self.traffic = Traffic.from_block(self.scenario_cfg, built.grid)
+        # FakeWorld (and similar) may already own a built map.
+        built = getattr(self.simulator, "map_builder", None)
+        if built is not None:
+            self.map_builder = built
+            if getattr(built, "grid", None) is not None:
+                self.traffic = Traffic.from_block(self.scenario_cfg, built.grid)
+                self.simulator.traffic = self.traffic
+            return
+        if self.backend == "fake":
+            return
+        self.map_builder = Map(self.map_cfg)
+        self.simulator.map_builder = self.map_builder
+        try:
+            self.map_builder.sample(self.simulator, self._map_sample_origin())
+        except Exception as exc:
+            warnings.warn(
+                f"autosim occupancy warmup failed (laser wall-clip disabled): {exc!r}",
+                stacklevel=2,
+            )
 
     def message_types(self) -> Dict[str, Any]:
         """Build logical-key → protobuf type map for enabled streams.
@@ -354,40 +332,21 @@ class Runner:
             types["odom"] = Odometry
             if str(self.odom.get("path_channel") or "").strip():
                 types["odom_path"] = Path
-        if self.backend == "fake":
-            depth_points_channel = str(
-                self.camera.get("depth_points_channel") or ""
-            ).strip()
-            if depth_points_channel:
-                types["depth_points"] = PointCloud2
-            if str(self.camera.get("fov_marker_channel") or "").strip():
-                types["fov_marker"] = Marker
-            if self.map_cfg.get("enabled", False) and self.map_publish:
-                if str((self.map_cfg.get("ply") or {}).get("channel") or "").strip():
-                    types["map_cloud"] = PointCloud2
-                types["map_grid"] = OccupancyGrid
-            if self.tf_cfg.get("enabled", False):
-                types["tf"] = TFMessage
-                types["tf_static"] = TFMessage
-            if self.clock_cfg.get("enabled", False):
-                types["clock"] = TimeMsg
-            if self.footprint.get("enabled", False):
-                types["footprint"] = PolygonStamped
-            return types
         if self.lidar_2d["enabled"]:
             types["scan"] = LaserScan
         if self.lidar_3d["enabled"]:
             types["points"] = PointCloud2
+        depth_points_channel = str(
+            self.camera.get("depth_points_channel") or ""
+        ).strip()
+        fov_marker_channel = str(self.camera.get("fov_marker_channel") or "").strip()
         if self.camera.get("enabled", False):
             types["rgb"] = Image
             types["depth"] = Image
             types["camera_info"] = CameraInfo
-            depth_points_channel = str(
-                self.camera.get("depth_points_channel") or ""
-            ).strip()
             if depth_points_channel:
                 types["depth_points"] = PointCloud2
-            if str(self.camera.get("fov_marker_channel") or "").strip():
+            if fov_marker_channel:
                 types["fov_marker"] = Marker
             if self.camera.get("semantic_enabled", False) and str(
                 self.camera.get("semantic_channel") or ""
@@ -395,6 +354,11 @@ class Runner:
                 types["semantic"] = Image
             if str(self.camera.get("semantic_ids_channel") or "").strip():
                 types["semantic_ids"] = Image
+        elif depth_points_channel:
+            # Fake / Isaac: depth cloud without publishing RGB-D images.
+            types["depth_points"] = PointCloud2
+            if fov_marker_channel:
+                types["fov_marker"] = Marker
         for camera in self.surround:
             types[camera.rgb_key] = Image
             types[camera.info_key] = CameraInfo
@@ -471,9 +435,6 @@ class Runner:
         Args:
             dt: Period length in seconds (``1 / control_hz``).
         """
-        if self.backend == "fake":
-            self.cycle_fake(dt)
-            return
         self.poll_command()
         x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
         # SLAM: keep wheel odom glued to GT so Habitat laser rays (cast at GT)
@@ -502,33 +463,15 @@ class Runner:
         self.emit("clock", self.publish_clock, stamp)
         # Occupancy / PLY map is static; never block teleop after first sample.
         self.emit("map", self.submit_map, stamp)
-        # One Habitat-heavy sample per tick so TF/image don't hitch together.
+        # One engine-heavy sample per tick so TF/image don't hitch together.
         if self.scan_is_due() or self.cloud_is_due():
             self.emit("scan", self.submit_scan, stamp)
             self.emit("points", self.submit_cloud, stamp)
         else:
             self.emit("camera", self.submit_camera, stamp)
+            # Depth cloud without RGB (fake) when camera.enabled is false.
+            self.emit("depth_points", self.submit_depth_points_only, stamp)
         self.emit("surround", self.submit_surround, stamp)
-
-    def cycle_fake(self, dt: float) -> None:
-        """One period for the Habitat-free backend."""
-        self.poll_command()
-        x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
-        if self.mode == "slam":
-            self.robot.odometry_x = float(x)
-            self.robot.odometry_y = float(y)
-            self.robot.odometry_yaw = float(yaw)
-        self.traffic.step(dt)
-        self.clock.tick(dt)
-        stamp = self.clock.stamp()
-        linear, angular = self.robot.velocity()
-        self.advance_timers(min(dt, 0.05))
-        self.emit("odom", self.publish_odometry, x, y, yaw, linear, angular, stamp)
-        self.emit("footprint", self.publish_footprint, stamp)
-        self.emit("tf", self.publish_tf, stamp)
-        self.emit("clock", self.publish_clock, stamp)
-        self.emit("map", self.submit_map, stamp)
-        self.emit("depth_points", self.submit_fake_depth_points, stamp)
 
     def scan_is_due(self) -> bool:
         """True when 2D lidar should sample this period."""
@@ -550,7 +493,7 @@ class Runner:
         newer TFs arrived; with a latest-TF fallback that looked like spin
         motion distortion.
         """
-        if not self.scan_is_due():
+        if not self.scan_is_due() or self.sensors is None:
             return
         self.scan_elapsed = 0.0
         ranges = self.sensors.sample_laser(self.simulator)
@@ -575,7 +518,7 @@ class Runner:
 
     def submit_cloud(self, stamp: Tuple[int, int]) -> None:
         """Ray-cast 3D lidar on the main thread, then encode/publish async."""
-        if not self.cloud_is_due():
+        if not self.cloud_is_due() or self.sensors is None:
             return
         self.points_elapsed = 0.0
         linear, angular = self.robot.velocity()
@@ -613,7 +556,7 @@ class Runner:
         via the sensor worker let Atlas see RGB_N with depth_N-1 (QoS/order),
         which looks like desynced timestamps. Keep encode+publish atomic.
         """
-        if not self.camera.get("enabled", False):
+        if not self.camera.get("enabled", False) or self.sensors is None:
             return
         if self.camera_elapsed < 1.0 / self.camera["rate_hz"]:
             return
@@ -632,9 +575,9 @@ class Runner:
             color, depth = sampled
             self.encode_publish_camera(color, depth, stamp)
 
-    def submit_fake_depth_points(self, stamp: Tuple[int, int]) -> None:
-        """Publish RGBD FoV local cloud from the scenario map (fake backend)."""
-        if self.fake_sensor is None:
+    def submit_depth_points_only(self, stamp: Tuple[int, int]) -> None:
+        """Publish depth cloud when RGB is disabled (e.g. fake FoV raycast)."""
+        if self.camera.get("enabled", False):
             return
         channel = str(self.camera.get("depth_points_channel") or "").strip()
         if not channel or "depth_points" not in self.bridge.writers:
@@ -642,23 +585,14 @@ class Runner:
         rate = float(self.camera.get("rate_hz", 10.0))
         if self.depth_points_elapsed < 1.0 / max(rate, 1e-3):
             return
-        self.depth_points_elapsed = 0.0
-        built = self.map_builder
-        if built is None or getattr(built, "occupied", None) is None:
+        sample = getattr(self.simulator, "sample_depth_points", None)
+        if not callable(sample):
             return
-        # Raycast is CPU-heavy; keep it off the control thread so cmd_vel stays smooth.
-        pose = self.robot.pose()
-        occupied = built.occupied
-        origin = built.origin
-        resolution = built.resolution
-        traffic = self.traffic
+        self.depth_points_elapsed = 0.0
         frame = str(self.camera.get("frame") or "camera_link")
-        sensor = self.fake_sensor
 
         def _encode_and_publish() -> None:
-            points = sensor.sample_points(
-                occupied, origin, resolution, pose, traffic=traffic
-            )
+            points = sample()
             self.bridge.publish(
                 "depth_points",
                 Messages.encode_point_cloud2(points, stamp, frame),
@@ -713,7 +647,10 @@ class Runner:
         ]
         if not due:
             return
-        images = self.simulator.render_surround()
+        render = getattr(self.simulator, "render_surround", None)
+        if not callable(render):
+            return
+        images = render()
         for camera in due:
             self.surround_elapsed[camera.name] = 0.0
             color = images[camera.uuid]

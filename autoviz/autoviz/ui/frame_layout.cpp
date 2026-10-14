@@ -485,19 +485,14 @@ bool FrameLayout::isPropertyInspectorVisible() const {
 
 void FrameLayout::raiseLeftSidebarDisplays() {
   left_sidebar_shows_properties_ = false;
-  // Activating 3D View reopens Displays even after the user closed it or hid
-  // the left sidebar (toolbar Hide Left / collapsed docks).
-  displays_closed_by_user_ = false;
-  if (frame_->panels_->displays_dock_ != nullptr) {
-    if (frame_->manager_ != nullptr && frame_->manager_->hideLeftDock()) {
-      hideLeftDock(false);
-    }
-    if (frame_->chrome_->toolbar_toggle_left_dock_action_ != nullptr &&
-        !frame_->chrome_->toolbar_toggle_left_dock_action_->isChecked()) {
-      frame_->chrome_->toolbar_toggle_left_dock_action_->blockSignals(true);
-      frame_->chrome_->toolbar_toggle_left_dock_action_->setChecked(true);
-      frame_->chrome_->toolbar_toggle_left_dock_action_->blockSignals(false);
-    }
+  // Viewport activation (3D View click) only switches the left sidebar back to
+  // Displays when it is already meant to be shown (e.g. leaving Properties).
+  // After the user closed Displays or used Hide Left, do not force it open —
+  // reopen only via Panels menu / toolbar toggle.
+  const bool left_hidden =
+      frame_->manager_ != nullptr && frame_->manager_->hideLeftDock();
+  if (!displays_closed_by_user_ && !left_hidden &&
+      frame_->panels_->displays_dock_ != nullptr) {
     ensureSidebarDockAttached(frame_->panels_->displays_dock_);
     frame_->panels_->displays_dock_->setCollapsed(false);
     frame_->panels_->displays_dock_->show();

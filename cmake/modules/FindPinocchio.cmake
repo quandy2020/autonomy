@@ -10,6 +10,20 @@ find_path(PINOCCHIO_INCLUDE_DIR
   NAMES pinocchio/multibody/model.hpp pinocchio/pinocchio.hpp pinocchio/fwd.hpp
   PATHS /opt/ros/humble/include /opt/homebrew/include /usr/local/include /usr/include)
 
+# Drop stale cache entries when the include tree was removed (libs may remain).
+if(PINOCCHIO_INCLUDE_DIR AND NOT EXISTS
+    "${PINOCCHIO_INCLUDE_DIR}/pinocchio/algorithm/rnea.hpp"
+   AND NOT EXISTS
+    "${PINOCCHIO_INCLUDE_DIR}/pinocchio/deprecated/pinocchio/algorithm/rnea.hpp")
+  unset(PINOCCHIO_INCLUDE_DIR CACHE)
+  unset(PINOCCHIO_INCLUDE_DIR)
+  find_path(PINOCCHIO_INCLUDE_DIR
+    NAMES pinocchio/algorithm/rnea.hpp
+          pinocchio/multibody/model.hpp
+          pinocchio/fwd.hpp
+    PATHS /opt/ros/humble/include /opt/homebrew/include /usr/local/include /usr/include)
+endif()
+
 find_library(PINOCCHIO_DEFAULT_LIBRARY
   NAMES pinocchio_default pinocchio
   PATHS /opt/ros/humble/lib /opt/homebrew/lib /usr/local/lib /usr/lib
@@ -23,9 +37,23 @@ find_library(PINOCCHIO_PARSERS_LIBRARY
         /usr/lib/aarch64-linux-gnu /usr/lib/x86_64-linux-gnu)
 
 # parsers is required for pinocchio/parsers/urdf.hpp; default alone is not enough.
+# Require RNEA header so AUTOMANIP_HAS_PINOCCHIO is not set against a lib-only install.
+set(PINOCCHIO_RNEA_HEADER "")
+if(PINOCCHIO_INCLUDE_DIR)
+  if(EXISTS "${PINOCCHIO_INCLUDE_DIR}/pinocchio/algorithm/rnea.hpp")
+    set(PINOCCHIO_RNEA_HEADER
+      "${PINOCCHIO_INCLUDE_DIR}/pinocchio/algorithm/rnea.hpp")
+  elseif(EXISTS
+      "${PINOCCHIO_INCLUDE_DIR}/pinocchio/deprecated/pinocchio/algorithm/rnea.hpp")
+    set(PINOCCHIO_RNEA_HEADER
+      "${PINOCCHIO_INCLUDE_DIR}/pinocchio/deprecated/pinocchio/algorithm/rnea.hpp")
+  endif()
+endif()
+
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(Pinocchio DEFAULT_MSG
-  PINOCCHIO_DEFAULT_LIBRARY PINOCCHIO_PARSERS_LIBRARY PINOCCHIO_INCLUDE_DIR)
+  PINOCCHIO_DEFAULT_LIBRARY PINOCCHIO_PARSERS_LIBRARY
+  PINOCCHIO_INCLUDE_DIR PINOCCHIO_RNEA_HEADER)
 
 if(Pinocchio_FOUND)
   set(PINOCCHIO_INCLUDE_DIRS ${PINOCCHIO_INCLUDE_DIR})

@@ -32,6 +32,7 @@ class FakeSimulator:
         self.y = 0.0
         self.yaw = 0.0
         self.urdf = None
+        self.traffic = None
         self.session = object()
 
     def reset(self, x: float, y: float, yaw: float) -> None:
@@ -88,6 +89,15 @@ class FakeSimulator:
         color[..., 1] = 128
         depth = np.full((self.height, self.width), 2.0, dtype=np.float32)
         return color, depth
+
+    def color_depth_semantic(self):
+        color, depth = self.color_depth()
+        semantic = np.zeros((self.height, self.width), dtype=np.uint16)
+        return color, depth, semantic
+
+    def semantic_ids_to_colored_rgb(self, semantic):
+        del semantic
+        return np.zeros((self.height, self.width, 3), dtype=np.uint8)
 
     def world_cloud(self, planar_x, planar_y, eye_y, h_angles, v_angles, range_max):
         radius = 0.5 * float(range_max)

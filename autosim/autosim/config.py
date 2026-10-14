@@ -224,6 +224,22 @@ class Config:
                 sensors[key] = stub
 
     @classmethod
+    @classmethod
+    def validate_isaac_usd(cls, habitat: Mapping[str, Any]) -> None:
+        """Require a resolvable USD world path for the Isaac backend."""
+        from autosim.robot.profiles import resolve_path
+
+        usd = habitat.get("usd") if isinstance(habitat.get("usd"), Mapping) else {}
+        world = str(habitat.get("path") or (usd or {}).get("world") or "").strip()
+        if not world:
+            raise ValueError(
+                "habitat.backend=isaac requires habitat.path or habitat.usd.world"
+            )
+        path = resolve_path(world)
+        if not path.is_file():
+            raise ValueError(f"habitat Isaac USD world not found: {path}")
+
+    @classmethod
     def validate_urdf(cls, urdf: Any) -> None:
         """Require ``habitat.robot.urdf`` empty or an existing file.
 
@@ -406,12 +422,21 @@ class Config:
                 raise ValueError("habitat.mode must be 'slam' or 'nav'")
 
         backend = str(habitat.get("backend", "habitat")).strip().lower()
-        if backend not in ("fake", "habitat"):
-            raise ValueError("habitat.backend must be 'fake' or 'habitat'")
+        if backend not in ("fake", "habitat", "isaac"):
+            raise ValueError("habitat.backend must be 'fake', 'habitat', or 'isaac'")
 
         robot = habitat.get("robot")
         if not isinstance(robot, Mapping):
             raise ValueError("habitat.robot must be a mapping")
+        from autosim.robot.profiles import apply_profile, get_profile
+
+        profile_name = str(robot.get("profile") or "").strip()
+        if profile_name:
+            try:
+                get_profile(profile_name)
+            except KeyError as exc:
+                raise ValueError(str(exc)) from exc
+        robot_resolved = apply_profile(robot)
         truth = robot.get("truth")
         if not isinstance(truth, Mapping) or "enabled" not in truth:
             raise ValueError("habitat.robot.truth.enabled required")
@@ -419,7 +444,7 @@ class Config:
             raise ValueError("empty channel name: habitat.robot.cmd_vel")
         if not isinstance(truth.get("channel"), str) or not truth["channel"].strip():
             raise ValueError("empty channel name: habitat.robot.truth.channel")
-        cls.validate_urdf(robot.get("urdf", ""))
+        cls.validate_urdf(robot_resolved.get("urdf", ""))
         cls.require_nonneg(robot.get("max_linear", 0.0), "habitat.robot.max_linear")
         cls.require_nonneg(robot.get("max_angular", 0.0), "habitat.robot.max_angular")
         cls.require_nonneg(
@@ -442,11 +467,13 @@ class Config:
         cls.validate_lidar_2d(sensors["lidar_2d"])
         cls.validate_lidar_3d(sensors["lidar_3d"])
         cls.validate_noise_fields(sensors)
-        cls.validate_surround(camera_rig(sensors), robot.get("urdf", ""))
-        cls.validate_footprint(robot.get("footprint"), robot.get("urdf", ""))
+        cls.validate_surround(camera_rig(sensors), robot_resolved.get("urdf", ""))
+        cls.validate_footprint(robot.get("footprint"), robot_resolved.get("urdf", ""))
         scenario_on = cls.validate_scenario(habitat.get("scenario"))
         if backend == "fake" and not scenario_on:
             raise ValueError("habitat.backend=fake requires habitat.scenario.enabled")
+        if backend == "isaac":
+            cls.validate_isaac_usd(habitat)
         cls.validate_map(habitat.get("map"), procedural=scenario_on)
 
         names = [

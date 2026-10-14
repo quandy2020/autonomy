@@ -9,7 +9,12 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 |------|-----|------|
 | `config.py` | `Config` | YAML 加载与校验 |
 | `clock.py` | `Clock` | 仿真时钟 |
-| `robot.py` | `Robot` | 差速、积分里程计、带偏置 IMU、真值 |
+| `robot/plant.py` | `Robot` | 差速、积分里程计、带偏置 IMU、真值 |
+| `robot/profiles.py` | `RobotProfile` | turtlebot3 / husky 档案（URDF + USD） |
+| `backend/` | `WorldBackend` | 引擎无关传感/位姿协议 + registry |
+| `backends/habitat` | — | Habitat-Sim（包装 `simulator.py`） |
+| `backends/fake` | `FakeWorld` | 过程 scenario + RGBD raycast |
+| `backends/isaac` | `IsaacSimulator` | Isaac Sim + USD |
 | `sensors.py` | `Sensors` | 2D/3D lidar and camera sampling |
 | `simulator.py` | `Simulator` | Habitat scene + cast_ray（无 Mock） |
 | `map.py` | `Map` | PLY 环视点云 + 2D OccupancyGrid（自由空间雕刻） |
@@ -33,6 +38,7 @@ Habitat-Sim **传感器–执行器桥**：经 autolink 发布传感、订阅 `/
 - 必需：`numpy`、`PyYAML`、`protobuf`
 - 运行时：`autolink` Python、`automsgs` Python 绑定
 - 可选：`habitat-sim`（`pip install -e ".[habitat]"`）
+- 可选：Isaac Sim / Omniverse Python（`pip install -e ".[isaac]"` 文档化 extras；需在 Isaac 环境中运行）
 
 ## 安装与运行
 
@@ -49,6 +55,7 @@ colcon build --packages-select autonomy
 cd src/autonomy/autosim
 pip install -e ".[dev]"          # 测试
 pip install -e ".[habitat,dev]"  # 含 habitat-sim
+pip install -e ".[isaac,dev]"    # 文档化 Isaac extras（需 Isaac Sim 环境）
 ```
 
 **运行**（工作区根目录）：
@@ -59,11 +66,25 @@ src/autonomy/autosim/scripts/run.sh sim
 ./src/autonomy/autosim/scripts/run.sh teleop
 ```
 
-`habitat.backend`：`habitat`（`config/default.yaml`，仅 Habitat-Sim + GLB/MP3D 场景资源）或 `fake`（`config/fake.yaml`，无 Habitat：差速 + RGBD 针孔 raycast `/camera/depth/points` + 过程 scenario 地图）。
+`habitat.backend`：
+
+| 值 | 配置 | 说明 |
+|----|------|------|
+| `habitat` | `config/default.yaml` | Habitat-Sim + GLB/MP3D |
+| `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario 地图 |
+| `isaac` | `config/isaac.yaml` | Isaac Sim + USD（`usd/` 占位资源；需 Omniverse） |
 
 ```bash
 CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
+# Isaac：run.sh 自动改用 ISAACLAB_PATH（默认 /workspace/isaaclab）下的 python.sh
+ISAACLAB_PATH=/workspace/isaaclab CONFIG=src/autonomy/autosim/config/isaac.yaml \
+  src/autonomy/autosim/scripts/run.sh sim
+# 无显示时默认 HEADLESS；需要 GUI 时可 AUTOSIM_ISAAC_HEADLESS=0
 ```
+
+Isaac Sim 自带 **Python 3.11**，autolink 需有对应 `_core.cpython-311-*.so`（与现有 3.10 模块可并存）。若 `run.sh` 报缺少 311 绑定，用 Isaac 解释器重编 pybind 模块后拷到 `install/autonomy/python/autolink/`。
+
+机器人档案：`habitat.robot.profile` 可为 `turtlebot3_burger` 或 `husky`（填充默认 URDF / USD / `wheel_separation`）。
 
 **Lightning LIO 验证**（开 3D 点云 `/points` + `/imu`）：
 

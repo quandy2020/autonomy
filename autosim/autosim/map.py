@@ -245,6 +245,9 @@ class Map:
             origin = (float(origin_xy[0]), float(origin_xy[1]), eye)
             grid, resolution, ox, oy, width, height = self.project_grid(
                 cloud, grid_cfg, origin)
+        file_path = str(ply_cfg.get("file") or "").strip()
+        if file_path:
+            self.write_ply(self.resolve_ply_path(file_path), cloud)
         self.cached_cloud = cloud
         self.cached_grid = (grid, resolution, ox, oy, width, height)
         return cloud, grid, resolution, ox, oy, width, height
