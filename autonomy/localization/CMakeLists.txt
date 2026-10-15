@@ -87,10 +87,7 @@ autocmake_library(autonomy_localization
 add_library(autonomy::localization ALIAS autonomy_localization)
 
 target_include_directories(autonomy_localization PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/thirdparty>
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/lightning/core/miao>)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty>)
 target_include_directories(autonomy_localization SYSTEM PUBLIC
   ${PCL_INCLUDE_DIRS}
   ${LUA_INCLUDE_DIR})

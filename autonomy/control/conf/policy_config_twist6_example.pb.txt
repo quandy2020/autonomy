@@ -1,0 +1,37 @@
+# Example PolicyConfig for a full 6DOF Twist policy
+# (omnidirectional / aerial). Pair with an ONNX whose action output
+# is [lx, ly, lz, ax, ay, az] (or matching layout order).
+name: "example_twist6_policy"
+version: "0.1"
+
+observation {
+  kinematic: true
+  path: true
+}
+
+action {
+  layout: "linear_velocity_x"
+  layout: "linear_velocity_y"
+  layout: "linear_velocity_z"
+  layout: "angular_velocity_x"
+  layout: "angular_velocity_y"
+  layout: "angular_velocity_z"
+  limits {
+    max_vx: 0.5
+    max_vy: 0.5
+    max_vz: 0.5
+    max_wx: 1.0
+    max_wy: 1.0
+    max_wz: 1.0
+    max_ax: 1.0
+    max_ay: 1.0
+    max_az: 1.0
+    max_alpha_x: 2.0
+    max_alpha_y: 2.0
+    max_alpha_z: 2.0
+  }
+}
+
+engine {
+  model_path: "/path/to/policy_twist6.onnx"
+}

@@ -1,0 +1,33 @@
+# Example PolicyConfig for a diffusion / generative action policy.
+# Export a *single denoising step* ONNX graph with:
+#   inputs:  observation_* + sample + timestep
+#   outputs: action (SAMPLE=x0) or noise (EPSILON)
+name: "example_diffusion_twist_policy"
+version: "0.1"
+mode: INFERENCE_DIFFUSION
+
+observation {
+  kinematic: true
+  path: true
+}
+
+action {
+  limits {
+    max_vx: 0.5
+    max_wz: 1.0
+    max_ax: 1.0
+    max_alpha_z: 2.0
+  }
+}
+
+engine {
+  model_path: "/path/to/diffusion_denoiser_step.onnx"
+}
+
+diffusion {
+  steps: 8
+  horizon: 8
+  dim: 2
+  prediction_type: DIFFUSION_PRED_SAMPLE
+  ddim: true
+}

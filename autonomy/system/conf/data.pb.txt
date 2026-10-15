@@ -21,6 +21,6 @@ channels: "/plan"
 
 blacklist_channels: "/autonomy/task/teleop/free_path_markers"
 
-# Localization backend for manifest: cartographer | lightning | atlas | none
+# Localization backend for manifest: cartographer | atlas | none
 localization_backend: "none"
 default_replay_profile: "mid_stack"

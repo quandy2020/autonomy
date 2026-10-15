@@ -24,6 +24,11 @@
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
+#include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/std_msgs/float32_multi_array.pb.h>
+#include <automsgs/msgs/std_msgs/string.pb.h>
+#include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
@@ -169,6 +174,138 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
 
     if (!scan_reader_ && costmap_wrapper_) {
         costmap_wrapper_->AttachSensorReaders(node_);
+    }
+
+    const auto& policy_opts = options_.policy_controller_options();
+    const std::string scan_topic = policy_opts.scan_topic().empty()
+                                       ? kScanTopicName
+                                       : policy_opts.scan_topic();
+    const std::string image_topic = policy_opts.image_topic().empty()
+                                        ? kImageTopicName
+                                        : policy_opts.image_topic();
+    const std::string points_topic = policy_opts.point_cloud_topic().empty()
+                                         ? kPointCloudTopicName
+                                         : policy_opts.point_cloud_topic();
+    const std::string bev_topic = policy_opts.lidar_bev_topic().empty()
+                                      ? kLidarBevTopicName
+                                      : policy_opts.lidar_bev_topic();
+    const std::string raw_topic = policy_opts.raw_tensor_topic().empty()
+                                      ? kRawTensorTopicName
+                                      : policy_opts.raw_tensor_topic();
+    const std::string diag_topic = policy_opts.diagnostics_topic().empty()
+                                       ? kPolicyDiagnosticsTopicName
+                                       : policy_opts.diagnostics_topic();
+    const std::string reload_topic = policy_opts.reload_config_topic().empty()
+                                         ? kPolicyReloadConfigTopicName
+                                         : policy_opts.reload_config_topic();
+
+    if (!scan_reader_) {
+        ControllerServer* self = this;
+        scan_reader_ =
+            node_->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
+                scan_topic,
+                [self](const std::shared_ptr<
+                       automsgs::msgs::sensor_msgs::LaserScan>& msg) {
+                    if (self != nullptr && msg) {
+                        self->PublishLaserScanToControllers(*msg);
+                    }
+                });
+        if (scan_reader_) {
+            AINFO << "ControllerServer: LaserScan on " << scan_topic
+                  << " (policy_controller / neupan_controller)";
+        }
+    }
+
+    if (!image_reader_) {
+        ControllerServer* self = this;
+        image_reader_ =
+            node_->CreateReader<automsgs::msgs::sensor_msgs::Image>(
+                image_topic,
+                [self](const std::shared_ptr<
+                       automsgs::msgs::sensor_msgs::Image>& msg) {
+                    if (self != nullptr && msg) {
+                        self->PublishImageToControllers(*msg);
+                    }
+                });
+        if (image_reader_) {
+            AINFO << "ControllerServer: Image on " << image_topic
+                  << " (policy_controller)";
+        }
+    }
+
+    if (!point_cloud_reader_) {
+        ControllerServer* self = this;
+        point_cloud_reader_ =
+            node_->CreateReader<automsgs::msgs::sensor_msgs::PointCloud2>(
+                points_topic,
+                [self](const std::shared_ptr<
+                       automsgs::msgs::sensor_msgs::PointCloud2>& msg) {
+                    if (self != nullptr && msg) {
+                        self->PublishPointCloudToControllers(*msg);
+                    }
+                });
+        if (point_cloud_reader_) {
+            AINFO << "ControllerServer: PointCloud2 on " << points_topic
+                  << " (policy_controller)";
+        }
+    }
+
+    if (!lidar_bev_reader_) {
+        ControllerServer* self = this;
+        lidar_bev_reader_ =
+            node_->CreateReader<automsgs::msgs::std_msgs::Float32MultiArray>(
+                bev_topic,
+                [self](const std::shared_ptr<
+                       automsgs::msgs::std_msgs::Float32MultiArray>& msg) {
+                    if (self != nullptr && msg) {
+                        self->PublishLidarBevToControllers(*msg);
+                    }
+                });
+        if (lidar_bev_reader_) {
+            AINFO << "ControllerServer: LidarBEV Float32MultiArray on "
+                  << bev_topic;
+        }
+    }
+
+    if (!raw_tensor_reader_) {
+        ControllerServer* self = this;
+        raw_tensor_reader_ =
+            node_->CreateReader<automsgs::msgs::std_msgs::Float32MultiArray>(
+                raw_topic,
+                [self](const std::shared_ptr<
+                       automsgs::msgs::std_msgs::Float32MultiArray>& msg) {
+                    if (self != nullptr && msg) {
+                        self->PublishRawTensorToControllers(*msg);
+                    }
+                });
+        if (raw_tensor_reader_) {
+            AINFO << "ControllerServer: RAW Float32MultiArray on " << raw_topic;
+        }
+    }
+
+    if (!policy_reload_reader_) {
+        ControllerServer* self = this;
+        policy_reload_reader_ =
+            node_->CreateReader<automsgs::msgs::std_msgs::String>(
+                reload_topic,
+                [self](const std::shared_ptr<automsgs::msgs::std_msgs::String>&
+                           msg) {
+                    if (self != nullptr && msg && !msg->data().empty()) {
+                        self->ReloadPolicyConfig(msg->data());
+                    }
+                });
+        if (policy_reload_reader_) {
+            AINFO << "ControllerServer: policy reload on " << reload_topic;
+        }
+    }
+
+    if (!policy_diagnostics_writer_) {
+        policy_diagnostics_writer_ =
+            node_->CreateWriter<
+                automsgs::msgs::diagnostic_msgs::DiagnosticArray>(diag_topic);
+        if (policy_diagnostics_writer_) {
+            AINFO << "ControllerServer: policy diagnostics on " << diag_topic;
+        }
     }
 
     if (!costmap_writer_ && costmap_wrapper_) {

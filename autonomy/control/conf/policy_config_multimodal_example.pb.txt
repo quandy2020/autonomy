@@ -1,0 +1,45 @@
+# Multimodal PolicyConfig: kinematic + laser + image + point cloud + BEV.
+# Heavy BEV / fusion preprocess should live in the exported ONNX; C++ only
+# packs PointCloud2 xyz and forwards SetLidarBev / SetRawTensor frames.
+name: "example_multimodal_policy"
+version: "0.1"
+
+observation {
+  kinematic: true
+  path: true
+  laser: true
+  image: true
+  point_cloud: true
+  lidar_bev: true
+
+  point_cloud_input {
+    name: "observation_point_cloud"
+    # shape: 1
+    # shape: 2048
+    # shape: 3
+  }
+  lidar_bev_input {
+    name: "observation_lidar_bev"
+    # shape: 1
+    # shape: 1
+    # shape: 200
+    # shape: 200
+  }
+  image_input {
+    name: "observation_image"
+    preprocess: "letterbox"
+  }
+}
+
+action {
+  limits {
+    max_vx: 0.5
+    max_wz: 1.0
+    max_ax: 1.0
+    max_alpha_z: 2.0
+  }
+}
+
+engine {
+  model_path: "/path/to/multimodal_policy.onnx"
+}

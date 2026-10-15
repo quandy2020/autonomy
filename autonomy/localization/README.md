@@ -5,19 +5,16 @@
 | 后端 / 库 | 用途 |
 |-----------|------|
 | **Cartographer** | 2D/3D lidar SLAM |
-| **Lightning** | 独立 LIO（`lightning/`） |
 | **atlas** | VO / VIO / LIO / LIVO（`atlas/`） |
 
 ```text
 autonomy/localization/
 ├── localization_main.cpp
-├── localization_server.*      # Cartographer | Lightning 门面
+├── localization_server.*      # Cartographer | Atlas
 ├── atlas/                     # VO/VIO 库（演进中）
 ├── cartographer/
-├── lightning/
 └── conf/
-    ├── cartographer/
-    └── lightning/
+    └── cartographer/
 ```
 
 ## 快速启动
@@ -32,18 +29,6 @@ autonomy.localization \
 ```
 
 或：`autolink launch start localization.launch` / `localization_cartographer.launch`
-
-**Lightning LIO**
-
-```bash
-autonomy.localization \
-  --localization_mode=lightning \
-  --lightning_config=autonomy/localization/conf/lightning/autosim.yaml \
-  --lightning_imu_topic=/imu \
-  --lightning_lidar_topic=/points
-```
-
-或：`localization_lightning.launch`
 
 **Atlas LIO（autosim）**
 
@@ -107,9 +92,8 @@ autonomy.localization \
 
 | Flag | 说明 |
 |------|------|
-| `--localization_mode` | `cartographer` \| `lightning` \| `atlas` |
+| `--localization_mode` | `cartographer` \| `atlas` |
 | Cartographer | `--configuration_directory` / `--configuration_basename` / `--save_state_filename` |
-| Lightning | `--lightning_config` / `--lightning_imu_topic` / `--lightning_lidar_topic` |
 | Atlas | `--atlas_config` / `--atlas_imu_topic` / `--atlas_lidar_topic` / `--atlas_image_topic` |
 
 atlas 结构见 [atlas/README.md](atlas/README.md)。

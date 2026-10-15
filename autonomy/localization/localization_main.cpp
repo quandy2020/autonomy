@@ -38,11 +38,6 @@ struct LocalizationCli {
     bool load_frozen_state = true;
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
-    std::string lightning_config =
-        "autonomy/localization/conf/lightning/autosim.yaml";
-    std::string lightning_imu_topic = "/imu";
-    std::string lightning_lidar_topic = "/points";
-    std::string lightning_map_save;
     std::string atlas_config =
         "autonomy/localization/conf/atlas/fusion_livo.yaml";
     std::string atlas_imu_topic = "/imu";
@@ -52,7 +47,7 @@ struct LocalizationCli {
 
 void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--localization_mode", cli.localization_mode,
-                   "Backend: cartographer | lightning | atlas.")
+                   "Backend: cartographer | atlas.")
         ->capture_default_str();
     app.add_option("--load_state_filename", cli.load_state_filename,
                    "Cartographer: load SLAM state from this .pbstream file.");
@@ -65,17 +60,6 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
         ->capture_default_str();
     app.add_option("--save_state_filename", cli.save_state_filename,
                    "Cartographer: serialize state to this file on shutdown.");
-    app.add_option("--lightning_config", cli.lightning_config,
-                   "Lightning: LIO YAML (fasterlio / g2p5 / loop_closing).")
-        ->capture_default_str();
-    app.add_option("--lightning_imu_topic", cli.lightning_imu_topic,
-                   "Lightning: IMU topic.")
-        ->capture_default_str();
-    app.add_option("--lightning_lidar_topic", cli.lightning_lidar_topic,
-                   "Lightning: lidar PointCloud2 topic.")
-        ->capture_default_str();
-    app.add_option("--lightning_map_save", cli.lightning_map_save,
-                   "Lightning: save map directory on shutdown.");
     app.add_option("--atlas_config", cli.atlas_config,
                    "Atlas: sensor / mission YAML.")
         ->capture_default_str();
@@ -107,10 +91,6 @@ LocalizationOptions BuildOptions(const LocalizationCli& cli) {
         cli.start_trajectory_with_default_topics;
     options.save_state_filename = cli.save_state_filename;
 
-    options.lightning_config_path = cli.lightning_config;
-    options.lightning_imu_topic = cli.lightning_imu_topic;
-    options.lightning_lidar_topic = cli.lightning_lidar_topic;
-    options.lightning_map_save_path = cli.lightning_map_save;
     options.atlas_config_path = cli.atlas_config;
     options.atlas_imu_topic = cli.atlas_imu_topic;
     options.atlas_lidar_topic = cli.atlas_lidar_topic;
@@ -138,11 +118,6 @@ int main(int argc, char** argv) {
     AINFO << "localization_main: backend="
               << autonomy::localization::LocalizationBackendName(
                      options.backend);
-    if (options.backend
-        == autonomy::localization::LocalizationBackend::kLightning) {
-        AINFO << "localization_main: lightning_config="
-                  << options.lightning_config_path;
-    }
     if (options.backend == autonomy::localization::LocalizationBackend::kAtlas) {
         AINFO << "localization_main: atlas_config=" << options.atlas_config_path;
     }

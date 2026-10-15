@@ -1,0 +1,271 @@
+// Copyright 2025 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.control.proto;
+
+// Observation modality bound to one model input tensor.
+enum ObservationModality {
+  OBSERVATION_UNSPECIFIED = 0;
+  OBSERVATION_KINEMATIC = 1;
+  OBSERVATION_PATH = 2;
+  OBSERVATION_COSTMAP = 3;
+  OBSERVATION_LASER = 4;
+  OBSERVATION_IMAGE = 5;
+  // Pre-built float tensor injected via SetRawTensor (name must match).
+  OBSERVATION_RAW = 6;
+  // PointCloud2 → light xyz pack (no voxel/BEV in C++).
+  OBSERVATION_POINT_CLOUD = 7;
+  // Precomputed lidar BEV grid injected via SetLidarBev.
+  OBSERVATION_LIDAR_BEV = 8;
+}
+
+// Action space (decoded to geometry_msgs/Twist).
+enum ActionSpace {
+  ACTION_SPACE_UNSPECIFIED = 0;
+  ACTION_SPACE_TWIST = 1;
+  reserved 2;  // was ACKERMANN
+  // Flattened [horizon * dim], decoded at execute_index.
+  ACTION_SPACE_DIFFUSION_TWIST = 3;
+}
+
+// How the policy graph is invoked each control tick.
+enum InferenceMode {
+  INFERENCE_UNSPECIFIED = 0;
+  INFERENCE_SINGLE_SHOT = 1;
+  INFERENCE_DIFFUSION = 2;
+}
+
+// Denoiser prediction head.
+enum DiffusionPrediction {
+  DIFFUSION_PRED_UNSPECIFIED = 0;
+  DIFFUSION_PRED_SAMPLE = 1;   // predicts x0 / clean action
+  DIFFUSION_PRED_EPSILON = 2;  // predicts noise
+}
+
+// One denoising-step export:
+//   inputs:  observation_* + sample + timestep
+//   outputs: prediction (sample or epsilon)
+message Diffusion {
+  int32 steps = 1;          // <=1 → single Run
+  int32 horizon = 2;
+  int32 dim = 3;            // per-step action size
+  string sample = 4;        // noisy-action input name (default "sample")
+  string timestep = 5;      // timestep input name (default "timestep")
+  string prediction = 6;    // empty → Action.name
+  DiffusionPrediction prediction_type = 7;
+  int32 execute_index = 8;  // horizon index executed as Twist
+  bool ddim = 9;
+  float ddim_eta = 10;
+  float timestep_scale = 11;
+}
+
+message TensorNorm {
+  repeated float mean = 1;
+  repeated float stddev = 2;
+}
+
+// Single observation tensor (also used as per-modality override).
+message ObservationInput {
+  string name = 1;  // empty → modality default (e.g. "observation_kinematic")
+  ObservationModality modality = 2;
+  repeated int64 shape = 3;  // <=0 → one dynamic axis
+  // When unset on override, defaults to true.
+  optional bool required = 4;
+  TensorNorm norm = 5;
+  // Image: letterbox | stretch | center_crop
+  string preprocess = 6;
+}
+
+// Declarative observation mix (preferred over repeating inputs[]).
+//
+//   observation {
+//     kinematic: true
+//     path: true
+//   }
+message Observation {
+  bool kinematic = 1;
+  bool path = 2;
+  bool costmap = 3;
+  bool laser = 4;
+  bool image = 5;
+  bool point_cloud = 11;
+  bool lidar_bev = 12;
+  // Enable one or more RAW slots; declare names via raw_input / inputs[].
+  bool raw = 13;
+
+  optional ObservationInput kinematic_input = 6;
+  optional ObservationInput path_input = 7;
+  optional ObservationInput costmap_input = 8;
+  optional ObservationInput laser_input = 9;
+  optional ObservationInput image_input = 10;
+  optional ObservationInput point_cloud_input = 14;
+  optional ObservationInput lidar_bev_input = 15;
+  // When raw=true: default name "observation_raw". Prefer inputs[] for
+  // multiple RAW tensors.
+  optional ObservationInput raw_input = 16;
+}
+
+// Advanced multi-head output entry. Prefer Action for single-head.
+message ModelOutput {
+  string name = 1;
+  repeated string layout = 2;
+  repeated float scale = 3;
+}
+
+// Twist velocity / acceleration limits (up to 6DOF).
+// Axes with max <= 0 are not clamped (except max_vx / max_wz defaults).
+message TwistLimits {
+  double max_vx = 1;
+  double max_wz = 2;
+  double max_ax = 3;
+  double max_alpha_z = 4;
+  double max_vy = 5;
+  double max_vz = 6;
+  double max_wx = 7;
+  double max_wy = 8;
+  double max_ay = 9;
+  double max_az = 10;
+  double max_alpha_x = 11;
+  double max_alpha_y = 12;
+}
+
+// Unified action head. Defaults: TWIST, name "action", layout [lx, az].
+message Action {
+  ActionSpace type = 1;
+  TwistLimits limits = 2;
+  int32 output_index = 3;  // into PolicyConfig.outputs
+  string name = 4;         // empty → "action"
+  repeated string layout = 5;
+  repeated float scale = 6;
+}
+
+message Engine {
+  string backend = 1;    // "onnx" | "tensorrt"
+  string model_path = 2;
+  string provider = 3;   // "" | "cpu" | "cuda"
+  int32 device = 4;
+  bool io_binding = 5;
+}
+
+// Sidecar shipped with an exported policy graph.
+message PolicyConfig {
+  string name = 1;
+  string version = 2;
+  reserved 3;  // was stateful
+  // Low-level input list. Prefer `observation`.
+  repeated ObservationInput inputs = 4;
+  // Multi-head outputs. Prefer `action { name/layout/... }`.
+  repeated ModelOutput outputs = 5;
+  Action action = 6;
+  Engine engine = 7;
+  InferenceMode mode = 8;
+  Diffusion diffusion = 9;
+  Observation observation = 10;
+}
+
+// Behavior when a required modality is briefly unavailable.
+enum MissingModalityPolicy {
+  // Fail the tick (hold-last / zero per hold_on_failure). Default.
+  MISSING_MODALITY_FAIL = 0;
+  // Zero-fill the missing tensor and continue inference.
+  MISSING_MODALITY_ZERO_FILL = 1;
+  // Skip inference; reuse last command (same as fail + hold).
+  MISSING_MODALITY_HOLD = 2;
+}
+
+// Runtime options for the PolicyController plugin.
+message PolicyControllerOptions {
+  string config_path = 1;
+  PolicyConfig config = 2;
+
+  double max_obs_age = 3;  // seconds; <=0 disables age vs primary stamp
+  // Wall-clock budget for encode+infer (seconds); <=0 disables.
+  // On timeout the command is forced to zero (not hold-last).
+  double infer_timeout = 4;
+  optional bool hold_on_failure = 5;
+
+  int32 path_points = 6;
+  int32 costmap_cells = 7;
+  int32 laser_bins = 8;
+  // Max points packed for OBSERVATION_POINT_CLOUD (default 2048).
+  int32 point_cloud_points = 14;
+
+  bool collision_check = 9;
+  double collision_distance = 10;
+
+  // TF lookup timeout when aligning path / validating sensor frames.
+  double transform_tolerance = 11;
+  double goal_xy_tolerance = 12;
+  double goal_yaw_tolerance = 13;
+  // Max |modality_stamp - pose_stamp| (seconds); <=0 disables skew check.
+  double max_obs_skew = 15;
+
+  // Brief drop grace: within this window after last good sample, apply
+  // missing_modality_policy instead of hard-fail (seconds; <=0 disables).
+  double missing_modality_grace = 16;
+  MissingModalityPolicy missing_modality_policy = 17;
+
+  // Within this distance to goal, multiply speed_scale by near_goal_speed_scale.
+  double near_goal_distance = 18;
+  double near_goal_speed_scale = 19;  // default 0.3 when near_goal_distance > 0
+
+  // Expected robot / sensor frame for TF checks (empty → pose.header.frame_id
+  // for path target; sensor expected frame defaults to "base_link").
+  string robot_frame = 20;
+  // If true, sensor frame_id must be non-empty and equal robot_frame.
+  // Laser/image/point cloud are NOT TF-transformed in C++; publishers must
+  // already publish in robot_frame (path poses are still TF-aligned).
+  bool require_frame_match = 21;
+  // After this many consecutive tick failures, force zero velocity.
+  // <=0 disables (keep hold_on_failure behavior only).
+  int32 max_consecutive_failures = 22;
+  // If true, Activate() fails when no policy model is loaded.
+  bool require_model = 23;
+
+  // Prefer footprint collision over single-point probe when costmap footprint
+  // is available.
+  bool use_footprint_collision = 24;
+  // Cost >= threshold blocks (default 253 = LETHAL).
+  double collision_cost_threshold = 25;
+  // Cap diffusion denoising steps at runtime (<=0 → use sidecar).
+  int32 max_diffusion_steps = 26;
+  // Encode kinematic as relative to path goal (dx,dy,dyaw) + twist.
+  bool relative_kinematic = 27;
+  // Subsample point cloud by stride instead of taking the first N points.
+  bool point_cloud_stride_sample = 28;
+
+  // Optional topic overrides (empty → ControllerServer defaults).
+  string scan_topic = 29;
+  string image_topic = 30;
+  string point_cloud_topic = 31;
+  string lidar_bev_topic = 32;   // Float32MultiArray
+  string raw_tensor_topic = 33;  // Float32MultiArray
+  string diagnostics_topic = 34;
+  string reload_config_topic = 35;  // std_msgs/String path → LoadConfigAsync
+
+  // Lidar BEV / RAW Float32MultiArray packing (row-major float32).
+  repeated int32 lidar_bev_shape = 36;
+  string lidar_bev_name = 37;  // default observation_lidar_bev
+  repeated int32 raw_tensor_shape = 38;
+  string raw_tensor_name = 39;  // default observation_raw
+
+  // Prefix allowlist for reload_config_topic paths (empty → any path).
+  repeated string reload_config_allow_prefix = 40;
+  // If true, Float32MultiArray BEV/RAW must carry a positive stamp via
+  // options (wall-clock assigned on receive is always set; this forces
+  // age/skew checks to apply once stamp>0).
+  bool require_tensor_stamp = 41;
+}

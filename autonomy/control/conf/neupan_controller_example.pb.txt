@@ -1,0 +1,47 @@
+# Example ControllerOptions snippet for NeupanController.
+# 1) Export encoder: tools/neupan/export_distance_encoder_onnx.py \
+#      --checkpoint ... --edge-count 4 --output ...
+# 2) Set neural_encoder_model_path below and enable the plugin.
+
+controller_frequency: 20.0
+publish_zero_velocity: true
+
+controller_plugins: "neupan_controller:NeupanController"
+
+neupan_controller_options {
+  neural_encoder_model_path: "/abs/path/to/distance_encoder.onnx"
+  inference_backend: "onnx"
+  inference_execution_provider: "cpu"
+
+  planning_horizon: 10
+  control_period: 0.1
+  reference_linear_speed: 0.6
+  collision_stop_distance: 0.1
+
+  robot_kinematics: "differential"
+  footprint_length: 1.6
+  footprint_width: 2.0
+  max_linear_speed: 0.8
+  max_angular_speed: 1.0
+  max_linear_acceleration: 1.5
+  max_angular_acceleration: 2.0
+
+  planner_iteration_count: 2
+  max_obstacle_points_for_encoder: 100
+  max_obstacle_points_for_constraints: 10
+  distance_slack_gain: 15.0
+  safety_distance_max: 1.0
+  safety_distance_min: 0.1
+  state_tracking_weight: 1.0
+  control_effort_weight: 1.0
+
+  goal_position_tolerance: 0.25
+  goal_yaw_tolerance: 0.25
+
+  # Laser frame pose in base_link: [x, y, yaw]
+  laser_scan_pose_in_base: 0.0
+  laser_scan_pose_in_base: 0.0
+  laser_scan_pose_in_base: 0.0
+  laser_range_min: 0.05
+  laser_range_max: 8.0
+}

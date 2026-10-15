@@ -48,8 +48,12 @@
 #include <automsgs/msgs/map_msgs/grid_map.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
+#include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include <automsgs/msgs/sensor_msgs/imu.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud.pb.h>
+#include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
+#include <automsgs/msgs/std_msgs/float32_multi_array.pb.h>
+#include <automsgs/msgs/std_msgs/string.pb.h>
 #include "autonomy/control/common/controller_interface.hpp"
 #include "autonomy/control/common/goal_checker_interface.hpp"
 #include "autonomy/control/common/progress_checker_interface.hpp"
@@ -103,6 +107,22 @@ public:
 
     /** Load controller / checker plugins from options (idempotent). */
     void LoadPlugins();
+
+    /** Forward LaserScan to controllers that consume scan observations. */
+    void PublishLaserScanToControllers(
+        const automsgs::msgs::sensor_msgs::LaserScan& laser_scan);
+    /** Forward Image to policy_controller instances. */
+    void PublishImageToControllers(
+        const automsgs::msgs::sensor_msgs::Image& image);
+    /** Forward PointCloud2 to policy_controller instances. */
+    void PublishPointCloudToControllers(
+        const automsgs::msgs::sensor_msgs::PointCloud2& point_cloud);
+    void PublishLidarBevToControllers(
+        const automsgs::msgs::std_msgs::Float32MultiArray& array);
+    void PublishRawTensorToControllers(
+        const automsgs::msgs::std_msgs::Float32MultiArray& array);
+    void PublishPolicyDiagnostics();
+    void ReloadPolicyConfig(const std::string& config_path);
 
 protected:
 
@@ -252,6 +272,18 @@ protected:
         odom_reader_;
     std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::LaserScan>>
         scan_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::Image>>
+        image_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::PointCloud2>>
+        point_cloud_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::std_msgs::Float32MultiArray>>
+        lidar_bev_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::std_msgs::Float32MultiArray>>
+        raw_tensor_reader_;
+    std::shared_ptr<autolink::Reader<automsgs::msgs::std_msgs::String>>
+        policy_reload_reader_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::diagnostic_msgs::DiagnosticArray>>
+        policy_diagnostics_writer_;
     std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::OccupancyGrid>>
         map_reader_;
     std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::GridMap>>

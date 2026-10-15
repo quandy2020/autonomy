@@ -75,6 +75,20 @@ autocmake_binary(autonomy.control
     autonomy::cli11
 )
 
+# --- tests -------------------------------------------------------------------
+autocmake_test(control.policy_action_schema_test
+  SOURCES controller/policy_controller/action_schema_test.cpp
+  DEPENDENCIES autonomy_control)
+autocmake_test(control.policy_safety_filter_test
+  SOURCES controller/policy_controller/safety_filter_test.cpp
+  DEPENDENCIES autonomy_control)
+autocmake_test(control.policy_path_encoder_test
+  SOURCES controller/policy_controller/path_encoder_test.cpp
+  DEPENDENCIES autonomy_control)
+autocmake_test(control.policy_frame_align_test
+  SOURCES controller/policy_controller/frame_align_test.cpp
+  DEPENDENCIES autonomy_control)
+
 # --- install -----------------------------------------------------------------
 autocmake_install_share(control
   CONF

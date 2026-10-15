@@ -16,6 +16,9 @@ controller_plugins: "graceful_controller:GracefulController"
 controller_plugins: "mppi_controller:MppiController"
 controller_plugins: "nmpc_controller:NMPCController"
 controller_plugins: "sando_controller:SandoController"
+# Uncomment to enable learning-based local controller:
+# controller_plugins: "policy_controller:PolicyController"
+# controller_plugins: "neupan_controller:NeupanController"
 # ---------- Local costmap (rolling) ----------
 costmap_2d_options {
   robot_radius: 0.22
@@ -380,3 +383,40 @@ nmpc_controller_options {
   collision_cost_threshold: 253
   use_footprint_collision_check: true
 }
+
+# ---------- Policy (RL/IL/Diffusion) ----------
+# Pair with conf/policy_config_*.pb.txt sidecar + exported ONNX.
+# Topics: /scan, /camera/image_raw, /points → SetLaserScan/SetImage/SetPointCloud
+# policy_controller_options {
+#   config_path: "autonomy/control/conf/policy_config_example.pb.txt"
+#   path_points: 20
+#   laser_bins: 180
+#   point_cloud_points: 2048
+#   max_obs_age: 0.5
+#   max_obs_skew: 0.2
+#   # Full production overlay: conf/policy_controller_production.pb.txt
+#   infer_timeout: 0.04
+#   transform_tolerance: 0.1
+#   robot_frame: "base_link"
+#   require_frame_match: true
+#   require_model: true
+#   max_consecutive_failures: 5
+#   collision_check: true
+#   use_footprint_collision: true
+#   collision_distance: 0.5
+#   hold_on_failure: true
+#   relative_kinematic: true
+#   point_cloud_stride_sample: true
+#   missing_modality_grace: 0.3
+#   missing_modality_policy: MISSING_MODALITY_ZERO_FILL
+#   near_goal_distance: 0.6
+#   near_goal_speed_scale: 0.3
+#   goal_xy_tolerance: 0.25
+#   goal_yaw_tolerance: 0.25
+# }
+
+# ---------- NeuPAN ----------
+# See conf/neupan_controller_example.pb.txt
+# neupan_controller_options {
+#   neural_encoder_model_path: "/path/to/distance_encoder.onnx"
+# }

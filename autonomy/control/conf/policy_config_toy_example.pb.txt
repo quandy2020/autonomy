@@ -1,0 +1,29 @@
+# Toy PolicyConfig for smoke tests.
+# Generate the ONNX first:
+#   python3 tools/policy/export_policy_onnx.py --toy \
+#       --output autonomy/control/conf/models/policy_toy.onnx \
+#       --sidecar autonomy/control/conf/policy_config_toy_example.pb.txt
+# Validate:
+#   python3 tools/policy/validate_policy_contract.py \
+#       --config autonomy/control/conf/policy_config_toy_example.pb.txt \
+#       --onnx autonomy/control/conf/models/policy_toy.onnx
+name: "toy_twist_policy"
+version: "0.1"
+
+observation {
+  kinematic: true
+  path: true
+}
+
+action {
+  limits {
+    max_vx: 0.5
+    max_wz: 1.0
+    max_ax: 1.0
+    max_alpha_z: 2.0
+  }
+}
+
+engine {
+  model_path: "autonomy/control/conf/models/policy_toy.onnx"
+}

@@ -1,7 +1,7 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Atlas LIO / LIVO. Same sensor topics as the lightning launch, Atlas outputs.
+  Atlas LIO / LIVO. Subscribes to /imu and /points.
 
   Backend: autonomy.localization --localization_mode=atlas
 

@@ -35,6 +35,8 @@
 #include "autonomy/control/controller/mppi_controller/controller.hpp"
 #include "autonomy/control/controller/nmpc_controller/controller.hpp"
 #include "autonomy/control/controller/pure_pursuit_controller/controller.hpp"
+#include "autonomy/control/controller/policy_controller/controller.hpp"
+#include "autonomy/control/controller/neupan_controller/controller.hpp"
 #include "autonomy/control/controller/sando_controller/sando_controller.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -61,6 +63,9 @@ const std::unordered_map<std::string, std::string>& ControllerClassAliases() {
         {"rpp", "RegulatedPurePursuitController"},
         {"nmpc_controller", "NMPCController"},
         {"sando_controller", "SandoController"},
+        {"policy_controller", "PolicyController"},
+        {"neupan_controller", "NeupanController"},
+        {"neupan", "NeupanController"},
     };
     return kAliases;
 }
@@ -149,6 +154,118 @@ ControllerServer::~ControllerServer() {
     Shutdown();
 }
 
+void ControllerServer::PublishLaserScanToControllers(
+    const automsgs::msgs::sensor_msgs::LaserScan& laser_scan) {
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy != nullptr) {
+            policy->SetLaserScan(laser_scan);
+        }
+        auto* neupan =
+            dynamic_cast<controller::neupan_controller::NeupanController*>(
+                entry.second.get());
+        if (neupan != nullptr) {
+            neupan->SetLaserScan(laser_scan);
+        }
+    }
+}
+
+void ControllerServer::PublishImageToControllers(
+    const automsgs::msgs::sensor_msgs::Image& image) {
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy != nullptr) {
+            policy->SetImage(image);
+        }
+    }
+}
+
+void ControllerServer::PublishPointCloudToControllers(
+    const automsgs::msgs::sensor_msgs::PointCloud2& point_cloud) {
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy != nullptr) {
+            policy->SetPointCloud(point_cloud);
+        }
+    }
+}
+
+void ControllerServer::PublishLidarBevToControllers(
+    const automsgs::msgs::std_msgs::Float32MultiArray& array) {
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy != nullptr) {
+            policy->SetLidarBevArray(array);
+        }
+    }
+}
+
+void ControllerServer::PublishRawTensorToControllers(
+    const automsgs::msgs::std_msgs::Float32MultiArray& array) {
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy != nullptr) {
+            policy->SetRawTensorArray(array);
+        }
+    }
+}
+
+void ControllerServer::PublishPolicyDiagnostics() {
+    if (!policy_diagnostics_writer_) {
+        return;
+    }
+    automsgs::msgs::diagnostic_msgs::DiagnosticArray array;
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy == nullptr) {
+            continue;
+        }
+        auto* status = array.add_status();
+        controller::policy_controller::FillDiagnosticStatus(
+            policy->diagnostics(), entry.first, status);
+    }
+    if (array.status_size() > 0) {
+        policy_diagnostics_writer_->Write(array);
+    }
+}
+
+void ControllerServer::ReloadPolicyConfig(const std::string& config_path) {
+    for (const auto& entry : controllers_) {
+        auto* policy =
+            dynamic_cast<controller::policy_controller::PolicyController*>(
+                entry.second.get());
+        if (policy == nullptr) {
+            continue;
+        }
+        const bool ok = policy->LoadConfigAsync(
+            config_path,
+            [name = entry.first](bool success, const std::string& error) {
+                if (success) {
+                    AINFO << "PolicyController async reload ok: " << name;
+                } else {
+                    AWARN << "PolicyController async reload failed (" << name
+                          << "): " << error;
+                }
+            });
+        if (!ok) {
+            AWARN << "PolicyController reload already in flight: "
+                  << entry.first;
+        }
+    }
+}
+
 void ControllerServer::LoadPlugins() {
     if (plugins_loaded_) {
         return;
@@ -212,6 +329,19 @@ void ControllerServer::LoadPlugins() {
         } else if (resolved == "SandoController") {
             auto ctrl =
                 std::make_shared<controller::sando_controller::SandoController>();
+            ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
+            ctrl->Activate();
+            instance = std::move(ctrl);
+        } else if (resolved == "PolicyController") {
+            auto ctrl = std::make_shared<
+                controller::policy_controller::PolicyController>();
+            ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
+            ctrl->Activate();
+            instance = std::move(ctrl);
+        } else if (resolved == "NeupanController" ||
+                   resolved == "NeuPANController") {
+            auto ctrl = std::make_shared<
+                controller::neupan_controller::NeupanController>();
             ctrl->Configure(options_, spec.id, tf_buffer_, costmap_wrapper_);
             ctrl->Activate();
             instance = std::move(ctrl);
@@ -302,6 +432,12 @@ void ControllerServer::Shutdown() {
     cmd_vel_writer_.reset();
     odom_reader_.reset();
     scan_reader_.reset();
+    image_reader_.reset();
+    point_cloud_reader_.reset();
+    lidar_bev_reader_.reset();
+    raw_tensor_reader_.reset();
+    policy_reload_reader_.reset();
+    policy_diagnostics_writer_.reset();
     map_reader_.reset();
     follow_grid_reader_.reset();
     if (costmap_wrapper_) {
@@ -537,8 +673,13 @@ void ControllerServer::ComputeAndPublishVelocity() {
     std::string message;
     uint32_t code = proto::CONTROLLER_RESULT_SUCCESS;
 
+    // PolicyController locks costmap internally for crop/collision and may
+    // spend tens of ms in inference — avoid holding the map mutex across Run.
+    const bool is_policy =
+        dynamic_cast<controller::policy_controller::PolicyController*>(
+            controller) != nullptr;
     std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock;
-    if (costmap_wrapper_ && costmap_wrapper_->getCostmap()) {
+    if (!is_policy && costmap_wrapper_ && costmap_wrapper_->getCostmap()) {
         costmap_lock = std::unique_lock<map::costmap_2d::Costmap2D::mutex_t>(
             *(costmap_wrapper_->getCostmap()->getMutex()));
     }
@@ -549,6 +690,10 @@ void ControllerServer::ComputeAndPublishVelocity() {
     } catch (const common::ControllerException& ex) {
         code = proto::CONTROLLER_RESULT_FAILURE;
         message = ex.what();
+    }
+
+    if (is_policy) {
+        PublishPolicyDiagnostics();
     }
 
     if (code != proto::CONTROLLER_RESULT_SUCCESS) {

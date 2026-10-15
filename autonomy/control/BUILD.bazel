@@ -3,6 +3,7 @@ load(
     "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
+    "autonomy_cc_test",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -52,6 +53,29 @@ autonomy_cc_library(
         "controller/nmpc_controller/path_transformer.cpp",
         "controller/nmpc_controller/solver/cgmres/cgmres_solver.cpp",
         "controller/nmpc_controller/trajectory_collision_checker.cpp",
+        "controller/neupan_controller/controller.cpp",
+        "controller/neupan_controller/distance_encoder.cpp",
+        "controller/neupan_controller/motion_planner.cpp",
+        "controller/neupan_controller/obstacle_extractor.cpp",
+        "controller/neupan_controller/robot_footprint.cpp",
+        "controller/policy_controller/action/safety_filter.cpp",
+        "controller/policy_controller/action/schema.cpp",
+        "controller/policy_controller/config.cpp",
+        "controller/policy_controller/controller.cpp",
+        "controller/policy_controller/diffusion.cpp",
+        "controller/policy_controller/manager.cpp",
+        "controller/policy_controller/model.cpp",
+        "controller/policy_controller/observation/buffer.cpp",
+        "controller/policy_controller/observation/costmap_encoder.cpp",
+        "controller/policy_controller/observation/encoder.cpp",
+        "controller/policy_controller/observation/frame_align.cpp",
+        "controller/policy_controller/observation/image_encoder.cpp",
+        "controller/policy_controller/observation/kinematic_encoder.cpp",
+        "controller/policy_controller/observation/laser_scan_encoder.cpp",
+        "controller/policy_controller/observation/path_encoder.cpp",
+        "controller/policy_controller/observation/point_cloud_encoder.cpp",
+        "controller/policy_controller/observation/tensor_frame_encoder.cpp",
+        "controller/policy_controller/runtime.cpp",
         "controller/pure_pursuit_controller/collision_checker.cpp",
         "controller/pure_pursuit_controller/controller.cpp",
         "controller/pure_pursuit_controller/parameter_handler.cpp",
@@ -172,6 +196,33 @@ autonomy_cc_library(
         "controller/nmpc_controller/solver/fmpc/fmpc_solver_impl.hpp",
         "controller/nmpc_controller/solver/fmpc/math_utils.hpp",
         "controller/nmpc_controller/trajectory_collision_checker.hpp",
+        "controller/neupan_controller/controller.hpp",
+        "controller/neupan_controller/distance_encoder.hpp",
+        "controller/neupan_controller/motion_planner.hpp",
+        "controller/neupan_controller/obstacle_extractor.hpp",
+        "controller/neupan_controller/path_cache.hpp",
+        "controller/neupan_controller/robot_footprint.hpp",
+        "controller/neupan_controller/types.hpp",
+        "controller/policy_controller/action/safety_filter.hpp",
+        "controller/policy_controller/action/space.hpp",
+        "controller/policy_controller/config.hpp",
+        "controller/policy_controller/controller.hpp",
+        "controller/policy_controller/diffusion.hpp",
+        "controller/policy_controller/manager.hpp",
+        "controller/policy_controller/model.hpp",
+        "controller/policy_controller/observation/buffer.hpp",
+        "controller/policy_controller/observation/costmap_encoder.hpp",
+        "controller/policy_controller/observation/encoder.hpp",
+        "controller/policy_controller/observation/frame_align.hpp",
+        "controller/policy_controller/observation/image_encoder.hpp",
+        "controller/policy_controller/observation/kinematic_encoder.hpp",
+        "controller/policy_controller/observation/laser_scan_encoder.hpp",
+        "controller/policy_controller/observation/path_encoder.hpp",
+        "controller/policy_controller/observation/point_cloud_encoder.hpp",
+        "controller/policy_controller/observation/tensor_frame_encoder.hpp",
+        "controller/policy_controller/pipeline.hpp",
+        "controller/policy_controller/runtime.hpp",
+        "controller/policy_controller/types.hpp",
         "controller/pure_pursuit_controller/collision_checker.hpp",
         "controller/pure_pursuit_controller/controller.hpp",
         "controller/pure_pursuit_controller/parameter_handler.hpp",
@@ -266,6 +317,46 @@ autonomy_cc_binary(
         ":autonomy_control",
         "@com_github_google_glog//:glog",
 
+    ],
+)
+
+autonomy_cc_test(
+    name = "policy_action_schema_test",
+    size = "small",
+    srcs = ["controller/policy_controller/action_schema_test.cpp"],
+    deps = [
+        ":autonomy_control",
+        "@googletest//:gtest_main",
+    ],
+)
+
+autonomy_cc_test(
+    name = "policy_safety_filter_test",
+    size = "small",
+    srcs = ["controller/policy_controller/safety_filter_test.cpp"],
+    deps = [
+        ":autonomy_control",
+        "@googletest//:gtest_main",
+    ],
+)
+
+autonomy_cc_test(
+    name = "policy_path_encoder_test",
+    size = "small",
+    srcs = ["controller/policy_controller/path_encoder_test.cpp"],
+    deps = [
+        ":autonomy_control",
+        "@googletest//:gtest_main",
+    ],
+)
+
+autonomy_cc_test(
+    name = "policy_frame_align_test",
+    size = "small",
+    srcs = ["controller/policy_controller/frame_align_test.cpp"],
+    deps = [
+        ":autonomy_control",
+        "@googletest//:gtest_main",
     ],
 )
 

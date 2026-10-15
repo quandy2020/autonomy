@@ -1,0 +1,71 @@
+// Copyright 2026 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package autonomy.control.proto;
+
+// Options for the Neupan local controller.
+// Export trained NeuPAN obstacle-point network weights to ONNX with
+// tools/neupan/export_distance_encoder_onnx.py.
+message NeupanControllerOptions {
+  // Path to the distance encoder ONNX model (input [N,2] → [N,edge_count]).
+  string neural_encoder_model_path = 1;
+  // Inference backend id: "onnx" (default) or "tensorrt".
+  string inference_backend = 2;
+  // ONNX Runtime execution provider: "" | "cpu" | "cuda".
+  string inference_execution_provider = 3;
+
+  // Planning horizon length (number of discrete steps).
+  int32 planning_horizon = 4;
+  // Control period [s].
+  double control_period = 5;
+  // Nominal path-following linear speed [m/s].
+  double reference_linear_speed = 6;
+  // Emergency stop when encoder distance falls below this [m].
+  double collision_stop_distance = 7;
+
+  // Robot kinematics model: "differential" | "ackermann".
+  string robot_kinematics = 8;
+  double footprint_length = 9;
+  double footprint_width = 10;
+  double wheelbase = 11;
+  // Optional convex polygon in robot frame as [x0,y0, x1,y1, ...].
+  // Empty → axis-aligned rectangle from length/width(/wheelbase).
+  repeated double footprint_vertices = 12;
+
+  double max_linear_speed = 13;
+  double max_angular_speed = 14;
+  double max_steering_angle = 15;
+  double max_linear_acceleration = 16;
+  double max_angular_acceleration = 17;
+
+  // Planner tuning (aligned with NeuPAN adjust / point limits).
+  int32 planner_iteration_count = 18;
+  int32 max_obstacle_points_for_encoder = 19;
+  int32 max_obstacle_points_for_constraints = 20;
+  double distance_slack_gain = 21;
+  double safety_distance_max = 22;
+  double safety_distance_min = 23;
+  double state_tracking_weight = 24;
+  double control_effort_weight = 25;
+
+  double goal_position_tolerance = 26;
+  double goal_yaw_tolerance = 27;
+
+  // Laser sensor pose in base frame: [x, y, yaw].
+  repeated double laser_scan_pose_in_base = 28;
+  double laser_range_min = 29;
+  double laser_range_max = 30;
+}

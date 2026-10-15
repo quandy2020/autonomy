@@ -1,0 +1,24 @@
+# Example PolicyConfig sidecar for policy_controller.
+# Pair with an exported ONNX/TRT graph whose I/O names match below.
+# Defaults: action.type=TWIST, name="action",
+# layout=[linear_velocity_x, angular_velocity_z].
+name: "example_twist_policy"
+version: "0.1"
+
+observation {
+  kinematic: true
+  path: true
+}
+
+action {
+  limits {
+    max_vx: 0.5
+    max_wz: 1.0
+    max_ax: 1.0
+    max_alpha_z: 2.0
+  }
+}
+
+engine {
+  model_path: "/path/to/policy.onnx"
+}

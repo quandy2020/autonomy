@@ -5,8 +5,7 @@
 
   Prefer the explicit files when choosing a backend:
     localization_cartographer.launch  — lidar SLAM (Cartographer)
-    localization_lightning.launch     — standalone lightning LIO
-    localization_lightning_vbr.launch — lightning LIO on VBR/MV .record
+    localization_atlas.launch         — Atlas LIO / LIVO
 
   Run:
     export PATH=/workspace/autonomy/build/autonomy/bin:$PATH

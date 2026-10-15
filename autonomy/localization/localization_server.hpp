@@ -28,7 +28,6 @@ namespace localization {
 /** Process-level backend family. */
 enum class LocalizationBackend {
     kCartographer = 0,
-    kLightning = 1,
     kAtlas = 2,
 };
 
@@ -46,12 +45,6 @@ struct LocalizationOptions {
     bool load_frozen_state = true;
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
-
-    // --- Standalone lightning LIO ---
-    std::string lightning_config_path;
-    std::string lightning_imu_topic = "/imu";
-    std::string lightning_lidar_topic = "/points";
-    std::string lightning_map_save_path;
 
     // --- Atlas (VO / VIO / LIO / LIVO, Ceres) ---
     std::string atlas_config_path;
@@ -71,7 +64,7 @@ cartographer::node::CartographerNodeFlags CartographerFlagsFromOptions(
 
 /**
  * Process-level facade that selects and owns one SLAM backend
- * (Cartographer, Lightning, or Atlas).
+ * (Cartographer or Atlas).
  *
  * Lifecycle (aligned with ControllerServer):
  *   Start()  → initialize selected backend (non-blocking)
@@ -103,7 +96,6 @@ public:
 private:
     class Backend;
     class CartographerBackend;
-    class LightningBackend;
     class AtlasBackend;
 
     static std::unique_ptr<Backend> CreateBackend(
