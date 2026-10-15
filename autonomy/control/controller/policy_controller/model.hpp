@@ -59,16 +59,16 @@ public:
      * @param[out] error Optional failure reason.
      * @return true on success.
      */
-    bool RunInference(const common::network::FloatTensorMap& inputs,
-                      common::network::FloatTensorMap* outputs,
+    bool RunInference(const ::autonomy::common::network::FloatTensorMap& inputs,
+                      ::autonomy::common::network::FloatTensorMap* outputs,
                       std::string* error) const;
 
 private:
     PolicyModel(PolicyConfig config,
-                std::unique_ptr<common::network::Engine> engine);
+                std::unique_ptr<::autonomy::common::network::Engine> engine);
 
     PolicyConfig config_;
-    std::unique_ptr<common::network::Engine> engine_;
+    std::unique_ptr<::autonomy::common::network::Engine> engine_;
     mutable std::mutex inference_mutex_;
 };
 

@@ -74,14 +74,14 @@ public:
 
 private:
     DistanceEncoder(const RobotFootprint& footprint,
-                    std::unique_ptr<common::network::Engine> engine,
+                    std::unique_ptr<::autonomy::common::network::Engine> engine,
                     std::string input_name, std::string output_name);
 
     Eigen::MatrixXd halfspace_matrix_;     // edge x 2
     Eigen::MatrixXd halfspace_matrix_AT_;  // 2 x edge
     Eigen::VectorXd halfspace_offset_;     // edge
 
-    std::unique_ptr<common::network::Engine> engine_;
+    std::unique_ptr<::autonomy::common::network::Engine> engine_;
     std::string input_name_;
     std::string output_name_;
     mutable std::mutex inference_mutex_;
@@ -91,8 +91,8 @@ private:
     mutable Eigen::MatrixXd dual_coefficients_;  // edge x N
     mutable Eigen::MatrixXd residual_matrix_;    // edge x N
     mutable Eigen::VectorXd distances_;          // N
-    mutable common::network::FloatTensorMap inputs_;
-    mutable common::network::FloatTensorMap outputs_;
+    mutable ::autonomy::common::network::FloatTensorMap inputs_;
+    mutable ::autonomy::common::network::FloatTensorMap outputs_;
 };
 
 }  // namespace neupan_controller

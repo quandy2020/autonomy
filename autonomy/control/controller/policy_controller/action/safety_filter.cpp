@@ -65,7 +65,7 @@ bool FootprintOrPointBlocked(
     map::costmap_2d::Costmap2DWrapper* costmap_wrapper, double x, double y,
     double yaw, bool use_footprint, double cost_threshold) {
     auto* costmap = costmap_wrapper->getCostmap();
-    std::lock_guard<std::mutex> lock(*(costmap->getMutex()));
+    std::lock_guard<::autonomy::map::costmap_2d::Costmap2D::mutex_t> lock(*(costmap->getMutex()));
     map::costmap_2d::FootprintCollisionChecker<map::costmap_2d::Costmap2D*>
         checker(costmap);
 

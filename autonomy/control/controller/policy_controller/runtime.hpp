@@ -29,8 +29,8 @@ namespace policy_controller {
  * @brief Reusable hot-path buffers for @ref PredictTwist.
  */
 struct PolicyRuntimeBuffers {
-    common::network::FloatTensorMap inputs;
-    common::network::FloatTensorMap outputs;
+    ::autonomy::common::network::FloatTensorMap inputs;
+    ::autonomy::common::network::FloatTensorMap outputs;
     std::vector<float> action_sequence;
 };
 
@@ -42,7 +42,7 @@ struct PolicyRuntimeBuffers {
  */
 struct InferWatchdog {
     std::future<bool> pending;
-    PolicyModel::SharedPointer model;
+    PolicyModel::ConstSharedPointer model;
     std::shared_ptr<PolicyRuntimeBuffers> buffers;
     std::shared_ptr<automsgs::msgs::geometry_msgs::Twist> action;
     std::shared_ptr<std::string> error;
@@ -61,7 +61,7 @@ struct InferWatchdog {
  *
  * @return true on success.
  */
-bool PredictTwist(PolicyModel::SharedPointer model,
+bool PredictTwist(PolicyModel::ConstSharedPointer model,
                   const ObservationSnapshot& snapshot,
                   const ObservationEncodeContext& encode_context,
                   PolicyRuntimeBuffers* buffers,

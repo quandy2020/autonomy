@@ -40,7 +40,7 @@ namespace policy_controller {
  */
 bool RunDiffusionInference(
     const PolicyModel& model,
-    const common::network::FloatTensorMap& condition_inputs,
+    const ::autonomy::common::network::FloatTensorMap& condition_inputs,
     std::vector<float>* action_sequence, std::string* error = nullptr,
     InferBudget* budget = nullptr);
 

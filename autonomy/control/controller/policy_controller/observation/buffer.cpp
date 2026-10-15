@@ -105,7 +105,7 @@ void ObservationBuffer::UpdateCostmapFrom(
         return;
     }
     auto* costmap = costmap_wrapper->getCostmap();
-    std::lock_guard<std::mutex> map_lock(*(costmap->getMutex()));
+    std::lock_guard<::autonomy::map::costmap_2d::Costmap2D::mutex_t> map_lock(*(costmap->getMutex()));
     std::lock_guard<std::mutex> lock(mutex_);
 
     const unsigned int size_x = costmap->getSizeInCellsX();

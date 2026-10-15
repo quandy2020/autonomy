@@ -72,7 +72,7 @@ void InferWatchdog::Reset() {
     error.reset();
 }
 
-bool PredictTwist(PolicyModel::SharedPointer model,
+bool PredictTwist(PolicyModel::ConstSharedPointer model,
                   const ObservationSnapshot& snapshot,
                   const ObservationEncodeContext& encode_context,
                   PolicyRuntimeBuffers* buffers,

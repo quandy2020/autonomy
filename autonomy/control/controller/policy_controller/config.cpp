@@ -18,7 +18,7 @@ namespace policy_controller {
 namespace {
 
 bool ShapeCompatible(const std::vector<int64_t>& expected,
-                     const common::network::TensorShape& actual) {
+                     const ::autonomy::common::network::TensorShape& actual) {
     if (expected.empty()) {
         return true;
     }
@@ -237,8 +237,8 @@ bool PolicyConfig::LoadFromProto(const proto::PolicyConfig& proto,
     return true;
 }
 
-common::network::InferenceOptions PolicyConfig::ToInferenceOptions() const {
-    common::network::InferenceOptions options;
+::autonomy::common::network::InferenceOptions PolicyConfig::ToInferenceOptions() const {
+    ::autonomy::common::network::InferenceOptions options;
     const auto& engine = proto_.engine();
     options.backend_id = engine.backend().empty() ? "onnx" : engine.backend();
     options.model_path = engine.model_path();
@@ -252,12 +252,12 @@ common::network::InferenceOptions PolicyConfig::ToInferenceOptions() const {
 }
 
 bool PolicyConfig::ValidateAgainstEngine(
-    const std::vector<common::network::ModelTensorInfo>& inputs,
-    const std::vector<common::network::ModelTensorInfo>& outputs,
+    const std::vector<::autonomy::common::network::ModelTensorInfo>& inputs,
+    const std::vector<::autonomy::common::network::ModelTensorInfo>& outputs,
     std::string* error) const {
     auto find_info =
-        [](const std::vector<common::network::ModelTensorInfo>& infos,
-           const std::string& name) -> const common::network::ModelTensorInfo* {
+        [](const std::vector<::autonomy::common::network::ModelTensorInfo>& infos,
+           const std::string& name) -> const ::autonomy::common::network::ModelTensorInfo* {
         for (const auto& info : infos) {
             if (info.name == name) {
                 return &info;

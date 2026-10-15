@@ -263,7 +263,7 @@ bool EncodeOne(const ObservationSnapshot& snapshot,
 bool HandleRequiredUnavailable(const ObservationSnapshot& snapshot,
                                const proto::ObservationInput& input,
                                const ObservationEncodeContext& context,
-                               common::network::FloatTensorMap* inputs,
+                               ::autonomy::common::network::FloatTensorMap* inputs,
                                bool* zero_filled, std::string* error) {
     const bool in_grace = InMissingGrace(snapshot, input, context);
     if (!in_grace ||
@@ -293,7 +293,7 @@ bool HandleRequiredUnavailable(const ObservationSnapshot& snapshot,
 bool EncodeObservations(const ObservationSnapshot& snapshot,
                         const PolicyConfig& config,
                         const ObservationEncodeContext& context,
-                        common::network::FloatTensorMap* inputs,
+                        ::autonomy::common::network::FloatTensorMap* inputs,
                         std::string* error, bool* zero_filled) {
     if (inputs == nullptr) {
         return false;

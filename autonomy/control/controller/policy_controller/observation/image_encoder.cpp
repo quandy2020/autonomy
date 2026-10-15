@@ -104,28 +104,28 @@ bool EncodeImage(const ObservationSnapshot& snapshot,
         }
     }
 
-    common::network::ModelTensorInfo metadata;
+    ::autonomy::common::network::ModelTensorInfo metadata;
     metadata.name = input.name();
-    metadata.shape = common::network::TensorShape(
+    metadata.shape = ::autonomy::common::network::TensorShape(
         std::vector<int64_t>{1, channels, height, width});
-    metadata.element_type = common::network::ElementType::kFloat32;
+    metadata.element_type = ::autonomy::common::network::ElementType::kFloat32;
 
-    common::network::PreprocessOptions preprocess =
-        common::network::Letterbox<224, 224>();
+    ::autonomy::common::network::PreprocessOptions preprocess =
+        ::autonomy::common::network::Letterbox<224, 224>();
     preprocess.default_height = height;
     preprocess.default_width = width;
     if (input.preprocess() == "stretch") {
-        preprocess = common::network::Stretch(height, width);
+        preprocess = ::autonomy::common::network::Stretch(height, width);
     } else if (input.preprocess() == "center_crop") {
-        preprocess = common::network::CenterCrop(height, width);
+        preprocess = ::autonomy::common::network::CenterCrop(height, width);
     } else {
-        preprocess.resize = common::network::ResizePolicy::kLetterbox;
-        preprocess.normalize = common::network::NormalizePolicy::kZeroOne;
+        preprocess.resize = ::autonomy::common::network::ResizePolicy::kLetterbox;
+        preprocess.normalize = ::autonomy::common::network::NormalizePolicy::kZeroOne;
         preprocess.default_height = height;
         preprocess.default_width = width;
     }
 
-    if (!common::network::Preprocess(bgr, metadata, preprocess, output, nullptr,
+    if (!::autonomy::common::network::Preprocess(bgr, metadata, preprocess, output, nullptr,
                                      error)) {
         if (error != nullptr && error->empty()) {
             *error = "Image preprocess failed for " + input.name();

@@ -40,7 +40,7 @@ namespace policy_controller {
 bool EncodeObservations(const ObservationSnapshot& snapshot,
                         const PolicyConfig& config,
                         const ObservationEncodeContext& context,
-                        common::network::FloatTensorMap* inputs,
+                        ::autonomy::common::network::FloatTensorMap* inputs,
                         std::string* error, bool* zero_filled = nullptr);
 
 }  // namespace policy_controller

@@ -10,7 +10,7 @@ namespace controller {
 namespace policy_controller {
 
 PolicyModel::PolicyModel(PolicyConfig config,
-                         std::unique_ptr<common::network::Engine> engine)
+                         std::unique_ptr<::autonomy::common::network::Engine> engine)
     : config_(std::move(config)), engine_(std::move(engine)) {}
 
 PolicyModel::SharedPointer PolicyModel::Create(
@@ -22,7 +22,7 @@ PolicyModel::SharedPointer PolicyModel::Create(
         }
         return nullptr;
     }
-    auto engine = common::network::Engine::CreateEngine(options, error);
+    auto engine = ::autonomy::common::network::Engine::CreateEngine(options, error);
     if (!engine) {
         return nullptr;
     }
@@ -41,8 +41,8 @@ PolicyModel::SharedPointer PolicyModel::Create(
         new PolicyModel(std::move(config), std::move(engine)));
 }
 
-bool PolicyModel::RunInference(const common::network::FloatTensorMap& inputs,
-                               common::network::FloatTensorMap* outputs,
+bool PolicyModel::RunInference(const ::autonomy::common::network::FloatTensorMap& inputs,
+                               ::autonomy::common::network::FloatTensorMap* outputs,
                                std::string* error) const {
     if (outputs == nullptr || !engine_) {
         if (error != nullptr) {

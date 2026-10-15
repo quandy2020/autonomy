@@ -25,7 +25,7 @@ namespace neupan_controller {
 
 DistanceEncoder::DistanceEncoder(
     const RobotFootprint& footprint,
-    std::unique_ptr<common::network::Engine> engine, std::string input_name,
+    std::unique_ptr<::autonomy::common::network::Engine> engine, std::string input_name,
     std::string output_name)
     : halfspace_matrix_(footprint.halfspace_matrix),
       halfspace_matrix_AT_(footprint.halfspace_matrix.transpose()),
@@ -51,12 +51,12 @@ std::unique_ptr<DistanceEncoder> DistanceEncoder::Create(
         return nullptr;
     }
 
-    common::network::InferenceOptions options;
+    ::autonomy::common::network::InferenceOptions options;
     options.backend_id = inference_backend.empty() ? "onnx" : inference_backend;
     options.model_path = model_path;
     options.onnx.execution_provider = inference_execution_provider;
 
-    auto engine = common::network::Engine::CreateEngine(options, error);
+    auto engine = ::autonomy::common::network::Engine::CreateEngine(options, error);
     if (!engine) {
         return nullptr;
     }

@@ -77,17 +77,17 @@ public:
     }
 
     /**
-     * @brief Map engine fields to @c common::network::InferenceOptions.
+     * @brief Map engine fields to @c ::autonomy::common::network::InferenceOptions.
      */
-    common::network::InferenceOptions ToInferenceOptions() const;
+    ::autonomy::common::network::InferenceOptions ToInferenceOptions() const;
 
     /**
      * @brief Hard-check required I/O names / shapes against a loaded engine.
      * @return false if a required tensor is missing or shape-incompatible.
      */
     bool ValidateAgainstEngine(
-        const std::vector<common::network::ModelTensorInfo>& inputs,
-        const std::vector<common::network::ModelTensorInfo>& outputs,
+        const std::vector<::autonomy::common::network::ModelTensorInfo>& inputs,
+        const std::vector<::autonomy::common::network::ModelTensorInfo>& outputs,
         std::string* error = nullptr) const;
 
 private:

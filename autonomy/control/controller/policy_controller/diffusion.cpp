@@ -135,7 +135,7 @@ void DdimUpdate(const std::vector<float>& prediction,
 
 bool RunDiffusionInference(
     const PolicyModel& model,
-    const common::network::FloatTensorMap& condition_inputs,
+    const ::autonomy::common::network::FloatTensorMap& condition_inputs,
     std::vector<float>* action_sequence, std::string* error,
     InferBudget* budget) {
     if (action_sequence == nullptr) {
@@ -173,12 +173,12 @@ bool RunDiffusionInference(
     SampleGaussian(&sample, &rng);
 
     // Build working map once; only refresh sample/timestep each step.
-    common::network::FloatTensorMap inputs = condition_inputs;
+    ::autonomy::common::network::FloatTensorMap inputs = condition_inputs;
     auto& noisy_slot = inputs[diffusion.sample()];
     auto& timestep_slot = inputs[diffusion.timestep()];
     noisy_slot.resize(sequence_size);
     timestep_slot.resize(1);
-    common::network::FloatTensorMap outputs;
+    ::autonomy::common::network::FloatTensorMap outputs;
     std::vector<float> prediction;
     prediction.resize(sequence_size);
     std::vector<float> next;

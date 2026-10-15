@@ -34,6 +34,23 @@ autocmake_find(gRPC PRIVATE QUIET CONFIG)
 if(NOT gRPC_FOUND)
   autocmake_find(gRPC PRIVATE QUIET)
 endif()
+# network/detail/preprocess needs OpenCV (prefer 4 for ROS Humble / cv_bridge ABI).
+if(NOT OpenCV_FOUND)
+  set(_autonomy_opencv4_dir /usr/lib/x86_64-linux-gnu/cmake/opencv4)
+  if(EXISTS "${_autonomy_opencv4_dir}/OpenCVConfig.cmake")
+    set(OpenCV_DIR "${_autonomy_opencv4_dir}" CACHE PATH "OpenCV config dir" FORCE)
+  endif()
+  find_package(OpenCV 4 QUIET)
+endif()
+if(NOT OpenCV_FOUND)
+  autocmake_find(OpenCV REQUIRED PRIVATE)
+endif()
+if(NOT TARGET autonomy_opencv)
+  add_library(autonomy_opencv INTERFACE)
+  target_include_directories(autonomy_opencv SYSTEM INTERFACE
+    $<BUILD_INTERFACE:${OpenCV_INCLUDE_DIRS}>)
+  target_link_libraries(autonomy_opencv INTERFACE ${OpenCV_LIBS})
+endif()
 
 # --- sources -----------------------------------------------------------------
 file(GLOB_RECURSE AUTONOMY_COMMON_SRCS CONFIGURE_DEPENDS
@@ -50,11 +67,10 @@ if(NOT Ipopt_FOUND)
   list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/optimization/ipopt/")
 endif()
 
-# Network backends are opt-in; keep only tensor.cpp by default.
-file(GLOB_RECURSE _net_drop "${CMAKE_CURRENT_SOURCE_DIR}/network/*.cpp")
-list(REMOVE_ITEM AUTONOMY_COMMON_SRCS ${_net_drop})
-list(APPEND AUTONOMY_COMMON_SRCS
-  "${CMAKE_CURRENT_SOURCE_DIR}/network/common/tensor.cpp")
+# Network backends are opt-in; keep Engine / preprocess / tensor core always.
+# Drop only unused backend implementations, then re-add when enabled.
+list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/network/backend/onnx/")
+list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/network/backend/tensorrt/")
 if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   file(GLOB_RECURSE _onnx
     "${CMAKE_CURRENT_SOURCE_DIR}/network/backend/onnx/*.cpp")
@@ -101,6 +117,7 @@ target_link_libraries(autonomy_common PUBLIC
   autolink
   Threads::Threads
   nlohmann_json::nlohmann_json
+  autonomy_opencv
   $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
   $<$<BOOL:${BUILD_GRPC}>:grpc++>
   $<$<BOOL:${BUILD_GRPC}>:grpc>
