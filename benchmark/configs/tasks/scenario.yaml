@@ -1,0 +1,13 @@
+name: navigate
+type: navigate
+mode: scenario
+episodes: 10
+timeout_s: 90
+goal_tolerance_m: 0.35
+start_x: 0.0
+start_y: 0.0
+goal_x: 6.0
+goal_y: 0.0
+obstacles: 12
+pedestrians: 6
+moving_obstacles: 2

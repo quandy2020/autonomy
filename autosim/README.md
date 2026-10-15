@@ -17,8 +17,24 @@
 | 05–06 | [配置](docs/05_configuration.md) · [话题](docs/06_topics.md) | YAML 与 Autolink 通道 |
 | 07–08 | [Isaac](docs/07_isaac.md) · [地图与可视化](docs/08_map_and_viz.md) | USD / PhysX / Autoviz |
 | 09–10 | [测试](docs/09_testing.md) · [排错](docs/10_troubleshooting.md) | pytest 与常见问题 |
+| 11 | [数据采集](docs/11_dataset.md) | LeRobot v2.1 模仿学习落盘 |
 
 索引：[`docs/README.md`](docs/README.md)。
+
+## 包结构
+
+| 层 | 路径 | 职责 |
+|----|------|------|
+| 编排 | `autosim/runtime/` | Runner 控制环、SensorWorker |
+| 契约 | `autosim/backend/` | WorldBackend、registry、capabilities |
+| 引擎 | `autosim/backends/{habitat,fake,isaac}/` | 互不耦合的后端实现 |
+| 几何 | `autosim/scenario/` | 静态图 + 动态障碍/行人 |
+| 传感 / I/O | `autosim/sensing/` · `autosim/io/` | 采样噪声、Bridge、Teleop |
+| 地图 / 配置 | `autosim/map/` · `autosim/config/` | 真值占据、YAML 校验 |
+| 数据集 | `autosim/dataset/` | LeRobot 采集（模仿学习基础） |
+| 策略 / 机器人 | `autosim/policy/` · `autosim/robot/` | ONNX Twist、URDF、差速植物 |
+
+详见 [架构](docs/02_architecture.md) · [数据集](docs/11_dataset.md)。
 
 ## 后端一览
 
@@ -26,7 +42,7 @@
 |-------------------|------|------|
 | `habitat` | `config/default.yaml` | Habitat-Sim + GLB / MP3D |
 | `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario |
-| `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图 |
+| `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体 |
 
 ## 快速命令
 

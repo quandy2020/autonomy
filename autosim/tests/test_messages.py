@@ -14,7 +14,7 @@
 
 import numpy as np
 
-from autosim.messages import Messages
+from autosim.io.messages import Messages
 
 
 def test_encode_laser_scan_fields():

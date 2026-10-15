@@ -1,0 +1,8 @@
+name: mpc
+type: classic
+horizon: 10
+dt: 0.1
+max_linear_vel: 0.5
+max_angular_vel: 1.2
+v_samples: 4
+w_samples: 7

@@ -1,0 +1,13 @@
+name: navigate
+type: navigate
+mode: guided
+episodes: 5
+timeout_s: 120
+goal_tolerance_m: 0.4
+obstacles: 8
+pedestrians: 3
+waypoints:
+  - {x: 2.0, y: 0.0}
+  - {x: 4.0, y: 2.0}
+  - {x: 6.0, y: 0.0}
+  - {x: 6.0, y: -2.0}

@@ -1,0 +1,62 @@
+# Default experiment: fake sim + Arena scenario navigation.
+# Examples:
+#   benchmark run --mode random
+#   benchmark eval --episodes 10
+#   benchmark train --backend simple --episodes 30
+
+experiment:
+  name: default
+  seed: 42
+  output_dir: data/logs
+
+simulator:
+  name: fake
+  config: configs/simulators/fake.yaml
+  autosim_config: ../autosim/config/fake.yaml
+  obstacles: 15
+  pedestrians: 5
+  moving_obstacles: 3
+
+robot:
+  name: turtlebot3_burger
+  config: configs/robots/turtlebot3_burger.yaml
+
+world:
+  name: posts
+  config: configs/worlds/posts.yaml
+
+planner:
+  name: pure_pursuit
+  config: configs/planners/pure_pursuit.yaml
+
+task:
+  name: navigate
+  config: configs/tasks/scenario.yaml
+  mode: scenario
+  episodes: 3
+  timeout_s: 30
+  goal_tolerance_m: 0.35
+  obstacles: 12
+  pedestrians: 5
+  moving_obstacles: 2
+
+humans:
+  name: social_force
+  enabled: true
+  behavior: commuter
+  preferred_speed: 1.2
+  radius: 0.25
+  # name: crowd_flow
+  # flow_direction: [1.0, 0.0]
+
+evaluation:
+  config: configs/evaluation/metrics.yaml
+  report: configs/evaluation/report.yaml
+
+modules:
+  autosim: true
+  autonomy: true
+  autolink: true
+  automsgs: true
+  autodriver: false
+  automanip: false

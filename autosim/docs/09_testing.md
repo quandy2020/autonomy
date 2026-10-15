@@ -21,7 +21,13 @@ python3 -m pytest tests -v
 | 配置 / 通道 | `test_config.py` |
 | Fake 联调 | `test_fake.py` · `test_runner_smoke.py`（需 automsgs） |
 | Isaac 无 Kit | `test_backend.py`：传感器布局、floorplan、PhysX block_motion mock |
+| Traffic / Policy | `test_isaac_traffic_policy.py`（Arena、激光融合、PolicyDriver 配置） |
 | 消息编码 | `test_messages.py` |
+
+```bash
+# 避开 ROS launch_testing 插件冲突时：
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python3.12 -m pytest tests/test_isaac_traffic_policy.py -q
+```
 
 依赖：`automsgs` Python 绑定；仓库不再附带 `stubs/`。
 

@@ -41,7 +41,23 @@ habitat:
 |------|---------------|------|
 | Habitat | navmesh 或环视投影 | 环视 ray / PLY `source` |
 | Fake | scenario 栅格 | scenario 点 |
-| Isaac | `rooms.json` | USD Mesh 顶点（优先） |
+| Isaac | `rooms.json` + 机身高度带内的 USD 障碍 | USD Mesh **面片加密**采样（墙体实心） |
+
+`/overall/map` 若只有稀疏轮廓：旧逻辑只采顶点；现用 `map.ply.surface_spacing_m`（默认 0.05 m）在三角形内部均匀采样。点太多可增大 spacing 或减小 `max_points`。
+
+### Isaac 二维占用高度带（可通行）
+
+地面移动机器人只关心**机身高度切片**内的障碍，不是整间屋子的高度：
+
+| 高度 | 含义 | 栅格 |
+|------|------|------|
+| `z < robot_clearance_m` | 地面 / 地毯噪声 | 保持自由 |
+| `clearance ≤ z ≤ robot_height_m + margin` | 与机身相交（沙发、椅腿、墙根） | 占用 |
+| `z > body top` | 悬空桌面、吊灯 | 忽略（可钻过） |
+
+配置见 `isaac.yaml` 的 `map.robot_clearance_m` / `robot_height_m` / `mesh_inflate_m`（膨胀≈足迹半径）。`grid.z_min/z_max` 只影响 `/overall/map` 点云可视化范围，不直接当可通行带。
+
+门：`rooms.json` 墙环会封住门洞，USD `door_*` 叶也会占格。默认 `free_doors: true`，按门 mesh 足迹把开口打成自由格（`door_opening_inflate_m`）。
 
 ---
 
@@ -58,6 +74,8 @@ habitat:
 | PointCloud2 | `/overall/map` |
 | LaserScan | `/scan` |
 | TF | `/tf` `/tf_static` |
+
+`/overall/map` 只发一次（静态场景）；`/map` OccupancyGrid 仍按 `rate_hz` 刷新。Autoviz 需在启动后订阅，或依赖桥接 latch。
 
 PointCloud2 建议：Color Transformer → `Intensity` 或 `AxisColor`；点数过大时用 **Decimate**，并配合 `map.ply.stride`。
 

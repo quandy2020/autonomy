@@ -167,6 +167,27 @@ def test_map_ply_channel_and_stride():
     assert settings.channel_map()["map_cloud"] == "/map_points"
 
 
+def test_map_grid_only_empty_ply_channel():
+    """Occupancy-only publish: empty ply.channel skips dense PointCloud2."""
+    data = minimal_config()
+    data["habitat"]["map"] = {
+        "enabled": True,
+        "frame": "map",
+        "rate_hz": 1.0,
+        "ply": {"channel": "", "stride": 1},
+        "grid": {
+            "channel": "/map",
+            "resolution": 0.05,
+            "z_min": 0.0,
+            "z_max": 2.0,
+        },
+    }
+    settings = Config.load(data)
+    assert settings["habitat"]["map"]["ply"]["channel"] == ""
+    assert "map_cloud" not in settings.channel_map()
+    assert settings.channel_map()["map_grid"] == "/map"
+
+
 def test_reject_invalid_map_stride():
     bad = minimal_config()
     bad["habitat"]["map"] = {

@@ -12,6 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""autosim: Habitat-Sim sensor–actuator bridge over autolink and automsgs."""
+"""autosim: multi-backend sensor–actuator bridge + LeRobot IL recording.
+
+Canonical packages::
+
+    runtime/    Runner orchestration
+    backend/    WorldBackend contract + registry
+    backends/   habitat | fake | isaac
+    scenario/   shared geometry / traffic
+    sensing/    sampler, cameras, stitch
+    io/         bridge, messages, clock, teleop
+    dataset/    LeRobot collector
+    policy/     ONNX twist driver
+    robot/      plant, profiles, urdf
+    map/        ground-truth occupancy helpers
+    config/     YAML load + validation
+    paths.py    project-root discovery
+
+Style: no leading-underscore names; attributes are nouns; functions are
+verb + noun (``poll_command``, ``flush_episode``, ``build_feeds``).
+"""
 
 __version__ = "0.1.0"

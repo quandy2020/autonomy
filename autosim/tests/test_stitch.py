@@ -17,7 +17,7 @@ from pathlib import Path
 import pytest
 
 from autosim.config import Config
-from autosim.stitch import PANORAMA_UUID, panorama_spec
+from autosim.sensing.stitch import PANORAMA_UUID, panorama_spec
 
 
 def test_panorama_disabled_by_default():

@@ -1,0 +1,10 @@
+name: posts
+scenario_type: posts
+seed: 510
+resolution: 0.2
+x_length: 20
+y_length: 20
+z_length: 3
+obstacle_number: 100
+width_min: 0.6
+width_max: 1.5

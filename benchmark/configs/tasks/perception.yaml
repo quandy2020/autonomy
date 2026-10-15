@@ -1,0 +1,8 @@
+name: perception
+type: perception
+mode: scenario
+episodes: 5
+match_dist: 1.0
+obstacles: 12
+pedestrians: 0
+moving_obstacles: 0

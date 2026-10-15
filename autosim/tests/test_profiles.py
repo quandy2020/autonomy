@@ -22,7 +22,7 @@ import pytest
 
 from autosim.config import Config
 from autosim.robot.profiles import PROFILES, apply_profile, get_profile, resolve_path
-from autosim.urdf import UrdfModel
+from autosim.robot.urdf import UrdfModel
 
 ROOT = Path(__file__).resolve().parents[1]
 

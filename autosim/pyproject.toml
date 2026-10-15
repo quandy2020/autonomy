@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "autosim"
 version = "0.1.0"
-description = "Habitat-Sim sensor-actuator bridge for autonomy via autolink/automsgs"
+description = "Multi-backend sensor-actuator bridge with LeRobot dataset recording"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -19,11 +19,12 @@ habitat = ["habitat-sim>=0.3.0"]
 # Isaac Sim is typically provided by the Omniverse / Isaac Kit Python env.
 # The extra documents the intended install; omni.* packages are not on PyPI.
 isaac = []
-dev = ["pytest>=7.0"]
+dataset = ["pyarrow>=14.0", "opencv-python-headless>=4.8"]
+dev = ["pytest>=7.0", "pyarrow>=14.0"]
 
 [project.scripts]
 autosim = "autosim.__main__:run"
-autosim-teleop = "autosim.teleop:Teleop.main"
+autosim-teleop = "autosim.io.teleop:Teleop.main"
 
 [tool.setuptools.packages.find]
 where = ["."]

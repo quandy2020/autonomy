@@ -1,0 +1,13 @@
+name: slam
+type: slam
+mode: scenario
+episodes: 3
+timeout_steps: 150
+odom_noise: 0.05
+autolink: false
+goal_tolerance_m: 0.4
+obstacles: 8
+pedestrians: 0
+moving_obstacles: 0
+goal_x: 5.0
+goal_y: 0.0

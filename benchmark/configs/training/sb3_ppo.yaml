@@ -1,0 +1,7 @@
+algorithm: ppo
+total_timesteps: 1000000
+learning_rate: 3.0e-4
+n_steps: 2048
+batch_size: 64
+gamma: 0.99
+checkpoint_dir: data/checkpoints/ppo

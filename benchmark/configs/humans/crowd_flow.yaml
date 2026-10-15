@@ -1,0 +1,6 @@
+name: crowd_flow
+enabled: true
+count: 30
+model: crowd_flow
+flow_direction: [1.0, 0.0]
+preferred_speed: 1.0

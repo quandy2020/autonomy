@@ -10,17 +10,44 @@ habitat:
   backend: isaac
   mode: nav
   # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
+  # Camera path aligned with arena-isaac: RTX Camera + supportMultiTickRate,
+  # PhysX ticks without RTX, RGB sampled only in color_depth (Habitat timing).
   isaac:
     headless: true
     physics:
-      enabled: true           # PhysX World + robot capsule collider
-      block_motion: true      # reject set_pose when capsule overlaps scene
-      freeze_scene: true      # InteriorAgent dynamics → kinematic (no fall)
-      ensure_scene_colliders: true
-      add_ground: false       # InteriorAgent already has floor colliders
+      enabled: false          # no PhysX / no collision; free teleop through walls
+      block_motion: false
+      freeze_scene: true
+      ensure_scene_colliders: false
+      add_ground: false
       dt: 0.0166667
-      robot_radius: 0.12      # turtlebot3 footprint ~radius
+      robot_radius: 0.12
       robot_height: 0.28
+    traffic:
+      usd_sync: false                 # no AutosimTraffic capsules in the stage
+
+  # Optional ONNX RL / IL twist policy (see docs/07_isaac.md). When exclusive,
+  # teleop /cmd_vel is ignored; otherwise policy fills in when no cmd_vel arrives.
+  policy:
+    enabled: false
+    # model_path: /path/to/twist_policy.onnx
+    rate_hz: 10.0
+    exclusive: false
+    max_vx: 0.5
+    max_wz: 1.0
+    use_laser: true
+    laser_bins: 360
+
+  # LeRobot v2.1 dataset recording for imitation learning (docs/11_dataset.md).
+  dataset:
+    enabled: false
+    root: datasets/isaac_demo
+    repo_id: autosim/isaac_demo
+    task: navigate
+    fps: 10.0
+    episode_frames: 0
+    include_image: true
+    include_laser: true
 
   # Relative to autosim/ project root (see usd/README.md).
   # InteriorAgent (酷家乐) sample; fallback: usd/worlds/simple_room/simple_room.usd
@@ -29,7 +56,24 @@ habitat:
     # InteriorAgent scenes use /Root; robot Xform is created under it if missing.
     robot_prim: /Root/Robot
   scenario:
+    # Static procedural map off; use floorplan OccupancyGrid for walls.
     enabled: false
+    # Dynamic agents off (no capsules / no CPU movers).
+    obstacle:
+      enabled: false
+      count: 4
+      radius: 0.35
+      height: 1.0
+      speed_min: 0.15
+      speed_max: 0.45
+      seed: 7
+    pedestrian:
+      enabled: false
+      count: 4
+      radius: 0.22
+      height: 1.7
+      speed: 0.85
+      seed: 11
   # Living-room centroid from InteriorAgent rooms.json (map xy + yaw).
   spawn: [7.93, -0.39, 0.0]
   gpu: 0
@@ -55,7 +99,8 @@ habitat:
       enabled: true
       channel: /tf
       static_channel: /tf_static
-      publish_map_odom: false
+      # Forced true in nav (drift-corrected map→odom so /scan matches GT /map).
+      publish_map_odom: true
     clock:
       enabled: true
       channel: /clock
@@ -97,20 +142,23 @@ habitat:
 
     camera:
       enabled: true
-      width: 640
-      height: 480
+      # RTX render product (Isaac Camera) — same path as viewport; only sampled
+      # when due (PhysX ticks do not pay an extra RTX frame).
+      width: 1280
+      height: 720
       hfov_deg: 90.0
       sensor_height: 0.6
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
-      depth_points_channel: /camera/depth/points
-      depth_points_stride: 1
+      # Empty: skip dense depth PointCloud2 (Autoviz lag). RGB/depth images stay.
+      depth_points_channel: ""
+      depth_points_stride: 4
       info_channel: /camera/camera_info
       semantic_enabled: false
       semantic_channel: /camera/semantic/image_raw
       semantic_ids_channel: /camera/semantic/instance_ids
       frame: camera_link
-      rate_hz: 15.0
+      rate_hz: 30.0
       noise:
         depth: 0.0
 
@@ -134,14 +182,28 @@ habitat:
       noise: 0.0
 
   map:
-    # GT from InteriorAgent rooms.json (beside the USD); OccupancyGrid → /map
+    # OccupancyGrid: rooms.json free + USD mesh carved in the *robot body* slab.
+    # Traversable rule (ground robot): ignore floor (z < clearance) and overhangs
+    # (z > height) so tables can be passed under; inflate ≈ footprint radius.
     enabled: true
     publish: true
     frame: map
     rate_hz: 1.0
+    padding_m: 0.05
+    wall_thickness_m: 0.05
+    robot_clearance_m: 0.05   # above floor — carpet / floor verts stay free
+    robot_height_m: 0.35      # body top (+ margin); not full room height
+    height_margin_m: 0.05
+    mesh_inflate_m: 0.12      # ≈ turtlebot footprint radius
+    free_doors: true          # punch door meshes free (rooms.json seals openings)
+    door_opening_inflate_m: 0.15
     ply:
+      # Dense surface samples (triangle interiors) so walls look solid in Autoviz.
       channel: /overall/map
-      stride: 1
+      stride: 1                 # publish downsample (Autoviz)
+      mesh_stride: 1            # post-densify subsample
+      surface_spacing_m: 0.05   # face sample spacing ≈ grid resolution
+      max_points: 800000
       range_max: 30.0
       horizontal:
         angle_min: -3.14159

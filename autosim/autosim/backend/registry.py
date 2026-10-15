@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Any, Callable, Dict, Mapping
 
 BACKENDS: Dict[str, Callable[[Mapping[str, Any]], Any]] = {}
-_BUILTINS_LOADED = False
+builtins_loaded = False
 
 
 def register(name: str, factory: Callable[[Mapping[str, Any]], Any]) -> None:
@@ -41,7 +41,7 @@ def create_backend(settings: Mapping[str, Any]) -> Any:
         ValueError: Unknown backend name.
         ImportError: Optional engine dependency missing.
     """
-    _ensure_builtins()
+    ensure_builtins()
     habitat = settings.get("habitat") if isinstance(settings.get("habitat"), Mapping) else settings
     if not isinstance(habitat, Mapping):
         raise ValueError("settings must contain a habitat mapping")
@@ -53,13 +53,13 @@ def create_backend(settings: Mapping[str, Any]) -> Any:
     return factory(settings if "habitat" in settings else {"habitat": habitat})
 
 
-def _ensure_builtins() -> None:
+def ensure_builtins() -> None:
     """Import backend packages so they self-register."""
-    global _BUILTINS_LOADED
-    if _BUILTINS_LOADED:
+    global builtins_loaded
+    if builtins_loaded:
         return
-    from autosim.backends import fake as _fake  # noqa: F401
-    from autosim.backends import habitat as _habitat  # noqa: F401
-    from autosim.backends import isaac as _isaac  # noqa: F401
+    from autosim.backends import fake as fake_backend  # noqa: F401
+    from autosim.backends import habitat as habitat_backend  # noqa: F401
+    from autosim.backends import isaac as isaac_backend  # noqa: F401
 
-    _BUILTINS_LOADED = True
+    builtins_loaded = True

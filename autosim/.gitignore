@@ -4,6 +4,7 @@ stubs/
 build/
 __pycache__/
 .pytest_cache/
+datasets/
 *.pyc
 *.log
 *.log.*

@@ -88,19 +88,19 @@ class FloorplanMap:
         grid_x, grid_y = np.meshgrid(xs, ys)
         free = np.zeros((height, width), dtype=bool)
         for poly in rooms:
-            free |= _points_in_polygon(grid_x, grid_y, poly)
+            free |= points_in_polygon(grid_x, grid_y, poly)
 
         cells = np.full((height, width), 100, dtype=np.int8)
         cells[free] = 0
         # Thicken room boundaries so walls are visible / laser-clippable.
         if wall_thickness > 0.0 and free.any():
-            ring = free ^ _erode_bool(free, radius_cells=max(1, int(round(wall_thickness / resolution))))
+            ring = free ^ erode_boolean_mask(free, radius_cells=max(1, int(round(wall_thickness / resolution))))
             cells[ring] = 100
 
         z_min = float(grid_cfg.get("z_min", 0.1))
         z_max = float(grid_cfg.get("z_max", 2.5))
         # Dense wall extrusion + floor fill (fallback when USD mesh cloud absent).
-        cloud = _dense_floorplan_cloud(
+        cloud = dense_floorplan_cloud(
             rooms,
             free_mask=free,
             origin_xy=(min_x, min_y),
@@ -124,6 +124,156 @@ class FloorplanMap:
         self.cached_cloud = pts
         self.cloud_rgb = None
 
+    @staticmethod
+    def robot_body_band(
+        settings: Mapping[str, Any] | None = None,
+        *,
+        robot_height_m: float | None = None,
+        robot_radius_m: float | None = None,
+    ) -> Tuple[float, float, float]:
+        """Height slab for 2D occupancy of a ground robot (metres).
+
+        Physical rule (Nav2 / costmap style):
+        - ``z < clearance``: floor / carpet — keep free (do not carve).
+        - ``clearance ≤ z ≤ body_top``: intersects the robot body — occupied.
+        - ``z > body_top``: overhang (tabletop, lamp) — ignore so the robot
+          may pass underneath when the body clears.
+
+        Returns:
+            ``(z_min, z_max, inflate_m)`` used by ``mark_elevated_obstacles``.
+        """
+        cfg = dict(settings or {})
+        # Explicit overrides (legacy z_obstacle_* still accepted).
+        clearance = cfg.get("robot_clearance_m", cfg.get("z_obstacle_min"))
+        body = cfg.get("robot_height_m", cfg.get("z_obstacle_max"))
+        inflate = cfg.get("mesh_inflate_m")
+        if clearance is None:
+            clearance = 0.05
+        if body is None:
+            body = float(robot_height_m) if robot_height_m is not None else 0.35
+        if inflate is None:
+            inflate = float(robot_radius_m) if robot_radius_m is not None else 0.12
+        z_min = max(0.0, float(clearance))
+        margin = float(cfg.get("height_margin_m", 0.05))
+        # Legacy z_obstacle_max is an absolute ceiling (no extra margin).
+        if "robot_height_m" not in cfg and "z_obstacle_max" in cfg:
+            z_max = max(z_min + 0.05, float(cfg["z_obstacle_max"]))
+        else:
+            z_max = max(z_min + 0.05, float(body) + margin)
+        return z_min, z_max, max(0.0, float(inflate))
+
+    def mark_elevated_obstacles(
+        self,
+        cloud: np.ndarray,
+        *,
+        z_min: float = 0.05,
+        z_max: float = 0.40,
+        inflate_m: float = 0.12,
+    ) -> int:
+        """Carve mesh hits in the robot body height slab into the grid.
+
+        Only points with ``z_min ≤ z ≤ z_max`` mark a cell occupied (sofa seat,
+        chair legs, wall base). Floor verts below ``z_min`` and overhangs above
+        ``z_max`` are ignored so under-table free space stays traversable.
+
+        Returns:
+            Number of cells newly marked occupied.
+        """
+        if self.grid is None:
+            return 0
+        pts = np.asarray(cloud, dtype=np.float64).reshape(-1, 3)
+        if pts.shape[0] == 0:
+            return 0
+        cells, resolution, ox, oy, width, height = self.grid
+        res = float(resolution)
+        hit = pts[
+            (pts[:, 2] >= float(z_min))
+            & (pts[:, 2] <= float(z_max))
+            & np.isfinite(pts).all(axis=1)
+        ]
+        if hit.shape[0] == 0:
+            return 0
+        cols = np.floor((hit[:, 0] - float(ox)) / res).astype(np.int64)
+        rows = np.floor((hit[:, 1] - float(oy)) / res).astype(np.int64)
+        ok = (rows >= 0) & (rows < height) & (cols >= 0) & (cols < width)
+        rows, cols = rows[ok], cols[ok]
+        if rows.size == 0:
+            return 0
+        out = np.asarray(cells, dtype=np.int8).copy()
+        before = out.copy()
+        out[rows, cols] = 100
+        inflate = max(0, int(round(float(inflate_m) / res)))
+        if inflate > 0:
+            for dy in range(-inflate, inflate + 1):
+                for dx in range(-inflate, inflate + 1):
+                    if dx * dx + dy * dy > inflate * inflate:
+                        continue
+                    rr = rows + dy
+                    cc = cols + dx
+                    inside = (rr >= 0) & (rr < height) & (cc >= 0) & (cc < width)
+                    if not np.any(inside):
+                        continue
+                    out[rr[inside], cc[inside]] = 100
+        changed = int(np.count_nonzero((before != 100) & (out == 100)))
+        self.grid = (out, resolution, ox, oy, width, height)
+        self.cached_grid = self.grid
+        self.occupied = out == 100
+        return changed
+
+    def free_openings(
+        self,
+        cloud: np.ndarray,
+        *,
+        z_min: float = 0.0,
+        z_max: float = 2.5,
+        inflate_m: float = 0.10,
+    ) -> int:
+        """Punch door (etc.) footprints to free — ground robots may pass.
+
+        InteriorAgent ``rooms.json`` wall rings seal doorway openings, and door
+        leaf meshes would otherwise carve as obstacles. Cells under door verts
+        in ``[z_min, z_max]`` become free (value 0).
+        """
+        if self.grid is None:
+            return 0
+        pts = np.asarray(cloud, dtype=np.float64).reshape(-1, 3)
+        if pts.shape[0] == 0:
+            return 0
+        cells, resolution, ox, oy, width, height = self.grid
+        res = float(resolution)
+        hit = pts[
+            (pts[:, 2] >= float(z_min))
+            & (pts[:, 2] <= float(z_max))
+            & np.isfinite(pts).all(axis=1)
+        ]
+        if hit.shape[0] == 0:
+            return 0
+        cols = np.floor((hit[:, 0] - float(ox)) / res).astype(np.int64)
+        rows = np.floor((hit[:, 1] - float(oy)) / res).astype(np.int64)
+        ok = (rows >= 0) & (rows < height) & (cols >= 0) & (cols < width)
+        rows, cols = rows[ok], cols[ok]
+        if rows.size == 0:
+            return 0
+        out = np.asarray(cells, dtype=np.int8).copy()
+        before = out.copy()
+        seeds_r, seeds_c = rows, cols
+        inflate = max(0, int(round(float(inflate_m) / res)))
+        for dy in range(-inflate, inflate + 1):
+            for dx in range(-inflate, inflate + 1):
+                if inflate > 0 and dx * dx + dy * dy > inflate * inflate:
+                    continue
+                rr = seeds_r + dy
+                cc = seeds_c + dx
+                inside = (rr >= 0) & (rr < height) & (cc >= 0) & (cc < width)
+                if not np.any(inside):
+                    continue
+                out[rr[inside], cc[inside]] = 0
+        changed = int(np.count_nonzero((before == 100) & (out == 0)))
+        self.grid = (out, resolution, ox, oy, width, height)
+        self.cached_grid = self.grid
+        self.occupied = out == 100
+        return changed
+
     def sample(
         self, simulator: Any = None, origin_xy: Tuple[float, float] = (0.0, 0.0)
     ) -> Tuple[np.ndarray, np.ndarray, float, float, float, int, int]:
@@ -143,7 +293,7 @@ class FloorplanMap:
         )
 
 
-def _points_in_polygon(
+def points_in_polygon(
     xs: np.ndarray, ys: np.ndarray, polygon: np.ndarray
 ) -> np.ndarray:
     """Vectorized even-odd point-in-polygon for grid cell centres."""
@@ -162,7 +312,7 @@ def _points_in_polygon(
     return inside
 
 
-def _erode_bool(mask: np.ndarray, *, radius_cells: int) -> np.ndarray:
+def erode_boolean_mask(mask: np.ndarray, *, radius_cells: int) -> np.ndarray:
     """Binary erosion via max-pool on inverted mask (no scipy dependency)."""
     if radius_cells <= 0:
         return mask.copy()
@@ -185,7 +335,7 @@ def _erode_bool(mask: np.ndarray, *, radius_cells: int) -> np.ndarray:
     return ~out
 
 
-def _dense_floorplan_cloud(
+def dense_floorplan_cloud(
     rooms: Sequence[np.ndarray],
     *,
     free_mask: np.ndarray,
@@ -200,7 +350,7 @@ def _dense_floorplan_cloud(
     z1 = max(float(z_min), float(z_max))
     n_z = max(2, int(math.ceil((z1 - z0) / step)) + 1)
     z_levels = np.linspace(z0, z1, n_z, dtype=np.float64)
-    chunks: list[np.ndarray] = [_wall_cloud(rooms, z_levels=z_levels, spacing=step)]
+    chunks: list[np.ndarray] = [wall_point_cloud(rooms, z_levels=z_levels, spacing=step)]
 
     # Floor fill (every other free cell keeps size reasonable).
     rows, cols = np.where(free_mask)
@@ -215,7 +365,7 @@ def _dense_floorplan_cloud(
     return np.vstack([c for c in chunks if c.size > 0])
 
 
-def _wall_cloud(
+def wall_point_cloud(
     rooms: Sequence[np.ndarray],
     *,
     z_levels: Sequence[float],

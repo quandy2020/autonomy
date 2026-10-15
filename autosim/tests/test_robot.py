@@ -21,7 +21,7 @@ _SNAP = dict(max_linear_accel=0.0, max_linear_decel=0.0, max_angular_accel=0.0)
 
 
 def test_pose_at_scan_fraction_matches_backward_unicycle():
-    from autosim.simulator import Simulator
+    from autosim.backends.habitat.simulator import Simulator
 
     x_e, y_e, yaw_e = 1.0, 0.5, 0.3
     linear, angular, period = 0.4, 0.8, 0.1
@@ -44,7 +44,7 @@ def test_pose_at_scan_fraction_matches_backward_unicycle():
 
 
 def test_map_hit_to_sensor_roundtrip_identity_forward():
-    from autosim.simulator import Simulator
+    from autosim.backends.habitat.simulator import Simulator
 
     sim = Simulator(backend="minimal", width=16, height=12, open_session=False)
     sim.x, sim.y, sim.yaw = 0.0, 0.0, 0.0

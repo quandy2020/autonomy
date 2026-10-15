@@ -34,15 +34,18 @@ AutoSim 把仿真世界（Habitat / Fake / Isaac）接到 **Autolink**：订阅 
 ```text
 autosim/
 ├── README.md           # 短入口 + 动图
-├── docs/               # 本目录（00–10）
+├── docs/               # 本目录（00–11）
 ├── config/             # YAML 配置真相
-├── autosim/            # Python 包（runner / backends / …）
+├── autosim/            # Python 包（runtime / backends / dataset / …）
+├── datasets/           # 本地 LeRobot 输出（建议 gitignore）
 ├── scripts/run.sh      # 统一启动（Isaac 走 isaaclab python）
 ├── usd/                # Isaac 场景与机器人占位
 ├── urdf/               # 机器人 URDF
 ├── images/             # 演示素材
 └── tests/              # pytest
 ```
+
+包内分层见 [02 架构](02_architecture.md)；模仿学习录制见 [11 数据集](11_dataset.md)。
 
 ---
 
@@ -53,5 +56,5 @@ autosim/
 | 第一次跑通 | [03](03_quickstart.md) → Fake → Autoviz [08](08_map_and_viz.md) |
 | 换后端 | [04](04_backends.md) → [05](05_configuration.md) |
 | Isaac 室内场景 | [07](07_isaac.md) → [10](10_troubleshooting.md) |
-| 改发布话题 | [06](06_topics.md) → `autosim/runner.py` |
+| 改发布话题 | [06](06_topics.md) → `autosim/runtime/loop.py` |
 | 加测试 | [09](09_testing.md) |

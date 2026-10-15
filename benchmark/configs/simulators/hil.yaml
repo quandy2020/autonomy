@@ -1,0 +1,7 @@
+name: hil
+backend: hil
+description: Hardware HAL-in-the-loop via autodriver + optional autosim twin
+device: ${HIL_DEVICE:-}
+serial: ${HIL_SERIAL:-}
+use_sim_twin: false
+rate_hz: 50

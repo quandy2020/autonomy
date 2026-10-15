@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from autosim.cameras import (
+from autosim.sensing.cameras import (
     COMMODITY_HFOV_DEG,
     covers_full_circle,
     layout_names,

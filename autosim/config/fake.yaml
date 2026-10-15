@@ -9,6 +9,17 @@ habitat:
   backend: fake
   mode: nav
 
+  # LeRobot v2.1 imitation-learning dump (see docs/11_dataset.md).
+  # dataset:
+  #   enabled: true
+  #   root: datasets/fake_demo
+  #   repo_id: autosim/fake_demo
+  #   task: navigate
+  #   fps: 10
+  #   episode_frames: 200   # 0 = flush on shutdown
+  #   include_image: true
+  #   include_laser: true
+
   path: ""
   # Types: perlin | perlin2d | posts | maze | maze3d | random_forest | random_room
   # forest | building need scenario.ply (real point cloud).

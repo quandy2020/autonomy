@@ -12,7 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""WorldBackend protocol: engine-agnostic sensing + pose lifecycle."""
+"""WorldBackend protocol: engine-agnostic sensing + pose lifecycle.
+
+Optional behaviour (surround cameras, navmesh map sample, fallback TF, …)
+is declared via ``capabilities`` / ``supports_*`` — see
+:mod:`autosim.backend.capabilities`. Runner must not switch on backend names.
+"""
 
 from __future__ import annotations
 

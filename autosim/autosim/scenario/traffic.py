@@ -33,7 +33,15 @@ class Traffic:
     occupancy grid, when the procedural map was built, keeps them out of walls.
     """
 
-    GEOMETRY = ("x_length", "y_length", "spawn_radius")
+    GEOMETRY = (
+        "x_length",
+        "y_length",
+        "spawn_radius",
+        "center_x",
+        "center_y",
+        "spawn_x",
+        "spawn_y",
+    )
 
     def __init__(
         self,

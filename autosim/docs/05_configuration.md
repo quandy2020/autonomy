@@ -1,6 +1,6 @@
 # 05 · 配置
 
-配置真相：`config/*.yaml` + `autosim/config.py` 校验。本节只列稳定约定。
+配置真相：`config/*.yaml` + `autosim/config/` 校验。本节只列稳定约定。
 
 | 相关 | 链接 |
 |------|------|
@@ -37,6 +37,8 @@ habitat:
   map: { enabled, publish, ply, grid }
   scenario: { enabled, ... }   # Fake / Habitat 过程场景
   isaac: { headless, physics } # 仅 Isaac
+  dataset: { enabled, root, fps, ... }  # LeRobot 录制，见 [11](11_dataset.md)
+  policy: { enabled, model_path, ... }  # 可选 ONNX 运控
 ```
 
 路径相对 **autosim 工程根**（含 `config/`、`usd/` 的那一层）。
@@ -57,6 +59,10 @@ habitat:
 | `map.grid.resolution` | OccupancyGrid 分辨率 |
 | `map.ply.channel` | 点云通道，如 `/overall/map` |
 | `map.ply.stride` | 发布端降采样步长 |
+| `dataset.enabled` | 是否录制 LeRobot 数据集 |
+| `dataset.root` | 输出目录（含 `meta/` `data/` `videos/`） |
+| `dataset.fps` | 录制频率（可低于 `control_hz`） |
+| `dataset.episode_frames` | `>0` 时按帧数切 episode；`0` 则退出时 flush |
 
 ---
 
@@ -70,4 +76,4 @@ YAML 显式字段优先于档案默认值。
 ## 5. 校验失败时
 
 `Config.load` 抛 `ValueError`（空通道、重复通道、非法 backend 等）。  
-先对照本表与目标 YAML，再查 `autosim/config.py` 中 `validate_*`。
+先对照本表与目标 YAML，再查 `autosim/config/settings.py` 中 `validate_*`。

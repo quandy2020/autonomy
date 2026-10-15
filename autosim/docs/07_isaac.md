@@ -96,3 +96,53 @@ isaac:
 | `/overall/map` | 优先 USD Mesh 顶点；否则密高墙线 + 地面填充 |
 
 `map.enabled` / `map.publish` 在 `isaac.yaml` 默认 true。详见 [08](08_map_and_viz.md)。
+
+---
+
+## 7. 动态障碍与行人
+
+与 Fake 共用 `Traffic`（`scenario.obstacle` / `pedestrian`）：
+
+| 能力 | 行为 |
+|------|------|
+| 运动 | Runner 每拍 `traffic.step(dt)`；场地用 floorplan OccupancyGrid |
+| `/scan` | 静态栅格射线 + `traffic.nearest_batch` 取近 |
+| USD 障碍 / 行人 | 运动学胶囊（`obstacle_visual` / `pedestrian_visual`: `capsule` \| `invisible`） |
+| 地图云 | `merge_traffic_into_map_cloud` 拼入 `/overall/map` |
+
+碰撞与 `/scan` 由 CPU `Traffic` 负责；USD 只镜像位姿供 PhysX / RGB。
+
+```yaml
+habitat:
+  isaac:
+    traffic:
+      usd_sync: true
+      obstacle_visual: capsule
+      pedestrian_visual: capsule
+```
+
+---
+
+## 8. RL 运控模型（ONNX）
+
+AutoSim 侧可选 `PolicyDriver`（`habitat.policy`），加载与 `policy_controller` 类似的 Twist ONNX，在无外部 `/cmd_vel`（或 `exclusive: true`）时写差速。
+
+```yaml
+habitat:
+  policy:
+    enabled: true
+    model_path: /path/to/twist_policy.onnx
+    rate_hz: 10.0
+    exclusive: false   # true = 忽略 teleop
+    use_laser: true
+    laser_bins: 360
+```
+
+| 项 | 说明 |
+|----|------|
+| 依赖 | `pip install onnxruntime` |
+| 输入 | 默认 `observation_kinematic` `[1,6]`；可选 `observation_laser` |
+| 输出 | 默认 `action` → `(vx, wz)`，再按 `max_vx` / `max_wz` 裁剪 |
+| 与 C++ 插件关系 | 完整观测栈 / Diffusion / TensorRT 仍用 `autonomy/control/.../policy_controller`；此处仅仿真闭环 |
+
+栈内正式部署请用 ControllerServer + `policy_controller` 订 `/scan` 等话题（见该模块 README）。

@@ -1,0 +1,15 @@
+name: hil
+type: hil
+mode: scenario
+timeout_s: 30
+goal_tolerance_m: 0.5
+use_sim_twin: true
+estop: false
+cmd_vel: /cmd_vel
+obstacles: 0
+goal_x: 3.0
+goal_y: 0.0
+safety:
+  max_linear_vel: 0.3
+  max_angular_vel: 0.8
+  estop_topic: /estop

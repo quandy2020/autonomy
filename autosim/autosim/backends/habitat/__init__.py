@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Habitat-Sim WorldBackend (wraps autosim.simulator.Simulator)."""
+"""Habitat-Sim WorldBackend (``Simulator`` in this package)."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ from autosim.backend.registry import register
 
 def create(settings: Mapping[str, Any]) -> Any:
     """Build the Habitat Simulator from full config data."""
-    from autosim.simulator import Simulator
+    from autosim.backends.habitat.simulator import Simulator
 
     return Simulator.create(dict(settings))
 

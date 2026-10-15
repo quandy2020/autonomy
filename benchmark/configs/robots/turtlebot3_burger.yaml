@@ -1,0 +1,11 @@
+name: turtlebot3_burger
+footprint: differential
+wheelbase: 0.16
+max_linear_vel: 0.22
+max_angular_vel: 2.84
+urdf: ../autosim/urdf/turtlebot3_burger.urdf
+sensors:
+  - lidar
+  - rgb
+  - depth
+  - imu

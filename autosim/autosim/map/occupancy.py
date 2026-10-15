@@ -1,0 +1,490 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Ground-truth map: panoramic PLY / point cloud and 2D occupancy grid."""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+from typing import Any, Mapping, Optional, Tuple
+
+import numpy as np
+
+
+class Map:
+    """Sample a map-frame panoramic cloud, write PLY, and project a 2D grid."""
+
+    def __init__(self, settings: Mapping[str, Any]) -> None:
+        """Bind ``habitat.map`` configuration.
+
+        Args:
+            settings: ``habitat.map`` mapping.
+        """
+        self.settings = dict(settings)
+        self.cached_cloud: Optional[np.ndarray] = None
+        self.cached_grid: Optional[Tuple[np.ndarray, float, float, float, int, int]] = None
+
+    def load_ply_file(
+        self, path: str
+    ) -> Optional[Tuple[np.ndarray, Optional[np.ndarray]]]:
+        """Load XYZ (and RGB when present) from a PLY file.
+
+        Returns ``(xyz, rgb)`` where ``xyz`` is ``(N, 3) float32`` and
+        ``rgb`` is ``(N, 3) uint8`` or ``None`` when the file has no colour.
+        Returns ``None`` on failure.
+        """
+        resolved = self.resolve_ply_path(path)
+        if not resolved.exists():
+            return None
+        try:
+            result = self.read_ply(resolved)
+            if result is not None:
+                xyz, rgb = result
+                if xyz is not None and xyz.size > 0:
+                    return xyz.astype(np.float32), rgb
+        except Exception:
+            pass
+        return None
+
+    @staticmethod
+    def read_ply(
+        path: Path,
+    ) -> Optional[Tuple[np.ndarray, Optional[np.ndarray]]]:
+        """Parse a PLY file; return ``(xyz_Nx3_float32, rgb_Nx3_uint8_or_None)``."""
+        with path.open("rb") as fh:
+            header_lines: list[bytes] = []
+            while True:
+                line = fh.readline()
+                header_lines.append(line)
+                if line.strip() == b"end_header":
+                    break
+            header = b"".join(header_lines).decode("utf-8", errors="replace")
+            n_vertices = 0
+            for hl in header.splitlines():
+                if hl.startswith("element vertex"):
+                    n_vertices = int(hl.split()[-1])
+            if n_vertices == 0:
+                return None
+            is_binary_little = "binary_little_endian" in header
+            is_binary_big = "binary_big_endian" in header
+            # Collect ONLY the vertex-element properties.
+            # A PLY file may have multiple elements (e.g. vertex + face); each
+            # "element X" section owns the "property" lines that follow it until
+            # the next "element" line.  We must stop at the first non-vertex
+            # element to avoid picking up face properties (e.g. "property int
+            # object_id") that would corrupt the vertex dtype.
+            prop_lines: list[str] = []
+            in_vertex = False
+            for header_line in header.splitlines():
+                if header_line.startswith("element vertex"):
+                    in_vertex = True
+                    continue
+                if header_line.startswith("element ") and in_vertex:
+                    break  # left vertex section
+                if in_vertex and header_line.startswith("property"):
+                    prop_lines.append(header_line)
+            props = [l.split() for l in prop_lines]
+            if is_binary_little or is_binary_big:
+                dtype_parts = []
+                for p in props:
+                    if len(p) < 3:
+                        continue
+                    t = p[1]
+                    if t in ("float", "float32"):
+                        dtype_parts.append((p[2], np.float32))
+                    elif t in ("double", "float64"):
+                        dtype_parts.append((p[2], np.float64))
+                    elif t in ("uchar", "uint8"):
+                        dtype_parts.append((p[2], np.uint8))
+                    elif t in ("int", "int32"):
+                        dtype_parts.append((p[2], np.int32))
+                    elif t in ("uint", "uint32"):
+                        dtype_parts.append((p[2], np.uint32))
+                    elif t in ("short", "int16"):
+                        dtype_parts.append((p[2], np.int16))
+                    elif t in ("ushort", "uint16"):
+                        dtype_parts.append((p[2], np.uint16))
+                if not dtype_parts:
+                    return None
+                dt = np.dtype(dtype_parts)
+                order = "<" if is_binary_little else ">"
+                dt = dt.newbyteorder(order)
+                data = np.frombuffer(fh.read(n_vertices * dt.itemsize), dtype=dt)
+                xyz = np.column_stack([data["x"], data["y"], data["z"]]).astype(np.float32)
+                rgb: Optional[np.ndarray] = None
+                names = {p[2] for p in props if len(p) >= 3}
+                if {"red", "green", "blue"}.issubset(names):
+                    rgb = np.column_stack(
+                        [data["red"], data["green"], data["blue"]]
+                    ).astype(np.uint8)
+                return xyz, rgb
+            else:
+                rows_xyz = []
+                rows_rgb: list[list[int]] = []
+                has_rgb = False
+                for _ in range(n_vertices):
+                    vals = fh.readline().split()
+                    if len(vals) >= 3:
+                        rows_xyz.append([float(vals[0]), float(vals[1]), float(vals[2])])
+                        if len(vals) >= 6:
+                            rows_rgb.append([int(vals[3]), int(vals[4]), int(vals[5])])
+                            has_rgb = True
+                if not rows_xyz:
+                    return None
+                xyz_arr = np.array(rows_xyz, dtype=np.float32)
+                rgb_arr: Optional[np.ndarray] = (
+                    np.array(rows_rgb, dtype=np.uint8) if has_rgb else None
+                )
+                return xyz_arr, rgb_arr
+
+    def sample(
+        self, simulator: Any, origin_xy: Tuple[float, float]
+    ) -> Tuple[np.ndarray, np.ndarray, float, float, float, int, int]:
+        """Load external PLY or cast panoramic rays, then build occupancy.
+
+        When ``ply.source`` is set to an existing file path the cloud is loaded
+        directly from that file instead of being cast by Habitat (useful for
+        pre-baked semantic PLY exports from the MP3D dataset).
+
+        Args:
+            simulator: Backend with ``world_cloud`` / ``linspace_angles`` / ``eye_height``.
+            origin_xy: Planar map origin ``(x, y)`` (usually spawn).
+
+        Returns:
+            ``(cloud_xyz, grid, resolution, origin_x, origin_y, width, height)``.
+        """
+        if self.cached_cloud is not None and self.cached_grid is not None:
+            grid, resolution, ox, oy, width, height = self.cached_grid
+            return self.cached_cloud, grid, resolution, ox, oy, width, height
+
+        procedural = self.sample_scenario(simulator)
+        if procedural is not None:
+            cloud, grid, resolution, ox, oy, width, height = procedural
+            self.cached_cloud = cloud
+            self.cached_grid = (grid, resolution, ox, oy, width, height)
+            return cloud, grid, resolution, ox, oy, width, height
+
+        ply_cfg = self.settings.get("ply") or {}
+        source_path = str(ply_cfg.get("source") or "").strip()
+        self.cloud_rgb: Optional[np.ndarray] = None
+        if source_path:
+            loaded = self.load_ply_file(source_path)
+            if loaded is not None:
+                xyz_raw, rgb_raw = loaded
+                # map_y = -Habitat_Z = PLY.y  (matches autonomy_ros convention).
+                # MP3D semantic PLY: PLY (x, y, z) = (Habitat_X, -Habitat_Z, height).
+                # Direct passthrough — no axis negation needed.
+                # Use float64 to avoid silent float32 overflow in corrupt PLY
+                # vertices that have finite-but-garbage values (e.g. 3e38).
+                converted = xyz_raw.astype(np.float64)
+                # 1. Drop NaN / Inf.
+                finite_mask = np.all(np.isfinite(converted), axis=1)
+                # 2. Coarse sanity guard: discard vertices beyond ±200 m on any
+                #    axis (MP3D buildings are ≤ ~100 m; this removes float32 junk
+                #    that passes isfinite but has magnitude ~1e38).
+                coarse_mask = (np.abs(converted[:, 0]) < 200.0) & \
+                              (np.abs(converted[:, 1]) < 200.0) & \
+                              (np.abs(converted[:, 2]) < 50.0)
+                pre_mask = finite_mask & coarse_mask
+                # 3. Percentile-based outlier removal on all three axes.
+                #    Uses 0.1th – 99.9th percentile with a 5 % margin to
+                #    aggressively remove stray spikes (e.g. the vertical line
+                #    artefact that survives the coarse guard).
+                outlier_mask = pre_mask
+                if pre_mask.sum() > 100:
+                    c_pre = converted[pre_mask]
+                    margin = 0.05
+                    bounds = []
+                    for ax in range(3):
+                        p_lo = float(np.percentile(c_pre[:, ax], 0.1))
+                        p_hi = float(np.percentile(c_pre[:, ax], 99.9))
+                        span = p_hi - p_lo
+                        bounds.append((p_lo - margin * span, p_hi + margin * span))
+                    outlier_mask = (
+                        (converted[:, 0] >= bounds[0][0]) & (converted[:, 0] <= bounds[0][1]) &
+                        (converted[:, 1] >= bounds[1][0]) & (converted[:, 1] <= bounds[1][1]) &
+                        (converted[:, 2] >= bounds[2][0]) & (converted[:, 2] <= bounds[2][1])
+                    )
+                # 4. Optional z-height filter.  Priority: ply.z_min/ply.z_max >
+                #    grid.z_min/grid.z_max > no filter (publish all floors).
+                ply_cfg_inner = self.settings.get("ply") or {}
+                grid_config = self.settings.get("grid") or {}
+                z_min = ply_cfg_inner.get("z_min", grid_config.get("z_min"))
+                z_max = ply_cfg_inner.get("z_max", grid_config.get("z_max"))
+                if z_min is not None and z_max is not None:
+                    z_mask = (converted[:, 2] >= float(z_min)) & (converted[:, 2] <= float(z_max))
+                else:
+                    z_mask = np.ones(len(converted), dtype=bool)
+                mask = finite_mask & coarse_mask & outlier_mask & z_mask
+                cloud = converted[mask].astype(np.float32)
+                if rgb_raw is not None:
+                    self.cloud_rgb = rgb_raw[mask]
+            else:
+                cloud = self.sample_ply_cloud(simulator, origin_xy)
+        else:
+            cloud = self.sample_ply_cloud(simulator, origin_xy)
+
+        grid_cfg = self.settings["grid"]
+        navmesh_grid = self.project_grid_from_navmesh(simulator, grid_cfg)
+        if navmesh_grid is not None:
+            grid, resolution, ox, oy, width, height = navmesh_grid
+        else:
+            eye = float(simulator.eye_height())
+            origin = (float(origin_xy[0]), float(origin_xy[1]), eye)
+            grid, resolution, ox, oy, width, height = self.project_grid(
+                cloud, grid_cfg, origin)
+        file_path = str(ply_cfg.get("file") or "").strip()
+        if file_path:
+            self.write_ply(self.resolve_ply_path(file_path), cloud)
+        self.cached_cloud = cloud
+        self.cached_grid = (grid, resolution, ox, oy, width, height)
+        return cloud, grid, resolution, ox, oy, width, height
+
+    @staticmethod
+    def sample_scenario(
+        simulator: Any,
+    ) -> Optional[Tuple[np.ndarray, np.ndarray, float, float, float, int, int]]:
+        """Use the procedural cloud and grid when the simulator built a scenario."""
+        points = getattr(simulator, "scenario_points", None)
+        grid = getattr(simulator, "scenario_grid", None)
+        if points is None or grid is None:
+            return None
+        cloud = np.asarray(points, dtype=np.float32).reshape(-1, 3)
+        if cloud.size == 0:
+            return None
+        cells, resolution, ox, oy, width, height = grid
+        return cloud, cells, float(resolution), float(ox), float(oy), int(width), int(height)
+
+    def project_grid_from_navmesh(
+        self,
+        simulator: Any,
+        grid_cfg: Mapping[str, Any],
+    ) -> Optional[Tuple[np.ndarray, float, float, float, int, int]]:
+        """Prefer Habitat navmesh topdown occupancy when available.
+
+        Returns ``None`` when no loaded pathfinder is available, so callers may
+        fall back to the point-cloud projection path.
+        """
+        session = getattr(simulator, "session", None)
+        pathfinder = getattr(session, "pathfinder", None)
+        if pathfinder is None or not bool(getattr(pathfinder, "is_loaded", False)):
+            return None
+
+        resolution = float(grid_cfg["resolution"])
+        island_radius = float(grid_cfg.get("island_radius", 0.5))
+        floor_height = float(getattr(simulator, "floor_y", 0.0) or 0.0)
+        if abs(floor_height) < 1e-6:
+            random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+            if callable(random_nav):
+                try:
+                    point = random_nav()
+                    if point is not None and len(point) >= 2:
+                        floor_height = float(point[1])
+                except Exception:
+                    pass
+
+        get_topdown_view = getattr(pathfinder, "get_topdown_view", None)
+        get_bounds = getattr(pathfinder, "get_bounds", None)
+        if not callable(get_topdown_view) or not callable(get_bounds):
+            return None
+
+        navigable = np.asarray(
+            get_topdown_view(resolution, floor_height, island_radius),
+            dtype=bool,
+        )
+        if navigable.size == 0:
+            return None
+
+        lo, hi = get_bounds()
+        origin_x = float(min(float(lo[0]), float(hi[0])))
+        origin_z = float(min(float(lo[2]), float(hi[2])))
+        height, width = navigable.shape
+        # map_y = -Habitat_Z (autonomy_ros convention).
+        # get_topdown_view row-0 = min Habitat-Z = max map-y (north edge).
+        # Flip rows so row-0 = min map-y; adjust origin_y accordingly.
+        grid = np.where(navigable, 0, 100).astype(np.int8)[::-1, :]
+        origin_y = -(origin_z + height * resolution)
+        return grid, resolution, origin_x, origin_y, width, height
+
+    def sample_ply_cloud(self, simulator: Any, origin_xy: Tuple[float, float]) -> np.ndarray:
+        """Panoramic Habitat cloud in map frame (z-up) from ``map.ply`` FOV."""
+        ply_cfg = self.settings["ply"]
+        horizontal = ply_cfg.get("horizontal")
+        vertical = ply_cfg.get("vertical")
+        if horizontal is None or vertical is None:
+            return np.zeros((0, 3), dtype=np.float32)
+        range_max = float(ply_cfg.get("range_max", self.settings.get("range_max", 30.0)))
+        h_angles = simulator.linspace_angles(
+            float(horizontal["angle_min"]),
+            float(horizontal["angle_max"]),
+            int(horizontal["num_beams"]),
+        )
+        v_angles = simulator.linspace_angles(
+            float(vertical["angle_min"]),
+            float(vertical["angle_max"]),
+            int(vertical["num_rings"]),
+        )  # type: ignore[union-attr]
+        eye = float(simulator.eye_height())
+        return simulator.world_cloud(
+            float(origin_xy[0]),
+            float(origin_xy[1]),
+            eye,
+            h_angles,
+            v_angles,
+            range_max,
+        )
+
+    @staticmethod
+    def resolve_ply_path(path: str) -> Path:
+        """Resolve PLY path relative to the autosim project root when not absolute."""
+        candidate = Path(path)
+        if candidate.is_absolute():
+            return candidate
+        from autosim.paths import project_root
+
+        return (project_root() / candidate).resolve()
+
+    @staticmethod
+    def write_ply(path: Path, cloud: np.ndarray) -> None:
+        """Write an ASCII PLY (xyz only) for the panoramic cloud."""
+        points = np.asarray(cloud, dtype=np.float64).reshape(-1, 3)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("w", encoding="utf-8") as handle:
+            handle.write("ply\nformat ascii 1.0\n")
+            handle.write(f"element vertex {points.shape[0]}\n")
+            handle.write("property float x\nproperty float y\nproperty float z\n")
+            handle.write("end_header\n")
+            for x, y, z in points:
+                handle.write(f"{x:.6f} {y:.6f} {z:.6f}\n")
+
+    def project_grid(
+        self,
+        cloud: np.ndarray,
+        grid_cfg: Mapping[str, Any],
+        origin: Tuple[float, float, float],
+    ) -> Tuple[np.ndarray, float, float, float, int, int]:
+        """Height-slice occupancy using wall/floor layered marking strategy.
+
+        Matches autonomy_ros ``_occupancy_from_ply_xyz``:
+        - Points above ``WALL_Z_MIN`` (0.1 m) are walls → 100
+        - Points at/below floor level (z ≤ 0) are free → 0
+        - Remaining unknown cells → 100 (conservative)
+        """
+        WALL_Z_MIN = 0.1
+        resolution = float(grid_cfg["resolution"])
+        z_min = float(grid_cfg["z_min"])
+        z_max = float(grid_cfg["z_max"])
+        if cloud.size == 0:
+            return np.full((1, 1), -1, dtype=np.int8), resolution, 0.0, 0.0, 1, 1
+
+        points = np.asarray(cloud, dtype=np.float64).reshape(-1, 3)
+        mask = (points[:, 2] >= z_min) & (points[:, 2] <= z_max)
+        pts = points[mask]
+        if pts.shape[0] == 0:
+            return np.full((1, 1), -1, dtype=np.int8), resolution, 0.0, 0.0, 1, 1
+
+        # Compute grid bounds anchored to floor points (like autonomy_ros).
+        floor_pts = pts[pts[:, 2] <= 1e-6]
+        ref = floor_pts if floor_pts.size else pts
+        ox = float(ref[:, 0].min() - 0.5 * resolution)
+        oy = float(ref[:, 1].min() - 0.5 * resolution)
+        width = max(1, int(math.ceil((pts[:, 0].max() - ox) / resolution)))
+        height = max(1, int(math.ceil((pts[:, 1].max() - oy) / resolution)))
+
+        gx = np.clip(((pts[:, 0] - ox) / resolution).astype(np.int32), 0, width - 1)
+        gy = np.clip(((pts[:, 1] - oy) / resolution).astype(np.int32), 0, height - 1)
+        grid = np.full((height, width), -1, dtype=np.int8)
+
+        # Pass 1: walls.
+        for x, y, z in zip(gx.tolist(), gy.tolist(), pts[:, 2].tolist()):
+            if z >= WALL_Z_MIN - 1e-6:
+                grid[y, x] = 100
+        # Pass 2: free (floor points overwrite walls at their cell).
+        for x, y, z in zip(gx.tolist(), gy.tolist(), pts[:, 2].tolist()):
+            if z <= 1e-6:
+                grid[y, x] = 0
+        # Unknown cells → conservative occupied.
+        grid[grid < 0] = 100
+        return grid, resolution, ox, oy, width, height
+
+    @staticmethod
+    def occupancy_range(
+        origin_x: float,
+        origin_y: float,
+        yaw: float,
+        grid: np.ndarray,
+        resolution: float,
+        grid_origin_x: float,
+        grid_origin_y: float,
+        range_max: float,
+        occupied_threshold: int = 50,
+    ) -> float | None:
+        """First occupied-cell distance along a map-frame ray (Bresenham-like).
+
+        Ensures 2D lidar cannot report hits behind walls that appear on the
+        published occupancy grid (Habitat mesh holes / missing collision).
+        """
+        cells = np.asarray(grid)
+        if cells.ndim != 2 or cells.size == 0 or resolution <= 0.0:
+            return None
+        height, width = cells.shape
+        step = max(float(resolution) * 0.5, 1e-3)
+        cos_y = math.cos(float(yaw))
+        sin_y = math.sin(float(yaw))
+        dist = 0.0
+        while dist < float(range_max):
+            dist += step
+            x = float(origin_x) + dist * cos_y
+            y = float(origin_y) + dist * sin_y
+            col = int(math.floor((x - float(grid_origin_x)) / resolution))
+            row = int(math.floor((y - float(grid_origin_y)) / resolution))
+            if row < 0 or col < 0 or row >= height or col >= width:
+                return None
+            if int(cells[row, col]) >= int(occupied_threshold):
+                return float(dist)
+        return None
+
+    def clip_laser_ranges(
+        self,
+        ranges: np.ndarray,
+        angles: np.ndarray,
+        origin_x: float,
+        origin_y: float,
+        yaw: float,
+        range_max: float,
+    ) -> np.ndarray:
+        """Clip Habitat ranges so beams stop at the first occupied grid cell."""
+        cached = self.cached_grid
+        if cached is None:
+            return ranges
+        grid, resolution, ox, oy, _, _ = cached
+        out = np.asarray(ranges, dtype=np.float32).copy()
+        for index, angle in enumerate(np.asarray(angles, dtype=np.float64).reshape(-1)):
+            occupied = self.occupancy_range(
+                origin_x,
+                origin_y,
+                float(yaw) + float(angle),
+                grid,
+                resolution,
+                ox,
+                oy,
+                float(range_max),
+            )
+            if occupied is None:
+                continue
+            current = float(out[index])
+            if not math.isfinite(current) or occupied < current:
+                out[index] = float(occupied)
+        return out

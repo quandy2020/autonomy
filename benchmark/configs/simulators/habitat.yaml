@@ -1,0 +1,6 @@
+name: habitat
+backend: habitat
+description: Habitat-Sim GLB / MP3D scenes
+autosim_config: ../autosim/config/default.yaml
+rate_hz: 10
+headless: true

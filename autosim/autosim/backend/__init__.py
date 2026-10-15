@@ -12,9 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Backend protocol and registry for Habitat / fake / Isaac worlds."""
+"""Backend protocol, capabilities, and registry for world engines."""
 
+from autosim.backend.capabilities import capability
 from autosim.backend.protocol import WorldBackend, optional_call
 from autosim.backend.registry import BACKENDS, create_backend
 
-__all__ = ["BACKENDS", "WorldBackend", "create_backend", "optional_call"]
+__all__ = [
+    "BACKENDS",
+    "WorldBackend",
+    "capability",
+    "create_backend",
+    "optional_call",
+]

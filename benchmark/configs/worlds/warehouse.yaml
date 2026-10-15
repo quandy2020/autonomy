@@ -1,0 +1,9 @@
+name: warehouse
+scenario_type: posts
+seed: 7
+resolution: 0.1
+x_length: 40
+y_length: 30
+obstacle_number: 200
+width_min: 0.8
+width_max: 2.0

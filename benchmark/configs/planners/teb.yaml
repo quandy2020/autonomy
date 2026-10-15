@@ -1,0 +1,6 @@
+name: teb
+type: classic
+desired_linear_vel: 0.4
+max_angular_vel: 1.2
+max_angular_acc: 2.5
+dt: 0.1

@@ -1,0 +1,7 @@
+format: markdown
+output_dir: data/eval_results
+plots:
+  - success_over_episodes
+  - path_length_hist
+  - clearance_timeseries
+include_config: true

@@ -337,10 +337,20 @@ class Pedestrian:
         radius = float(self.settings["radius"])
         if radius <= 0.0:
             raise ValueError("scenario.pedestrian.radius must be > 0")
+        center = (
+            float(self.settings.get("center_x", 0.0)),
+            float(self.settings.get("center_y", 0.0)),
+        )
+        spawn = (
+            float(self.settings.get("spawn_x", center[0])),
+            float(self.settings.get("spawn_y", center[1])),
+        )
         return Arena(
             float(self.settings["x_length"]),
             float(self.settings["y_length"]),
             radius,
             float(self.settings["spawn_radius"]),
             "scenario map is smaller than a pedestrian",
+            center=center,
+            spawn_center=spawn,
         )

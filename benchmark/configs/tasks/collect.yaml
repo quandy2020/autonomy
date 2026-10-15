@@ -1,0 +1,17 @@
+name: collect
+type: collect
+description: Record JSONL episodes (+ optional LeRobot)
+mode: scenario
+episodes: 3
+episode_frames: 80
+fps: 10
+output: data/datasets/collect
+lerobot: false
+goal_tolerance_m: 0.4
+obstacles: 6
+pedestrians: 0
+moving_obstacles: 0
+goal_x: 4.0
+goal_y: 0.0
+include_image: false
+include_laser: true

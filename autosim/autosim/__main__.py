@@ -14,7 +14,7 @@
 
 """Module entry: ``python -m autosim``."""
 
-from autosim.runner import Runner
+from autosim.runtime import Runner
 
 
 def run() -> None:

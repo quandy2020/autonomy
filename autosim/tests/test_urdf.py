@@ -20,7 +20,7 @@ from pathlib import Path
 import pytest
 
 from autosim.config import Config
-from autosim.urdf import UrdfModel
+from autosim.robot.urdf import UrdfModel
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -188,7 +188,7 @@ def test_reject_missing_urdf():
 
 
 def test_mock_simulator_loads_mounts():
-    from autosim.simulator import Simulator
+    from autosim.backends.habitat.simulator import Simulator
 
     data = minimal_robot_config(urdf="urdf/husky.urdf")
     sim = Simulator(

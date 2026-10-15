@@ -224,7 +224,7 @@ class Scenario:
 
     def fill_perlin2d(self, shape: tuple[int, int, int]) -> np.ndarray:
         """2D Perlin extruded through z (a planar counterpart of type 1)."""
-        nx, ny, _nz = shape
+        nx, ny, nz = shape
         ii, jj = np.meshgrid(np.arange(nx), np.arange(ny), indexing="ij")
         field = self.perlin_field(ii, jj, np.zeros_like(ii))
         mask = Perlin.occupy(field, float(self.settings["fill"]))

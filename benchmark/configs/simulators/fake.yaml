@@ -1,0 +1,6 @@
+name: fake
+backend: fake
+description: Lightweight differential-drive + raycast (autosim fake)
+autosim_config: ../autosim/config/fake.yaml
+rate_hz: 10
+headless: true

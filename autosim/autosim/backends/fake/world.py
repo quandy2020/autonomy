@@ -21,14 +21,17 @@ from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
 
-from autosim.fake.map import Map as FakeMap
-from autosim.fake.sensor import Sensor as FakeSensor
+from autosim.backend.capabilities import FAKE_CAPABILITIES
+from autosim.backends.fake.map import Map as FakeMap
+from autosim.backends.fake.sensor import Sensor as FakeSensor
 from autosim.scenario.map.volume import Volume
-from autosim.urdf import UrdfModel
+from autosim.robot.urdf import UrdfModel
 
 
 class FakeWorld:
     """WorldBackend backed by scenario occupancy + pinhole raycast."""
+
+    capabilities = FAKE_CAPABILITIES
 
     def __init__(
         self,
@@ -49,9 +52,9 @@ class FakeWorld:
             self.urdf = UrdfModel.load(str(urdf_path or ""))
         except (FileNotFoundError, ValueError):
             self.urdf = None
-        self._sensor = FakeSensor(camera)
-        self.width = int(self._sensor.width)
-        self.height = int(self._sensor.height)
+        self.ray_sensor = FakeSensor(camera)
+        self.width = int(self.ray_sensor.width)
+        self.height = int(self.ray_sensor.height)
         self.map_builder: Optional[FakeMap] = None
         if map_cfg and map_cfg.get("enabled", False) and scenario_cfg:
             self.map_builder = FakeMap(map_cfg).build(scenario_cfg)
@@ -94,7 +97,7 @@ class FakeWorld:
         return None
 
     def eye_height(self) -> float:
-        return float(self._sensor.sensor_height)
+        return float(self.ray_sensor.sensor_height)
 
     def linspace_angles(
         self, angle_min: float, angle_max: float, count: int
@@ -105,7 +108,7 @@ class FakeWorld:
             float(angle_min), float(angle_max), num=int(count), dtype=np.float64
         )
 
-    def _volume(self) -> tuple[np.ndarray, np.ndarray, float] | None:
+    def occupancy_volume(self) -> tuple[np.ndarray, np.ndarray, float] | None:
         built = self.map_builder
         if built is None or built.occupied is None:
             return None
@@ -119,7 +122,7 @@ class FakeWorld:
         range_max: float,
     ) -> np.ndarray:
         angles = self.linspace_angles(angle_min, angle_max, num_beams)
-        volume = self._volume()
+        volume = self.occupancy_volume()
         if volume is None:
             return np.full((int(num_beams),), np.nan, dtype=np.float32)
         occupied, origin, resolution = volume
@@ -162,9 +165,10 @@ class FakeWorld:
         v_max: float,
         v_rings: int,
         range_max: float,
-        **_kwargs: Any,
+        **kwargs: Any,
     ) -> Tuple[np.ndarray, np.ndarray]:
-        volume = self._volume()
+        del kwargs
+        volume = self.occupancy_volume()
         if volume is None:
             return np.zeros((0, 3), dtype=np.float32), np.zeros((0,), dtype=np.float32)
         occupied, origin, resolution = volume
@@ -226,14 +230,14 @@ class FakeWorld:
         )
 
     def color_depth(self) -> Tuple[np.ndarray, np.ndarray]:
-        volume = self._volume()
+        volume = self.occupancy_volume()
         color = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         color[..., 1] = 128
         if volume is None:
             depth = np.full((self.height, self.width), np.nan, dtype=np.float32)
             return color, depth
         occupied, origin, resolution = volume
-        depth, _, _ = self._sensor.render_depth(
+        depth, _, _ = self.ray_sensor.render_depth(
             occupied,
             origin,
             resolution,
@@ -244,11 +248,11 @@ class FakeWorld:
 
     def sample_depth_points(self) -> np.ndarray:
         """RGBD FoV cloud in ``camera_link`` (fake raycast path)."""
-        volume = self._volume()
+        volume = self.occupancy_volume()
         if volume is None:
             return np.zeros((0, 3), dtype=np.float32)
         occupied, origin, resolution = volume
-        return self._sensor.sample_points(
+        return self.ray_sensor.sample_points(
             occupied,
             origin,
             resolution,

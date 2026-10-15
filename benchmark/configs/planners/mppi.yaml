@@ -1,0 +1,12 @@
+name: mppi
+type: autonomy
+# When autonomy.control binary + autolink are present, commands are mirrored
+# to /cmd_vel. Otherwise falls back to local sampling MPC.
+controller: mppi
+bridge_node: benchmark_mppi
+cmd_vel: /cmd_vel
+odom: /odom
+horizon: 10
+dt: 0.05
+max_linear_vel: 0.5
+max_angular_vel: 1.2

@@ -1,0 +1,12 @@
+name: navigate
+type: navigate
+mode: random
+episodes: 20
+timeout_s: 90
+goal_tolerance_m: 0.35
+seed: 42
+obstacles_min: 8
+obstacles_max: 25
+pedestrians_min: 2
+pedestrians_max: 10
+moving_obstacles: 3

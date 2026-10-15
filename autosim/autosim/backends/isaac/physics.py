@@ -19,9 +19,9 @@ from __future__ import annotations
 import logging
 from typing import Any, Mapping, Optional
 
-_LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
-_DEFAULTS = {
+PHYSICS_DEFAULTS = {
     "enabled": True,
     "block_motion": True,
     "dt": 1.0 / 60.0,
@@ -30,6 +30,8 @@ _DEFAULTS = {
     "freeze_scene": True,
     "add_ground": False,
     "ensure_scene_colliders": True,
+    "strip_nested_rigid_bodies": True,
+    "physics_scene_path": "/physicsScene",
 }
 
 
@@ -43,16 +45,22 @@ def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
             block = dict(raw)
         elif "physics" not in isaac and isinstance(habitat.get("physics"), Mapping):
             block = dict(habitat["physics"])
-    out = dict(_DEFAULTS)
+    out = dict(PHYSICS_DEFAULTS)
     out.update(block)
     out["enabled"] = bool(out.get("enabled", True))
     out["block_motion"] = bool(out.get("block_motion", True))
     out["freeze_scene"] = bool(out.get("freeze_scene", True))
     out["add_ground"] = bool(out.get("add_ground", False))
     out["ensure_scene_colliders"] = bool(out.get("ensure_scene_colliders", True))
+    out["strip_nested_rigid_bodies"] = bool(
+        out.get("strip_nested_rigid_bodies", True)
+    )
     out["dt"] = float(out.get("dt", 1.0 / 60.0))
     out["robot_radius"] = float(out.get("robot_radius", 0.12))
     out["robot_height"] = float(out.get("robot_height", 0.28))
+    out["physics_scene_path"] = str(
+        out.get("physics_scene_path") or "/physicsScene"
+    )
     return out
 
 
@@ -67,7 +75,7 @@ class IsaacPhysics:
         config: Mapping[str, Any],
         render: bool = True,
     ) -> None:
-        self._world = world
+        self.physics_world = world
         self.robot_prim_path = str(robot_prim_path)
         self.config = dict(config)
         self.render = bool(render)
@@ -92,13 +100,29 @@ class IsaacPhysics:
         try:
             from isaacsim.core.api.world import World
         except ImportError as exc:
-            _LOG.warning("isaacsim.core.api.world unavailable: %s", exc)
+            logger.warning("isaacsim.core.api.world unavailable: %s", exc)
             return None
 
         stage = getattr(stage_wrapper, "stage", None)
         if stage is None:
             return None
 
+        physics_prim_path = str(
+            config.get("physics_scene_path") or "/physicsScene"
+        )
+        ensure_physics_scene(stage, path=physics_prim_path)
+
+        # Let payload references finish composing before we mutate physics APIs.
+        for _ in range(3):
+            try:
+                from autosim.backends.isaac.app import update_app
+
+                update_app()
+            except Exception:
+                break
+
+        if config.get("strip_nested_rigid_bodies", True):
+            strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
         if config.get("ensure_scene_colliders", True):
             ensure_scene_colliders(stage, skip_prefix=robot_prim_path)
         if config.get("freeze_scene", True):
@@ -113,28 +137,33 @@ class IsaacPhysics:
             height=float(config.get("robot_height", 0.28)),
         )
 
+        # Re-strip once more immediately before World so async payload
+        # RigidBodyAPIs cannot sneak past the first pass.
+        if config.get("strip_nested_rigid_bodies", True):
+            strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
+
         dt = float(config.get("dt", 1.0 / 60.0))
         try:
             world = World(
                 physics_dt=dt,
                 rendering_dt=dt,
                 stage_units_in_meters=1.0,
-                physics_prim_path="/physicsScene",
+                physics_prim_path=physics_prim_path,
                 set_defaults=False,
             )
         except Exception as exc:  # noqa: BLE001 — Kit already has a World
-            _LOG.warning("World() failed (%s); retrying via instance()", exc)
+            logger.warning("World() failed (%s); retrying via instance()", exc)
             try:
                 world = World.instance()
             except Exception as exc2:  # noqa: BLE001
-                _LOG.warning("physics World unavailable: %s", exc2)
+                logger.warning("physics World unavailable: %s", exc2)
                 return None
         try:
             world.reset()
         except Exception as exc:  # noqa: BLE001
-            _LOG.warning("world.reset() failed: %s", exc)
+            logger.warning("world.reset() failed: %s", exc)
 
-        _LOG.info(
+        logger.info(
             "Isaac PhysX enabled (dt=%.4f, robot_r=%.3f, block_motion=%s)",
             dt,
             float(config.get("robot_radius", 0.12)),
@@ -147,21 +176,40 @@ class IsaacPhysics:
             render=render,
         )
 
-    def step(self) -> None:
-        """Advance one PhysX + (optional) render frame."""
-        world = self._world
+    def step(self, *, render: bool = False) -> None:
+        """Advance one PhysX step.
+
+        Default ``render=False``: the 50Hz control loop must not pay for a full
+        RTX frame every tick (that drops RGB well below 5Hz on InteriorAgent).
+        Call ``render_frame()`` only when sampling the camera.
+        """
+        world = self.physics_world
         if world is None:
             return
         try:
-            world.step(render=self.render)
+            world.step(render=bool(render))
         except Exception as exc:  # noqa: BLE001
-            _LOG.debug("world.step failed: %s", exc)
+            logger.debug("world.step failed: %s", exc)
             try:
                 from autosim.backends.isaac.app import update_app
 
                 update_app()
             except Exception:
                 pass
+
+    def render_frame(self) -> None:
+        """One RTX / Kit frame for RGB-D (no extra PhysX substep when possible)."""
+        world = self.physics_world
+        if world is None:
+            return
+        try:
+            render = getattr(world, "render", None)
+            if callable(render):
+                render()
+                return
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("world.render failed: %s", exc)
+        self.step(render=True)
 
     def overlaps(self, x: float, y: float, *, z: float = 0.15) -> bool:
         """Return True when a robot-sized sphere at ``(x,y,z)`` hits geometry.
@@ -173,8 +221,8 @@ class IsaacPhysics:
         return overlap_sphere((float(x), float(y), float(z)), radius)
 
     def close(self) -> None:
-        world = self._world
-        self._world = None
+        world = self.physics_world
+        self.physics_world = None
         if world is None:
             return
         try:
@@ -194,6 +242,70 @@ def count_collision_apis(stage: Any) -> int:
         if prim.HasAPI(UsdPhysics.CollisionAPI):
             n += 1
     return n
+
+
+def ensure_physics_scene(stage: Any, *, path: str = "/physicsScene") -> str:
+    """Define a ``PhysicsScene`` prim so SimulationManager can create a view."""
+    from pxr import UsdPhysics
+
+    target = str(path or "/physicsScene")
+    prim = stage.GetPrimAtPath(target)
+    if prim and prim.IsValid() and prim.GetTypeName() == "PhysicsScene":
+        return target
+    UsdPhysics.Scene.Define(stage, target)
+    logger.info("created PhysicsScene at %s", target)
+    return target
+
+
+def strip_nested_rigid_bodies(stage: Any, *, skip_prefix: str) -> int:
+    """Remove nested ``RigidBodyAPI`` under another rigid body.
+
+    InteriorAgent door/window/cabinet USD nests RigidBodyAPI on both the
+    asset root and ``group_0000``. PhysX schema then errors about missing
+    xformStack reset — and it keys off API *presence*, so setting
+    ``rigidBodyEnabled=False`` is not enough. Drop the child API; keep the
+    outermost body (later frozen kinematic). Mesh CollisionAPI stays.
+    """
+    from pxr import UsdPhysics
+
+    skip = str(skip_prefix).rstrip("/")
+    removed = 0
+    # Collect first: mutating during Traverse can skip siblings.
+    nested_paths: list[str] = []
+    for prim in stage.Traverse():
+        path = str(prim.GetPath())
+        if path == skip or path.startswith(skip + "/"):
+            continue
+        if not prim.HasAPI(UsdPhysics.RigidBodyAPI):
+            continue
+        parent = prim.GetParent()
+        while parent and parent.IsValid() and str(parent.GetPath()) not in ("/", ""):
+            if parent.HasAPI(UsdPhysics.RigidBodyAPI):
+                nested_paths.append(path)
+                break
+            parent = parent.GetParent()
+    for path in nested_paths:
+        prim = stage.GetPrimAtPath(path)
+        if not prim or not prim.IsValid():
+            continue
+        if not prim.HasAPI(UsdPhysics.RigidBodyAPI):
+            continue
+        try:
+            if not prim.RemoveAPI(UsdPhysics.RigidBodyAPI):
+                # Fallback for stubborn referenced opinions.
+                api = UsdPhysics.RigidBodyAPI(prim)
+                attr = api.GetRigidBodyEnabledAttr()
+                if not attr:
+                    api.CreateRigidBodyEnabledAttr(False)
+                else:
+                    attr.Set(False)
+                continue
+            removed += 1
+        except Exception:
+            continue
+    if removed:
+        logger.info("removed %d nested scene RigidBodyAPI(s)", removed)
+    return removed
 
 
 def freeze_scene_rigid_bodies(stage: Any, *, skip_prefix: str) -> int:
@@ -219,7 +331,7 @@ def freeze_scene_rigid_bodies(stage: Any, *, skip_prefix: str) -> int:
         except Exception:
             continue
     if fixed:
-        _LOG.info("froze %d scene rigid bodies as kinematic", fixed)
+        logger.info("froze %d scene rigid bodies as kinematic", fixed)
     return fixed
 
 
@@ -230,7 +342,7 @@ def ensure_scene_colliders(stage: Any, *, skip_prefix: str) -> int:
     try:
         from omni.physx.scripts import utils as physx_utils
     except ImportError:
-        return _ensure_colliders_usdphysics(stage, skip_prefix=skip_prefix)
+        return ensure_colliders_usdphysics(stage, skip_prefix=skip_prefix)
 
     from pxr import UsdGeom
 
@@ -248,11 +360,11 @@ def ensure_scene_colliders(stage: Any, *, skip_prefix: str) -> int:
         except Exception:
             continue
     if added:
-        _LOG.info("added static colliders on %d meshes", added)
+        logger.info("added static colliders on %d meshes", added)
     return added
 
 
-def _ensure_colliders_usdphysics(stage: Any, *, skip_prefix: str) -> int:
+def ensure_colliders_usdphysics(stage: Any, *, skip_prefix: str) -> int:
     from pxr import UsdGeom, UsdPhysics
 
     skip = str(skip_prefix).rstrip("/")
@@ -288,7 +400,7 @@ def add_ground_plane(stage: Any, *, path: str = "/World/AutosimGround") -> None:
     xform.AddTranslateOp().Set(Gf.Vec3f(0.0, 0.0, -0.05))
     xform.AddScaleOp().Set(Gf.Vec3f(200.0, 200.0, 0.1))
     UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
-    _LOG.info("added ground collision plane at %s", path)
+    logger.info("added ground collision plane at %s", path)
 
 
 def attach_robot_capsule(
@@ -322,23 +434,29 @@ def attach_robot_capsule(
         except Exception:
             pass
 
-    # Rigid body on robot root (kinematic: cmd_vel / set_pose still drives pose).
+    # Single RigidBody on the robot root (kinematic). Collision lives on the
+    # child capsule — never put a second RigidBodyAPI under the root or PhysX
+    # errors with "missing xformstack reset" and RGB mount becomes unreliable.
+    capsule_prim = stage.GetPrimAtPath(capsule_path)
+    if capsule_prim and capsule_prim.IsValid():
+        try:
+            if capsule_prim.HasAPI(UsdPhysics.RigidBodyAPI):
+                capsule_prim.RemoveAPI(UsdPhysics.RigidBodyAPI)
+        except Exception:
+            pass
+        if not capsule_prim.HasAPI(UsdPhysics.CollisionAPI):
+            UsdPhysics.CollisionAPI.Apply(capsule_prim)
+
     if not robot.HasAPI(UsdPhysics.RigidBodyAPI):
         rb = UsdPhysics.RigidBodyAPI.Apply(robot)
         rb.CreateRigidBodyEnabledAttr(True)
         rb.CreateKinematicEnabledAttr(True)
     else:
         rb = UsdPhysics.RigidBodyAPI(robot)
-        rb.GetKinematicEnabledAttr().Set(True)
         rb.CreateRigidBodyEnabledAttr(True)
+        rb.GetKinematicEnabledAttr().Set(True)
 
-    capsule_prim = stage.GetPrimAtPath(capsule_path)
-    if capsule_prim and capsule_prim.IsValid() and not capsule_prim.HasAPI(
-        UsdPhysics.CollisionAPI
-    ):
-        UsdPhysics.CollisionAPI.Apply(capsule_prim)
-
-    _LOG.info(
+    logger.info(
         "robot kinematic capsule at %s (r=%.3f h=%.3f)",
         capsule_path,
         float(radius),
@@ -358,10 +476,11 @@ def overlap_sphere(position: tuple[float, float, float], radius: float) -> bool:
     except Exception:
         return False
 
-    hit = {"ok": False}
+    overlap = {"ok": False}
 
-    def _report(_hit: Any) -> bool:
-        hit["ok"] = True
+    def report_overlap(contact: Any) -> bool:
+        del contact
+        overlap["ok"] = True
         return False  # stop after first contact
 
     try:
@@ -369,18 +488,18 @@ def overlap_sphere(position: tuple[float, float, float], radius: float) -> bool:
         query.overlap_sphere(
             float(radius),
             (float(position[0]), float(position[1]), float(position[2])),
-            _report,
+            report_overlap,
         )
     except TypeError:
         try:
             query.overlap_sphere(
                 float(radius),
                 (float(position[0]), float(position[1]), float(position[2])),
-                _report,
+                report_overlap,
                 None,
             )
         except Exception:
             return False
     except Exception:
         return False
-    return bool(hit["ok"])
+    return bool(overlap["ok"])

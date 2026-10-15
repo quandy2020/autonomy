@@ -1,0 +1,8 @@
+name: navigate
+type: navigate
+mode: parametrized
+episodes: 20
+timeout_s: 90
+goal_tolerance_m: 0.35
+difficulty: 0.6
+seed: 7

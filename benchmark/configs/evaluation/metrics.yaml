@@ -1,0 +1,18 @@
+# Arena Evaluation metric suites
+safety:
+  - collision_amount
+  - mean_min_clearance
+  - collision_episodes
+efficiency:
+  - success_rate
+  - mean_path_length
+  - mean_time_to_goal
+smoothness:
+  - mean_curvature
+  - mean_jerk
+  - mean_acceleration
+  - mean_roughness
+status:
+  - GOAL_REACHED
+  - COLLISION
+  - TIMEOUT

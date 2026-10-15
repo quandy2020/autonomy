@@ -15,7 +15,9 @@
 """Isaac camera / lidar → Habitat-shaped numpy arrays.
 
 RGB-D uses ``isaacsim.sensors.camera.Camera`` (Replicator render product +
-annotators) parented under the robot Xform so poses follow ``UsdStage.set_pose``.
+annotators) parented under the robot Xform. PhysX/Fabric often leave the
+Replicator view matrix stale, so ``sync_world_pose`` re-applies the eye pose
+after every robot ``set_pose`` (Habitat agent-sensor parity).
 """
 
 from __future__ import annotations
@@ -27,8 +29,9 @@ from typing import Any, Optional, Tuple
 import numpy as np
 
 from autosim.backends.isaac.app import update_app
+from autosim.backends.isaac.coords import map_to_world
 
-_LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class IsaacSensors:
@@ -40,8 +43,8 @@ class IsaacSensors:
 
     # Keep far clip in the robotics band. Isaac defaults (~1e5 m) produce
     # sparse far hits that make autoviz depth colorization flicker.
-    _MIN_DEPTH_M = 0.05
-    _MAX_DEPTH_M = 40.0
+    MIN_DEPTH_M = 0.05
+    MAX_DEPTH_M = 40.0
 
     def __init__(
         self,
@@ -53,10 +56,10 @@ class IsaacSensors:
         self.width = max(1, int(width))
         self.height = max(1, int(height))
         self.eye_height = float(eye_height)
-        self._camera: Any = None
-        self._rgb_annotator: Any = None
-        self._depth_annotator: Any = None
-        self._lidar_annotator: Any = None
+        self.camera_prim: Any = None
+        self.rgb_annotator: Any = None
+        self.depth_annotator: Any = None
+        self.lidar_annotator: Any = None
 
     def attach(
         self,
@@ -68,24 +71,29 @@ class IsaacSensors:
     ) -> None:
         """Bind optional Camera / Replicator annotators (no-op when ``None``)."""
         if camera is not None:
-            self._camera = camera
-        self._rgb_annotator = rgb
-        self._depth_annotator = depth
-        self._lidar_annotator = lidar
+            self.camera_prim = camera
+        self.rgb_annotator = rgb
+        self.depth_annotator = depth
+        self.lidar_annotator = lidar
 
     def mount_robot_camera(
         self,
         robot_prim_path: str,
         *,
         hfov_deg: float = 90.0,
+        rate_hz: float = 30.0,
         prim_suffix: str = "Camera",
         warmup_frames: int = 8,
     ) -> bool:
         """Spawn a forward-looking Camera under ``robot_prim`` and attach it.
 
         Args:
-            robot_prim_path: Parent Xform (e.g. ``/World/Robot``).
+            robot_prim_path: Parent Xform (e.g. ``/Root/Robot``).
             hfov_deg: Horizontal field of view in degrees.
+            rate_hz: Desired acquire rate (``camera.rate_hz``). Applied to the
+                Isaac Camera only when it divides Kit ``rateLimitFrequency``;
+                otherwise the sensor updates every render frame and AutoSim
+                still publishes at ``rate_hz``.
             prim_suffix: Child prim name under the robot.
             warmup_frames: Kit updates so the first RGB/depth frames are valid.
 
@@ -95,66 +103,170 @@ class IsaacSensors:
         try:
             from isaacsim.sensors.camera import Camera
         except ImportError as exc:
-            _LOG.warning("isaacsim.sensors.camera unavailable: %s", exc)
+            logger.warning("isaacsim.sensors.camera unavailable: %s", exc)
             return False
 
         prim_path = f"{robot_prim_path.rstrip('/')}/{prim_suffix}"
+        # arena-isaac: snap frequency to a divisor of the render rate so the
+        # Camera ctor never raises; then FOV via focal_length (not aperture).
+        freq = self.snap_camera_frequency(rate_hz)
         try:
-            cam = Camera(
-                prim_path=prim_path,
-                name="autosim_rgb_camera",
-                resolution=(self.width, self.height),
-                translation=np.array([0.0, 0.0, self.eye_height], dtype=np.float64),
+            cam_kwargs: dict[str, Any] = {
+                "prim_path": prim_path,
+                "name": "autosim_rgb_camera",
+                "resolution": (self.width, self.height),
+                "translation": np.array(
+                    [0.0, 0.0, self.eye_height], dtype=np.float64
+                ),
                 # world axes: +Z up, +X forward (matches autosim map/robot frame).
-                orientation=np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64),
-            )
-            # Re-apply local pose with explicit camera_axes (ctor uses usd default).
-            cam.set_local_pose(
-                translation=[0.0, 0.0, self.eye_height],
-                orientation=[1.0, 0.0, 0.0, 0.0],
-                camera_axes="world",
-            )
-            self._apply_hfov(cam, float(hfov_deg))
+                "orientation": np.array(
+                    [1.0, 0.0, 0.0, 0.0], dtype=np.float64
+                ),
+            }
+            if freq is not None:
+                cam_kwargs["frequency"] = int(freq)
+            cam = Camera(**cam_kwargs)
+            # Local pose under robot — follows parent like Habitat agent sensors.
             try:
-                cam.set_clipping_range(
-                    near_distance=0.1, far_distance=float(self._MAX_DEPTH_M)
+                cam.set_local_pose(
+                    translation=[0.0, 0.0, self.eye_height],
+                    orientation=[1.0, 0.0, 0.0, 0.0],
+                    camera_axes="world",
                 )
             except Exception as exc:  # noqa: BLE001
-                _LOG.debug("could not set camera clipping range: %s", exc)
+                logger.debug("camera set_local_pose fallback: %s", exc)
+            self.apply_horizontal_fov(
+                cam, float(hfov_deg), width=self.width, height=self.height
+            )
+            try:
+                cam.set_clipping_range(
+                    near_distance=0.1, far_distance=float(self.MAX_DEPTH_M)
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("could not set camera clipping range: %s", exc)
             cam.initialize(attach_rgb_annotator=True)
             cam.add_distance_to_image_plane_to_frame()
         except Exception as exc:  # noqa: BLE001 — Kit/Replicator failures vary
-            _LOG.warning("failed to mount Isaac camera at %s: %s", prim_path, exc)
+            logger.warning("failed to mount Isaac camera at %s: %s", prim_path, exc)
             return False
 
-        self._camera = cam
+        self.camera_prim = cam
         for _ in range(max(0, int(warmup_frames))):
             update_app()
-        _LOG.info(
-            "Isaac camera mounted at %s (%dx%d, hfov=%.1f°)",
+        logger.info(
+            "Isaac camera mounted at %s (%dx%d, hfov=%.1f°, freq=%s, publish≈%.0fHz)",
             prim_path,
             self.width,
             self.height,
             float(hfov_deg),
+            freq,
+            float(rate_hz),
         )
         return True
 
     @staticmethod
-    def _apply_hfov(camera: Any, hfov_deg: float) -> None:
-        """Set horizontal aperture from desired FOV (keeps default focal length)."""
+    def snap_camera_frequency(
+        rate_hz: float, *, default_render_hz: int = 60
+    ) -> Optional[int]:
+        """Nearest divisor of Kit render rate (arena-isaac ``_snap_rate``).
+
+        Isaac ``Camera(frequency=…)`` raises unless
+        ``rateLimitFrequency % frequency == 0``. Prefer Kit's configured rate;
+        fall back to 60Hz (arena default) when rate limiting is disabled.
+        """
+        desired = int(round(float(rate_hz)))
+        if desired <= 0:
+            return None
+        render = int(default_render_hz)
+        try:
+            import carb
+            from isaacsim.core.utils.carb import get_carb_setting
+
+            render_hz = get_carb_setting(
+                carb.settings.get_settings(),
+                "/app/runLoops/main/rateLimitFrequency",
+            )
+            if render_hz is not None and float(render_hz) > 0:
+                render = int(round(float(render_hz)))
+        except Exception:
+            pass
+        if render <= 0:
+            return None
+        divisors = [d for d in range(1, render + 1) if render % d == 0]
+        if not divisors:
+            return None
+        snapped = min(divisors, key=lambda d: abs(d - desired))
+        if snapped != desired:
+            logger.info(
+                "camera.rate_hz=%.0f → Camera frequency=%d (divisor of %dHz)",
+                float(rate_hz),
+                snapped,
+                render,
+            )
+        return int(snapped)
+
+    # Back-compat alias for older call sites / tests.
+    safe_camera_frequency = snap_camera_frequency
+
+    def sync_world_pose(
+        self, x: float, y: float, yaw: float, *, base_z: float = 0.0
+    ) -> None:
+        """Drive RGB-D Camera to the robot eye pose in world frame.
+
+        Isaac Camera / Replicator often keeps a stale world matrix when only the
+        parent Xform moves under PhysX/Fabric — call after every ``set_pose``.
+        """
+        cam = self.camera_prim
+        if cam is None:
+            return
+        translation, quat_wxyz = map_to_world(
+            float(x), float(y), float(yaw), z=float(base_z) + self.eye_height
+        )
+        try:
+            cam.set_world_pose(
+                position=translation,
+                orientation=quat_wxyz,
+                camera_axes="world",
+            )
+        except TypeError:
+            try:
+                cam.set_world_pose(translation, quat_wxyz)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("camera set_world_pose failed: %s", exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("camera set_world_pose failed: %s", exc)
+
+    @staticmethod
+    def apply_horizontal_fov(
+        camera: Any,
+        hfov_deg: float,
+        *,
+        width: int = 0,
+        height: int = 0,
+    ) -> None:
+        """Set FOV by adjusting focal length (arena-isaac Camera path).
+
+        ``hfov = 2 * atan(aperture / (2 * focal))`` ⇒
+        ``focal = aperture / (2 * tan(hfov/2))``. Also matches vertical
+        aperture to the pixel aspect so pixels stay square.
+        """
         hfov = max(1.0, min(179.0, float(hfov_deg)))
         try:
-            focal = float(camera.get_focal_length())
-            if focal <= 0.0:
-                focal = 24.0
-                camera.set_focal_length(focal)
-            # horizontal_fov = 2 * atan(aperture / (2 * focal))
-            aperture = 2.0 * focal * math.tan(math.radians(hfov) * 0.5)
-            camera.set_horizontal_aperture(aperture)
+            aperture = float(camera.get_horizontal_aperture())
+            if aperture <= 0.0:
+                aperture = 20.955
+                camera.set_horizontal_aperture(aperture)
+            half = math.radians(hfov) * 0.5
+            focal = aperture / (2.0 * math.tan(half))
+            camera.set_focal_length(float(focal))
+            w = int(width) if int(width) > 0 else 0
+            h = int(height) if int(height) > 0 else 0
+            if w > 0 and h > 0:
+                camera.set_vertical_aperture(aperture * float(h) / float(w))
         except Exception as exc:  # noqa: BLE001
-            _LOG.debug("could not set camera hfov: %s", exc)
+            logger.debug("could not set camera hfov: %s", exc)
 
-    def _to_hw(self, arr: Any) -> np.ndarray:
+    def reshape_hw(self, arr: Any) -> np.ndarray:
         """Normalize Isaac annotator arrays to contiguous ``(H, W)`` float32.
 
         ``distance_to_image_plane`` is documented as ``(width, height, 1)``; a
@@ -176,13 +288,13 @@ class IsaacSensors:
             )
         return np.full((self.height, self.width), np.nan, dtype=np.float32)
 
-    def _sanitize_depth(self, arr: Any) -> np.ndarray:
+    def sanitize_depth(self, arr: Any) -> np.ndarray:
         """Clip invalid / far-plane hits to NaN for stable 32FC1 visualization."""
-        depth = self._to_hw(arr)
+        depth = self.reshape_hw(arr)
         valid = (
             np.isfinite(depth)
-            & (depth > float(self._MIN_DEPTH_M))
-            & (depth < float(self._MAX_DEPTH_M))
+            & (depth > float(self.MIN_DEPTH_M))
+            & (depth < float(self.MAX_DEPTH_M))
         )
         if np.all(valid):
             return depth
@@ -192,11 +304,11 @@ class IsaacSensors:
 
     def close(self) -> None:
         """Detach annotators / destroy render product when present."""
-        cam = self._camera
-        self._camera = None
-        self._rgb_annotator = None
-        self._depth_annotator = None
-        self._lidar_annotator = None
+        cam = self.camera_prim
+        self.camera_prim = None
+        self.rgb_annotator = None
+        self.depth_annotator = None
+        self.lidar_annotator = None
         if cam is None:
             return
         try:
@@ -207,29 +319,29 @@ class IsaacSensors:
             pass
 
     def color_depth(self) -> Tuple[np.ndarray, np.ndarray]:
-        color = self._read_rgb()
-        depth = self._read_depth()
+        color = self.read_rgb()
+        depth = self.read_depth()
         return color, depth
 
-    def _read_rgb(self) -> np.ndarray:
-        if self._camera is not None:
+    def read_rgb(self) -> np.ndarray:
+        if self.camera_prim is not None:
             try:
-                data = self._camera.get_rgb(device="cpu")
+                data = self.camera_prim.get_rgb(device="cpu")
             except Exception:
                 data = None
             if data is not None:
-                rgb = self._to_hw_rgb(data)
+                rgb = self.reshape_rgb(data)
                 if rgb is not None:
                     return rgb
-        if self._rgb_annotator is not None:
-            rgb = self._to_hw_rgb(self._rgb_annotator.get_data())
+        if self.rgb_annotator is not None:
+            rgb = self.reshape_rgb(self.rgb_annotator.get_data())
             if rgb is not None:
                 return rgb
         out = np.zeros((self.height, self.width, 3), dtype=np.uint8)
         out[..., 2] = 64
         return out
 
-    def _to_hw_rgb(self, arr: Any) -> Optional[np.ndarray]:
+    def reshape_rgb(self, arr: Any) -> Optional[np.ndarray]:
         """Normalize RGB annotator output to ``(H, W, 3)`` uint8."""
         data = np.asarray(arr)
         if data.ndim != 3 or data.shape[-1] < 3 or data.size == 0:
@@ -243,18 +355,18 @@ class IsaacSensors:
             )
         return None
 
-    def _read_depth(self) -> np.ndarray:
-        if self._camera is not None:
+    def read_depth(self) -> np.ndarray:
+        if self.camera_prim is not None:
             try:
-                data = self._camera.get_depth(device="cpu")
+                data = self.camera_prim.get_depth(device="cpu")
             except Exception:
                 data = None
             if data is not None and np.asarray(data).size > 0:
-                return self._sanitize_depth(data)
-        if self._depth_annotator is not None:
-            data = self._depth_annotator.get_data()
+                return self.sanitize_depth(data)
+        if self.depth_annotator is not None:
+            data = self.depth_annotator.get_data()
             if data is not None and np.asarray(data).size > 0:
-                return self._sanitize_depth(data)
+                return self.sanitize_depth(data)
         return np.full((self.height, self.width), np.nan, dtype=np.float32)
 
     def laser_ranges(
@@ -268,7 +380,7 @@ class IsaacSensors:
     ) -> np.ndarray:
         """Prefer lidar annotator; else empty (NaN) planar scan."""
         del pose
-        cloud = self._lidar_xy()
+        cloud = self.lidar_points_xy()
         if cloud is None:
             return np.full((int(num_beams),), np.nan, dtype=np.float32)
         angles = np.linspace(
@@ -302,7 +414,7 @@ class IsaacSensors:
         range_max: float,
     ) -> Tuple[np.ndarray, np.ndarray]:
         del h_min, h_max, h_beams, v_min, v_max, v_rings
-        cloud = self._lidar_xyz()
+        cloud = self.lidar_points_xyz()
         if cloud is None or cloud.shape[0] == 0:
             return np.zeros((0, 3), dtype=np.float32), np.zeros((0,), dtype=np.float32)
         dist = np.linalg.norm(cloud, axis=1)
@@ -311,16 +423,16 @@ class IsaacSensors:
         rings = np.zeros((cloud.shape[0],), dtype=np.float32)
         return cloud.astype(np.float32), rings
 
-    def _lidar_xy(self) -> Optional[np.ndarray]:
-        xyz = self._lidar_xyz()
+    def lidar_points_xy(self) -> Optional[np.ndarray]:
+        xyz = self.lidar_points_xyz()
         if xyz is None:
             return None
         return xyz[:, :2]
 
-    def _lidar_xyz(self) -> Optional[np.ndarray]:
-        if self._lidar_annotator is None:
+    def lidar_points_xyz(self) -> Optional[np.ndarray]:
+        if self.lidar_annotator is None:
             return None
-        data = np.asarray(self._lidar_annotator.get_data(), dtype=np.float32)
+        data = np.asarray(self.lidar_annotator.get_data(), dtype=np.float32)
         if data.size == 0:
             return np.zeros((0, 3), dtype=np.float32)
         return data.reshape(-1, data.shape[-1])[:, :3]

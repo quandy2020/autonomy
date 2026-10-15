@@ -1,0 +1,14 @@
+# Optional: run benchmark services alongside autonomy docker.
+# Prefer the monorepo `docker/run_autonomy.py` for full stack.
+
+services:
+  benchmark:
+    image: autonomy:latest
+    working_dir: /workspace/autonomy/src/autonomy/benchmark
+    volumes:
+      - ../../..:/workspace/autonomy
+    environment:
+      - AUTONOMY_ROOT=/workspace/autonomy
+      - BENCHMARK_CONFIG=configs/default.yaml
+    command: ["benchmark", "list"]
+    profiles: ["benchmark"]

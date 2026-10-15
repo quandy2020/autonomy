@@ -12,4 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Engine backends: habitat, fake, isaac."""
+"""Engine backends — each package is self-contained and self-registers.
+
+| Package | WorldBackend | Notes |
+|---------|--------------|-------|
+| ``habitat`` | ``Simulator`` | Habitat-Sim + GLB / MP3D |
+| ``fake`` | ``FakeWorld`` | Scenario occupancy + raycast |
+| ``isaac`` | ``IsaacSimulator`` | Isaac Sim + USD / PhysX |
+
+Shared geometry (scenario traffic, occupancy tools) lives outside this tree.
+Backends must not import sibling backends.
+"""

@@ -12,19 +12,51 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Procedural scenario WorldBackend (no Habitat / Isaac)."""
+"""Procedural scenario WorldBackend (no Habitat / Isaac).
+
+Public surface::
+
+    FakeWorld   — WorldBackend (registry name ``fake``)
+    Map         — scenario occupancy builder
+    Sensor      — pinhole RGB-D raycast
+    Robot       — lightweight differential plant (tests)
+"""
 
 from __future__ import annotations
 
 from typing import Any, Mapping
 
 from autosim.backend.registry import register
-from autosim.backends.fake.world import FakeWorld
 
 
-def create(settings: Mapping[str, Any]) -> FakeWorld:
+def create(settings: Mapping[str, Any]) -> Any:
     """Build a FakeWorld from ``habitat.scenario`` (+ optional map)."""
+    from autosim.backends.fake.world import FakeWorld
+
     return FakeWorld.from_settings(settings)
 
 
 register("fake", create)
+
+
+def __getattr__(name: str) -> Any:
+    if name == "FakeWorld":
+        from autosim.backends.fake.world import FakeWorld
+
+        return FakeWorld
+    if name == "Map":
+        from autosim.backends.fake.map import Map
+
+        return Map
+    if name == "Sensor":
+        from autosim.backends.fake.sensor import Sensor
+
+        return Sensor
+    if name == "Robot":
+        from autosim.backends.fake.robot import Robot
+
+        return Robot
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+
+__all__ = ["FakeWorld", "Map", "Robot", "Sensor", "create"]

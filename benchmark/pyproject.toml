@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68,<80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autonomy-benchmark"
+version = "0.1.0"
+description = "One-stop task manager for navigation, SLAM, perception, data collection/replay, and HAL-in-the-loop"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Openbot Authors" }]
+dependencies = [
+  "numpy>=1.24",
+  "PyYAML>=6.0",
+  "click>=8.1",
+  "rich>=13.0",
+]
+
+[project.optional-dependencies]
+sim = []  # autosim installed from sibling package
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4", "pre-commit>=3.5"]
+train = ["torch>=2.0", "stable-baselines3>=2.0", "optuna>=3.0"]
+api = ["fastapi>=0.110", "uvicorn>=0.27"]
+all = ["autonomy-benchmark[sim,dev,train,api]"]
+
+[project.scripts]
+benchmark = "benchmark.cli.main:main"
+
+[project.entry-points."benchmark.simulators"]
+fake = "benchmark.simulators.fake:FakeSimulator"
+habitat = "benchmark.simulators.habitat:HabitatSimulator"
+isaac = "benchmark.simulators.isaac:IsaacSimulator"
+hil = "benchmark.simulators.hil:HilSimulator"
+
+[project.entry-points."benchmark.tasks"]
+navigate = "benchmark.tasks.navigate:NavigateTask"
+slam = "benchmark.tasks.slam:SlamTask"
+perception = "benchmark.tasks.perception:PerceptionTask"
+collect = "benchmark.tasks.collect:CollectTask"
+replay = "benchmark.tasks.replay:ReplayTask"
+hil = "benchmark.tasks.hil:HilTask"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["benchmark*"]
+
+[tool.setuptools.package-data]
+benchmark = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "UP"]

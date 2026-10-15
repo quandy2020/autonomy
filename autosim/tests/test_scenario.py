@@ -21,7 +21,7 @@ from autosim.config import Config
 from autosim.map import Map
 from autosim.scenario import Scenario, Traffic
 from autosim.scenario.field import Field
-from autosim.simulator import Simulator
+from autosim.backends.habitat.simulator import Simulator
 
 
 SMALL = {

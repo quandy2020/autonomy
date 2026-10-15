@@ -1,0 +1,8 @@
+name: office
+scenario_type: random_room
+seed: 42
+resolution: 0.05
+x_length: 30
+y_length: 20
+room_number: 8
+max_windows: 2

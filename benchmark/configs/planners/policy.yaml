@@ -1,0 +1,6 @@
+name: policy
+type: learning
+module: autonomy.control
+controller: policy
+model_path: data/checkpoints/policy.onnx
+observation: rgb_scan

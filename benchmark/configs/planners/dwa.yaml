@@ -1,0 +1,11 @@
+name: dwa
+type: classic
+max_linear_vel: 0.5
+max_angular_vel: 1.5
+v_samples: 5
+w_samples: 9
+predict_time: 1.0
+dt: 0.1
+heading_weight: 0.8
+velocity_weight: 0.2
+dist_weight: 1.0

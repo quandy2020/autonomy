@@ -24,10 +24,10 @@ import numpy as np
 import pytest
 
 from autosim.config import Config
-from autosim.fake import Map as FakeMap
-from autosim.fake import Robot as FakeRobot
-from autosim.fake import Sensor as FakeSensor
-from autosim.runner import Runner
+from autosim.backends.fake import Map as FakeMap
+from autosim.backends.fake import Robot as FakeRobot
+from autosim.backends.fake import Sensor as FakeSensor
+from autosim.runtime import Runner
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -203,7 +203,7 @@ def test_config_fake_yaml_backend():
 
 
 def test_fake_runner_smoke_without_habitat(monkeypatch):
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(
@@ -240,7 +240,8 @@ def test_fake_runner_smoke_without_habitat(monkeypatch):
     assert len(writers["/odom"].msgs) >= 1
     assert len(writers["/footprint"].msgs) >= 1
     assert len(writers["/footprint"].msgs[0].polygon.points) >= 3
-    assert len(writers["/overall/map"].msgs) >= 1
+    assert len(writers["/overall/map"].msgs) == 1  # static cloud once
+    assert len(writers["/map"].msgs) >= 1
     assert len(writers["/camera/depth/points"].msgs) >= 1
     assert len(writers["/camera/depth/fov"].msgs) >= 1
 

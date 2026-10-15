@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from autosim.clock import Clock
+from autosim.io.clock import Clock
 
 
 def test_tick_advances_and_stamp():

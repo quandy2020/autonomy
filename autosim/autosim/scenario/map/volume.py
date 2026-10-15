@@ -151,7 +151,7 @@ class Volume:
             hits[ok] = ground_t[ok]
 
         for index in range(count):
-            voxel_t = Volume._dda_hit(
+            voxel_t = Volume.cast_dda_hit(
                 vol, low, res, start, dirs[index], t_min, t_max, nx, ny, nz
             )
             if voxel_t is None:
@@ -162,7 +162,7 @@ class Volume:
         return hits
 
     @staticmethod
-    def _dda_hit(
+    def cast_dda_hit(
         vol: np.ndarray,
         low: np.ndarray,
         res: float,
@@ -196,7 +196,7 @@ class Volume:
             and low[1] <= oy < high[1]
             and low[2] <= oz < high[2]
         ):
-            t_enter = Volume._aabb_enter(ox, oy, oz, dx, dy, dz, low, high)
+            t_enter = Volume.aabb_entry_distance(ox, oy, oz, dx, dy, dz, low, high)
             if t_enter is None or t + t_enter > t_max:
                 return None
             t += t_enter
@@ -265,7 +265,7 @@ class Volume:
                 return None
         return None
     @staticmethod
-    def _aabb_enter(
+    def aabb_entry_distance(
         ox: float,
         oy: float,
         oz: float,

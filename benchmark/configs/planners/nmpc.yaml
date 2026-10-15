@@ -1,0 +1,6 @@
+name: nmpc
+type: classic
+module: autonomy.control
+controller: nmpc
+horizon: 20
+dt: 0.05

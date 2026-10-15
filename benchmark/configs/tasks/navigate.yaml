@@ -1,0 +1,13 @@
+name: navigate
+type: navigate
+description: Goal-directed navigation with autonomy planner/controller
+episodes: 10
+timeout_s: 120
+goal_tolerance_m: 0.3
+success_on: goal_reached
+metrics:
+  - success_rate
+  - path_length
+  - time_to_goal
+  - collisions
+  - clearance

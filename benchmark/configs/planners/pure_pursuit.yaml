@@ -1,0 +1,7 @@
+name: pure_pursuit
+type: classic
+module: autonomy.control
+controller: pure_pursuit
+lookahead_distance: 0.6
+desired_linear_vel: 0.4
+max_angular_vel: 1.0

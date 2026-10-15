@@ -1,0 +1,6 @@
+name: social_force
+enabled: true
+count: 10
+model: social_force
+radius: 0.3
+preferred_speed: 1.2

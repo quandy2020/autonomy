@@ -1,78 +1,93 @@
 # 02 · 架构
 
-主循环与后端解耦：`Runner` 只依赖 `WorldBackend` 协议；引擎细节在 `backends/*`。
+主循环与后端解耦：`Runner` 只依赖 `WorldBackend` + **capability**；引擎互不 import。数据采集走独立 `dataset/` 层（LeRobot）。
 
 | 相关 | 链接 |
 |------|------|
-| 后端实现 | [04](04_backends.md) |
-| 话题 | [06](06_topics.md) |
-| 源码 | `autosim/runner.py` · `autosim/backend/` |
+| 后端 | [04](04_backends.md) |
+| 数据集 | [11](11_dataset.md) |
+| 源码 | `autosim/runtime/` · `autosim/backend/` · `autosim/backends/` · `autosim/dataset/` |
 
 ---
 
-## 1. 分层
+## 1. 专业化包树
 
 ```text
-┌─────────────────────────────────────────┐
-│  teleop / 外部 /cmd_vel                 │
-└──────────────────┬──────────────────────┘
-                   ▼
-┌─────────────────────────────────────────┐
-│  Runner：时钟、差速、采样、编码、发布     │
-│  Sensors · Map · Bridge · Messages      │
-└──────────────────┬──────────────────────┘
-                   ▼
-┌─────────────────────────────────────────┐
-│  WorldBackend（Protocol + registry）    │
-├────────────┬────────────┬───────────────┤
-│  habitat   │  fake      │  isaac        │
-└────────────┴────────────┴───────────────┘
+autosim/
+├── runtime/           # 编排：Runner · SensorWorker
+├── backend/           # 契约：Protocol · registry · capabilities
+├── backends/          # 引擎（互不耦合）
+│   ├── habitat/       # Habitat-Sim Simulator
+│   ├── fake/          # FakeWorld · map/sensor/robot
+│   └── isaac/         # USD / PhysX / 相机
+├── scenario/          # 纯几何：静态图 · Traffic · 障碍/行人
+├── sensing/           # Sensors · cameras · stitch
+├── io/                # Bridge · Messages · Clock · Teleop
+├── dataset/           # LeRobot v2.1 采集
+├── policy/            # 可选 ONNX Twist
+├── robot/             # plant · profiles · urdf
+├── map/               # 共享真值占据 / PLY
+└── config/            # YAML 加载与校验
+```
+
+---
+
+## 2. 分层与数据流
+
+```text
+teleop /cmd_vel / PolicyDriver
+            │
+            ▼
+┌───────────────────────────────────────┐
+│  runtime.Runner                       │
+│  Robot · sensing.Sensors · Traffic    │
+│  io.Bridge · dataset.Collector        │
+└───────────────┬───────────────────────┘
+                ▼
+┌───────────────────────────────────────┐
+│  WorldBackend + capability(...)       │
+├──────────┬──────────┬─────────────────┤
+│ habitat  │  fake    │  isaac          │
+└──────────┴──────────┴─────────────────┘
+                │
+                ▼
+         dataset → LeRobot 目录
 ```
 
 | 层 | 职责 |
 |----|------|
-| `Runner` | 周期：读 cmd_vel → 积分位姿 → `set_pose` / `step` → 采传感 → Autolink 发布 |
-| `Robot` | 差速约束、odom、IMU 合成 |
-| `Sensors` | 统一采样接口 + 可选噪声 |
-| `Map` / floorplan | 真值栅格与点云缓存 |
-| `Bridge` | 逻辑键 → 通道名 → protobuf writer |
-| `WorldBackend` | `pose` / `step` / `color_depth` / `laser_ranges` / `world_cloud` … |
+| `runtime` | 周期积分、传感发布、录制钩子 |
+| `sensing` / `io` | 采样噪声与 Autolink 编解码 |
+| `scenario` | 与引擎无关的占据 / 动态体 |
+| `dataset` | Episode 缓冲 → parquet / video / meta |
+| `backends.*` | 唯一接触 Habitat / Kit / 过程射线的代码 |
 
 ---
 
-## 2. 一拍数据流（nav）
+## 3. 一拍（nav）
 
-1. 订阅 `/cmd_vel`（TwistStamped）。
-2. `Robot` 按 `control_hz` 积分，得到平面位姿。
-3. `simulator.set_pose(x, y, yaw)`（Isaac 可因 PhysX 重叠拒绝更新）。
-4. `simulator.step()`（Habitat 物理帧 / Fake no-op / Isaac `World.step`）。
-5. 按各传感器 `rate_hz` 采样并 `Messages.encode_*`。
-6. 发布 odom、TF、scan、相机、IMU、时钟；到期则发 `/map` 与点云。
+1. 读 `/cmd_vel` 或 Policy → `Robot.step`  
+2. `WorldBackend.set_pose` / `step`；`Traffic.step`  
+3. 按 rate 采 scan / camera → Bridge 发布  
+4. `DatasetCollector.tick`（若 `habitat.dataset.enabled`）  
 
 ---
 
-## 3. 模式：`nav` vs `slam`
+## 4. 扩展后端
 
-| | `nav`（默认） | `slam` |
-|--|---------------|--------|
-| `map→odom` | 发布（与 GT 对齐） | 不发（留给 Cartographer） |
-| GT `/map` | `map.publish` 为 true 时发 | 强制不发 |
-| 用途 | Autoviz / 规划联调 | 仿真里跑 SLAM |
-
-逻辑在 `Runner.__init__`（`habitat.mode`）。
+1. `backends/<name>/` 实现协议并声明 `capabilities`  
+2. `register("name", factory)` — **不要**在 Runner 按名字分支  
+3. YAML + [04](04_backends.md) + 测试  
 
 ---
 
-## 4. 注册与创建
+## 5. 命名约定
 
-```text
-habitat.backend: isaac
-        │
-        ▼
-backend.registry → backends/isaac.create(settings)
-        │
-        ▼
-IsaacSimulator.create → App → USD → Sensors → Physics → FloorplanMap
-```
+| 类别 | 规则 | 示例 |
+|------|------|------|
+| 属性 / 变量 | 名词，无前缀 `_` | `last_scan`, `sensor_worker`, `episode` |
+| 函数 / 方法 | 动词 + 名词 | `poll_command`, `flush_episode`, `build_feeds` |
+| 常量 | 全大写 | `CAPABILITY_DEFAULTS`, `MAX_DEPTH_M` |
+| 日志 | `logger` | `logger = logging.getLogger(__name__)` |
 
-新增后端：实现协议 → `register("name", factory)` → 增加 YAML 与文档 [04](04_backends.md)。
+保留 Python 惯例：`__init__` / `__all__` 等 dunder；循环中故意忽略的 `_` 除外。

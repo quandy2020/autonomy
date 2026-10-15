@@ -1,0 +1,15 @@
+name: isaac
+backend: isaac
+description: Isaac Sim sidecar + autolink cmd_vel + kinematic twin
+autosim_config: ../autosim/config/isaac.yaml
+isaaclab_path: ${ISAACLAB_PATH:-/workspace/isaaclab}
+launch_autosim: false
+autolink: true
+force_autolink: false
+sync_odom: true
+cmd_vel: /cmd_vel
+odom: /odom
+scan: /scan
+startup_wait_s: 2.0
+rate_hz: 30
+headless: true

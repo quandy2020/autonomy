@@ -2,6 +2,9 @@
 # Keep README.md and small placeholder USD (simple_room, robots/) tracked.
 worlds/InteriorAgent/
 
+# Legacy Isaac People pack (no longer loaded; leftover downloads stay ignored).
+people/
+
 # Download / Kit caches
 **/.cache/
 **/*.zip

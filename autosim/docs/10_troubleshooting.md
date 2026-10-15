@@ -37,6 +37,7 @@
 |------|------|
 | 无 `/map` | `mode: nav`、`map.enabled/publish: true`；Isaac 需旁路 `rooms.json` |
 | `/overall/map` 只有墙线 | 旧逻辑；应走 USD Mesh 采样（见 `usd_stage.sample_mesh_cloud`） |
+| `/scan` 与家具形状对不齐 | Isaac 需把 USD 家具刻进占用栅格（`mark_elevated_obstacles`）；Autoviz Fixed Frame=`map`；`nav` 下发 `map→odom` |
 | 点云过大卡顿 | 增大 `map.ply.stride`；Autoviz Decimate |
 
 ---
@@ -56,6 +57,7 @@
 
 | 症状 | 处理 |
 |------|------|
+| Isaac RGB ≪5Hz / 比 Habitat 慢很多 | 已在用 RTX Camera；勿在 50Hz PhysX 每拍再渲（仅 `color_depth` 采 RTX）。可降 `camera` 分辨率 |
 | Isaac 帧率低 | headless；降相机分辨率 / `rate_hz`；关不需要的 lidar_3d |
 | 仅要位姿 | `camera.enabled: false`（不加载相机 experience） |
 

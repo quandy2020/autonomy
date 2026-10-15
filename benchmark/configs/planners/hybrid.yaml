@@ -1,0 +1,7 @@
+name: hybrid
+type: hybrid
+clearance_switch: 1.0
+desired_linear_vel: 0.4
+max_angular_vel: 1.2
+# Optional ONNX for learning branch:
+# model_path: data/checkpoints/policy.onnx

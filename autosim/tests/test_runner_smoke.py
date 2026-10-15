@@ -15,9 +15,9 @@
 from pathlib import Path
 
 from autosim.config import Config
-from autosim.runner import Runner
+from autosim.runtime import Runner
 from tests.fake_simulator import FakeSimulator
-from autosim.urdf import UrdfModel
+from autosim.robot.urdf import UrdfModel
 
 
 class FakeWriter:
@@ -81,7 +81,7 @@ class FakeLink:
 
 
 def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
     # Run encode/publish inline so assertions are not racing the worker queue.
@@ -202,7 +202,7 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
 
 
 def test_runner_skips_odom_when_disabled(monkeypatch):
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
 
@@ -228,7 +228,7 @@ def test_runner_skips_odom_when_disabled(monkeypatch):
 
 def test_runner_camera_rgb_depth_share_stamp(monkeypatch):
     """Every published RGB frame must share stamp with the paired depth frame."""
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
 
@@ -269,7 +269,7 @@ def test_runner_camera_rgb_depth_share_stamp(monkeypatch):
 
 def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
     """OccupancyGrid must publish even if the async sensor queue is saturated."""
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
 
@@ -307,7 +307,7 @@ def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
 
     link = FakeLink()
     runner = Runner(settings, max_steps=1, link=link, simulator=FakeSimulator())
-    runner._sensor_worker.submit = lambda fn, *args: None  # drop async cloud work
+    runner.sensor_worker.submit = lambda fn, *args: None  # drop async cloud work
     runner.run()
     assert "/map" in runner.node.writers
     assert len(runner.node.writers["/map"].msgs) >= 1
@@ -315,7 +315,7 @@ def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
 
 def test_runner_slam_skips_map_and_map_odom(monkeypatch):
     """SLAM mode must not publish GT /map or identity map→odom (Cartographer owns both)."""
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
 
@@ -372,7 +372,7 @@ def test_runner_slam_skips_map_and_map_odom(monkeypatch):
 
 def test_runner_slam_glues_odom_to_ground_truth(monkeypatch):
     """SLAM must keep wheel odom == GT so GT-cast /scan matches odom→base TF."""
-    import autosim.runner as runner_module
+    import autosim.runtime.loop as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
 

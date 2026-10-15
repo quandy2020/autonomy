@@ -223,12 +223,12 @@ class Cast:
         if dirs.shape[0] == 0 or t_max <= 0.0:
             return hits
         start = np.asarray(origin, dtype=np.float64).reshape(3)
-        Cast._fold_batch(hits, Cast._cylinders_batch(start, dirs, obstacle, t_max))
-        Cast._fold_batch(hits, Cast._capsules_batch(start, dirs, pedestrian, t_max))
+        Cast.fold_hit_batch(hits, Cast.cast_cylinders_batch(start, dirs, obstacle, t_max))
+        Cast.fold_hit_batch(hits, Cast.cast_capsules_batch(start, dirs, pedestrian, t_max))
         return hits
 
     @staticmethod
-    def _fold_batch(hits: np.ndarray, candidate: np.ndarray | None) -> None:
+    def fold_hit_batch(hits: np.ndarray, candidate: np.ndarray | None) -> None:
         if candidate is None:
             return
         better = np.isfinite(candidate) & (
@@ -237,7 +237,7 @@ class Cast:
         hits[better] = candidate[better]
 
     @staticmethod
-    def _cylinders_batch(
+    def cast_cylinders_batch(
         origin: np.ndarray, directions: np.ndarray, obstacle: Obstacle, t_max: float
     ) -> np.ndarray | None:
         centers = obstacle.position
@@ -245,12 +245,12 @@ class Cast:
             return None
         height = float(obstacle.settings["height"])
         radius = float(obstacle.settings["radius"])
-        return Cast._tubes_batch(
+        return Cast.cast_tubes_batch(
             origin, directions, centers, radius, 0.0, height, t_max, caps=True
         )
 
     @staticmethod
-    def _capsules_batch(
+    def cast_capsules_batch(
         origin: np.ndarray, directions: np.ndarray, pedestrian: Pedestrian, t_max: float
     ) -> np.ndarray | None:
         centers = pedestrian.position
@@ -260,25 +260,25 @@ class Cast:
         height = float(pedestrian.settings["height"])
         if height <= 2.0 * radius:
             mid = np.column_stack((centers, np.full(centers.shape[0], 0.5 * height)))
-            return Cast._spheres_batch(
+            return Cast.cast_spheres_batch(
                 origin, directions, mid, min(radius, 0.5 * height), t_max, None
             )
         z0 = radius
         z1 = height - radius
-        body = Cast._tubes_batch(
+        body = Cast.cast_tubes_batch(
             origin, directions, centers, radius, z0, z1, t_max, caps=False
         )
         bottom = np.column_stack((centers, np.full(centers.shape[0], z0)))
         top = np.column_stack((centers, np.full(centers.shape[0], z1)))
-        low = Cast._spheres_batch(origin, directions, bottom, radius, t_max, "below")
-        high = Cast._spheres_batch(origin, directions, top, radius, t_max, "above")
+        low = Cast.cast_spheres_batch(origin, directions, bottom, radius, t_max, "below")
+        high = Cast.cast_spheres_batch(origin, directions, top, radius, t_max, "above")
         hits = np.full(directions.shape[0], np.nan, dtype=np.float64)
         for part in (body, low, high):
-            Cast._fold_batch(hits, part)
+            Cast.fold_hit_batch(hits, part)
         return hits
 
     @staticmethod
-    def _tubes_batch(
+    def cast_tubes_batch(
         origin: np.ndarray,
         directions: np.ndarray,
         centers: np.ndarray,
@@ -315,7 +315,7 @@ class Cast:
                     & (height >= z0)
                     & (height <= z1)
                 )
-                Cast._fold_rows(best, distance, ok)
+                Cast.fold_hit_rows(best, distance, ok)
         if caps and np.any(np.abs(dz) > 1e-12):
             for plane in (z0, z1):
                 distance = np.full(directions.shape[0], np.nan, dtype=np.float64)
@@ -330,11 +330,11 @@ class Cast:
                     & (distance[:, None] <= t_max)
                     & (hx * hx + hy * hy <= radius * radius)
                 )
-                Cast._fold_rows(best, np.broadcast_to(distance[:, None], inside.shape), inside)
+                Cast.fold_hit_rows(best, np.broadcast_to(distance[:, None], inside.shape), inside)
         return best
 
     @staticmethod
-    def _spheres_batch(
+    def cast_spheres_batch(
         origin: np.ndarray,
         directions: np.ndarray,
         centers: np.ndarray,
@@ -357,11 +357,11 @@ class Cast:
             elif side == "above":
                 z = origin[2] + distance * directions[:, 2:3]
                 ok &= z >= centers[None, :, 2] - 1e-8
-            Cast._fold_rows(best, distance, ok)
+            Cast.fold_hit_rows(best, distance, ok)
         return best
 
     @staticmethod
-    def _fold_rows(best: np.ndarray, distance: np.ndarray, ok: np.ndarray) -> None:
+    def fold_hit_rows(best: np.ndarray, distance: np.ndarray, ok: np.ndarray) -> None:
         """Per-ray min over cylinder axis into ``best`` ``(N,)``."""
         masked = np.where(ok, distance, np.inf)
         row = np.min(masked, axis=1)

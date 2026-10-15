@@ -20,7 +20,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Mapping, Optional, Tuple
 
-from autosim.urdf import UrdfModel
+from autosim.robot.urdf import UrdfModel
 
 
 @dataclass(frozen=True)

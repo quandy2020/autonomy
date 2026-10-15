@@ -17,19 +17,20 @@
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
 import numpy as np
 
-from autosim.backends.isaac.app import ensure_simulation_app
+from autosim.backends.isaac.app import ensure_simulation_app, stop_timeline
 from autosim.backends.isaac.coords import map_to_world
 
-_LOG = logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 # InteriorAgent / 酷家乐 meshes often author a single displayColor/Opacity value
 # with faceVarying interpolation; Hydra then spams "corrupted data in primvar".
-_DISPLAY_PRIMVARS = frozenset({"displayColor", "displayOpacity"})
+DISPLAY_PRIMVARS = frozenset({"displayColor", "displayOpacity"})
 
 
 def require_isaac() -> None:
@@ -87,7 +88,7 @@ def repair_display_primvars(stage: Any) -> int:
                 name = pv.GetPrimvarName()
             except Exception:
                 name = pv.GetBaseName()
-            if name not in _DISPLAY_PRIMVARS:
+            if name not in DISPLAY_PRIMVARS:
                 continue
             try:
                 interp = pv.GetInterpolation()
@@ -113,7 +114,7 @@ def repair_display_primvars(stage: Any) -> int:
             except Exception:
                 continue
     if fixed:
-        _LOG.info("repaired %d displayColor/Opacity primvars (constant)", fixed)
+        logger.info("repaired %d displayColor/Opacity primvars (constant)", fixed)
     return fixed
 
 
@@ -138,23 +139,38 @@ class UsdStage:
         self.robot_usd = Path(robot_usd) if robot_usd else None
         self.robot_prim_path = robot_prim_path
         self.base_z = float(base_z)
-        self._omni = omni.usd
-        self._UsdGeom = UsdGeom
+        self.omni_module = omni.usd
+        self.UsdGeom = UsdGeom
         mute_hydra_primvar_warnings()
+        # Stop any warm-start play on the anonymous default stage before swap;
+        # otherwise SimulationManager tries create_simulation_view with no stage.
+        stop_timeline()
         ctx = omni.usd.get_context()
         if not ctx.open_stage(str(self.world_usd)):
             raise RuntimeError(f"failed to open USD stage: {self.world_usd}")
         self.stage: Any = ctx.get_stage()
         if self.stage is None:
             raise RuntimeError("omni.usd context has no stage after open")
-        # Fix InteriorAgent authoring before the first Hydra sync.
+        # Fix InteriorAgent authoring before the first Hydra / PhysX sync.
         repair_display_primvars(self.stage)
-        self._ensure_robot_prim()
-        self._robot_xform = UsdGeom.Xformable(
+        try:
+            from autosim.backends.isaac.physics import (
+                ensure_physics_scene,
+                strip_nested_rigid_bodies,
+            )
+
+            ensure_physics_scene(self.stage)
+            strip_nested_rigid_bodies(
+                self.stage, skip_prefix=self.robot_prim_path
+            )
+        except Exception as exc:
+            logger.warning("early physics scene repair skipped: %s", exc)
+        self.ensure_robot_prim()
+        self.robot_xform = UsdGeom.Xformable(
             self.stage.GetPrimAtPath(self.robot_prim_path)
         )
 
-    def _ensure_robot_prim(self) -> None:
+    def ensure_robot_prim(self) -> None:
         from pxr import UsdGeom
 
         prim = self.stage.GetPrimAtPath(self.robot_prim_path)
@@ -170,12 +186,12 @@ class UsdStage:
         translation, quat_wxyz = map_to_world(x, y, yaw, z=self.base_z)
         from pxr import Gf, UsdGeom
 
-        ops = self._robot_xform.GetOrderedXformOps()
+        ops = self.robot_xform.GetOrderedXformOps()
         if not ops:
-            self._robot_xform.ClearXformOpOrder()
-            t_op = self._robot_xform.AddTranslateOp()
+            self.robot_xform.ClearXformOpOrder()
+            t_op = self.robot_xform.AddTranslateOp()
             # Isaac / USD Xformable defaults to float precision for orient.
-            o_op = self._robot_xform.AddOrientOp(UsdGeom.XformOp.PrecisionFloat)
+            o_op = self.robot_xform.AddOrientOp(UsdGeom.XformOp.PrecisionFloat)
         else:
             t_op = None
             o_op = None
@@ -186,9 +202,9 @@ class UsdStage:
                 elif "orient" in name.lower() or "rotate" in name.lower():
                     o_op = op
             if t_op is None:
-                t_op = self._robot_xform.AddTranslateOp()
+                t_op = self.robot_xform.AddTranslateOp()
             if o_op is None:
-                o_op = self._robot_xform.AddOrientOp(UsdGeom.XformOp.PrecisionFloat)
+                o_op = self.robot_xform.AddOrientOp(UsdGeom.XformOp.PrecisionFloat)
         # Match op precision (float is common on Isaac stages).
         try:
             t_op.Set(
@@ -211,10 +227,77 @@ class UsdStage:
             o_op.Set(Gf.Quatf(w, Gf.Vec3f(xq, yq, zq)))
         except Exception:
             o_op.Set(Gf.Quatd(w, Gf.Vec3d(xq, yq, zq)))
+        # PhysX / Fabric often ignore raw USD xform writes on kinematic bodies;
+        # push the same pose through Isaac prim APIs when available.
+        self._sync_isaac_prim_pose(translation, quat_wxyz)
+
+    def _sync_isaac_prim_pose(
+        self, translation: np.ndarray, quat_wxyz: np.ndarray
+    ) -> None:
+        """Teleport kinematic robot via Isaac Rigid/XForm prim (Fabric-aware)."""
+        pos = np.asarray(translation, dtype=np.float64).reshape(3)
+        orn = np.asarray(quat_wxyz, dtype=np.float64).reshape(4)
+        view = getattr(self, "_isaac_pose_view", None)
+        if view is None:
+            try:
+                from isaacsim.core.prims import SingleRigidPrim
+
+                view = SingleRigidPrim(
+                    prim_path=self.robot_prim_path, name="autosim_robot_rb"
+                )
+                try:
+                    view.initialize()
+                except Exception:
+                    pass
+                self._isaac_pose_view = view
+            except Exception:
+                try:
+                    from isaacsim.core.prims import SingleXFormPrim
+
+                    view = SingleXFormPrim(
+                        prim_path=self.robot_prim_path, name="autosim_robot_xf"
+                    )
+                    try:
+                        view.initialize()
+                    except Exception:
+                        pass
+                    self._isaac_pose_view = view
+                except Exception:
+                    self._isaac_pose_view = False
+                    return
+        if view is False:
+            return
+        try:
+            view.set_world_pose(position=pos, orientation=orn)
+        except Exception as exc:
+            logger.debug("isaac prim set_world_pose failed: %s", exc)
+            return
+        # arena-isaac geom.move: teleports must not preserve momentum.
+        self._zero_isaac_prim_velocities(view)
+
+    @staticmethod
+    def _zero_isaac_prim_velocities(view: Any) -> None:
+        """Clear linear/angular velocity after a kinematic teleport."""
+        try:
+            set_vel = getattr(view, "set_velocities", None)
+            if callable(set_vel):
+                set_vel(np.zeros(3, dtype=np.float64), np.zeros(3, dtype=np.float64))
+                return
+        except Exception:
+            pass
+        try:
+            set_lin = getattr(view, "set_linear_velocity", None)
+            set_ang = getattr(view, "set_angular_velocity", None)
+            if callable(set_lin):
+                set_lin(np.zeros(3, dtype=np.float64))
+            if callable(set_ang):
+                set_ang(np.zeros(3, dtype=np.float64))
+        except Exception as exc:
+            logger.debug("isaac prim zero velocity skipped: %s", exc)
 
     def close(self) -> None:
         try:
-            ctx = self._omni.get_context()
+            ctx = self.omni_module.get_context()
             ctx.close_stage()
         except Exception:
             pass
@@ -226,13 +309,14 @@ class UsdStage:
         z_max: float = 3.0,
         stride: int = 1,
         max_points: int = 2_000_000,
+        surface_spacing_m: float = 0.05,
         skip_prim_prefixes: Sequence[str] = (),
+        skip_path_substrings: Sequence[str] = (),
+        only_path_substrings: Sequence[str] = (),
     ) -> np.ndarray:
-        """Sample world-frame mesh vertices for ``/overall/map``.
+        """Sample world-frame surface points for ``/overall/map``.
 
-        InteriorAgent scenes keep geometry in referenced Mesh USDs; room
-        polygons alone only outline walls. Vertex sampling recovers furniture
-        and full wall extents.
+        Densifies triangle interiors (not only vertices) so walls look solid.
         """
         return sample_mesh_cloud(
             self.stage,
@@ -240,8 +324,73 @@ class UsdStage:
             z_max=z_max,
             stride=stride,
             max_points=max_points,
+            surface_spacing_m=surface_spacing_m,
             skip_prim_prefixes=(self.robot_prim_path, *skip_prim_prefixes),
+            skip_path_substrings=skip_path_substrings,
+            only_path_substrings=only_path_substrings,
         )
+
+
+def sample_triangle_surface(
+    v0: np.ndarray,
+    v1: np.ndarray,
+    v2: np.ndarray,
+    spacing: float,
+) -> np.ndarray:
+    """Uniform barycentric samples on a triangle (includes vertices)."""
+    e01 = float(np.linalg.norm(v1 - v0))
+    e02 = float(np.linalg.norm(v2 - v0))
+    e12 = float(np.linalg.norm(v2 - v1))
+    longest = max(e01, e02, e12, 1e-6)
+    step = max(float(spacing), 1e-3)
+    n = max(1, int(math.ceil(longest / step)))
+    pts: list[np.ndarray] = []
+    for i in range(n + 1):
+        for j in range(n + 1 - i):
+            u = i / n
+            v = j / n
+            w = 1.0 - u - v
+            pts.append(w * v0 + u * v1 + v * v2)
+    return np.asarray(pts, dtype=np.float64)
+
+
+def densify_mesh_local(
+    local: np.ndarray,
+    counts: Sequence[int] | None,
+    indices: Sequence[int] | None,
+    spacing: float,
+) -> np.ndarray:
+    """Fan-triangulate faces and sample each triangle at ``spacing`` metres."""
+    if counts is None or indices is None or len(counts) == 0:
+        return local
+    idx = np.asarray(indices, dtype=np.int64).reshape(-1)
+    verts = np.asarray(local, dtype=np.float64).reshape(-1, 3)
+    n_verts = verts.shape[0]
+    chunks: list[np.ndarray] = [verts]
+    cursor = 0
+    for count in counts:
+        n = int(count)
+        if n < 3 or cursor + n > idx.shape[0]:
+            cursor += max(n, 0)
+            continue
+        face = idx[cursor : cursor + n]
+        cursor += n
+        if np.any(face < 0) or np.any(face >= n_verts):
+            continue
+        v0 = verts[int(face[0])]
+        for k in range(1, n - 1):
+            v1 = verts[int(face[k])]
+            v2 = verts[int(face[k + 1])]
+            edge = max(
+                float(np.linalg.norm(v1 - v0)),
+                float(np.linalg.norm(v2 - v0)),
+                float(np.linalg.norm(v2 - v1)),
+            )
+            # Tiny faces: keep the three corners only (already in verts).
+            if edge < 1.5 * float(spacing):
+                continue
+            chunks.append(sample_triangle_surface(v0, v1, v2, spacing))
+    return np.vstack(chunks) if chunks else verts
 
 
 def sample_mesh_cloud(
@@ -251,21 +400,36 @@ def sample_mesh_cloud(
     z_max: float = 3.0,
     stride: int = 1,
     max_points: int = 2_000_000,
+    surface_spacing_m: float = 0.05,
     skip_prim_prefixes: Sequence[str] = (),
+    skip_path_substrings: Sequence[str] = (),
+    only_path_substrings: Sequence[str] = (),
 ) -> np.ndarray:
-    """Collect ``UsdGeom.Mesh`` points in world frame (z-up metres)."""
+    """Collect dense surface samples from ``UsdGeom.Mesh`` (z-up metres).
+
+    Large wall quads often have only 4 vertices — vertex-only clouds look like
+    wireframes. Face densification at ``surface_spacing_m`` fills solid walls.
+    """
     from pxr import Usd, UsdGeom
 
     if stage is None:
         return np.zeros((0, 3), dtype=np.float32)
     skip = tuple(str(p) for p in skip_prim_prefixes if str(p).strip())
+    skip_sub = tuple(s.lower() for s in skip_path_substrings if str(s).strip())
+    only_sub = tuple(s.lower() for s in only_path_substrings if str(s).strip())
     step = max(1, int(stride))
+    spacing = max(float(surface_spacing_m), 0.0)
     chunks: list[np.ndarray] = []
     total = 0
     time = Usd.TimeCode.Default()
     for prim in stage.Traverse():
         path = str(prim.GetPath())
+        path_l = path.lower()
         if any(path == pref or path.startswith(pref.rstrip("/") + "/") for pref in skip):
+            continue
+        if skip_sub and any(s in path_l for s in skip_sub):
+            continue
+        if only_sub and not any(s in path_l for s in only_sub):
             continue
         if not prim.IsA(UsdGeom.Mesh):
             continue
@@ -284,6 +448,13 @@ def sample_mesh_cloud(
         local = np.asarray(points, dtype=np.float64).reshape(-1, 3)
         if local.size == 0:
             continue
+        if spacing > 0.0:
+            try:
+                counts = mesh.GetFaceVertexCountsAttr().Get(time)
+                indices = mesh.GetFaceVertexIndicesAttr().Get(time)
+            except Exception:
+                counts, indices = None, None
+            local = densify_mesh_local(local, counts, indices, spacing)
         if step > 1:
             local = local[::step]
         # USD uses row vectors: p_world = p_local * matrix.
@@ -309,11 +480,12 @@ def sample_mesh_cloud(
     cloud = np.vstack(chunks)
     if cloud.shape[0] > int(max_points):
         cloud = cloud[: int(max_points)]
-    _LOG.info(
-        "sampled USD mesh cloud: %d points (z=[%.2f, %.2f], stride=%d)",
+    logger.info(
+        "sampled USD mesh cloud: %d points (z=[%.2f, %.2f], spacing=%.3f, stride=%d)",
         cloud.shape[0],
         float(z_min),
         float(z_max),
+        spacing,
         step,
     )
     return cloud

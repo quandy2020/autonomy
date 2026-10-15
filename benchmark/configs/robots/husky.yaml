@@ -1,0 +1,12 @@
+name: husky
+footprint: differential
+wheelbase: 0.54
+max_linear_vel: 1.0
+max_angular_vel: 1.5
+urdf: ../autosim/urdf/husky.urdf
+sensors:
+  - lidar
+  - rgb
+  - depth
+  - imu
+  - gps

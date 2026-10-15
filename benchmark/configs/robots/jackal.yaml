@@ -1,0 +1,9 @@
+name: jackal
+footprint: differential
+wheelbase: 0.26
+max_linear_vel: 2.0
+max_angular_vel: 4.0
+sensors:
+  - lidar
+  - rgb
+  - imu

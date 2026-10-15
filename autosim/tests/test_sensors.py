@@ -16,7 +16,7 @@
 
 import numpy as np
 
-from autosim.sensors import Sensors
+from autosim.sensing import Sensors
 
 
 class FakeSim:

@@ -26,7 +26,9 @@ AutoSim 是 Autonomy 的**仿真桥**：统一差速动力学、传感采样与 
 | TF / 时钟 | `map→odom→base_link`（nav）或仅 `odom→base_link`（slam） |
 | 真值地图 | OccupancyGrid + 可选点云 |
 | 键盘遥控 | `teleop` → `/cmd_vel` |
-| Scenario 动态体 | Fake / Habitat scenario：障碍与行人 |
+| Scenario 动态体 | 共享 Traffic：障碍与行人（Fake / Habitat / Isaac） |
+| RL 运控（可选） | `PolicyDriver` ONNX Twist；或栈内 `policy_controller` |
+| IL 数据采集 | `dataset/` → LeRobot v2.1（parquet + video + meta） |
 
 ---
 

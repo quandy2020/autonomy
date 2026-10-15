@@ -1,0 +1,7 @@
+name: replay
+type: replay
+description: Replay JSONL onto autolink /cmd_vel
+source: data/datasets/collect
+rate: 1.0
+loop: false
+dry_run: false
