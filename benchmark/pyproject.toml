@@ -29,9 +29,12 @@ benchmark = "benchmark.cli.main:main"
 
 [project.entry-points."benchmark.simulators"]
 fake = "benchmark.simulators.fake:FakeSimulator"
+flatland = "benchmark.simulators.flatland:FlatlandSimulator"
 habitat = "benchmark.simulators.habitat:HabitatSimulator"
 isaac = "benchmark.simulators.isaac:IsaacSimulator"
 hil = "benchmark.simulators.hil:HilSimulator"
+gazebo = "benchmark.simulators.gazebo:GazeboSimulator"
+unity = "benchmark.simulators.unity:UnitySimulator"
 
 [project.entry-points."benchmark.tasks"]
 navigate = "benchmark.tasks.navigate:NavigateTask"

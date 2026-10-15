@@ -30,4 +30,11 @@ benchmark run --task perception --set task.episodes=2 --set task.obstacles=6
 echo "== multi-robot =="
 benchmark multi-robot --robots 2 --planner pure_pursuit --timeout 8
 
+echo "== arena modes / humans =="
+benchmark run --mode benchmark --set task.episodes=3 --set task.timeout_s=6 \
+  --set task.obstacles=4 --set task.pedestrians=2 --set task.moving_obstacles=0 \
+  --set humans.name=orca --set planner.name=cadrl
+benchmark run --mode dynamic --set task.map=canteen --set task.episodes=1 \
+  --set task.timeout_s=6 --set task.pedestrians=2 --set humans.name=spinny
+
 echo "smoke_e2e OK"

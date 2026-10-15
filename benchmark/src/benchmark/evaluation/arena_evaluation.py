@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Sequence, Union
 from benchmark.evaluation.metrics.efficiency import efficiency_summary
 from benchmark.evaluation.metrics.safety import safety_summary
 from benchmark.evaluation.metrics.smoothness import smoothness_summary
+from benchmark.evaluation.metrics.social import social_summary
 from benchmark.evaluation.metrics.status import status_counts
 from benchmark.evaluation.report import write_report
 from benchmark.tasks.episode_runner import EpisodeTrace, make_planner, run_episode, trace_to_result
@@ -59,6 +60,7 @@ class ArenaEvaluation:
             "safety": safety_summary(traces),
             "efficiency": efficiency_summary(traces),
             "smoothness": smoothness_summary(traces),
+            "social": social_summary(traces),
             "episodes": [trace_to_result(t).metrics for t in traces],
         }
         return summary

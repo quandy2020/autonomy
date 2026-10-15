@@ -1,0 +1,6 @@
+name: turtlebot3_waffle
+footprint: differential
+wheelbase: 0.287
+max_linear_vel: 0.26
+max_angular_vel: 1.82
+robot_radius: 0.22

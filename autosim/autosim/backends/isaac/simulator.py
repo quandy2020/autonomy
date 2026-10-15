@@ -178,87 +178,93 @@ class IsaacSimulator:
         # Habitat publishes scene geometry on /overall/map; do the same from USD
         # mesh vertices so Autoviz shape matches the Isaac viewport.
         mesh_cloud = np.zeros((0, 3), dtype=np.float32)
-        # Face densification fills solid walls; vertex-only looks like a wireframe.
-        surface_spacing = float(ply_cfg.get("surface_spacing_m", 0.05))
+        # Occupancy carve: USD vertices only (+ inflate). Viz cloud:
+        # - surface_spacing_m > 0 → densified USD (slow; optional)
+        # - else keep rooms.json dense_floorplan_cloud (solid walls, fast)
+        surface_spacing = float(ply_cfg.get("surface_spacing_m", 0.0))
         mesh_stride = max(1, int(ply_cfg.get("mesh_stride", 1)))
+        isaac = (self.settings.get("habitat") or {}).get("isaac") or {}
+        phys = isaac.get("physics") if isinstance(isaac, Mapping) else {}
+        if not isinstance(phys, Mapping):
+            phys = {}
+        z_lo, z_hi, inflate = FloorplanMap.robot_body_band(
+            map_cfg,
+            robot_height_m=float(phys.get("robot_height", 0.28)),
+            robot_radius_m=float(phys.get("robot_radius", 0.12)),
+        )
+        furniture = np.zeros((0, 3), dtype=np.float32)
         try:
-            mesh_cloud = self.stage.sample_mesh_cloud(
-                z_min=float(grid_cfg.get("z_min", 0.0)),
-                z_max=float(grid_cfg.get("z_max", 2.5)),
-                stride=mesh_stride,
-                max_points=int(ply_cfg.get("max_points", 800_000)),
-                surface_spacing_m=surface_spacing,
-            )
-        except Exception as exc:
-            logger.warning("USD mesh cloud sample failed: %s", exc)
-            mesh_cloud = np.zeros((0, 3), dtype=np.float32)
-        if mesh_cloud.shape[0] > 0:
-            # 2D occupancy = robot body height slab (clearance…body top), not
-            # the full room height — overhangs stay free (pass-under).
-            isaac = (self.settings.get("habitat") or {}).get("isaac") or {}
-            phys = isaac.get("physics") if isinstance(isaac, Mapping) else {}
-            if not isinstance(phys, Mapping):
-                phys = {}
-            z_lo, z_hi, inflate = FloorplanMap.robot_body_band(
-                map_cfg,
-                robot_height_m=float(phys.get("robot_height", 0.28)),
-                robot_radius_m=float(phys.get("robot_radius", 0.12)),
-            )
-            # Skip door leaves when carving — openings are freed explicitly below.
             furniture = self.stage.sample_mesh_cloud(
                 z_min=z_lo,
                 z_max=z_hi,
                 stride=mesh_stride,
-                max_points=int(ply_cfg.get("max_points", 800_000)),
-                surface_spacing_m=max(surface_spacing, float(grid_cfg.get("resolution", 0.05))),
+                max_points=int(ply_cfg.get("max_points", 400_000)),
+                surface_spacing_m=0.0,
                 skip_path_substrings=("door",),
             )
-            if furniture.shape[0] == 0:
-                furniture = mesh_cloud
+        except Exception as exc:
+            logger.warning("USD furniture sample failed: %s", exc)
+        if furniture.shape[0] > 0:
             changed = built.mark_elevated_obstacles(
                 furniture,
                 z_min=z_lo,
                 z_max=z_hi,
                 inflate_m=inflate,
             )
-            opened = 0
-            if bool(map_cfg.get("free_doors", True)):
-                try:
-                    # Denser stride than furniture: thin door leaves need hits
-                    # to punch rooms.json wall rings at the opening.
-                    door_stride = max(
-                        1, min(4, int(ply_cfg.get("mesh_stride", 8)) // 2)
-                    )
-                    door_cloud = self.stage.sample_mesh_cloud(
-                        z_min=0.0,
-                        z_max=max(z_hi, 2.2),
-                        stride=door_stride,
-                        max_points=200_000,
-                        only_path_substrings=("door",),
-                    )
-                    door_inflate = float(
-                        map_cfg.get("door_opening_inflate_m", 0.15)
-                    )
-                    opened = built.free_openings(
-                        door_cloud,
-                        z_min=0.0,
-                        z_max=max(z_hi, 2.2),
-                        inflate_m=door_inflate,
-                    )
-                except Exception as exc:
-                    logger.warning("door opening free failed: %s", exc)
-            logger.info(
-                "Isaac /map body-band z=[%.2f, %.2f] inflate=%.2f "
-                "(%d furniture → %d occ, %d door cells freed)",
-                z_lo,
-                z_hi,
-                inflate,
-                int(furniture.shape[0]),
-                int(changed),
-                int(opened),
-            )
-            if ply_channel:
-                built.set_cloud(mesh_cloud)
+        else:
+            changed = 0
+        opened = 0
+        if bool(map_cfg.get("free_doors", True)):
+            try:
+                door_stride = max(
+                    1, min(4, int(ply_cfg.get("mesh_stride", 8)) // 2)
+                )
+                door_cloud = self.stage.sample_mesh_cloud(
+                    z_min=0.0,
+                    z_max=max(z_hi, 2.2),
+                    stride=door_stride,
+                    max_points=200_000,
+                    surface_spacing_m=0.0,
+                    only_path_substrings=("door",),
+                )
+                door_inflate = float(
+                    map_cfg.get("door_opening_inflate_m", 0.15)
+                )
+                opened = built.free_openings(
+                    door_cloud,
+                    z_min=0.0,
+                    z_max=max(z_hi, 2.2),
+                    inflate_m=door_inflate,
+                )
+            except Exception as exc:
+                logger.warning("door opening free failed: %s", exc)
+        logger.info(
+            "Isaac /map body-band z=[%.2f, %.2f] inflate=%.2f "
+            "(%d furniture → %d occ, %d door cells freed)",
+            z_lo,
+            z_hi,
+            inflate,
+            int(furniture.shape[0]),
+            int(changed),
+            int(opened),
+        )
+        if ply_channel and surface_spacing > 0.0:
+            try:
+                mesh_cloud = self.stage.sample_mesh_cloud(
+                    z_min=float(grid_cfg.get("z_min", 0.0)),
+                    z_max=float(grid_cfg.get("z_max", 2.5)),
+                    stride=mesh_stride,
+                    max_points=int(ply_cfg.get("max_points", 400_000)),
+                    surface_spacing_m=surface_spacing,
+                )
+                if mesh_cloud.shape[0] > 0:
+                    built.set_cloud(mesh_cloud)
+            except Exception as exc:
+                logger.warning("USD mesh cloud densify failed: %s", exc)
+        elif ply_channel and furniture.shape[0] > 0:
+            # Append furniture verts onto solid floorplan walls.
+            base = np.asarray(built.cached_cloud, dtype=np.float32).reshape(-1, 3)
+            built.set_cloud(np.vstack([base, furniture]))
         self.map_builder = built
         self.scenario_grid = built.grid
         self.scenario_points = getattr(built, "points", None)

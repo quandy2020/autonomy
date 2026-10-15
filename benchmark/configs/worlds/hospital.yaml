@@ -1,0 +1,7 @@
+name: hospital
+scenario_type: random_room
+description: Arena hospital-style multi-room layout
+seed: 7
+room_number: 10
+x_length: 40
+y_length: 30

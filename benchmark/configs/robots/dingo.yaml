@@ -1,0 +1,6 @@
+name: dingo
+footprint: differential
+wheelbase: 0.4
+max_linear_vel: 1.3
+max_angular_vel: 2.0
+robot_radius: 0.35

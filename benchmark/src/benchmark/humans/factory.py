@@ -2,7 +2,7 @@
 #
 # Licensed under the Apache License, Version 2.0.
 
-"""Create human / crowd models from config."""
+"""Create human / crowd models from config (Arena SFM registry)."""
 
 from __future__ import annotations
 
@@ -11,11 +11,30 @@ from typing import Any, Dict, Optional
 from benchmark.humans.base import HumanModel
 from benchmark.humans.behaviors import resolve_behavior
 from benchmark.humans.crowd_flow import CrowdFlowHumans
+from benchmark.humans.evacuation import EvacuationHumans
+from benchmark.humans.hunav import HuNavHumans
+from benchmark.humans.orca import OrcaHumans, Rvo2Humans
+from benchmark.humans.pysocialforce import (
+    DeepSocialHumans,
+    LightSfmHumans,
+    PedsimHumans,
+    PySocialForceHumans,
+)
 from benchmark.humans.social_force.pedestrian import SocialForceHumans
+from benchmark.humans.spinny import SpinnyHumans
 
 _MODELS = {
     "social_force": SocialForceHumans,
     "crowd_flow": CrowdFlowHumans,
+    "orca": OrcaHumans,
+    "rvo2": Rvo2Humans,
+    "evacuation": EvacuationHumans,
+    "spinny": SpinnyHumans,
+    "hunav": HuNavHumans,
+    "pysocialforce": PySocialForceHumans,
+    "deep_social": DeepSocialHumans,
+    "lightsfm": LightSfmHumans,
+    "pedsim": PedsimHumans,
 }
 
 

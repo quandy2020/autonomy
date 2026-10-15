@@ -1,0 +1,9 @@
+name: gazebo
+backend: gazebo
+description: Arena Gazebo adapter (autosim sidecar + twin)
+autosim_config: ../autosim/config/fake.yaml
+launch_autosim: false
+autolink: true
+sync_odom: true
+rate_hz: 20
+headless: true

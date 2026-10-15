@@ -111,10 +111,12 @@ def doctor_cmd() -> None:
     mods = {
         "autosim": "autosim",
         "automsgs": "automsgs",
+        "autolink": "autolink",
         "numpy": "numpy",
         "yaml": "yaml",
         "stable_baselines3": "stable_baselines3",
         "onnxruntime": "onnxruntime",
+        "fastapi": "fastapi",
     }
     for label, mod in mods.items():
         try:
@@ -124,6 +126,17 @@ def doctor_cmd() -> None:
             click.echo(f"[--] {label}: {exc}")
     ctrl = find_controller_binary()
     click.echo(f"[{'ok' if ctrl else '--'}] autonomy.control: {ctrl or 'not found'}")
+    from benchmark.core.registry import get_registry
+    from benchmark.humans import list_human_models
+    from benchmark.planning.factory import list_planners
+    from benchmark.tasks.modes import list_modes
+
+    hub = get_registry()
+    hub.ensure_builtins()
+    click.echo("simulators: " + ", ".join(hub.simulators.names()))
+    click.echo("modes:      " + ", ".join(list_modes()))
+    click.echo("humans:     " + ", ".join(list_human_models()))
+    click.echo("planners:   " + ", ".join(list_planners()))
 
 
 main.add_command(eval_cmd)

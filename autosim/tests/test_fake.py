@@ -240,7 +240,7 @@ def test_fake_runner_smoke_without_habitat(monkeypatch):
     assert len(writers["/odom"].msgs) >= 1
     assert len(writers["/footprint"].msgs) >= 1
     assert len(writers["/footprint"].msgs[0].polygon.points) >= 3
-    assert len(writers["/overall/map"].msgs) == 1  # static cloud once
+    assert len(writers["/overall/map"].msgs) >= 1  # sampled once, cache republished
     assert len(writers["/map"].msgs) >= 1
     assert len(writers["/camera/depth/points"].msgs) >= 1
     assert len(writers["/camera/depth/fov"].msgs) >= 1

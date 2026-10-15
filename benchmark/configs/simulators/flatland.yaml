@@ -1,0 +1,6 @@
+name: flatland
+backend: flatland
+description: Arena Flatland-equivalent 2D kinematic world
+rate_hz: 20
+width: 20
+height: 20

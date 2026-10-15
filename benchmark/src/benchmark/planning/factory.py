@@ -15,9 +15,21 @@ from benchmark.planning.classic.mpc import MpcPlanner
 from benchmark.planning.classic.pure_pursuit import PurePursuitPlanner
 from benchmark.planning.classic.teb import TebPlanner
 from benchmark.planning.hybrid.switching import SwitchingPlanner
+from benchmark.planning.learning.arena_rl import (
+    ApplrPlanner,
+    CadrlPlanner,
+    CrowdNavPlanner,
+    DragonPlanner,
+    DrlvoPlanner,
+    RlcaPlanner,
+    SarlPlanner,
+    SarlStarPlanner,
+    TrailPlanner,
+)
 from benchmark.planning.learning.policy import PolicyPlanner, RosnavRlPlanner
 
 _FACTORIES = {
+    # Classic / local
     "pure_pursuit": PurePursuitPlanner,
     "dwa": DwaPlanner,
     "mpc": MpcPlanner,
@@ -25,10 +37,23 @@ _FACTORIES = {
     "mppi": AutonomyMppiPlanner,
     "autonomy_mppi": AutonomyMppiPlanner,
     "nmpc": MpcPlanner,
+    # Learning / Arena DRL names
     "policy": PolicyPlanner,
     "rosnav_rl": RosnavRlPlanner,
+    "cadrl": CadrlPlanner,
+    "crowdnav": CrowdNavPlanner,
+    "rlca": RlcaPlanner,
+    "sarl": SarlPlanner,
+    "sarl_star": SarlStarPlanner,
+    "applr": ApplrPlanner,
+    "dragon": DragonPlanner,
+    "trail": TrailPlanner,
+    "drlvo": DrlvoPlanner,
+    # Hybrid / Move Base Flex style
     "hybrid": SwitchingPlanner,
     "switching": SwitchingPlanner,
+    "mbf": SwitchingPlanner,
+    "move_base_flex": SwitchingPlanner,
 }
 
 

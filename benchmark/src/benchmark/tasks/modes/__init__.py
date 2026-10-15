@@ -2,18 +2,22 @@
 #
 # Licensed under the Apache License, Version 2.0.
 
-"""Arena task modes: scenario / random / parametrized / guided / explore."""
+"""Arena task modes (robots / modules)."""
 
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
+from benchmark.tasks.modes.benchmark import BenchmarkMode
+from benchmark.tasks.modes.dynamic import DynamicMode
 from benchmark.tasks.modes.explore import ExploreMode
 from benchmark.tasks.modes.guided import GuidedMode
 from benchmark.tasks.modes.parametrized import ParametrizedMode
 from benchmark.tasks.modes.random import RandomMode
 from benchmark.tasks.modes.scenario import ScenarioMode
+from benchmark.tasks.modes.staged import StagedMode
+from benchmark.tasks.modes.zones import ZonesMode
 
 _MODES = {
     "scenario": ScenarioMode,
@@ -21,6 +25,10 @@ _MODES = {
     "parametrized": ParametrizedMode,
     "guided": GuidedMode,
     "explore": ExploreMode,
+    "zones": ZonesMode,
+    "staged": StagedMode,
+    "dynamic": DynamicMode,
+    "benchmark": BenchmarkMode,
 }
 
 
@@ -38,13 +46,17 @@ def list_modes() -> list[str]:
 
 
 __all__ = [
+    "BenchmarkMode",
+    "DynamicMode",
     "EpisodeSetup",
     "ExploreMode",
     "GuidedMode",
     "ParametrizedMode",
     "RandomMode",
     "ScenarioMode",
+    "StagedMode",
     "TaskMode",
+    "ZonesMode",
     "create_mode",
     "list_modes",
 ]

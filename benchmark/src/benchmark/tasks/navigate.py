@@ -41,6 +41,12 @@ class NavigateTask(Task):
             "goal_x",
             "goal_y",
             "coverage_target",
+            "scenario",
+            "scenario_file",
+            "stages",
+            "map",
+            "start_zones",
+            "goal_zones",
         ):
             if key in self.task_cfg and key not in mode_cfg:
                 mode_cfg[key] = self.task_cfg[key]

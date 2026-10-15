@@ -10,7 +10,8 @@ from benchmark.core.types import Twist2D
 
 
 def test_list_human_models() -> None:
-    assert set(list_human_models()) == {"social_force", "crowd_flow"}
+    names = set(list_human_models())
+    assert {"social_force", "crowd_flow", "orca", "hunav", "pysocialforce"} <= names
 
 
 def test_social_force_in_fake_sim() -> None:

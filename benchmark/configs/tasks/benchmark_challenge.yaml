@@ -1,0 +1,20 @@
+name: navigate
+mode: benchmark
+episodes: 8
+timeout_s: 25
+goal_tolerance_m: 0.35
+mode_config:
+  stages:
+    - mode: random
+      episodes: 3
+      config:
+        obstacles: 6
+        pedestrians: 2
+        moving_obstacles: 0
+    - mode: parametrized
+      episodes: 3
+      config:
+        difficulty: 0.55
+    - mode: guided
+      episodes: 2
+      config: {}

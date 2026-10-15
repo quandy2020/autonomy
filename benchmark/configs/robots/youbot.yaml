@@ -1,0 +1,6 @@
+name: youbot
+footprint: omnidirectional
+wheelbase: 0.47
+max_linear_vel: 0.8
+max_angular_vel: 1.2
+robot_radius: 0.3

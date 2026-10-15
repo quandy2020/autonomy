@@ -17,7 +17,9 @@ from benchmark.planning.factory import create_planner
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.fake.simulator import FakeSimulator
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
+from benchmark.tasks.modes.dynamic import DynamicMode
 from benchmark.tasks.modes.explore import ExploreMode
+from benchmark.utils.social_metrics import update_social_step
 
 
 @dataclass
@@ -36,6 +38,9 @@ class EpisodeTrace:
     status: EpisodeStatus = EpisodeStatus.RUNNING
     collisions: int = 0
     coverage: float = 0.0
+    time_in_private_zone: float = 0.0
+    time_facing_pedestrians: float = 0.0
+    time_seen_by_pedestrians: float = 0.0
 
     @property
     def path_length(self) -> float:
@@ -87,8 +92,11 @@ def run_episode(
 ) -> EpisodeTrace:
     setup = mode.setup(episode_id, simulator)
     pose = _apply_setup(simulator, setup, seed=episode_id)
+    if isinstance(mode, DynamicMode):
+        mode.apply_map(simulator)
     trace = EpisodeTrace(episode_id=episode_id, setup=setup)
     t0 = time.monotonic()
+    last_t = 0.0
     trace.points.append(TrajectoryPoint(t=0.0, pose=pose, twist=Twist2D(), clearance=float("inf")))
 
     waypoints: Sequence[Pose2D] = setup.waypoints or [setup.goal]
@@ -104,6 +112,20 @@ def run_episode(
         step = simulator.step(twist)
         pose = step.pose
         clear = float(step.info.get("min_clearance", float("inf")))
+        now = time.monotonic() - t0
+        dt = max(1e-3, now - last_t)
+        last_t = now
+        if isinstance(simulator, FakeSimulator):
+            social = update_social_step(
+                robot_x=pose.x,
+                robot_y=pose.y,
+                robot_yaw=pose.yaw,
+                pedestrians=simulator.world.pedestrians,
+                dt=dt,
+            )
+            trace.time_in_private_zone += social["private"]
+            trace.time_facing_pedestrians += social["facing"]
+            trace.time_seen_by_pedestrians += social["seen"]
         obs = step.info.get("observation")
         if obs is not None and hasattr(planner, "set_observation"):
             planner.set_observation(obs)  # type: ignore[attr-defined]
@@ -111,7 +133,7 @@ def run_episode(
             trace.collisions += 1
             trace.status = EpisodeStatus.COLLISION
             trace.points.append(
-                TrajectoryPoint(t=time.monotonic() - t0, pose=pose, twist=twist, clearance=clear)
+                TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
             )
             return trace
 
@@ -120,7 +142,7 @@ def run_episode(
             if trace.coverage >= float(mode.config.get("coverage_target", 0.6)):
                 trace.status = EpisodeStatus.GOAL_REACHED
                 trace.points.append(
-                    TrajectoryPoint(t=time.monotonic() - t0, pose=pose, twist=twist, clearance=clear)
+                    TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
                 )
                 return trace
 
@@ -129,7 +151,7 @@ def run_episode(
             if wp_idx >= len(waypoints):
                 trace.status = EpisodeStatus.GOAL_REACHED
                 trace.points.append(
-                    TrajectoryPoint(t=time.monotonic() - t0, pose=pose, twist=twist, clearance=clear)
+                    TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
                 )
                 return trace
             current_goal = waypoints[wp_idx]
@@ -137,7 +159,7 @@ def run_episode(
                 simulator.set_goal(current_goal)
 
         trace.points.append(
-            TrajectoryPoint(t=time.monotonic() - t0, pose=pose, twist=twist, clearance=clear)
+            TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
         )
 
     trace.status = EpisodeStatus.TIMEOUT
@@ -160,6 +182,9 @@ def trace_to_result(trace: EpisodeTrace) -> EpisodeResult:
             "collisions": float(trace.collisions),
             "min_clearance": trace.min_clearance if trace.min_clearance < 1e8 else 0.0,
             "coverage": trace.coverage,
+            "time_in_private_zone": trace.time_in_private_zone,
+            "time_facing_pedestrians": trace.time_facing_pedestrians,
+            "time_seen_by_pedestrians": trace.time_seen_by_pedestrians,
         },
         info={"mode": trace.setup.info.get("mode"), **trace.setup.info},
     )

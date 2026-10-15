@@ -1,0 +1,7 @@
+name: canteen
+scenario_type: posts
+description: Arena canteen with table/chair clusters
+seed: 11
+obstacle_number: 40
+x_length: 25
+y_length: 20

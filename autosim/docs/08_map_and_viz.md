@@ -43,7 +43,7 @@ habitat:
 | Fake | scenario 栅格 | scenario 点 |
 | Isaac | `rooms.json` + 机身高度带内的 USD 障碍 | USD Mesh **面片加密**采样（墙体实心） |
 
-`/overall/map` 若只有稀疏轮廓：旧逻辑只采顶点；现用 `map.ply.surface_spacing_m`（默认 0.05 m）在三角形内部均匀采样。点太多可增大 spacing 或减小 `max_points`。
+Isaac 默认用 `rooms.json` 挤出的密高墙点云（实心、启动快）。`map.ply.surface_spacing_m > 0` 才对 USD 面片 densify（慢）。点云在主线程编码一次并缓存重发——勿走 SensorWorker（会被相机挤掉）。
 
 ### Isaac 二维占用高度带（可通行）
 
@@ -75,7 +75,7 @@ habitat:
 | LaserScan | `/scan` |
 | TF | `/tf` `/tf_static` |
 
-`/overall/map` 只发一次（静态场景）；`/map` OccupancyGrid 仍按 `rate_hz` 刷新。Autoviz 需在启动后订阅，或依赖桥接 latch。
+`/overall/map` **采样一次**（密化只跑一遍），之后按 `rate_hz` **重发缓存**（Autolink 非 latch，晚订阅也能看到）。`/map` OccupancyGrid 同样按 `rate_hz` 刷新。
 
 PointCloud2 建议：Color Transformer → `Intensity` 或 `AxisColor`；点数过大时用 **Decimate**，并配合 `map.ply.stride`。
 

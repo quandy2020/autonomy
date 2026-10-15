@@ -1,0 +1,6 @@
+name: tiago
+footprint: differential
+wheelbase: 0.4
+max_linear_vel: 1.0
+max_angular_vel: 1.5
+robot_radius: 0.27

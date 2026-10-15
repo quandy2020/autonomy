@@ -1,6 +1,15 @@
 name: habitat
 backend: habitat
-description: Habitat-Sim GLB / MP3D scenes
+description: Habitat-Sim GLB / MP3D scenes (Arena Unity-role)
 autosim_config: ../autosim/config/default.yaml
-rate_hz: 10
+launch_autosim: false
+autolink: true
+force_autolink: false
+sync_odom: true
+subscribe_scan: true
+cmd_vel: /cmd_vel
+odom: /odom
+scan: /scan
+sensors: [lidar2d, rgbd]
+rate_hz: 20
 headless: true

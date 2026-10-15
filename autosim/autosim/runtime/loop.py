@@ -111,6 +111,7 @@ class Runner:
         self.inertial_elapsed = 0.0
         self.map_elapsed = 0.0
         self.map_published = False
+        self.map_cloud_msg: Optional[Any] = None
         self.map_builder: Optional[Any] = None
         # Accumulated /odom poses for optional Path (nav_msgs) trajectory.
         self.odom_path_poses: list[Tuple[float, float, float, Tuple[int, int]]] = []
@@ -780,10 +781,12 @@ class Runner:
         return (float(x), float(y))
 
     def submit_map(self, stamp: Tuple[int, int]) -> None:
-        """Publish OccupancyGrid at ``rate_hz``; ``/overall/map`` once.
+        """Publish OccupancyGrid at ``rate_hz``; sample ``/overall/map`` once.
 
-        Dense PointCloud2 is static scene geometry — encode and publish on the
-        first sample only. Grid keeps refreshing for late nav subscribers.
+        PointCloud2 is encoded once on the **main thread** (not SensorWorker).
+        The worker queue is size-1 and camera frames would drop a multi-second
+        encode before Autoviz ever sees ``/overall/map``. Later ticks republish
+        the cached protobuf (stamp only) so late subscribers still see it.
         """
         if (
             self.map_builder is None
@@ -804,23 +807,25 @@ class Runner:
         )
         self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
         self.map_published = True
-        if not first:
-            return
         ply_cfg = self.map_cfg.get("ply") or {}
-        cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
-        stride = int(ply_cfg.get("stride", 1))
-        if stride > 1:
-            cloud = Runner.subsample_points(cloud, stride)
-            if cloud_rgb is not None:
-                cloud_rgb = cloud_rgb[::stride]
-        self.map_cloud_static = cloud
-        self.map_cloud_static_rgb = cloud_rgb
-        cloud, cloud_rgb = self.merge_traffic_into_map_cloud(
-            cloud, cloud_rgb, float(resolution)
-        )
-        self.sensor_worker.submit(
-            self.encode_publish_map_cloud, cloud, cloud_rgb, stamp
-        )
+        if not str(ply_cfg.get("channel") or "").strip():
+            return
+        if first:
+            cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
+            stride = int(ply_cfg.get("stride", 1))
+            if stride > 1:
+                cloud = Runner.subsample_points(cloud, stride)
+                if cloud_rgb is not None:
+                    cloud_rgb = cloud_rgb[::stride]
+            self.map_cloud_static = cloud
+            self.map_cloud_static_rgb = cloud_rgb
+            cloud, cloud_rgb = self.merge_traffic_into_map_cloud(
+                cloud, cloud_rgb, float(resolution)
+            )
+            self.encode_publish_map_cloud(cloud, cloud_rgb, stamp)
+            return
+        # Cached protobuf — never re-encode hundreds of thousands of points.
+        self.republish_map_cloud(stamp)
 
     def merge_traffic_into_map_cloud(
         self,
@@ -853,17 +858,14 @@ class Runner:
         cloud_rgb: Any,
         stamp: Tuple[int, int],
     ) -> None:
-        """Publish the heavy panoramic PLY cloud (first sample only)."""
+        """Encode once and publish; cache the protobuf for cheap republish."""
         ply_cfg = self.map_cfg.get("ply") or {}
         frame = self.map_cfg["frame"]
         ply_channel = str(ply_cfg.get("channel") or "").strip()
         if not ply_channel:
             return
         if cloud_rgb is not None and cloud_rgb.shape[0] == cloud.shape[0]:
-            self.bridge.publish(
-                "map_cloud",
-                Messages.encode_point_cloud2(cloud, stamp, frame, rgb=cloud_rgb),
-            )
+            msg = Messages.encode_point_cloud2(cloud, stamp, frame, rgb=cloud_rgb)
         else:
             if cloud_rgb is not None and cloud_rgb.shape[0] != cloud.shape[0]:
                 warnings.warn(
@@ -871,10 +873,18 @@ class Runner:
                     f"rgb={cloud_rgb.shape[0]}; falling back to flat white",
                     stacklevel=2,
                 )
-            self.bridge.publish(
-                "map_cloud",
-                Messages.encode_point_cloud2(cloud, stamp, frame),
-            )
+            msg = Messages.encode_point_cloud2(cloud, stamp, frame)
+        self.map_cloud_msg = msg
+        self.bridge.publish("map_cloud", msg)
+
+    def republish_map_cloud(self, stamp: Tuple[int, int]) -> None:
+        """Re-send the cached ``/overall/map`` with an updated stamp."""
+        msg = getattr(self, "map_cloud_msg", None)
+        if msg is None or "map_cloud" not in self.bridge.writers:
+            return
+        msg.header.stamp.sec = int(stamp[0])
+        msg.header.stamp.nanosec = int(stamp[1])
+        self.bridge.publish("map_cloud", msg)
 
     def encode_publish_map(
         self,
@@ -1189,7 +1199,7 @@ class Runner:
         return array[::step]
 
     def publish_map(self, stamp: Tuple[int, int]) -> None:
-        """Publish OccupancyGrid when due; PointCloud2 once.
+        """Publish OccupancyGrid when due; sample PointCloud2 once, republish cache.
 
         Args:
             stamp: Message timestamp.
@@ -1213,18 +1223,23 @@ class Runner:
         )
         self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
         self.map_published = True
-        if not first:
-            return
         ply_cfg = self.map_cfg.get("ply") or {}
-        stride = int(ply_cfg.get("stride", 1))
-        cloud = self.subsample_points(cloud, stride)
-        cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
-        if cloud_rgb is not None and stride > 1:
-            cloud_rgb = cloud_rgb[::stride]
-        cloud, cloud_rgb = self.merge_traffic_into_map_cloud(
-            cloud, cloud_rgb, float(resolution)
-        )
-        self.encode_publish_map_cloud(cloud, cloud_rgb, stamp)
+        if not str(ply_cfg.get("channel") or "").strip():
+            return
+        if first:
+            stride = int(ply_cfg.get("stride", 1))
+            cloud = self.subsample_points(cloud, stride)
+            cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
+            if cloud_rgb is not None and stride > 1:
+                cloud_rgb = cloud_rgb[::stride]
+            self.map_cloud_static = cloud
+            self.map_cloud_static_rgb = cloud_rgb
+            cloud, cloud_rgb = self.merge_traffic_into_map_cloud(
+                cloud, cloud_rgb, float(resolution)
+            )
+            self.encode_publish_map_cloud(cloud, cloud_rgb, stamp)
+            return
+        self.republish_map_cloud(stamp)
 
     def publish_camera(self, stamp: Tuple[int, int]) -> None:
         """Publish RGB, depth, and ``CameraInfo`` when enabled and due.

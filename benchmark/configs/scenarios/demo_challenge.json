@@ -1,0 +1,11 @@
+{
+  "name": "demo_challenge",
+  "robot": {
+    "start": {"x": 0.0, "y": 0.0, "yaw": 0.0},
+    "goal": {"x": 4.0, "y": 0.5},
+    "waypoints": [{"x": 2.0, "y": 0.0}, {"x": 4.0, "y": 0.5}]
+  },
+  "n_obstacles": 6,
+  "n_pedestrians": 3,
+  "moving_obstacles": 1
+}

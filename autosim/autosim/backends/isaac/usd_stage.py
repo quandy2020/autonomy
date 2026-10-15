@@ -336,6 +336,8 @@ def sample_triangle_surface(
     v1: np.ndarray,
     v2: np.ndarray,
     spacing: float,
+    *,
+    max_div: int = 64,
 ) -> np.ndarray:
     """Uniform barycentric samples on a triangle (includes vertices)."""
     e01 = float(np.linalg.norm(v1 - v0))
@@ -343,15 +345,13 @@ def sample_triangle_surface(
     e12 = float(np.linalg.norm(v2 - v1))
     longest = max(e01, e02, e12, 1e-6)
     step = max(float(spacing), 1e-3)
-    n = max(1, int(math.ceil(longest / step)))
-    pts: list[np.ndarray] = []
-    for i in range(n + 1):
-        for j in range(n + 1 - i):
-            u = i / n
-            v = j / n
-            w = 1.0 - u - v
-            pts.append(w * v0 + u * v1 + v * v2)
-    return np.asarray(pts, dtype=np.float64)
+    n = max(1, min(int(max_div), int(math.ceil(longest / step))))
+    ii, jj = np.meshgrid(np.arange(n + 1), np.arange(n + 1), indexing="ij")
+    keep = (ii + jj) <= n
+    u = (ii[keep] / n).astype(np.float64)
+    v = (jj[keep] / n).astype(np.float64)
+    w = 1.0 - u - v
+    return (w[:, None] * v0) + (u[:, None] * v1) + (v[:, None] * v2)
 
 
 def densify_mesh_local(
@@ -359,6 +359,8 @@ def densify_mesh_local(
     counts: Sequence[int] | None,
     indices: Sequence[int] | None,
     spacing: float,
+    *,
+    max_points: int | None = None,
 ) -> np.ndarray:
     """Fan-triangulate faces and sample each triangle at ``spacing`` metres."""
     if counts is None or indices is None or len(counts) == 0:
@@ -367,8 +369,13 @@ def densify_mesh_local(
     verts = np.asarray(local, dtype=np.float64).reshape(-1, 3)
     n_verts = verts.shape[0]
     chunks: list[np.ndarray] = [verts]
+    total = int(verts.shape[0])
+    budget = int(max_points) if max_points is not None else None
+    step = max(float(spacing), 1e-3)
     cursor = 0
     for count in counts:
+        if budget is not None and total >= budget:
+            break
         n = int(count)
         if n < 3 or cursor + n > idx.shape[0]:
             cursor += max(n, 0)
@@ -379,6 +386,8 @@ def densify_mesh_local(
             continue
         v0 = verts[int(face[0])]
         for k in range(1, n - 1):
+            if budget is not None and total >= budget:
+                break
             v1 = verts[int(face[k])]
             v2 = verts[int(face[k + 1])]
             edge = max(
@@ -387,10 +396,15 @@ def densify_mesh_local(
                 float(np.linalg.norm(v2 - v1)),
             )
             # Tiny faces: keep the three corners only (already in verts).
-            if edge < 1.5 * float(spacing):
+            if edge < 1.5 * step:
                 continue
-            chunks.append(sample_triangle_surface(v0, v1, v2, spacing))
-    return np.vstack(chunks) if chunks else verts
+            pts = sample_triangle_surface(v0, v1, v2, step)
+            chunks.append(pts)
+            total += int(pts.shape[0])
+    cloud = np.vstack(chunks) if chunks else verts
+    if budget is not None and cloud.shape[0] > budget:
+        return cloud[:budget]
+    return cloud
 
 
 def sample_mesh_cloud(
@@ -419,10 +433,20 @@ def sample_mesh_cloud(
     only_sub = tuple(s.lower() for s in only_path_substrings if str(s).strip())
     step = max(1, int(stride))
     spacing = max(float(surface_spacing_m), 0.0)
+    limit = max(1, int(max_points))
     chunks: list[np.ndarray] = []
     total = 0
     time = Usd.TimeCode.Default()
+    logger.info(
+        "sampling USD mesh cloud (z=[%.2f, %.2f], spacing=%.3f, max=%d)…",
+        float(z_min),
+        float(z_max),
+        spacing,
+        limit,
+    )
     for prim in stage.Traverse():
+        if total >= limit:
+            break
         path = str(prim.GetPath())
         path_l = path.lower()
         if any(path == pref or path.startswith(pref.rstrip("/") + "/") for pref in skip):
@@ -454,7 +478,9 @@ def sample_mesh_cloud(
                 indices = mesh.GetFaceVertexIndicesAttr().Get(time)
             except Exception:
                 counts, indices = None, None
-            local = densify_mesh_local(local, counts, indices, spacing)
+            local = densify_mesh_local(
+                local, counts, indices, spacing, max_points=limit - total
+            )
         if step > 1:
             local = local[::step]
         # USD uses row vectors: p_world = p_local * matrix.
@@ -473,13 +499,11 @@ def sample_mesh_cloud(
             continue
         chunks.append(world.astype(np.float32))
         total += int(world.shape[0])
-        if total >= int(max_points):
-            break
     if not chunks:
         return np.zeros((0, 3), dtype=np.float32)
     cloud = np.vstack(chunks)
-    if cloud.shape[0] > int(max_points):
-        cloud = cloud[: int(max_points)]
+    if cloud.shape[0] > limit:
+        cloud = cloud[:limit]
     logger.info(
         "sampled USD mesh cloud: %d points (z=[%.2f, %.2f], spacing=%.3f, stride=%d)",
         cloud.shape[0],

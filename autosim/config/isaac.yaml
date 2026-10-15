@@ -150,8 +150,8 @@ habitat:
       sensor_height: 0.6
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
-      # Empty: skip dense depth PointCloud2 (Autoviz lag). RGB/depth images stay.
-      depth_points_channel: ""
+      # Depth PointCloud2 for Autoviz; stride 4 keeps bandwidth down.
+      depth_points_channel: /camera/depth/points
       depth_points_stride: 4
       info_channel: /camera/camera_info
       semantic_enabled: false
@@ -198,12 +198,12 @@ habitat:
     free_doors: true          # punch door meshes free (rooms.json seals openings)
     door_opening_inflate_m: 0.15
     ply:
-      # Dense surface samples (triangle interiors) so walls look solid in Autoviz.
+      # Default 0: keep rooms.json dense wall cloud (fast). Set >0 to densify USD faces.
       channel: /overall/map
       stride: 1                 # publish downsample (Autoviz)
-      mesh_stride: 1            # post-densify subsample
-      surface_spacing_m: 0.05   # face sample spacing ≈ grid resolution
-      max_points: 800000
+      mesh_stride: 1
+      surface_spacing_m: 0.0    # >0 = slow USD face densify (e.g. 0.08)
+      max_points: 400000
       range_max: 30.0
       horizontal:
         angle_min: -3.14159

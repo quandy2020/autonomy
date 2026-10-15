@@ -5,6 +5,7 @@
 from benchmark.evaluation.metrics.efficiency import efficiency_summary, success_rate
 from benchmark.evaluation.metrics.safety import safety_summary
 from benchmark.evaluation.metrics.smoothness import smoothness_summary
+from benchmark.evaluation.metrics.social import social_summary
 from benchmark.evaluation.metrics.status import status_counts
 
 # Back-compat helper used by unit tests on EpisodeResult lists
@@ -31,6 +32,7 @@ __all__ = [
     "efficiency_summary",
     "safety_summary",
     "smoothness_summary",
+    "social_summary",
     "status_counts",
     "success_rate",
 ]

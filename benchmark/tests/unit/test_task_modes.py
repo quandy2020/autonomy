@@ -9,7 +9,17 @@ from benchmark.tasks.modes import create_mode, list_modes
 
 
 def test_list_modes() -> None:
-    assert set(list_modes()) == {"scenario", "random", "parametrized", "guided", "explore"}
+    assert {
+        "scenario",
+        "random",
+        "parametrized",
+        "guided",
+        "explore",
+        "zones",
+        "staged",
+        "dynamic",
+        "benchmark",
+    } <= set(list_modes())
 
 
 def test_random_mode_varies() -> None:
