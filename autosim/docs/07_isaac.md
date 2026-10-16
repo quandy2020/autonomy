@@ -57,7 +57,7 @@ isaac:
 |----|------|
 | 世界 | `habitat.path` → 如 `usd/worlds/InteriorAgent/kujiale_0021/...` |
 | 机器人 prim | `habitat.usd.robot_prim`（酷家乐常用 `/Root/Robot`） |
-| 档案 | `robot.profile: turtlebot3_burger` / `husky` |
+| 档案 | `robot.profile: turtlebot3_burger` / `husky` / `beni` |
 | 大场景 | `usd/worlds/InteriorAgent/` 被 `usd/.gitignore` 忽略，需本地下载 |
 
 打开舞台后会：修复 faceVarying display\* primvar、挂相机、启用 PhysX、构建 floorplan 地图。
@@ -125,24 +125,50 @@ habitat:
 
 ## 8. RL 运控模型（ONNX）
 
-AutoSim 侧可选 `PolicyDriver`（`habitat.policy`），加载与 `policy_controller` 类似的 Twist ONNX，在无外部 `/cmd_vel`（或 `exclusive: true`）时写差速。
+`PolicyDriver`（`habitat.policy`）支持两种 `action_space`：
+
+### 8.1 平面 Twist（默认）
+
+与 `policy_controller` 类似的 Twist ONNX；无外部 `/cmd_vel`（或 `exclusive`）时写差速。
 
 ```yaml
 habitat:
   policy:
     enabled: true
+    action_space: twist
     model_path: /path/to/twist_policy.onnx
     rate_hz: 10.0
-    exclusive: false   # true = 忽略 teleop
+    exclusive: false
     use_laser: true
     laser_bins: 360
 ```
 
 | 项 | 说明 |
 |----|------|
-| 依赖 | `pip install onnxruntime` |
-| 输入 | 默认 `observation_kinematic` `[1,6]`；可选 `observation_laser` |
-| 输出 | 默认 `action` → `(vx, wz)`，再按 `max_vx` / `max_wz` 裁剪 |
-| 与 C++ 插件关系 | 完整观测栈 / Diffusion / TensorRT 仍用 `autonomy/control/.../policy_controller`；此处仅仿真闭环 |
+| 输入 | `observation_kinematic` `[1,6]`；可选 laser |
+| 输出 | `(vx, wz)`，按 `max_vx` / `max_wz` 裁剪 |
 
-栈内正式部署请用 ControllerServer + `policy_controller` 订 `/scan` 等话题（见该模块 README）。
+### 8.2 Open Beni 7-DoF 平衡（`action_space: beni`）
+
+加载 Open Beni 导出的 `policy.onnx`（`obs[1,40]` + GRU `h_in[1,1,512]` → `actions[1,7]` + `h_out`）。
+
+```yaml
+habitat:
+  policy:
+    enabled: true
+    action_space: beni
+    # model_path 默认可省略 → robot/beni/models/policy.onnx
+    rate_hz: 100.0
+    max_vx: 1.5
+    max_wz: 2.0
+    drive_from_wheels: false   # false：底盘跟 /cmd_vel；true：由轮速推平面运动
+```
+
+| 项 | 说明 |
+|----|------|
+| 依赖 | `pip install onnxruntime` |
+| `/cmd_vel` | 写入观测 twist 命令（与浏览器摇杆一致） |
+| 动作 | L1,R1,L2,R2,LW,RW,head_yaw → 运动学关节跟踪；TF 发布 `q−q_default`（匹配 mesh 烘焙站姿） |
+| 底盘 | 默认仍用平面 plant；完整 MuJoCo/PhysX 平衡在 Open Beni |
+
+栈内正式 Twist 部署请用 ControllerServer + `policy_controller`。

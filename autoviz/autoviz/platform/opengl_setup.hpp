@@ -7,7 +7,9 @@
  * @brief Process-wide OpenGL / Qt surface defaults for Autoviz rendering.
  *
  * Must run before constructing @c QApplication / @c QGuiApplication so Qt
- * picks the intended GL profile (and software fallback when needed).
+ * picks the intended GL profile. Autoviz does not pin a GPU vendor:
+ * Docker defaults to Mesa; @c AUTOVIZ_USE_HARDWARE_GL=1 uses the system
+ * glvnd ICD (whatever is installed).
  *
  * @see defaultSurfaceFormat
  * @see usesSoftwareOpenGL

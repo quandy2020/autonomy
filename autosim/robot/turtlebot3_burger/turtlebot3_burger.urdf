@@ -1,16 +1,27 @@
 <?xml version="1.0"?>
 <!--
-  TurtleBot3 Burger — self-contained URDF for autosim.
+  TurtleBot3 Burger — autosim URDF with ROBOTIS visual meshes.
 
-  Geometry and frames follow ROBOTIS turtlebot3_description (Humble):
+  Geometry / frames follow turtlebot3_description (Humble, Apache-2.0):
   https://github.com/ROBOTIS-GIT/turtlebot3/tree/humble/turtlebot3_description
 
-  Uses primitive shapes instead of package:// meshes so Habitat / CI can load
-  without downloading STL assets. Swap in official meshes if needed for visuals.
+  Visuals: meshes/*.stl (mm units → scale 0.001). Collisions stay primitives
+  for fast Habitat / PhysX. Extra camera_link kept for autosim RGB-D.
 -->
 <robot name="turtlebot3_burger">
 
-  <!-- ===================== Links ===================== -->
+  <material name="black">
+    <color rgba="0.0 0.0 0.0 1.0"/>
+  </material>
+  <material name="dark">
+    <color rgba="0.2 0.2 0.2 1.0"/>
+  </material>
+  <material name="light_black">
+    <color rgba="0.35 0.35 0.35 1.0"/>
+  </material>
+  <material name="grey">
+    <color rgba="0.55 0.55 0.55 1.0"/>
+  </material>
 
   <link name="base_footprint"/>
 
@@ -18,22 +29,21 @@
     <visual>
       <origin xyz="-0.032 0 0.0" rpy="0 0 0"/>
       <geometry>
-        <box size="0.14 0.14 0.14"/>
+        <mesh filename="meshes/bases/burger_base.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="grey">
-        <color rgba="0.6 0.6 0.6 1"/>
-      </material>
+      <material name="light_black"/>
     </visual>
     <collision>
-      <origin xyz="-0.032 0 0.0" rpy="0 0 0"/>
+      <origin xyz="-0.032 0 0.070" rpy="0 0 0"/>
       <geometry>
-        <box size="0.14 0.14 0.14"/>
+        <box size="0.140 0.140 0.143"/>
       </geometry>
     </collision>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="1.0"/>
-      <inertia ixx="0.01" ixy="0.0" ixz="0.0" iyy="0.01" iyz="0.0" izz="0.01"/>
+      <mass value="0.82573504"/>
+      <inertia ixx="0.0022124416" ixy="-1.2294101e-05" ixz="3.4938785e-05"
+               iyy="0.0021193702" iyz="-5.0120904e-06" izz="0.0020064271"/>
     </inertial>
   </link>
 
@@ -41,22 +51,20 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
       <geometry>
-        <cylinder length="0.018" radius="0.033"/>
+        <mesh filename="meshes/wheels/left_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="black">
-        <color rgba="0.1 0.1 0.1 1"/>
-      </material>
+      <material name="dark"/>
     </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <cylinder length="0.018" radius="0.033"/>
       </geometry>
     </collision>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.028"/>
-      <inertia ixx="1.0e-05" ixy="0.0" ixz="0.0" iyy="1.0e-05" iyz="0.0" izz="2.0e-05"/>
+      <mass value="0.02849894"/>
+      <inertia ixx="1.117558e-05" ixy="0" ixz="0" iyy="1.1192413e-05" iyz="0" izz="2.0712558e-05"/>
     </inertial>
   </link>
 
@@ -64,39 +72,28 @@
     <visual>
       <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
       <geometry>
-        <cylinder length="0.018" radius="0.033"/>
+        <mesh filename="meshes/wheels/right_tire.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="black">
-        <color rgba="0.1 0.1 0.1 1"/>
-      </material>
+      <material name="dark"/>
     </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="1.57079632679 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
         <cylinder length="0.018" radius="0.033"/>
       </geometry>
     </collision>
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0"/>
-      <mass value="0.028"/>
-      <inertia ixx="1.0e-05" ixy="0.0" ixz="0.0" iyy="1.0e-05" iyz="0.0" izz="2.0e-05"/>
+      <mass value="0.02849894"/>
+      <inertia ixx="1.117558e-05" ixy="0" ixz="0" iyy="1.1192413e-05" iyz="0" izz="2.0712558e-05"/>
     </inertial>
   </link>
 
   <link name="caster_back_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <sphere radius="0.01"/>
-      </geometry>
-      <material name="grey">
-        <color rgba="0.6 0.6 0.6 1"/>
-      </material>
-    </visual>
     <collision>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
+      <origin xyz="0 0.001 0" rpy="0 0 0"/>
       <geometry>
-        <sphere radius="0.01"/>
+        <box size="0.030 0.009 0.020"/>
       </geometry>
     </collision>
     <inertial>
@@ -106,42 +103,33 @@
   </link>
 
   <link name="imu_link">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0"/>
-      <geometry>
-        <box size="0.01 0.01 0.01"/>
-      </geometry>
-    </visual>
     <inertial>
       <mass value="0.001"/>
       <inertia ixx="1.0e-07" ixy="0.0" ixz="0.0" iyy="1.0e-07" iyz="0.0" izz="1.0e-07"/>
     </inertial>
   </link>
 
-  <!-- LDS-01 2D lidar; frame matches common /scan conventions -->
   <link name="base_scan">
     <visual>
-      <origin xyz="0 0 0.011" rpy="0 0 0"/>
+      <origin xyz="0 0 0" rpy="0 0 0"/>
       <geometry>
-        <cylinder length="0.0315" radius="0.035"/>
+        <mesh filename="meshes/sensors/lds.stl" scale="0.001 0.001 0.001"/>
       </geometry>
-      <material name="black">
-        <color rgba="0.1 0.1 0.1 1"/>
-      </material>
+      <material name="dark"/>
     </visual>
     <collision>
-      <origin xyz="0 0 0.011" rpy="0 0 0"/>
+      <origin xyz="0.015 0 -0.0065" rpy="0 0 0"/>
       <geometry>
-        <cylinder length="0.0315" radius="0.035"/>
+        <cylinder length="0.0315" radius="0.055"/>
       </geometry>
     </collision>
     <inertial>
       <mass value="0.114"/>
-      <inertia ixx="1.0e-04" ixy="0.0" ixz="0.0" iyy="1.0e-04" iyz="0.0" izz="1.0e-04"/>
+      <origin xyz="0 0 0"/>
+      <inertia ixx="0.001" ixy="0.0" ixz="0.0" iyy="0.001" iyz="0.0" izz="0.001"/>
     </inertial>
   </link>
 
-  <!-- Alias frame for autosim default laser_link -->
   <link name="laser_link"/>
 
   <link name="camera_link">
@@ -150,9 +138,7 @@
       <geometry>
         <box size="0.04 0.04 0.03"/>
       </geometry>
-      <material name="black">
-        <color rgba="0.15 0.15 0.15 1"/>
-      </material>
+      <material name="black"/>
     </visual>
     <collision>
       <origin xyz="0 0 0.015" rpy="0 0 0"/>
@@ -166,15 +152,12 @@
     </inertial>
   </link>
 
-  <!-- ===================== Joints ===================== -->
-
   <joint name="base_joint" type="fixed">
     <parent link="base_footprint"/>
     <child link="base_link"/>
     <origin xyz="0 0 0.010" rpy="0 0 0"/>
   </joint>
 
-  <!-- Wheel separation 0.160 m, radius 0.033 m (ROBOTIS Burger) -->
   <joint name="wheel_left_joint" type="continuous">
     <parent link="base_link"/>
     <child link="wheel_left_link"/>
@@ -192,19 +175,20 @@
   <joint name="caster_back_joint" type="fixed">
     <parent link="base_link"/>
     <child link="caster_back_link"/>
-    <origin xyz="-0.081 0 -0.004" rpy="0 0 0"/>
+    <origin xyz="-0.081 0 -0.004" rpy="-1.57079632679 0 0"/>
   </joint>
 
   <joint name="imu_joint" type="fixed">
     <parent link="base_link"/>
     <child link="imu_link"/>
-    <origin xyz="0 0 0.068" rpy="0 0 0"/>
+    <origin xyz="-0.032 0 0.068" rpy="0 0 0"/>
   </joint>
 
+  <!-- Official LDS height (was incorrectly 0.5 m) -->
   <joint name="scan_joint" type="fixed">
     <parent link="base_link"/>
     <child link="base_scan"/>
-    <origin xyz="-0.032 0 0.5" rpy="0 0 0"/>
+    <origin xyz="-0.032 0 0.172" rpy="0 0 0"/>
   </joint>
 
   <joint name="laser_joint" type="fixed">

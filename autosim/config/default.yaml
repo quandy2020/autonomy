@@ -27,7 +27,8 @@ habitat:
   gpu: 0
 
   robot:
-    urdf: urdf/turtlebot3_burger.urdf   # empty = no URDF; path relative to autosim/
+    urdf: robot/turtlebot3_burger/turtlebot3_burger.urdf   # empty = no URDF; path relative to autosim/
+    description_channel: /robot_description               # Autoviz RobotModel (when urdf set)
     max_linear: 0.5
     max_angular: 1.0
     # First-order twist dynamics (m/s², rad/s²). 0 = unlimited (snap).

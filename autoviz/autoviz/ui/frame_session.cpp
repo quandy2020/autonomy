@@ -68,6 +68,7 @@
 #include "autoviz/rendering/ogre_render_window.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
 #include "autoviz/rendering/gpu_capabilities.hpp"
+#include "autoviz/rendering/render_system.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/common/view_state_io.hpp"
 #include "autoviz/ui/panel/add_dialog.hpp"
@@ -1130,6 +1131,10 @@ void FrameSession::onAboutToQuit() {
     frame_->viewport_->destroyRenderWindowInEntry(entry, /*synchronous=*/true);
   });
   frame_->viewport_->clearForQuit();
+
+  // Drop Ogre::Root / GLX headless bootstrap while the X11 display is still
+  // alive, so process exit does not leave a live GL stack for driver unload.
+  rendering::RenderSystem::destroyInstance();
 
   QSettings settings;
   settings.setValue(QStringLiteral("recent_configs"), recent_configs_);

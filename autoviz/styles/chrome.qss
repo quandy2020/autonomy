@@ -181,6 +181,22 @@ QTreeWidget::item:focus, QTreeView::item:focus {
 QTreeWidget::item:selected, QTreeView::item:selected {
   color: #0D9488;
 }
+QTreeWidget::indicator, QTreeView::indicator {
+  width: 14px;
+  height: 14px;
+  border: 1px solid #94A3B8;
+  border-radius: 3px;
+  background: #FFFFFF;
+}
+QTreeWidget::indicator:checked, QTreeView::indicator:checked {
+  background: #0D9488;
+  border-color: #0D9488;
+  image: none;
+}
+QTreeWidget::indicator:unchecked, QTreeView::indicator:unchecked {
+  background: #FFFFFF;
+  border-color: #94A3B8;
+}
 QTreeWidget::branch, QTreeView::branch,
 QTreeWidget::branch:selected, QTreeView::branch:selected,
 QTreeWidget::branch:hover, QTreeView::branch:hover {

@@ -411,7 +411,20 @@ class ViewController {
   QMatrix4x4 topDownOrthoViewMatrix() const;
   QMatrix4x4 thirdPersonViewMatrix() const;
   QMatrix4x4 fpsViewMatrix() const;
-  QMatrix4x4 targetFrameToFixedMatrix() const;
+
+  /**
+   * @brief Resolves target_frame_ → fixed-frame transform.
+   *
+   * On success fills @p out and caches it. On transient TF failure, returns the
+   * last good transform when available (keeps the camera from dropping out of
+   * follow). Does not use @c QMatrix4x4::isIdentity() as a success signal —
+   * identity is a valid result when the target equals the fixed frame.
+   */
+  bool resolveTargetFrameToFixed(QMatrix4x4* out) const;
+
+  /** @brief Expresses a point from @p from_frame into @p to_frame (empty = fixed). */
+  QVector3D reexpressPoint(const QVector3D& point, const std::string& from_frame,
+                           const std::string& to_frame) const;
 
   void rotateCamera(float diff_x, float diff_y);
   void panFocalPointXY(float diff_x, float diff_y, float aspect_ratio,
@@ -446,6 +459,9 @@ class ViewController {
   bool focal_shape_visible_ = false;
   std::string target_frame_;
   common::FrameManager* frame_manager_ = nullptr;
+  /** Last successful target→fixed TF; used across brief lookup failures. */
+  mutable bool has_target_frame_transform_ = false;
+  mutable QMatrix4x4 last_target_to_fixed_;
   float xy_orbit_pitch_ = 0.65f;
   ViewDragMode drag_mode_ = ViewDragMode::kNone;
   bool dragging_ = false;

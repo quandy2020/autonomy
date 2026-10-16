@@ -198,9 +198,16 @@ class PanelDockWidget : public QDockWidget {
   void titleDragStarted();
 
   /**
-   * @brief Emitted when a title-bar drag ends.
+   * @brief Emitted while the title bar is dragged (global cursor position).
+   * @param global_pos Cursor position in global coordinates.
    */
-  void titleDragFinished();
+  void titleDragMoved(const QPoint& global_pos);
+
+  /**
+   * @brief Emitted when a title-bar drag ends.
+   * @param global_pos Cursor position at release (global coordinates).
+   */
+  void titleDragFinished(const QPoint& global_pos);
 
  private:
   /**
@@ -227,8 +234,9 @@ class PanelDockWidget : public QDockWidget {
 
   /**
    * @brief Clears drag state and emits @ref titleDragFinished() if needed.
+   * @param global_pos Cursor position at release (global coordinates).
    */
-  void endTitleDrag();
+  void endTitleDrag(const QPoint& global_pos = QPoint());
 
   /** Content currently collapsed. */
   bool collapsed_ = false;

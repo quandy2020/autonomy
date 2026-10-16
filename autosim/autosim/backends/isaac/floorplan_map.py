@@ -97,9 +97,10 @@ class FloorplanMap:
             ring = free ^ erode_boolean_mask(free, radius_cells=max(1, int(round(wall_thickness / resolution))))
             cells[ring] = 100
 
-        z_min = float(grid_cfg.get("z_min", 0.1))
+        z_min = float(grid_cfg.get("z_min", 0.0))
         z_max = float(grid_cfg.get("z_max", 2.5))
         # Dense wall extrusion + floor fill (fallback when USD mesh cloud absent).
+        # Floor samples always sit at z=0 so Autoviz matches InteriorAgent ground.
         cloud = dense_floorplan_cloud(
             rooms,
             free_mask=free,
@@ -107,6 +108,7 @@ class FloorplanMap:
             resolution=resolution,
             z_min=z_min,
             z_max=z_max,
+            floor_z=0.0,
         )
         self.points = cloud
         self.occupied = cells == 100
@@ -343,8 +345,13 @@ def dense_floorplan_cloud(
     resolution: float,
     z_min: float,
     z_max: float,
+    floor_z: float = 0.0,
 ) -> np.ndarray:
-    """Walls extruded through height + floor samples inside free cells."""
+    """Walls extruded through height + floor samples inside free cells.
+
+    Floor points use ``floor_z`` (default 0) so the map sits on world ground.
+    Wall columns still span ``[z_min, z_max]``.
+    """
     step = max(float(resolution), 1e-3)
     z0 = min(float(z_min), float(z_max))
     z1 = max(float(z_min), float(z_max))
@@ -359,7 +366,7 @@ def dense_floorplan_cloud(
         fx = origin_xy[0] + (cols[take].astype(np.float64) + 0.5) * step
         fy = origin_xy[1] + (rows[take].astype(np.float64) + 0.5) * step
         floor = np.column_stack(
-            [fx, fy, np.full(fx.shape[0], z0, dtype=np.float64)]
+            [fx, fy, np.full(fx.shape[0], float(floor_z), dtype=np.float64)]
         ).astype(np.float32)
         chunks.append(floor)
     return np.vstack([c for c in chunks if c.size > 0])

@@ -500,22 +500,27 @@ class AutonomyRunner:
         self._configure_software_rendering()
 
     def configure_gui_gl(self):
-        """Configure OpenGL/GLX for RViz and autoviz inside the container."""
+        """Configure OpenGL/GLX for RViz and autoviz inside the container.
+
+        Autoviz is vendor-neutral: it never pins __GLX_VENDOR_LIBRARY_NAME to a
+        specific GPU vendor. With GPU passthrough, enable hardware GL via glvnd
+        (whatever ICD is installed). Without GPU, use Mesa llvmpipe.
+        """
         check_script = "src/autonomy/autoviz/scripts/check_gui_env.sh"
+        self.docker_args.extend(["-e", "AUTOVIZ_ALLOW_ROOT_GUI=1"])
         if self.use_gpu_in_container:
-            self.docker_args.extend([
-                "-e", "AUTOVIZ_USE_HARDWARE_GL=1",
-                "-e", "AUTOVIZ_ALLOW_ROOT_GUI=1",
-                "-e", "__GLX_VENDOR_LIBRARY_NAME=nvidia",
-            ])
+            # Enable hardware GL through glvnd — do not set
+            # __GLX_VENDOR_LIBRARY_NAME=nvidia (Autoviz must stay vendor-neutral).
+            self.docker_args.extend(["-e", "AUTOVIZ_USE_HARDWARE_GL=1"])
             print_info(
-                "GUI GLX: NVIDIA hardware GL enabled for RViz/autoviz (root in container)."
+                "GUI GLX: hardware OpenGL via glvnd (vendor-neutral)."
             )
             print_info(
-                f"If GUI still fails, run: bash {check_script} "
-                "or restart with --as-host-user."
+                f"If GUI fails, run: bash {check_script} "
+                "or restart with --as-host-user / AUTOVIZ_SOFTWARE_GL=1."
             )
             return
+        self._configure_software_rendering()
         print_info(
             f"GUI GLX: software rendering (Mesa). Verify with: bash {check_script}"
         )

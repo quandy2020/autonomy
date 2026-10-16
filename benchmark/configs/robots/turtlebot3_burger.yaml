@@ -3,7 +3,7 @@ footprint: differential
 wheelbase: 0.16
 max_linear_vel: 0.22
 max_angular_vel: 2.84
-urdf: ../autosim/urdf/turtlebot3_burger.urdf
+urdf: ../autosim/robot/turtlebot3_burger/turtlebot3_burger.urdf
 sensors:
   - lidar
   - rgb

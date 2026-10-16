@@ -54,7 +54,8 @@ enum class ViewTreeItemKind {
   kCurrentView = 0,       /**< Root group: live camera under the active controller. */
   kNearClip,              /**< Near clip plane distance (float). */
   kInvertZ,               /**< Invert Z axis (checkable). */
-  kTargetFrame,           /**< Look-at / follow TF frame (editable combo). */
+  kTargetFrame,           /**< Look-at / follow TF frame (parent of choice list). */
+  kTargetFrameChoice,     /**< One checkable TF frame under @ref kTargetFrame. */
   kDistance,              /**< Orbit distance, or Ortho scale when remapped. */
   kFocalShapeSize,        /**< Focal marker size (Orbit family only). */
   kFocalShapeFixedSize,   /**< Whether focal shape ignores distance scaling. */
@@ -83,8 +84,8 @@ constexpr int kViewTreeColValue = 1;
 /**
  * @brief Qt::ItemDataRole storing a @ref ViewTreeItemKind as @c int.
  *
- * Written on column @ref kViewTreeColName (and read from the same column by
- * the delegate via @c QModelIndex::data).
+ * Written on column @ref kViewTreeColName. @ref ViewTreeDelegate reads it from
+ * the name-column sibling of the value index.
  */
 constexpr int kViewTreeRoleKind = Qt::UserRole;
 
@@ -93,6 +94,12 @@ constexpr int kViewTreeRoleKind = Qt::UserRole;
  *        @ref ViewTreeItemKind::kSavedView rows (−1 otherwise).
  */
 constexpr int kViewTreeRoleSavedIndex = Qt::UserRole + 1;
+
+/**
+ * @brief Qt::ItemDataRole storing the TF frame name for
+ *        @ref ViewTreeItemKind::kTargetFrameChoice rows.
+ */
+constexpr int kViewTreeRoleFrameName = Qt::UserRole + 2;
 
 /**
  * @class ViewsPanel
@@ -220,12 +227,13 @@ class ViewsPanel : public QWidget {
   void syncCameraValuesFromController();
 
   /**
-   * @brief Refresh TF frame list for the Target Frame combo without rebuilding
-   *        the tree.
+   * @brief Refresh TF frame names for the Target Frame checkable list (and the
+   *        combo fallback) without rebuilding the whole tree.
    *
    * Lightweight path when the TF tree changes but camera pose did not.
    *
    * @see updateFrameDelegate()
+   * @see rebuildTargetFrameChoices()
    */
   void refreshFrameList();
 
@@ -299,11 +307,13 @@ class ViewsPanel : public QWidget {
    *        corresponding ViewController field.
    *
    * Checkbox kinds (@ref ViewTreeItemKind::kInvertZ,
-   * @ref ViewTreeItemKind::kFocalShapeFixedSize) use check state; others use
+   * @ref ViewTreeItemKind::kFocalShapeFixedSize,
+   * @ref ViewTreeItemKind::kTargetFrameChoice) use check state; others use
    * text. Suppressed while @c updating_ is set.
    *
    * @param item Changed tree item.
-   * @param column Column index (only @ref kViewTreeColValue is applied).
+   * @param column Column index (@ref kViewTreeColValue, or name column for
+   *        Target Frame choices).
    */
   void onTreeItemChanged(QTreeWidgetItem* item, int column);
 
@@ -370,9 +380,22 @@ class ViewsPanel : public QWidget {
   void updateActionButtons();
 
   /**
-   * @brief Pushes TF frame names (plus Fixed sentinel) into @ref ViewTreeDelegate.
+   * @brief Pushes TF frame names (plus Fixed sentinel) into @ref ViewTreeDelegate
+   *        and rebuilds the Target Frame checkable choice list.
    */
   void updateFrameDelegate();
+
+  /**
+   * @brief Rebuilds checkable children under the Target Frame property row.
+   */
+  void rebuildTargetFrameChoices();
+
+  /**
+   * @brief Applies an exclusive Target Frame choice (unchecks siblings).
+   *
+   * @param choice Checked @ref ViewTreeItemKind::kTargetFrameChoice item.
+   */
+  void applyTargetFrameChoice(QTreeWidgetItem* choice);
 
   /**
    * @brief Formats a controller type for display, e.g. @c "Orbit (autoviz)".

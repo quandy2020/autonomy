@@ -52,6 +52,7 @@ namespace {
 void SetTreeItemMeta(QTreeWidgetItem* item, ViewTreeItemKind kind,
                      int saved_index = -1) {
   item->setData(kViewTreeColName, kViewTreeRoleKind, static_cast<int>(kind));
+  item->setData(kViewTreeColValue, kViewTreeRoleKind, static_cast<int>(kind));
   item->setData(kViewTreeColName, kViewTreeRoleSavedIndex, saved_index);
 }
 
@@ -278,12 +279,15 @@ void ViewsPanel::populateCurrentViewProperties(QTreeWidgetItem* parent) {
   auto* invert_z = new QTreeWidgetItem(parent);
   invert_z->setText(kViewTreeColName, tr("Invert Z Axis"));
   invert_z->setFlags(NameFlags() | ValueFlags(false, true));
+  invert_z->setCheckState(kViewTreeColValue, Qt::Unchecked);
   SetTreeItemMeta(invert_z, ViewTreeItemKind::kInvertZ);
 
   auto* target_frame = new QTreeWidgetItem(parent);
   target_frame->setText(kViewTreeColName, tr("Target Frame"));
   target_frame->setText(kViewTreeColValue, rendering::ViewTargetFrameFixedSentinel());
-  target_frame->setFlags(NameFlags() | ValueFlags(true));
+  // Parent shows the current selection; choices are checkable children.
+  target_frame->setFlags(NameFlags());
+  target_frame->setExpanded(true);
   SetTreeItemMeta(target_frame, ViewTreeItemKind::kTargetFrame);
 
   auto* distance = new QTreeWidgetItem(parent);
@@ -299,6 +303,7 @@ void ViewsPanel::populateCurrentViewProperties(QTreeWidgetItem* parent) {
   auto* focal_fixed = new QTreeWidgetItem(parent);
   focal_fixed->setText(kViewTreeColName, tr("Focal Shape Fixed Size"));
   focal_fixed->setFlags(NameFlags() | ValueFlags(false, true));
+  focal_fixed->setCheckState(kViewTreeColValue, Qt::Checked);
   SetTreeItemMeta(focal_fixed, ViewTreeItemKind::kFocalShapeFixedSize);
 
   auto* yaw = new QTreeWidgetItem(parent);
@@ -356,7 +361,9 @@ void ViewsPanel::populateTree() {
 
   updateCurrentViewValues();
   updatePropertyVisibility();
+  // Refresh TF choice list after Current View rows exist.
   updating_ = false;
+  updateFrameDelegate();
 }
 
 void ViewsPanel::updateCurrentViewValues(bool update_visibility) {
@@ -376,7 +383,21 @@ void ViewsPanel::updateCurrentViewValues(bool update_visibility) {
                         state.invert_z_axis ? Qt::Checked : Qt::Unchecked);
   }
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kTargetFrame)) {
-    item->setText(kViewTreeColValue, view_controller_->targetFrameDisplay());
+    const QString current = view_controller_->targetFrameDisplay();
+    item->setText(kViewTreeColValue, current);
+    for (int i = 0; i < item->childCount(); ++i) {
+      QTreeWidgetItem* choice = item->child(i);
+      if (choice == nullptr) {
+        continue;
+      }
+      const QString frame =
+          choice->data(kViewTreeColName, kViewTreeRoleFrameName).toString();
+      const Qt::CheckState want =
+          frame == current ? Qt::Checked : Qt::Unchecked;
+      if (choice->checkState(kViewTreeColValue) != want) {
+        choice->setCheckState(kViewTreeColValue, want);
+      }
+    }
   }
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kDistance)) {
     item->setText(kViewTreeColValue, FormatFloat(state.distance));
@@ -498,18 +519,122 @@ void ViewsPanel::syncCameraValuesFromController() {
 }
 
 void ViewsPanel::updateFrameDelegate() {
-  if (value_delegate_ == nullptr || manager_ == nullptr) {
-    return;
-  }
   QStringList frames;
   frames.push_back(rendering::ViewTargetFrameFixedSentinel());
-  for (const auto& name : manager_->frameManager().allFrameNames()) {
-    frames.push_back(QString::fromStdString(name));
+  if (manager_ != nullptr) {
+    for (const auto& name : manager_->frameManager().allFrameNames()) {
+      frames.push_back(QString::fromStdString(name));
+    }
   }
   frames.sort(Qt::CaseInsensitive);
   frames.removeAll(rendering::ViewTargetFrameFixedSentinel());
   frames.prepend(rendering::ViewTargetFrameFixedSentinel());
-  value_delegate_->setFrameNames(frames);
+  if (value_delegate_ != nullptr) {
+    value_delegate_->setFrameNames(frames);
+  }
+  rebuildTargetFrameChoices();
+}
+
+void ViewsPanel::rebuildTargetFrameChoices() {
+  QTreeWidgetItem* parent = findItemByKind(ViewTreeItemKind::kTargetFrame);
+  if (parent == nullptr) {
+    return;
+  }
+
+  QStringList frames;
+  frames.push_back(rendering::ViewTargetFrameFixedSentinel());
+  if (manager_ != nullptr) {
+    for (const auto& name : manager_->frameManager().allFrameNames()) {
+      frames.push_back(QString::fromStdString(name));
+    }
+  }
+  frames.sort(Qt::CaseInsensitive);
+  frames.removeAll(rendering::ViewTargetFrameFixedSentinel());
+  frames.prepend(rendering::ViewTargetFrameFixedSentinel());
+
+  const QString current =
+      view_controller_ != nullptr ? view_controller_->targetFrameDisplay()
+                                  : rendering::ViewTargetFrameFixedSentinel();
+
+  const bool was_updating = updating_;
+  updating_ = true;
+
+  // Rebuild only when the frame set changed to avoid wiping expand state / flicker.
+  QStringList existing;
+  existing.reserve(parent->childCount());
+  for (int i = 0; i < parent->childCount(); ++i) {
+    QTreeWidgetItem* child = parent->child(i);
+    if (child == nullptr) {
+      continue;
+    }
+    existing.push_back(
+        child->data(kViewTreeColName, kViewTreeRoleFrameName).toString());
+  }
+  if (existing != frames) {
+    while (parent->childCount() > 0) {
+      delete parent->takeChild(0);
+    }
+    for (const QString& frame : frames) {
+      auto* choice = new QTreeWidgetItem(parent);
+      choice->setText(kViewTreeColName, frame);
+      choice->setFlags(NameFlags() | ValueFlags(false, true));
+      choice->setData(kViewTreeColName, kViewTreeRoleFrameName, frame);
+      choice->setData(kViewTreeColValue, kViewTreeRoleFrameName, frame);
+      SetTreeItemMeta(choice, ViewTreeItemKind::kTargetFrameChoice);
+    }
+    parent->setExpanded(true);
+  }
+
+  for (int i = 0; i < parent->childCount(); ++i) {
+    QTreeWidgetItem* choice = parent->child(i);
+    if (choice == nullptr) {
+      continue;
+    }
+    const QString frame =
+        choice->data(kViewTreeColName, kViewTreeRoleFrameName).toString();
+    const Qt::CheckState want =
+        frame == current ? Qt::Checked : Qt::Unchecked;
+    if (choice->checkState(kViewTreeColValue) != want) {
+      choice->setCheckState(kViewTreeColValue, want);
+    }
+  }
+  parent->setText(kViewTreeColValue, current);
+
+  updating_ = was_updating;
+}
+
+void ViewsPanel::applyTargetFrameChoice(QTreeWidgetItem* choice) {
+  if (choice == nullptr || view_controller_ == nullptr) {
+    return;
+  }
+  const QString frame =
+      choice->data(kViewTreeColName, kViewTreeRoleFrameName).toString();
+  if (frame.isEmpty()) {
+    return;
+  }
+
+  updating_ = true;
+  QTreeWidgetItem* parent = choice->parent();
+  if (parent != nullptr) {
+    for (int i = 0; i < parent->childCount(); ++i) {
+      QTreeWidgetItem* sibling = parent->child(i);
+      if (sibling == nullptr) {
+        continue;
+      }
+      const Qt::CheckState want =
+          sibling == choice ? Qt::Checked : Qt::Unchecked;
+      if (sibling->checkState(kViewTreeColValue) != want) {
+        sibling->setCheckState(kViewTreeColValue, want);
+      }
+    }
+    parent->setText(kViewTreeColValue, frame);
+  } else {
+    choice->setCheckState(kViewTreeColValue, Qt::Checked);
+  }
+  updating_ = false;
+
+  view_controller_->setTargetFrame(frame);
+  emit viewChanged();
 }
 
 void ViewsPanel::refreshFrameList() { updateFrameDelegate(); }
@@ -644,12 +769,28 @@ void ViewsPanel::onRenameClicked() {
 }
 
 void ViewsPanel::onTreeItemChanged(QTreeWidgetItem* item, int column) {
-  if (updating_ || item == nullptr || view_controller_ == nullptr ||
-      column != kViewTreeColValue) {
+  if (updating_ || item == nullptr || view_controller_ == nullptr) {
     return;
   }
   const auto kind = static_cast<ViewTreeItemKind>(
       item->data(kViewTreeColName, kViewTreeRoleKind).toInt());
+  if (kind == ViewTreeItemKind::kTargetFrameChoice) {
+    if (column != kViewTreeColValue && column != kViewTreeColName) {
+      return;
+    }
+    if (item->checkState(kViewTreeColValue) == Qt::Checked) {
+      applyTargetFrameChoice(item);
+    } else {
+      // Keep at least one frame selected (re-check if user unchecked current).
+      updating_ = true;
+      item->setCheckState(kViewTreeColValue, Qt::Checked);
+      updating_ = false;
+    }
+    return;
+  }
+  if (column != kViewTreeColValue) {
+    return;
+  }
   bool changed = false;
   switch (kind) {
     case ViewTreeItemKind::kNearClip:
@@ -661,8 +802,7 @@ void ViewsPanel::onTreeItemChanged(QTreeWidgetItem* item, int column) {
       changed = true;
       break;
     case ViewTreeItemKind::kTargetFrame:
-      view_controller_->setTargetFrame(item->text(kViewTreeColValue));
-      changed = true;
+      // Selection is driven by checkable children; parent value is display-only.
       break;
     case ViewTreeItemKind::kDistance: {
       rendering::ViewState state = view_controller_->state();
@@ -751,6 +891,11 @@ void ViewsPanel::onTreeItemActivated(QTreeWidgetItem* item, int column) {
   }
   const auto kind = static_cast<ViewTreeItemKind>(
       item->data(kViewTreeColName, kViewTreeRoleKind).toInt());
+  if (kind == ViewTreeItemKind::kTargetFrameChoice) {
+    // Clicking the row name also selects that frame (checkbox list UX).
+    applyTargetFrameChoice(item);
+    return;
+  }
   if (kind != ViewTreeItemKind::kSavedView) {
     return;
   }

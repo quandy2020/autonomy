@@ -91,7 +91,7 @@ def test_husky_camera_offset_is_above_agent():
             "habitat": {
                 "path": "",
                 "spawn": [0.0, 0.0, 0.0],
-                "robot": {"urdf": "urdf/husky.urdf"},
+                "robot": {"urdf": "robot/husky/husky.urdf"},
                 "sensors": {"camera": {"sensor_height": 0.6}},
             }
         },
@@ -140,7 +140,7 @@ def test_physics_enabled_without_urdf_instance():
                 "path": "",
                 "gpu": 0,
                 "spawn": [0.0, 0.0, 0.0],
-                "robot": {"urdf": "urdf/turtlebot3_burger.urdf"},
+                "robot": {"urdf": "robot/turtlebot3_burger/turtlebot3_burger.urdf"},
             }
         },
         open_session=False,
@@ -179,7 +179,7 @@ def test_turtlebot_camera_offset_uses_urdf_height():
             "habitat": {
                 "path": "",
                 "spawn": [0.0, 0.0, 0.0],
-                "robot": {"urdf": "urdf/turtlebot3_burger.urdf"},
+                "robot": {"urdf": "robot/turtlebot3_burger/turtlebot3_burger.urdf"},
             }
         },
         open_session=False,

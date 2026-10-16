@@ -8,6 +8,7 @@ Placeholder USD stages for the Isaac Sim backend (`habitat.backend: isaac`).
 | `worlds/InteriorAgent/kujiale_*/` | SpatialVerse / 酷家乐 InteriorAgent scenes (default in `isaac.yaml`) |
 | `robots/turtlebot3_burger/` | TurtleBot3 Burger robot asset (replace with Isaac / NVIDIA asset) |
 | `robots/husky/` | Clearpath Husky robot asset (replace with Isaac / NVIDIA asset) |
+| `robots/beni/` | Open Beni placeholder Xform (visuals from `robot/beni` URDF in Autoviz) |
 
 Import richer scenes from the Isaac Sim asset library and point `habitat.path`
 (or `habitat.usd.world`) at the `.usd` file. Paths in YAML are relative to the

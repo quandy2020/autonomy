@@ -94,8 +94,14 @@ class IsaacPhysics:
         config: Mapping[str, Any],
         render: bool = True,
     ) -> Optional["IsaacPhysics"]:
-        """Create PhysicsScene + robot collider; return ``None`` when disabled."""
-        if not config.get("enabled", True):
+        """Create PhysicsScene + robot collider.
+
+        When ``enabled: false`` but ``render`` is True (RGB-D on), still builds a
+        minimal ``World`` so Replicator Camera frames update. Without it,
+        ``update_app()`` alone yields empty RGB/depth (Autoviz "no data").
+        """
+        collision = bool(config.get("enabled", True))
+        if not collision and not render:
             return None
         try:
             from isaacsim.core.api.world import World
@@ -121,26 +127,27 @@ class IsaacPhysics:
             except Exception:
                 break
 
-        if config.get("strip_nested_rigid_bodies", True):
-            strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
-        if config.get("ensure_scene_colliders", True):
-            ensure_scene_colliders(stage, skip_prefix=robot_prim_path)
-        if config.get("freeze_scene", True):
-            freeze_scene_rigid_bodies(stage, skip_prefix=robot_prim_path)
-        if config.get("add_ground", False):
-            add_ground_plane(stage)
+        if collision:
+            if config.get("strip_nested_rigid_bodies", True):
+                strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
+            if config.get("ensure_scene_colliders", True):
+                ensure_scene_colliders(stage, skip_prefix=robot_prim_path)
+            if config.get("freeze_scene", True):
+                freeze_scene_rigid_bodies(stage, skip_prefix=robot_prim_path)
+            if config.get("add_ground", False):
+                add_ground_plane(stage)
 
-        attach_robot_capsule(
-            stage,
-            robot_prim_path,
-            radius=float(config.get("robot_radius", 0.12)),
-            height=float(config.get("robot_height", 0.28)),
-        )
+            attach_robot_capsule(
+                stage,
+                robot_prim_path,
+                radius=float(config.get("robot_radius", 0.12)),
+                height=float(config.get("robot_height", 0.28)),
+            )
 
-        # Re-strip once more immediately before World so async payload
-        # RigidBodyAPIs cannot sneak past the first pass.
-        if config.get("strip_nested_rigid_bodies", True):
-            strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
+            # Re-strip once more immediately before World so async payload
+            # RigidBodyAPIs cannot sneak past the first pass.
+            if config.get("strip_nested_rigid_bodies", True):
+                strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
 
         dt = float(config.get("dt", 1.0 / 60.0))
         try:
@@ -163,16 +170,25 @@ class IsaacPhysics:
         except Exception as exc:  # noqa: BLE001
             logger.warning("world.reset() failed: %s", exc)
 
-        logger.info(
-            "Isaac PhysX enabled (dt=%.4f, robot_r=%.3f, block_motion=%s)",
-            dt,
-            float(config.get("robot_radius", 0.12)),
-            bool(config.get("block_motion", True)),
-        )
+        out_cfg = dict(config)
+        if not collision:
+            # Free teleop: no capsule / scene queries; World exists for RTX only.
+            out_cfg["block_motion"] = False
+            logger.info(
+                "Isaac render-only World (physics.enabled=false, RGB-D on, dt=%.4f)",
+                dt,
+            )
+        else:
+            logger.info(
+                "Isaac PhysX enabled (dt=%.4f, robot_r=%.3f, block_motion=%s)",
+                dt,
+                float(config.get("robot_radius", 0.12)),
+                bool(config.get("block_motion", True)),
+            )
         return cls(
             world=world,
             robot_prim_path=robot_prim_path,
-            config=config,
+            config=out_cfg,
             render=render,
         )
 

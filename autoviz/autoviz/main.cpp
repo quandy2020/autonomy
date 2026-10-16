@@ -3,6 +3,7 @@
  *****************************************************************************/
 
 #include <memory>
+#include <unistd.h>
 
 #include <QApplication>
 #include <QCommandLineParser>
@@ -179,5 +180,11 @@ int main(int argc, char** argv) {
   manager->shutdown();
   // Autolink Clear() restores glog loggers; avoid ShutdownGoogleLogging here —
   // it races with glog static destructors and can SIGSEGV on exit.
-  return code;
+  //
+  // Ogre/GLX is released in VisualizationFrame::closeEvent via
+  // RenderSystem::destroyInstance(). Returning from main still runs GL
+  // client-library __cxa_finalize (any vendor) which can abort or SIGSEGV
+  // after a clean Autoviz teardown — exit here once our shutdown finished.
+  // Default GL in Docker is Mesa (platform/opengl_setup), not a GPU vendor.
+  _exit(code);
 }

@@ -123,6 +123,9 @@ void ViewController::setState(const ViewState& state) {
   fps_position_ = state.fps_position;
   fps_yaw_ = state.fps_yaw;
   fps_pitch_ = state.fps_pitch;
+  if (state.target_frame != target_frame_) {
+    has_target_frame_transform_ = false;
+  }
   target_frame_ = state.target_frame;
 }
 
@@ -135,28 +138,80 @@ QString ViewController::targetFrameDisplay() const {
 
 void ViewController::setTargetFrame(const QString& frame) {
   const QString trimmed = frame.trimmed();
-  if (trimmed.isEmpty() || trimmed == ViewTargetFrameFixedSentinel()) {
-    target_frame_.clear();
+  std::string new_frame;
+  if (!trimmed.isEmpty() && trimmed != ViewTargetFrameFixedSentinel()) {
+    new_frame = trimmed.toStdString();
+  }
+  if (new_frame == target_frame_) {
     return;
   }
-  target_frame_ = trimmed.toStdString();
+
+  // Keep the same fixed-frame focal / FPS eye when the reference frame changes
+  // (RViz OrbitViewController::onTargetFrameChanged).
+  target_ = reexpressPoint(target_, target_frame_, new_frame);
+  fps_position_ = reexpressPoint(fps_position_, target_frame_, new_frame);
+  target_frame_ = std::move(new_frame);
+  has_target_frame_transform_ = false;
 }
 
 bool ViewController::tracksTargetFrame() const { return !target_frame_.empty(); }
 
-QMatrix4x4 ViewController::targetFrameToFixedMatrix() const {
-  QMatrix4x4 matrix;
-  if (!tracksTargetFrame() || frame_manager_ == nullptr) {
-    return matrix;
+QVector3D ViewController::reexpressPoint(const QVector3D& point,
+                                         const std::string& from_frame,
+                                         const std::string& to_frame) const {
+  if (frame_manager_ == nullptr || from_frame == to_frame) {
+    return point;
   }
+
+  QVector3D from_pos(0.f, 0.f, 0.f);
+  QVector3D to_pos(0.f, 0.f, 0.f);
+  QQuaternion from_ori;
+  QQuaternion to_ori;
+  if (!from_frame.empty() &&
+      !frame_manager_->getTransform(from_frame, &from_pos, &from_ori)) {
+    return point;
+  }
+  if (!to_frame.empty() &&
+      !frame_manager_->getTransform(to_frame, &to_pos, &to_ori)) {
+    return point;
+  }
+
+  QVector3D fixed = point;
+  if (!from_frame.empty()) {
+    fixed = from_ori.rotatedVector(point) + from_pos;
+  }
+  if (to_frame.empty()) {
+    return fixed;
+  }
+  return to_ori.conjugated().rotatedVector(fixed - to_pos);
+}
+
+bool ViewController::resolveTargetFrameToFixed(QMatrix4x4* out) const {
+  if (out == nullptr) {
+    return false;
+  }
+  out->setToIdentity();
+  if (!tracksTargetFrame() || frame_manager_ == nullptr) {
+    return false;
+  }
+
   QVector3D position;
   QQuaternion orientation;
   if (!frame_manager_->getTransform(target_frame_, &position, &orientation)) {
-    return matrix;
+    if (has_target_frame_transform_) {
+      *out = last_target_to_fixed_;
+      return true;
+    }
+    return false;
   }
+
+  QMatrix4x4 matrix;
   matrix.translate(position);
   matrix.rotate(orientation);
-  return matrix;
+  last_target_to_fixed_ = matrix;
+  has_target_frame_transform_ = true;
+  *out = matrix;
+  return true;
 }
 
 void ViewController::reset() {
@@ -262,11 +317,11 @@ QMatrix4x4 ViewController::fpsViewMatrix() const {
 
 QMatrix4x4 ViewController::viewMatrix() const {
   QMatrix4x4 view = localViewMatrix();
-  if (tracksTargetFrame()) {
-    const QMatrix4x4 target_to_fixed = targetFrameToFixedMatrix();
-    if (!target_to_fixed.isIdentity()) {
-      view = view * target_to_fixed.inverted();
-    }
+  QMatrix4x4 target_to_fixed;
+  if (resolveTargetFrameToFixed(&target_to_fixed)) {
+    // Orbit/FPS pose is expressed in the target frame; compose with inv(T) so
+    // the camera follows that frame in the fixed/world frame.
+    view = view * target_to_fixed.inverted();
   }
   return view;
 }
@@ -338,9 +393,19 @@ QVector3D ViewController::cameraLocalToWorld(float local_x, float local_y,
 }
 
 void ViewController::applyFocalDelta(const QVector3D& delta) {
-  target_ += delta;
+  // cameraLocalToWorld() returns a fixed-frame delta (via the full viewMatrix).
+  // When tracking, target_ / fps_position_ live in the target frame.
+  QVector3D local_delta = delta;
+  if (tracksTargetFrame() && frame_manager_ != nullptr) {
+    QVector3D position;
+    QQuaternion orientation;
+    if (frame_manager_->getTransform(target_frame_, &position, &orientation)) {
+      local_delta = orientation.conjugated().rotatedVector(delta);
+    }
+  }
+  target_ += local_delta;
   if (type_ == ViewControllerType::kFps) {
-    fps_position_ += delta;
+    fps_position_ += local_delta;
   }
 }
 
@@ -651,11 +716,16 @@ void ViewController::appendFocalShape(SceneOverlay* overlay) const {
       type_ == ViewControllerType::kFpsMotion) {
     return;
   }
+  QVector3D focal_fixed = target_;
+  QMatrix4x4 target_to_fixed;
+  if (resolveTargetFrameToFixed(&target_to_fixed)) {
+    focal_fixed = target_to_fixed.map(target_);
+  }
   const float distance_scale = focal_shape_fixed_size_ ? 1.f : distance_;
   const float radius_x = focal_shape_size_ * distance_scale;
   const float radius_y = focal_shape_size_ * distance_scale;
   const float radius_z = focal_shape_size_ * distance_scale / 5.f;
-  overlay->addEllipsoidWireframe(target_, radius_x, radius_y, radius_z,
+  overlay->addEllipsoidWireframe(focal_fixed, radius_x, radius_y, radius_z,
                                  QColor(255, 255, 0, 128));
 }
 

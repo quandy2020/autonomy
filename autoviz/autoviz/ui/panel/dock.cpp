@@ -400,17 +400,21 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
           if (delta.manhattanLength() >= QApplication::startDragDistance()) {
             title_drag_active_ = true;
             emit titleDragStarted();
-            if (use_manual_undock && !isFloating()) {
-              // Center panels intentionally omit DockWidgetFloatable so the
-              // QSplitter handle stays interactive — re-enable only for undock.
-              setFeatures(features() | DockWidgetFloatable);
-              const QPoint grab = title_press_pos_;
-              setFloating(true);
-              move(mouse->globalPosition().toPoint() - grab);
+            // beginMainPanelDrag already floated center docks off MainPanelHost
+            // (avoids blank QMainWindow dock slots). Just place under the cursor.
+            if (use_manual_undock) {
+              if (!isFloating()) {
+                setFeatures(features() | DockWidgetFloatable);
+                setFloating(true);
+                show();
+              }
+              move(mouse->globalPosition().toPoint() - title_press_pos_);
+              emit titleDragMoved(mouse->globalPosition().toPoint());
             }
           }
         } else if (title_drag_active_ && use_manual_undock && isFloating()) {
           move(mouse->globalPosition().toPoint() - title_press_pos_);
+          emit titleDragMoved(mouse->globalPosition().toPoint());
         }
         break;
       }
@@ -419,7 +423,11 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
         if (mouse->button() == Qt::LeftButton) {
           title_press_active_ = false;
           // Defer so Qt can finish docking/snap before retile / sync runs.
-          QTimer::singleShot(0, this, &PanelDockWidget::endTitleDrag);
+          // Capture release position for center mosaic edge-drop.
+          const QPoint release_global = mouse->globalPosition().toPoint();
+          QTimer::singleShot(0, this, [this, release_global]() {
+            endTitleDrag(release_global);
+          });
         }
         break;
       }
@@ -447,17 +455,24 @@ void PanelDockWidget::changeEvent(QEvent* event) {
   QDockWidget::changeEvent(event);
 }
 
-void PanelDockWidget::endTitleDrag() {
+void PanelDockWidget::endTitleDrag(const QPoint& global_pos) {
   title_press_active_ = false;
   if (!title_drag_active_) {
     return;
   }
   title_drag_active_ = false;
-  emit titleDragFinished();
+  const QPoint pos =
+      global_pos.isNull() ? QCursor::pos() : global_pos;
+  emit titleDragFinished(pos);
 }
 
 void PanelDockWidget::closeEvent(QCloseEvent* event) {
-  endTitleDrag();
+  endTitleDrag(QCursor::pos());
+  // Mark before QDockWidget::closeEvent so visibilityChanged(false) does not
+  // synchronously tear the mosaic (removePanel/reparent) under this stack —
+  // that races Ogre/GLX and SIGSEGVs when closing a center 3D View / main panel.
+  // FramePanels::closed defers host removal to the next event-loop turn.
+  setProperty("panelClosing", true);
   QDockWidget::closeEvent(event);
   emit closed();
 }

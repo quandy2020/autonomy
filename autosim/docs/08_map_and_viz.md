@@ -55,7 +55,7 @@ Isaac 默认用 `rooms.json` 挤出的密高墙点云（实心、启动快）。
 | `clearance ≤ z ≤ robot_height_m + margin` | 与机身相交（沙发、椅腿、墙根） | 占用 |
 | `z > body top` | 悬空桌面、吊灯 | 忽略（可钻过） |
 
-配置见 `isaac.yaml` 的 `map.robot_clearance_m` / `robot_height_m` / `mesh_inflate_m`（膨胀≈足迹半径）。`grid.z_min/z_max` 只影响 `/overall/map` 点云可视化范围，不直接当可通行带。
+配置见 `isaac.yaml` 的 `map.robot_clearance_m` / `robot_height_m` / `mesh_inflate_m`（膨胀≈足迹半径）。`grid.z_min/z_max` 管 `/overall/map` 墙柱高度带；**地面点固定 z=0**（与 InteriorAgent 地板 / `base_link_height≈0.01` 对齐）。勿把 `z_min` 设成 0.1，否则点云会悬空。
 
 门：`rooms.json` 墙环会封住门洞，USD `door_*` 叶也会占格。默认 `free_doors: true`，按门 mesh 足迹把开口打成自由格（`door_opening_inflate_m`）。
 
@@ -73,6 +73,7 @@ Isaac 默认用 `rooms.json` 挤出的密高墙点云（实心、启动快）。
 | Map | `/map` |
 | PointCloud2 | `/overall/map` |
 | LaserScan | `/scan` |
+| RobotModel | `/robot_description`（autosim 发布 URDF **文件绝对路径**，Autoviz 按目录解析 `meshes/`） |
 | TF | `/tf` `/tf_static` |
 
 `/overall/map` **采样一次**（密化只跑一遍），之后按 `rate_hz` **重发缓存**（Autolink 非 latch，晚订阅也能看到）。`/map` OccupancyGrid 同样按 `rate_hz` 刷新。

@@ -40,7 +40,7 @@ autosim/
 ├── datasets/           # 本地 LeRobot 输出（建议 gitignore）
 ├── scripts/run.sh      # 统一启动（Isaac 走 isaaclab python）
 ├── usd/                # Isaac 场景与机器人占位
-├── urdf/               # 机器人 URDF
+├── robot/              # 机器人 URDF + meshes
 ├── images/             # 演示素材
 └── tests/              # pytest
 ```

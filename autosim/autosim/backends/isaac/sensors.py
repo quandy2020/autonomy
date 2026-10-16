@@ -52,10 +52,21 @@ class IsaacSensors:
         width: int = 640,
         height: int = 480,
         eye_height: float = 0.5,
+        eye_offset: Optional[Tuple[float, float, float]] = None,
     ) -> None:
         self.width = max(1, int(width))
         self.height = max(1, int(height))
-        self.eye_height = float(eye_height)
+        # Local camera pose in base_link (URDF camera_link). Z-only legacy
+        # (0,0,eye_height) puts Beni's eye inside the body mesh → blank RGB-D.
+        if eye_offset is None:
+            self.eye_offset = (0.0, 0.0, float(eye_height))
+        else:
+            self.eye_offset = (
+                float(eye_offset[0]),
+                float(eye_offset[1]),
+                float(eye_offset[2]),
+            )
+        self.eye_height = float(self.eye_offset[2])
         self.camera_prim: Any = None
         self.rgb_annotator: Any = None
         self.depth_annotator: Any = None
@@ -107,6 +118,8 @@ class IsaacSensors:
             return False
 
         prim_path = f"{robot_prim_path.rstrip('/')}/{prim_suffix}"
+        ox, oy, oz = self.eye_offset
+        local_xyz = np.array([ox, oy, oz], dtype=np.float64)
         # arena-isaac: snap frequency to a divisor of the render rate so the
         # Camera ctor never raises; then FOV via focal_length (not aperture).
         freq = self.snap_camera_frequency(rate_hz)
@@ -115,9 +128,7 @@ class IsaacSensors:
                 "prim_path": prim_path,
                 "name": "autosim_rgb_camera",
                 "resolution": (self.width, self.height),
-                "translation": np.array(
-                    [0.0, 0.0, self.eye_height], dtype=np.float64
-                ),
+                "translation": local_xyz.copy(),
                 # world axes: +Z up, +X forward (matches autosim map/robot frame).
                 "orientation": np.array(
                     [1.0, 0.0, 0.0, 0.0], dtype=np.float64
@@ -129,7 +140,7 @@ class IsaacSensors:
             # Local pose under robot — follows parent like Habitat agent sensors.
             try:
                 cam.set_local_pose(
-                    translation=[0.0, 0.0, self.eye_height],
+                    translation=[float(ox), float(oy), float(oz)],
                     orientation=[1.0, 0.0, 0.0, 0.0],
                     camera_axes="world",
                 )
@@ -139,8 +150,10 @@ class IsaacSensors:
                 cam, float(hfov_deg), width=self.width, height=self.height
             )
             try:
+                # Small platforms (Beni) need a near clip below 0.1 m.
                 cam.set_clipping_range(
-                    near_distance=0.1, far_distance=float(self.MAX_DEPTH_M)
+                    near_distance=float(self.MIN_DEPTH_M),
+                    far_distance=float(self.MAX_DEPTH_M),
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("could not set camera clipping range: %s", exc)
@@ -154,11 +167,15 @@ class IsaacSensors:
         for _ in range(max(0, int(warmup_frames))):
             update_app()
         logger.info(
-            "Isaac camera mounted at %s (%dx%d, hfov=%.1f°, freq=%s, publish≈%.0fHz)",
+            "Isaac camera mounted at %s (%dx%d, hfov=%.1f°, eye=(%.3f,%.3f,%.3f), "
+            "freq=%s, publish≈%.0fHz)",
             prim_path,
             self.width,
             self.height,
             float(hfov_deg),
+            float(ox),
+            float(oy),
+            float(oz),
             freq,
             float(rate_hz),
         )
@@ -219,9 +236,14 @@ class IsaacSensors:
         cam = self.camera_prim
         if cam is None:
             return
-        translation, quat_wxyz = map_to_world(
-            float(x), float(y), float(yaw), z=float(base_z) + self.eye_height
-        )
+        ox, oy, oz = self.eye_offset
+        cy = math.cos(float(yaw))
+        sy = math.sin(float(yaw))
+        # Rotate base_link offset into map XY; Z = base_z + local z.
+        wx = float(x) + float(ox) * cy - float(oy) * sy
+        wy = float(y) + float(ox) * sy + float(oy) * cy
+        wz = float(base_z) + float(oz)
+        translation, quat_wxyz = map_to_world(wx, wy, float(yaw), z=wz)
         try:
             cam.set_world_pose(
                 position=translation,

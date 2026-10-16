@@ -27,6 +27,7 @@
 | 出 | `footprint` | `/footprint` | PolygonStamped |
 | 出 | `map_grid` | `/map` | OccupancyGrid |
 | 出 | `map_cloud` | `/overall/map` | PointCloud2（采样一次，缓存重发） |
+| 出 | `robot_description` | `/robot_description` | String（URDF XML，有 urdf 时） |
 | 出 | `gt_pose` | `/gt/pose` | PoseStamped（默认关） |
 
 具体以当前 YAML 为准；改通道名后需保证全局唯一（`validate` 会查重）。

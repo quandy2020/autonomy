@@ -99,6 +99,17 @@ class DisplayCatalog {
    */
   static std::vector<std::string> typesForChannel(
       const std::string& channel_name, const std::string& message_type);
+
+  /**
+   * @brief @c true when @p type must not appear in the Displays panel / Add UI.
+   *
+   * Hidden from the Displays tree / Add dialog (factory may still create them):
+   * - @c Image — center @c ImageDock panel
+   * - @c TwistStamped — teleop @c /cmd_vel, not a Displays row
+   *
+   * @param type Display type id.
+   */
+  static bool isHiddenFromDisplaysPanel(const std::string& type);
 };
 
 }  // namespace common

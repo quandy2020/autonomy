@@ -505,21 +505,30 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
     ++frame_->layout_->center_tile_epoch_;
     frame_->layout_->center_tile_pending_ = false;
     frame_->layout_->center_manual_layout_ = true;
+    // Pull the leaf out of the mosaic so siblings expand; dock then floats.
+    frame_->layout_->beginMainPanelDrag(dock);
   });
-  QObject::connect(dock, &PanelDockWidget::titleDragFinished, frame_, [this, dock]() {
-    if (!frame_->layout_->isMainPanel(dock)) {
-      return;
-    }
-    if (frame_->layout_->center_dock_drag_count_ > 0) {
-      --frame_->layout_->center_dock_drag_count_;
-    }
-    // Do not force-reattach or setFloating(false) here — that cancels dock
-    // snap (吸附) and can SIGSEGV while Qt is still finishing the drop.
-    Q_UNUSED(dock);
-    // Keep manual layout after user drag/snap; only refresh host geometry.
-    frame_->layout_->syncCenterLayout();
-    frame_->session_->markConfigModified();
-  });
+  QObject::connect(dock, &PanelDockWidget::titleDragMoved, frame_,
+                   [this, dock](const QPoint& global_pos) {
+                     if (!frame_->layout_->isMainPanel(dock)) {
+                       return;
+                     }
+                     frame_->layout_->updateMainPanelDropPreview(dock, global_pos);
+                   });
+  QObject::connect(
+      dock, &PanelDockWidget::titleDragFinished, frame_,
+      [this, dock](const QPoint& global_pos) {
+        if (!frame_->layout_->isMainPanel(dock)) {
+          return;
+        }
+        if (frame_->layout_->center_dock_drag_count_ > 0) {
+          --frame_->layout_->center_dock_drag_count_;
+        }
+        // Edge drop into another main panel (adaptive splitter layout).
+        frame_->layout_->finishMainPanelDrag(dock, global_pos);
+        frame_->layout_->syncCenterLayout();
+        frame_->session_->markConfigModified();
+      });
   QObject::connect(dock, &QDockWidget::topLevelChanged, frame_, [this](bool /*floating*/) {
     frame_->session_->markConfigModified();
   });
@@ -548,12 +557,8 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         frame_->layout_->isMainPanel(dock) &&
         panelTypeSupportsMultiInstance(type_id) &&
         dock->objectName() != type_id;
-    // Always drop viewport bookkeeping on close — including primary and
-    // onChildDestroyed→closed paths — so syncToolContext never touches a
-    // dangling PanelDockWidget*.
-    if (type_id == QLatin1String("ViewportDock")) {
-      frame_->viewport_->removeViewportPanel(dock);
-    }
+    // Viewport GLX / bookkeeping is torn down in the deferred lambda below
+    // (park → removePanel → removeViewportPanel), never under closeEvent.
     if (drop_duplicate) {
       if (frame_->layout_->expanded_main_panel_dock_ == dock) {
         frame_->layout_->expanded_main_panel_dock_ = nullptr;
@@ -573,11 +578,49 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
 
     // Defer host removal / destroy / menu rebuild out of closeEvent.
     const QPointer<PanelDockWidget> dock_guard(dock);
-    QTimer::singleShot(0, frame_, [this, dock_guard, drop_duplicate]() {
+    const QString closing_type = type_id;
+    QTimer::singleShot(0, frame_, [this, dock_guard, drop_duplicate,
+                                   closing_type]() {
+      const bool closing_viewport =
+          closing_type == QLatin1String("ViewportDock");
+      const bool timer_was_active =
+          frame_->session_ != nullptr &&
+          frame_->session_->render_timer_.isActive();
+      if (closing_viewport && timer_was_active) {
+        frame_->session_->render_timer_.stop();
+      }
+
+      auto park_all_viewports = [this]() {
+        if (frame_->viewport_ == nullptr) {
+          return;
+        }
+        frame_->viewport_->forEachViewportPanel(
+            [this](ViewportPanelEntry& entry) {
+              frame_->viewport_->parkRenderWindowInEntry(entry);
+            });
+      };
+      auto reinstall_surviving_viewports = [this]() {
+        if (frame_->viewport_ == nullptr) {
+          return;
+        }
+        frame_->viewport_->forEachViewportPanel(
+            [this](ViewportPanelEntry& entry) {
+              frame_->viewport_->reinstallRenderWindowInEntry(entry);
+            });
+        frame_->viewport_->requestViewportUpdate();
+      };
+
       if (drop_duplicate && dock_guard) {
+        if (closing_viewport) {
+          park_all_viewports();
+        }
         if (frame_->layout_->main_panel_host_ != nullptr &&
             frame_->layout_->main_panel_host_->hostsPanel(dock_guard.data())) {
           frame_->layout_->main_panel_host_->removePanel(dock_guard.data());
+        }
+        if (closing_viewport && frame_->viewport_ != nullptr) {
+          // Destroy GLX after the dock left the mosaic tree.
+          frame_->viewport_->removeViewportPanel(dock_guard.data());
         }
         if (QMainWindow* host = frame_->layout_->dockHostForPanel(dock_guard.data())) {
           if (host->dockWidgetArea(dock_guard.data()) != Qt::NoDockWidgetArea) {
@@ -587,6 +630,7 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         if (frame_->dockWidgetArea(dock_guard.data()) != Qt::NoDockWidgetArea) {
           frame_->removeDockWidget(dock_guard.data());
         }
+        dock_guard->setProperty("panelClosing", false);
         // Rebuild after the dock (and its toggleViewAction) is gone.
         QObject::connect(dock_guard.data(), &QObject::destroyed, frame_, [this]() {
                   // Split-duplicate teardown must not leave Panels without a
@@ -610,6 +654,11 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
                 static_cast<Qt::ConnectionType>(Qt::QueuedConnection |
                                                 Qt::SingleShotConnection));
         dock_guard->deleteLater();
+        reinstall_surviving_viewports();
+        if (timer_was_active && frame_->session_ != nullptr &&
+            !frame_->session_->app_inactive_) {
+          frame_->session_->render_timer_.start();
+        }
         return;
       }
       // Primary main panels (e.g. ViewportDock): detach from the mosaic so the
@@ -618,7 +667,20 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
       if (dock_guard && frame_->layout_->isMainPanel(dock_guard.data()) &&
           frame_->layout_->main_panel_host_ != nullptr &&
           frame_->layout_->main_panel_host_->hostsPanel(dock_guard.data())) {
+        if (closing_viewport) {
+          park_all_viewports();
+        }
         frame_->layout_->main_panel_host_->removePanel(dock_guard.data());
+        if (closing_viewport && frame_->viewport_ != nullptr) {
+          frame_->viewport_->removeViewportPanel(dock_guard.data());
+        }
+        reinstall_surviving_viewports();
+      } else if (dock_guard && closing_viewport && frame_->viewport_ != nullptr) {
+        // Already detached (e.g. floating) — still drop GLX bookkeeping.
+        frame_->viewport_->removeViewportPanel(dock_guard.data());
+      }
+      if (dock_guard) {
+        dock_guard->setProperty("panelClosing", false);
       }
       if (frame_->layout_->main_panel_host_ != nullptr) {
         frame_->layout_->main_panel_host_->syncHorizontalDockLayout();
@@ -640,6 +702,10 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
           frame_->layout_->configureMainPanelDock(restored);
           frame_->chrome_->rebuildPanelsMenuToggles();
         }
+      }
+      if (timer_was_active && frame_->session_ != nullptr &&
+          !frame_->session_->app_inactive_) {
+        frame_->session_->render_timer_.start();
       }
     });
     frame_->session_->markConfigModified();

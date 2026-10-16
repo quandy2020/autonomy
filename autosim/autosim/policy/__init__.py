@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Optional ONNX twist policies for closed-loop sim."""
+"""Optional ONNX policies for closed-loop sim (twist or Beni 7-DoF)."""
 
 from autosim.policy.driver import PolicyDriver, policy_config_from_habitat
 

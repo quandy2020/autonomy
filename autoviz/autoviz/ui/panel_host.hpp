@@ -22,9 +22,12 @@
 #include <QByteArray>
 #include <QList>
 #include <QMainWindow>
+#include <QPoint>
+#include <QRect>
 #include <QString>
 
 class QDockWidget;
+class QPaintEvent;
 class QResizeEvent;
 class QSplitter;
 
@@ -109,6 +112,13 @@ class MainPanelHost : public QMainWindow {
   void removePanel(QDockWidget* dock);
 
   /**
+   * @brief Removes empty mosaic leaves and collapses degenerate splitters.
+   *
+   * Call after undock / close so remaining panes expand into freed space.
+   */
+  void scrubEmptyPanes();
+
+  /**
    * @brief Replace @p old_dock with @p new_dock in the same mosaic leaf.
    *
    * Preserves splitter geometry (Foxglove Change Panel). Unlike
@@ -137,6 +147,54 @@ class MainPanelHost : public QMainWindow {
    */
   void splitPanel(QDockWidget* first, QDockWidget* second,
                   Qt::Orientation orientation);
+
+  /**
+   * @brief Docks @p dragged beside @p target on @p edge (adaptive mosaic split).
+   *
+   * Extracts @p dragged from its current leaf when already hosted, then inserts
+   * it as a sibling of @p target:
+   * - @c Qt::LeftEdge / @c Qt::RightEdge → horizontal split
+   * - @c Qt::TopEdge / @c Qt::BottomEdge → vertical split
+   *
+   * @param dragged Floating or hosted main-panel dock being relocated.
+   * @param target Hosted dock that defines the drop leaf.
+   * @param edge Side of @p target that receives @p dragged.
+   * @return @c true when the mosaic tree was updated.
+   */
+  bool dockPanelAt(QDockWidget* dragged, QDockWidget* target, Qt::Edge edge);
+
+  /**
+   * @brief Hit-tests a global cursor position for edge docking.
+   *
+   * @param global_pos Cursor in global coordinates.
+   * @param exclude Dock to ignore (the one being dragged).
+   * @param[out] target_out Hosted dock under the cursor (non-null on success).
+   * @param[out] edge_out Drop edge relative to @p *target_out.
+   * @return @c true when the cursor is over an edge band of a hosted leaf.
+   */
+  bool hitTestDrop(const QPoint& global_pos, const QDockWidget* exclude,
+                   QDockWidget** target_out, Qt::Edge* edge_out) const;
+
+  /**
+   * @brief Shows or clears the Foxglove-style edge drop highlight overlay.
+   *
+   * @param global_pos Cursor position; ignored when @p visible is false.
+   * @param exclude Dragged dock (not a valid drop target).
+   * @param visible @c true to update highlight; @c false to hide.
+   */
+  void setDropPreview(const QPoint& global_pos, const QDockWidget* exclude,
+                      bool visible);
+
+  /**
+   * @brief Accepts a drop at @p global_pos for @p dragged when over an edge.
+   *
+   * Clears any drop preview. Call from title-bar drag finished.
+   *
+   * @param dragged Dock being dropped.
+   * @param global_pos Cursor at release.
+   * @return @c true when @ref dockPanelAt() succeeded.
+   */
+  bool tryAcceptDrop(QDockWidget* dragged, const QPoint& global_pos);
 
   /**
    * @brief Scale mosaic splitter sizes to fill the host (window resize helper).
@@ -188,6 +246,11 @@ class MainPanelHost : public QMainWindow {
 
  private:
   /**
+   * @class DropOverlay
+   * @brief Semi-transparent highlight of the active drop edge band.
+   */
+  class DropOverlay;
+  /**
    * @brief Destroys nested splitters and clears hosted widget parenting.
    */
   void clearSplitterTree();
@@ -222,6 +285,9 @@ class MainPanelHost : public QMainWindow {
 
   /** Re-entrancy guard while @ref tilePanels() rebuilds the tree. */
   bool tiling_ = false;
+
+  /** Edge-drop highlight drawn above mosaic panes while dragging. */
+  DropOverlay* drop_overlay_ = nullptr;
 };
 
 }  // namespace autoviz

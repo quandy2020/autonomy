@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import math
-from typing import Sequence, Tuple, Union
+from typing import Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -35,11 +35,19 @@ from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
 from automsgs.msgs.sensor_msgs.point_field_pb2 import PointField
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
+from automsgs.msgs.std_msgs.string_pb2 import String
 from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
 
 
 class Messages:
     """Stateless helpers: NumPy / geometry quantities ↔ automsgs protobufs."""
+
+    @staticmethod
+    def encode_string(data: str) -> String:
+        """Build a ``std_msgs.String`` (e.g. ``/robot_description`` URDF XML)."""
+        message = String()
+        message.data = str(data)
+        return message
 
     @staticmethod
     def set_header(header: object, stamp: Tuple[int, int], frame_id: str) -> None:
@@ -66,6 +74,36 @@ class Messages:
         """
         half = 0.5 * yaw
         return (0.0, 0.0, math.sin(half), math.cos(half))
+
+    @staticmethod
+    def rpy_to_quaternion(
+        roll: float, pitch: float, yaw: float
+    ) -> Tuple[float, float, float, float]:
+        """URDF fixed-axis RPY → quaternion (``R = Rz(yaw) Ry(pitch) Rx(roll)``).
+
+        Args:
+            roll: Rotation about X (rad).
+            pitch: Rotation about Y (rad).
+            yaw: Rotation about Z (rad).
+
+        Returns:
+            ``(x, y, z, w)``.
+        """
+        half_roll = 0.5 * float(roll)
+        half_pitch = 0.5 * float(pitch)
+        half_yaw = 0.5 * float(yaw)
+        cr = math.cos(half_roll)
+        sr = math.sin(half_roll)
+        cp = math.cos(half_pitch)
+        sp = math.sin(half_pitch)
+        cy = math.cos(half_yaw)
+        sy = math.sin(half_yaw)
+        return (
+            sr * cp * cy - cr * sp * sy,
+            cr * sp * cy + sr * cp * sy,
+            cr * cp * sy - sr * sp * cy,
+            cr * cp * cy + sr * sp * sy,
+        )
 
     @staticmethod
     def diagonal_covariance(values: Sequence[float], size: int = 36) -> list:
@@ -536,8 +574,12 @@ class Messages:
         child: str,
         xyz: Tuple[float, float, float],
         yaw: float = 0.0,
+        rpy: Optional[Tuple[float, float, float]] = None,
     ):
-        """Build one ``TransformStamped`` (used inside ``TFMessage``)."""
+        """Build one ``TransformStamped`` (used inside ``TFMessage``).
+
+        Prefer ``rpy`` (full URDF joint origin) when set; otherwise planar ``yaw``.
+        """
         from automsgs.msgs.geometry_msgs.transform_stamped_pb2 import TransformStamped
 
         message = TransformStamped()
@@ -546,13 +588,15 @@ class Messages:
         message.transform.translation.x = float(xyz[0])
         message.transform.translation.y = float(xyz[1])
         message.transform.translation.z = float(xyz[2])
-        qx, qy, qz, qw = cls.yaw_to_quaternion(yaw)
+        if rpy is not None:
+            qx, qy, qz, qw = cls.rpy_to_quaternion(rpy[0], rpy[1], rpy[2])
+        else:
+            qx, qy, qz, qw = cls.yaw_to_quaternion(yaw)
         message.transform.rotation.x = qx
         message.transform.rotation.y = qy
         message.transform.rotation.z = qz
         message.transform.rotation.w = qw
         return message
-
     @classmethod
     def encode_tf_message(cls, transforms: Sequence[object]) -> TFMessage:
         """Pack transforms into a ``TFMessage``."""

@@ -7,7 +7,7 @@
 #
 # cameras 写 6 路或 4 路。每路 enabled 开关，type 可选 pinhole、fisheye、equirectangular。
 # hfov_deg 是水平视场，vfov_deg 是垂直视场，单位度，彼此独立。
-# 相对 base_link 的位姿在 urdf/turtlebot3_burger_bev.urdf（cam_* 关节），不写在这里。
+# 相对 base_link 的位姿在 robot/turtlebot3_burger/turtlebot3_burger_bev.urdf（cam_* 关节），不写在这里。
 #   6 路：front, front_left, rear_left, rear, rear_right, front_right
 #   4 路：front, left, rear, right
 #
@@ -23,7 +23,7 @@ habitat:
   gpu: 0
 
   robot:
-    urdf: urdf/turtlebot3_burger_bev.urdf
+    urdf: robot/turtlebot3_burger/turtlebot3_burger_bev.urdf
     max_linear: 0.5
     max_angular: 1.0
     max_linear_accel: 0.8

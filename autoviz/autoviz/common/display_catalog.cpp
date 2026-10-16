@@ -40,8 +40,8 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
                "Shows a sensor_msgs/PointCloud2 message.",
                {"automsgs.msgs.sensor_msgs.PointCloud2",
                 "sensor_msgs.PointCloud2"}),
-      MakeInfo("Image", "autoviz", "Shows an image from sensor_msgs/Image.",
-               {"automsgs.msgs.sensor_msgs.Image", "sensor_msgs.Image"}),
+      // Image is intentionally omitted from the Displays panel catalog — use
+      // the center Image panel (ImageDock). Factory still registers the type.
       MakeInfo("Camera", "autoviz", "Shows a camera image and frustum.",
                {"automsgs.msgs.sensor_msgs.Image", "sensor_msgs.Image"}),
       MakeInfo("Map", "autoviz", "Shows a map from map_msgs/OccupancyGrid.",
@@ -140,10 +140,18 @@ bool MessageTypeMatches(const std::string& channel_type,
 
 }  // namespace
 
+bool DisplayCatalog::isHiddenFromDisplaysPanel(const std::string& type) {
+  // Image → center ImageDock. TwistStamped (/cmd_vel) → Teleop, not Displays.
+  return type == "Image" || type == "TwistStamped";
+}
+
 std::vector<DisplayTypeInfo> DisplayCatalog::allTypes() {
   std::vector<DisplayTypeInfo> types = BuiltinCatalog();
   const auto registered = DisplayFactory::supportedTypes();
   for (const std::string& type : registered) {
+    if (isHiddenFromDisplaysPanel(type)) {
+      continue;
+    }
     if (std::any_of(types.begin(), types.end(),
                     [&type](const DisplayTypeInfo& info) {
                       return info.type == type;
@@ -152,6 +160,11 @@ std::vector<DisplayTypeInfo> DisplayCatalog::allTypes() {
     }
     types.push_back(MakeInfo(type.c_str(), "autoviz", "Display plugin."));
   }
+  types.erase(std::remove_if(types.begin(), types.end(),
+                             [](const DisplayTypeInfo& info) {
+                               return isHiddenFromDisplaysPanel(info.type);
+                             }),
+              types.end());
   std::sort(types.begin(), types.end(),
             [](const DisplayTypeInfo& a, const DisplayTypeInfo& b) {
               if (a.package != b.package) {
@@ -179,7 +192,7 @@ std::vector<std::string> DisplayCatalog::typesForMessageType(
     const std::string& message_type) {
   std::vector<std::string> matches;
   for (const auto& info : allTypes()) {
-    if (info.message_types.empty()) {
+    if (info.message_types.empty() || isHiddenFromDisplaysPanel(info.type)) {
       continue;
     }
     for (const auto& candidate : info.message_types) {

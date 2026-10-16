@@ -100,6 +100,27 @@ class IsaacSimulator:
         width = int(camera["width"])
         height = int(camera["height"])
         eye = float(camera.get("sensor_height", robot_cfg.get("base_link_height", 0.5)))
+        eye_offset = (0.0, 0.0, eye)
+        try:
+            urdf = UrdfModel.load(str(robot_cfg.get("urdf") or ""))
+        except (FileNotFoundError, ValueError):
+            urdf = None
+        # Prefer URDF camera_link (Beni: 0.07, 0.03, -0.016) over Z-only height.
+        if urdf is not None:
+            try:
+                cx, cy, cz, _ = urdf.link_pose("camera_link")
+                eye_offset = (float(cx), float(cy), float(cz))
+                eye = float(cz)
+            except ValueError:
+                pass
+        yaml_xyz = camera.get("sensor_xyz") or camera.get("xyz")
+        if isinstance(yaml_xyz, (list, tuple)) and len(yaml_xyz) >= 3:
+            eye_offset = (
+                float(yaml_xyz[0]),
+                float(yaml_xyz[1]),
+                float(yaml_xyz[2]),
+            )
+            eye = float(eye_offset[2])
         world_usd, robot_usd = resolve_usd_paths(habitat, robot_cfg)
         base_z = float(robot_cfg.get("base_link_height", 0.0))
         prim = str(
@@ -113,11 +134,9 @@ class IsaacSimulator:
             robot_prim_path=prim,
             base_z=base_z,
         )
-        sensors = IsaacSensors(width=width, height=height, eye_height=eye)
-        try:
-            urdf = UrdfModel.load(str(robot_cfg.get("urdf") or ""))
-        except (FileNotFoundError, ValueError):
-            urdf = None
+        sensors = IsaacSensors(
+            width=width, height=height, eye_height=eye, eye_offset=eye_offset
+        )
         sim = cls(
             settings=settings,
             stage=stage,
@@ -129,8 +148,8 @@ class IsaacSimulator:
         )
         sim.attach_floorplan_map(world_usd, habitat.get("map"))
         sim.seed_scenario_geometry(habitat)
-        # PhysX first (RB on collision capsule only), then camera under robot
-        # so Replicator tracks parent xform like Habitat agent sensors.
+        # World first (needed for Replicator RGB even when collision is off),
+        # then camera under robot so the view tracks teleop like Habitat.
         phys_cfg = physics_config_from_habitat(habitat)
         sim.physics = IsaacPhysics.attach(
             stage,

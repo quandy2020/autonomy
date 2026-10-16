@@ -32,7 +32,29 @@ include = ["autosim*"]
 
 [tool.setuptools.data-files]
 "share/autosim/config" = ["config/*.yaml"]
-"share/autosim/urdf" = ["urdf/*.urdf", "urdf/*.md"]
+"share/autosim/robot" = ["robot/README.md"]
+"share/autosim/robot/turtlebot3_burger" = [
+  "robot/turtlebot3_burger/*.urdf",
+]
+"share/autosim/robot/turtlebot3_burger/meshes" = [
+  "robot/turtlebot3_burger/meshes/README.md",
+  "robot/turtlebot3_burger/meshes/LICENSE",
+]
+"share/autosim/robot/turtlebot3_burger/meshes/bases" = [
+  "robot/turtlebot3_burger/meshes/bases/*",
+]
+"share/autosim/robot/turtlebot3_burger/meshes/wheels" = [
+  "robot/turtlebot3_burger/meshes/wheels/*",
+]
+"share/autosim/robot/turtlebot3_burger/meshes/sensors" = [
+  "robot/turtlebot3_burger/meshes/sensors/*",
+]
+"share/autosim/robot/husky" = [
+  "robot/husky/*.urdf",
+]
+"share/autosim/robot/husky/meshes" = [
+  "robot/husky/meshes/*",
+]
 "share/autosim/usd" = [
   "usd/README.md",
   "usd/worlds/simple_room/simple_room.usd",

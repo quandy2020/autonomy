@@ -4,7 +4,7 @@
 #
 #   CONFIG=src/autonomy/autosim/config/isaac.yaml src/autonomy/autosim/scripts/run.sh sim
 #
-# Swap robot.profile to husky for Clearpath Husky (urdf/husky.urdf + usd/robots/husky).
+# Swap robot.profile: turtlebot3_burger | husky | beni (Open Beni RGB-D).
 
 habitat:
   backend: isaac
@@ -12,30 +12,39 @@ habitat:
   # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
   # Camera path aligned with arena-isaac: RTX Camera + supportMultiTickRate,
   # PhysX ticks without RTX, RGB sampled only in color_depth (Habitat timing).
+  # physics.enabled=false still creates a render-only World when camera is on
+  # (otherwise RGB/depth stay empty).
   isaac:
     headless: true
     physics:
-      enabled: false          # no PhysX / no collision; free teleop through walls
+      enabled: false          # no collision; render-only World when camera on
       block_motion: false
       freeze_scene: true
       ensure_scene_colliders: false
       add_ground: false
       dt: 0.0166667
-      robot_radius: 0.12
-      robot_height: 0.28
+      robot_radius: 0.10
+      robot_height: 0.22
     traffic:
       usd_sync: false                 # no AutosimTraffic capsules in the stage
 
-  # Optional ONNX RL / IL twist policy (see docs/07_isaac.md). When exclusive,
-  # teleop /cmd_vel is ignored; otherwise policy fills in when no cmd_vel arrives.
+  # ONNX policy (docs/07_isaac.md). Beni: 7-DoF balance (obs[40]+GRU → joints).
+  # Teleop /cmd_vel drives the plant; Autoviz keeps mesh-baked standing pose
+  # (animate_joints needs MuJoCo — kinematic ONNX thrash looks like kicking).
   policy:
-    enabled: false
-    # model_path: /path/to/twist_policy.onnx
-    rate_hz: 10.0
+    enabled: true
+    action_space: beni          # twist | beni
+    # Default: robot/beni/models/policy.onnx (Open Beni export)
+    # model_path: robot/beni/models/policy.onnx
+    rate_hz: 100.0              # Open Beni policy rate
     exclusive: false
-    max_vx: 0.5
-    max_wz: 1.0
-    use_laser: true
+    max_vx: 1.5
+    max_wz: 2.0
+    # Standing height command in obs (Open Beni range ≈ [0.10, 0.12]).
+    base_height: 0.11
+    animate_joints: false       # true = live hip/knee TF (unstable without physics)
+    drive_from_wheels: false    # true = plant from LW/RW; false = follow cmd
+    use_laser: false
     laser_bins: 360
 
   # LeRobot v2.1 dataset recording for imitation learning (docs/11_dataset.md).
@@ -79,16 +88,18 @@ habitat:
   gpu: 0
 
   robot:
-    profile: turtlebot3_burger   # or husky
-    urdf: urdf/turtlebot3_burger.urdf
-    max_linear: 0.5
-    max_angular: 1.0
-    max_linear_accel: 0.8
-    max_linear_decel: 1.2
-    max_angular_accel: 2.0
-    wheel_separation: 0.55
+    profile: beni   # turtlebot3_burger | husky | beni
+    urdf: robot/beni/beni.urdf   # explicit so channel_map + Autoviz always see it
+    description_channel: /robot_description   # Autoviz RobotModel
+    # Twist limits roughly match Open Beni velocity command ranges.
+    max_linear: 1.5
+    max_angular: 2.0
+    max_linear_accel: 1.5
+    max_linear_decel: 2.0
+    max_angular_accel: 4.0
+    # Open Beni standing height H_REF ≈ 0.11 m (wheel contact → base_link).
+    base_link_height: 0.11
     map_frame: map
-    base_link_height: 0.01
     watchdog_sec: 0.5
     control_hz: 50.0
     cmd_vel: /cmd_vel
@@ -108,6 +119,12 @@ habitat:
       enabled: true
       channel: /footprint
       frame: base_link
+      # Cover body + wheels (track≈0.16, wheel half-width≈0.01); not body box alone.
+      points:
+        - [0.09, 0.10]
+        - [0.09, -0.10]
+        - [-0.10, -0.10]
+        - [-0.10, 0.10]
 
   sensors:
     lidar_2d:
@@ -142,15 +159,17 @@ habitat:
 
     camera:
       enabled: true
-      # RTX render product (Isaac Camera) — same path as viewport; only sampled
-      # when due (PhysX ticks do not pay an extra RTX frame).
+      # Primary sensor = RGB-D (RGB + depth + optional depth points).
+      # Extrinsics follow beni.urdf camera_link (Open Beni MJCF depth_front).
       width: 1280
       height: 720
+      # MJCF depth_front ≈ 86.5° VFOV @ 80×60 → ~98° HFOV; keep 90 for nav.
       hfov_deg: 90.0
-      sensor_height: 0.6
+      # Fallback Z only; Isaac prefers URDF camera_link (0.07, 0.03, -0.016).
+      sensor_height: -0.016
+      # Optional override: sensor_xyz: [0.07, 0.03, -0.016]
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
-      # Depth PointCloud2 for Autoviz; stride 4 keeps bandwidth down.
       depth_points_channel: /camera/depth/points
       depth_points_stride: 4
       info_channel: /camera/camera_info
@@ -192,9 +211,9 @@ habitat:
     padding_m: 0.05
     wall_thickness_m: 0.05
     robot_clearance_m: 0.05   # above floor — carpet / floor verts stay free
-    robot_height_m: 0.35      # body top (+ margin); not full room height
+    robot_height_m: 0.25      # beni body top (+ margin); not full room height
     height_margin_m: 0.05
-    mesh_inflate_m: 0.12      # ≈ turtlebot footprint radius
+    mesh_inflate_m: 0.10      # ≈ beni footprint radius (track 0.16)
     free_doors: true          # punch door meshes free (rooms.json seals openings)
     door_opening_inflate_m: 0.15
     ply:
@@ -216,5 +235,5 @@ habitat:
     grid:
       channel: /map
       resolution: 0.05
-      z_min: 0.1
+      z_min: 0.0   # floor / wall feet at world ground (was 0.1 → floated)
       z_max: 2.5

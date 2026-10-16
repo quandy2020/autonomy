@@ -119,6 +119,19 @@ class Config:
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel
+        # Autoviz RobotModel needs /robot_description when a URDF is configured.
+        # Resolve profile defaults — YAML may only set ``profile: beni`` without urdf.
+        from autosim.robot.profiles import apply_profile
+
+        robot_resolved = apply_profile(robot)
+        urdf = str(robot_resolved.get("urdf") or "").strip()
+        desc_channel = str(
+            robot_resolved.get("description_channel")
+            or robot.get("description_channel")
+            or ""
+        ).strip()
+        if urdf:
+            channels["robot_description"] = desc_channel or "/robot_description"
         return channels
 
     @classmethod
@@ -520,6 +533,9 @@ class Config:
         footprint = robot.get("footprint")
         if isinstance(footprint, Mapping) and footprint.get("enabled", False):
             names.append(footprint.get("channel", "/footprint"))
+        if str(robot_resolved.get("urdf") or "").strip():
+            desc = str(robot.get("description_channel") or "").strip()
+            names.append(desc or "/robot_description")
         for name in names:
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("empty channel name in habitat.sensors or habitat.robot")

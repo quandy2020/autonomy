@@ -103,30 +103,30 @@ def minimal_robot_config(urdf: str = ""):
 
 
 def test_resolve_husky_relative():
-    path = UrdfModel.resolve("urdf/husky.urdf")
+    path = UrdfModel.resolve("robot/husky/husky.urdf")
     assert path is not None
     assert path.is_file()
     assert path.name == "husky.urdf"
 
 
 def test_load_husky_laser_height():
-    model = UrdfModel.load("urdf/husky.urdf")
+    model = UrdfModel.load("robot/husky/husky.urdf")
     assert model is not None
     x, y, z = model.laser_xyz()
     assert abs(x - 0.15) < 1e-6
     assert abs(y - 0.0) < 1e-6
-    assert abs(z - 0.465) < 1e-6
+    assert abs(z - 0.4651) < 1e-6
     ix, _, iz = model.imu_xyz()
     assert abs(ix - 0.1) < 1e-6
-    assert abs(iz - 0.345) < 1e-6
+    assert abs(iz - 0.3451) < 1e-6
     cx, cy, cz = model.camera_xyz()
     assert abs(cx - 0.2) < 1e-6
     assert abs(cy - 0.0) < 1e-6
-    assert abs(cz - 0.485) < 1e-6
+    assert abs(cz - 0.4851) < 1e-6
 
 
 def test_husky_prefers_base_footprint_tree():
-    model = UrdfModel.load("urdf/husky.urdf")
+    model = UrdfModel.load("robot/husky/husky.urdf")
     assert model is not None
     assert model.root == "base_footprint"
     assert model.odom_child_frame() == "base_footprint"
@@ -134,7 +134,7 @@ def test_husky_prefers_base_footprint_tree():
     bx, by, bz = model.link_xyz_from("base_footprint", "base_link")
     assert abs(bx - 0.0) < 1e-6
     assert abs(by - 0.0) < 1e-6
-    assert abs(bz - 0.165) < 1e-6
+    assert abs(bz - 0.1651) < 1e-6
     lx, ly, lz = model.link_xyz_from("base_link", "laser_link")
     assert abs(lx - 0.15) < 1e-6
     assert abs(ly - 0.0) < 1e-6
@@ -148,7 +148,7 @@ def test_husky_prefers_base_footprint_tree():
 
 
 def test_turtlebot3_derives_offset_footprint_from_urdf():
-    model = UrdfModel.load("urdf/turtlebot3_burger.urdf")
+    model = UrdfModel.load("robot/turtlebot3_burger/turtlebot3_burger.urdf")
     assert model is not None
     assert model.root == "base_footprint"
     footprint = model.footprint_polygon()
@@ -159,8 +159,19 @@ def test_turtlebot3_derives_offset_footprint_from_urdf():
     assert abs(footprint[2][1] + 0.07) < 1e-6
 
 
+def test_turtlebot3_wheel_joints_keep_roll():
+    """Wheel joint origins use roll=±π/2; TF must not drop it to yaw-only."""
+    model = UrdfModel.load("robot/turtlebot3_burger/turtlebot3_burger.urdf")
+    assert model is not None
+    left = model.joint_rpy["wheel_left_link"]
+    right = model.joint_rpy["wheel_right_link"]
+    assert abs(left[0] + math.pi / 2) < 1e-9
+    assert abs(right[0] + math.pi / 2) < 1e-9
+    assert abs(left[1]) < 1e-12 and abs(left[2]) < 1e-12
+
+
 def test_bev_urdf_six_camera_poses():
-    model = UrdfModel.load("urdf/turtlebot3_burger_bev.urdf")
+    model = UrdfModel.load("robot/turtlebot3_burger/turtlebot3_burger_bev.urdf")
     assert model is not None
     x, y, z, yaw = model.link_pose("cam_front")
     assert abs(x - 0.40) < 1e-6 and abs(y) < 1e-6 and abs(z - 1.20) < 1e-6
@@ -178,11 +189,11 @@ def test_load_empty_urdf():
 
 def test_default_yaml_urdf():
     settings = Config.load(ROOT / "config" / "default.yaml")
-    assert settings["habitat"]["robot"]["urdf"] == "urdf/turtlebot3_burger.urdf"
+    assert settings["habitat"]["robot"]["urdf"] == "robot/turtlebot3_burger/turtlebot3_burger.urdf"
 
 
 def test_reject_missing_urdf():
-    bad = minimal_robot_config(urdf="urdf/does_not_exist.urdf")
+    bad = minimal_robot_config(urdf="robot/does_not_exist.urdf")
     with pytest.raises(ValueError, match="urdf"):
         Config.load(bad)
 
@@ -190,7 +201,7 @@ def test_reject_missing_urdf():
 def test_mock_simulator_loads_mounts():
     from autosim.backends.habitat.simulator import Simulator
 
-    data = minimal_robot_config(urdf="urdf/husky.urdf")
+    data = minimal_robot_config(urdf="robot/husky/husky.urdf")
     sim = Simulator(
         backend="minimal",
         width=64,
@@ -200,6 +211,6 @@ def test_mock_simulator_loads_mounts():
     )
     assert sim.urdf is not None
     ox, oy, oz = sim.laser_origin()
-    assert abs(oy - 0.465) < 1e-6
+    assert abs(oy - 0.4651) < 1e-6
     assert abs(ox - 0.15) < 1e-6
     assert abs(oz - 0.0) < 1e-6

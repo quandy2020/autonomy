@@ -1033,6 +1033,11 @@ void DisplaysPanel::populateDisplays() {
   const auto& displays = manager_->displays();
   for (std::size_t i = 0; i < displays.size(); ++i) {
     display::Display* display = displays[i];
+    // Image lives in the center Image panel — never list it under Displays.
+    if (display == nullptr ||
+        common::DisplayCatalog::isHiddenFromDisplaysPanel(display->typeId())) {
+      continue;
+    }
     auto* item = new QTreeWidgetItem(tree_);
     item->setText(kDisplayTreeColName, QString::fromStdString(display->name()));
     item->setIcon(kDisplayTreeColName,
@@ -1049,7 +1054,8 @@ void DisplaysPanel::populateDisplays() {
     if (auto* group = dynamic_cast<display::DisplayGroup*>(display)) {
       for (std::size_t ci = 0; ci < group->children().size(); ++ci) {
         display::Display* child = group->child(ci);
-        if (child == nullptr) {
+        if (child == nullptr ||
+            common::DisplayCatalog::isHiddenFromDisplaysPanel(child->typeId())) {
           continue;
         }
         auto* child_item = new QTreeWidgetItem(item);

@@ -23,7 +23,7 @@ habitat:
   gpu: 0
 
   robot:
-    urdf: urdf/turtlebot3_burger.urdf
+    urdf: robot/turtlebot3_burger/turtlebot3_burger.urdf
     max_linear: 0.5
     max_angular: 1.0
     max_linear_accel: 0.8

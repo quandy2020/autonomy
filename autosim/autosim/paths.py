@@ -20,14 +20,20 @@ from pathlib import Path
 
 
 def project_root() -> Path:
-    """Return the autosim project root (contains ``config/``, ``urdf/``).
+    """Return the autosim project root (contains ``config/``, ``robot/``).
 
     Walks upward from this file so nested packages (``robot/``, ``backends/``, …)
     resolve the same root without hard-coded ``parents[N]`` depths.
     """
     here = Path(__file__).resolve()
     for parent in here.parents:
-        if (parent / "config").is_dir() and (parent / "urdf").is_dir():
+        # Prefer the repo project root (YAML configs), not the Python package
+        # which also has config/ and robot/ subpackages.
+        if (parent / "config" / "default.yaml").is_file() or (
+            parent / "config" / "isaac.yaml"
+        ).is_file():
+            return parent
+        if (parent / "config").is_dir() and (parent / "usd").is_dir():
             return parent
     # Fallback: autosim/paths.py → package → project
     return here.parents[1]

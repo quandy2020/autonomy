@@ -568,9 +568,10 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
   }
 
   auto prefer_type = [](const std::vector<std::string>& types) -> std::string {
+    // Image / TwistStamped are hidden from Displays (ImageDock / Teleop).
     static const char* kPreferred[] = {"PointCloud2", "Imu",         "Odometry",
                                        "LaserScan",   "Path",        "Marker",
-                                       "MarkerArray", "RobotModel",  "Image",
+                                       "MarkerArray", "RobotModel",  "Camera",
                                        "CameraInfo",  "Pose",        "PoseStamped",
                                        "TF"};
     for (const char* preferred : kPreferred) {
@@ -578,7 +579,12 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
         return preferred;
       }
     }
-    return types.empty() ? std::string{} : types.front();
+    for (const std::string& type : types) {
+      if (!DisplayCatalog::isHiddenFromDisplaysPanel(type)) {
+        return type;
+      }
+    }
+    return {};
   };
 
   int added = 0;
@@ -692,6 +698,10 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
     const std::string base = channel_base(channel);
     // One RobotModel owns both topics. A second display would lose CreateReader.
     if (base == "robot_description" || base == "joint_states") {
+      continue;
+    }
+    // Teleop command topic — not a Displays panel entry.
+    if (base == "cmd_vel") {
       continue;
     }
     if (DisplayCatalog::isStaticTfChannel(channel) || channel == "/tf" ||

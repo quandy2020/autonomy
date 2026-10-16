@@ -52,6 +52,7 @@ from autosim.robot import Robot
 from autosim.robot.profiles import apply_profile
 from autosim.robot.urdf import UrdfModel
 from autosim.runtime.worker import SensorWorker
+from autosim.robot.description import load_robot_description
 from autosim.scenario.traffic import Traffic
 from autosim.sensing.cameras import camera_rig, resolve_surround
 from autosim.sensing.sensors import Sensors
@@ -69,10 +70,12 @@ from automsgs.msgs.sensor_msgs.image_pb2 import Image
 from automsgs.msgs.sensor_msgs.imu_pb2 import Imu
 from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
+from automsgs.msgs.std_msgs.string_pb2 import String
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
 from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
 
 TF_STATIC_REPUBLISH_SEC = 1.0
+ROBOT_DESCRIPTION_REPUBLISH_SEC = 1.0
 
 
 class Runner:
@@ -101,6 +104,13 @@ class Runner:
         self.max_steps = max_steps
         self.clock = Clock(start_sec=time.time())
         self.apply_settings(settings)
+        # Load URDF XML before bind_bridge so the writer is created.
+        self.robot_description_xml: Optional[str] = None
+        self.robot_description_elapsed = ROBOT_DESCRIPTION_REPUBLISH_SEC
+        self.robot_description_published = False
+        urdf_rel = str(self.robot_cfg.get("urdf") or "").strip()
+        if urdf_rel:
+            self.robot_description_xml = load_robot_description(urdf_rel)
         self.assemble_plant(simulator)
         self.bind_bridge()
         self.scan_elapsed = 0.0
@@ -359,6 +369,10 @@ class Runner:
             types["tf_static"] = TFMessage
         if self.clock_cfg.get("enabled", False):
             types["clock"] = TimeMsg
+        if self.robot_description_xml and str(
+            self.robot_cfg.get("urdf") or ""
+        ).strip():
+            types["robot_description"] = String
         return types
 
     def bind_bridge(self) -> None:
@@ -445,6 +459,7 @@ class Runner:
         self.emit("footprint", self.publish_footprint, stamp)
         self.emit("tf", self.publish_tf, stamp)
         self.emit("clock", self.publish_clock, stamp)
+        self.emit("robot_description", self.publish_robot_description, stamp)
         # Occupancy / PLY map is static; never block teleop after first sample.
         self.emit("map", self.submit_map, stamp)
         # Habitat: serialize heavy GL samples so TF and image do not hitch.
@@ -929,14 +944,40 @@ class Runner:
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
 
     def poll_command(self, dt: float = 0.02) -> None:
-        """Apply teleop ``cmd_vel`` or an optional ONNX RL policy twist."""
+        """Apply teleop ``cmd_vel`` and/or an optional ONNX RL policy.
+
+        Twist policies: teleop wins unless ``exclusive``. Beni 7-DoF: teleop
+        feeds the balance observation (browser joystick model); joints animate
+        via ONNX + TF; the planar plant follows the ramped command.
+        """
         reader = self.bridge.command_reader
         has_external = hasattr(reader, "has_msg") and reader.has_msg()
         policy = self.policy_driver
-        if has_external and not (policy is not None and policy.exclusive):
+        twist_cmd: Optional[Tuple[float, float]] = None
+        if has_external:
             linear, angular = Messages.parse_command_velocity(reader.get_msg())
-            self.last_action = (float(linear), float(angular))
-            self.robot.set_twist(linear, angular, t=self.clock.now())
+            twist_cmd = (float(linear), float(angular))
+
+        if policy is not None and getattr(policy, "action_space", "twist") == "beni":
+            # Teleop → policy command (even when exclusive); plant uses policy output.
+            x, y, yaw = self.robot.pose()
+            linear, angular = self.robot.velocity()
+            cmd = policy.compute_command(
+                float(dt),
+                pose=(float(x), float(y), float(yaw)),
+                velocity=(float(linear), float(angular)),
+                scan=self.last_scan,
+                twist_cmd=twist_cmd,
+            )
+            if cmd is not None:
+                self.last_action = (float(cmd[0]), float(cmd[1]))
+                self.robot.set_twist(cmd[0], cmd[1], t=self.clock.now())
+            return
+
+        if has_external and not (policy is not None and policy.exclusive):
+            assert twist_cmd is not None
+            self.last_action = twist_cmd
+            self.robot.set_twist(twist_cmd[0], twist_cmd[1], t=self.clock.now())
             return
         if policy is None:
             return
@@ -967,6 +1008,24 @@ class Runner:
         self.inertial_elapsed += dt
         self.map_elapsed += dt
         self.tf_static_elapsed += dt
+        self.robot_description_elapsed += dt
+
+    def publish_robot_description(self, stamp: Tuple[int, int]) -> None:
+        """Publish ``/robot_description`` (URDF XML) for Autoviz RobotModel.
+
+        Encoded once; republished on an interval so late subscribers still see
+        it (Autolink writers are volatile, not latching).
+        """
+        del stamp
+        xml = getattr(self, "robot_description_xml", None)
+        if not xml or "robot_description" not in self.bridge.writers:
+            return
+        first = not self.robot_description_published
+        if not first and self.robot_description_elapsed < ROBOT_DESCRIPTION_REPUBLISH_SEC:
+            return
+        self.robot_description_elapsed = 0.0
+        self.robot_description_published = True
+        self.bridge.publish("robot_description", Messages.encode_string(xml))
 
     def odom_child_frame(self) -> str:
         """Dynamic child frame used by both ``/odom`` and ``/tf``.
@@ -988,9 +1047,20 @@ class Runner:
     def footprint_points(self) -> Tuple[Tuple[float, float, float], ...]:
         """Footprint vertices in the published footprint frame (``base_link``).
 
-        URDF polygons are authored in the URDF root (usually ``base_footprint``);
-        they are transformed into ``base_link`` when that link sits above the root.
+        Explicit ``footprint.points`` win (e.g. Beni wheel track). Otherwise the
+        URDF body box is projected; URDF-root polygons are mapped into ``base_link``.
         """
+        points = self.footprint.get("points") or []
+        if points:
+            polygon = []
+            for point in points:
+                if len(point) == 2:
+                    polygon.append((float(point[0]), float(point[1]), 0.0))
+                else:
+                    polygon.append(
+                        (float(point[0]), float(point[1]), float(point[2]))
+                    )
+            return tuple(polygon)
         urdf = getattr(self.simulator, "urdf", None) if self.simulator is not None else None
         if urdf is None:
             urdf = self.footprint_urdf()
@@ -998,14 +1068,7 @@ class Runner:
             polygon = tuple(urdf.footprint_polygon())
             if polygon:
                 return self.footprint_in_base_link(urdf, polygon)
-        points = self.footprint.get("points") or []
-        polygon = []
-        for point in points:
-            if len(point) == 2:
-                polygon.append((float(point[0]), float(point[1]), 0.0))
-            else:
-                polygon.append((float(point[0]), float(point[1]), float(point[2])))
-        return tuple(polygon)
+        return ()
 
     @staticmethod
     def footprint_in_base_link(
@@ -1378,16 +1441,31 @@ class Runner:
                 )
             )
         elif urdf is not None:
+            # Live joint angles from Beni ONNX (mesh-relative); empty for twist robots.
+            live_angles: Dict[str, float] = {}
+            policy = getattr(self, "policy_driver", None)
+            if policy is not None:
+                live_angles = dict(getattr(policy, "joint_display_angles", {}) or {})
             for child, (parent, xyz) in urdf.parents.items():
                 if child == odom_child:
                     continue
+                # Full joint RPY (wheel joints use roll=±π/2); yaw-only breaks meshes.
+                rpy = urdf.joint_rpy.get(
+                    child, (0.0, 0.0, float(urdf.joint_yaw.get(child, 0.0)))
+                )
+                angle = live_angles.get(child)
+                if angle is not None and abs(float(angle)) > 1e-9:
+                    axis = urdf.joint_axis.get(child, (0.0, 0.0, 1.0))
+                    from autosim.policy.beni import axis_angle_rpy
+
+                    rpy = axis_angle_rpy(rpy, axis, float(angle))
                 mounts.append(
                     Messages.encode_transform(
                         stamp,
                         parent,
                         child,
                         xyz,
-                        float(urdf.joint_yaw.get(child, 0.0)),
+                        rpy=rpy,
                     )
                 )
             # odom→base_link skips URDF base_footprint→base_link; publish the

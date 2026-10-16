@@ -34,17 +34,30 @@ class UrdfModel:
         root: str,
         footprint: Optional[Tuple[Tuple[float, float, float], ...]] = None,
         joint_yaw: Optional[Mapping[str, float]] = None,
+        joint_rpy: Optional[Mapping[str, Tuple[float, float, float]]] = None,
+        joint_axis: Optional[Mapping[str, Tuple[float, float, float]]] = None,
+        joint_name: Optional[Mapping[str, str]] = None,
     ) -> None:
         """Store path and mounts.
 
         Args:
             path: Absolute URDF file path.
             mounts: Link name → ``(x, y, z)`` meters in root frame (z-up).
+            joint_rpy: Child link → joint ``(roll, pitch, yaw)`` radians.
+            joint_yaw: Child link → yaw only (kept for planar helpers).
+            joint_axis: Child link → revolute/continuous axis unit vector.
+            joint_name: Child link → URDF ``<joint name>``.
         """
         self.path = path
         self.mounts = dict(mounts)
         self.parents = dict(parents)
-        self.joint_yaw = dict(joint_yaw or {})
+        self.joint_rpy = dict(joint_rpy or {})
+        if joint_yaw is not None:
+            self.joint_yaw = dict(joint_yaw)
+        else:
+            self.joint_yaw = {name: float(rpy[2]) for name, rpy in self.joint_rpy.items()}
+        self.joint_axis = dict(joint_axis or {})
+        self.joint_name = dict(joint_name or {})
         self.root = root
         self.footprint = tuple(footprint or ())
 
@@ -95,7 +108,7 @@ class UrdfModel:
         if not path.is_file():
             raise FileNotFoundError(f"urdf not found: {path}")
         tree = ET.parse(path)
-        parents, joint_yaw = cls.joint_parents(tree.getroot())
+        parents, joint_rpy, joint_axis, joint_name = cls.joint_parents(tree.getroot())
         if not parents:
             raise ValueError(f"urdf has no joints: {path}")
         root = cls.root_link(parents)
@@ -111,7 +124,9 @@ class UrdfModel:
             parents=parents,
             root=root,
             footprint=footprint,
-            joint_yaw=joint_yaw,
+            joint_rpy=joint_rpy,
+            joint_axis=joint_axis,
+            joint_name=joint_name,
         )
 
     @staticmethod
@@ -119,18 +134,22 @@ class UrdfModel:
         root: ET.Element,
     ) -> Tuple[
         Dict[str, Tuple[str, Tuple[float, float, float]]],
-        Dict[str, float],
+        Dict[str, Tuple[float, float, float]],
+        Dict[str, Tuple[float, float, float]],
+        Dict[str, str],
     ]:
-        """Map child link → ``(parent, xyz)`` and child → joint yaw.
+        """Map child link → parent/xyz, RPY, axis, and joint name.
 
         Args:
             root: ``<robot>`` element.
 
         Returns:
-            Parents, and yaw (radians) of each joint origin about +Z.
+            ``(parents, joint_rpy, joint_axis, joint_name)``.
         """
         parents: Dict[str, Tuple[str, Tuple[float, float, float]]] = {}
-        joint_yaw: Dict[str, float] = {}
+        joint_rpy: Dict[str, Tuple[float, float, float]] = {}
+        joint_axis: Dict[str, Tuple[float, float, float]] = {}
+        joint_name: Dict[str, str] = {}
         for joint in root.findall("joint"):
             parent_el = joint.find("parent")
             child_el = joint.find("child")
@@ -142,8 +161,20 @@ class UrdfModel:
                 continue
             origin = joint.find("origin")
             parents[child] = (parent, UrdfModel.origin_xyz(origin))
-            joint_yaw[child] = UrdfModel.origin_yaw(origin)
-        return parents, joint_yaw
+            joint_rpy[child] = UrdfModel.origin_rpy(origin)
+            joint_axis[child] = UrdfModel.origin_axis(joint.find("axis"))
+            joint_name[child] = str(joint.get("name") or child)
+        return parents, joint_rpy, joint_axis, joint_name
+
+    @staticmethod
+    def origin_axis(axis: Optional[ET.Element]) -> Tuple[float, float, float]:
+        """Parse ``<axis xyz>`` (default ``+Z``)."""
+        if axis is None:
+            return (0.0, 0.0, 1.0)
+        parts = str(axis.get("xyz", "0 0 1")).split()
+        if len(parts) != 3:
+            return (0.0, 0.0, 1.0)
+        return (float(parts[0]), float(parts[1]), float(parts[2]))
 
     @staticmethod
     def origin_xyz(origin: Optional[ET.Element]) -> Tuple[float, float, float]:
@@ -156,14 +187,19 @@ class UrdfModel:
         return (float(parts[0]), float(parts[1]), float(parts[2]))
 
     @staticmethod
-    def origin_yaw(origin: Optional[ET.Element]) -> float:
-        """Yaw (radians) from an ``<origin rpy="roll pitch yaw">`` element."""
+    def origin_rpy(origin: Optional[ET.Element]) -> Tuple[float, float, float]:
+        """Parse ``rpy`` from an ``<origin>`` (URDF fixed-axis roll/pitch/yaw)."""
         if origin is None:
-            return 0.0
+            return (0.0, 0.0, 0.0)
         parts = str(origin.get("rpy", "0 0 0")).split()
         if len(parts) != 3:
-            return 0.0
-        return float(parts[2])
+            return (0.0, 0.0, 0.0)
+        return (float(parts[0]), float(parts[1]), float(parts[2]))
+
+    @staticmethod
+    def origin_yaw(origin: Optional[ET.Element]) -> float:
+        """Yaw (radians) from an ``<origin rpy="roll pitch yaw">`` element."""
+        return UrdfModel.origin_rpy(origin)[2]
 
     @staticmethod
     def link_footprint(

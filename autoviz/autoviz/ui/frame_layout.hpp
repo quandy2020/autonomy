@@ -236,6 +236,33 @@ class FrameLayout {
       Qt::DockWidgetArea area = Qt::LeftDockWidgetArea);
 
   /**
+   * @brief Extracts a main panel from the mosaic before title-bar floating.
+   *
+   * Collapses the freed leaf so siblings expand; parks viewport GLX when needed.
+   *
+   * @param dock Main panel being dragged.
+   */
+  void beginMainPanelDrag(PanelDockWidget* dock);
+
+  /**
+   * @brief Updates the edge-drop highlight while dragging a main panel.
+   *
+   * @param dock Dragged dock.
+   * @param global_pos Cursor position.
+   */
+  void updateMainPanelDropPreview(PanelDockWidget* dock,
+                                  const QPoint& global_pos);
+
+  /**
+   * @brief Docks a floating main panel on a neighbor edge, or reattaches it.
+   *
+   * @param dock Dragged dock.
+   * @param global_pos Cursor at release.
+   * @return @c true when the dock was accepted into the mosaic.
+   */
+  bool finishMainPanelDrag(PanelDockWidget* dock, const QPoint& global_pos);
+
+  /**
    * @brief Ensures a sidebar dock is added to the frame dock area.
    *
    * @param dock Sidebar dock.

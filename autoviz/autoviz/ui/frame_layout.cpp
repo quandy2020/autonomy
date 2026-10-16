@@ -255,6 +255,146 @@ void FrameLayout::ensureMainPanelDockAttached(
   ensuring_main_panel_attach_ = false;
 }
 
+void FrameLayout::beginMainPanelDrag(PanelDockWidget* dock) {
+  if (dock == nullptr || main_panel_host_ == nullptr || !isMainPanel(dock)) {
+    return;
+  }
+  center_manual_layout_ = true;
+  ++center_tile_epoch_;
+  center_tile_pending_ = false;
+  if (main_panel_host_->hostsPanel(dock)) {
+    const bool is_viewport =
+        frame_->panels_->panelTypeId(dock) == QLatin1String("ViewportDock");
+    // Park GLX before the dock leaves its splitter pane (same hazard as Split).
+    if (is_viewport) {
+      frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+        frame_->viewport_->parkRenderWindowInEntry(entry);
+      });
+    }
+    main_panel_host_->removePanel(dock);
+    if (is_viewport) {
+      // Reinstall after setFloating() continues in the title-bar MouseMove.
+      const QPointer<PanelDockWidget> dock_guard(dock);
+      QTimer::singleShot(0, frame_, [this, dock_guard]() {
+        if (!dock_guard) {
+          return;
+        }
+        frame_->viewport_->ensureViewportPanelReady(dock_guard.data());
+        frame_->viewport_->forEachViewportPanel(
+            [this](ViewportPanelEntry& entry) {
+              frame_->viewport_->reinstallRenderWindowInEntry(entry);
+            });
+        frame_->viewport_->requestViewportUpdate();
+      });
+    }
+  }
+  // removePanel parks under MainPanelHost (a QMainWindow). Calling
+  // QDockWidget::setFloating while still in that ancestry makes Qt reserve a
+  // blank dock slot in the center host — scrub and break ancestry first.
+  main_panel_host_->scrubEmptyPanes();
+  {
+    const QSignalBlocker blocker(dock);
+    dock->setParent(nullptr);
+    dock->setFeatures(dock->features() | QDockWidget::DockWidgetFloatable);
+    dock->setFloating(true);
+  }
+  dock->show();
+  syncCenterLayout();
+}
+
+void FrameLayout::updateMainPanelDropPreview(PanelDockWidget* dock,
+                                             const QPoint& global_pos) {
+  if (dock == nullptr || main_panel_host_ == nullptr || !isMainPanel(dock)) {
+    return;
+  }
+  main_panel_host_->setDropPreview(global_pos, dock, true);
+}
+
+bool FrameLayout::finishMainPanelDrag(PanelDockWidget* dock,
+                                      const QPoint& global_pos) {
+  if (dock == nullptr || main_panel_host_ == nullptr || !isMainPanel(dock)) {
+    return false;
+  }
+  main_panel_host_->setDropPreview(global_pos, dock, false);
+
+  QDockWidget* target = nullptr;
+  Qt::Edge edge = Qt::LeftEdge;
+  const bool has_edge =
+      main_panel_host_->hitTestDrop(global_pos, dock, &target, &edge);
+
+  auto* target_panel = qobject_cast<PanelDockWidget*>(target);
+  const bool is_viewport =
+      frame_->panels_->panelTypeId(dock) == QLatin1String("ViewportDock") ||
+      (target_panel != nullptr &&
+       frame_->panels_->panelTypeId(target_panel) ==
+           QLatin1String("ViewportDock"));
+
+  auto park_viewports = [this]() {
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->parkRenderWindowInEntry(entry);
+    });
+  };
+  auto reinstall_viewports = [this]() {
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->reinstallRenderWindowInEntry(entry);
+    });
+    frame_->viewport_->requestViewportUpdate();
+  };
+
+  bool accepted = false;
+  if (has_edge && target != nullptr) {
+    if (is_viewport) {
+      park_viewports();
+    }
+    configureMainPanelDock(dock);
+    accepted = main_panel_host_->dockPanelAt(dock, target, edge);
+  } else if (main_panel_host_->rect().contains(
+                 main_panel_host_->mapFromGlobal(global_pos)) &&
+             !main_panel_host_->hostsPanel(dock)) {
+    // Dropped over the center host but not on an edge — append as a leaf.
+    if (is_viewport) {
+      park_viewports();
+    }
+    configureMainPanelDock(dock);
+    if (dock->isFloating()) {
+      dock->setFloating(false);
+    }
+    main_panel_host_->addPanel(dock);
+    accepted = main_panel_host_->hostsPanel(dock);
+  }
+
+  if (accepted) {
+    center_manual_layout_ = true;
+    if (dock->isFloating()) {
+      dock->setFloating(false);
+    }
+    dock->show();
+    dock->raise();
+    wireMainPanelExpandTracking(dock);
+    main_panel_host_->scrubEmptyPanes();
+    if (is_viewport) {
+      QTimer::singleShot(0, frame_, [this, dock, reinstall_viewports]() {
+        reinstall_viewports();
+        if (frame_->panels_->panelTypeId(dock) ==
+            QLatin1String("ViewportDock")) {
+          frame_->viewport_->ensureViewportPanelReady(dock);
+          frame_->viewport_->setActiveViewportDock(dock);
+        }
+        if (main_panel_host_ != nullptr) {
+          main_panel_host_->scrubEmptyPanes();
+        }
+      });
+    }
+    syncCenterLayout();
+  } else {
+    // Keep floating; still reclaim any ghost mosaic leaves from undock.
+    main_panel_host_->setDropPreview(global_pos, dock, false);
+    main_panel_host_->scrubEmptyPanes();
+    syncCenterLayout();
+  }
+  return accepted;
+}
+
 Qt::DockWidgetArea FrameLayout::defaultSidebarArea(
     const PanelDockWidget* dock) const {
   if (dock == nullptr) {
@@ -733,9 +873,17 @@ void FrameLayout::wireMainPanelExpandTracking(PanelDockWidget* dock) {
   }
   dock->setProperty("mainPanelExpandTracked", true);
   QObject::connect(dock, &PanelDockWidget::closed, frame_, [this, dock]() {
-    if (expanded_main_panel_dock_ == dock) {
-      restoreExpandedMainPanel();
+    if (expanded_main_panel_dock_ != dock) {
+      return;
     }
+    // Defer out of closeEvent — restoreExpandedMainPanel may tileCenterPanels
+    // and park/reinstall Ogre while the closing dock is still mid-teardown.
+    const QPointer<PanelDockWidget> guard(dock);
+    QTimer::singleShot(0, frame_, [this, guard]() {
+      if (guard && expanded_main_panel_dock_ == guard.data()) {
+        restoreExpandedMainPanel();
+      }
+    });
   });
 }
 
@@ -1251,11 +1399,30 @@ void FrameLayout::onDockPanelVisibilityChange(bool visible) {
         }
         scheduleTileCenterPanels();
       }
+    } else if (dock_widget->property("panelClosing").toBool()) {
+      // Title-bar close: FramePanels::closed defers removePanel out of
+      // closeEvent. Do not detach or retile here — sync mosaic teardown under
+      // QDockWidget::closeEvent reparents live Ogre windows and SIGSEGVs.
     } else if (main_panel_host_ != nullptr &&
                main_panel_host_->hostsPanel(dock_widget)) {
       // Hide via Panels menu: detach that leaf only (no full mosaic rebuild).
+      // Park viewport GLX first (same hazard as Split / title-bar drag).
+      if (frame_->panels_->panelTypeId(dock_widget) ==
+          QLatin1String("ViewportDock")) {
+        frame_->viewport_->forEachViewportPanel(
+            [this](ViewportPanelEntry& entry) {
+              frame_->viewport_->parkRenderWindowInEntry(entry);
+            });
+      }
       main_panel_host_->removePanel(dock_widget);
       main_panel_host_->syncHorizontalDockLayout();
+      if (frame_->panels_->panelTypeId(dock_widget) ==
+          QLatin1String("ViewportDock")) {
+        frame_->viewport_->forEachViewportPanel(
+            [this](ViewportPanelEntry& entry) {
+              frame_->viewport_->reinstallRenderWindowInEntry(entry);
+            });
+      }
     } else if (!center_manual_layout_) {
       scheduleTileCenterPanels();
     }

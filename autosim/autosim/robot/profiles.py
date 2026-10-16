@@ -39,7 +39,7 @@ class RobotProfile:
 PROFILES: Dict[str, RobotProfile] = {
     "turtlebot3_burger": RobotProfile(
         name="turtlebot3_burger",
-        urdf="urdf/turtlebot3_burger.urdf",
+        urdf="robot/turtlebot3_burger/turtlebot3_burger.urdf",
         usd_robot="usd/robots/turtlebot3_burger/turtlebot3_burger.usd",
         wheel_separation=0.160,
         base_link_height=0.01,
@@ -52,16 +52,30 @@ PROFILES: Dict[str, RobotProfile] = {
     ),
     "husky": RobotProfile(
         name="husky",
-        urdf="urdf/husky.urdf",
+        urdf="robot/husky/husky.urdf",
         usd_robot="usd/robots/husky/husky.usd",
         wheel_separation=0.512,
-        base_link_height=0.01,
+        base_link_height=0.1651,
         sensor_frames={
             "laser": "laser_link",
             "imu": "imu_link",
             "camera": "camera_link",
         },
         usd_prim="/World/Husky",
+    ),
+    # Open Beni wheeled-biped: planar /cmd_vel plant (wheel r=0.038, track≈0.16).
+    "beni": RobotProfile(
+        name="beni",
+        urdf="robot/beni/beni.urdf",
+        usd_robot="usd/robots/beni/beni.usd",
+        wheel_separation=0.160,
+        base_link_height=0.11,
+        sensor_frames={
+            "laser": "laser_link",
+            "imu": "imu_link",
+            "camera": "camera_link",
+        },
+        usd_prim="/World/Beni",
     ),
 }
 

@@ -129,6 +129,18 @@ def test_isaac_sensors_sync_world_pose_follows_robot():
     assert float(orn[0]) == pytest.approx(1.0)  # w
     assert axes == "world"
 
+    # URDF-style XY offset must rotate with yaw (Beni camera_link).
+    beni = IsaacSensors(
+        width=64, height=48, eye_offset=(0.07, 0.03, -0.016)
+    )
+    cam2 = _FakeCam()
+    beni.attach(camera=cam2)
+    beni.sync_world_pose(0.0, 0.0, 0.0, base_z=0.11)
+    px, py, pz = cam2.poses[0][0]
+    assert float(px) == pytest.approx(0.07)
+    assert float(py) == pytest.approx(0.03)
+    assert float(pz) == pytest.approx(0.094)
+
 
 def test_isaac_sensors_reads_mounted_camera():
     """IsaacSensors prefers Camera.get_rgb/get_depth over placeholder frames."""

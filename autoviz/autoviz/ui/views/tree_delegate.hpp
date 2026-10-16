@@ -30,12 +30,12 @@ namespace autoviz {
  * | Condition | Editor |
  * |-----------|--------|
  * | Column ≠ @ref kViewTreeColValue | Base-class default |
- * | Kind ≠ @ref ViewTreeItemKind::kTargetFrame | Base-class QLineEdit |
- * | Kind = Target Frame | Editable @c QComboBox with @c frame_names_ |
+ * | Kind = Invert Z / Focal Shape Fixed Size / Target Frame Choice | None (native checkbox) |
+ * | Kind = Target Frame | Display-only (choices are checkable children) |
+ * | Other kinds | Base-class QLineEdit |
  *
- * Kind is read from @ref kViewTreeRoleKind on the model index (same role
- * ViewsPanel writes via @c SetTreeItemMeta on the name column; the model
- * exposes it for the value index as well through the item's data).
+ * Kind is stored on @ref kViewTreeColName via @c SetTreeItemMeta; the
+ * delegate always reads it from the name-column sibling of @p index.
  *
  * ## Geometry
  *
@@ -69,12 +69,19 @@ class ViewTreeDelegate : public QStyledItemDelegate {
   void setFrameNames(const QStringList& frames);
 
   /**
+   * @brief Paints the value cell without selection chrome (checkbox readability).
+   */
+  void paint(QPainter* painter, const QStyleOptionViewItem& option,
+             const QModelIndex& index) const override;
+
+  /**
    * @brief Creates a cell editor for the given index.
    *
    * @param parent Parent for the editor widget.
    * @param option Style option (unused for Target Frame path beyond defaults).
    * @param index Model index being edited.
    * @return New editor widget; ownership transfers to the view.
+   *         Returns @c nullptr for checkable boolean rows.
    *
    * @see setEditorData()
    * @see setModelData()

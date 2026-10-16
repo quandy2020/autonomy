@@ -69,7 +69,7 @@ src/autonomy/autosim/scripts/run.sh teleop
 | [`images/`](images/) | 演示动图 |
 | [`usd/`](usd/) | Isaac USD（大场景见 `usd/.gitignore`） |
 | [`config/`](config/) | YAML |
-| [`urdf/`](urdf/) | 机器人 URDF |
+| [`robot/`](robot/) | 机器人 URDF + meshes |
 | [`tests/`](tests/) | pytest |
 
 ## 安装（摘要）

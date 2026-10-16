@@ -126,7 +126,7 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
 
     link = FakeLink()
     simulator = FakeSimulator()
-    simulator.urdf = UrdfModel.load("urdf/husky.urdf")
+    simulator.urdf = UrdfModel.load("robot/husky/husky.urdf")
     runner = Runner(settings, max_steps=5, link=link, simulator=simulator)
     runner.run()
     assert "/scan" in runner.node.writers

@@ -613,7 +613,7 @@ bool VisualizationFrame::eventFilter(QObject* watched, QEvent* event) {
 void VisualizationFrame::closeEvent(QCloseEvent* event) {
   // Sync-destroy Ogre/GLX, then leave the event loop WITHOUT accepting the
   // close. Qt's close_helper calls hide()→hideChildren() after an accepted
-  // QCloseEvent; that walk SIGSEGVs on NVIDIA with WA_PaintOnScreen children
+  // QCloseEvent; that walk SIGSEGVs with WA_PaintOnScreen / GLX children
   // (deleting those widgets mid-Close also leaves hideChildren walking a
   // half-updated child list).
   session_->onAboutToQuit();

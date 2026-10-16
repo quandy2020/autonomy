@@ -38,6 +38,12 @@ bool runningInDocker() {
 }
 
 bool shouldUseSoftwareOpenGL() {
+  // Explicit software / Mesa request always wins.
+  if (envEnabled("AUTOVIZ_SOFTWARE_GL") ||
+      envEnabled("LIBGL_ALWAYS_SOFTWARE")) {
+    return true;
+  }
+  // Explicit hardware opt-in via the system glvnd ICD (any vendor).
   if (envEnabled("AUTOVIZ_USE_HARDWARE_GL")) {
     return false;
   }
@@ -45,38 +51,22 @@ bool shouldUseSoftwareOpenGL() {
       envDisabled("LIBGL_ALWAYS_SOFTWARE")) {
     return false;
   }
-  if (envEnabled("AUTOVIZ_SOFTWARE_GL") ||
-      envEnabled("LIBGL_ALWAYS_SOFTWARE")) {
-    return true;
-  }
-  if (runningInDocker() && std::getenv("NVIDIA_VISIBLE_DEVICES") == nullptr) {
-    return true;
-  }
-  return false;
+  // Containers default to Mesa llvmpipe (vendor-neutral). Host defaults to
+  // the system glvnd stack (also vendor-neutral — Autoviz never pins NVIDIA).
+  return runningInDocker();
 }
 
 void setSoftwareGlEnv() {
-  if (!envEnabled("LIBGL_ALWAYS_SOFTWARE")) {
-    setenv("LIBGL_ALWAYS_SOFTWARE", "1", 0);
-  }
-  if (!envEnabled("__GLX_VENDOR_LIBRARY_NAME")) {
-    setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 0);
-  }
-  if (!envEnabled("QT_OPENGL")) {
-    setenv("QT_OPENGL", "software", 0);
-  }
-  if (!envEnabled("GALLIUM_DRIVER")) {
-    setenv("GALLIUM_DRIVER", "llvmpipe", 0);
-  }
-  if (!envEnabled("MESA_GL_VERSION_OVERRIDE")) {
-    setenv("MESA_GL_VERSION_OVERRIDE", "3.3", 0);
-  }
-  if (!envEnabled("MESA_GLSL_VERSION_OVERRIDE")) {
-    setenv("MESA_GLSL_VERSION_OVERRIDE", "330", 0);
-  }
-  if (!envEnabled("LIBGL_DRI3_DISABLE")) {
-    setenv("LIBGL_DRI3_DISABLE", "1", 0);
-  }
+  // Overwrite vendor to Mesa when software path is selected so a pre-set
+  // __GLX_VENDOR_LIBRARY_NAME from the container image cannot pull in a
+  // proprietary GLX ICD by accident.
+  setenv("LIBGL_ALWAYS_SOFTWARE", "1", 1);
+  setenv("__GLX_VENDOR_LIBRARY_NAME", "mesa", 1);
+  setenv("QT_OPENGL", "software", 1);
+  setenv("GALLIUM_DRIVER", "llvmpipe", 1);
+  setenv("MESA_GL_VERSION_OVERRIDE", "3.3", 1);
+  setenv("MESA_GLSL_VERSION_OVERRIDE", "330", 1);
+  setenv("LIBGL_DRI3_DISABLE", "1", 1);
 }
 
 QSurfaceFormat buildSurfaceFormat(bool software) {
