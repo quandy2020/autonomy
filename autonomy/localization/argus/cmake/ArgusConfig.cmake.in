@@ -1,0 +1,34 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+set_and_check(ARGUS_CMAKE_DIR "@PACKAGE_ARGUS_CMAKE_DIR@")
+list(PREPEND CMAKE_MODULE_PATH "${ARGUS_CMAKE_DIR}/modules")
+
+find_dependency(Eigen3 REQUIRED)
+find_dependency(OpenCV REQUIRED)
+find_dependency(Threads REQUIRED)
+find_dependency(glog REQUIRED)
+find_dependency(automsgs REQUIRED)
+
+if(TARGET glog AND NOT TARGET glog::glog)
+  add_library(glog::glog ALIAS glog)
+endif()
+
+if(NOT TARGET Argus::argus)
+  include("${CMAKE_CURRENT_LIST_DIR}/ArgusTargets.cmake")
+endif()
+
+# Component aliases historically used by atlas/livo and apps.
+foreach(_comp IN ITEMS
+    common sensor camera frontend perception map fusion backend
+    loop_closure relocalization mapping odometry)
+  if(NOT TARGET Argus::${_comp} AND TARGET Argus::argus)
+    add_library(Argus::${_comp} INTERFACE IMPORTED)
+    set_target_properties(Argus::${_comp} PROPERTIES
+      INTERFACE_LINK_LIBRARIES Argus::argus)
+  endif()
+endforeach()
+
+set(Argus_FOUND TRUE)
+check_required_components(Argus)

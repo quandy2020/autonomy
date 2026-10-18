@@ -1,0 +1,27 @@
+enable: false
+method: scan_context
+multi_modal_consensus: true
+min_confidence: 0.65
+async: true   # 必须为 true
+enable_pose_inject: true   # PoseGraph Optimize → ESIKF ΔT 注入
+current_session_id: live
+
+scan_context:
+  num_rings: 20
+  num_sectors: 60
+  max_radius_m: 80.0
+  max_candidates: 10
+
+consensus:
+  geometric_weight: 0.45
+  visual_weight: 0.25
+  topology_weight: 0.20
+  pose_consistency_weight: 0.10
+  max_relative_yaw_rad: 0.6
+  max_relative_trans_m: 15.0
+
+cross_session:
+  enable: false
+  min_confidence: 0.65
+  loop_information_scale: 150.0
+  freeze_prior_nodes: true

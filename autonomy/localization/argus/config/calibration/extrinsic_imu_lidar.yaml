@@ -1,0 +1,4 @@
+# LiDAR → IMU extrinsic (same convention as LivoOdometryConfig.ext_R / ext_T).
+# Row-major 3×3 rotation, then translation (m). Identity default for synth.
+ext_R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
+ext_T: [0.0, 0.0, 0.0]

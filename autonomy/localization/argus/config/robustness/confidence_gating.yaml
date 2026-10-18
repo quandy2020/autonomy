@@ -1,0 +1,11 @@
+enable: true
+min_lidar_weight: 0.2
+min_visual_weight: 0.1
+min_inv_condition: 0.3   # skip LiDAR when 1/κ below this
+max_dynamic_ratio_lidar: 0.8
+max_dynamic_ratio_visual: 0.5
+sensor_timeout_sec: 0.5
+# GNSS/RTK 两阶段 QC（未接入时忽略）
+gnss:
+  enable: false
+  max_jump_m: 2.0
