@@ -144,6 +144,16 @@ chassis_plugin(
 # ---------------------------------------------------------------------------
 
 cc_test(
+    name = "test_hesai_sdk_dispatch",
+    size = "small",
+    srcs = ["test/test_hesai_sdk_dispatch.cpp"],
+    deps = [
+        ":autodriver",
+        "@googletest//:gtest_main",
+    ],
+)
+
+cc_test(
     name = "test_joy_mapper",
     size = "small",
     srcs = ["test/test_joy_mapper.cpp"],

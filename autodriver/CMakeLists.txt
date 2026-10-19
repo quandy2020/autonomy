@@ -35,6 +35,8 @@ option(AUTODRIVER_WITH_REALSENSE "Build Intel RealSense camera/IMU drivers" OFF)
 option(AUTODRIVER_WITH_ORBBEC "Build Orbbec camera/pointcloud drivers" OFF)
 option(AUTODRIVER_WITH_RPLIDAR "Build Slamtec RPLidar 2D lidar drivers" OFF)
 option(AUTODRIVER_WITH_LIVOX "Build Livox 3D lidar drivers (SDK1+SDK2)" OFF)
+option(AUTODRIVER_WITH_HESAI_SDK
+  "Link HesaiLidar_SDK_2.0 for multi-model / ROS_2.0-compatible path" OFF)
 option(AUTODRIVER_WITH_GENISOM_L1W
   "Link official GENISOM ZSL-1W HighLevel SDK when found" ON)
 
@@ -171,6 +173,19 @@ if(AUTODRIVER_WITH_LIVOX)
   endif()
 endif()
 
+# HesaiLidar_SDK_2.0 (optional; XT32 UDP path does not need it)
+if(AUTODRIVER_WITH_HESAI_SDK)
+  autocmake_find(HesaiLidarSDK PRIVATE)
+  if(HesaiLidarSDK_FOUND OR TARGET HesaiLidarSDK::hesai_sdk)
+    if(TARGET HesaiLidarSDK::hesai_sdk)
+      target_link_libraries(autodriver PRIVATE HesaiLidarSDK::hesai_sdk)
+    else()
+      autocmake_link(autodriver PRIVATE HesaiLidarSDK)
+    endif()
+    target_compile_definitions(autodriver PUBLIC AUTODRIVER_HAVE_HESAI_SDK)
+  endif()
+endif()
+
 # Chassis drivers
 add_subdirectory(chassis)
 
@@ -200,6 +215,7 @@ if(AUTODRIVER_BUILD_TEST)
   autocmake_test(test_config_loader SOURCES test/test_config_loader.cpp DEPENDENCIES autodriver)
   autocmake_test(test_manager SOURCES test/test_manager.cpp DEPENDENCIES autodriver)
   autocmake_test(test_stream_lidar_base SOURCES test/test_stream_lidar_base.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_hesai_sdk_dispatch SOURCES test/test_hesai_sdk_dispatch.cpp DEPENDENCIES autodriver)
   autocmake_test(test_pose_feeder SOURCES test/test_pose_feeder.cpp DEPENDENCIES autodriver)
   autocmake_test(test_compensator_calibration SOURCES test/test_compensator_calibration.cpp DEPENDENCIES autodriver)
   autocmake_test(test_lidar_backend_registry SOURCES test/test_lidar_backend_registry.cpp DEPENDENCIES autodriver)

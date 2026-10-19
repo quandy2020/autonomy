@@ -22,6 +22,8 @@
 
 #include "autodriver/lidar/hesai/udp_driver.hpp"
 
+#include "autodriver/lidar/hesai/sdk_driver.hpp"
+
 #include "autodriver/lidar/backend_register.hpp"
 
 namespace autodriver {
@@ -35,5 +37,6 @@ SensorDriver* CreateHesaiUdpDriver(const SensorId& id,
 }  // namespace hardware
 }  // namespace autodriver
 
+// Factory dispatches XT32 in-tree UDP vs HesaiLidar_SDK_2.0 (ROS_2.0 params).
 REGISTER_LIDAR_BACKEND(hesai, "hesai",
-                       autodriver::hardware::CreateHesaiUdpDriver, "pandar");
+                       autodriver::hardware::CreateHesaiLidarDriver, "pandar");

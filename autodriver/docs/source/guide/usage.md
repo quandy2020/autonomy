@@ -172,6 +172,7 @@ LoadConfig
 |---|---|
 | `install_rplidar_sdk.sh` | Slamtec SDK → 默认 `/usr/local` |
 | `install_livox_sdk2.sh` / `install_livox_sdk.sh` | Livox SDK2 / SDK1 |
+| `install_hesai_lidar_sdk.sh` | 官方 [HesaiLidar_SDK_2.0](https://github.com/HesaiTechnology/HesaiLidar_SDK_2.0) → `PREFIX/opt/hesai_lidar_sdk`（XT32 自研 UDP 不强制） |
 | `install_realsense_sdk.sh` | librealsense2（apt / source） |
 | `install_orbbec_sdk.sh` | OrbbecSDK v2（.deb / source） |
 | `create_udev_rules.sh` / `delete_udev_rules.sh` | `/dev/rplidar` |

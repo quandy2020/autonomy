@@ -1,0 +1,73 @@
+# Hesai JT128 device params (via params_file).
+# Requires HesaiLidar_SDK_2.0 + -DAUTODRIVER_WITH_HESAI_SDK=ON.
+# Compatible with HesaiLidar_ROS_2.0 flat keys (source_type=1 / lidar_udp_type).
+#
+# JT128: Ethernet UDP, azimuth framing (~4000 pkt/frame, ~400 ch, ~1.6M pts/s).
+# Serial rs485/rs232 is JT16-only — do not use hesai_source_type: 4 here.
+
+use_sdk: true
+model: JT128
+frame_id: hesai_jt128
+
+# 1=online UDP (default), 2=pcap, 3=rosbag packets, 5=lidar TCP
+hesai_source_type: 1
+
+# --- network (ROS2 lidar_udp_type) ---
+device_ip_address: 192.168.1.201
+udp_port: 2368
+ptc_port: 9347
+host_ip_address: ""
+multicast_ip_address: ""
+use_ptc_connected: true
+host_ptc_port: 0
+fault_message_port: 0
+# Multi-lidar source filters (0 = disabled); valid range [1024, 65535]
+device_udp_src_port: 0
+device_fault_port: 0
+# PTC: 0=tcp, 1=tcp_ssl (then set certFile / privateKeyFile / caFile)
+ptc_mode: 0
+standby_mode: -1
+speed: -1
+recv_point_cloud_timeout: -1
+ptc_connect_timeout: -1
+
+# Angle correction / firetime (CSV or lidar DAT; recommend lidar-native file)
+correction_file_path: ""
+firetimes_path: ""
+
+# --- decoder ---
+use_timestamp_type: 0
+# Azimuth frame cut [0, 360); <0 disables (JT128 uses azimuth framing)
+frame_start_azimuth: 0
+thread_num: 4
+# Larger recv buffer for JT128 high packet rate (bytes; 0 = SDK default)
+socket_buffer_size: 262144000
+enable_packet_loss_tool: false
+# Optional optical-centre correction (Pandar/QT/OT/XT/JT)
+distance_correction_flag: false
+xt_spot_correction: false
+fov_start: -1
+fov_end: -1
+channel_fov_filter_path: ""
+multi_fov_filter_ranges: ""
+frame_frequency: 0
+default_frame_frequency: 10.0
+echo_mode_filter: 0
+
+# Optional extrinsic applied inside SDK decoder (metres / radians)
+transform_flag: false
+x: 0
+y: 0
+z: 0
+roll: 0
+pitch: 0
+yaw: 0
+
+# --- PCAP replay (set hesai_source_type: 2) ---
+# pcap_path: /abs/path/to/jt128.pcap
+# pcap_play_synchronization: true
+# pcap_play_in_loop: false
+# play_rate_: 1.0
+
+# --- lidar TCP (set hesai_source_type: 5) ---
+# device_tcp_src_port: 5121

@@ -1,10 +1,14 @@
 # Hesai PandarXT / XT32 device params (via params_file).
 # Default elev angles are built-in; calibration_path overrides (degrees).
 # Example: $AUTODRIVER_PATH/config/lidar/hesai/xt32_calibration.yaml
+#
+# In-tree UDP parser (no HesaiLidar_SDK). For official SDK / multi-model /
+# ROS_2.0 keys, see config/lidar/hesai/sdk.yaml (use_sdk: true).
 
 model: XT32
 frame_id: hesai
 data_port: 2368
+# udp_port: 2368   # ROS2 alias accepted when data_port is omitted
 packets_per_scan: 180
 source_type: online
 use_azimuth_cut: true

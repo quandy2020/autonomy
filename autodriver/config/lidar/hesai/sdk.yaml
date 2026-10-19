@@ -1,0 +1,49 @@
+# HesaiLidar_SDK_2.0 / HesaiLidar_ROS_2.0 compatible params (flat map).
+# Requires: scripts/install_hesai_lidar_sdk.sh + -DAUTODRIVER_WITH_HESAI_SDK=ON
+#
+# Select SDK path with use_sdk: true (or parser: sdk / non-XT32 model).
+# Keys mirror ROS2 config.yaml lidar_udp_type + driver public module.
+
+use_sdk: true
+model: OT128
+frame_id: hesai_lidar
+
+# ROS2 source_type: 1=lidar UDP, 2=pcap, 3=rosbag packets, 4=serial
+# (autodriver LidarBase source_type stays online; use hesai_source_type if needed)
+hesai_source_type: 1
+
+device_ip_address: 192.168.1.201
+udp_port: 2368
+ptc_port: 9347
+host_ip_address: ""
+multicast_ip_address: ""
+use_ptc_connected: true
+host_ptc_port: 0
+
+# Angle correction / firetime files from the lidar or Hesai tools
+correction_file_path: ""
+firetimes_path: ""
+
+use_timestamp_type: 0
+frame_start_azimuth: 0
+thread_num: 4
+enable_packet_loss_tool: false
+distance_correction_flag: false
+xt_spot_correction: false
+fov_start: -1
+fov_end: -1
+
+# Optional extrinsic (metres / radians) applied inside the SDK decoder
+transform_flag: false
+x: 0
+y: 0
+z: 0
+roll: 0
+pitch: 0
+yaw: 0
+
+# PCAP replay (hesai_source_type: 2)
+# pcap_path: /abs/path/to/capture.pcap
+# pcap_play_synchronization: true
+# pcap_play_in_loop: false
+# play_rate_: 1.0

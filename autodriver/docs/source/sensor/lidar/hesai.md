@@ -9,7 +9,14 @@
 | 校准 | `config/lidar/hesai/xt32_calibration.yaml`（仰角单位为**度**） |
 | 包 | 1080B；距离单位 4mm |
 
-管线与 Velodyne 相同（UDP→队列→切帧→Convert）。
+管线与 Velodyne 相同（UDP→队列→切帧→Convert）。XT32 驱动为**自研 UDP 解析**，不依赖官方 SDK。
+
+可选安装官方 [HesaiLidar_SDK_2.0](https://github.com/HesaiTechnology/HesaiLidar_SDK_2.0)（多机型 / PTC / 官方工具）：
+
+```bash
+./scripts/install_hesai_lidar_sdk.sh
+# PREFIX=/opt/hesai HESAI_WITH_PTCS=1 ./scripts/install_hesai_lidar_sdk.sh
+```
 
 ```yaml
 lidar_3d:
