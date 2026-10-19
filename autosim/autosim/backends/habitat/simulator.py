@@ -835,6 +835,38 @@ class Simulator:
             return self.floor_y + float(self.urdf.laser_xyz()[2])
         return self.floor_y + 0.5
 
+    def refine_floor_y_from_mesh(
+        self, *, probe_height: float = 2.0, range_max: float = 5.0
+    ) -> float:
+        """Align ``floor_y`` to the render-mesh floor under the agent.
+
+        Navmesh Y is often a few centimetres above the GLB collision/visual
+        floor (MP3D). Lidar rays then hit geometry below ``floor_y`` while
+        ``odom→base_link`` still assumes ground at z=0, so Autoviz shows the
+        robot floating above the ground ring. A downward mesh cast fixes that.
+        """
+        if self.session is None:
+            return float(self.floor_y)
+        hit = self.cast_from_origin(
+            float(self.x),
+            float(self.floor_y) + float(probe_height),
+            -float(self.y),
+            float(self.yaw),
+            -math.pi / 2.0,
+            float(range_max),
+        )
+        if hit is None:
+            return float(self.floor_y)
+        # cast_from_origin returns map-frame (x, y, z_up); z_up is Habitat Y.
+        mesh_floor = float(hit[2])
+        if not math.isfinite(mesh_floor):
+            return float(self.floor_y)
+        delta = mesh_floor - float(self.floor_y)
+        # Ignore wild hits (ceilings / voids); accept typical navmesh bias.
+        if abs(delta) < 0.75:
+            self.floor_y = mesh_floor
+        return float(self.floor_y)
+
     def snap_to_navmesh(self) -> Tuple[float, float, float]:
         """Project the planar pose onto the loaded navmesh.
 
@@ -845,6 +877,8 @@ class Simulator:
             return self.pose()
         pathfinder = getattr(self.session, "pathfinder", None)
         if pathfinder is None or not bool(getattr(pathfinder, "is_loaded", False)):
+            self.refine_floor_y_from_mesh()
+            self.set_pose(self.x, self.y, self.yaw)
             return self.pose()
 
         heights = []
@@ -877,11 +911,15 @@ class Simulator:
             # Pick the navigable sample closest to the requested planar pose.
             best = self.nearest_navigable_sample(pathfinder, self.x, -self.y)
             if best is None:
+                self.refine_floor_y_from_mesh()
+                self.set_pose(self.x, self.y, self.yaw)
                 return self.pose()
         # best = (Habitat_X, Habitat_Y, Habitat_Z); store as map coords.
         self.x = best[0]
         self.floor_y = best[1]
         self.y = -best[2]   # map_y = -Habitat_Z
+        # Navmesh Y ≠ GLB floor; pull lidar/agent down onto the mesh.
+        self.refine_floor_y_from_mesh()
         self.set_pose(self.x, self.y, self.yaw)
         return self.pose()
 

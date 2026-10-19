@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import numpy as np
+import pytest
 from pathlib import Path
 
 from autosim.sensing import Sensors
@@ -80,6 +81,31 @@ def test_simulator_has_no_mock_backend():
     assert simulator.snap_to_navmesh() == (0.0, 0.0, 0.0)
     assert Simulator.finite_xyz((1.0, 2.0, 3.0)) == (1.0, 2.0, 3.0)
     assert Simulator.finite_xyz((float("nan"), 0.0, 0.0)) is None
+
+
+def test_refine_floor_y_from_mesh_pulls_down_to_glb():
+    """Navmesh bias above the GLB floor must lower floor_y for lidar/TF."""
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    simulator.session = object()  # mark live without opening Habitat
+    simulator.floor_y = 0.12
+    simulator.x = 1.0
+    simulator.y = 2.0
+    simulator.yaw = 0.3
+
+    def fake_cast(ox, oy, oz, yaw, pitch, range_max):
+        assert pitch < 0.0  # downward
+        assert oy > simulator.floor_y  # probe above agent
+        return (ox, -oz, 0.01)  # map z_up = geometric floor
+
+    simulator.cast_from_origin = fake_cast  # type: ignore[method-assign]
+    assert simulator.refine_floor_y_from_mesh() == pytest.approx(0.01)
+    assert simulator.floor_y == pytest.approx(0.01)
 
 
 def test_husky_camera_offset_is_above_agent():

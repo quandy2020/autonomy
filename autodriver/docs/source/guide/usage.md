@@ -123,13 +123,16 @@ bluetoothctl show
 
 `docker/dockerfile/autonomy.*.dockerfile` 已列入 `bluez`。按该文件重建镜像后，不必每次重建容器再装一遍。
 
-在**宿主机**加载手柄驱动（需要 root）。容器里执行 `modprobe` 会报 `Module hid_playstation not found`，因为容器没有宿主机的 `/lib/modules`：
+在**宿主机**加载手柄驱动（需要 root），否则蓝牙已 Connected 也不会出现 `/dev/input/js*`：
 
 ```bash
 sudo modprobe hid_playstation
+sudo modprobe joydev
 ```
 
-模块装在宿主机内核里，机器重启后要再加载一次。`/dev/input` 与容器共享，加载成功后才会出现 `/dev/input/js*`。正在运行的 `autodriver` 会自己重试连接，不必为了这个模块重启进程。
+`python3 docker/run_autonomy.py` 会把宿主机 `/lib/modules` 只读挂进容器；**重建容器后**特权容器内也可 `modprobe hid_playstation`。未挂载时容器会报 `Module not found`，必须在宿主机加载。
+
+模块在宿主机内核里，机器重启后要再加载一次。`/dev/input` 与容器共享。配对成功后若无 `js*`：短按 **PS** 唤醒，再 `bluetoothctl connect <MAC>` 或重跑 `--pair-joy`。
 
 灯条是灭的就短按 **PS**。只有要重新配对时才按住 Create + PS 直到快闪。
 
@@ -149,12 +152,12 @@ USB 插上后把出现的节点写入 `joy.device`，并设 `bluetooth_connect: 
 ```text
 LoadConfig
   → Publisher::Initialize          // Autolink Node + SampleSink
+  → ChassisManager::Start(node)    // chassis.enable=false → no-op 成功
+  → JoyTeleop::Start(node)         // 先于传感，避免雷达 PTC 卡住时无 /cmd_vel；无 js 且 bluetooth_connect 时在发布循环里重连
   → SensorManager::{SetSampleSink, Initialize, Start}
   → PoseFeeder::Start              // compensator.pose_channel 空 → no-op 成功
-  → ChassisManager::Start(node)    // chassis.enable=false → no-op 成功
-  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 且 bluetooth_connect 时在发布循环里重连
   → 等待 SIGINT / SIGTERM
-  → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
+  → Stop：PoseFeeder → SensorManager → JoyTeleop → Chassis
 ```
 
 | 要点 | 说明 |
@@ -306,6 +309,7 @@ manager.Stop();
 | 底盘无响应 | 确认 `chassis.enable`、`cmd_vel_channel`；检查看门狗是否将速度清零 |
 | 手柄无 `/dev/input/js*` | Create + PS 至灯条快闪后再启动；或 `autodriver --pair-joy` / `--pair-mode usb`。宿主机 `modprobe hid_playstation`，用户加入 `input` 组 |
 | `bluetoothctl not found` | 容器内 `apt-get install -y bluez`；重建镜像后由 Dockerfile 自带。见 §2.1 |
+| `power on` / `org.bluez.Error.Failed` | 适配器常被 soft-block：宿主机或容器执行 `rfkill unblock bluetooth`（需 `/dev/rfkill`；`run_autonomy.py` 已 privileged + `/dev`）。`--pair-joy` 会先尝试 unblock |
 | 容器里 `bluetoothctl` 起不来 | `run_autonomy.py` 需挂载宿主机 `/run/dbus` |
 | 容器 `modprobe hid_playstation` 失败 | 在宿主机执行 `sudo modprobe hid_playstation` |
 | 已配对但 `Host is down`、仍无 `js*` | 短按 PS 唤醒后再连；不要按 Create + PS |

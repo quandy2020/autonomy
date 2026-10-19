@@ -97,7 +97,10 @@ bool JoyTeleop::Start(autolink::Node* node, const Config& config) {
   angular_ramp_.Configure(-options_.max_angular, options_.max_angular,
                           options_.max_angular_acc, dt);
 
-  if (!OpenDevice()) {
+  // Do not block Start on bluetoothctl — DualSense connect can take many
+  // seconds (or need a short PS wake). Open local js* if present; otherwise
+  // the publish loop calls OpenDevice() → ConnectBluetooth().
+  if (!device_.Open(options_.device)) {
     if (!options_.bluetooth_connect) {
       AWARN << "JoyTeleop: no joystick at " << options_.device
             << " — teleop idle until restart";
@@ -106,8 +109,9 @@ bool JoyTeleop::Start(autolink::Node* node, const Config& config) {
       node_ = nullptr;
       return true;
     }
-    AWARN << "JoyTeleop: joystick not open yet; Bluetooth retry stays in the "
-             "publish loop";
+    AWARN << "JoyTeleop: no " << options_.device
+          << " yet; Bluetooth connect runs in the publish loop (short-press "
+             "PS if the controller is asleep)";
   }
 
   running_ = true;

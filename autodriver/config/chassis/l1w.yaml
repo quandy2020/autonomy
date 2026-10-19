@@ -62,6 +62,6 @@ chassis:
     # simulate: true
 
 joy:
-  enable: false
+  enable: true
   profile: dualsense
   device: /dev/input/js0

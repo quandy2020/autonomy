@@ -90,14 +90,18 @@ Orbbec 一键安装：`./scripts/install_orbbec_sdk.sh`（官方 `.deb`；`ORBBE
 
 | 现象 | 处理 |
 |---|---|
-| 无 `/dev/input/js*` | Create + PS 至灯条快闪后启动；或 `autodriver --pair-joy` / `--pair-mode usb`。宿主机 `modprobe hid_playstation`，用户加入 `input` 组 |
+| 无 `/dev/input/js*` | 宿主机 `sudo modprobe hid_playstation joydev`；短按 PS 唤醒后再连。`--pair-joy` 蓝牙 Connected 仍无 js* 多半是缺该模块 |
+| BT Connected 但无 js* | 查 `bluetoothctl info` 的 Bonded/Paired；`modprobe hid_playstation uhid joydev`；短按 PS。勿 host `disconnect` 再连（易 `br-connection-create-socket`） |
+| `Pairing successful` 后仍失败 / Paired=no | 适配器需 `pairable on`；成功后须立刻 trust+connect（手柄几秒内休眠会从 BlueZ 消失）。Create+PS 快闪后重跑 `--pair-joy` |
 | `bluetoothctl not found` | 容器内 `apt-get install -y bluez`。镜像按含 `bluez` 的 Dockerfile 重建后不必再装 |
+| `power on` Failed / soft blocked | `rfkill unblock bluetooth` 后再 `bluetoothctl power on`；容器需 `/dev/rfkill` |
 | 容器里蓝牙命令起不来 | `run_autonomy.py` 挂载宿主机 `/run/dbus` |
 | 容器 `modprobe hid_playstation` 失败 | 宿主机 `sudo modprobe hid_playstation`（机器重启后重做） |
 | 蓝牙扫不到手柄 | Create + PS 进入配对；适配器 `power on`；加大 `bluetooth_timeout_sec` 或 `--pair-timeout` |
 | 已 `Bonded` 但 `Host is down` | 短按 PS 唤醒；不要再按 Create + PS |
 | USB 超时 | 检查线缆、`lsusb \| grep Sony`、宿主机 `modprobe hid_playstation` |
 | 有 js 但底盘不动 | `joy.enable: true`；默认不用按 L1；确认 `cmd_vel_channel` 与底盘一致 |
+| 启动很久都无 `/cmd_vel` / 无 JoyTeleop 日志 | 旧版 Joy 在传感之后；雷达 PTC 卡住时永远到不了手柄。请用当前构建（Joy 先于 SensorManager）。另查手柄是否 Connected、有无 `/dev/input/js*`（短按 PS） |
 | 松开仍在转 | `angular_axis` 应为 3（axis 2 是 L2） |
 | 发迟、转向反了 | `max_*_acc: 0`；`invert_angular: true` 时杆向右为右转 |
 

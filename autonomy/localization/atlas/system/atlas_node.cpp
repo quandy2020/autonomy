@@ -102,6 +102,67 @@ void Mat44ToTransformMsg(const Eigen::Matrix4d& pose,
     tf->mutable_rotation()->set_z(q.z());
 }
 
+/**
+ * Yaw-only attitude for TF: drop roll/pitch (tilt bounce in Autoviz) but keep
+ * translation z so the robot stays on the LIO / point-cloud ground plane.
+ */
+Eigen::Matrix4d FlattenPlanar(const Eigen::Matrix4d& pose) {
+    const double yaw = std::atan2(pose(1, 0), pose(0, 0));
+    const double c = std::cos(yaw);
+    const double s = std::sin(yaw);
+    Eigen::Matrix4d out = Eigen::Matrix4d::Identity();
+    out(0, 0) = c;
+    out(0, 1) = -s;
+    out(1, 0) = s;
+    out(1, 1) = c;
+    out(0, 3) = pose(0, 3);
+    out(1, 3) = pose(1, 3);
+    out(2, 3) = pose(2, 3);
+    return out;
+}
+
+/** Map-frame sensor pose → base_link (uses URDF TF base→sensor when present). */
+Eigen::Matrix4d SensorPoseToBaseLink(
+    const Eigen::Matrix4d& T_map_sensor, transform::Buffer* buffer,
+    const std::string& base_frame, const std::string& sensor_frame) {
+    Eigen::Matrix4d T_map_base = FlattenPlanar(T_map_sensor);
+    if (buffer == nullptr || sensor_frame.empty() ||
+        sensor_frame == base_frame) {
+        return T_map_base;
+    }
+    automsgs::msgs::builtin_interfaces::Time stamp;
+    stamp.set_sec(0);
+    stamp.set_nanosec(0);
+    std::string err;
+    if (!buffer->canTransform(base_frame, sensor_frame, stamp, 0.0f, &err)) {
+        return T_map_base;
+    }
+    try {
+        const auto stamped =
+            buffer->lookupTransform(base_frame, sensor_frame, stamp, 0.0f);
+        const Eigen::Matrix4d T_base_sensor =
+            FlattenPlanar(TransformMsgToMat44(stamped.transform()));
+        return FlattenPlanar(T_map_base * T_base_sensor.inverse());
+    } catch (const std::exception&) {
+        return T_map_base;
+    }
+}
+
+void Mat44ToPose(const Eigen::Matrix4d& pose,
+                 automsgs::msgs::geometry_msgs::Pose* out) {
+    if (out == nullptr) {
+        return;
+    }
+    const Eigen::Quaterniond q(pose.block<3, 3>(0, 0));
+    out->mutable_position()->set_x(pose(0, 3));
+    out->mutable_position()->set_y(pose(1, 3));
+    out->mutable_position()->set_z(pose(2, 3));
+    out->mutable_orientation()->set_w(q.w());
+    out->mutable_orientation()->set_x(q.x());
+    out->mutable_orientation()->set_y(q.y());
+    out->mutable_orientation()->set_z(q.z());
+}
+
 uint32_t JetRgb(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
     float r = 0.0f;
@@ -456,18 +517,22 @@ void AtlasNode::OnCloud(const std::shared_ptr<CloudMsg>& msg) {
 }
 
 void AtlasNode::PublishPose(double timestamp_sec, const SE3& T_wb) {
+    // SlamSystem::GetImuPose — convert imu_link → base_link for ground contact.
+    const Eigen::Matrix4d T_map_base = SensorPoseToBaseLink(
+        T_wb.matrix(), tf_buffer_, options_.base_frame, "imu_link");
     if (odom_writer_) {
         automsgs::msgs::nav_msgs::Odometry odom;
         SetHeader(odom.mutable_header(), timestamp_sec, options_.map_frame);
         odom.set_child_frame_id(options_.base_frame);
-        Se3ToPose(T_wb, odom.mutable_pose()->mutable_pose()->mutable_pose());
+        Mat44ToPose(T_map_base,
+                    odom.mutable_pose()->mutable_pose()->mutable_pose());
         odom_writer_->Write(odom);
     }
     if (trajectory_writer_) {
         SetHeader(trajectory_.mutable_header(), timestamp_sec, options_.map_frame);
         auto* pose = trajectory_.add_poses();
         SetHeader(pose->mutable_header(), timestamp_sec, options_.map_frame);
-        Se3ToPose(T_wb, pose->mutable_pose());
+        Mat44ToPose(T_map_base, pose->mutable_pose());
         while (trajectory_.poses_size() > 5000) {
             trajectory_.mutable_poses()->DeleteSubrange(0, 1);
         }
@@ -506,7 +571,11 @@ void AtlasNode::PublishMapOdomTf(double timestamp_sec, const SE3& T_wb) {
         logged_identity_odom_tf_ = true;
     }
 
-    const Eigen::Matrix4d T_map_odom = T_wb.matrix() * T_odom_base.inverse();
+    // Keep /odometry 6-DoF; TF: yaw-only + imu→base so wheels sit on ground.
+    const Eigen::Matrix4d T_map_base = SensorPoseToBaseLink(
+        T_wb.matrix(), tf_buffer_, options_.base_frame, "imu_link");
+    const Eigen::Matrix4d T_map_odom =
+        T_map_base * FlattenPlanar(T_odom_base).inverse();
     TfMsg tf_msg;
     automsgs::msgs::geometry_msgs::TransformStamped map_odom;
     SetStamp(map_odom.mutable_header()->mutable_stamp(), timestamp_sec);
@@ -533,20 +602,34 @@ void AtlasNode::PublishMapOdomTf(double timestamp_sec, const SE3& T_wb) {
         *tf_msg.add_transforms() = odom_base;
     }
 
+    // Never overwrite autosim/URDF base→laser with identity (z jumps ~0 vs 0.17).
     if (!lidar_frame_.empty() && lidar_frame_ != options_.base_frame) {
-        automsgs::msgs::geometry_msgs::TransformStamped base_lidar;
-        SetStamp(base_lidar.mutable_header()->mutable_stamp(), timestamp_sec);
-        base_lidar.mutable_header()->set_frame_id(options_.base_frame);
-        base_lidar.set_child_frame_id(lidar_frame_);
-        Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
-                            base_lidar.mutable_transform());
-        if (tf_buffer_) {
-            transform::ApplyTransformStampedToBuffer(tf_buffer_, base_lidar,
-                                                     "atlas", false);
-        }
-        *tf_msg.add_transforms() = base_lidar;
-        if (!logged_lidar_tf_) {
-            AINFO << "AtlasNode: publishing identity TF " << options_.base_frame
+        std::string lidar_err;
+        const bool have_lidar_tf =
+            tf_buffer_ &&
+            tf_buffer_->canTransform(options_.base_frame, lidar_frame_,
+                                     lookup_stamp, 0.0f, &lidar_err);
+        if (!have_lidar_tf) {
+            automsgs::msgs::geometry_msgs::TransformStamped base_lidar;
+            SetStamp(base_lidar.mutable_header()->mutable_stamp(),
+                     timestamp_sec);
+            base_lidar.mutable_header()->set_frame_id(options_.base_frame);
+            base_lidar.set_child_frame_id(lidar_frame_);
+            Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
+                                base_lidar.mutable_transform());
+            if (tf_buffer_) {
+                transform::ApplyTransformStampedToBuffer(
+                    tf_buffer_, base_lidar, "atlas", false);
+            }
+            *tf_msg.add_transforms() = base_lidar;
+            if (!logged_lidar_tf_) {
+                AINFO << "AtlasNode: publishing identity TF "
+                      << options_.base_frame << " -> " << lidar_frame_
+                      << " (no external extrinsics)";
+                logged_lidar_tf_ = true;
+            }
+        } else if (!logged_lidar_tf_) {
+            AINFO << "AtlasNode: using external TF " << options_.base_frame
                   << " -> " << lidar_frame_;
             logged_lidar_tf_ = true;
         }

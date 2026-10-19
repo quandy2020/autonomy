@@ -6,15 +6,23 @@
 |-----------|------|
 | **Cartographer** | 2D/3D lidar SLAM |
 | **atlas** | VO / VIO / LIO / LIVO（`atlas/`） |
+| **argus** | LIO / LIVO（FAST-LIVO2 ESIKF，`argus/`） |
 
 ```text
 autonomy/localization/
 ├── localization_main.cpp
-├── localization_server.*      # Cartographer | Atlas
+├── localization_server.*      # Cartographer | Atlas | Argus
 ├── atlas/                     # VO/VIO 库（演进中）
+├── argus/                     # LIO/LIVO（ESIKF）
 ├── cartographer/
+├── launch/
+│   ├── localization.launch              # 默认 → Cartographer
+│   ├── localization_cartographer.launch
+│   ├── localization_atlas.launch
+│   └── localization_argus.launch
 └── conf/
-    └── cartographer/
+    ├── cartographer/
+    └── argus/                 # → argus/config（源码树 symlink / 安装拷贝）
 ```
 
 ## 快速启动
@@ -41,6 +49,38 @@ autonomy.localization \
 ```
 
 配置里相机关闭，外参是 TurtleBot3 的 `imu_link` → `laser_link`。`localization_atlas.launch` 用的是带相机的 `fusion_livo.yaml`，不要拿它做这次纯 LIO 检查。
+
+**Argus LIO / LIVO（autosim）**
+
+话题与 `autosim/config/lio.yaml` 对齐：`/imu`、`/points`、`/camera/rgb/image_raw`（配置开相机时）。
+
+```bash
+cd /workspace/autonomy
+export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+export LD_LIBRARY_PATH=/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}
+export AUTOLINK_PATH=/workspace/autonomy/src/autonomy/autolink
+export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+
+# 推荐：launch
+autolink launch start localization_argus.launch
+
+# 或直接跑二进制
+autonomy.localization \
+  --localization_mode=argus \
+  --argus_config=autonomy/localization/conf/argus/livo_autosim.yaml \
+  --argus_imu_topic=/imu \
+  --argus_lidar_topic=/points \
+  --argus_image_topic=/camera/rgb/image_raw
+```
+
+| 话题 | 说明 |
+|------|------|
+| `/argus/odometry` | `map` 系里程计 |
+| `/argus/trajectory` | 轨迹 Path |
+| `/argus/cloud_map` | 持久全局点云（世界系体素） |
+| `/argus/cloud_registered` | 当前帧配准点云 |
+| `/argus/occupancy` | 2D 占用栅格 |
+| `/tf` | `map→odom`；无轮式 TF 时补 `odom→base_link` |
 
 ## autosim 验证 Atlas LIO
 
@@ -92,8 +132,9 @@ autonomy.localization \
 
 | Flag | 说明 |
 |------|------|
-| `--localization_mode` | `cartographer` \| `atlas` |
+| `--localization_mode` | `cartographer` \| `atlas` \| `argus` |
 | Cartographer | `--configuration_directory` / `--configuration_basename` / `--save_state_filename` |
 | Atlas | `--atlas_config` / `--atlas_imu_topic` / `--atlas_lidar_topic` / `--atlas_image_topic` |
+| Argus | `--argus_config` / `--argus_imu_topic` / `--argus_lidar_topic` / `--argus_image_topic` |
 
 atlas 结构见 [atlas/README.md](atlas/README.md)。

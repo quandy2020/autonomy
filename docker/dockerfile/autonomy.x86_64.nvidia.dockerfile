@@ -67,6 +67,7 @@ RUN apt-get update && apt-get --no-install-recommends install -y \
     libflann-dev \
     libqhull-dev \
     bluez \
+    rfkill \
     libmetis-dev \
     libtool \
     libtiff-dev \

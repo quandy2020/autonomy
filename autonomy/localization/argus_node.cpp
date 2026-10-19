@@ -85,6 +85,21 @@ void StateToPose(const argus::frontend::StatesGroup& state,
     out->mutable_orientation()->set_z(q.z());
 }
 
+void Mat44ToPose(const Eigen::Matrix4d& pose,
+                 automsgs::msgs::geometry_msgs::Pose* out) {
+    if (out == nullptr) {
+        return;
+    }
+    const Eigen::Quaterniond q(pose.block<3, 3>(0, 0));
+    out->mutable_position()->set_x(pose(0, 3));
+    out->mutable_position()->set_y(pose(1, 3));
+    out->mutable_position()->set_z(pose(2, 3));
+    out->mutable_orientation()->set_w(q.w());
+    out->mutable_orientation()->set_x(q.x());
+    out->mutable_orientation()->set_y(q.y());
+    out->mutable_orientation()->set_z(q.z());
+}
+
 Eigen::Matrix4d StateToMat44(const argus::frontend::StatesGroup& state) {
     Eigen::Matrix4d T = Eigen::Matrix4d::Identity();
     T.block<3, 3>(0, 0) = state.rot_end;
@@ -119,6 +134,52 @@ void Mat44ToTransformMsg(const Eigen::Matrix4d& pose,
     tf->mutable_rotation()->set_z(q.z());
 }
 
+/**
+ * Yaw-only attitude for TF: drop roll/pitch (tilt bounce in Autoviz) but keep
+ * translation z so the robot stays on the LIO / point-cloud ground plane.
+ */
+Eigen::Matrix4d FlattenPlanar(const Eigen::Matrix4d& pose) {
+    const double yaw = std::atan2(pose(1, 0), pose(0, 0));
+    const double c = std::cos(yaw);
+    const double s = std::sin(yaw);
+    Eigen::Matrix4d out = Eigen::Matrix4d::Identity();
+    out(0, 0) = c;
+    out(0, 1) = -s;
+    out(1, 0) = s;
+    out(1, 1) = c;
+    out(0, 3) = pose(0, 3);
+    out(1, 3) = pose(1, 3);
+    out(2, 3) = pose(2, 3);
+    return out;
+}
+
+/** Map-frame sensor pose → base_link (uses URDF TF base→sensor when present). */
+Eigen::Matrix4d SensorPoseToBaseLink(
+    const Eigen::Matrix4d& T_map_sensor, transform::Buffer* buffer,
+    const std::string& base_frame, const std::string& sensor_frame) {
+    Eigen::Matrix4d T_map_base = FlattenPlanar(T_map_sensor);
+    if (buffer == nullptr || sensor_frame.empty() ||
+        sensor_frame == base_frame) {
+        return T_map_base;
+    }
+    automsgs::msgs::builtin_interfaces::Time stamp;
+    stamp.set_sec(0);
+    stamp.set_nanosec(0);
+    std::string err;
+    if (!buffer->canTransform(base_frame, sensor_frame, stamp, 0.0f, &err)) {
+        return T_map_base;
+    }
+    try {
+        const auto stamped =
+            buffer->lookupTransform(base_frame, sensor_frame, stamp, 0.0f);
+        const Eigen::Matrix4d T_base_sensor =
+            FlattenPlanar(TransformMsgToMat44(stamped.transform()));
+        return FlattenPlanar(T_map_base * T_base_sensor.inverse());
+    } catch (const std::exception&) {
+        return T_map_base;
+    }
+}
+
 uint32_t JetRgb(float t) {
     t = std::clamp(t, 0.0f, 1.0f);
     float r = 0.0f;
@@ -146,12 +207,15 @@ uint32_t JetRgb(float t) {
 
 argus::sensor::PointCloudXYZI TransformBodyToWorld(
     const argus::frontend::StatesGroup& state,
-    const argus::sensor::PointCloudXYZI& body) {
+    const argus::sensor::PointCloudXYZI& body, const Eigen::Matrix3d& ext_R,
+    const Eigen::Vector3d& ext_T) {
+    // Match VoxelMapManager::TransformLidar: state is IMU, points are lidar.
     argus::sensor::PointCloudXYZI world;
     world.points.reserve(body.points.size());
     for (const auto& p : body.points) {
         const Eigen::Vector3d pw =
-            state.rot_end * Eigen::Vector3d(p.x, p.y, p.z) + state.pos_end;
+            state.rot_end * (ext_R * Eigen::Vector3d(p.x, p.y, p.z) + ext_T) +
+            state.pos_end;
         argus::sensor::PointType q = p;
         q.x = static_cast<float>(pw.x());
         q.y = static_cast<float>(pw.y());
@@ -376,11 +440,15 @@ void ArgusNode::DrainAndPublish() {
 
 void ArgusNode::PublishPose(double timestamp_sec,
                             const argus::frontend::StatesGroup& state) {
+    // Livo state is IMU pose — lower by imu_link→base_link so wheels sit on ground.
+    const Eigen::Matrix4d T_map_base = SensorPoseToBaseLink(
+        StateToMat44(state), tf_buffer_, options_.base_frame, "imu_link");
     if (odom_writer_) {
         automsgs::msgs::nav_msgs::Odometry odom;
         SetHeader(odom.mutable_header(), timestamp_sec, options_.map_frame);
         odom.set_child_frame_id(options_.base_frame);
-        StateToPose(state, odom.mutable_pose()->mutable_pose()->mutable_pose());
+        Mat44ToPose(T_map_base,
+                    odom.mutable_pose()->mutable_pose()->mutable_pose());
         odom.mutable_twist()->mutable_twist()->mutable_linear()->set_x(
             state.vel_end.x());
         odom.mutable_twist()->mutable_twist()->mutable_linear()->set_y(
@@ -393,7 +461,7 @@ void ArgusNode::PublishPose(double timestamp_sec,
         SetHeader(trajectory_.mutable_header(), timestamp_sec, options_.map_frame);
         auto* pose = trajectory_.add_poses();
         SetHeader(pose->mutable_header(), timestamp_sec, options_.map_frame);
-        StateToPose(state, pose->mutable_pose());
+        Mat44ToPose(T_map_base, pose->mutable_pose());
         while (trajectory_.poses_size() > 5000) {
             trajectory_.mutable_poses()->DeleteSubrange(0, 1);
         }
@@ -432,8 +500,11 @@ void ArgusNode::PublishMapOdomTf(double timestamp_sec,
         logged_identity_odom_tf_ = true;
     }
 
+    // Keep /odometry 6-DoF. TF: yaw-only + imu→base so wheels sit on ground.
+    const Eigen::Matrix4d T_map_base = SensorPoseToBaseLink(
+        StateToMat44(state), tf_buffer_, options_.base_frame, "imu_link");
     const Eigen::Matrix4d T_map_odom =
-        StateToMat44(state) * T_odom_base.inverse();
+        T_map_base * FlattenPlanar(T_odom_base).inverse();
     TfMsg tf_msg;
     automsgs::msgs::geometry_msgs::TransformStamped map_odom;
     SetStamp(map_odom.mutable_header()->mutable_stamp(), timestamp_sec);
@@ -460,20 +531,34 @@ void ArgusNode::PublishMapOdomTf(double timestamp_sec,
         *tf_msg.add_transforms() = odom_base;
     }
 
+    // Never overwrite autosim/URDF base→laser with identity (z jumps ~0 vs 0.17).
     if (!lidar_frame_.empty() && lidar_frame_ != options_.base_frame) {
-        automsgs::msgs::geometry_msgs::TransformStamped base_lidar;
-        SetStamp(base_lidar.mutable_header()->mutable_stamp(), timestamp_sec);
-        base_lidar.mutable_header()->set_frame_id(options_.base_frame);
-        base_lidar.set_child_frame_id(lidar_frame_);
-        Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
-                            base_lidar.mutable_transform());
-        if (tf_buffer_) {
-            transform::ApplyTransformStampedToBuffer(tf_buffer_, base_lidar,
-                                                     "argus", false);
-        }
-        *tf_msg.add_transforms() = base_lidar;
-        if (!logged_lidar_tf_) {
-            AINFO << "ArgusNode: publishing identity TF " << options_.base_frame
+        std::string lidar_err;
+        const bool have_lidar_tf =
+            tf_buffer_ &&
+            tf_buffer_->canTransform(options_.base_frame, lidar_frame_,
+                                     lookup_stamp, 0.0f, &lidar_err);
+        if (!have_lidar_tf) {
+            automsgs::msgs::geometry_msgs::TransformStamped base_lidar;
+            SetStamp(base_lidar.mutable_header()->mutable_stamp(),
+                     timestamp_sec);
+            base_lidar.mutable_header()->set_frame_id(options_.base_frame);
+            base_lidar.set_child_frame_id(lidar_frame_);
+            Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
+                                base_lidar.mutable_transform());
+            if (tf_buffer_) {
+                transform::ApplyTransformStampedToBuffer(
+                    tf_buffer_, base_lidar, "argus", false);
+            }
+            *tf_msg.add_transforms() = base_lidar;
+            if (!logged_lidar_tf_) {
+                AINFO << "ArgusNode: publishing identity TF "
+                      << options_.base_frame << " -> " << lidar_frame_
+                      << " (no external extrinsics)";
+                logged_lidar_tf_ = true;
+            }
+        } else if (!logged_lidar_tf_) {
+            AINFO << "ArgusNode: using external TF " << options_.base_frame
                   << " -> " << lidar_frame_;
             logged_lidar_tf_ = true;
         }
@@ -487,7 +572,8 @@ void ArgusNode::PublishRegisteredCloud(
     if (!registered_writer_) {
         return;
     }
-    const auto world = TransformBodyToWorld(state, body);
+    const auto world =
+        TransformBodyToWorld(state, body, config_.ext_R, config_.ext_T);
     CloudMsg msg =
         argus::sensor::ToProto(world, timestamp_sec, options_.map_frame);
     registered_writer_->Write(msg);
@@ -498,7 +584,8 @@ void ArgusNode::AppendToGlobalMap(const argus::frontend::StatesGroup& state,
     const int stride = std::max(1, options_.global_cloud_stride);
     const float leaf = std::max(0.02f, options_.global_cloud_leaf_m);
     const int max_pts = std::max(1, options_.global_cloud_max_points);
-    const auto world = TransformBodyToWorld(state, body);
+    const auto world =
+        TransformBodyToWorld(state, body, config_.ext_R, config_.ext_T);
     for (std::size_t i = 0; i < world.points.size();
          i += static_cast<std::size_t>(stride)) {
         const auto& p = world.points[i];

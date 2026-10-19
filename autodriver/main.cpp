@@ -16,8 +16,11 @@
 
 /**
  * @file main.cpp
- * @brief Process entry: CLI → LoadConfig → Publisher → SensorManager →
- *        PoseFeeder → ChassisManager → JoyTeleop.
+ * @brief Process entry: CLI → LoadConfig → Publisher → ChassisManager →
+ *        JoyTeleop → SensorManager → PoseFeeder.
+ *
+ * Joy/chassis start before sensors so /cmd_vel keeps working when a lidar SDK
+ * blocks on PTC or first frame.
  *
  * Usage: autodriver [options] [configuration_directory] [configuration_file]
  * See: autodriver --help
@@ -85,42 +88,47 @@ int Run(const autodriver::Options& opts) {
         AERROR << "autolink publisher failed";
         return 1;
     }
-    autodriver::SensorManager manager(config);
-    manager.SetSampleSink(&publisher);
-    if (!manager.Initialize() || !manager.Start()) {
-        AERROR << "SensorManager failed";
-        return 1;
-    }
-    autodriver::bridge::PoseFeeder pose_feeder;
-    if (!pose_feeder.Start(publisher.GetNode(), &manager, config)) {
-        AERROR << "PoseFeeder failed";
-        manager.Stop();
-        return 1;
-    }
+
+    // Chassis + joy before sensors: Hesai/PTC (and similar) can block Start for
+    // a long time; teleop must still publish /cmd_vel.
     autodriver::chassis::ChassisManager chassis;
     if (!chassis.Start(publisher.GetNode(), config)) {
         AERROR << "ChassisManager failed";
-        pose_feeder.Stop();
-        manager.Stop();
         return 1;
     }
     autodriver::joy::JoyTeleop joy_teleop;
     if (!joy_teleop.Start(publisher.GetNode(), config)) {
         AERROR << "JoyTeleop failed";
         chassis.Stop();
-        pose_feeder.Stop();
-        manager.Stop();
         return 1;
     }
+
+    autodriver::SensorManager manager(config);
+    manager.SetSampleSink(&publisher);
+    if (!manager.Initialize() || !manager.Start()) {
+        AERROR << "SensorManager failed";
+        joy_teleop.Stop();
+        chassis.Stop();
+        return 1;
+    }
+    autodriver::bridge::PoseFeeder pose_feeder;
+    if (!pose_feeder.Start(publisher.GetNode(), &manager, config)) {
+        AERROR << "PoseFeeder failed";
+        manager.Stop();
+        joy_teleop.Stop();
+        chassis.Stop();
+        return 1;
+    }
+
     AINFO << "autodriver running (Ctrl+C to stop)";
     while (g_running.load()) {
         autolink::Duration(100'000'000).Sleep();
     }
     AINFO << "autodriver shutting down";
-    joy_teleop.Stop();
-    chassis.Stop();
     pose_feeder.Stop();
     manager.Stop();
+    joy_teleop.Stop();
+    chassis.Stop();
     return 0;
 }
 

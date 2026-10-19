@@ -786,6 +786,9 @@ class AutonomyRunner:
             "-v", f"{self.autonomy_dev_dir}:/workspace/autonomy",
             "-v", "/dev:/dev", "-v", "/etc/localtime:/etc/localtime:ro",
             "-v", "/run/dbus:/run/dbus",
+            # Host kernel modules so privileged containers can modprobe
+            # hid_playstation (DualSense → /dev/input/js*).
+            "-v", "/lib/modules:/lib/modules:ro",
             "--workdir", "/workspace/autonomy",
             "--privileged",
         ])

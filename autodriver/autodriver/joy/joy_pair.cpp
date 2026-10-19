@@ -258,6 +258,51 @@ bool CommandExists(const char* name) {
   return r.first == 0 && !r.second.empty();
 }
 
+/**
+ * @brief Clear soft rfkill and turn the adapter on before pair/scan.
+ * @return true when bluetoothctl reports Powered or power on succeeds.
+ */
+bool EnsureBluetoothAdapterPowered() {
+  if (CommandExists("rfkill")) {
+    // Soft-block is the usual reason for org.bluez.Error.Failed in Docker.
+    const auto unblock = RunCommand("rfkill unblock bluetooth");
+    if (unblock.first != 0) {
+      AWARN << "joy: rfkill unblock bluetooth failed (exit=" << unblock.first
+            << "); continuing with power on\n"
+            << unblock.second;
+    } else {
+      // BlueZ needs a moment after unblock before power on.
+      std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    }
+  }
+
+  auto power = RunCommand("bluetoothctl power on");
+  if (power.first == 0 ||
+      power.second.find("succeeded") != std::string::npos) {
+    // Pairable defaults to no after some resets; DualSense then reports
+    // "Pairing successful" without storing Paired/Bonded and vanishes.
+    RunCommand("bluetoothctl pairable on");
+    return true;
+  }
+
+  // Busy / race: off then on once.
+  RunCommand("bluetoothctl power off");
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  power = RunCommand("bluetoothctl power on");
+  if (power.first == 0 ||
+      power.second.find("succeeded") != std::string::npos) {
+    RunCommand("bluetoothctl pairable on");
+    return true;
+  }
+
+  AERROR << "joy: bluetoothctl power on failed (exit=" << power.first << ")\n"
+         << power.second
+         << "Hint: adapter soft-blocked? On the host run: "
+            "rfkill unblock bluetooth && bluetoothctl power on "
+            "(container needs /dev/rfkill, usually via privileged + /dev).";
+  return false;
+}
+
 std::vector<BtDevice> ParseDevices(const std::string& text) {
   std::vector<BtDevice> out;
   std::istringstream iss(text);
@@ -421,19 +466,38 @@ bool WaitForJoystick(int wait_sec, bool prefer_dualsense) {
   return false;
 }
 
-void TryLoadHidPlaystation() {
-  // Best-effort; may fail without root — USB hotplug often loads it already.
+bool HidPlaystationLoaded() {
+  return access("/sys/module/hid_playstation", F_OK) == 0;
+}
+
+/**
+ * @brief Load hid_playstation (+ joydev) so DualSense exposes /dev/input/js*.
+ *
+ * Must run on the host kernel. In Docker this needs a host /lib/modules mount
+ * (run_autonomy.py) and privileged; otherwise load on the host with sudo.
+ */
+bool TryLoadHidPlaystation() {
   if (!CommandExists("modprobe")) {
-    return;
+    AWARN << "pair-joy: modprobe not found; cannot load hid_playstation";
+    return HidPlaystationLoaded();
+  }
+  // BlueZ userspace HID + joydev mapping + DualSense driver.
+  RunCommand("modprobe uhid");
+  RunCommand("modprobe joydev");
+  if (HidPlaystationLoaded()) {
+    return true;
   }
   const auto r = RunCommand("modprobe hid_playstation");
-  if (r.first == 0) {
-    AINFO << "pair-joy: hid_playstation module loaded (or already present)";
-  } else {
-    AWARN << "pair-joy: modprobe hid_playstation exit=" << r.first
-          << " (ok if already loaded / need root)\n"
-          << r.second;
+  if (r.first == 0 || HidPlaystationLoaded()) {
+    AINFO << "pair-joy: hid_playstation module loaded";
+    return true;
   }
+  AWARN << "pair-joy: modprobe hid_playstation exit=" << r.first << "\n"
+        << r.second
+        << "Load on the HOST (container has no kernel modules unless "
+           "/lib/modules is mounted):\n"
+           "  sudo modprobe hid_playstation uhid joydev";
+  return false;
 }
 
 bool BluetoothInfoContains(const std::string& mac, const char* needle) {
@@ -445,8 +509,53 @@ bool BluetoothInfoConnected(const std::string& mac) {
   return BluetoothInfoContains(mac, "Connected: yes");
 }
 
+bool BluetoothInfoPaired(const std::string& mac) {
+  return BluetoothInfoContains(mac, "Paired: yes");
+}
+
+std::string BluezDevicePath(const std::string& mac) {
+  std::string path = mac;
+  for (char& c : path) {
+    if (c == ':') {
+      c = '_';
+    }
+  }
+  return "/org/bluez/hci0/dev_" + path;
+}
+
+/**
+ * @brief Whether BlueZ stored a durable link key for @p mac (Bonded).
+ *
+ * Prefer busctl Bonded. When the property is missing, fall back to Paired.
+ * Do not treat an explicit Bonded=false as success.
+ */
 bool BluetoothInfoBonded(const std::string& mac) {
-  return BluetoothInfoContains(mac, "Bonded: yes");
+  if (CommandExists("busctl")) {
+    const auto prop = RunCommand(
+        "busctl get-property org.bluez " + BluezDevicePath(mac) +
+        " org.bluez.Device1 Bonded 2>/dev/null");
+    // busctl prints "b true" / "b false" for boolean properties.
+    if (prop.second.find("b true") != std::string::npos) {
+      return true;
+    }
+    if (prop.second.find("b false") != std::string::npos) {
+      return false;
+    }
+  }
+  const auto info = RunCommand("bluetoothctl info " + mac);
+  if (info.second.find("Bonded: yes") != std::string::npos) {
+    return true;
+  }
+  if (info.second.find("Bonded: no") != std::string::npos) {
+    return false;
+  }
+  // No Bonded field (older bluetoothctl text): Paired implies a stored key.
+  return info.second.find("Paired: yes") != std::string::npos;
+}
+
+/** @brief Pair or Bonded — either means BlueZ kept the device after pair. */
+bool BluetoothInfoPairedOrBonded(const std::string& mac) {
+  return BluetoothInfoBonded(mac) || BluetoothInfoPaired(mac);
 }
 
 /** Last "Key: yes/no" wins. A later "Connected: no" overrides an earlier yes. */
@@ -461,9 +570,68 @@ bool LastPropertyYes(const std::string& text, const char* key) {
   return no_at == std::string::npos || yes_at > no_at;
 }
 
+bool PairingSuccessfulOutput(const std::string& text) {
+  return text.find("Pairing successful") != std::string::npos;
+}
+
 bool PairOutputBonded(const std::string& text) {
-  return text.find("Pairing successful") != std::string::npos ||
-         LastPropertyYes(text, "Bonded:");
+  return PairingSuccessfulOutput(text) || LastPropertyYes(text, "Bonded:");
+}
+
+/** @brief Poll until Bonded (link key) or timeout. */
+bool WaitBonded(const std::string& mac, int wait_ms) {
+  const auto deadline = std::chrono::steady_clock::now() +
+                        std::chrono::milliseconds(wait_ms);
+  while (std::chrono::steady_clock::now() < deadline) {
+    if (BluetoothInfoBonded(mac)) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  }
+  return BluetoothInfoBonded(mac);
+}
+
+/**
+ * @brief Ask BlueZ to open the HID profile (creates uhid / hid device).
+ * @return true when the busctl call reports success.
+ */
+bool ConnectHidProfile(const std::string& mac) {
+  if (!CommandExists("busctl")) {
+    return false;
+  }
+  const std::string cmd =
+      "busctl call org.bluez " + BluezDevicePath(mac) +
+      " org.bluez.Device1 ConnectProfile s "
+      "00001124-0000-1000-8000-00805f9b34fb";
+  const auto r = RunCommand(cmd);
+  if (r.first == 0) {
+    AINFO << "pair-joy: HID profile connect requested for " << mac;
+    return true;
+  }
+  AWARN << "pair-joy: ConnectProfile(HID) failed: " << r.second;
+  return false;
+}
+
+/**
+ * @brief Request HID and wait for js* without host-initiated disconnect.
+ *
+ * DualSense ReconnectMode is device-driven; `bluetoothctl disconnect` then
+ * connect often yields br-connection-create-socket and drops a half-pair.
+ */
+bool WaitForHidJoystick(const std::string& mac, int wait_sec) {
+  ConnectHidProfile(mac);
+  if (WaitForJoystick(std::max(8, wait_sec / 2), true)) {
+    return true;
+  }
+  // Still connected: ask HID again; never disconnect to "retry".
+  if (BluetoothInfoConnected(mac)) {
+    ConnectHidProfile(mac);
+  } else {
+    AWARN << "pair-joy: ACL dropped before HID; short-press PS, then connect";
+    RunTimed("bluetoothctl --agent NoInputNoOutput connect " + mac, 15);
+    ConnectHidProfile(mac);
+  }
+  return WaitForJoystick(wait_sec, true);
 }
 
 std::string BriefBluetoothFailure(const std::string& text) {
@@ -474,12 +642,30 @@ std::string BriefBluetoothFailure(const std::string& text) {
     if (line.find("Failed") != std::string::npos ||
         line.find("not available") != std::string::npos ||
         line.find("Host is down") != std::string::npos ||
+        line.find("Authentication") != std::string::npos ||
+        line.find("Cancelled") != std::string::npos ||
         line.find("Error") != std::string::npos) {
       last = line;
     }
   }
   if (!last.empty()) {
     return last;
+  }
+  // Keep a short non-empty snippet for debugging empty/"no result" cases.
+  std::string trimmed = text;
+  while (!trimmed.empty() &&
+         std::isspace(static_cast<unsigned char>(trimmed.back()))) {
+    trimmed.pop_back();
+  }
+  if (!trimmed.empty()) {
+    const auto nl = trimmed.find_last_of('\n');
+    if (nl != std::string::npos) {
+      trimmed = trimmed.substr(nl + 1);
+    }
+    if (trimmed.size() > 160) {
+      trimmed.resize(160);
+    }
+    return trimmed;
   }
   return "no result";
 }
@@ -494,6 +680,42 @@ std::string BriefBluetoothFailure(const std::string& text) {
 std::pair<int, std::string> Bluetoothctl(int timeout_sec,
                                         const std::string& args) {
   return RunTimed("bluetoothctl --agent NoInputNoOutput " + args, timeout_sec);
+}
+
+/**
+ * @brief After "Pairing successful", trust+connect before the DualSense sleeps.
+ *
+ * Waiting many seconds for Bonded alone lets the controller drop; BlueZ then
+ * deletes the device (Paired=no) and HID never appears.
+ */
+bool FinalizePairTrustConnect(const std::string& mac) {
+  AINFO << "pair-joy: Pairing successful — trust+connect immediately " << mac;
+  {
+    const auto trust = RunTimed("bluetoothctl trust " + mac, 8);
+    if (trust.first != 0 &&
+        trust.second.find("succeeded") == std::string::npos &&
+        !BluetoothInfoContains(mac, "Trusted: yes")) {
+      AWARN << "pair-joy: trust: " << BriefBluetoothFailure(trust.second);
+    }
+  }
+  {
+    const auto conn = RunTimed("bluetoothctl connect " + mac, 20);
+    if (conn.first != 0 && !BluetoothInfoConnected(mac)) {
+      AWARN << "pair-joy: connect after pair: "
+            << BriefBluetoothFailure(conn.second)
+            << " (short-press PS if the light went out)";
+    }
+  }
+  if (WaitBonded(mac, 5000)) {
+    return true;
+  }
+  if (BluetoothInfoPairedOrBonded(mac)) {
+    AWARN << "pair-joy: Bonded not set yet; Paired="
+          << (BluetoothInfoPaired(mac) ? "yes" : "no")
+          << " Connected=" << (BluetoothInfoConnected(mac) ? "yes" : "no");
+    return true;
+  }
+  return BluetoothInfoConnected(mac);
 }
 
 /** Drop a half-paired controller so the next pair can store a link key. */
@@ -551,28 +773,27 @@ bool ConnectDualSenseBluetooth(int timeout_sec, std::string* device_path) {
     return false;
   }
 
-  Bluetoothctl(5, "pairable on");
-  const auto power = Bluetoothctl(5, "power on");
-  if (power.first != 0 && power.second.find("succeeded") == std::string::npos) {
-    AERROR << "joy: bluetoothctl power on failed (exit=" << power.first
-           << ")\n"
-           << power.second;
+  if (!EnsureBluetoothAdapterPowered()) {
     return false;
   }
+  TryLoadHidPlaystation();
+  Bluetoothctl(5, "pairable on");
 
   BtDevice target = FindListedDualSense();
-  // Paired without a link key makes BlueZ reject the HID connection. A device
-  // that is only discovered (not paired) must be kept so pair can run.
-  if (!target.mac.empty() && !BluetoothInfoBonded(target.mac) &&
-      BluetoothInfoContains(target.mac, "Paired: yes")) {
-    RemoveUnbonded(target.mac);
-    target = {};
-  }
+  const pid_t agent_pid =
+      StartQuiet("bluetoothctl --agent NoInputNoOutput");
+  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
   pid_t scan_pid = -1;
-  if (target.mac.empty()) {
-    AINFO << "joy: no DualSense in the known list, scanning " << timeout_sec
-          << "s (hold Create + PS until the light bar flashes)";
+  const bool need_scan =
+      target.mac.empty() ||
+      !(BluetoothInfoBonded(target.mac) || BluetoothInfoPaired(target.mac));
+  if (need_scan) {
+    AINFO << "joy: scanning for DualSense (hold Create + PS until the light "
+             "bar flashes)";
     scan_pid = StartQuiet("bluetoothctl scan on");
+  }
+  if (target.mac.empty()) {
     const auto deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(timeout_sec);
     while (std::chrono::steady_clock::now() < deadline) {
@@ -582,48 +803,53 @@ bool ConnectDualSenseBluetooth(int timeout_sec, std::string* device_path) {
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    StopDiscovery(scan_pid);
   }
 
   if (target.mac.empty()) {
+    StopDiscovery(scan_pid);
+    StopQuiet(agent_pid);
     AERROR << "joy: DualSense not found. Enter pairing mode (Create + PS).";
     return false;
   }
 
-  if (!BluetoothInfoBonded(target.mac)) {
+  // Stop discovery before pair so Bonded can settle.
+  StopDiscovery(scan_pid);
+  scan_pid = -1;
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+
+  if (!BluetoothInfoBonded(target.mac) && !BluetoothInfoPaired(target.mac)) {
     AINFO << "joy: bonding " << target.mac << " (" << target.name << ")";
-    const auto paired = Bluetoothctl(timeout_sec, "pair " + target.mac);
-    if (!PairOutputBonded(paired.second) && !BluetoothInfoBonded(target.mac)) {
-      AERROR << "joy: pair did not bond " << target.mac
+    const auto paired =
+        RunTimed("bluetoothctl pair " + target.mac, timeout_sec);
+    bool ok = false;
+    if (PairingSuccessfulOutput(paired.second) ||
+        WaitBonded(target.mac, 2000) || BluetoothInfoPaired(target.mac)) {
+      ok = FinalizePairTrustConnect(target.mac);
+    } else {
+      ok = WaitBonded(target.mac, 8000);
+    }
+    if (!ok) {
+      StopQuiet(agent_pid);
+      AERROR << "joy: pair did not stick for " << target.mac
              << " (hold Create + PS until the light bar flashes): "
              << BriefBluetoothFailure(paired.second);
+      RemoveUnbonded(target.mac);
       return false;
     }
   } else {
-    AINFO << "joy: " << target.mac << " already bonded, connecting";
-  }
-  {
-    const auto trusted = Bluetoothctl(10, "trust " + target.mac);
-    if (trusted.first != 0 &&
-        trusted.second.find("succeeded") == std::string::npos &&
-        !BluetoothInfoContains(target.mac, "Trusted: yes")) {
-      AERROR << "joy: trust failed: " << BriefBluetoothFailure(trusted.second);
-      return false;
-    }
-  }
-  {
-    // Connect as soon as the bond exists. The controller sleeps within a few
-    // seconds of pairing and then answers with Host is down until PS is pressed.
-    const auto connected = Bluetoothctl(12, "connect " + target.mac);
+    AINFO << "joy: " << target.mac << " already paired/bonded, connecting";
+    RunTimed("bluetoothctl trust " + target.mac, 10);
+    const auto connected = RunTimed("bluetoothctl connect " + target.mac, 12);
     const bool up =
         connected.second.find("Connection successful") != std::string::npos ||
         BluetoothInfoConnected(target.mac);
     if (!up) {
+      StopQuiet(agent_pid);
       if (connected.second.find("Host is down") != std::string::npos ||
           connected.second.find("br-connection-create-socket") !=
               std::string::npos) {
         AERROR << "joy: " << target.mac
-               << " is bonded but not answering; short-press PS to wake it";
+               << " is paired but not answering; short-press PS to wake it";
       } else {
         AERROR << "joy: connect failed: "
                << BriefBluetoothFailure(connected.second);
@@ -632,13 +858,17 @@ bool ConnectDualSenseBluetooth(int timeout_sec, std::string* device_path) {
     }
   }
   if (!BluetoothInfoConnected(target.mac)) {
+    StopQuiet(agent_pid);
     AERROR << "joy: " << target.mac << " is not connected";
     return false;
   }
 
   TryLoadHidPlaystation();
-  if (!WaitForJoystick(8, true)) {
-    AWARN << "joy: Bluetooth connected but /dev/input/js* is not ready yet";
+  const bool hid_ok = WaitForHidJoystick(target.mac, 20);
+  StopQuiet(agent_pid);
+  if (!hid_ok) {
+    AWARN << "joy: Bluetooth connected but /dev/input/js* is not ready yet "
+             "(need Bonded: yes + hid_playstation/uhid; short-press PS if asleep)";
     return false;
   }
   if (device_path != nullptr) {
@@ -673,17 +903,19 @@ bool PairDualSenseBluetooth(int timeout_sec) {
   AINFO << "pair-joy: put the controller in pairing mode: hold Create + PS "
            "until the light bar flashes";
 
-  {
-    const auto power = RunCommand("bluetoothctl power on");
-    if (power.first != 0) {
-      AERROR << "pair-joy: bluetoothctl power on failed (exit=" << power.first
-             << "). Need Bluetooth adapter permissions?\n"
-             << power.second;
-      return false;
-    }
+  if (!EnsureBluetoothAdapterPowered()) {
+    return false;
   }
   RemoveMatchingPaired();
 
+  // Long-lived agent so Pair can store a link key (Bonded) before the process
+  // exits. Short-lived `bluetoothctl --agent … pair` often leaves Paired-only.
+  const pid_t agent_pid =
+      StartQuiet("bluetoothctl --agent NoInputNoOutput");
+  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+  // Discover first; stop scan before pair so the bond can settle (pairing
+  // under active discovery often yields Paired without Bonded).
   AINFO << "pair-joy: scanning…";
   const pid_t scan_pid = StartQuiet("bluetoothctl scan on");
 
@@ -704,9 +936,9 @@ bool PairDualSenseBluetooth(int timeout_sec) {
     std::this_thread::sleep_for(std::chrono::seconds(1));
   }
 
-  StopDiscovery(scan_pid);
-
   if (target.mac.empty()) {
+    StopDiscovery(scan_pid);
+    StopQuiet(agent_pid);
     AERROR << "pair-joy: no DualSense / Wireless Controller found within "
            << timeout_sec
            << "s. Ensure pairing mode (Create+PS) and adapter is powered.";
@@ -714,36 +946,100 @@ bool PairDualSenseBluetooth(int timeout_sec) {
   }
 
   AINFO << "pair-joy: found " << target.mac << " (" << target.name << ")";
+  StopDiscovery(scan_pid);
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
 
-  {
-    const auto r = Bluetoothctl(timeout_sec, "pair " + target.mac);
-    if (!PairOutputBonded(r.second) && !BluetoothInfoBonded(target.mac)) {
-      AERROR << "pair-joy: pair did not bond " << target.mac << ": "
-             << BriefBluetoothFailure(r.second);
-      return false;
+  // Load before connect so the HID stack binds DualSense to playstation driver.
+  if (!TryLoadHidPlaystation()) {
+    StopQuiet(agent_pid);
+    AERROR << "pair-joy: hid_playstation is required for /dev/input/js*. "
+              "On the host: sudo modprobe hid_playstation && "
+              "sudo modprobe joydev  (then recreate SpaceHero with "
+              "/lib/modules mounted, or load modules on the host).";
+    return false;
+  }
+
+  std::string last_pair_out;
+  bool pair_ok = false;
+  for (int attempt = 1; attempt <= 3 && !pair_ok; ++attempt) {
+    AINFO << "pair-joy: bonding attempt " << attempt << "/3 for " << target.mac;
+    const int pair_budget = std::max(20, timeout_sec / 2);
+    // Agent already registered; do not start a second --agent for pair.
+    const auto r =
+        RunTimed("bluetoothctl pair " + target.mac, pair_budget);
+    last_pair_out = r.second;
+
+    // Pairing successful → trust+connect immediately (DualSense sleeps fast).
+    if (PairingSuccessfulOutput(r.second) || PairOutputBonded(r.second) ||
+        WaitBonded(target.mac, 1500)) {
+      pair_ok = FinalizePairTrustConnect(target.mac);
+      if (pair_ok) {
+        break;
+      }
+      AWARN << "pair-joy: pair reported success but device did not stick "
+               "(Paired="
+            << (BluetoothInfoPaired(target.mac) ? "yes" : "no")
+            << " Bonded=" << (BluetoothInfoBonded(target.mac) ? "yes" : "no")
+            << "). Re-enter Create+PS and retry.";
+      // Second pair() often wipes state — only retry if device is gone.
+      if (BluetoothInfoPairedOrBonded(target.mac) ||
+          BluetoothInfoConnected(target.mac)) {
+        break;
+      }
+      continue;
+    }
+
+    pair_ok = WaitBonded(target.mac, 4000);
+    if (pair_ok) {
+      pair_ok = FinalizePairTrustConnect(target.mac);
+      break;
+    }
+    const std::string why = BriefBluetoothFailure(r.second);
+    AWARN << "pair-joy: bond attempt " << attempt << " failed: " << why;
+    if (why.find("not available") != std::string::npos) {
+      std::this_thread::sleep_for(std::chrono::seconds(2));
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(800));
     }
   }
-  {
-    const auto r = Bluetoothctl(10, "trust " + target.mac);
-    if (r.first != 0 && r.second.find("succeeded") == std::string::npos) {
-      AERROR << "pair-joy: trust failed: " << r.second;
-      return false;
-    }
+
+  if (!pair_ok) {
+    StopQuiet(agent_pid);
+    AERROR << "pair-joy: pair did not stick for " << target.mac << ": "
+           << BriefBluetoothFailure(last_pair_out)
+           << " Ensure adapter Pairable: yes, hold Create+PS until the light "
+              "bar flashes, then retry.";
+    return false;
   }
-  {
-    const auto r = Bluetoothctl(20, "connect " + target.mac);
+  AINFO << "pair-joy: paired/bonded " << target.mac
+        << " Bonded=" << (BluetoothInfoBonded(target.mac) ? "yes" : "no")
+        << " Paired=" << (BluetoothInfoPaired(target.mac) ? "yes" : "no")
+        << " Connected="
+        << (BluetoothInfoConnected(target.mac) ? "yes" : "no");
+
+  if (!BluetoothInfoConnected(target.mac)) {
+    const auto r = RunTimed("bluetoothctl connect " + target.mac, 20);
     if (r.first != 0 && !BluetoothInfoConnected(target.mac)) {
-      AERROR << "pair-joy: connect failed: " << r.second;
+      StopQuiet(agent_pid);
+      AERROR << "pair-joy: connect failed: " << r.second
+             << " Short-press PS to wake the controller, then retry.";
       return false;
     }
   }
 
-  AINFO << "pair-joy: paired + trusted + connected " << target.mac;
-  if (!WaitForJoystick(10, true)) {
-    AWARN << "pair-joy: connected but no /dev/input/js* yet "
-             "(check input group / hid-playstation)";
+  AINFO << "pair-joy: trusted + connected " << target.mac;
+  const bool hid_ok = WaitForHidJoystick(target.mac, 20);
+  StopQuiet(agent_pid);
+  if (!hid_ok) {
+    AERROR << "pair-joy: connected but no /dev/input/js* after wait. "
+              "Check: `bluetoothctl info "
+           << target.mac
+           << "` (Bonded/Paired); host modules "
+              "`hid_playstation uhid joydev`; short-press PS if asleep. "
+              "Do not disconnect/reconnect from the host while waking.";
+    return false;
   }
-  AINFO << "pair-joy: done. Enable joy in YAML and set device to the js node.";
+  AINFO << "pair-joy: done. Enable joy in YAML (device auto-detects js*).";
   return true;
 }
 

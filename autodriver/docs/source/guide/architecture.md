@@ -245,12 +245,12 @@ SetEventCallback(optional)           // RobotEvent
 ```text
 LoadConfig
   → Publisher::Initialize
+  → ChassisManager::Start(node)    // chassis.enable=false → no-op
+  → JoyTeleop::Start(node)         // 先于传感，避免雷达 SDK 阻塞时无 /cmd_vel
   → SensorManager::{SetSampleSink, Initialize, Start}
   → PoseFeeder::Start              // compensator.pose_channel 空 → no-op
-  → ChassisManager::Start(node)    // chassis.enable=false → no-op
-  → JoyTeleop::Start(node)         // joy.enable=false → no-op；无 js 且 bluetooth_connect 时在发布循环里重连
   → 等待信号
-  → Stop：JoyTeleop → Chassis → PoseFeeder → SensorManager
+  → Stop：PoseFeeder → SensorManager → JoyTeleop → Chassis
 ```
 
 CLI 一次性手柄配对（`--pair-joy`，蓝牙或 USB）在 `Run()` 之前分支，不经上述序列。见 [使用 · DualSense](usage.md#21-dualsense-遥操)。

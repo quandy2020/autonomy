@@ -41,6 +41,6 @@ chassis:
 
 # Optional DualSense teleop sharing /cmd_vel
 joy:
-  enable: false
+  enable: true
   profile: dualsense
   device: /dev/input/js0

@@ -16,7 +16,10 @@ chassis:
   backend: stub
 
 joy:
-  enable: false
+  enable: true
+  profile: dualsense
+  device: /dev/input/js0
+  bluetooth_connect: true
 
 sensors:
   lidar_3d:

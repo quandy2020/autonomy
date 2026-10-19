@@ -48,6 +48,7 @@ RUN apt-get update && apt-get install -y sudo \
     libflann-dev \
     libqhull-dev \
     bluez \
+    rfkill \
     libmetis-dev \
     libtool \
     libtiff-dev \

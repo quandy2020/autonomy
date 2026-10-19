@@ -166,8 +166,8 @@ autodriver "$AUTODRIVER_PATH" autodriver_hardware.yaml
 启动顺序（与 `main.cpp` 一致）：
 
 ```text
-LoadConfig → Publisher → SensorManager → PoseFeeder → ChassisManager → 等待信号
-Stop：Chassis → PoseFeeder → SensorManager
+LoadConfig → Publisher → Chassis → JoyTeleop → SensorManager → PoseFeeder → 等待信号
+Stop：PoseFeeder → SensorManager → JoyTeleop → Chassis
 ```
 
 正常运行时可看到类似 `autodriver running (Ctrl+C to stop)` 的日志；`Ctrl+C` 优雅退出。
