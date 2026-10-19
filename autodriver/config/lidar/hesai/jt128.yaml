@@ -16,11 +16,14 @@ hesai_source_type: 1
 device_ip_address: 192.168.1.201
 udp_port: 2368
 ptc_port: 9347
+# Empty = bind 0.0.0.0 (needed when lidar sends to 255.255.255.255).
+# Set to host NIC IP only after PTC rewrites lidar dest to unicast.
 host_ip_address: ""
 multicast_ip_address: ""
 use_ptc_connected: true
 host_ptc_port: 0
 fault_message_port: 0
+
 # Multi-lidar source filters (0 = disabled); valid range [1024, 65535]
 device_udp_src_port: 0
 device_fault_port: 0
@@ -31,9 +34,10 @@ speed: -1
 recv_point_cloud_timeout: -1
 ptc_connect_timeout: -1
 
-# Angle correction / firetime (CSV or lidar DAT; recommend lidar-native file)
-correction_file_path: ""
-firetimes_path: ""
+# Angle correction / firetime — without these the cloud collapses to a flat disk.
+# Prefer PTC-fetched device file; fallback: SDK sample CSV under opt/hesai_lidar_sdk.
+correction_file_path: "/usr/local/opt/hesai_lidar_sdk/correction/angle_correction/JT128_Angle Correction File.csv"
+firetimes_path: "/usr/local/opt/hesai_lidar_sdk/correction/firetime_correction/JT128_Firetime Correction File.csv"
 
 # --- decoder ---
 use_timestamp_type: 0

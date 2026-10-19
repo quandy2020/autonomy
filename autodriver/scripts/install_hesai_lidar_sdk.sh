@@ -125,12 +125,14 @@ set(HesaiLidarSDK_FOUND TRUE)
 set(HesaiLidarSDK_VERSION "2.0")
 set(HesaiLidarSDK_ROOT "${INSTALL_ROOT}")
 
+# Mirrors upstream hesai_sdk_lib / lidar_lib / udpParser_lib INTERFACE includes.
 set(HesaiLidarSDK_INCLUDE_DIRS
   "\${HesaiLidarSDK_ROOT}"
   "\${HesaiLidarSDK_ROOT}/driver"
   "\${HesaiLidarSDK_ROOT}/generated"
   "\${HesaiLidarSDK_ROOT}/libhesai"
   "\${HesaiLidarSDK_ROOT}/libhesai/Lidar"
+  "\${HesaiLidarSDK_ROOT}/libhesai/Common"
   "\${HesaiLidarSDK_ROOT}/libhesai/Common/include"
   "\${HesaiLidarSDK_ROOT}/libhesai/Logger/include"
   "\${HesaiLidarSDK_ROOT}/libhesai/Source/include"
@@ -138,11 +140,14 @@ set(HesaiLidarSDK_INCLUDE_DIRS
   "\${HesaiLidarSDK_ROOT}/libhesai/PtcParser"
   "\${HesaiLidarSDK_ROOT}/libhesai/PtcParser/include"
   "\${HesaiLidarSDK_ROOT}/libhesai/SerialClient/include"
+  "\${HesaiLidarSDK_ROOT}/libhesai/UdpParser"
   "\${HesaiLidarSDK_ROOT}/libhesai/UdpParser/include"
+  "\${HesaiLidarSDK_ROOT}/libhesai/UdpProtocol"
   "\${HesaiLidarSDK_ROOT}/libhesai/Container/include"
   "\${HesaiLidarSDK_ROOT}/libhesai/Container/src"
 )
 
+find_library(HesaiLidarSDK_PCAP_LIBRARY NAMES pcap)
 set(HesaiLidarSDK_LIBRARIES
   "\${HesaiLidarSDK_ROOT}/lib/libserialClient_lib.a"
   "\${HesaiLidarSDK_ROOT}/lib/libptcClient_lib.a"
@@ -151,6 +156,9 @@ set(HesaiLidarSDK_LIBRARIES
   "\${HesaiLidarSDK_ROOT}/lib/liblog_lib.a"
   Threads::Threads
 )
+if(HesaiLidarSDK_PCAP_LIBRARY)
+  list(APPEND HesaiLidarSDK_LIBRARIES "\${HesaiLidarSDK_PCAP_LIBRARY}")
+endif()
 
 include(CMakeFindDependencyMacro)
 find_dependency(Threads)

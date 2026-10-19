@@ -88,6 +88,7 @@ if(HesaiLidarSDK_FOUND AND NOT TARGET HesaiLidarSDK::hesai_sdk)
     "${_hesai_root}/generated"
     "${_hesai_root}/libhesai"
     "${_hesai_root}/libhesai/Lidar"
+    "${_hesai_root}/libhesai/Common"
     "${_hesai_root}/libhesai/Common/include"
     "${_hesai_root}/libhesai/Logger/include"
     "${_hesai_root}/libhesai/Source/include"
@@ -95,16 +96,24 @@ if(HesaiLidarSDK_FOUND AND NOT TARGET HesaiLidarSDK::hesai_sdk)
     "${_hesai_root}/libhesai/PtcParser"
     "${_hesai_root}/libhesai/PtcParser/include"
     "${_hesai_root}/libhesai/SerialClient/include"
+    "${_hesai_root}/libhesai/UdpParser"
     "${_hesai_root}/libhesai/UdpParser/include"
+    "${_hesai_root}/libhesai/UdpProtocol"
     "${_hesai_root}/libhesai/Container/include"
     "${_hesai_root}/libhesai/Container/src"
   )
+  find_library(HesaiLidarSDK_PCAP_LIBRARY NAMES pcap)
   # Link order: dependents first (serial/ptc/source → platutils → log).
   list(REVERSE HesaiLidarSDK_LIBRARIES)
+  set(_hesai_link ${HesaiLidarSDK_LIBRARIES} Threads::Threads)
+  if(HesaiLidarSDK_PCAP_LIBRARY)
+    list(APPEND _hesai_link "${HesaiLidarSDK_PCAP_LIBRARY}")
+  endif()
   add_library(HesaiLidarSDK::hesai_sdk INTERFACE IMPORTED)
   set_target_properties(HesaiLidarSDK::hesai_sdk PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${_hesai_incs}"
-    INTERFACE_LINK_LIBRARIES "${HesaiLidarSDK_LIBRARIES};Threads::Threads")
+    INTERFACE_LINK_LIBRARIES "${_hesai_link}")
+  unset(_hesai_link)
   unset(_hesai_driver_dir)
   unset(_hesai_root)
   unset(_hesai_incs)

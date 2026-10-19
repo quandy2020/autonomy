@@ -1,0 +1,45 @@
+# Minimal autodriver config to verify JT128 + HesaiLidar_SDK_2.0.
+# Usage (inside SpaceHero, host network):
+#   export AUTODRIVER_PATH=/workspace/autonomy/src/autonomy/autodriver
+#   export LD_LIBRARY_PATH=/workspace/autonomy/build/autonomy/lib:$LD_LIBRARY_PATH
+#   /workspace/autonomy/build/autonomy/bin/autodriver \
+#     --config-dir $AUTODRIVER_PATH/config \
+#     --config-file examples/jt128_verify.yaml
+#
+# Host NIC must be on the lidar subnet, e.g.:
+#   ip addr add 192.168.1.100/24 dev <eth> && ip link set <eth> up
+# Default JT128 device IP is 192.168.1.201 (change params below if needed).
+
+chassis:
+  enable: false
+  name: base
+  backend: stub
+
+joy:
+  enable: false
+
+sensors:
+  lidar_3d:
+    - name: jt128
+      enable: true
+      channel: /lidar/jt128/points
+      backend: hesai
+      fps: 10
+      params_file: lidar/hesai/jt128.yaml
+      params:
+        device_ip_address: "192.168.1.201"
+        # JT128 factory default often broadcasts UDP to 255.255.255.255:2368.
+        # Leave host_ip empty so the SDK binds 0.0.0.0:2368 (unicast bind drops broadcasts).
+        host_ip_address: ""
+        # Fetch device angle table over PTC (fixes flat / zero-elevation cloud).
+        use_ptc_connected: true
+        ptc_connect_timeout: 5
+        recv_point_cloud_timeout: 15
+        # Fallback if PTC correction fails (sample table shipped with SDK):
+        correction_file_path: "/usr/local/opt/hesai_lidar_sdk/correction/angle_correction/JT128_Angle Correction File.csv"
+        firetimes_path: "/usr/local/opt/hesai_lidar_sdk/correction/firetime_correction/JT128_Firetime Correction File.csv"
+
+  camera: []
+  lidar_2d: []
+  gps: []
+  range: []

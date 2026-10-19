@@ -288,6 +288,15 @@ class LidarCloud
     std::string channel;
 
     /**
+     * @brief Deep-copy including frame_id / channel (TypedSample::Clone slices).
+     * @return Unique pointer to a LidarCloud clone.
+     */
+    std::unique_ptr<SensorSample> Clone() const override {
+        auto out = std::make_unique<LidarCloud>(*this);
+        return out;
+    }
+
+    /**
      * @brief Stamp the cloud header and apply frame_id override when set.
      * @return Reference to the stamped point cloud message.
      */

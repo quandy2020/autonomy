@@ -89,6 +89,12 @@ sensors:
       backend: hesai
       params_file: lidar/hesai/xt32.yaml
 
+    - name: jt128
+      enable: true
+      channel: /lidar/jt128/points
+      backend: hesai
+      params_file: lidar/hesai/jt128.yaml
+
     - name: mid360
       enable: false
       channel: /lidar/mid360/points
