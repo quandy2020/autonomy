@@ -647,8 +647,14 @@ void OgreSceneHost::setDisplayPoints(const std::string& display_name,
   }
 
   const float world_size = std::max(0.002f, point_size * 0.006f);
-  entry.cloud->clearAndRemoveAllPoints();
-  entry.cloud->setRenderMode(toOgrePointCloudRenderMode(style));
+  const OgrePointCloud::RenderMode mode = toOgrePointCloudRenderMode(style);
+  // setRenderMode regenerates geometry; only call when the mode actually changes.
+  if (entry.cloud->renderMode() != mode) {
+    entry.cloud->clearAndRemoveAllPoints();
+    entry.cloud->setRenderMode(mode);
+  } else {
+    entry.cloud->clearAndRemoveAllPoints();
+  }
   entry.cloud->setDimensions(world_size, world_size, world_size);
 
   std::vector<OgrePointCloud::Point> ogre_points;
@@ -660,7 +666,7 @@ void OgreSceneHost::setDisplayPoints(const std::string& display_name,
     p.setColor(c.redF(), c.greenF(), c.blueF(), c.alphaF());
     ogre_points.push_back(p);
   }
-  entry.cloud->addPoints(ogre_points.begin(), ogre_points.end());
+  entry.cloud->setPoints(std::move(ogre_points));
   applyEntryVisibility(entry);
 }
 

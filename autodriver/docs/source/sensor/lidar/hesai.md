@@ -7,7 +7,8 @@ backend：`hesai`（alias `pandar`）。工厂 `CreateHesaiLidarDriver` 按型�
 | **UDP（自研）** | `model` 为 XT32 / PandarXT 族，且未设 `use_sdk` | 无第三方 SDK |
 | **SDK** | `use_sdk: true` / `parser: sdk` / 非 XT32（如 **JT128**、OT128） | [HesaiLidar_SDK_2.0](https://github.com/HesaiTechnology/HesaiLidar_SDK_2.0) |
 
-点云统一：`sensor_msgs/PointCloud2`，`point_step=24`（x,y,z,intensity,timestamp）。参数名对齐 [HesaiLidar_ROS_2.0](https://github.com/HesaiTechnology/HesaiLidar_ROS_2.0) 的扁平键（无需嵌套 `lidar_udp_type`）。
+点云统一：`sensor_msgs/PointCloud2`，`point_step=24`（x,y,z,intensity,timestamp）。
+JT128 等机型还可发布板载 IMU：`sensor_msgs/Imu`（`send_imu: true`）。参数名对齐 [HesaiLidar_ROS_2.0](https://github.com/HesaiTechnology/HesaiLidar_ROS_2.0) 的扁平键（无需嵌套 `lidar_udp_type`）。
 
 | | |
 |---|---|
@@ -104,22 +105,36 @@ lidar_3d:
 `jt128.yaml` 关键：`use_sdk: true`、`model: JT128`、`hesai_source_type: 1`（在线 UDP）、
 较大的 `socket_buffer_size`（约 1.6M pts/s）。
 
-### 2.4 可视化（autoviz）
+### 2.4 板载 IMU
+
+JT128 UDP v1.4 包尾可带 IMU；SDK 回调 `LidarImuData`。`jt128.yaml` 默认 `send_imu: true`：
+
+| 键 | 说明 |
+|---|---|
+| `send_imu` / `send_imu_ros` | 打开 IMU 发布（默认 false；JT128 配置为 true） |
+| `imu_channel` / `ros_send_imu_topic` | IMU 通道；省略时由点云通道推导（`…/points` → `…/imu`） |
+| `imu_frame_id` | IMU `frame_id`，默认与点云 `frame_id` 相同 |
+
+验证配置下：点云 `/lidar/jt128/points`，IMU `/lidar/jt128/imu`。
+
+### 2.5 可视化（autoviz）
 
 | 项 | 值 |
 |---|---|
-| Topic | `/lidar/jt128/points` |
+| Topic（点云） | `/lidar/jt128/points` |
+| Topic（IMU） | `/lidar/jt128/imu` |
 | Fixed Frame | **`hesai_jt128`**（与 `frame_id` 一致） |
 
 无 TF 时不要选 `odom`/`base_link`，否则点云不显示。
 
-### 2.5 常见问题
+### 2.6 常见问题
 
 | 现象 | 处理 |
 |---|---|
 | `NO-CARRIER` / ping 不通 | 电源灯、网线、主机 RJ45；与 Docker 无关（`--net=host`） |
 | 驱动在跑、autoviz 无点 | 广播 vs 单播绑定：清空 `host_ip_address` |
 | 点云扁平 | 开 PTC 或配置 `correction_file_path` / `firetimes_path` |
+| IMU 通道在但无数据 | 确认已重编并重启；UDP status 需带 `hasImu`（JT128 常见 `0x23`）；`send_imu: true` |
 | `Create… nullptr` / Init 失败 | 确认 `-DAUTODRIVER_WITH_HESAI_SDK=ON` 且 SDK 已安装 |
 | SHM `msg_size` 过大 | 正常（JT128 帧大）；autolink 会重建 buffer |
 
@@ -161,5 +176,6 @@ lidar_3d:
 | `correction_file_path` / `firetimes_path` | 角度 / 发火时刻文件 |
 | `socket_buffer_size` | 收包缓冲（JT128 建议 ≥ 262144000） |
 | `frame_id` | 点云 frame（JT128 默认 `hesai_jt128`） |
+| `send_imu` / `imu_channel` | 板载 IMU（见 §2.4） |
 
 兼容 ROS2 配置思路，详见 `config/lidar/hesai/sdk.yaml`、`jt128.yaml`。

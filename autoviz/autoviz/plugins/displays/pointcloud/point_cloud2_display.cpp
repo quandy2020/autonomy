@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <chrono>
 #include <limits>
+#include <new>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
@@ -23,6 +24,10 @@
 namespace autoviz {
 namespace display {
 namespace {
+
+// JT128-class clouds + Flat Squares (6 verts/point) can exhaust heap after a
+// long run; keep a hard default cap and let users raise Decimate / Max Points.
+constexpr int kDefaultMaxPoints = 200000;
 
 int AxisIndexFromProperty(const std::string& axis,
                           const std::string& color_transform) {
@@ -114,6 +119,7 @@ std::vector<common::DisplayPropertySpec> PointCloud2Display::propertySpecs()
        "AxisColor|Axis|AxisColor X|AxisColor Y|AxisColor Z"},
 
       {"decimate", "Decimate", "1", {}},
+      {"max_points", "Max Points", "200000", {}},
   };
 }
 
@@ -123,15 +129,19 @@ void PointCloud2Display::processMessage(
     return;
   }
 
-  // Honor the UI Decimate property. Do not auto-boost for large clouds —
-  // that made 32-line lidar look like ~half the rings even when Decimate=1.
+  try {
+  // Honor the UI Decimate property. Max Points raises the effective step for
+  // dense JT128-class clouds so transient CPU/GPU copies cannot OOM the UI.
   const uint32_t decimation = static_cast<uint32_t>(std::max(
       1.0f, common::ParseFloatProperty(propertyValue("decimate", "1"), 1.f)));
+  const uint32_t max_points = static_cast<uint32_t>(std::max(
+      1000, common::ParseIntProperty(propertyValue("max_points", "200000"),
+                                     kDefaultMaxPoints)));
 
   const std::string channel_name =
       propertyValue("channel_name", "intensity");
   const ParsedPointCloud parsed =
-      parsePointCloud2(message, decimation, channel_name);
+      parsePointCloud2(message, decimation, channel_name, max_points);
   if (parsed.xs.empty()) {
     return;
   }
@@ -179,15 +189,21 @@ void PointCloud2Display::processMessage(
       propertyValue("use_fixed_frame", "true"), true);
   const int axis = AxisIndexFromProperty(propertyValue("axis", "Z"),
                                          color_transform);
+  const bool need_local =
+      mode == PointCloudColorMode::kAxisColor && !use_fixed_frame;
 
   // Positions: fixed-frame for AxisColor when Use Fixed Frame is on.
   std::vector<QVector3D> local_positions;
   std::vector<QVector3D> draw_positions;
-  local_positions.reserve(parsed.xs.size());
+  if (need_local) {
+    local_positions.reserve(parsed.xs.size());
+  }
   draw_positions.reserve(parsed.xs.size());
   for (size_t i = 0; i < parsed.xs.size(); ++i) {
     QVector3D local(parsed.xs[i], parsed.ys[i], parsed.zs[i]);
-    local_positions.push_back(local);
+    if (need_local) {
+      local_positions.push_back(local);
+    }
     QVector3D world = local;
     if (have_tf) {
       world = transformPoint(tf, local);
@@ -230,9 +246,10 @@ void PointCloud2Display::processMessage(
   if (mode == PointCloudColorMode::kAxisColor && auto_axis) {
     axis_min = 9999.0f;
     axis_max = -9999.0f;
-    for (size_t i = 0; i < local_positions.size(); ++i) {
+    for (size_t i = 0; i < draw_positions.size(); ++i) {
       const QVector3D& src =
-          (use_fixed_frame ? draw_positions[i] : local_positions[i]);
+          (use_fixed_frame || !need_local) ? draw_positions[i]
+                                           : local_positions[i];
       const float v = AxisValue(src, axis);
       axis_min = std::min(axis_min, v);
       axis_max = std::max(axis_max, v);
@@ -283,7 +300,8 @@ void PointCloud2Display::processMessage(
         break;
       case PointCloudColorMode::kAxisColor: {
         const QVector3D& src =
-            (use_fixed_frame ? draw_positions[i] : local_positions[i]);
+            (use_fixed_frame || !need_local) ? draw_positions[i]
+                                             : local_positions[i];
         const float v = AxisValue(src, axis);
         // RViz AxisColor always uses rainbow (no Use rainbow toggle).
         color = colorFromScalar(v, axis_min, axis_max, true, false, Qt::black,
@@ -313,10 +331,28 @@ void PointCloud2Display::processMessage(
                                     return b.received_at < cutoff;
                                   }),
                    batches_.end());
+    // Decay must not exceed Max Points across retained batches.
+    size_t total = 0;
+    for (const auto& b : batches_) {
+      total += b.points.size();
+    }
+    while (total > max_points && !batches_.empty()) {
+      total -= batches_.front().points.size();
+      batches_.erase(batches_.begin());
+    }
   }
 
   if (context_->request_redraw) {
     context_->request_redraw();
+  }
+  } catch (const std::bad_alloc&) {
+    batches_.clear();
+    batches_.shrink_to_fit();
+    if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
+      context_->ogre_scene_host->removeDisplay(name());
+    }
+    setStatusWarn("Point cloud dropped (out of memory); raise Decimate / "
+                  "lower Max Points");
   }
 }
 
@@ -336,6 +372,7 @@ void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
   if (batches_.empty()) {
     return;
   }
+  try {
   const std::string style_name = propertyValue("style", "Flat Squares");
   const rendering::PointCloudStyle style =
       rendering::parsePointCloudStyle(style_name);
@@ -363,6 +400,14 @@ void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
       common::ParseBoolProperty(propertyValue("selectable", "true"), true);
   drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
                             colored, selectable);
+  } catch (const std::bad_alloc&) {
+    batches_.clear();
+    batches_.shrink_to_fit();
+    if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
+      context_->ogre_scene_host->removeDisplay(name());
+    }
+    setStatusWarn("Point cloud draw skipped (out of memory)");
+  }
 }
 
 }  // namespace display

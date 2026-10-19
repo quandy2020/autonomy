@@ -439,12 +439,15 @@ OgrePointCloud::RenderableInternals OgrePointCloud::addPointToHardwareBuffer(
 }
 
 void OgrePointCloud::addPoints(std::vector<Point>::iterator start,
-                               std::vector<Point>::iterator end) {
+                               std::vector<Point>::iterator end,
+                               bool keep_cpu_copy) {
   if (end - start <= 0) {
     return;
   }
   const auto num_points = static_cast<uint32_t>(std::distance(start, end));
-  points_.insert(points_.cend(), start, end);
+  if (keep_cpu_copy) {
+    points_.insert(points_.cend(), start, end);
+  }
 
   const uint32_t vertices_per_point = getVerticesPerPoint();
   RenderableInternals internals = createNewRenderable(num_points);
@@ -468,6 +471,16 @@ void OgrePointCloud::addPoints(std::vector<Point>::iterator start,
   if (getParentSceneNode()) {
     getParentSceneNode()->needUpdate();
   }
+}
+
+void OgrePointCloud::setPoints(std::vector<Point>&& points) {
+  clearAndRemoveAllPoints();
+  if (points.empty()) {
+    return;
+  }
+  // Upload from the caller's buffer, then take ownership (one CPU copy).
+  addPoints(points.begin(), points.end(), /*keep_cpu_copy=*/false);
+  points_ = std::move(points);
 }
 
 void OgrePointCloud::popPoints(uint32_t num_points) {

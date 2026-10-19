@@ -157,7 +157,7 @@ bool Publisher::HandleSensorAttach(const Config::Sensor& sensor, SensorType type
         case SensorType::kLidar2d:
             return OpenTypedWriter<SensorType::kLidar2d>(sensor);
         case SensorType::kLidar3d:
-            return OpenTypedWriter<SensorType::kLidar3d>(sensor);
+            return OpenLidar3dWriters(sensor);
         case SensorType::kRangeFinder:
             return OpenTypedWriter<SensorType::kRangeFinder>(sensor);
         case SensorType::kWheelOdometry:
@@ -320,6 +320,86 @@ bool Publisher::OpenCameraWriters(const Config::Sensor& sensor) {
                         info->mutable_header()->set_frame_id(data.frame_id);
                     }
                     writers.camera_info->Write(info);
+                }
+            }
+        };
+
+    WriteLock lock(lock_);
+    writers_[sensor.id] = std::move(fanout);
+    AINFO << "writer " << sensor.id << " -> " << joined;
+    return true;
+}
+
+bool Publisher::OpenLidar3dWriters(const Config::Sensor& sensor) {
+    using CloudTraits = SensorTraits<SensorType::kLidar3d>;
+    using CloudSample = typename CloudTraits::Sample;
+    using CloudMessage = typename CloudTraits::Message;
+    using ImuMessage = automsgs::msgs::sensor_msgs::Imu;
+
+    const std::vector<std::string> channels =
+        ResolvePublishChannels(sensor, SensorType::kLidar3d);
+    if (channels.empty()) {
+        AERROR << "no publish channel for " << sensor.id;
+        return false;
+    }
+
+    const bool send_imu =
+        hardware::ParseBool(sensor.params, "send_imu",
+                            hardware::ParseBool(sensor.params, "send_imu_ros",
+                                                false));
+    std::string imu_channel = hardware::GetString(
+        sensor.params, "imu_channel",
+        hardware::GetString(sensor.params, "ros_send_imu_topic", ""));
+    if (imu_channel.empty() && send_imu && !channels.empty()) {
+        imu_channel = LidarImuChannelForPoints(channels.front());
+    }
+    const bool open_imu = send_imu && !imu_channel.empty();
+
+    std::vector<std::shared_ptr<autolink::Writer<CloudMessage>>> cloud_writers;
+    cloud_writers.reserve(channels.size());
+    std::string joined;
+    for (const std::string& channel : channels) {
+        auto writer = node_->CreateWriter<CloudMessage>(WriterAttr(channel));
+        if (!writer) {
+            AERROR << "CreateWriter failed on " << channel;
+            return false;
+        }
+        cloud_writers.push_back(std::move(writer));
+        if (!joined.empty()) {
+            joined += ", ";
+        }
+        joined += channel;
+    }
+
+    std::shared_ptr<autolink::Writer<ImuMessage>> imu_writer;
+    if (open_imu) {
+        imu_writer = node_->CreateWriter<ImuMessage>(WriterAttr(imu_channel));
+        if (!imu_writer) {
+            AERROR << "CreateWriter failed on " << imu_channel;
+            return false;
+        }
+        joined += " + " + imu_channel;
+    }
+
+    WriteFn fanout =
+        [cloud_writers = std::move(cloud_writers),
+         imu_writer = std::move(imu_writer)](
+            const std::shared_ptr<SensorSample>& sample) {
+            if (!sample) {
+                return;
+            }
+            if (auto* cloud = dynamic_cast<CloudSample*>(sample.get())) {
+                const auto msg =
+                    std::shared_ptr<CloudMessage>(sample, &cloud->msg);
+                for (const auto& writer : cloud_writers) {
+                    writer->Write(msg);
+                }
+                return;
+            }
+            if (imu_writer != nullptr) {
+                if (auto* imu = dynamic_cast<ImuSample*>(sample.get())) {
+                    imu_writer->Write(
+                        std::shared_ptr<ImuMessage>(sample, &imu->msg));
                 }
             }
         };

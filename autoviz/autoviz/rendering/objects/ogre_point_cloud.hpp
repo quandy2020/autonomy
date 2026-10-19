@@ -115,9 +115,22 @@ class OgrePointCloud : public Ogre::MovableObject {
    * @brief Appends a range of points and updates GPU buffers.
    * @param start Inclusive iterator start.
    * @param end Exclusive iterator end.
+   * @param keep_cpu_copy When @c false, skip the CPU @c points_ mirror (saves
+   *        a full duplicate for dense lidar uploads that clear every frame).
    */
   void addPoints(std::vector<Point>::iterator start,
-                 std::vector<Point>::iterator end);
+                 std::vector<Point>::iterator end, bool keep_cpu_copy = true);
+
+  /**
+   * @brief Replaces all points via move, uploading GPU without a second CPU copy.
+   * @param points New point buffer (moved into @c points_ after upload).
+   */
+  void setPoints(std::vector<Point>&& points);
+
+  /**
+   * @brief Current @ref RenderMode (avoids redundant setRenderMode each frame).
+   */
+  RenderMode renderMode() const { return render_mode_; }
 
   /**
    * @brief Removes @p num_points from the front of the CPU buffer.

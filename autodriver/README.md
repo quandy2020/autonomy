@@ -116,7 +116,8 @@ autodriver --config-dir "$AUTODRIVER_PATH" --config-file examples/jt128_verify.y
 - 配置：[`config/lidar/hesai/jt128.yaml`](config/lidar/hesai/jt128.yaml) · 验证：[`config/examples/jt128_verify.yaml`](config/examples/jt128_verify.yaml)
 - 必配角度校正（`use_ptc_connected` 或 `correction_file_path`），否则点云扁平
 - 出厂常广播到 `255.255.255.255:2368` → `host_ip_address` 留空
-- autoviz：Topic `/lidar/jt128/points`，Fixed Frame **`hesai_jt128`**
+- 话题：点云 `/lidar/jt128/points`，IMU `/lidar/jt128/imu`（`send_imu: true`）
+- autoviz：Fixed Frame **`hesai_jt128`**
 - 详文：[docs · Hesai](docs/source/sensor/lidar/hesai.md)
 
 ## 目录

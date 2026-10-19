@@ -16,7 +16,7 @@
 
 /**
  * @file sdk_driver.cpp
- * @brief HesaiLidar_SDK_2.0 driver — ROS_2.0 param mapping + PointCloud2.
+ * @brief HesaiLidar_SDK_2.0 driver — ROS_2.0 param mapping + PointCloud2 / Imu.
  */
 
 #include "autodriver/lidar/hesai/sdk_driver.hpp"
@@ -26,6 +26,8 @@
 #include <cstdint>
 #include <cstring>
 #include <utility>
+
+#include <array>
 
 #include "autodriver/lidar/hesai/udp_driver.hpp"
 #include "autodriver/lidar/point_cloud2_layout.hpp"
@@ -105,6 +107,7 @@ using hesai::lidar::DATA_FROM_SERIAL;
 using hesai::lidar::DriverParam;
 using hesai::lidar::HesaiLidarSdk;
 using hesai::lidar::LidarDecodedFrame;
+using hesai::lidar::LidarImuData;
 using hesai::lidar::LidarPointXYZIRT;
 using hesai::lidar::PtcMode;
 using hesai::lidar::SourceType;
@@ -184,6 +187,17 @@ DriverParam BuildDriverParam(const DriverParams& params,
         static_cast<uint16_t>(ParseInt(params, "device_fault_port", 0));
     param.input_param.frame_id = frame_id;
     param.input_param.send_point_cloud_ros = true;
+    param.input_param.send_imu_ros =
+        ParseBool(params, "send_imu",
+                  ParseBool(params, "send_imu_ros", false));
+    {
+        const std::string imu_topic = GetString(
+            params, "imu_channel",
+            GetString(params, "ros_send_imu_topic", ""));
+        if (!imu_topic.empty()) {
+            param.input_param.ros_send_imu_topic = imu_topic;
+        }
+    }
 
     param.decoder_param.frame_start_azimuth = static_cast<float>(
         ParseDouble(params, "frame_start_azimuth", 0.0));
@@ -295,6 +309,56 @@ automsgs::msgs::sensor_msgs::PointCloud2 ConvertSdkFrameToPointCloud(
     return cloud;
 }
 
+autolink::Time ImuTimestampToTime(double stamp) {
+    if (stamp <= 0.0) {
+        return autolink::Time::Now();
+    }
+    if (stamp > 1.0e12) {
+        return autolink::Time(static_cast<std::uint64_t>(stamp));
+    }
+    return autolink::Time(
+        static_cast<std::uint64_t>(std::llround(stamp * 1.0e9)));
+}
+
+automsgs::msgs::sensor_msgs::Imu ConvertSdkImu(
+    const LidarImuData& imu, const std::string& frame_id) {
+    const std::array<double, 3> gyro = {imu.imu_ang_vel_x, imu.imu_ang_vel_y,
+                                        imu.imu_ang_vel_z};
+    const std::array<double, 3> accel = {imu.imu_accel_x, imu.imu_accel_y,
+                                         imu.imu_accel_z};
+    auto msg = ImuMsg(gyro, accel, frame_id);
+    const autolink::Time t = ImuTimestampToTime(imu.timestamp);
+    *msg.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeFromNanoseconds(
+            t.ToNanosecond());
+    msg.mutable_header()->set_frame_id(frame_id);
+    return msg;
+}
+
+std::string DeriveImuChannelFromPoints(const std::string& points_channel) {
+    if (points_channel.empty()) {
+        return {};
+    }
+    constexpr const char* kPoints = "/points";
+    const std::size_t n = std::char_traits<char>::length(kPoints);
+    if (points_channel.size() >= n &&
+        points_channel.compare(points_channel.size() - n, n, kPoints) == 0) {
+        return points_channel.substr(0, points_channel.size() - n) + "/imu";
+    }
+    return points_channel + "/imu";
+}
+
+std::string ResolveImuChannel(const DriverParams& params,
+                              const std::string& cloud_channel) {
+    const std::string explicit_ch = GetString(
+        params, "imu_channel",
+        GetString(params, "ros_send_imu_topic", ""));
+    if (!explicit_ch.empty()) {
+        return explicit_ch;
+    }
+    return DeriveImuChannelFromPoints(cloud_channel);
+}
+
 #endif  // AUTODRIVER_HAVE_HESAI_SDK
 
 }  // namespace
@@ -330,6 +394,23 @@ HesaiSdkDriver::HesaiSdkDriver(SensorId id, DriverParams params)
                           GetString(params_, "ros_frame_id", id_));
     model_ = GetString(params_, "model", "hesai");
     cloud_channel_ = GetString(params_, "channel", "");
+    publish_imu_ = ParseBool(params_, "send_imu",
+                             ParseBool(params_, "send_imu_ros", false));
+#ifdef AUTODRIVER_HAVE_HESAI_SDK
+    imu_channel_ = ResolveImuChannel(params_, cloud_channel_);
+#else
+    imu_channel_ = GetString(
+        params_, "imu_channel",
+        GetString(params_, "ros_send_imu_topic", ""));
+#endif
+    imu_frame_id_ = GetString(params_, "imu_frame_id", frame_id_);
+    if (publish_imu_ && imu_channel_.empty() && !cloud_channel_.empty()) {
+#ifdef AUTODRIVER_HAVE_HESAI_SDK
+        imu_channel_ = DeriveImuChannelFromPoints(cloud_channel_);
+#else
+        imu_channel_ = cloud_channel_ + "/imu";
+#endif
+    }
 
     lidar::LidarBaseOptions options;
     options.source = lidar::SourceType::kOnline;
@@ -349,6 +430,11 @@ bool HesaiSdkDriver::InitSdk() {
         [this](const LidarDecodedFrame<LidarPointXYZIRT>& frame) {
             OnPointCloudFrame(&frame);
         });
+    if (publish_imu_) {
+        sdk->RegRecvCallback([this](const LidarImuData& imu) {
+            OnImuData(&imu);
+        });
+    }
     if (!sdk->Init(param)) {
         AERROR << "Hesai SDK Init failed id=" << id_
                << " device_ip=" << param.input_param.device_ip_address
@@ -360,7 +446,9 @@ bool HesaiSdkDriver::InitSdk() {
     sdk_owned_ = true;
     AINFO << "Hesai SDK started id=" << id_ << " model=" << model_
           << " frame_id=" << frame_id_
-          << " source_type=" << ParseHesaiSdkSourceType(params_);
+          << " source_type=" << ParseHesaiSdkSourceType(params_)
+          << " send_imu=" << (publish_imu_ ? "true" : "false")
+          << (publish_imu_ ? (" imu_channel=" + imu_channel_) : "");
     return true;
 #else
     AERROR << "Hesai SDK not available; install via "
@@ -420,14 +508,36 @@ void HesaiSdkDriver::OnPointCloudFrame(const void* frame) {
 #endif
 }
 
+void HesaiSdkDriver::OnImuData(const void* imu) {
+#ifdef AUTODRIVER_HAVE_HESAI_SDK
+    if (!running_.load() || !publish_imu_ || imu == nullptr) {
+        return;
+    }
+    const auto* data = static_cast<const LidarImuData*>(imu);
+    if (!data->flag) {
+        return;
+    }
+    auto sample = std::make_shared<ImuSample>(
+        id_, ImuTimestampToTime(data->timestamp),
+        ConvertSdkImu(*data, imu_frame_id_));
+    EmitSample(std::move(sample));
+#else
+    (void)imu;
+#endif
+}
+
 void HesaiSdkDriver::WritePointCloud(std::shared_ptr<SensorSample> cloud) {
+    EmitSample(std::move(cloud));
+}
+
+void HesaiSdkDriver::EmitSample(std::shared_ptr<SensorSample> sample) {
     SampleCallback cb;
     {
         std::lock_guard<std::mutex> lock(callback_mu_);
         cb = callback_;
     }
-    if (cb && cloud) {
-        cb(cloud->Clone());
+    if (cb && sample) {
+        cb(sample->Clone());
     }
 }
 

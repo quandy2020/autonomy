@@ -10,6 +10,7 @@ Backend: `hesai`（alias `pandar`）。
 | **SDK** | `use_sdk: true` / `parser: sdk` / 非 XT32（如 **JT128**） | [HesaiLidar_SDK_2.0](https://github.com/HesaiTechnology/HesaiLidar_SDK_2.0) |
 
 点云输出统一为 `PointCloud2`（`point_step=24`，x/y/z/intensity/timestamp）。
+SDK 路径还可发布板载 `sensor_msgs/Imu`（`send_imu: true`，JT128 默认开启）。
 
 完整使用说明（JT128 网络 / 校正 / autoviz）：[`docs/source/sensor/lidar/hesai.md`](../../../docs/source/sensor/lidar/hesai.md)。
 
@@ -29,7 +30,7 @@ Pipeline：UDP → `PacketQueue` → 方位角切帧 → Convert → optional co
 
 | 文件 | 职责 |
 |---|---|
-| `sdk_driver.*` | `HesaiLidarSdk` 回调 → XYZIT PointCloud2 |
+| `sdk_driver.*` | `HesaiLidarSdk` 回调 → XYZIT PointCloud2 + 可选 Imu |
 
 ```bash
 ./scripts/install_hesai_lidar_sdk.sh

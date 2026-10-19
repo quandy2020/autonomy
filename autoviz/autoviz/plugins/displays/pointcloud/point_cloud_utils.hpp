@@ -162,13 +162,16 @@ enum class PointCloudColorMode {
  * @param decimation Keep every N-th point (@c 1 = all).
  * @param intensity_channel Field name for Intensity transformer; falls back
  *        to @c "intensities" when @p intensity_channel is @c "intensity".
+ * @param max_points Hard cap on decoded points (@c 0 = no extra cap). When the
+ *        cloud would exceed this after @p decimation, step is raised so the
+ *        result stays within the limit (avoids JT128-class OOM).
  * @return Parsed arrays (may be empty on failure / empty cloud).
  */
 ParsedPointCloud parsePointCloud2(
     const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
     uint32_t decimation = 1,
-    const std::string& intensity_channel = "intensity");
-
+    const std::string& intensity_channel = "intensity",
+    uint32_t max_points = 0);
 /**
  * @brief Parses a Color Transformer property string into @ref PointCloudColorMode.
  *

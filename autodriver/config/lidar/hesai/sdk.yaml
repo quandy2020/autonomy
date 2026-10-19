@@ -8,6 +8,11 @@ use_sdk: true
 model: OT128
 frame_id: hesai_lidar
 
+# Optional embedded IMU (JT128 / some OT models). ROS2 aliases: send_imu_ros.
+send_imu: false
+# imu_channel: /lidar/hesai/imu
+# imu_frame_id: hesai_lidar
+
 # ROS2 source_type: 1=lidar UDP, 2=pcap, 3=rosbag packets, 4=serial
 # (autodriver LidarBase source_type stays online; use hesai_source_type if needed)
 hesai_source_type: 1

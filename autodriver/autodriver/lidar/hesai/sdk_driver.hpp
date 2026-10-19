@@ -20,7 +20,8 @@
  *
  * Optional path behind AUTODRIVER_HAVE_HESAI_SDK. Params align with the flat
  * keys used by HesaiLidar_ROS_2.0 `config.yaml` (device_ip_address, udp_port,
- * correction_file_path, …). Emits autodriver XYZIT PointCloud2 (point_step=24).
+ * correction_file_path, …). Emits autodriver XYZIT PointCloud2 (point_step=24)
+ * and, when `send_imu` is enabled, `sensor_msgs/Imu` from LidarImuData (JT128).
  */
 
 #ifndef AUTODRIVER_LIDAR_HESAI_SDK_DRIVER_HPP_
@@ -95,6 +96,12 @@ public:
      */
     void OnPointCloudFrame(const void* frame);
 
+    /**
+     * @brief SDK IMU callback (public for std::bind / lambdas).
+     * @param[in] imu LidarImuData from HesaiLidarSdk (SDK-owned).
+     */
+    void OnImuData(const void* imu);
+
 protected:
     bool InitConverter() override { return true; }
     bool InitPacket() override { return true; }
@@ -105,6 +112,7 @@ protected:
 private:
     bool InitSdk();
     void UninitSdk();
+    void EmitSample(std::shared_ptr<SensorSample> sample);
 
     SensorId id_;
     DriverParams params_;
@@ -116,6 +124,9 @@ private:
     std::string frame_id_;
     std::string model_;
     std::string cloud_channel_;
+    std::string imu_channel_;
+    std::string imu_frame_id_;
+    bool publish_imu_ = false;
 
     // Opaque holder so headers stay free of hesai/* when SDK is absent.
     struct SdkState;

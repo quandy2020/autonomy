@@ -150,15 +150,31 @@ private:
     /**
      * @brief Stamp and forward a captured sample to the upstream hook.
      * @param[out] sample Unique pointer to the captured sample; ignored when null or wrong type.
+     *
+     * Primary modality must match @p kType. Lidar3d drivers may also emit
+     * embedded @c kImu samples (e.g. Hesai JT128); those are forwarded without
+     * reinterpreting as @c Sample (device stamp already set by the driver).
      */
     void EmitCapturedSample(std::unique_ptr<SensorSample> sample) {
-        if (sample == nullptr || sample->type() != kType) {
+        if (sample == nullptr) {
             return;
         }
-        std::shared_ptr<SensorSample> owned(std::move(sample));
-        static_cast<Sample&>(*owned).StampInPlace();
-        if (hook_) {
-            hook_(std::move(owned));
+        if (sample->type() == kType) {
+            std::shared_ptr<SensorSample> owned(std::move(sample));
+            static_cast<Sample&>(*owned).StampInPlace();
+            if (hook_) {
+                hook_(std::move(owned));
+            }
+            return;
+        }
+        if constexpr (kType == SensorType::kLidar3d) {
+            if (sample->type() == SensorType::kImu) {
+                std::shared_ptr<SensorSample> owned(std::move(sample));
+                if (hook_) {
+                    hook_(std::move(owned));
+                }
+                return;
+            }
         }
     }
 

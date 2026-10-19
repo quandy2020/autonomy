@@ -35,6 +35,9 @@ sensors:
         use_ptc_connected: true
         ptc_connect_timeout: 5
         recv_point_cloud_timeout: 15
+        # Embedded IMU (UDP v1.4); publishes /lidar/jt128/imu when send_imu is true.
+        send_imu: true
+        imu_channel: /lidar/jt128/imu
         # Fallback if PTC correction fails (sample table shipped with SDK):
         correction_file_path: "/usr/local/opt/hesai_lidar_sdk/correction/angle_correction/JT128_Angle Correction File.csv"
         firetimes_path: "/usr/local/opt/hesai_lidar_sdk/correction/firetime_correction/JT128_Firetime Correction File.csv"

@@ -174,7 +174,7 @@ PointCloudColorMode parsePointCloudColorMode(const std::string& value) {
 
 ParsedPointCloud parsePointCloud2(
     const automsgs::msgs::sensor_msgs::PointCloud2& cloud, uint32_t decimation,
-    const std::string& intensity_channel) {
+    const std::string& intensity_channel, uint32_t max_points) {
   ParsedPointCloud parsed;
   const uint32_t width = cloud.width();
   const uint32_t height = std::max(1u, cloud.height());
@@ -183,6 +183,14 @@ ParsedPointCloud parsePointCloud2(
       cloud.row_step() > 0 ? cloud.row_step() : width * point_step;
 
   if (width == 0 || point_step == 0 || cloud.data().empty()) {
+    return parsed;
+  }
+
+  // Reject absurd dimensions that would overflow / OOM on reserve().
+  constexpr uint64_t kHardMaxRawPoints = 50ull * 1000ull * 1000ull;
+  const uint64_t count64 =
+      static_cast<uint64_t>(width) * static_cast<uint64_t>(height);
+  if (count64 == 0 || count64 > kHardMaxRawPoints) {
     return parsed;
   }
 
@@ -211,14 +219,31 @@ ParsedPointCloud parsePointCloud2(
   const auto* blob = reinterpret_cast<const uint8_t*>(blob_str.data());
   const size_t blob_size = blob_str.size();
 
-  const uint32_t count = width * height;
-  const uint32_t step = std::max(1u, decimation);
+  const uint32_t count = static_cast<uint32_t>(count64);
+  uint32_t step = std::max(1u, decimation);
+  if (max_points > 0) {
+    const uint64_t expected =
+        (static_cast<uint64_t>(count) + step - 1) / step;
+    if (expected > max_points) {
+      const uint64_t needed =
+          (static_cast<uint64_t>(count) + max_points - 1) / max_points;
+      step = static_cast<uint32_t>(std::max<uint64_t>(step, needed));
+    }
+  }
 
-  parsed.xs.reserve(count / step + 1);
-  parsed.ys.reserve(count / step + 1);
-  parsed.zs.reserve(count / step + 1);
+  const size_t reserve_n =
+      max_points > 0
+          ? static_cast<size_t>(
+                std::min<uint64_t>(max_points, (count + step - 1) / step))
+          : static_cast<size_t>((count + step - 1) / step);
+  parsed.xs.reserve(reserve_n);
+  parsed.ys.reserve(reserve_n);
+  parsed.zs.reserve(reserve_n);
 
   for (uint32_t i = 0; i < count; i += step) {
+    if (max_points > 0 && parsed.xs.size() >= max_points) {
+      break;
+    }
     const uint32_t row = i / width;
     const uint32_t col = i % width;
     const size_t base = static_cast<size_t>(row) * row_step +

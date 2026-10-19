@@ -147,6 +147,13 @@ private:
     bool OpenCameraWriters(const Config::Sensor& sensor);
 
     /**
+     * @brief Opens PointCloud2 writers and optional lidar-embedded IMU writer.
+     * @param[in] sensor Lidar3d sensor configuration from YAML.
+     * @return true when writers were opened successfully; false otherwise.
+     */
+    bool OpenLidar3dWriters(const Config::Sensor& sensor);
+
+    /**
      * @brief Starts the background publish worker if not already running.
      */
     void EnsurePublishThread();

@@ -405,6 +405,7 @@ lidar_2d:
 | `params.use_ptc_connected` / `correction_file_path` / `firetimes_path` | Hesai 角度校正（JT128 必配，否则点云扁平） |
 | `params.hesai_source_type` | SDK：`1` 在线 UDP，`2` pcap，`4` 串口(JT16)，`5` TCP |
 | `params.socket_buffer_size` | Hesai SDK 收包缓冲（JT128 建议大值） |
+| `params.send_imu` / `imu_channel` | Hesai 板载 IMU（JT128）；见 [Hesai](../sensor/lidar/hesai.md) |
 | `params.enable_compensator` | 运动补偿；配合进程级 `compensator.pose_channel` |
 | `params.pose_channel` | 覆盖进程级 compensator |
 | `params.extrinsic_path` | 有则 `world_T_lidar = odom × base_T_lidar` |

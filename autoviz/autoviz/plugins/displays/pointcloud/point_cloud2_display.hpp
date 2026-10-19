@@ -14,7 +14,7 @@
  *
  * Mirrors @c rviz_default_plugins PointCloudCommon + transformers:
  * selectable, style, size (m / pixels), alpha, decay time, position /
- * color transformers, channel, min/max, rainbow options.
+ * color transformers, channel, min/max, rainbow options, max points.
  *
  * @see PointCloud2Display
  * @see point_cloud_utils.hpp

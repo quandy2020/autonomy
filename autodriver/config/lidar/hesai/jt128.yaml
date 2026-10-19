@@ -9,6 +9,12 @@ use_sdk: true
 model: JT128
 frame_id: hesai_jt128
 
+# Embedded IMU in UDP v1.4 (ROS2: send_imu_ros / ros_send_imu_topic).
+# imu_channel defaults to <points_channel>/imu when omitted (e.g. …/points → …/imu).
+send_imu: true
+# imu_channel: /lidar/jt128/imu
+# imu_frame_id: hesai_jt128   # default = frame_id
+
 # 1=online UDP (default), 2=pcap, 3=rosbag packets, 5=lidar TCP
 hesai_source_type: 1
 

@@ -60,6 +60,30 @@ inline std::string CameraInfoChannelForImage(const std::string& image_channel) {
   return image_channel + "/camera_info";
 }
 
+/**
+ * @brief Derive a lidar IMU channel from a PointCloud2 topic name.
+ *
+ * Examples:
+ * - /lidar/jt128/points → /lidar/jt128/imu
+ * - /lidar/hesai        → /lidar/hesai/imu
+ *
+ * @param[in] points_channel Point cloud topic or channel name.
+ * @return Matching IMU channel name, or empty when @p points_channel is empty.
+ */
+inline std::string LidarImuChannelForPoints(const std::string& points_channel) {
+  if (points_channel.empty()) {
+    return {};
+  }
+  constexpr std::string_view kPoints = "/points";
+  if (points_channel.size() >= kPoints.size() &&
+      points_channel.compare(points_channel.size() - kPoints.size(),
+                             kPoints.size(), kPoints) == 0) {
+    return points_channel.substr(0, points_channel.size() - kPoints.size()) +
+           "/imu";
+  }
+  return points_channel + "/imu";
+}
+
 }  // namespace bridge
 }  // namespace autodriver
 
