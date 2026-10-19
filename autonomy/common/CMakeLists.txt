@@ -34,13 +34,20 @@ autocmake_find(gRPC PRIVATE QUIET CONFIG)
 if(NOT gRPC_FOUND)
   autocmake_find(gRPC PRIVATE QUIET)
 endif()
-# network/detail/preprocess needs OpenCV (prefer 4 for ROS Humble / cv_bridge ABI).
+# network/detail/preprocess needs OpenCV.
+# Prefer /usr/local OpenCV 5 when present: FBow is typically built against it, and
+# mixing system OpenCV 4 DNN (protobuf 3.12) with autonomy's protobuf 3.19 fatal-
+# aborts at load ("Version verification failed in .../modules/dnn/versions.pb.cc").
 if(NOT OpenCV_FOUND)
+  set(_autonomy_opencv5_dir /usr/local/lib/cmake/opencv5)
   set(_autonomy_opencv4_dir /usr/lib/x86_64-linux-gnu/cmake/opencv4)
-  if(EXISTS "${_autonomy_opencv4_dir}/OpenCVConfig.cmake")
+  if(EXISTS "${_autonomy_opencv5_dir}/OpenCVConfig.cmake")
+    set(OpenCV_DIR "${_autonomy_opencv5_dir}" CACHE PATH "OpenCV config dir" FORCE)
+    find_package(OpenCV QUIET)
+  elseif(EXISTS "${_autonomy_opencv4_dir}/OpenCVConfig.cmake")
     set(OpenCV_DIR "${_autonomy_opencv4_dir}" CACHE PATH "OpenCV config dir" FORCE)
+    find_package(OpenCV 4 QUIET)
   endif()
-  find_package(OpenCV 4 QUIET)
 endif()
 if(NOT OpenCV_FOUND)
   autocmake_find(OpenCV REQUIRED PRIVATE)
@@ -51,6 +58,7 @@ if(NOT TARGET autonomy_opencv)
     $<BUILD_INTERFACE:${OpenCV_INCLUDE_DIRS}>)
   target_link_libraries(autonomy_opencv INTERFACE ${OpenCV_LIBS})
 endif()
+message(STATUS "autonomy_common: OpenCV ${OpenCV_VERSION} (OpenCV_DIR=${OpenCV_DIR})")
 
 # --- sources -----------------------------------------------------------------
 file(GLOB_RECURSE AUTONOMY_COMMON_SRCS CONFIGURE_DEPENDS

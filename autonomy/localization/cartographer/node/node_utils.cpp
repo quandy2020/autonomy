@@ -77,6 +77,19 @@ std::string ResolveWorkspacePath(const std::string& path) {
     if (path.rfind("conf/", 0) == 0) {
         candidates.emplace_back(fs::path("autonomy/localization") / relative);
     }
+    // Dev tree: conf/argus → localization/argus/config (install uses conf/argus).
+    {
+        const std::string marker = "localization/conf/argus/";
+        const auto pos = path.find(marker);
+        if (pos != std::string::npos) {
+            candidates.emplace_back(
+                path.substr(0, pos) + "localization/argus/config/" +
+                path.substr(pos + marker.size()));
+        } else if (path.rfind("conf/argus/", 0) == 0) {
+            candidates.emplace_back("autonomy/localization/argus/config/" +
+                                    path.substr(std::string("conf/argus/").size()));
+        }
+    }
 
     auto try_exists = [](const fs::path& p) -> std::string {
         if (fs::exists(p)) {
@@ -85,10 +98,66 @@ std::string ResolveWorkspacePath(const std::string& path) {
         return {};
     };
 
+    auto split_env_paths = [](const char* value) {
+        std::vector<fs::path> out;
+        if (value == nullptr || value[0] == '\0') {
+            return out;
+        }
+        std::string blob(value);
+        std::size_t start = 0;
+        while (start <= blob.size()) {
+            const std::size_t end = blob.find(':', start);
+            const std::string piece =
+                blob.substr(start, end == std::string::npos ? std::string::npos
+                                                           : end - start);
+            if (!piece.empty()) {
+                out.emplace_back(piece);
+            }
+            if (end == std::string::npos) {
+                break;
+            }
+            start = end + 1;
+        }
+        return out;
+    };
+
+    // install/<pkg>/share/<path> (colcon / CMAKE_PREFIX_PATH).
+    std::vector<fs::path> share_roots;
+    for (const fs::path& prefix : split_env_paths(std::getenv("CMAKE_PREFIX_PATH"))) {
+        share_roots.push_back(prefix / "share");
+    }
+    for (const fs::path& prefix : split_env_paths(std::getenv("COLCON_PREFIX_PATH"))) {
+        share_roots.push_back(prefix / "autonomy" / "share");
+        share_roots.push_back(prefix / "share");
+    }
+    if (const char* ws = std::getenv("AUTONOMY_WS")) {
+        share_roots.push_back(fs::path(ws) / "install" / "autonomy" / "share");
+    }
+    if (const char* dev_dir = std::getenv("AUTONOMY_DEV_DIR")) {
+        share_roots.push_back(fs::path(dev_dir) / "install" / "autonomy" / "share");
+        // Source tree during development (argus lives under autonomy/localization/argus/).
+        share_roots.push_back(fs::path(dev_dir) / "src" / "autonomy");
+    }
+
+    auto search = [&](const std::vector<fs::path>& roots) -> std::string {
+        for (const fs::path& root : roots) {
+            for (const auto& cand : candidates) {
+                if (auto hit = try_exists(root / cand); !hit.empty()) {
+                    return hit;
+                }
+            }
+        }
+        return {};
+    };
+
     for (const auto& cand : candidates) {
         if (auto hit = try_exists(cand); !hit.empty()) {
             return hit;
         }
+    }
+
+    if (auto hit = search(share_roots); !hit.empty()) {
+        return hit;
     }
 
     if (const char* dev_dir = std::getenv("AUTONOMY_DEV_DIR")) {

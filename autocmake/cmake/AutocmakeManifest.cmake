@@ -252,7 +252,12 @@ macro(autocmake_dependencies)
     endif()
   endforeach()
   foreach(_autocmake_pkg IN LISTS ${PROJECT_NAME}_BUILDTOOL_DEPENDS ${PROJECT_NAME}_BUILD_DEPENDS)
-    if(_autocmake_pkg STREQUAL "autocmake")
+    # Skip alternate / meta buildtools. This tree configures via autocmake;
+    # package.xml may still declare ament_* for colcon dual-export.
+    if(_autocmake_pkg STREQUAL "autocmake"
+        OR _autocmake_pkg STREQUAL "ament_cmake"
+        OR _autocmake_pkg STREQUAL "ament_cmake_auto"
+        OR _autocmake_pkg STREQUAL "catkin")
     elseif(_autocmake_pkg IN_LIST ${PROJECT_NAME}_EXPORT_DEPENDS)
       _autocmake_find_declared("${_autocmake_pkg}" FALSE)
     else()

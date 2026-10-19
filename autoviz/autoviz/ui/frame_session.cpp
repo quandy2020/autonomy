@@ -1099,6 +1099,8 @@ void FrameSession::onAboutToQuit() {
   // windows still exist. Do NOT manager_->shutdown() here (Autolink/docks).
   render_timer_.stop();
   refresh_timer_.stop();
+  // Unparent GLX surfaces before any later hideChildren / dock walk.
+  safeguardNativeViewportsBeforeHide();
 
   // ~VisualizationFrame destroys FrameViewport/FrameLayout members BEFORE the
   // QWidget child walk. Dock destroyed/visibilityChanged lambdas capture those
@@ -1393,7 +1395,51 @@ void FrameSession::syncOffscreenPause() {
   setRenderingPaused(false);
 }
 
+void FrameSession::safeguardNativeViewportsBeforeHide() {
+  if (quit_teardown_done_ || frame_ == nullptr || frame_->viewport_ == nullptr) {
+    return;
+  }
+  frame_->viewport_->forEachViewportPanel([](ViewportPanelEntry& entry) {
+    if (entry.widget == nullptr || entry.detached_for_window_hide) {
+      return;
+    }
+    if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->hideNativeSurface();
+    }
+    if (entry.layout != nullptr) {
+      entry.layout->removeWidget(entry.widget);
+    }
+    // Out of the QWidget tree — hideChildren will not visit this surface.
+    entry.widget->setParent(nullptr);
+    entry.widget->hide();
+    entry.detached_for_window_hide = true;
+  });
+}
+
+void FrameSession::restoreNativeViewportsAfterShow() {
+  if (quit_teardown_done_ || frame_ == nullptr || frame_->viewport_ == nullptr) {
+    return;
+  }
+  frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    if (!entry.detached_for_window_hide || entry.widget == nullptr) {
+      return;
+    }
+    entry.detached_for_window_hide = false;
+    frame_->viewport_->reinstallRenderWindowInEntry(entry);
+  });
+}
+
 void FrameSession::changeEvent(QEvent* event) {
+  if (event != nullptr && event->type() == QEvent::WindowStateChange) {
+    // Belt-and-suspenders: some WMs change state before hide() is visible on
+    // the call stack; detach as soon as we learn we are minimized.
+    if (frame_ != nullptr && frame_->isMinimized()) {
+      safeguardNativeViewportsBeforeHide();
+    } else if (frame_ != nullptr && !frame_->isMinimized() &&
+               frame_->isVisible()) {
+      restoreNativeViewportsAfterShow();
+    }
+  }
   if (event != nullptr && (event->type() == QEvent::WindowStateChange ||
                            event->type() == QEvent::Hide ||
                            event->type() == QEvent::Show)) {

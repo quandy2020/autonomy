@@ -28,6 +28,8 @@
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+
 #include "argus/common/macros.hpp"
 #include "argus/map/occupancy_grid_map_options.hpp"
 #include "argus/map/occupancy_grid_subgrid.hpp"
@@ -120,6 +122,12 @@ public:
      * @brief Render BGR image: black=occ, white=free, gray=unknown (y-flipped).
      */
     cv::Mat ToCv() const;
+
+    /**
+     * @brief Export as automsgs OccupancyGrid (row-major, y-up, unknown=-1).
+     * @return Empty message when the map has no tiles.
+     */
+    ::automsgs::msgs::map_msgs::OccupancyGrid ToOccupancyGrid() const;
 
     /** @return True if no tiles allocated. */
     bool empty() const {

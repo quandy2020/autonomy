@@ -422,6 +422,19 @@ class FrameSession {
   void onAboutToQuit();
 
   /**
+   * @brief Unparent @c WA_PaintOnScreen viewports before the frame hides.
+   *
+   * Called from @ref VisualizationFrame::hide so @c hideChildren cannot walk
+   * deleted / GLX-backed children (minimize and WM hide paths).
+   */
+  void safeguardNativeViewportsBeforeHide();
+
+  /**
+   * @brief Reinstall viewports detached by @ref safeguardNativeViewportsBeforeHide.
+   */
+  void restoreNativeViewportsAfterShow();
+
+  /**
    * @brief Fixed-frame change from Displays / settings (may be a no-op body).
    * @param frame New fixed TF frame name.
    */

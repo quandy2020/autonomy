@@ -78,6 +78,12 @@ struct ViewportPanelEntry {
   std::string local_tool_id = "Interact";
 
   /**
+   * @c true after @ref FrameSession::safeguardNativeViewportsBeforeHide —
+   * GL widget is unparented so @c hideChildren cannot walk @c WA_PaintOnScreen.
+   */
+  bool detached_for_window_hide = false;
+
+  /**
    * Snapshot taken when entering 2D via floating toolbar; restored on 3D.
    */
   std::optional<rendering::ViewState> saved_3d_view_state;

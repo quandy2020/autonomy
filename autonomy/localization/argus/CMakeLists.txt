@@ -17,6 +17,12 @@
 
 cmake_minimum_required(VERSION 3.16)
 
+# Detect embedding under autonomy/localization (add_subdirectory) vs standalone.
+set(ARGUS_IS_EMBEDDED FALSE)
+if(NOT CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
+  set(ARGUS_IS_EMBEDDED TRUE)
+endif()
+
 project(argus VERSION 0.1.0 LANGUAGES CXX)
 
 if(TARGET Argus::argus OR TARGET argus)
@@ -26,7 +32,13 @@ endif()
 set(ARGUS_VERSION ${PROJECT_VERSION})
 set(ARGUS_SOVERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR})
 
-option(ARGUS_BUILD_INSTALL "Generate install / export rules" ON)
+# When embedded, parent localization/CMakeLists may pre-set cache defaults
+# (install OFF, apps follow BUILD_TOOLS). Standalone keeps historical defaults.
+if(ARGUS_IS_EMBEDDED)
+  option(ARGUS_BUILD_INSTALL "Generate install / export rules" OFF)
+else()
+  option(ARGUS_BUILD_INSTALL "Generate install / export rules" ON)
+endif()
 option(ARGUS_BUILD_SHARED "Build shared libraries" ON)
 option(ARGUS_BUILD_TESTS "Build Argus unit tests" OFF)
 option(ARGUS_BUILD_APPS "Build offline_livo / livo_esikf_node / eval_pose_traj" ON)
@@ -36,17 +48,36 @@ option(ARGUS_USE_ONNXRUNTIME
 include("${PROJECT_SOURCE_DIR}/cmake/functions.cmake")
 argus_initialize_project()
 
-find_package(Eigen3 REQUIRED)
-find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
-find_package(Threads REQUIRED)
-find_package(glog REQUIRED)
-find_package(automsgs REQUIRED)
-find_package(OpenMP)
-find_package(OnnxRuntime QUIET)
-
-if(TARGET glog AND NOT TARGET glog::glog)
-  add_library(glog::glog ALIAS glog)
+# Prefer already-created targets from the autonomy umbrella (embedded build).
+if(NOT TARGET Eigen3::Eigen)
+  find_package(Eigen3 REQUIRED)
 endif()
+if(NOT OpenCV_FOUND)
+  find_package(OpenCV REQUIRED COMPONENTS core imgproc imgcodecs)
+endif()
+find_package(Threads REQUIRED)
+if(NOT TARGET glog::glog)
+  if(TARGET glog)
+    add_library(glog::glog ALIAS glog)
+  else()
+    find_package(glog REQUIRED)
+    if(TARGET glog AND NOT TARGET glog::glog)
+      add_library(glog::glog ALIAS glog)
+    endif()
+  endif()
+endif()
+if(NOT TARGET automsgs::automsgs)
+  if(TARGET automsgs)
+    add_library(automsgs::automsgs ALIAS automsgs)
+  else()
+    find_package(automsgs REQUIRED)
+  endif()
+endif()
+find_package(OpenMP)
+if(NOT OnnxRuntime_FOUND)
+  find_package(OnnxRuntime QUIET)
+endif()
+
 if(NOT TARGET automsgs::automsgs)
   message(FATAL_ERROR "automsgs found but target automsgs::automsgs missing")
 endif()
@@ -61,7 +92,8 @@ endif()
 
 message(STATUS
   "Argus deps: Eigen3 OpenCV/${OpenCV_VERSION} glog automsgs "
-  "OpenMP=${OpenMP_CXX_FOUND} OnnxRuntime=${OnnxRuntime_FOUND}")
+  "OpenMP=${OpenMP_CXX_FOUND} OnnxRuntime=${OnnxRuntime_FOUND} "
+  "embedded=${ARGUS_IS_EMBEDDED}")
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS
   "${PROJECT_SOURCE_DIR}/argus/*.hpp"

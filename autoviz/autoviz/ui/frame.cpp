@@ -577,6 +577,11 @@ void VisualizationFrame::markConfigModified() {
 }
 
 void VisualizationFrame::changeEvent(QEvent* event) {
+  if (event != nullptr && event->type() == QEvent::WindowStateChange &&
+      session_ != nullptr && isMinimized()) {
+    // Some WMs apply minimized state before hide(); detach GLX first.
+    session_->safeguardNativeViewportsBeforeHide();
+  }
   QMainWindow::changeEvent(event);
   session_->changeEvent(event);
 }
@@ -631,6 +636,18 @@ void VisualizationFrame::closeEvent(QCloseEvent* event) {
     qApp->setQuitOnLastWindowClosed(false);
     // Exit after close_helper returns (still no hideChildren — event ignored).
     QTimer::singleShot(0, qApp, []() { QCoreApplication::exit(0); });
+  }
+}
+
+void VisualizationFrame::setVisible(bool visible) {
+  // hide()/show() are non-virtual wrappers around setVisible. Detach GLX
+  // before the hideChildren walk; reattach after becoming visible again.
+  if (!visible && session_ != nullptr) {
+    session_->safeguardNativeViewportsBeforeHide();
+  }
+  QMainWindow::setVisible(visible);
+  if (visible && session_ != nullptr) {
+    session_->restoreNativeViewportsAfterShow();
   }
 }
 

@@ -29,6 +29,7 @@ namespace localization {
 enum class LocalizationBackend {
     kCartographer = 0,
     kAtlas = 2,
+    kArgus = 3,
 };
 
 /**
@@ -51,6 +52,12 @@ struct LocalizationOptions {
     std::string atlas_imu_topic = "/imu";
     std::string atlas_lidar_topic = "/points";
     std::string atlas_image_topic = "/image";
+
+    // --- Argus (FAST-LIVO2 ESIKF LIO / LIVO) ---
+    std::string argus_config_path;
+    std::string argus_imu_topic = "/imu";
+    std::string argus_lidar_topic = "/points";
+    std::string argus_image_topic = "/image";
 };
 
 LocalizationBackend ParseLocalizationBackend(const std::string& name);
@@ -64,7 +71,7 @@ cartographer::node::CartographerNodeFlags CartographerFlagsFromOptions(
 
 /**
  * Process-level facade that selects and owns one SLAM backend
- * (Cartographer or Atlas).
+ * (Cartographer, Atlas, or Argus).
  *
  * Lifecycle (aligned with ControllerServer):
  *   Start()  → initialize selected backend (non-blocking)
@@ -97,6 +104,7 @@ private:
     class Backend;
     class CartographerBackend;
     class AtlasBackend;
+    class ArgusBackend;
 
     static std::unique_ptr<Backend> CreateBackend(
         const LocalizationOptions& options);

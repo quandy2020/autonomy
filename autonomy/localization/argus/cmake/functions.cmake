@@ -62,7 +62,9 @@ macro(argus_initialize_project)
     argus_add_flag(ARGUS_CXX_FLAGS "-Werror=format-security")
     argus_add_flag(ARGUS_CXX_FLAGS "-Werror=return-type")
     argus_add_flag(ARGUS_CXX_FLAGS "-Werror=switch")
-    argus_add_flag(ARGUS_CXX_FLAGS "-Werror=uninitialized")
+    # -Werror=uninitialized is noisy under GCC (false-positive maybe-uninitialized
+    # in Release). Keep as a warning; standalone CI can still enable -Werror.
+    argus_add_flag(ARGUS_CXX_FLAGS "-Wuninitialized")
 
     if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
        CMAKE_CXX_COMPILER_ID MATCHES "AppleClang")

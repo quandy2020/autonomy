@@ -343,6 +343,15 @@ class VisualizationFrame : public QMainWindow {
    */
   void closeEvent(QCloseEvent* event) override;
 
+  /**
+   * @brief Detaches native Ogre surfaces before Qt walks @c hideChildren().
+   *
+   * Minimize / workspace hide otherwise SIGSEGVs on stale @c WA_PaintOnScreen
+   * children (same class of crash as accepting @c QCloseEvent).
+   * Overrides @c setVisible (Qt @c hide()/show() are non-virtual wrappers).
+   */
+  void setVisible(bool visible) override;
+
  private slots:
   /**
    * @brief Render timer timeout: advances viewport tick / draw.

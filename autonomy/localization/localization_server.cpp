@@ -26,6 +26,7 @@
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
+#include "autonomy/localization/argus_node.hpp"
 #include "autonomy/localization/atlas/system/atlas_node.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/static_transform_publisher.hpp"
@@ -42,6 +43,9 @@ LocalizationBackend ParseLocalizationBackend(const std::string& name) {
     if (name == "atlas" || name == "Atlas") {
         return LocalizationBackend::kAtlas;
     }
+    if (name == "argus" || name == "Argus") {
+        return LocalizationBackend::kArgus;
+    }
     if (name != "cartographer" && name != "Cartographer" && !name.empty()) {
         LOG(WARNING) << "Unknown localization backend '" << name
                      << "', defaulting to cartographer.";
@@ -53,6 +57,8 @@ std::string LocalizationBackendName(LocalizationBackend backend) {
     switch (backend) {
         case LocalizationBackend::kAtlas:
             return "atlas";
+        case LocalizationBackend::kArgus:
+            return "argus";
         case LocalizationBackend::kCartographer:
         default:
             return "cartographer";
@@ -230,6 +236,48 @@ private:
 };
 
 // ---------------------------------------------------------------------------
+// Argus (FAST-LIVO2 ESIKF LIO / LIVO)
+// ---------------------------------------------------------------------------
+
+class LocalizationServer::ArgusBackend : public LocalizationServer::Backend {
+public:
+    explicit ArgusBackend(LocalizationOptions options)
+        : options_(std::move(options)) {}
+
+    bool Start() override {
+        if (options_.argus_config_path.empty()) {
+            AERROR << "Argus requires --argus_config.";
+            return false;
+        }
+        ArgusNode::Options node_opts;
+        node_opts.config_path = ResolveWorkspacePath(options_.argus_config_path);
+        node_opts.imu_topic = options_.argus_imu_topic;
+        node_opts.lidar_topic = options_.argus_lidar_topic;
+        node_opts.image_topic = options_.argus_image_topic;
+        node_ = std::make_unique<ArgusNode>(std::move(node_opts));
+        if (!node_->Start()) {
+            AERROR << "ArgusNode::Start failed.";
+            node_.reset();
+            return false;
+        }
+        AINFO << "LocalizationServer: argus backend started config="
+              << options_.argus_config_path;
+        return true;
+    }
+
+    void Shutdown() override {
+        if (node_) {
+            node_->Shutdown();
+            node_.reset();
+        }
+    }
+
+private:
+    LocalizationOptions options_;
+    std::unique_ptr<ArgusNode> node_;
+};
+
+// ---------------------------------------------------------------------------
 // LocalizationServer
 // ---------------------------------------------------------------------------
 
@@ -238,6 +286,8 @@ std::unique_ptr<LocalizationServer::Backend> LocalizationServer::CreateBackend(
     switch (options.backend) {
         case LocalizationBackend::kAtlas:
             return std::make_unique<AtlasBackend>(options);
+        case LocalizationBackend::kArgus:
+            return std::make_unique<ArgusBackend>(options);
         case LocalizationBackend::kCartographer:
         default:
             return std::make_unique<CartographerBackend>(options);

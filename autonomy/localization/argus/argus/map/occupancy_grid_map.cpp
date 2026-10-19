@@ -349,6 +349,76 @@ bool OccupancyGridMap::Occupied(float px, float py) const {
            options_.occupancy_ratio;
 }
 
+::automsgs::msgs::map_msgs::OccupancyGrid OccupancyGridMap::ToOccupancyGrid()
+    const {
+    ::automsgs::msgs::map_msgs::OccupancyGrid occu_map;
+    if (grids_ == nullptr || grid_size_x_ <= 0 || grid_size_y_ <= 0) {
+        return occu_map;
+    }
+    const int image_width = grid_size_x_ * kSubWidth;
+    const int image_height = grid_size_y_ * kSubWidth;
+    auto* info = occu_map.mutable_info();
+    info->set_resolution(options_.resolution);
+    info->set_width(static_cast<uint32_t>(image_width));
+    info->set_height(static_cast<uint32_t>(image_height));
+    auto* origin = info->mutable_origin();
+    origin->mutable_position()->set_x(min_x_);
+    origin->mutable_position()->set_y(min_y_);
+    origin->mutable_position()->set_z(0.0);
+    origin->mutable_orientation()->set_w(1.0);
+
+    const int grid_map_size = image_width * image_height;
+    const int grid_map_size_1 = grid_map_size - 1;
+    auto MapIdx = [](int sx, int x, int y) { return sx * y + x; };
+    occu_map.mutable_data()->Resize(grid_map_size, -1);
+
+    for (int bxi = 0; bxi < grid_size_x_; ++bxi) {
+        for (int byi = 0; byi < grid_size_y_; ++byi) {
+            if (grids_[bxi][byi].empty()) {
+                continue;
+            }
+            for (int sxi = 0; sxi < kSubWidth; ++sxi) {
+                for (int syi = 0; syi < kSubWidth; ++syi) {
+                    const int x = (bxi << kSubLog2) + sxi;
+                    const int y = (byi << kSubLog2) + syi;
+                    if (x < 0 || x >= image_width || y < 0 ||
+                        y >= image_height) {
+                        continue;
+                    }
+                    unsigned int hit_cnt = 0;
+                    unsigned int visit_cnt = 0;
+                    grids_[bxi][byi].GetHitAndVisit(sxi, syi, &hit_cnt,
+                                                    &visit_cnt);
+                    const float occ =
+                        (visit_cnt > 3)
+                            ? static_cast<float>(hit_cnt) /
+                                  static_cast<float>(visit_cnt)
+                            : -1.f;
+                    if (occ < 0.f) {
+                        continue;
+                    }
+                    if (occ > options_.occupancy_ratio) {
+                        (*occu_map.mutable_data())[MapIdx(image_width, x, y)] =
+                            100;
+                    } else {
+                        const int index = MapIdx(image_width, x, y);
+                        const int index_min = std::max(0, index - 1);
+                        const int index_max =
+                            std::min(grid_map_size_1, index + 1);
+                        for (int extend = index_min; extend <= index_max;
+                             ++extend) {
+                            if ((*occu_map.mutable_data())[extend] < 0) {
+                                (*occu_map.mutable_data())[extend] = 0;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return occu_map;
+}
+
 cv::Mat OccupancyGridMap::ToCv() const {
     if (grids_ == nullptr || grid_size_x_ <= 0 || grid_size_y_ <= 0) {
         return cv::Mat();

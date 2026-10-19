@@ -43,11 +43,16 @@ struct LocalizationCli {
     std::string atlas_imu_topic = "/imu";
     std::string atlas_lidar_topic = "/points";
     std::string atlas_image_topic = "/image";
+    std::string argus_config =
+        "autonomy/localization/conf/argus/livo_esikf.yaml";
+    std::string argus_imu_topic = "/imu";
+    std::string argus_lidar_topic = "/points";
+    std::string argus_image_topic = "/image";
 };
 
 void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--localization_mode", cli.localization_mode,
-                   "Backend: cartographer | atlas.")
+                   "Backend: cartographer | atlas | argus.")
         ->capture_default_str();
     app.add_option("--load_state_filename", cli.load_state_filename,
                    "Cartographer: load SLAM state from this .pbstream file.");
@@ -70,6 +75,17 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
         ->capture_default_str();
     app.add_option("--atlas_image_topic", cli.atlas_image_topic,
                    "Atlas: camera Image topic.")
+        ->capture_default_str();
+    app.add_option("--argus_config", cli.argus_config,
+                   "Argus: LIVO ESIKF YAML (livo_esikf.yaml).")
+        ->capture_default_str();
+    app.add_option("--argus_imu_topic", cli.argus_imu_topic, "Argus: IMU topic.")
+        ->capture_default_str();
+    app.add_option("--argus_lidar_topic", cli.argus_lidar_topic,
+                   "Argus: lidar PointCloud2 topic.")
+        ->capture_default_str();
+    app.add_option("--argus_image_topic", cli.argus_image_topic,
+                   "Argus: camera Image topic.")
         ->capture_default_str();
 }
 
@@ -95,6 +111,11 @@ LocalizationOptions BuildOptions(const LocalizationCli& cli) {
     options.atlas_imu_topic = cli.atlas_imu_topic;
     options.atlas_lidar_topic = cli.atlas_lidar_topic;
     options.atlas_image_topic = cli.atlas_image_topic;
+
+    options.argus_config_path = cli.argus_config;
+    options.argus_imu_topic = cli.argus_imu_topic;
+    options.argus_lidar_topic = cli.argus_lidar_topic;
+    options.argus_image_topic = cli.argus_image_topic;
     return options;
 }
 
@@ -120,6 +141,9 @@ int main(int argc, char** argv) {
                      options.backend);
     if (options.backend == autonomy::localization::LocalizationBackend::kAtlas) {
         AINFO << "localization_main: atlas_config=" << options.atlas_config_path;
+    }
+    if (options.backend == autonomy::localization::LocalizationBackend::kArgus) {
+        AINFO << "localization_main: argus_config=" << options.argus_config_path;
     }
 
     auto server =

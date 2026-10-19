@@ -1,0 +1,30 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Argus LIO / LIVO (FAST-LIVO2 ESIKF). Subscribes to /imu, /points, RGB.
+
+  Backend: autonomy.localization --localization_mode=argus
+
+  Aligned with autosim/config/lio.yaml (no remap):
+    /imu                     Imu
+    /points                  PointCloud2
+    /camera/rgb/image_raw    Image  (when config enables camera)
+    /tf + /tf_static
+
+  Publishes:
+    /argus/odometry          Odometry
+    /argus/trajectory        Path
+    /argus/cloud_map         PointCloud2  durable global map (world voxel leaf)
+    /argus/cloud_registered  PointCloud2
+    /argus/occupancy         OccupancyGrid  2D
+    /tf                      map→odom, and odom→base_link when no wheel TF
+-->
+<autolink>
+  <module>
+    <name>localization_argus</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=argus --argus_config=autonomy/localization/conf/argus/livo_autosim.yaml --argus_imu_topic=/imu --argus_lidar_topic=/points --argus_image_topic=/camera/rgb/image_raw</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

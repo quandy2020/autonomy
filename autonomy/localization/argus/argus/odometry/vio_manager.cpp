@@ -1171,10 +1171,10 @@ void VIOManager::SelectBestRefPatch(VisualPoint* pt) {
         double cos_angle = pf.dot(norm_vec);
         // if(fabs(cos_angle) < 0.86) continue; // 20 degree
 
-        float ref_mean;
-        if (abs(ref_patch_temp->mean_) < 1e-6) {
+        float ref_mean = static_cast<float>(ref_patch_temp->mean_);
+        if (std::abs(ref_patch_temp->mean_) < 1e-6) {
             float ref_sum =
-                std::accumulate(patch_temp, patch_temp + patch_size_total, 0.0);
+                std::accumulate(patch_temp, patch_temp + patch_size_total, 0.0f);
             ref_mean = ref_sum / patch_size_total;
             ref_patch_temp->mean_ = ref_mean;
         }
@@ -1185,10 +1185,10 @@ void VIOManager::SelectBestRefPatch(VisualPoint* pt) {
                 continue;
             float* patch_cache = (*itm)->patch_;
 
-            float other_mean;
-            if (abs((*itm)->mean_) < 1e-6) {
+            float other_mean = static_cast<float>((*itm)->mean_);
+            if (std::abs((*itm)->mean_) < 1e-6) {
                 float other_sum = std::accumulate(
-                    patch_cache, patch_cache + patch_size_total, 0.0);
+                    patch_cache, patch_cache + patch_size_total, 0.0f);
                 other_mean = other_sum / patch_size_total;
                 (*itm)->mean_ = other_mean;
             }
@@ -1969,10 +1969,18 @@ void VIOManager::DumpDataForColmap() {
 }
 
 void VIOManager::PrepareImage(cv::Mat& img) {
-    if (width != img.cols || height != img.rows) {
-        if (img.empty() && enable_plot) {
+    if (img.empty()) {
+        if (enable_plot) {
             printf("[ VIO ] Empty Image!\n");
         }
+        return;
+    }
+    // Always target the camera model size (avoids Frame size mismatch abort).
+    if (width > 0 && height > 0 &&
+        (img.cols != width || img.rows != height)) {
+        cv::resize(img, img, cv::Size(width, height), 0, 0, cv::INTER_LINEAR);
+    } else if (image_resize_factor > 0.0 &&
+               std::abs(image_resize_factor - 1.0) > 1e-6) {
         cv::resize(img, img,
                    cv::Size(static_cast<int>(img.cols * image_resize_factor),
                             static_cast<int>(img.rows * image_resize_factor)),
