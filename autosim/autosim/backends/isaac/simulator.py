@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 import math
+from pathlib import Path
 from typing import Any, Mapping, Tuple
 
 import numpy as np
@@ -26,7 +27,11 @@ import atexit
 
 from autosim.backend.capabilities import ISAAC_CAPABILITIES
 from autosim.backends.isaac.app import close_app, ensure_simulation_app, update_app
-from autosim.backends.isaac.physics import IsaacPhysics, physics_config_from_habitat
+from autosim.backends.isaac.physics import (
+    PHYSICS_DEFAULTS,
+    IsaacPhysics,
+    physics_config_from_habitat,
+)
 from autosim.backends.isaac.sensors import IsaacSensors
 from autosim.backends.isaac.traffic_usd import (
     maybe_create_traffic_usd,
@@ -73,6 +78,17 @@ class IsaacSimulator:
         self.traffic_usd: Any = None
         self.scenario_grid: Any = None
         self.scenario_points: Any = None
+        self.articulation: Any = None  # BeniArticulation when mode=articulation
+        self.physics_mode: str = "capsule"
+
+    @property
+    def articulation_driven(self) -> bool:
+        """True when PhysX Articulation owns planar pose (balance / fall)."""
+        return (
+            self.physics_mode == "articulation"
+            and self.articulation is not None
+            and bool(getattr(self.articulation, "ready", False))
+        )
 
     @classmethod
     def create(cls, settings: Mapping[str, Any]) -> "IsaacSimulator":
@@ -128,11 +144,17 @@ class IsaacSimulator:
             or robot_cfg.get("usd_prim")
             or "/World/Robot"
         )
+        phys_cfg = physics_config_from_habitat(habitat)
+        physics_mode = str(phys_cfg.get("mode") or "capsule").strip().lower()
+        # Articulation: open world without empty robot USD stub, then import URDF.
+        # defer_robot_prim avoids an empty /Root/Robot that breaks MovePrim/paths.
+        stage_robot_usd = None if physics_mode == "articulation" else robot_usd
         stage = UsdStage(
             world_usd,
-            robot_usd=robot_usd,
+            robot_usd=stage_robot_usd,
             robot_prim_path=prim,
             base_z=base_z,
+            defer_robot_prim=(physics_mode == "articulation"),
         )
         sensors = IsaacSensors(
             width=width, height=height, eye_height=eye, eye_offset=eye_offset
@@ -146,20 +168,78 @@ class IsaacSimulator:
             height=height,
             eye_height=eye,
         )
+        sim.physics_mode = physics_mode
         sim.attach_floorplan_map(world_usd, habitat.get("map"))
         sim.seed_scenario_geometry(habitat)
         # World first (needed for Replicator RGB even when collision is off),
         # then camera under robot so the view tracks teleop like Habitat.
-        phys_cfg = physics_config_from_habitat(habitat)
-        sim.physics = IsaacPhysics.attach(
-            stage,
-            robot_prim_path=prim,
-            config=phys_cfg,
-            render=want_camera,
-        )
+        art_prim = prim
+        if physics_mode == "articulation":
+            art_prim = sim._bootstrap_beni_articulation(robot_cfg, prim)
+            physics_mode = sim.physics_mode  # may fall back to capsule on import fail
+            phys_cfg = dict(phys_cfg)
+            phys_cfg["mode"] = physics_mode
+            if physics_mode != "articulation":
+                art_prim = prim
+                sim._restore_capsule_robot(prim, robot_usd)
+            else:
+                # Skip the whole Beni tree (/beni), not the YAML /Root/Robot path.
+                from autosim.backends.isaac.beni_articulation import robot_tree_root
+
+                phys_cfg["skip_prefix"] = robot_tree_root(art_prim)
+            # PhysX attach uses articulation root (may differ from /World/Robot).
+            sim.physics = IsaacPhysics.attach(
+                stage,
+                robot_prim_path=art_prim,
+                config=phys_cfg,
+                render=want_camera,
+            )
+            if physics_mode == "articulation":
+                sim._finalize_beni_articulation(art_prim, base_z=base_z)
+                physics_mode = sim.physics_mode  # finalize may fall back
+                if physics_mode != "articulation":
+                    # Articulation view failed after World.reset — restore capsule.
+                    art_prim = prim
+                    phys_cfg = dict(phys_cfg)
+                    phys_cfg["mode"] = "capsule"
+                    # Capsule must block walls — articulation YAML leaves this false.
+                    phys_cfg["block_motion"] = True
+                    phys_cfg.pop("skip_prefix", None)
+                    try:
+                        from autosim.backends.isaac.beni_articulation import (
+                            deactivate_autosim_beni,
+                        )
+
+                        deactivate_autosim_beni(stage.stage)
+                    except Exception:
+                        pass
+                    try:
+                        if sim.physics is not None:
+                            sim.physics.close()
+                    except Exception:
+                        pass
+                    sim.physics = None
+                    sim._restore_capsule_robot(prim, robot_usd)
+                    sim.physics = IsaacPhysics.attach(
+                        stage,
+                        robot_prim_path=prim,
+                        config=phys_cfg,
+                        render=want_camera,
+                    )
+            camera_parent = (
+                art_prim if sim.physics_mode == "articulation" else prim
+            )
+        else:
+            sim.physics = IsaacPhysics.attach(
+                stage,
+                robot_prim_path=prim,
+                config=phys_cfg,
+                render=want_camera,
+            )
+            camera_parent = prim
         if want_camera:
             sensors.mount_robot_camera(
-                prim,
+                camera_parent,
                 hfov_deg=float(camera.get("hfov_deg", 90.0)),
                 rate_hz=float(camera.get("rate_hz", 30.0)),
             )
@@ -170,7 +250,187 @@ class IsaacSimulator:
         if not traffic_cfg.get("usd_root"):
             traffic_cfg["usd_root"] = f"{parent}/AutosimTraffic"
         sim.traffic_usd = maybe_create_traffic_usd(stage, config=traffic_cfg)
+        # Articulation YAML sets block_motion=false. If PhysX never took the
+        # floating base, plant teleports would 穿模 — force capsule collision.
+        if not sim.articulation_driven and sim.physics is not None:
+            if sim.physics_mode == "articulation":
+                sim.physics_mode = "capsule"
+            sim.physics.config["block_motion"] = True
+            sim.physics.config["mode"] = "capsule"
+        from autosim.backends.isaac.beni_articulation import _kit_log
+
+        _kit_log(
+            f"IsaacSimulator ready: articulation_driven="
+            f"{sim.articulation_driven} mode={sim.physics_mode} "
+            f"block_motion={bool(getattr(sim.physics, 'block_motion', False))}"
+        )
         return sim
+
+    def _restore_capsule_robot(
+        self, prim: str, robot_usd: Path | str | None
+    ) -> None:
+        """Re-bind stage robot Xform after a failed articulation import."""
+        from pxr import UsdGeom
+
+        stage = self.stage
+        stage.robot_prim_path = prim
+        if robot_usd is not None:
+            stage.robot_usd = Path(robot_usd)
+        try:
+            robot_path = Path(robot_usd) if robot_usd is not None else None
+            robot_prim = stage.stage.GetPrimAtPath(prim)
+            if robot_path is not None and robot_path.is_file():
+                if robot_prim and robot_prim.IsValid():
+                    try:
+                        robot_prim.GetReferences().ClearReferences()
+                    except Exception:
+                        pass
+                    robot_prim.GetReferences().AddReference(str(robot_path))
+                else:
+                    stage.ensure_robot_prim()
+            else:
+                stage.ensure_robot_prim()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("capsule fallback robot USD attach failed: %s", exc)
+        try:
+            update_app()
+        except Exception:
+            pass
+        prim_obj = stage.stage.GetPrimAtPath(prim)
+        if prim_obj and prim_obj.IsValid():
+            stage.robot_xform = UsdGeom.Xformable(prim_obj)
+        else:
+            logger.error("capsule fallback robot prim still invalid: %s", prim)
+
+    def _bootstrap_beni_articulation(
+        self, robot_cfg: Mapping[str, Any], fallback_prim: str
+    ) -> str:
+        """Import Beni URDF as floating-base articulation; return prim path."""
+        from autosim.backends.isaac.beni_articulation import (
+            configure_joint_drives,
+            import_beni_urdf,
+        )
+        from autosim.paths import project_root
+
+        urdf_rel = str(robot_cfg.get("urdf") or "robot/beni/beni.urdf")
+        urdf_path = Path(urdf_rel)
+        if not urdf_path.is_absolute():
+            urdf_path = (project_root() / urdf_rel).resolve()
+        cache = (project_root() / "usd" / "robots" / "beni" / "beni_articulation.usd").resolve()
+        try:
+            prim_path = import_beni_urdf(
+                urdf_path,
+                dest_usd=cache,
+                stage_prim=fallback_prim,
+                stage=self.stage.stage,
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Beni URDF import failed (%s); falling back to capsule", exc)
+            self.physics_mode = "capsule"
+            return fallback_prim
+        # Prefer imported articulation; keep stage.robot_prim_path aligned when possible.
+        try:
+            configure_joint_drives(self.stage.stage, prim_path)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("joint drive configure skipped: %s", exc)
+        from autosim.backends.isaac.beni_articulation import robot_tree_root
+
+        tree = robot_tree_root(prim_path)
+        self.stage.robot_prim_path = prim_path
+        self.stage.bind_robot_xform(prim_path)
+        from autosim.backends.isaac.beni_articulation import _kit_log
+
+        _kit_log(f"Beni robot tree at {tree} (art root {prim_path})")
+        return prim_path
+
+    def _finalize_beni_articulation(self, prim_path: str, *, base_z: float) -> None:
+        """Initialize Articulation view after PhysX World.reset()."""
+        from autosim.backends.isaac.beni_articulation import (
+            BeniArticulation,
+            _kit_log,
+            ensure_articulation_dynamic,
+            find_beni_articulation_on_stage,
+        )
+
+        found = find_beni_articulation_on_stage(self.stage.stage)
+        if found and found != prim_path:
+            _kit_log(f"articulation path retarget {prim_path} → {found}")
+            prim_path = found
+
+        # World.reset() may have re-applied kinematic opinions — force dynamic again.
+        try:
+            ensure_articulation_dynamic(self.stage.stage, prim_path)
+        except Exception:
+            pass
+        # Kit ticks so PhysX registers the imported articulation.
+        for _ in range(3):
+            update_app()
+        # Second pass after PhysX parse (critical for gravity / fall).
+        try:
+            ensure_articulation_dynamic(self.stage.stage, prim_path)
+        except Exception:
+            pass
+        try:
+            if self.physics is not None and self.physics.physics_world is not None:
+                self.physics.physics_world.reset()
+        except Exception:
+            pass
+        for _ in range(2):
+            update_app()
+
+        art = BeniArticulation(prim_path)
+        if not art.initialize():
+            _kit_log("Beni Articulation init failed; using kinematic plant")
+            logger.error("Beni Articulation init failed; using kinematic plant")
+            self.physics_mode = "capsule"
+            self.articulation = None
+            return
+        # Reject "ready" articulations whose root is still kinematic (不会倒).
+        try:
+            from pxr import UsdPhysics
+
+            root = self.stage.stage.GetPrimAtPath(art.prim_path)
+            if root and root.HasAPI(UsdPhysics.RigidBodyAPI):
+                kin = UsdPhysics.RigidBodyAPI(root).GetKinematicEnabledAttr()
+                if kin and kin.Get():
+                    _kit_log(
+                        f"articulation root still kinematic at {art.prim_path}; "
+                        "forcing dynamic"
+                    )
+                    ensure_articulation_dynamic(self.stage.stage, art.prim_path)
+            try:
+                art.art.enable_gravity()
+            except Exception:
+                pass
+            # Final USD check — if still kinematic, fall back to capsule plant.
+            root = self.stage.stage.GetPrimAtPath(art.prim_path)
+            still_kin = False
+            if root and root.HasAPI(UsdPhysics.RigidBodyAPI):
+                kin = UsdPhysics.RigidBodyAPI(root).GetKinematicEnabledAttr()
+                still_kin = bool(kin and kin.Get())
+            if still_kin:
+                _kit_log(
+                    f"articulation root remains kinematic at {art.prim_path}; "
+                    "falling back to capsule (block walls)"
+                )
+                self.physics_mode = "capsule"
+                self.articulation = None
+                return
+        except Exception:
+            pass
+        self.articulation = art
+        self.physics_mode = "articulation"
+        # Keep stage Xform handle on the live articulation root.
+        self.stage.bind_robot_xform(art.prim_path)
+        # Plant must not write Fabric pose on the dynamic root.
+        self.stage._isaac_pose_view = None
+        self.stage._isaac_pose_view_kind = None
+        art.teleport(self.x, self.y, self.yaw, z=float(base_z), joint_defaults=True)
+        n_dof = len(getattr(art, "_dof_index", {}) or {})
+        _kit_log(
+            f"Beni floating-base Articulation ACTIVE at {art.prim_path} "
+            f"({n_dof}/7 DOFs, gravity+collision+fall)"
+        )
 
     def attach_floorplan_map(
         self, world_usd: str, map_cfg: Mapping[str, Any] | None
@@ -319,12 +579,17 @@ class IsaacSimulator:
     def set_pose(
         self, x: float, y: float, yaw: float, *, force: bool = False
     ) -> None:
-        """Write planar pose to the robot Xform.
+        """Write planar pose to the robot Xform / Articulation root.
 
         When PhysX ``block_motion`` is on, overlapping queries keep the previous
-        pose (kinematic capsule vs scene colliders).
+        pose (kinematic capsule vs scene colliders). Articulation mode ignores
+        non-force teleports so dynamics own the base (balance / fall).
         """
         nx, ny, nyaw = float(x), float(y), float(yaw)
+        if self.articulation_driven and not force:
+            # Physics owns the base; still keep camera synced to measured pose.
+            self._sync_camera_to_pose()
+            return
         physics = self.physics
         if (
             not force
@@ -336,16 +601,49 @@ class IsaacSimulator:
         self.x = nx
         self.y = ny
         self.yaw = nyaw
-        self.stage.set_pose(self.x, self.y, self.yaw)
-        # Replicator Camera does not reliably inherit parent Xform under PhysX;
-        # push eye pose explicitly so RGB/depth track teleop.
+        if self.articulation_driven and force:
+            base_z = float(getattr(self.stage, "base_z", 0.11) or 0.11)
+            self.articulation.teleport(nx, ny, nyaw, z=base_z, joint_defaults=True)
+        else:
+            try:
+                self.stage.set_pose(self.x, self.y, self.yaw)
+            except RuntimeError as exc:
+                # Invalid robot_xform after a failed articulation fallback.
+                logger.warning("stage.set_pose skipped (%s); refreshing xform", exc)
+                try:
+                    from pxr import UsdGeom
+
+                    path = str(getattr(self.stage, "robot_prim_path", "") or "")
+                    prim_obj = self.stage.stage.GetPrimAtPath(path) if path else None
+                    if prim_obj and prim_obj.IsValid():
+                        self.stage.robot_xform = UsdGeom.Xformable(prim_obj)
+                        self.stage.set_pose(self.x, self.y, self.yaw)
+                except Exception as exc2:  # noqa: BLE001
+                    logger.error("stage.set_pose recovery failed: %s", exc2)
+        self._sync_camera_to_pose()
+
+    def _sync_camera_to_pose(self) -> None:
         sync = getattr(self.engine_sensors, "sync_world_pose", None)
-        if callable(sync):
-            base_z = float(getattr(self.stage, "base_z", 0.0) or 0.0)
-            sync(self.x, self.y, self.yaw, base_z=base_z)
+        if not callable(sync):
+            return
+        base_z = float(getattr(self.stage, "base_z", 0.0) or 0.0)
+        if self.articulation_driven:
+            _x, _y, _yaw, z = self.articulation.read_pose()
+            # Eye offset already relative to base_link; pass measured root z.
+            sync(self.x, self.y, self.yaw, base_z=float(z))
+            return
+        sync(self.x, self.y, self.yaw, base_z=base_z)
 
     def pose(self) -> Tuple[float, float, float]:
         return self.x, self.y, self.yaw
+
+    def pull_articulation_pose(self) -> Tuple[float, float, float]:
+        """Read floating-base pose from PhysX into ``self.x/y/yaw``."""
+        if not self.articulation_driven:
+            return self.pose()
+        x, y, yaw, _z = self.articulation.read_pose()
+        self.x, self.y, self.yaw = float(x), float(y), float(yaw)
+        return self.pose()
 
     def step(self) -> None:
         """Advance PhysX without RTX (Habitat: render only on camera sample)."""
@@ -360,12 +658,16 @@ class IsaacSimulator:
         if physics is not None:
             # Never render here — color_depth() owns the single Kit/RTX frame.
             physics.step(render=False)
+            if self.articulation_driven:
+                self.pull_articulation_pose()
+                self._sync_camera_to_pose()
             return
         update_app()
 
     def close(self) -> None:
         # Close the USD stage only; Kit app teardown is deferred to atexit so
         # SimulationApp.close() cannot abort the process mid-finally.
+        self.articulation = None
         try:
             if self.physics is not None:
                 self.physics.close()

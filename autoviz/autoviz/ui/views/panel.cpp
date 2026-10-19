@@ -242,6 +242,12 @@ void ViewsPanel::setupUi() {
 }
 
 QString ViewsPanel::formattedTypeName(const QString& type) const {
+  if (type == QLatin1String("FPS") || type == QLatin1String("FPSMotion")) {
+    return tr("First Person (FPS)");
+  }
+  if (type == QLatin1String("ThirdPersonFollow")) {
+    return tr("Third Person Follow");
+  }
   return tr("%1 (autoviz)").arg(type);
 }
 
@@ -633,7 +639,31 @@ void ViewsPanel::applyTargetFrameChoice(QTreeWidgetItem* choice) {
   }
   updating_ = false;
 
-  view_controller_->setTargetFrame(frame);
+  const std::string frame_std = frame.toStdString();
+  // camera_link / laser under Third Person Follow still orbits at Distance —
+  // that is not first-person. Sensor frames imply FPS mounted on that link.
+  if (rendering::ViewController::isFirstPersonTargetFrame(frame_std)) {
+    view_controller_->setTargetFrame(frame);
+    if (!view_controller_->placeFpsEyeOnFrame(frame_std)) {
+      view_controller_->setTargetFrame(frame);
+    }
+    const auto type = view_controller_->type();
+    if (type != rendering::ViewControllerType::kFps &&
+        type != rendering::ViewControllerType::kFpsMotion) {
+      // setTypeByName("FPS") would call placeFpsEyeOnRobotFrame again (OK).
+      view_controller_->setTypeByName(QStringLiteral("FPS"));
+    } else {
+      view_controller_->setType(rendering::ViewControllerType::kFps);
+    }
+    updating_ = true;
+    populateTypeSelector();
+    updateFrameDelegate();
+    updateCurrentViewValues();
+    updatePropertyVisibility();
+    updating_ = false;
+  } else {
+    view_controller_->setTargetFrame(frame);
+  }
   emit viewChanged();
 }
 
@@ -691,6 +721,8 @@ void ViewsPanel::onTypeChanged(int index) {
     return;
   }
   view_controller_->setTypeByName(type_selector_->itemData(index).toString());
+  // FPS may auto-select base_link — refresh Target Frame list / checkmarks.
+  updateFrameDelegate();
   updateCurrentViewValues();
   emit viewChanged();
 }

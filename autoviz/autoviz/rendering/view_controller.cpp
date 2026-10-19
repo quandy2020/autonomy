@@ -5,9 +5,12 @@
 #include "autoviz/rendering/view_controller.hpp"
 
 #include <algorithm>
+#include <string>
+#include <vector>
 
 #include <Qt>
 #include <QtMath>
+#include <QVector2D>
 
 #include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/common/frame_manager.hpp"
@@ -66,6 +69,216 @@ void ViewController::setType(ViewControllerType type) {
   } else if (type_ == ViewControllerType::kXyOrbit) {
     pitch_ = xy_orbit_pitch_;
   }
+}
+
+namespace {
+
+// Base-mounted fallback only. Prefer camera_link — eye inside the chassis
+// fills the FOV with close mesh (looks like a blurry orange wall).
+constexpr float kFpsBaseEyeHeight = 0.18f;
+constexpr float kFpsBaseEyeForward = 0.14f;
+constexpr float kFpsBasePitchDown = -0.22f;  // rad, look toward the ground plane
+constexpr float kFpsNearClip = 0.05f;
+constexpr float kFpsFovYDegrees = 70.f;
+
+bool NameEqualsOrEndsWith(const std::string& name, const char* leaf) {
+  if (name == leaf) {
+    return true;
+  }
+  const std::string suffix = std::string("/") + leaf;
+  return name.size() >= suffix.size() &&
+         name.compare(name.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
+bool FrameLooksLikeRobotBase(const std::string& frame) {
+  if (frame.empty()) {
+    return false;
+  }
+  return NameEqualsOrEndsWith(frame, "base_link") ||
+         NameEqualsOrEndsWith(frame, "base_footprint") ||
+         NameEqualsOrEndsWith(frame, "body") ||
+         NameEqualsOrEndsWith(frame, "base") ||
+         NameEqualsOrEndsWith(frame, "chassis");
+}
+
+bool FrameLooksLikeCamera(const std::string& frame) {
+  if (frame.empty()) {
+    return false;
+  }
+  return NameEqualsOrEndsWith(frame, "camera_link") ||
+         NameEqualsOrEndsWith(frame, "camera_rgb_frame") ||
+         NameEqualsOrEndsWith(frame, "camera_rgb_optical_frame") ||
+         NameEqualsOrEndsWith(frame, "camera_depth_frame") ||
+         NameEqualsOrEndsWith(frame, "camera_depth_optical_frame") ||
+         NameEqualsOrEndsWith(frame, "rgb_camera_link") ||
+         NameEqualsOrEndsWith(frame, "depth_camera_link");
+}
+
+bool FrameLooksLikeLidar(const std::string& frame) {
+  return NameEqualsOrEndsWith(frame, "laser_link") ||
+         NameEqualsOrEndsWith(frame, "base_scan") ||
+         NameEqualsOrEndsWith(frame, "lidar_link") ||
+         NameEqualsOrEndsWith(frame, "velodyne");
+}
+
+bool FrameLooksLikeFpsMount(const std::string& frame) {
+  return FrameLooksLikeCamera(frame) || FrameLooksLikeLidar(frame) ||
+         FrameLooksLikeRobotBase(frame);
+}
+
+std::string FindFrameByPreference(
+    const std::vector<std::string>& names,
+    const std::initializer_list<const char*>& preferred) {
+  for (const char* pref : preferred) {
+    for (const auto& name : names) {
+      if (NameEqualsOrEndsWith(name, pref)) {
+        return name;
+      }
+    }
+  }
+  return {};
+}
+
+std::string FindPreferredFpsFrame(const std::vector<std::string>& names) {
+  // Camera first (true robot FPS), then lidar, then chassis.
+  return FindFrameByPreference(
+      names, {"camera_link", "camera_rgb_optical_frame", "camera_rgb_frame",
+              "camera_depth_optical_frame", "camera_depth_frame",
+              "rgb_camera_link", "laser_link", "base_scan", "lidar_link",
+              "base_link", "base_footprint", "body", "base", "chassis"});
+}
+
+std::string FindPreferredBaseFrame(const std::vector<std::string>& names) {
+  return FindFrameByPreference(
+      names, {"base_link", "base_footprint", "body", "base", "chassis"});
+}
+
+// Third-person chase defaults (REP-103 +X forward): eye behind on −X.
+constexpr float kThirdPersonDistance = 2.5f;
+constexpr float kThirdPersonYaw = 3.14159265f;  // π → behind robot
+constexpr float kThirdPersonPitch = 0.55f;      // ~31° elevation
+
+}  // namespace
+
+void ViewController::adoptCurrentViewForFps() {
+  // Eye / look from the active local matrix (Orbit, Ortho, ThirdPerson, …)
+  // expressed in the same frame as fps_position_ (target frame when tracking).
+  const QMatrix4x4 inv = localViewMatrix().inverted();
+  fps_position_ = inv.map(QVector3D(0.f, 0.f, 0.f));
+  QVector3D forward = inv.mapVector(QVector3D(0.f, 0.f, -1.f));
+  if (forward.lengthSquared() > 1e-12f) {
+    forward.normalize();
+    fps_yaw_ = qAtan2(forward.y(), forward.x());
+    fps_pitch_ = qAsin(qBound(-1.f, forward.z(), 1.f));
+  }
+  // Orbit often sits high above the map; drop to a walking-height eye near the
+  // focal point so FPS is on the scene, not in the sky.
+  const float height_above = fps_position_.z() - target_.z();
+  const float horiz =
+      QVector2D(fps_position_.x() - target_.x(), fps_position_.y() - target_.y())
+          .length();
+  if (height_above > 2.f || horiz > 5.f) {
+    fps_position_ = QVector3D(target_.x(), target_.y(),
+                              target_.z() + kFpsBaseEyeHeight);
+    fps_yaw_ = yaw_;
+    fps_pitch_ = kFpsBasePitchDown;
+  }
+}
+
+bool ViewController::isFirstPersonTargetFrame(const std::string& frame) {
+  return FrameLooksLikeCamera(frame) || FrameLooksLikeLidar(frame);
+}
+
+bool ViewController::placeFpsEyeOnFrame(const std::string& frame) {
+  if (frame_manager_ == nullptr || frame.empty()) {
+    return false;
+  }
+
+  QVector3D position;
+  QQuaternion orientation;
+  if (!frame_manager_->getTransform(frame, &position, &orientation)) {
+    return false;
+  }
+
+  // Track the robot frame; eye is expressed in that frame (not fixed/map).
+  if (frame != target_frame_) {
+    target_frame_ = frame;
+    has_target_frame_transform_ = false;
+  }
+  target_ = QVector3D(0.f, 0.f, 0.f);
+  // Clip the robot shell that sits centimetres in front of a body-mounted eye.
+  near_clip_distance_ = std::max(near_clip_distance_, kFpsNearClip);
+
+  if (FrameLooksLikeCamera(frame) || FrameLooksLikeLidar(frame)) {
+    // Sensor frame: sit at the optical / scan origin looking +X (REP-103).
+    fps_position_ = QVector3D(0.f, 0.f, 0.f);
+    fps_yaw_ = 0.f;
+    fps_pitch_ = 0.f;
+  } else if (FrameLooksLikeRobotBase(frame)) {
+    // Chassis: nudge forward/up and pitch down so the body does not fill the
+    // FOV and the ground plane is not a razor-thin aliased horizon band.
+    fps_position_ = QVector3D(kFpsBaseEyeForward, 0.f, kFpsBaseEyeHeight);
+    fps_yaw_ = 0.f;
+    fps_pitch_ = kFpsBasePitchDown;
+  } else {
+    fps_position_ = QVector3D(0.f, 0.f, 0.f);
+    fps_yaw_ = 0.f;
+    fps_pitch_ = 0.f;
+  }
+  return true;
+}
+
+bool ViewController::placeFpsEyeOnRobotFrame() {
+  if (frame_manager_ == nullptr) {
+    return false;
+  }
+
+  // Prefer an already-selected sensor Target Frame (user picked camera_link).
+  if (isFirstPersonTargetFrame(target_frame_) &&
+      placeFpsEyeOnFrame(target_frame_)) {
+    return true;
+  }
+
+  // Otherwise prefer camera_link over base_link — the latter puts the eye
+  // inside the chassis mesh (blurry close-up of the body).
+  std::string frame = FindPreferredFpsFrame(frame_manager_->allFrameNames());
+  if (frame.empty() && FrameLooksLikeFpsMount(target_frame_)) {
+    frame = target_frame_;
+  }
+  if (frame.empty()) {
+    return false;
+  }
+  return placeFpsEyeOnFrame(frame);
+}
+
+bool ViewController::placeThirdPersonOnRobotFrame() {
+  if (frame_manager_ == nullptr) {
+    return false;
+  }
+
+  std::string frame = FindPreferredBaseFrame(frame_manager_->allFrameNames());
+  if (frame.empty() && FrameLooksLikeRobotBase(target_frame_)) {
+    frame = target_frame_;
+  }
+  if (frame.empty()) {
+    return false;
+  }
+
+  QVector3D position;
+  QQuaternion orientation;
+  if (!frame_manager_->getTransform(frame, &position, &orientation)) {
+    return false;
+  }
+
+  if (frame != target_frame_) {
+    target_frame_ = frame;
+    has_target_frame_transform_ = false;
+  }
+  target_ = QVector3D(0.f, 0.f, 0.f);
+  distance_ = kThirdPersonDistance;
+  yaw_ = kThirdPersonYaw;
+  pitch_ = kThirdPersonPitch;
+  return true;
 }
 
 void ViewController::setTypeByName(const QString& name) {
@@ -214,6 +427,39 @@ bool ViewController::resolveTargetFrameToFixed(QMatrix4x4* out) const {
   return true;
 }
 
+bool ViewController::resolveThirdPersonTargetToFixed(QMatrix4x4* out) const {
+  if (out == nullptr) {
+    return false;
+  }
+  out->setToIdentity();
+  if (!tracksTargetFrame() || frame_manager_ == nullptr) {
+    return false;
+  }
+
+  QVector3D position;
+  QQuaternion orientation;
+  if (!frame_manager_->getTransform(target_frame_, &position, &orientation)) {
+    if (has_target_frame_transform_) {
+      *out = last_target_to_fixed_;
+      return true;
+    }
+    return false;
+  }
+
+  // RViz ThirdPersonFollowerViewController::updateTargetSceneNode — yaw about
+  // Z only (REP-103), so pitch/roll of camera_link does not tip the chase cam.
+  const QVector3D forward = orientation.rotatedVector(QVector3D(1.f, 0.f, 0.f));
+  const float yaw_rad = qAtan2(forward.y(), forward.x());
+  QMatrix4x4 matrix;
+  matrix.translate(position);
+  matrix.rotate(QQuaternion::fromAxisAndAngle(
+      QVector3D(0.f, 0.f, 1.f), qRadiansToDegrees(yaw_rad)));
+  last_target_to_fixed_ = matrix;
+  has_target_frame_transform_ = true;
+  *out = matrix;
+  return true;
+}
+
 void ViewController::reset() {
   near_clip_distance_ = 0.01f;
   invert_z_axis_ = false;
@@ -253,7 +499,12 @@ QMatrix4x4 ViewController::projectionMatrix(float aspect_ratio) const {
                      near_clip_distance_, far_plane);
     return projection;
   }
-  projection.perspective(45.f, aspect_ratio, near_clip_distance_, far_plane);
+  const float fov_y =
+      (type_ == ViewControllerType::kFps ||
+       type_ == ViewControllerType::kFpsMotion)
+          ? kFpsFovYDegrees
+          : 45.f;
+  projection.perspective(fov_y, aspect_ratio, near_clip_distance_, far_plane);
   if (invert_z_axis_) {
     projection(2, 2) *= -1.f;
   }
@@ -296,10 +547,13 @@ QMatrix4x4 ViewController::topDownOrthoViewMatrix() const {
 }
 
 QMatrix4x4 ViewController::thirdPersonViewMatrix() const {
-  const float x = distance_ * qCos(yaw_);
-  const float y = distance_ * qSin(yaw_);
-  const float height = std::max(2.f, distance_ * 0.35f);
-  const QVector3D eye = target_ + QVector3D(x, y, height);
+  // RViz ThirdPersonFollower = XYOrbit relative to the target: yaw/pitch/distance
+  // about the focal point. Pitch stays above the ground plane.
+  const float pitch = std::max(0.05f, pitch_);
+  const float x = distance_ * qCos(yaw_) * qCos(pitch);
+  const float y = distance_ * qSin(yaw_) * qCos(pitch);
+  const float z = distance_ * qSin(pitch);
+  const QVector3D eye = target_ + QVector3D(x, y, z);
   QMatrix4x4 view;
   view.lookAt(eye, target_, QVector3D(0.f, 0.f, 1.f));
   return view;
@@ -318,9 +572,16 @@ QMatrix4x4 ViewController::fpsViewMatrix() const {
 QMatrix4x4 ViewController::viewMatrix() const {
   QMatrix4x4 view = localViewMatrix();
   QMatrix4x4 target_to_fixed;
-  if (resolveTargetFrameToFixed(&target_to_fixed)) {
-    // Orbit/FPS pose is expressed in the target frame; compose with inv(T) so
-    // the camera follows that frame in the fixed/world frame.
+  bool have_target = false;
+  if (type_ == ViewControllerType::kThirdPersonFollow) {
+    // RViz: chase camera turns with target yaw only (ignore pitch/roll).
+    have_target = resolveThirdPersonTargetToFixed(&target_to_fixed);
+  } else {
+    have_target = resolveTargetFrameToFixed(&target_to_fixed);
+  }
+  if (have_target) {
+    // Pose is expressed in the target frame; compose with inv(T) so the
+    // camera follows that frame in the fixed/world frame.
     view = view * target_to_fixed.inverted();
   }
   return view;
@@ -337,9 +598,8 @@ QMatrix4x4 ViewController::localViewMatrix() const {
     case ViewControllerType::kThirdPersonFollow:
       return thirdPersonViewMatrix();
     case ViewControllerType::kFps:
-      return fpsViewMatrix();
     case ViewControllerType::kFpsMotion:
-      return orbitViewMatrix();
+      return fpsViewMatrix();
     case ViewControllerType::kOrbit:
     default:
       return orbitViewMatrix();
@@ -356,9 +616,15 @@ void ViewController::orbitBy(float delta_yaw, float delta_pitch) {
     return;
   }
   yaw_ += delta_yaw;
-  if (type_ == ViewControllerType::kTopDown ||
-      type_ == ViewControllerType::kXyOrbit ||
-      type_ == ViewControllerType::kThirdPersonFollow) {
+  if (type_ == ViewControllerType::kTopDown) {
+    return;
+  }
+  if (type_ == ViewControllerType::kXyOrbit) {
+    return;
+  }
+  if (type_ == ViewControllerType::kThirdPersonFollow) {
+    // Stay above the ground plane (XYOrbit-style elevation).
+    pitch_ = qBound(0.05f, pitch_ + delta_pitch, 1.4f);
     return;
   }
   pitch_ = qBound(-1.4f, pitch_ + delta_pitch, 1.4f);
@@ -366,16 +632,22 @@ void ViewController::orbitBy(float delta_yaw, float delta_pitch) {
 
 void ViewController::panBy(float delta_x, float delta_y) {
   const float scale = distance_ * 0.002f;
+  if (type_ == ViewControllerType::kFps ||
+      type_ == ViewControllerType::kFpsMotion) {
+    const float cos_yaw = qCos(fps_yaw_);
+    const float sin_yaw = qSin(fps_yaw_);
+    const QVector3D right(cos_yaw, sin_yaw, 0.f);
+    const QVector3D forward(-sin_yaw, cos_yaw, 0.f);
+    fps_position_ -= right * (delta_x * scale);
+    fps_position_ += forward * (delta_y * scale);
+    return;
+  }
   const float cos_yaw = qCos(yaw_);
   const float sin_yaw = qSin(yaw_);
   const QVector3D right(cos_yaw, sin_yaw, 0.f);
   const QVector3D forward(-sin_yaw, cos_yaw, 0.f);
   target_ -= right * (delta_x * scale);
   target_ += forward * (delta_y * scale);
-  if (type_ == ViewControllerType::kFps) {
-    fps_position_ -= right * (delta_x * scale);
-    fps_position_ += forward * (delta_y * scale);
-  }
 }
 
 void ViewController::zoomBy(float delta_distance) {
@@ -443,6 +715,15 @@ void ViewController::panFocalPointZ(float amount) {
 }
 
 void ViewController::zoomCamera(float amount) {
+  if (type_ == ViewControllerType::kFps ||
+      type_ == ViewControllerType::kFpsMotion) {
+    // Dolly along look direction — fpsViewMatrix does not use distance_.
+    const float cx = qCos(fps_pitch_) * qCos(fps_yaw_);
+    const float cy = qCos(fps_pitch_) * qSin(fps_yaw_);
+    const float cz = qSin(fps_pitch_);
+    fps_position_ += QVector3D(cx, cy, cz) * amount;
+    return;
+  }
   distance_ = std::max(0.001f, distance_ - amount);
 }
 
@@ -602,47 +883,13 @@ void ViewController::tick(float delta_seconds) {
     return;
   }
   const float speed = 4.f * delta_seconds;
-  if (type_ == ViewControllerType::kFpsMotion) {
-    const float heading = yaw_;
-    const float cx = qCos(heading);
-    const float cy = qSin(heading);
-    QVector3D forward(cx, cy, 0.f);
-    QVector3D right(-cy, cx, 0.f);
-    if (fps_fly_mode_) {
-      const float cz = qSin(pitch_);
-      const float horiz = qCos(pitch_);
-      forward = QVector3D(horiz * cx, horiz * cy, cz);
-      right = QVector3D(-cy, cx, 0.f);
-    }
-    if (move_forward_) {
-      target_ += forward * speed;
-    }
-    if (move_backward_) {
-      target_ -= forward * speed;
-    }
-    if (move_right_) {
-      target_ += right * speed;
-    }
-    if (move_left_) {
-      target_ -= right * speed;
-    }
-    if (fps_fly_mode_) {
-      if (move_up_) {
-        target_.setZ(target_.z() + speed);
-      }
-      if (move_down_) {
-        target_.setZ(target_.z() - speed);
-      }
-    }
-    return;
-  }
-
   const float cx = qCos(fps_pitch_) * qCos(fps_yaw_);
   const float cy = qCos(fps_pitch_) * qSin(fps_yaw_);
   const float cz = qSin(fps_pitch_);
   QVector3D forward(cx, cy, cz);
   QVector3D right(-cy, cx, 0.f);
   if (!fps_fly_mode_) {
+    // Walk: horizontal move; look pitch only affects mouse look.
     forward = QVector3D(qCos(fps_yaw_), qSin(fps_yaw_), 0.f);
     if (forward.lengthSquared() > 1e-8f) {
       forward.normalize();

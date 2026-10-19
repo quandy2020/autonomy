@@ -12,16 +12,18 @@ habitat:
   # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
   # Camera path aligned with arena-isaac: RTX Camera + supportMultiTickRate,
   # PhysX ticks without RTX, RGB sampled only in color_depth (Habitat timing).
-  # physics.enabled=false still creates a render-only World when camera is on
-  # (otherwise RGB/depth stay empty).
+  # physics.mode:
+  #   capsule      — kinematic overlap block (or enabled=false → render-only)
+  #   articulation — Beni floating-base PhysX (gravity, collision, true fall)
   isaac:
     headless: true
     physics:
-      enabled: false          # no collision; render-only World when camera on
-      block_motion: false
+      enabled: true
+      mode: articulation      # capsule | articulation (Beni balance/fall)
+      block_motion: false     # ignored for articulation (dynamic root)
       freeze_scene: true
-      ensure_scene_colliders: false
-      add_ground: false
+      ensure_scene_colliders: true
+      add_ground: false       # InteriorAgent floors provide contact
       dt: 0.0166667
       robot_radius: 0.10
       robot_height: 0.22
@@ -29,8 +31,8 @@ habitat:
       usd_sync: false                 # no AutosimTraffic capsules in the stage
 
   # ONNX policy (docs/07_isaac.md). Beni: 7-DoF balance (obs[40]+GRU → joints).
-  # Teleop /cmd_vel drives the plant; Autoviz keeps mesh-baked standing pose
-  # (animate_joints needs MuJoCo — kinematic ONNX thrash looks like kicking).
+  # Teleop /cmd_vel → Beni obs; with physics.mode=articulation, ONNX drives
+  # PhysX joint targets (true balance/fall). animate_joints auto-on then.
   policy:
     enabled: true
     action_space: beni          # twist | beni
@@ -42,8 +44,8 @@ habitat:
     max_wz: 2.0
     # Standing height command in obs (Open Beni range ≈ [0.10, 0.12]).
     base_height: 0.11
-    animate_joints: false       # true = live hip/knee TF (unstable without physics)
-    drive_from_wheels: false    # true = plant from LW/RW; false = follow cmd
+    animate_joints: false       # auto true when Articulation bound
+    drive_from_wheels: false    # planar plant unused when articulation owns base
     use_laser: false
     laser_bins: 360
 

@@ -240,7 +240,8 @@ class TfDisplay : public ChannelDisplay<automsgs::msgs::tf2_msgs::TFMessage> {
     bool show_names = false;       /**< Draw frame name labels. */
     bool show_axes = true;         /**< Draw RGB axes. */
     bool show_arrows = false;      /**< Draw parent→child arrows. */
-    float marker_scale = 1.f;      /**< Multiplier on default axis length. */
+    bool auto_scale = true;        /**< Size axes from TF tree / robot scale. */
+    float marker_scale = 1.f;      /**< Multiplier on (auto or default) length. */
     float update_interval = 0.f;   /**< Seconds between frame refreshes; 0 = every tick. */
     float frame_timeout = 15.f;    /**< Aging timeout (seconds); ≤0 disables. */
     std::string filter_whitelist;  /**< Regex whitelist (empty = pass-all). */
@@ -256,6 +257,13 @@ class TfDisplay : public ChannelDisplay<automsgs::msgs::tf2_msgs::TFMessage> {
    * @brief Copies property values into @c props_.
    */
   void refreshCachedProps();
+
+  /**
+   * @brief Characteristic length of the visible TF tree (metres).
+   *
+   * Median parent→child edge, else posed-frame AABB — used when Auto Scale is on.
+   */
+  float estimateCharacteristicLength() const;
 
   /**
    * @brief Connects to the TF buffer transforms-changed signal once.

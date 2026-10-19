@@ -87,6 +87,7 @@ class PolicyDriver:
         self._hold_cmd = (0.0, 0.0)
         self.beni: Any = None
         self._joint_display: Dict[str, float] = {}
+        self.articulation: Any = None  # optional BeniArticulation (PhysX)
         if self.enabled:
             self.session = self.load_session(str(config["model_path"]))
             if self.session is None:
@@ -162,6 +163,14 @@ class PolicyDriver:
         """Child-link → revolute angle for TF (Beni mesh-relative)."""
         return dict(self._joint_display)
 
+    def bind_articulation(self, articulation: Any) -> None:
+        """Attach Isaac ``BeniArticulation`` for PhysX balance / fall."""
+        self.articulation = articulation
+        if articulation is not None and self.beni is not None:
+            # Live joints come from PhysX; Autoviz should show them.
+            self.beni.animate_joints = True
+            logger.info("Beni policy bound to PhysX Articulation")
+
     def compute_command(
         self,
         dt: float,
@@ -189,6 +198,8 @@ class PolicyDriver:
     ) -> Optional[Tuple[float, float]]:
         assert self.beni is not None
         self.elapsed += float(dt)
+        art = self.articulation
+        use_art = art is not None and bool(getattr(art, "ready", False))
         # Beni trains at 100 Hz; still step joints every control tick for smooth TF.
         if twist_cmd is not None:
             self._hold_cmd = (
@@ -206,6 +217,13 @@ class PolicyDriver:
             self.beni.dq["LW"] = 0.0
             self.beni.dq["RW"] = 0.0
             vx_cmd, wz_cmd = 0.0, 0.0
+        if use_art:
+            art.sync_joint_state(self.beni.q, self.beni.dq)
+            ang = art.read_angular_velocity()
+            grav = art.projected_gravity()
+        else:
+            ang = (0.0, 0.0, float(velocity[1]))
+            grav = (0.0, 0.0, -1.0)
         run_policy = self.elapsed >= self.period or self.beni.last_action.sum() == 0
         if run_policy:
             self.elapsed = 0.0
@@ -213,15 +231,30 @@ class PolicyDriver:
                 float(dt),
                 vx_cmd=vx_cmd,
                 wz_cmd=wz_cmd,
-                base_yaw_rate=float(velocity[1]),
+                base_ang_vel=ang,
+                projected_gravity=grav,
+                apply_kinematic=not use_art,
             )
+            if use_art:
+                art.apply_policy_action(self.beni.last_action)
         else:
-            # Between policy ticks: keep tracking last action toward targets.
-            self.beni.apply_action(self.beni.last_action, float(dt))
-            wheel_vx, wheel_wz = self.beni.wheel_twist()
-            self.beni.ramp_command(vx_cmd, wz_cmd, float(dt))
-        self._joint_display = self.beni.display_angles()
-        if self.config.get("drive_from_wheels", False):
+            if use_art:
+                art.apply_policy_action(self.beni.last_action)
+                self.beni.ramp_command(vx_cmd, wz_cmd, float(dt))
+                wheel_vx, wheel_wz = self.beni.wheel_twist()
+            else:
+                # Between policy ticks: keep tracking last action toward targets.
+                self.beni.apply_action(self.beni.last_action, float(dt))
+                wheel_vx, wheel_wz = self.beni.wheel_twist()
+                self.beni.ramp_command(vx_cmd, wz_cmd, float(dt))
+        if use_art:
+            self._joint_display = art.display_angles()
+        else:
+            self._joint_display = self.beni.display_angles()
+        if use_art:
+            # Plant pose comes from PhysX; twist cmd only for teleop latch / odom.
+            vx, wz = float(self.beni.command[0]), float(self.beni.command[1])
+        elif self.config.get("drive_from_wheels", False):
             if abs(vx_cmd) < 1e-6 and abs(wz_cmd) < 1e-6:
                 vx, wz = 0.0, 0.0
             else:

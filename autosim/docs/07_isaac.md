@@ -35,7 +35,8 @@ isaac:
   headless: true
   physics:
     enabled: true
-    block_motion: true      # 胶囊重叠则拒绝 set_pose
+    mode: capsule           # capsule | articulation
+    block_motion: true      # 胶囊重叠则拒绝 set_pose（articulation 忽略）
     freeze_scene: true      # 场景刚体改为 kinematic
     ensure_scene_colliders: true
     add_ground: false       # InteriorAgent 已有地板
@@ -43,6 +44,11 @@ isaac:
     robot_radius: 0.12
     robot_height: 0.28
 ```
+
+| `mode` | 行为 |
+|--------|------|
+| `capsule` | 根 prim kinematic + 子 Capsule；`block_motion` 阻挡穿墙 |
+| `articulation` | 导入 `beni.urdf`（`fix_base=False`）→ PhysX 浮动基；重力 / 碰撞 / 真实跌倒 |
 
 | 场景类型 | `add_ground` | `ensure_scene_colliders` |
 |----------|--------------|---------------------------|
@@ -80,11 +86,12 @@ isaac:
 |------|------|
 | 创建 | `isaacsim.core.api.world.World`（`stage_units_in_meters=1`） |
 | 场景 | 非机器人刚体 → kinematic（防家具掉落） |
-| 机器人 | 根 prim kinematic + 子 Capsule 碰撞体 |
-| 步进 | `IsaacSimulator.step` → `world.step(render=…)` |
-| 阻挡 | `block_motion` + overlap sphere；`reset`/`force` 可传送 |
+| 机器人（capsule） | 根 prim kinematic + 子 Capsule 碰撞体 |
+| 机器人（articulation） | `URDFParseAndImportFile` + `SingleArticulation`；无 capsule |
+| 步进 | `IsaacSimulator.step` → `world.step`；articulation 回读根位姿 |
+| 阻挡 | capsule：`block_motion` + overlap；articulation：动力学自碰墙/跌倒 |
 
-源码：`autosim/backends/isaac/physics.py`。
+源码：`autosim/backends/isaac/physics.py`、`beni_articulation.py`。
 
 ---
 
@@ -154,6 +161,9 @@ habitat:
 
 ```yaml
 habitat:
+  isaac:
+    physics:
+      mode: articulation      # 真平衡/跌倒；capsule 则仅运动学关节
   policy:
     enabled: true
     action_space: beni
@@ -161,14 +171,17 @@ habitat:
     rate_hz: 100.0
     max_vx: 1.5
     max_wz: 2.0
-    drive_from_wheels: false   # false：底盘跟 /cmd_vel；true：由轮速推平面运动
+    base_height: 0.11
+    animate_joints: false     # articulation 绑定时自动 true
+    drive_from_wheels: false  # articulation 时底盘由 PhysX 拥有
 ```
 
 | 项 | 说明 |
 |----|------|
 | 依赖 | `pip install onnxruntime` |
 | `/cmd_vel` | 写入观测 twist 命令（与浏览器摇杆一致） |
-| 动作 | L1,R1,L2,R2,LW,RW,head_yaw → 运动学关节跟踪；TF 发布 `q−q_default`（匹配 mesh 烘焙站姿） |
-| 底盘 | 默认仍用平面 plant；完整 MuJoCo/PhysX 平衡在 Open Beni |
+| `mode: capsule` | 动作 → 运动学关节跟踪；平面 plant 跟命令；无真实跌倒 |
+| `mode: articulation` | 动作 → PhysX joint drive；obs 用实测 ω / 投影重力；碰障可跌倒 |
+| TF | Autoviz 用 `display_angles()`（`q−q_default`）；绑定时自动开 live 关节 |
 
 栈内正式 Twist 部署请用 ControllerServer + `policy_controller`。

@@ -132,6 +132,8 @@ class Runner:
         self.policy_driver: Optional[PolicyDriver] = PolicyDriver.create_when_enabled(
             self.settings["habitat"]
         )
+        # PhysX floating-base Beni: policy drives joint targets, not kinematic TF.
+        self._bind_policy_articulation()
         self.dataset: Optional[DatasetCollector] = DatasetCollector.create_when_enabled(
             self.settings["habitat"]
         )
@@ -432,19 +434,32 @@ class Runner:
             dt: Period length in seconds (``1 / control_hz``).
         """
         self.poll_command(dt)
-        x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
-        # SLAM: keep wheel odom glued to GT so Habitat laser rays (cast at GT)
-        # match odom→base_link TF used by Cartographer / Autoviz. Noisy odom
-        # with GT-cast scans is what makes /scan look rotated on the map.
-        if self.mode == "slam":
-            self.robot.odometry_x = float(x)
-            self.robot.odometry_y = float(y)
-            self.robot.odometry_yaw = float(yaw)
-        self.simulator.set_pose(x, y, yaw)
-        # Step Traffic before USD sync so pedestrians/obstacles draw at the
-        # current pose (IsaacSimulator.step → traffic_usd.sync).
-        self.traffic.step(dt)
-        self.simulator.step()
+        art_driven = bool(getattr(self.simulator, "articulation_driven", False))
+        if art_driven:
+            # PhysX Articulation owns base pose (balance / collision / fall).
+            # Policy already wrote joint drives in poll_command; integrate nothing.
+            self.traffic.step(dt)
+            self.simulator.step()
+            x, y, yaw = self.simulator.pose()
+            # Sync plant GT/odom to PhysX without teleport (teleport zeros twist).
+            heading = self.robot.wrap_yaw(float(yaw))
+            self.robot.x = self.robot.odometry_x = float(x)
+            self.robot.y = self.robot.odometry_y = float(y)
+            self.robot.yaw = self.robot.odometry_yaw = heading
+        else:
+            x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
+            # SLAM: keep wheel odom glued to GT so Habitat laser rays (cast at GT)
+            # match odom→base_link TF used by Cartographer / Autoviz. Noisy odom
+            # with GT-cast scans is what makes /scan look rotated on the map.
+            if self.mode == "slam":
+                self.robot.odometry_x = float(x)
+                self.robot.odometry_y = float(y)
+                self.robot.odometry_yaw = float(yaw)
+            self.simulator.set_pose(x, y, yaw)
+            # Step Traffic before USD sync so pedestrians/obstacles draw at the
+            # current pose (IsaacSimulator.step → traffic_usd.sync).
+            self.traffic.step(dt)
+            self.simulator.step()
         self.clock.tick(dt)
         stamp = self.clock.stamp()
         linear, angular = self.robot.velocity()
@@ -943,6 +958,20 @@ class Runner:
         except Exception as exc:
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
 
+    def _bind_policy_articulation(self) -> None:
+        """Attach Isaac ``BeniArticulation`` to the policy when PhysX is ready."""
+        policy = self.policy_driver
+        if policy is None:
+            return
+        art = getattr(self.simulator, "articulation", None)
+        if art is None or not bool(getattr(art, "ready", False)):
+            return
+        if getattr(policy, "articulation", None) is art:
+            return
+        bind = getattr(policy, "bind_articulation", None)
+        if callable(bind):
+            bind(art)
+
     def poll_command(self, dt: float = 0.02) -> None:
         """Apply teleop ``cmd_vel`` and/or an optional ONNX RL policy.
 
@@ -950,6 +979,7 @@ class Runner:
         feeds the balance observation (browser joystick model); joints animate
         via ONNX + TF; the planar plant follows the ramped command.
         """
+        self._bind_policy_articulation()
         reader = self.bridge.command_reader
         has_external = hasattr(reader, "has_msg") and reader.has_msg()
         policy = self.policy_driver

@@ -115,6 +115,8 @@ class ChannelReaderRegistry {
     std::shared_ptr<::autolink::Reader<::autolink::message::RawMessage>> reader;
     /** Active fan-out subscribers. */
     std::vector<Subscription> subscriptions;
+    /** True while CreateReader is in flight (prevents duplicate create). */
+    bool creating_reader = false;
   };
 
   /**

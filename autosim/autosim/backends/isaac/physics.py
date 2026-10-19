@@ -23,6 +23,8 @@ logger = logging.getLogger(__name__)
 
 PHYSICS_DEFAULTS = {
     "enabled": True,
+    # capsule: kinematic overlap block; articulation: floating-base PhysX (fall).
+    "mode": "capsule",
     "block_motion": True,
     "dt": 1.0 / 60.0,
     "robot_radius": 0.12,
@@ -48,6 +50,10 @@ def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
     out = dict(PHYSICS_DEFAULTS)
     out.update(block)
     out["enabled"] = bool(out.get("enabled", True))
+    mode = str(out.get("mode") or "capsule").strip().lower()
+    if mode not in ("capsule", "articulation"):
+        mode = "capsule"
+    out["mode"] = mode
     out["block_motion"] = bool(out.get("block_motion", True))
     out["freeze_scene"] = bool(out.get("freeze_scene", True))
     out["add_ground"] = bool(out.get("add_ground", False))
@@ -61,6 +67,15 @@ def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
     out["physics_scene_path"] = str(
         out.get("physics_scene_path") or "/physicsScene"
     )
+    # Floating-base Beni needs scene colliders + gravity World even if YAML
+    # previously used render-only / free-teleop defaults.
+    if mode == "articulation":
+        out["enabled"] = True
+        out["block_motion"] = False  # root is dynamic; do not reject set_pose
+        out.setdefault("ensure_scene_colliders", True)
+        out["ensure_scene_colliders"] = True
+        # Still strip furniture nested RBs; simulator sets skip_prefix=/Root/Robot
+        # so Beni link RigidBodyAPIs are never removed.
     return out
 
 
@@ -127,27 +142,46 @@ class IsaacPhysics:
             except Exception:
                 break
 
+        mode = str(config.get("mode") or "capsule").strip().lower()
+        # Protect the whole robot mount (e.g. /Root/Robot), not only the
+        # articulation link leaf — freeze/strip must not touch Beni links.
+        skip_prefix = str(
+            config.get("skip_prefix") or robot_prim_path or ""
+        ).rstrip("/") or str(robot_prim_path)
         if collision:
             if config.get("strip_nested_rigid_bodies", True):
-                strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
+                strip_nested_rigid_bodies(stage, skip_prefix=skip_prefix)
             if config.get("ensure_scene_colliders", True):
-                ensure_scene_colliders(stage, skip_prefix=robot_prim_path)
+                ensure_scene_colliders(stage, skip_prefix=skip_prefix)
             if config.get("freeze_scene", True):
-                freeze_scene_rigid_bodies(stage, skip_prefix=robot_prim_path)
+                freeze_scene_rigid_bodies(stage, skip_prefix=skip_prefix)
             if config.get("add_ground", False):
                 add_ground_plane(stage)
 
-            attach_robot_capsule(
-                stage,
-                robot_prim_path,
-                radius=float(config.get("robot_radius", 0.12)),
-                height=float(config.get("robot_height", 0.28)),
-            )
+            # Articulation robots bring their own collision from URDF; capsule
+            # would fight the floating-base rigid root.
+            if mode != "articulation":
+                attach_robot_capsule(
+                    stage,
+                    robot_prim_path,
+                    radius=float(config.get("robot_radius", 0.12)),
+                    height=float(config.get("robot_height", 0.28)),
+                )
+            else:
+                # Undo any accidental kinematic freeze on Beni links.
+                try:
+                    from autosim.backends.isaac.beni_articulation import (
+                        ensure_articulation_dynamic,
+                    )
+
+                    ensure_articulation_dynamic(stage, robot_prim_path)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("ensure_articulation_dynamic skipped: %s", exc)
 
             # Re-strip once more immediately before World so async payload
             # RigidBodyAPIs cannot sneak past the first pass.
             if config.get("strip_nested_rigid_bodies", True):
-                strip_nested_rigid_bodies(stage, skip_prefix=robot_prim_path)
+                strip_nested_rigid_bodies(stage, skip_prefix=skip_prefix)
 
         dt = float(config.get("dt", 1.0 / 60.0))
         try:
@@ -180,7 +214,8 @@ class IsaacPhysics:
             )
         else:
             logger.info(
-                "Isaac PhysX enabled (dt=%.4f, robot_r=%.3f, block_motion=%s)",
+                "Isaac PhysX enabled (mode=%s, dt=%.4f, robot_r=%.3f, block_motion=%s)",
+                mode,
                 dt,
                 float(config.get("robot_radius", 0.12)),
                 bool(config.get("block_motion", True)),

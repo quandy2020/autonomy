@@ -47,22 +47,26 @@ void CameraDisplay::onEnable() {
   }
   camera_info_channel_ =
       propertyValue("camera_info_channel", "");
-  image_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          image_channel_,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              image_queue_.push(msg->message);
-            }
-          });
-  camera_info_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          camera_info_channel_,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              camera_info_queue_.push(msg->message);
-            }
-          });
+  if (!image_channel_.empty()) {
+    image_reader_ =
+        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
+            image_channel_,
+            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
+              if (msg != nullptr) {
+                image_queue_.push(msg->message);
+              }
+            });
+  }
+  if (!camera_info_channel_.empty()) {
+    camera_info_reader_ =
+        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
+            camera_info_channel_,
+            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
+              if (msg != nullptr) {
+                camera_info_queue_.push(msg->message);
+              }
+            });
+  }
 }
 
 void CameraDisplay::onDisable() {

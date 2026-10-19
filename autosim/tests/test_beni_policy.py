@@ -117,3 +117,88 @@ def test_beni_cmd_vel_zero_stops_and_latches():
     # Edge-triggered reader: next ticks have no new msg (twist_cmd=None).
     held = driver.compute_command(0.01, twist_cmd=None, **kwargs)
     assert held == (0.0, 0.0)
+
+
+class _FakeArticulation:
+    """Minimal stand-in for BeniArticulation (no Isaac Kit)."""
+
+    ready = True
+
+    def __init__(self) -> None:
+        self.applied: list = []
+        self.q = {name: float(DEFAULT_Q[name]) for name in ACTION_JOINTS}
+        self.dq = {name: 0.0 for name in ACTION_JOINTS}
+
+    def sync_joint_state(self, q, dq) -> None:
+        for name in ACTION_JOINTS:
+            q[name] = self.q[name]
+            dq[name] = self.dq[name]
+
+    def read_angular_velocity(self):
+        return (0.1, -0.05, 0.2)
+
+    def projected_gravity(self):
+        return (0.0, 0.0, -1.0)
+
+    def apply_policy_action(self, action) -> None:
+        self.applied.append(np.asarray(action, dtype=np.float64).copy())
+
+    def display_angles(self):
+        return {"L1_Link": 0.05, "R1_Link": -0.02}
+
+
+@pytest.mark.skipif(not BENI_ONNX.is_file(), reason="beni policy.onnx missing")
+def test_policy_driver_binds_articulation_and_applies_action():
+    """With PhysX Articulation bound, ONNX actions go to joint drives."""
+    pytest.importorskip("onnxruntime")
+    driver = PolicyDriver.create_when_enabled(
+        {
+            "policy": {
+                "enabled": True,
+                "action_space": "beni",
+                "model_path": str(BENI_ONNX),
+                "rate_hz": 100.0,
+                "animate_joints": False,
+            }
+        }
+    )
+    assert driver is not None
+    art = _FakeArticulation()
+    driver.bind_articulation(art)
+    assert driver.beni.animate_joints is True
+    cmd = driver.compute_command(
+        0.01,
+        pose=(0.0, 0.0, 0.0),
+        velocity=(0.0, 0.0),
+        scan=None,
+        twist_cmd=(0.2, 0.0),
+    )
+    assert cmd is not None
+    assert len(art.applied) >= 1
+    assert art.applied[0].shape == (7,)
+    assert "L1_Link" in driver.joint_display_angles
+
+
+def test_beni_articulation_fallen_heuristic():
+    """fallen() uses projected gravity tilt + low z (no Kit required)."""
+    from autosim.backends.isaac.beni_articulation import BeniArticulation
+
+    art = BeniArticulation("/World/Beni")
+    art._ready = True
+    art.art = object()  # mark ready without SingleArticulation
+
+    upright = {"pose": (0.0, 0.0, 0.0, 0.11), "grav": (0.0, 0.0, -1.0)}
+    tipped = {"pose": (0.0, 0.0, 0.0, 0.11), "grav": (0.9, 0.0, -0.4)}
+    crushed = {"pose": (0.0, 0.0, 0.0, 0.01), "grav": (0.0, 0.0, -1.0)}
+
+    art.read_pose = lambda: upright["pose"]  # type: ignore[method-assign]
+    art.projected_gravity = lambda: upright["grav"]  # type: ignore[method-assign]
+    assert art.fallen() is False
+
+    art.read_pose = lambda: tipped["pose"]  # type: ignore[method-assign]
+    art.projected_gravity = lambda: tipped["grav"]  # type: ignore[method-assign]
+    assert art.fallen() is True
+
+    art.read_pose = lambda: crushed["pose"]  # type: ignore[method-assign]
+    art.projected_gravity = lambda: upright["grav"]  # type: ignore[method-assign]
+    assert art.fallen() is True

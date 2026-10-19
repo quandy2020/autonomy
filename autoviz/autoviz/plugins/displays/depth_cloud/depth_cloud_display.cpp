@@ -53,22 +53,26 @@ void DepthCloudDisplay::onEnable() {
   camera_info_channel_ =
       propertyValue("camera_info_channel", "");
   color_channel_ = propertyValue("color_channel", "");
-  depth_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          depth_channel_,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              depth_queue_.push(msg->message);
-            }
-          });
-  camera_info_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          camera_info_channel_,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              camera_info_queue_.push(msg->message);
-            }
-          });
+  if (!depth_channel_.empty()) {
+    depth_reader_ =
+        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
+            depth_channel_,
+            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
+              if (msg != nullptr) {
+                depth_queue_.push(msg->message);
+              }
+            });
+  }
+  if (!camera_info_channel_.empty()) {
+    camera_info_reader_ =
+        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
+            camera_info_channel_,
+            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
+              if (msg != nullptr) {
+                camera_info_queue_.push(msg->message);
+              }
+            });
+  }
   if (!color_channel_.empty()) {
     color_reader_ =
         context_->autolink->node()->CreateReader<autolink::message::RawMessage>(

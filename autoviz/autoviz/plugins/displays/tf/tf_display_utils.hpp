@@ -28,14 +28,17 @@ namespace display {
 /**
  * @brief RViz2 TFDisplay default axis length before Marker Scale.
  *
- * Multiplied by the @c marker_scale property when drawing axes.
+ * Used when Auto Scale is off. With Auto Scale, length tracks the TF tree
+ * (typical parent→child spacing) so small robots are not buried in 0.2 m shafts.
  */
 constexpr float kTfDefaultAxisLength = 0.2f;
 
 /**
- * @brief RViz2 @c Axes default radius before Marker Scale (@c Axes(…, 0.2, 0.02)).
+ * @brief Radius / length ratio for TF axes (RViz uses 0.02/0.2 = 0.1).
+ *
+ * Slightly thinner than RViz so dense trees stay readable on small platforms.
  */
-constexpr float kTfDefaultAxisRadius = 0.02f;
+constexpr float kTfAxisRadiusRatio = 0.055f;
 
 /** @brief RViz2 @c Axes::getDefaultXColor() — pure red. */
 inline QColor TfDefaultXColor() { return QColor::fromRgbF(1.f, 0.f, 0.f); }

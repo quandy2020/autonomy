@@ -17,8 +17,22 @@ ThirdPersonFollowerViewController::ThirdPersonFollowerViewController(
 
 void ThirdPersonFollowerViewController::apply(
     rendering::ViewController* controller) {
-  if (controller != nullptr) {
-    controller->setType(rendering::ViewControllerType::kThirdPersonFollow);
+  if (controller == nullptr) {
+    return;
+  }
+  const auto prev = controller->type();
+  controller->setType(rendering::ViewControllerType::kThirdPersonFollow);
+  // Entering chase view: mount on base_link behind the robot. Leaving an
+  // Orbit/FPS sky camera or a camera_link target otherwise looks "wrong".
+  if (prev != rendering::ViewControllerType::kThirdPersonFollow) {
+    if (!controller->placeThirdPersonOnRobotFrame()) {
+      rendering::ViewState state = controller->state();
+      state.target = QVector3D(0.f, 0.f, 0.f);
+      state.distance = 2.5f;
+      state.yaw = 3.14159265f;
+      state.pitch = 0.55f;
+      controller->setState(state);
+    }
   }
 }
 

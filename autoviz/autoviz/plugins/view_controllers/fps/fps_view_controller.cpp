@@ -15,9 +15,19 @@ FPSViewController::FPSViewController(rendering::ViewController* host)
     : FrameTrackingViewController(host) {}
 
 void FPSViewController::apply(rendering::ViewController* controller) {
-  if (controller != nullptr) {
-    controller->setType(rendering::ViewControllerType::kFps);
+  if (controller == nullptr) {
+    return;
   }
+  const auto prev = controller->type();
+  if (prev != rendering::ViewControllerType::kFps &&
+      prev != rendering::ViewControllerType::kFpsMotion) {
+    // Prefer robot-mounted FPS (base_link on the map). Fall back to adopting
+    // the Orbit camera, with a ground-level snap when the eye is sky-high.
+    if (!controller->placeFpsEyeOnRobotFrame()) {
+      controller->adoptCurrentViewForFps();
+    }
+  }
+  controller->setType(rendering::ViewControllerType::kFps);
 }
 
 void FPSViewController::yaw(float angle) {

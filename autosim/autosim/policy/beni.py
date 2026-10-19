@@ -188,7 +188,9 @@ class BeniBalancePolicy:
             hidden = np.asarray(outputs[1], dtype=np.float32)
             if hidden.size == self.hidden.size:
                 self.hidden = hidden.reshape(self.HIDDEN)
-        self.last_action = action.astype(np.float32)
+        # Open Beni actions are trained in ≈[-1, 1]; clip before obs feedback.
+        action = np.clip(action, -1.0, 1.0).astype(np.float32)
+        self.last_action = action
         return action
 
     def apply_action(self, action: np.ndarray, dt: float) -> None:
@@ -225,17 +227,32 @@ class BeniBalancePolicy:
         vx_cmd: float,
         wz_cmd: float,
         base_yaw_rate: float = 0.0,
+        base_ang_vel: Optional[Sequence[float]] = None,
+        projected_gravity: Optional[Sequence[float]] = None,
+        apply_kinematic: bool = True,
     ) -> Tuple[float, float]:
         """Ramp command → obs → ONNX → joints. Returns wheel-derived ``(vx, wz)``."""
         vx_cmd, wz_cmd = self.ramp_command(vx_cmd, wz_cmd, dt)
+        ang = (
+            tuple(float(v) for v in base_ang_vel)
+            if base_ang_vel is not None
+            else (0.0, 0.0, float(base_yaw_rate))
+        )
+        grav = (
+            tuple(float(v) for v in projected_gravity)
+            if projected_gravity is not None
+            else (0.0, 0.0, -1.0)
+        )
         obs = self.build_obs(
             vx_cmd=vx_cmd,
             wz_cmd=wz_cmd,
-            base_ang_vel=(0.0, 0.0, float(base_yaw_rate)),
+            base_ang_vel=ang,
+            projected_gravity=grav,
             base_pose_cmd=(0.0, 0.0, self.base_height),
         )
         action = self.infer(obs)
-        self.apply_action(action, dt)
+        if apply_kinematic:
+            self.apply_action(action, dt)
         return self.wheel_twist()
 
     def wheel_twist(self) -> Tuple[float, float]:

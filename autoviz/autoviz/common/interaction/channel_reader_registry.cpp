@@ -46,7 +46,13 @@ ChannelReaderRegistry::SubscriptionId ChannelReaderRegistry::subscribe(
     ChannelEntry& entry = channels_[channel];
     subscription_id = next_subscription_id_++;
     entry.subscriptions.push_back({subscription_id, std::move(callback)});
-    need_create_reader = (entry.reader == nullptr);
+    // Serialize CreateReader: concurrent/stacked subscribe on a new channel
+    // used to both call CreateReader and hit "reader already exists".
+    need_create_reader =
+        (entry.reader == nullptr && !entry.creating_reader);
+    if (need_create_reader) {
+      entry.creating_reader = true;
+    }
   }
   if (!need_create_reader) {
     return subscription_id;
@@ -77,6 +83,7 @@ ChannelReaderRegistry::SubscriptionId ChannelReaderRegistry::subscribe(
       discard = std::move(reader);
       subscription_id = 0;
     } else {
+      found->second.creating_reader = false;
       const bool still_subscribed =
           std::any_of(found->second.subscriptions.begin(),
                       found->second.subscriptions.end(),

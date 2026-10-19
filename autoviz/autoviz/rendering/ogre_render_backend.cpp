@@ -5,6 +5,7 @@
 #include "autoviz/rendering/ogre_render_backend.hpp"
 
 #include <algorithm>
+#include <limits>
 
 #include <Ogre.h>
 
@@ -85,25 +86,53 @@ void UploadPointBillboards(Ogre::SceneManager* scene,
   if (scene == nullptr || billboards == nullptr) {
     return;
   }
-  if (*billboards != nullptr) {
-    scene->destroyBillboardSet(*billboards);
-    *billboards = nullptr;
-  }
+  // Reuse one BillboardSet across frames. Destroy/recreate every paint has
+  // crashed in ~BillboardSet/free under live robot + dense overlay points
+  // (heap corruption during pool teardown).
   if (points.empty()) {
+    if (*billboards != nullptr) {
+      (*billboards)->clear();
+      (*billboards)->setVisible(false);
+    }
     return;
   }
-  *billboards =
-      scene->createBillboardSet("AvizPointBillboards", points.size());
-  (*billboards)->setMaterialName("AvizPointSprite");
+
+  constexpr unsigned kMinPool = 16u;
+  const unsigned needed = static_cast<unsigned>(
+      std::min<std::size_t>(points.size(),
+                            static_cast<std::size_t>(std::numeric_limits<unsigned>::max())));
+  if (*billboards == nullptr) {
+    if (scene->hasBillboardSet("AvizPointBillboards")) {
+      scene->destroyBillboardSet("AvizPointBillboards");
+    }
+    *billboards = scene->createBillboardSet(
+        "AvizPointBillboards", std::max(needed, kMinPool));
+    if (*billboards == nullptr) {
+      return;
+    }
+    (*billboards)->setMaterialName(
+        "AvizPointSprite",
+        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+    (*billboards)->setCullIndividually(false);
+    scene->getRootSceneNode()->attachObject(*billboards);
+  }
+
+  Ogre::BillboardSet* set = *billboards;
+  set->setVisible(true);
+  set->clear();
+  if (set->getPoolSize() < needed) {
+    set->setPoolSize(needed);
+  }
   const float world_size = std::max(0.004f, point_size * 0.012f);
-  (*billboards)->setDefaultDimensions(world_size, world_size);
+  set->setDefaultDimensions(world_size, world_size);
   for (const OgreLineVertex& point : points) {
-    Ogre::Billboard* billboard =
-        (*billboards)->createBillboard(ToOgre(point.position));
+    Ogre::Billboard* billboard = set->createBillboard(ToOgre(point.position));
+    if (billboard == nullptr) {
+      continue;
+    }
     billboard->setColour(Ogre::ColourValue(
         point.color.x(), point.color.y(), point.color.z(), point.color.w()));
   }
-  scene->getRootSceneNode()->attachObject(*billboards);
 }
 
 void RemoveTextureIfExists(const Ogre::String& name) {
@@ -487,7 +516,12 @@ void OgreRenderBackend::render(bool show_grid,
     impl_->camera->setCustomProjectionMatrix(true, ortho);
   } else {
     impl_->camera->setCustomProjectionMatrix(false, Ogre::Matrix4::IDENTITY);
-    impl_->camera->setFOVy(Ogre::Degree(45.f));
+    const bool fps =
+        view_controller.type() == ViewControllerType::kFps ||
+        view_controller.type() == ViewControllerType::kFpsMotion;
+    // Wider FOV in first-person reduces the razor-horizon aliasing that looks
+    // like a blurred ground plane when the eye sits near the map.
+    impl_->camera->setFOVy(Ogre::Degree(fps ? 70.f : 45.f));
     impl_->camera->setAutoAspectRatio(true);
   }
 

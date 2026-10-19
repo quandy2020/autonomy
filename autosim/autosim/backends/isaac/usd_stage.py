@@ -128,6 +128,7 @@ class UsdStage:
         robot_usd: Optional[Path] = None,
         robot_prim_path: str = "/World/Robot",
         base_z: float = 0.0,
+        defer_robot_prim: bool = False,
     ) -> None:
         require_isaac()
         import omni.usd
@@ -165,10 +166,37 @@ class UsdStage:
             )
         except Exception as exc:
             logger.warning("early physics scene repair skipped: %s", exc)
-        self.ensure_robot_prim()
-        self.robot_xform = UsdGeom.Xformable(
-            self.stage.GetPrimAtPath(self.robot_prim_path)
-        )
+        # Articulation mode imports Beni URDF later — an empty /Root/Robot
+        # placeholder makes MovePrim land on /Root/Robot_01 instead.
+        self.robot_xform: Any = None
+        if defer_robot_prim:
+            # InteriorAgent reserves /beni with PhysX/Robot variants; kill it
+            # before the first Fabric/PhysX sync so it cannot collide with us.
+            try:
+                from autosim.backends.isaac.beni_articulation import (
+                    _deactivate_scene_beni_stub,
+                )
+
+                _deactivate_scene_beni_stub(self.stage)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("early /beni stub deactivate skipped: %s", exc)
+        else:
+            self.ensure_robot_prim()
+            self.bind_robot_xform()
+
+    def bind_robot_xform(self, prim_path: Optional[str] = None) -> bool:
+        """Refresh ``robot_xform`` from ``prim_path`` or ``robot_prim_path``."""
+        from pxr import UsdGeom
+
+        path = str(prim_path or self.robot_prim_path)
+        if prim_path:
+            self.robot_prim_path = path
+        prim = self.stage.GetPrimAtPath(path)
+        if not prim or not prim.IsValid():
+            self.robot_xform = None
+            return False
+        self.robot_xform = UsdGeom.Xformable(prim)
+        return True
 
     def ensure_robot_prim(self) -> None:
         from pxr import UsdGeom
@@ -186,6 +214,9 @@ class UsdStage:
         translation, quat_wxyz = map_to_world(x, y, yaw, z=self.base_z)
         from pxr import Gf, UsdGeom
 
+        if self.robot_xform is None:
+            if not self.bind_robot_xform():
+                return
         ops = self.robot_xform.GetOrderedXformOps()
         if not ops:
             self.robot_xform.ClearXformOpOrder()
@@ -234,50 +265,85 @@ class UsdStage:
     def _sync_isaac_prim_pose(
         self, translation: np.ndarray, quat_wxyz: np.ndarray
     ) -> None:
-        """Teleport kinematic robot via Isaac Rigid/XForm prim (Fabric-aware)."""
+        """Teleport plant pose via Isaac Fabric-aware prim APIs.
+
+        Kinematic capsules must use ``SingleXFormPrim`` only. ``SingleRigidPrim``
+        (and any follow-up ``set_*_velocity``) spam PhysX with
+        ``Body must be non-kinematic`` and eventually stop the simulation —
+        which is exactly the 穿模 / 不会倒 failure mode when the plant owns pose.
+        """
         pos = np.asarray(translation, dtype=np.float64).reshape(3)
         orn = np.asarray(quat_wxyz, dtype=np.float64).reshape(4)
+        kinematic = self._prim_is_kinematic(self.robot_prim_path)
         view = getattr(self, "_isaac_pose_view", None)
+        view_kind = getattr(self, "_isaac_pose_view_kind", None)
+        want_kind = "xform" if kinematic else "rigid"
+        if view is not None and view is not False and view_kind != want_kind:
+            # Prim mode changed (e.g. articulation fallback → capsule).
+            self._isaac_pose_view = None
+            view = None
         if view is None:
-            try:
-                from isaacsim.core.prims import SingleRigidPrim
-
-                view = SingleRigidPrim(
-                    prim_path=self.robot_prim_path, name="autosim_robot_rb"
-                )
-                try:
-                    view.initialize()
-                except Exception:
-                    pass
-                self._isaac_pose_view = view
-            except Exception:
-                try:
-                    from isaacsim.core.prims import SingleXFormPrim
-
-                    view = SingleXFormPrim(
-                        prim_path=self.robot_prim_path, name="autosim_robot_xf"
-                    )
-                    try:
-                        view.initialize()
-                    except Exception:
-                        pass
-                    self._isaac_pose_view = view
-                except Exception:
-                    self._isaac_pose_view = False
-                    return
-        if view is False:
+            view = self._make_isaac_pose_view(prefer_rigid=not kinematic)
+            self._isaac_pose_view = view if view is not None else False
+            self._isaac_pose_view_kind = want_kind if view is not None else None
+        if view is False or view is None:
             return
         try:
             view.set_world_pose(position=pos, orientation=orn)
         except Exception as exc:
             logger.debug("isaac prim set_world_pose failed: %s", exc)
             return
-        # arena-isaac geom.move: teleports must not preserve momentum.
+        # Plant teleports are kinematic — never touch velocity.
+        if kinematic:
+            return
         self._zero_isaac_prim_velocities(view)
+
+    def _make_isaac_pose_view(self, *, prefer_rigid: bool) -> Any | None:
+        """Build an Isaac prim view for Fabric pose writes."""
+        path = self.robot_prim_path
+        if prefer_rigid:
+            try:
+                from isaacsim.core.prims import SingleRigidPrim
+
+                view = SingleRigidPrim(prim_path=path, name="autosim_robot_rb")
+                try:
+                    view.initialize()
+                except Exception:
+                    pass
+                return view
+            except Exception:
+                pass
+        try:
+            from isaacsim.core.prims import SingleXFormPrim
+
+            view = SingleXFormPrim(prim_path=path, name="autosim_robot_xf")
+            try:
+                view.initialize()
+            except Exception:
+                pass
+            return view
+        except Exception:
+            return None
+
+    def _prim_is_kinematic(self, prim_path: str) -> bool:
+        """True when RigidBody is missing or ``kinematicEnabled``."""
+        try:
+            from pxr import UsdPhysics
+
+            prim = self.stage.GetPrimAtPath(str(prim_path))
+            if not prim or not prim.IsValid():
+                return True
+            if not prim.HasAPI(UsdPhysics.RigidBodyAPI):
+                return True
+            api = UsdPhysics.RigidBodyAPI(prim)
+            attr = api.GetKinematicEnabledAttr()
+            return bool(attr and attr.Get())
+        except Exception:
+            return True
 
     @staticmethod
     def _zero_isaac_prim_velocities(view: Any) -> None:
-        """Clear linear/angular velocity after a kinematic teleport."""
+        """Clear linear/angular velocity after a dynamic teleport."""
         try:
             set_vel = getattr(view, "set_velocities", None)
             if callable(set_vel):

@@ -144,6 +144,15 @@ VisualizationFrame::VisualizationFrame(
     connect(panels_->views_panel_, &ViewsPanel::viewChanged, this, [this]() {
       if (rendering::ViewController* controller = viewport_->activeViewController()) {
         manager_->setViewControllerName(controller->typeName().toStdString());
+        // WASD for FPS requires focus on the GL viewport (not the Views combo).
+        if (controller->type() == rendering::ViewControllerType::kFps ||
+            controller->type() == rendering::ViewControllerType::kFpsMotion) {
+          if (ViewportPanelEntry* entry = viewport_->activeViewportEntry()) {
+            if (entry->widget != nullptr) {
+              entry->widget->setFocus(Qt::OtherFocusReason);
+            }
+          }
+        }
       }
       viewport_->syncViewportTitleBarTools();
       viewport_->requestViewportUpdate();

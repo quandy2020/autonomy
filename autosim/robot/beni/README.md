@@ -28,6 +28,21 @@ habitat:
   push base twist from LW/RW)
 
 Full MuJoCo contact dynamics stay in Open Beni; autosim is kinematic + RGB-D.
+
+## Action-sequence tests
+
+```bash
+# Pytest (forward / reverse / turn / stop-go / height band)
+cd src/autonomy/autosim && python3 -m pytest tests/test_beni_sequences.py -q
+
+# Offline ONNX smoke (prints PASS/FAIL per maneuver)
+python3 scripts/beni_action_sequences.py
+
+# Live: publish sequences into a running autosim (Autoviz watches /cmd_vel)
+python3 scripts/beni_action_sequences.py --live
+python3 scripts/beni_action_sequences.py --live --seq forward --seq turn_left
+```
+
 ## Height & footprint
 
 | 项 | 值 |

@@ -211,6 +211,7 @@ def test_physics_config_from_habitat_defaults():
 
     cfg = physics_config_from_habitat({"isaac": {}})
     assert cfg["enabled"] is True
+    assert cfg["mode"] == "capsule"
     assert cfg["block_motion"] is True
     assert cfg["strip_nested_rigid_bodies"] is True
     assert cfg["physics_scene_path"] == "/physicsScene"
@@ -221,6 +222,34 @@ def test_physics_config_from_habitat_defaults():
     )
     assert cfg2["enabled"] is False
     assert cfg2["robot_radius"] == pytest.approx(0.2)
+
+
+def test_physics_config_articulation_forces_collision_world():
+    """Floating-base Beni needs PhysX + scene colliders, not free teleop."""
+    from autosim.backends.isaac.physics import physics_config_from_habitat
+
+    cfg = physics_config_from_habitat(
+        {
+            "isaac": {
+                "physics": {
+                    "mode": "articulation",
+                    "enabled": False,
+                    "block_motion": True,
+                    "ensure_scene_colliders": False,
+                }
+            }
+        }
+    )
+    assert cfg["mode"] == "articulation"
+    assert cfg["enabled"] is True
+    assert cfg["block_motion"] is False
+    assert cfg["ensure_scene_colliders"] is True
+    assert cfg["strip_nested_rigid_bodies"] is True
+
+    bad = physics_config_from_habitat(
+        {"isaac": {"physics": {"mode": "unknown"}}}
+    )
+    assert bad["mode"] == "capsule"
 
 
 def test_strip_nested_rigid_bodies_disables_child():

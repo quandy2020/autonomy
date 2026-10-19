@@ -162,6 +162,54 @@ class ViewController {
   void setType(ViewControllerType type);
 
   /**
+   * @brief Seeds FPS eye / yaw / pitch from the current local view matrix.
+   *
+   * Call before switching Orbit / Ortho / ThirdPerson → FPS so first-person
+   * continues from the active camera instead of jumping to defaults.
+   * When the orbit eye is far above the focal point, snaps to a ground-level
+   * eye near @c target_ instead of a sky-dive pose.
+   */
+  void adoptCurrentViewForFps();
+
+  /**
+   * @brief Whether @p frame is a camera / lidar mount that implies first-person.
+   *
+   * Used by the Views panel: picking such a Target Frame switches Type to FPS
+   * instead of leaving the camera in Third Person Follow at Distance=10.
+   */
+  static bool isFirstPersonTargetFrame(const std::string& frame);
+
+  /**
+   * @brief Places FPS eye on a specific TF frame (must resolve in FrameManager).
+   *
+   * Sets Target Frame, near clip, and eye pose for that mount. Does not change
+   * view Type — caller should @ref setType / @ref setTypeByName to FPS.
+   *
+   * @param frame TF frame name (e.g. @c camera_link).
+   * @return @c true when the transform was available and the eye was placed.
+   */
+  bool placeFpsEyeOnFrame(const std::string& frame);
+
+  /**
+   * @brief Places FPS eye on a preferred robot sensor / base TF frame.
+   *
+   * Prefers @c camera_link (then lidar, then @c base_link).
+   *
+   * @return @c true when a usable robot frame was found and applied.
+   */
+  bool placeFpsEyeOnRobotFrame();
+
+  /**
+   * @brief Seeds Third Person Follow on the robot chassis (@c base_link).
+   *
+   * Sets Target Frame to the body (not @c camera_link), places the camera
+   * behind-and-above looking at the origin — matching RViz ThirdPersonFollower.
+   *
+   * @return @c true when a usable base frame was found and applied.
+   */
+  bool placeThirdPersonOnRobotFrame();
+
+  /**
    * @brief Sets type from an RViz / Autoviz type name string.
    *
    * Accepts names such as @c Orbit, @c XYOrbit, @c TopDownOrtho, @c FPS,
@@ -421,6 +469,14 @@ class ViewController {
    * identity is a valid result when the target equals the fixed frame.
    */
   bool resolveTargetFrameToFixed(QMatrix4x4* out) const;
+
+  /**
+   * @brief Like @ref resolveTargetFrameToFixed but keeps only position + yaw.
+   *
+   * RViz ThirdPersonFollower applies reference yaw about Z and ignores pitch /
+   * roll so the chase camera stays level while turning with the robot.
+   */
+  bool resolveThirdPersonTargetToFixed(QMatrix4x4* out) const;
 
   /** @brief Expresses a point from @p from_frame into @p to_frame (empty = fixed). */
   QVector3D reexpressPoint(const QVector3D& point, const std::string& from_frame,

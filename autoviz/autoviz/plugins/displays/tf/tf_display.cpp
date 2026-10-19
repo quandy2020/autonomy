@@ -68,6 +68,8 @@ void DrawSolidTfAxis(rendering::SceneOverlay& scene, const QVector3D& origin,
     return;
   }
   const QVector3D direction = delta / axis_len;
+  // Crisp core line so axes stay sharp when cylinders are tiny / anti-aliased.
+  scene.addLine(origin, end, color);
   QMatrix4x4 transform;
   transform.setToIdentity();
   transform.translate(origin + direction * (axis_len * 0.5f));
@@ -142,6 +144,7 @@ std::vector<common::DisplayPropertySpec> TfDisplay::propertySpecs() const {
       // Off by default: parent→child arrows clutter Goal / Pose tools. RViz
       // exposes the same Show Arrows property (yellow shaft + magenta head).
       {"show_arrows", "Show Arrows", "false"},
+      {"auto_scale", "Auto Scale", "true"},
       {"marker_scale", "Marker Scale", "1.0"},
       {"update_interval", "Update Interval", "0"},
       {"frame_timeout", "Frame Timeout", "15.0"},
@@ -222,6 +225,8 @@ void TfDisplay::refreshCachedProps() {
       common::ParseBoolProperty(propertyValue("show_axes", "true"), true);
   props_.show_arrows =
       common::ParseBoolProperty(propertyValue("show_arrows", "false"), false);
+  props_.auto_scale =
+      common::ParseBoolProperty(propertyValue("auto_scale", "true"), true);
   props_.marker_scale = std::max(
       1e-3f,
       common::ParseFloatProperty(propertyValue("marker_scale", "1.0"), 1.f));
@@ -341,7 +346,8 @@ void TfDisplay::onPropertyChanged(const std::string& key) {
   refreshCachedProps();
   if (key == "filter_whitelist" || key == "filter_blacklist" ||
       key == "frame_timeout" || key == "update_interval" ||
-      key == "marker_scale" || key.rfind("show_", 0) == 0) {
+      key == "marker_scale" || key == "auto_scale" ||
+      key.rfind("show_", 0) == 0) {
     update_timer_sec_ = 1e9;
     frames_dirty_ = true;
   }
@@ -540,6 +546,64 @@ void TfDisplay::updateFrames() {
   }
 }
 
+float TfDisplay::estimateCharacteristicLength() const {
+  std::vector<float> edges;
+  edges.reserve(frames_.size());
+  float min_x = 0.f;
+  float min_y = 0.f;
+  float min_z = 0.f;
+  float max_x = 0.f;
+  float max_y = 0.f;
+  float max_z = 0.f;
+  bool have_pos = false;
+
+  for (const auto& entry : frames_) {
+    const FrameInfo& info = entry.second;
+    if (!info.enabled || !info.have_fixed_pose) {
+      continue;
+    }
+    const QVector3D& p = info.position;
+    if (!have_pos) {
+      min_x = max_x = p.x();
+      min_y = max_y = p.y();
+      min_z = max_z = p.z();
+      have_pos = true;
+    } else {
+      min_x = std::min(min_x, p.x());
+      min_y = std::min(min_y, p.y());
+      min_z = std::min(min_z, p.z());
+      max_x = std::max(max_x, p.x());
+      max_y = std::max(max_y, p.y());
+      max_z = std::max(max_z, p.z());
+    }
+    if (info.parent.empty()) {
+      continue;
+    }
+    const auto parent = frames_.find(info.parent);
+    if (parent == frames_.end() || !parent->second.have_fixed_pose) {
+      continue;
+    }
+    const float d = (p - parent->second.position).length();
+    if (d > 1e-4f && d < 5.f) {
+      edges.push_back(d);
+    }
+  }
+
+  float characteristic = kTfDefaultAxisLength;
+  if (!edges.empty()) {
+    const auto mid =
+        edges.begin() + static_cast<std::ptrdiff_t>(edges.size() / 2);
+    std::nth_element(edges.begin(), mid, edges.end());
+    characteristic = *mid;
+  } else if (have_pos) {
+    const float dx = max_x - min_x;
+    const float dy = max_y - min_y;
+    const float dz = max_z - min_z;
+    characteristic = std::sqrt(dx * dx + dy * dy + dz * dz) * 0.2f;
+  }
+  return std::clamp(characteristic, 0.04f, 1.5f);
+}
+
 void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
   if (context_ == nullptr || context_->tf_buffer == nullptr) {
     last_drew_frames_ = 0;
@@ -549,11 +613,17 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
     last_drew_frames_ = 0;
     return;
   }
-  const float scale = props_.marker_scale;
+  const float user_scale = props_.marker_scale;
   const double timeout = props_.frame_timeout;
-  // RViz2: Axes(manager, node, 0.2f, 0.02f) then setScale(scale).
-  const float axis_len = kTfDefaultAxisLength * scale;
-  const float axis_radius = kTfDefaultAxisRadius * scale;
+  // Auto Scale: size axes from TF tree spacing so Beni-scale robots are not
+  // buried under RViz's fixed 0.2 m / 0.02 m shafts.
+  const float base_len =
+      props_.auto_scale
+          ? std::clamp(estimateCharacteristicLength() * 0.45f, 0.025f, 0.25f)
+          : kTfDefaultAxisLength;
+  const float axis_len = base_len * user_scale;
+  const float axis_radius = axis_len * kTfAxisRadiusRatio;
+  const float arrow_scale = axis_len / kTfDefaultAxisLength;
   const int64_t now_ns = WallNs();
 
   int drew = 0;
@@ -611,13 +681,13 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
       const auto parent_it = frames_.find(info.parent);
       if (age_arrow_shaft.visible && parent_it != frames_.end() &&
           parent_it->second.have_fixed_pose) {
-        DrawTfParentArrow(scene, origin, parent_it->second.position, scale,
+        DrawTfParentArrow(scene, origin, parent_it->second.position, arrow_scale,
                           age_arrow_shaft.color, age_arrow_head.color);
       }
     }
 
     if (props_.show_names) {
-      const float char_height = 0.1f * scale;
+      const float char_height = std::clamp(0.45f * axis_len, 0.02f, 0.12f);
       const int pixel_height =
           static_cast<int>(std::clamp(char_height * 120.f, 16.f, 128.f));
       const QRgb rgba = age_name.color.rgba();
