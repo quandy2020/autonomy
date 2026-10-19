@@ -20,10 +20,11 @@
 #include <iostream>
 #include <thread>
 
-#include "argus/relocalization/bbs_search_engine.hpp"
-#include "argus/relocalization/prior_map_loader.hpp"
-#include "argus/relocalization/relocalization_manager.hpp"
-#include "argus/relocalization/relocalization_thread_pool.hpp"
+#include "argus/relocalization/bbs/engine.hpp"
+#include "argus/relocalization/prior_map.hpp"
+#include "argus/relocalization/manager.hpp"
+#include "argus/relocalization/thread_pool.hpp"
+#include "argus/relocalization/scan_context/scan_context.hpp"
 
 namespace transform = argus::transform;
 
@@ -291,6 +292,111 @@ int main() {
     return Fail("streak reset");
   }
   auto_mgr.Stop();
+
+  // --- PriorMapBundle feeds full cloud into place index ---
+  {
+    using argus::relocalization::PlaceRecognitionConfig;
+    using argus::relocalization::PriorMapBundle;
+    argus::sensor::PointCloudXYZI world;
+    auto body = MakeWallCloud(0.0, 0.0, 0.0);
+    for (std::size_t i = 0; i < body.size(); ++i) {
+      world.push_back(body[i]);
+    }
+    PriorMapBundle bundle;
+    bundle.occupancy = PriorMapLoader::FromCloud(world, 0.4);
+    bundle.world_cloud = world;
+    RelocalizationConfig bcfg;
+    bcfg.enable = true;
+    bcfg.place_recognition.enable = true;
+    bcfg.place_recognition.min_score = 0.2;
+    bcfg.place_recognition.keyframe_spacing_m = 5.0;
+    bcfg.place_recognition.min_points_per_keyframe = 20;
+    bcfg.place_recognition.enable_lateral_search = false;
+    bcfg.branch_and_bound = bnb;
+    RelocalizationManager bmgr(bcfg);
+    bmgr.SetPriorMap(bundle);
+    if (bmgr.place_index_size() < 1) {
+      return Fail("bundle SetPriorMap should build place index");
+    }
+  }
+
+  // --- Scan Context++ place crop → cropped BnB ---
+  {
+    using argus::relocalization::PlaceRecognitionConfig;
+    using argus::relocalization::ScanContextPlaceIndex;
+
+    // Two distinct corridors far apart in the prior.
+    argus::sensor::PointCloudXYZI world_multi;
+    const transform::Rigid3d T_a =
+        transform::Rigid3d::Translation(Eigen::Vector3d(0.0, 0.0, 0));
+    const transform::Rigid3d T_b =
+        transform::Rigid3d::Translation(Eigen::Vector3d(40.0, 0.0, 0));
+    auto body = MakeWallCloud(0.0, 0.0, 0.0);
+    for (std::size_t i = 0; i < body.size(); ++i) {
+      for (const transform::Rigid3d& T : {T_a, T_b}) {
+        Eigen::Vector3d pw =
+            T * Eigen::Vector3d(body[i].x, body[i].y, body[i].z);
+        argus::sensor::PointType p;
+        p.x = static_cast<float>(pw.x());
+        p.y = static_cast<float>(pw.y());
+        p.z = static_cast<float>(pw.z());
+        p.intensity = 1.f;
+        world_multi.push_back(p);
+      }
+    }
+    auto prior_multi = PriorMapLoader::FromCloud(world_multi, 0.4);
+
+    PlaceRecognitionConfig pr;
+    pr.enable = true;
+    pr.top_k = 3;
+    pr.min_score = 0.25;
+    pr.crop_radius_steps = 3;
+    pr.fallback_full_search = false;
+    pr.keyframe_spacing_m = 5.0;
+    pr.min_points_per_keyframe = 20;
+    pr.max_radius_m = 40.0;
+    pr.enable_lateral_search = false;
+
+    ScanContextPlaceIndex index(pr);
+    index.BuildFromWorldCloud(world_multi);
+    if (index.database_size() < 1) {
+      return Fail("place index should index prior keyframes");
+    }
+    auto cands = index.Retrieve(body);
+    if (cands.empty()) {
+      return Fail("place retrieve should return candidates");
+    }
+
+    BranchAndBoundConfig bnb_pr = bnb;
+    // Without SC, a tiny radius around map center cannot reach either corridor.
+    bnb_pr.search_radius_steps = 2;
+    bnb_pr.max_expansions = 12000;
+    bnb_pr.score_threshold = 0.5;
+    BbsSearchEngine eng_pr(prior_multi, bnb_pr, pr);
+    eng_pr.BuildPlaceIndexFromCloud(world_multi);
+    if (eng_pr.place_index_size() < 1) {
+      return Fail("engine place index empty");
+    }
+    RelocRequest req_pr;
+    req_pr.id = 99;
+    req_pr.query_cloud = body;
+    req_pr.has_initial_guess = false;  // no ESIKF seed; SC must crop
+    std::atomic<bool> cpr{false};
+    auto rpr = eng_pr.Search(req_pr, &cpr);
+    if (!rpr.success) {
+      std::cerr << "sc crop score=" << rpr.best.score
+                << " index=" << eng_pr.place_index_size()
+                << " cands=" << cands.size() << std::endl;
+      return Fail("SC++ crop + BnB should succeed without initial guess");
+    }
+    const Eigen::Vector3d tp = rpr.best.T_w_b.translation();
+    const double d_a = (tp - T_a.translation()).head<2>().norm();
+    const double d_b = (tp - T_b.translation()).head<2>().norm();
+    if (std::min(d_a, d_b) > 2.0) {
+      std::cerr << "tp=" << tp.transpose() << std::endl;
+      return Fail("SC++ reloc pose not near either corridor");
+    }
+  }
 
   std::cout << "OK relocalization (score=" << result.best.score
             << " t=[" << t.x() << "," << t.y() << "] dropped="

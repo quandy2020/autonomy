@@ -1,0 +1,4 @@
+wrote /Users/quandy/Downloads/oxford_spires_dataset/sequences/2024-07-09-new-college-01/argus_eval/modes/modes_compare.png
+LIVO: RMSE=0.379 mean=0.321 max=1.457 matched=1004/1081
+LIO: RMSE=0.366 mean=0.317 max=1.042 matched=1855/2001
+LO: RMSE=22.510 mean=19.903 max=51.696 matched=1934/2083

@@ -1713,12 +1713,29 @@ float VIOManager::FillPointResidualsForward(cv::Mat img, int level,
     const float v_ref = pc[1];
     const int u_ref_i = floorf(pc[0] / scale) * scale;
     const int v_ref_i = floorf(pc[1] / scale) * scale;
+    // Central-difference (±scale) + bilinear (+scale) need a 2*scale halo.
+    const int u0 = u_ref_i - patch_size_half * scale;
+    const int v0 = v_ref_i - patch_size_half * scale;
+    const int u1 = u0 + (patch_size - 1) * scale + 2 * scale;
+    const int v1 = v0 + (patch_size - 1) * scale + 2 * scale;
+    const int img_w = img.cols > 0 ? img.cols : width;
+    const int img_h = img.rows > 0 ? img.rows : height;
+    if (img.empty() || img.data == nullptr || width <= 0 || height <= 0 ||
+        u0 - scale < 0 || v0 - scale < 0 || u1 >= img_w || v1 >= img_h ||
+        u1 >= width || v1 >= height) {
+        return 0.f;
+    }
     const float subpix_u_ref = (u_ref - u_ref_i) / scale;
     const float subpix_v_ref = (v_ref - v_ref_i) / scale;
     const float w_ref_tl = (1.0 - subpix_u_ref) * (1.0 - subpix_v_ref);
     const float w_ref_tr = subpix_u_ref * (1.0 - subpix_v_ref);
     const float w_ref_bl = (1.0 - subpix_u_ref) * subpix_v_ref;
     const float w_ref_br = subpix_u_ref * subpix_v_ref;
+    if (point_index < 0 ||
+        point_index >= static_cast<int>(visual_submap->warp_patch.size()) ||
+        point_index >= static_cast<int>(visual_submap->inv_expo_list.size())) {
+        return 0.f;
+    }
     const std::vector<float>& P = visual_submap->warp_patch[point_index];
     const double inv_ref_expo = visual_submap->inv_expo_list[point_index];
     auto sample = [&](uint8_t* p) {

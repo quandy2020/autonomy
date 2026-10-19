@@ -33,7 +33,7 @@ LIO / LO：复制主配置改 `odometry.modalities`。完整 LIVO 需 `camera.ca
 | `robustness.*` | 退化 / 门控 / 强度 |
 | `map.self_cleaning` | 自清洁 |
 | `loop_closure` / `cross_session` | 异步回环 |
-| `relocalization.*` | BnB 池、触发、先验路径 |
+| `relocalization.*` | BnB 池、触发、先验路径、可选 `place_recognition` |
 | `mapping.enable` / `output_dir` | 在线 MapBuilder |
 | `threading.backend_threads` | **必须为 1** |
 

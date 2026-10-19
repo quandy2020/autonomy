@@ -33,7 +33,7 @@
 #include "argus/map/visual_map.hpp"
 #include "argus/mapping/map_builder_interface.hpp"
 #include "argus/mapping/map_package.hpp"
-#include "argus/relocalization/prior_map_loader.hpp"
+#include "argus/relocalization/prior_map.hpp"
 
 namespace argus {
 namespace mapping {

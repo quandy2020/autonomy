@@ -19,8 +19,8 @@
 #include <fstream>
 #include <iostream>
 
-#include "argus/relocalization/pose_trajectory_eval.hpp"
-#include "argus/relocalization/prior_map_loader.hpp"
+#include "argus/relocalization/pose_eval.hpp"
+#include "argus/relocalization/prior_map.hpp"
 
 namespace {
 

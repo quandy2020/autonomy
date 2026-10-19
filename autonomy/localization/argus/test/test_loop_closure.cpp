@@ -20,8 +20,8 @@
 #include <thread>
 
 #include "argus/backend/pose_graph/pose_graph.hpp"
-#include "argus/loop_closure/loop_closure_manager.hpp"
-#include "argus/loop_closure/scan_context_detector.hpp"
+#include "argus/relocalization/loop_closure/manager.hpp"
+#include "argus/relocalization/loop_closure/scan_context/detector.hpp"
 
 namespace transform = argus::transform;
 

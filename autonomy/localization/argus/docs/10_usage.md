@@ -110,6 +110,17 @@ python3 scripts/plot_traj_ate.py --gt gt.tum --est estimate.tum --out ate.png
 
 配色：GT 黑 / LIVO 红 / LIO 蓝 / LO 紫；轨迹 Umeyama 对齐 VILENS GT。
 
-## 5. 配置入口
+## 5. 重定位先验
+
+```cpp
+// 推荐：占据场 + 全量 .xyz（SC++ place index 质量更好）
+auto bundle = PriorMapLoader::LoadPathBundle(path, resolution);
+odometry.relocalization_manager()->SetPriorMap(bundle);
+
+// 大地图打开候选裁剪
+// relocalization.place_recognition.enable: true
+```
+
+## 6. 配置入口
 
 见 [09_config.md](09_config.md)。生产检查见 [12_production.md](12_production.md)。

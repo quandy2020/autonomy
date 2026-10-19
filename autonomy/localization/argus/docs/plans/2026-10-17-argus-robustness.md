@@ -72,7 +72,7 @@
 ### Task P3：Scan Context + PoseGraph
 
 **Files:**
-- Create: `argus/loop_closure/scan_context_detector.*`
+- Create: `argus/relocalization/loop_closure/scan_context/scan_context_detector.*`
 - Create: `argus/backend/pose_graph/*`
 - Modify: 关键帧投递与异步 worker
 

@@ -261,12 +261,13 @@ bool LivoOdometry::LoadPriorMap(const std::string& path_or_dir) {
     if (!relocalization_manager_ || path_or_dir.empty()) {
         return false;
     }
-    auto prior = relocalization::PriorMapLoader::LoadPath(
+    auto bundle = relocalization::PriorMapLoader::LoadPathBundle(
         path_or_dir, config_.relocalization.prior_resolution);
-    if (!prior) {
+    if (!bundle.ok()) {
         return false;
     }
-    relocalization_manager_->SetPriorMap(std::move(prior));
+    // Prefer full .xyz for SC++ place index (better than voxel centers alone).
+    relocalization_manager_->SetPriorMap(bundle);
     cross_session_reloc_requested_ = false;
     return true;
 }
@@ -285,12 +286,12 @@ bool LivoOdometry::LoadBuiltMap(const std::string& directory) {
     config_.enable_mapping = true;
     config_.relocalization.prior_resolution = config_.mapping.prior_resolution;
     if (relocalization_manager_) {
-        auto prior = relocalization::PriorMapLoader::LoadPath(
+        auto bundle = relocalization::PriorMapLoader::LoadPathBundle(
             directory, config_.relocalization.prior_resolution);
-        if (!prior) {
-            prior = map_builder_->ExportPriorMap();
-        }
-        if (prior) {
+        if (bundle.ok()) {
+            relocalization_manager_->SetPriorMap(bundle);
+            cross_session_reloc_requested_ = false;
+        } else if (auto prior = map_builder_->ExportPriorMap()) {
             relocalization_manager_->SetPriorMap(std::move(prior));
             cross_session_reloc_requested_ = false;
         }

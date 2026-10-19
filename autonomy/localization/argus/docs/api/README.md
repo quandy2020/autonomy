@@ -9,8 +9,7 @@
 | `argus/backend/` | [02 架构](../02_architecture.md)、[04 数学](../04_math.md)、[07 回环](../07_loop_closure.md) |
 | `argus/fusion/` / `perception/` | [05 前端与融合](../05_frontend_fusion.md)、[04 数学](../04_math.md) |
 | `argus/map/` / `mapping/` | [06 地图](../06_map.md) |
-| `argus/loop_closure/` | [07 回环](../07_loop_closure.md) |
-| `argus/relocalization/` | [08 重定位](../08_relocalization.md)、[03 时序](../03_sequence.md) |
+| `argus/relocalization/`（`bbs/` · `scan_context/` · `loop_closure/`） | [08 重定位](../08_relocalization.md)、[07 回环](../07_loop_closure.md)、[03 时序](../03_sequence.md) |
 | `argus/sensor/` / `common/` | 头文件即 API |
 
 消费侧：`find_package(Argus)` → `Argus::argus`（`Argus::odometry` 等为同库别名）。

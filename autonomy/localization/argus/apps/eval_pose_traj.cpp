@@ -27,7 +27,7 @@
 #include <string>
 #include <vector>
 
-#include "argus/relocalization/pose_trajectory_eval.hpp"
+#include "argus/relocalization/pose_eval.hpp"
 
 int main(int argc, char** argv) {
   if (argc < 3) {

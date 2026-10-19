@@ -13,7 +13,7 @@
 | `test_cross_session` | 链式回环与锚定 |
 | `test_map_cleaning` | 置信度 prune |
 | `test_load_livo_config` | YAML 冒烟 |
-| `test_relocalization` | 队列 / BnB / 自动触发 |
+| `test_relocalization` | 队列 / BnB / 自动触发 / SC++ 裁剪 |
 | `test_pose_eval` | TUM ATE + LoadPath |
 | `test_ikd_tree` | 增量 kNN |
 | `test_map_builder` | 落盘 / prior / visual |

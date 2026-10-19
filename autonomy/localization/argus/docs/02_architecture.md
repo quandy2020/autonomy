@@ -16,8 +16,9 @@ argus/
 │   ├── map/                    # 一类型一文件：Voxel* / LioFrameBuffers / Occupancy* / Visual*
 │   ├── mapping/                # MapBuilder（会话落盘 + 先验导出）
 │   ├── odometry/               # LivoOdometry + VIOManager / Frame
-│   ├── loop_closure/           # Scan Context、共识、跨会话
-│   └── relocalization/         # BnB + 专用线程池 + Manager
+│   └── relocalization/         # 重定位 + 回环
+│       ├── bbs/ / scan_context/       # BnB 引擎、SC++ 地点识别
+│       └── loop_closure/               # 回环（命名空间 loop_closure）
 ├── config/                     # livo_esikf.yaml + calibration/ + robustness/
 ├── scripts/                    # 下载 / 评测 / Open3D
 ├── docs/                       # 本文档体系
@@ -41,8 +42,8 @@ CMake：`GLOB` → 单库 `libargus`（`Argus::odometry` 等为别名）。可�
 apps / odometry
     → frontend → sensor → common
     → fusion → perception + map + backend
-    → loop_closure → map + backend/pose_graph   (async)
-    → relocalization                            (isolated pool)
+    → relocalization/loop_closure → map + pose_graph        (async)
+    → relocalization                                (isolated BnB pool)
 ```
 
 硬边界：

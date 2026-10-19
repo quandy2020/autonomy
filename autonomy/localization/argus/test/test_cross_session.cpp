@@ -20,7 +20,7 @@
 #include <vector>
 
 #include "argus/backend/pose_graph/pose_graph.hpp"
-#include "argus/loop_closure/cross_session_linker.hpp"
+#include "argus/relocalization/loop_closure/cross_session.hpp"
 #include "argus/map/map_session.hpp"
 
 namespace transform = argus::transform;

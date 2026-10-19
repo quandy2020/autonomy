@@ -221,6 +221,13 @@ void LoadLoopClosureYaml(const std::string& path,
     out->scan_context.max_candidates = y.Get<int>(
         "scan_context/max_candidates",
         y.Get<int>("scan_context/top_k", out->scan_context.max_candidates));
+    out->scan_context.enable_lateral_search =
+        y.Get<int>("scan_context/enable_lateral_search",
+                   out->scan_context.enable_lateral_search ? 1 : 0) != 0;
+    out->scan_context.lateral_max_shift = y.Get<int>(
+        "scan_context/lateral_max_shift", out->scan_context.lateral_max_shift);
+    out->scan_context.lateral_step_m = y.Get<double>(
+        "scan_context/lateral_step_m", out->scan_context.lateral_step_m);
     out->consensus.geometric_weight = y.Get<double>(
         "consensus/geometric_weight", out->consensus.geometric_weight);
     out->consensus.visual_weight =
@@ -432,6 +439,44 @@ void LoadRelocalizationSection(const common::YamlParameter& root,
     } else {
         r.branch_and_bound.search_space = relocalization::BnBSearchSpace::kSE3;
     }
+
+    // Optional Scan Context++ place crop before BnB.
+    auto& pr = r.place_recognition;
+    pr.enable =
+        root.Get<int>("relocalization/place_recognition/enable",
+                      pr.enable ? 1 : 0) != 0;
+    pr.top_k = root.Get<int>("relocalization/place_recognition/top_k", pr.top_k);
+    pr.min_score = root.Get<double>("relocalization/place_recognition/min_score",
+                                    pr.min_score);
+    pr.crop_radius_steps = root.Get<int>(
+        "relocalization/place_recognition/crop_radius_steps",
+        pr.crop_radius_steps);
+    pr.fallback_full_search =
+        root.Get<int>("relocalization/place_recognition/fallback_full_search",
+                      pr.fallback_full_search ? 1 : 0) != 0;
+    pr.num_rings = root.Get<int>("relocalization/place_recognition/num_rings",
+                                 pr.num_rings);
+    pr.num_sectors = root.Get<int>(
+        "relocalization/place_recognition/num_sectors", pr.num_sectors);
+    pr.max_radius_m = root.Get<double>(
+        "relocalization/place_recognition/max_radius_m", pr.max_radius_m);
+    pr.keyframe_spacing_m = root.Get<double>(
+        "relocalization/place_recognition/keyframe_spacing_m",
+        pr.keyframe_spacing_m);
+    pr.min_points_per_keyframe = root.Get<int>(
+        "relocalization/place_recognition/min_points_per_keyframe",
+        pr.min_points_per_keyframe);
+    pr.ring_key_prefilter_k = root.Get<int>(
+        "relocalization/place_recognition/ring_key_prefilter_k",
+        pr.ring_key_prefilter_k);
+    pr.enable_lateral_search =
+        root.Get<int>("relocalization/place_recognition/enable_lateral_search",
+                      pr.enable_lateral_search ? 1 : 0) != 0;
+    pr.lateral_max_shift = root.Get<int>(
+        "relocalization/place_recognition/lateral_max_shift",
+        pr.lateral_max_shift);
+    pr.lateral_step_m = root.Get<double>(
+        "relocalization/place_recognition/lateral_step_m", pr.lateral_step_m);
 }
 
 void LoadVioSection(const common::YamlParameter& root,

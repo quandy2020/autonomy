@@ -32,12 +32,12 @@
 #include "argus/frontend/types.hpp"
 #include "argus/fusion/confidence_gating.hpp"
 #include "argus/fusion/intensity_assist.hpp"
-#include "argus/loop_closure/loop_closure_manager.hpp"
+#include "argus/relocalization/loop_closure/manager.hpp"
 #include "argus/map/map_self_cleaning_config.hpp"
 #include "argus/map/voxel_map.hpp"
 #include "argus/mapping/map_builder.hpp"
 #include "argus/perception/degeneracy_detector.hpp"
-#include "argus/relocalization/relocalization_manager.hpp"
+#include "argus/relocalization/manager.hpp"
 
 namespace argus {
 namespace odometry {

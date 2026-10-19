@@ -25,8 +25,7 @@ ROS-free port of **FAST-LIVO2** (`atlas/livo`) + **鲁棒定位感知层**（退
 | `argus/fusion/` | ConfidenceGating / 各向异性 / IntensityAssist |
 | `argus/perception/` | DegeneracyDetector / SensorHealthMonitor |
 | `argus/odometry/` | `LivoOdometry::Process` + `ProcessStatus` |
-| `argus/loop_closure/` | Scan Context + 异步 Manager |
-| `argus/relocalization/` | BnB / BBS + 专用线程池 |
+| `argus/relocalization/` | `bbs/` · `scan_context/` · `loop_closure/`；门面 `manager` / `thread_pool` |
 | `config/` | `livo_esikf.yaml` + `calibration/*` + `robustness/*` |
 | `apps/` | `offline_*` / `slice|verify_kitti` / `verify_oxford_datasets` / `livo_esikf_node` |
 | `apps/datasets/` | KITTI / Oxford Spires / Newer College 解析（不进 libargus） |

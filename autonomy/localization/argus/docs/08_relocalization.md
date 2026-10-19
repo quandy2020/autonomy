@@ -1,18 +1,26 @@
 # 重定位
 
-时序见 [03_sequence.md §5](03_sequence.md)；评分见 [04_math.md §8](04_math.md)。
+时序见 [03_sequence.md §5](03_sequence.md)；评分见 [04_math.md §8](04_math.md)。回环见 [07_loop_closure.md](07_loop_closure.md)。
 
-## 1. 职责
+## 1. 目录
 
-跟踪丢失或跨会话冷启动时，在先验占据栅格上做分层分支定界搜索；结果**原子注入**实时状态。
+```text
+argus/relocalization/
+├── types.hpp / config.* / manager.* / thread_pool.*
+├── prior_map.* / candidate.hpp / pose_eval.*
+├── bbs/             # 3D-BBS：engine + search
+├── scan_context/    # SC++ 地点识别 / 候选裁剪
+└── loop_closure/    # 回环（命名空间 loop_closure）
+```
 
-| 文件 | 职责 |
+| 路径 | 职责 |
 |------|------|
-| `relocalization_thread_pool.*` | 专用有界队列线程池 |
-| `prior_map_loader.*` | `.xyz` / 地图包 → 占据场 |
-| `branch_and_bound.*` / `bbs_search_engine.*` | 搜索 |
-| `relocalization_manager.*` | 异步门面 + 结果队列 |
-| `pose_trajectory_eval.*` | TUM ATE / GT 误差 |
+| `manager.*` / `thread_pool.*` / `config.*` | 异步门面、池、配置 |
+| `prior_map.*` / `candidate.hpp` | 先验占据场与候选源接口 |
+| `pose_eval.*` | TUM ATE / GT 误差 |
+| `bbs/` | 全局搜索 + RefineSE3 |
+| `scan_context/` | SC++ 候选裁剪 |
+| `loop_closure/` | 回环（见 07） |
 
 ## 2. 硬约束
 
@@ -24,17 +32,21 @@
 ## 3. 流程
 
 ```text
-PriorMapLoader::FromCloud / LoadPath(.xyz | 地图包)
-  → RelocalizationManager::SetPriorMap
-  （包目录优先 prior.xyz，否则 map.xyz；或 LoadBuiltMap）
+PriorMapLoader::LoadPathBundle(.xyz | 地图包)
+  → RelocalizationManager::SetPriorMap(bundle)
+  → [可选] scan_context/ 建索引
 RequestRelocalization(query body cloud)
-  → [pool] BbsSearchEngine / BranchAndBound
-  → results 队列
-TryInjectRelocalization
-  → 整包替换 pos/rot，位置协方差重置
+  → [pool] bbs/engine
+       · place_recognition.enable:
+           [可选 aux] → SC++ 门控/检索 Top-K
+           → 裁剪 BnB → RefineSE3
+           失败且 fallback → 全图 BnB
+       · 否则: 全图 / 初值邻域 BnB → RefineSE3
+  → results 队列 → TryInjectRelocalization
 ```
 
-默认 `relocalization.enable: true`；无 `prior_map_path` / 未 `LoadBuiltMap` 时不会出结果。
+默认 `relocalization.enable: true`；无先验则无结果。  
+`place_recognition.enable` 默认 **false**。
 
 ## 4. 触发
 
@@ -44,28 +56,15 @@ TryInjectRelocalization
 | `manual` | 仅外部请求 |
 | `cross_session_load` | 加载先验后首帧有效点云请求一次 |
 
-`IsTrackingLost`：下采样空 / LiDAR 健康超时 / 门控 `lidar_valid==false` / 退化 `is_degenerated==true`。
+## 5. BnB / Place recognition
 
-自动请求可用当前 body 云；`seed_with_current_pose` 以 ESIKF 位姿为初值。
+`relocalization.branch_and_bound`：`search_space`（`se2` / `se3_yaw` / `se3`）、分辨率、阈值等。
 
-手动：`LoadPriorMap(path)` / `RequestRelocalization(req)`。
+`relocalization.place_recognition`：`enable` / `top_k` / `crop_radius_steps` / `fallback_full_search` / SC++ lateral 等。
 
-## 5. BnB 参数
-
-`relocalization.branch_and_bound`：
-
-| 项 | 说明 |
-|----|------|
-| `search_space` | `se2` / `se3_yaw` / **`se3`（默认）** |
-| `resolution` / `z_resolution` | 粗层 xy / z |
-| `yaw_step_rad` / `search_radius_*` | 航向与搜索半径 |
-| `roll_pitch_refine_rad` / `roll_pitch_steps` | 局部 roll/pitch 微调 |
-| `score_threshold` / `max_depth` / `max_expansions` | 接受与预算 |
-
-真值对比：`EvaluateAgainstGroundTruth` → 平移/转角误差与 `within_tolerance`。  
-离线 ATE：`eval_pose_traj est.tum gt.tum`。
+视觉：`mgr.SetAuxCandidateSource(...)`（`PlaceCandidateSource`）。
 
 ## 6. 测试
 
-`test_relocalization`：队列、SE(2)/SE3Yaw 召回、GT 误差、Manager 异步、streak / cooldown。  
-`test_pose_eval`：TUM ATE + `LoadPath`。
+`test_relocalization`：队列、BnB、Manager、SC++ 裁剪。  
+`test_pose_eval`：TUM ATE。

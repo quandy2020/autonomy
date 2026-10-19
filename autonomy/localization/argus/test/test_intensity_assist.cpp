@@ -17,7 +17,7 @@
 #include <iostream>
 
 #include "argus/fusion/intensity_assist.hpp"
-#include "argus/loop_closure/multi_modal_consensus.hpp"
+#include "argus/relocalization/loop_closure/consensus.hpp"
 
 namespace transform = argus::transform;
 

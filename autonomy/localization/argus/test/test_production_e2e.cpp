@@ -30,8 +30,8 @@
 #include "argus/mapping/map_builder.hpp"
 #include "argus/mapping/map_package.hpp"
 #include "argus/perception/degeneracy_detector.hpp"
-#include "argus/relocalization/bbs_search_engine.hpp"
-#include "argus/relocalization/prior_map_loader.hpp"
+#include "argus/relocalization/bbs/engine.hpp"
+#include "argus/relocalization/prior_map.hpp"
 #include "argus/sensor/image_data.hpp"
 #include "argus/sensor/imu_data.hpp"
 

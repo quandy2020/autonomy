@@ -101,7 +101,7 @@ sequenceDiagram
 
   Est->>M: RequestRelocalization query cloud
   M->>Pool: Enqueue task
-  Pool->>BnB: Search prior occupancy
+  Pool->>BnB: Search (optional SC++ crop → BnB → RefineSE3)
   BnB-->>M: RelocResult queue
   Est->>M: TakeResults
   Est->>Est: Replace pos rot reset pos cov

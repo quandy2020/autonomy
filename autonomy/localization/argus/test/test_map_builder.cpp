@@ -19,7 +19,7 @@
 
 #include "argus/mapping/map_builder.hpp"
 #include "argus/mapping/map_package.hpp"
-#include "argus/relocalization/prior_map_loader.hpp"
+#include "argus/relocalization/prior_map.hpp"
 
 namespace transform = argus::transform;
 
