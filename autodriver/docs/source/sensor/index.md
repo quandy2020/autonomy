@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 相机/点云/板载 IMU | `camera` 折叠 | `realsense` `orbbec` | 已实现 | [RealSense](camera/realsense.md) [Orbbec](camera/orbbec.md) |
 | 2D 激光 | `lidar_2d` | `rplidar` | 已实现 | [RPLidar](lidar/rplidar.md) |
-| 3D 激光 | `lidar_3d` | `velodyne` `hesai` `livox` | 已实现 | [Velodyne](lidar/velodyne.md) [Hesai](lidar/hesai.md) [Livox](lidar/livox.md) |
+| 3D 激光 | `lidar_3d` | `velodyne` `hesai` `livox` | 已实现 | [Velodyne](lidar/velodyne.md) [Hesai / JT128](lidar/hesai.md) [Livox](lidar/livox.md) |
 | IMU/GPS | `imu` `gps` | `serial` `can`（含板载） | 已实现 | [IMU/GPS](imu_gps.md) |
 | Radar/Mic/双目/Range | 对应键 | stub / 仅 Attach | 占位 | [Stub](stubs.md) |
 

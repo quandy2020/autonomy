@@ -111,10 +111,23 @@ Orbbec 一键安装：`./scripts/install_orbbec_sdk.sh`（官方 `.deb`；`ORBBE
 
 | backend | 排查项 |
 |---|---|
-| `velodyne` / `hesai` | UDP `data_port`、防火墙、`model` 与校准文件 |
+| `velodyne` / `hesai`（XT32） | UDP `data_port`、防火墙、`model` 与校准文件 |
+| `hesai`（**JT128** / SDK） | 见下表；详文 [Hesai](sensor/lidar/hesai.md) |
 | `livox` | SDK、网段、JSON / `host_ip` |
 | `rplidar` | 串口、波特率、SDK |
 | RealSense / Orbbec 点云 | `point_clouds` 或扁平 `point_cloud` 是否 enable |
+
+### Hesai JT128
+
+| 现象 | 处理 |
+|---|---|
+| `NO-CARRIER` / ping 不通 | 雷达供电、网线、主机有线口 `LOWER_UP`（与 Docker `--net=host` 无关） |
+| 驱动在跑、收不到包 | 出厂常广播 `255.255.255.255:2368` → `host_ip_address` **留空** |
+| 点云扁平（同心圆饼状） | 开 `use_ptc_connected` 或配置 `correction_file_path` / `firetimes_path` |
+| Create 失败 / 无 SDK | `-DAUTODRIVER_WITH_HESAI_SDK=ON` + `./scripts/install_hesai_lidar_sdk.sh` |
+| autoviz 无显示 | Topic `/lidar/jt128/points`，Fixed Frame **`hesai_jt128`** |
+
+快速验证：`autodriver --config-file examples/jt128_verify.yaml`。
 
 ## Stub（无真实采集数据）
 

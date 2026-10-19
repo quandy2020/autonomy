@@ -21,8 +21,9 @@ UDP ReadLoop → PacketQueue → ProcessLoop → 方位角切帧 / packets_per_s
 | `lidar_component_base.hpp` | Scan / Convert 钩子 |
 | `motion_compensator.*` / `pose_buffer.*` / `motion_pose_sink.hpp` | 扫面内运动补偿；`SensorManager::PushLidarPose` |
 | `velodyne/` | **真采集**（VLP-16 + calibration YAML） |
-| `hesai/` | **真采集**（PandarXT / XT32 + 可选 elevation YAML） |
-| `vendor_stubs.cpp` | livox / rslidar / lslidar / seyond / vanjee → nullptr |
+| `hesai/` | **真采集**：XT32 自研 UDP；JT128 等官方 SDK（`sdk_driver`） |
+| `livox/` | **真采集**（SDK1/2，需 `AUTODRIVER_WITH_LIVOX`） |
+| `vendor_stubs.cpp` | rslidar / lslidar / seyond / vanjee → nullptr |
 | `source_type.hpp` | `online` \| `raw_packet` |
 
 ## backends
@@ -30,8 +31,8 @@ UDP ReadLoop → PacketQueue → ProcessLoop → 方位角切帧 / packets_per_s
 | backend | alias | 说明 |
 |---|---|---|
 | `velodyne` | `udp` | UDP 2368，默认 VLP-16 |
-| `hesai` | `pandar` | UDP 2368，默认 XT32 |
-| `livox` | — | stub |
+| `hesai` | `pandar` | XT32 UDP 或 SDK（JT128 等）；见 `hesai/README.md` |
+| `livox` | — | SDK1/2 |
 | `rslidar` | `robosense` | stub |
 | `lslidar` | — | stub |
 | `seyond` | — | stub |

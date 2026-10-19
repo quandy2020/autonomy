@@ -72,6 +72,7 @@ cmake --build build -j"$(nproc 2>/dev/null || sysctl -n hw.ncpu)" \
 | `AUTODRIVER_WITH_ORBBEC` | ON | OrbbecSDK；未找到时为 stub |
 | `AUTODRIVER_WITH_RPLIDAR` | ON | rplidar_sdk |
 | `AUTODRIVER_WITH_LIVOX` | ON | Livox SDK1/2；未找到时为 stub |
+| `AUTODRIVER_WITH_HESAI_SDK` | OFF | HesaiLidar_SDK_2.0（JT128 / OT128 等）；未找到时 SDK 路径不可用 |
 | `GenisomL1w_ROOT` | — | 可选；智身 ZSL-1W HighLevel SDK。未设时 `l1w` 仍可编（simulate） |
 
 Linux 找到 `libudev` 时自动定义 `AUTODRIVER_HAVE_UDEV`（无单独开关）。
@@ -85,11 +86,20 @@ cd "$AUTODRIVER_PATH"
 ./scripts/install_rplidar_sdk.sh
 ./scripts/install_livox_sdk2.sh    # Mid-360 / HAP …
 ./scripts/install_livox_sdk.sh     # Mid-40 / Horizon …
-./scripts/install_hesai_lidar_sdk.sh  # 官方 HesaiLidar_SDK_2.0（可选）
+./scripts/install_hesai_lidar_sdk.sh  # JT128 等；再 cmake -DAUTODRIVER_WITH_HESAI_SDK=ON
 ./scripts/install_realsense_sdk.sh # D455 / librealsense2（apt 一键）
 ./scripts/install_orbbec_sdk.sh    # Gemini 330 / OrbbecSDK v2（.deb 一键）
 ./scripts/create_udev_rules.sh     # 可选：/dev/rplidar
 ```
+
+JT128 验证（网口 `LOWER_UP`、能 ping `192.168.1.201` 后）：
+
+```bash
+autodriver --config-dir "$AUTODRIVER_PATH" --config-file examples/jt128_verify.yaml
+# autoviz：/lidar/jt128/points ，Fixed Frame = hesai_jt128
+```
+
+详见 [Hesai · JT128](../sensor/lidar/hesai.md)。
 
 ### 2.3 Bazel（可选）
 
@@ -217,6 +227,7 @@ ctest --test-dir build -R 'test_' --output-on-failure
 | Publisher / Autolink 失败 | 检查 `LD_LIBRARY_PATH`、`AUTOLINK_PATH` |
 | 串口权限不足 | 将用户加入 `dialout`；确认设备节点与 YAML `port` 一致 |
 | RPLidar A3 无数据 | 使用 `params_file: lidar/slamtec/a3.yaml`（波特率 256000） |
+| Hesai JT128 扁平 / 无点 | 校正文件或 PTC；`host_ip` 留空收广播；见 [Hesai](../sensor/lidar/hesai.md) |
 | mainboard 找不到 `.dag` / `.so` | 设 `AUTOLINK_DAG_PATH`、`AUTOLINK_LIB_PATH` |
 | L1-W 无 SDK | `-DGenisomL1w_ROOT=` 或 YAML `simulate: true` |
 | 手柄无 `js*` / 需重新配对 | Create + PS 后启动，或 `autodriver --pair-joy` / `--pair-mode usb`；见 [使用](usage.md#21-dualsense-遥操) |

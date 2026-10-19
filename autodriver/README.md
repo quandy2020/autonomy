@@ -21,11 +21,11 @@
 |---|---|---|
 | 相机 / 点云 | `realsense`（D455）、`orbbec`（Gemini 330） | 需厂商 SDK |
 | 2D 激光 | `rplidar` | A1/A2/A3；需 rplidar_sdk |
-| 3D 激光 | `velodyne`、`hesai`、`livox` | Livox 需 SDK1/2 |
+| 3D 激光 | `velodyne`、`hesai`、`livox` | Hesai：XT32 自研 UDP；**JT128** 等需 HesaiLidar_SDK_2.0；Livox 需 SDK1/2 |
 | IMU / GPS | `serial` / `can` | NMEA、WitMotion 等 |
 | Radar / Mic | stub | 占位 |
 
-完整表与排障：[`docs/source/sensor/`](docs/source/sensor/index.md)。
+完整表与排障：[`docs/source/sensor/`](docs/source/sensor/index.md) · [Hesai / JT128](docs/source/sensor/lidar/hesai.md)。
 
 ## 底盘
 
@@ -97,8 +97,27 @@ bazel test //...
 
 | CMake | 作用 |
 |---|---|
-| `AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}` | 传感 SDK（默认 ON；未找到不挡编译） |
+| `AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}` | 传感 SDK（默认多为 OFF；未找到不挡编译） |
+| `AUTODRIVER_WITH_HESAI_SDK` | 链入 HesaiLidar_SDK_2.0（JT128 / OT128 等；默认 OFF） |
 | `GenisomL1w_ROOT` | 可选 L1-W HighLevel SDK |
+
+### Hesai JT128（摘要）
+
+```bash
+./scripts/install_hesai_lidar_sdk.sh
+# 重编：-DAUTODRIVER_WITH_HESAI_SDK=ON
+
+# 主机网口与雷达同网段（例 192.168.1.100 ↔ 192.168.1.201），需 LOWER_UP
+export AUTODRIVER_PATH=$PWD/src/autonomy/autodriver
+export LD_LIBRARY_PATH=$PWD/build/autonomy/lib:$LD_LIBRARY_PATH
+autodriver --config-dir "$AUTODRIVER_PATH" --config-file examples/jt128_verify.yaml
+```
+
+- 配置：[`config/lidar/hesai/jt128.yaml`](config/lidar/hesai/jt128.yaml) · 验证：[`config/examples/jt128_verify.yaml`](config/examples/jt128_verify.yaml)
+- 必配角度校正（`use_ptc_connected` 或 `correction_file_path`），否则点云扁平
+- 出厂常广播到 `255.255.255.255:2368` → `host_ip_address` 留空
+- autoviz：Topic `/lidar/jt128/points`，Fixed Frame **`hesai_jt128`**
+- 详文：[docs · Hesai](docs/source/sensor/lidar/hesai.md)
 
 ## 目录
 
@@ -119,7 +138,8 @@ docs/ test/ scripts/ examples/
 | [使用](docs/source/guide/usage.md) · [配置](docs/source/guide/configuration.md) | 进程、YAML |
 | [后端](docs/source/guide/backends.md) · [架构](docs/source/guide/architecture.md) | Registry、加厂商 |
 | [本体](docs/source/guide/chassis.md) | chassis 通道、DAG、JetAuto / L1-W |
-| [传感器](docs/source/sensor/index.md) · [FAQ](docs/source/faq.md) | 厂商、排障 |
+| [传感器](docs/source/sensor/index.md) · [Hesai / JT128](docs/source/sensor/lidar/hesai.md) | 厂商手册 |
+| [FAQ](docs/source/faq.md) | 排障 |
 
 ```bash
 cd docs && pip install -r requirements.txt && mkdocs serve

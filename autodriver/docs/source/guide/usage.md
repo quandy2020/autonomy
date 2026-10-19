@@ -172,13 +172,13 @@ LoadConfig
 |---|---|
 | `install_rplidar_sdk.sh` | Slamtec SDK → 默认 `/usr/local` |
 | `install_livox_sdk2.sh` / `install_livox_sdk.sh` | Livox SDK2 / SDK1 |
-| `install_hesai_lidar_sdk.sh` | 官方 [HesaiLidar_SDK_2.0](https://github.com/HesaiTechnology/HesaiLidar_SDK_2.0) → `PREFIX/opt/hesai_lidar_sdk`（XT32 自研 UDP 不强制） |
+| `install_hesai_lidar_sdk.sh` | 官方 [HesaiLidar_SDK_2.0](https://github.com/HesaiTechnology/HesaiLidar_SDK_2.0) → `PREFIX/opt/hesai_lidar_sdk`（XT32 自研 UDP 不强制；**JT128 需要**） |
 | `install_realsense_sdk.sh` | librealsense2（apt / source） |
 | `install_orbbec_sdk.sh` | OrbbecSDK v2（.deb / source） |
 | `create_udev_rules.sh` / `delete_udev_rules.sh` | `/dev/rplidar` |
 | `verify_realsense_d455.sh` | D455 冒烟（若有） |
 
-CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}`。未找到 SDK 时对应 Create 返回 `nullptr`，不阻碍链接。安装后须重新 cmake，并确认 STATUS 出现 `… enabled`。开关表见 [快速开始 §2.1](quickstart.md#21-cmake-开关)。
+CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX,HESAI_SDK}`。未找到 SDK 时对应 Create 返回 `nullptr`，不阻碍链接。安装后须重新 cmake。开关表见 [快速开始 §2.1](quickstart.md#21-cmake-开关)。JT128：[Hesai](../sensor/lidar/hesai.md)。
 
 ---
 

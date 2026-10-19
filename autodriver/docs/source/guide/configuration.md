@@ -394,12 +394,17 @@ lidar_2d:
 | `params.use_azimuth_cut` | 默认 `true`；方位角切帧 |
 | `params.scan_cut_angle_deg` | cut 角度（度），默认 `0` |
 | `params.packet_queue_capacity` | online 队列，默认 `256`（满丢最旧） |
-| `params.model` | 如 `VLP-16`、`XT32`、`Mid-360` |
-| `params.frame_id` | 点云 frame |
-| `params.source_type` | `online`（默认）或 `raw_packet` |
+| `params.model` | 如 `VLP-16`、`XT32`、`JT128`、`Mid-360` |
+| `params.frame_id` | 点云 frame（JT128 默认 `hesai_jt128`） |
+| `params.source_type` | UDP 路径：`online` / `raw_packet`；SDK 路径用 `hesai_source_type` |
 | `params.bind_host` | 绑定地址，默认任意 |
 | `params.reconnect_attempts` | UDP 断线重连次数 |
-| `params.calibration_path` | Velodyne / Hesai beam YAML（文件系统路径） |
+| `params.calibration_path` | Velodyne / Hesai XT32 beam YAML（文件系统路径） |
+| `params.use_sdk` / `parser` | Hesai：强制官方 SDK（`parser: sdk`）；非 XT32 自动走 SDK |
+| `params.device_ip_address` / `udp_port` / `host_ip_address` | Hesai SDK / ROS2 对齐；广播场景 `host_ip` 留空 |
+| `params.use_ptc_connected` / `correction_file_path` / `firetimes_path` | Hesai 角度校正（JT128 必配，否则点云扁平） |
+| `params.hesai_source_type` | SDK：`1` 在线 UDP，`2` pcap，`4` 串口(JT16)，`5` TCP |
+| `params.socket_buffer_size` | Hesai SDK 收包缓冲（JT128 建议大值） |
 | `params.enable_compensator` | 运动补偿；配合进程级 `compensator.pose_channel` |
 | `params.pose_channel` | 覆盖进程级 compensator |
 | `params.extrinsic_path` | 有则 `world_T_lidar = odom × base_T_lidar` |
@@ -410,7 +415,7 @@ lidar_2d:
 | `params.broadcast_code` | Livox SDK1 白名单（空字符串表示全部） |
 | `params.publish_freq` | Livox 组帧频率 Hz |
 
-点云布局：`point_step=24`（`x,y,z,intensity` + `timestamp` ns）。Hesai 校准仰角为**度**，Velodyne 为 **rad**，请勿混用。
+点云布局：`point_step=24`（`x,y,z,intensity` + `timestamp` ns）。Hesai XT32 校准仰角为**度**，Velodyne 为 **rad**，请勿混用。JT128 见 [Hesai](../sensor/lidar/hesai.md)。
 
 ```yaml
 lidar_3d:
@@ -424,6 +429,11 @@ lidar_3d:
     channel: /lidar/xt32/points
     backend: hesai
     params_file: lidar/hesai/xt32.yaml
+  - name: jt128
+    enable: false
+    channel: /lidar/jt128/points
+    backend: hesai
+    params_file: lidar/hesai/jt128.yaml   # 需 AUTODRIVER_WITH_HESAI_SDK
   - name: mid360
     enable: false
     channel: /lidar/mid360/points
