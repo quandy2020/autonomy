@@ -8,12 +8,12 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 from benchmark.tasks.episode_runner import EpisodeTrace
 
 
-def trace_to_dict(trace: EpisodeTrace) -> Dict[str, Any]:
+def trace_to_dict(trace: EpisodeTrace) -> dict[str, Any]:
     return {
         "episode_id": trace.episode_id,
         "status": trace.status.value,
@@ -23,7 +23,11 @@ def trace_to_dict(trace: EpisodeTrace) -> Dict[str, Any]:
         "time_s": trace.time_s,
         "min_clearance": trace.min_clearance if trace.min_clearance < 1e8 else None,
         "setup": {
-            "start": {"x": trace.setup.start.x, "y": trace.setup.start.y, "yaw": trace.setup.start.yaw},
+            "start": {
+                "x": trace.setup.start.x,
+                "y": trace.setup.start.y,
+                "yaw": trace.setup.start.yaw,
+            },
             "goal": {"x": trace.setup.goal.x, "y": trace.setup.goal.y},
             "obstacles": trace.setup.obstacles,
             "pedestrians": trace.setup.pedestrians,
@@ -44,7 +48,7 @@ def trace_to_dict(trace: EpisodeTrace) -> Dict[str, Any]:
     }
 
 
-def save_traces(traces: List[EpisodeTrace], path: Union[str, Path]) -> Path:
+def save_traces(traces: list[EpisodeTrace], path: str | Path) -> Path:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     payload = [trace_to_dict(t) for t in traces]

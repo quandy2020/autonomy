@@ -1,0 +1,15 @@
+name: patrol
+type: patrol
+description: 巡检 — 多航点循环
+mode: guided
+episodes: 2
+timeout_s: 60
+goal_tolerance_m: 0.4
+obstacles: 6
+pedestrians: 2
+moving_obstacles: 0
+waypoints:
+  - {x: 2.0, y: 0.0}
+  - {x: 2.0, y: 2.0}
+  - {x: 0.0, y: 2.0}
+  - {x: 0.0, y: 0.0}

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from benchmark.humans import AgentState, SocialForceModel
+from benchmark.simulators.humans import AgentState, SocialForceModel
 
 
 def test_social_force_moves_agents() -> None:

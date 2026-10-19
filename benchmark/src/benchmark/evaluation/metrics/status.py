@@ -6,13 +6,13 @@
 
 from __future__ import annotations
 
-from typing import Dict, Sequence
+from collections.abc import Sequence
 
-from benchmark.core.types import EpisodeStatus
+from benchmark.common.types import EpisodeStatus
 from benchmark.tasks.episode_runner import EpisodeTrace
 
 
-def status_counts(traces: Sequence[EpisodeTrace]) -> Dict[str, int]:
+def status_counts(traces: Sequence[EpisodeTrace]) -> dict[str, int]:
     counts = {s.value: 0 for s in EpisodeStatus}
     for t in traces:
         counts[t.status.value] = counts.get(t.status.value, 0) + 1

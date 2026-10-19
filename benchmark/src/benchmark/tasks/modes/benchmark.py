@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
@@ -45,9 +45,9 @@ class BenchmarkMode(TaskMode):
 
     name = "benchmark"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
-        self.stages: List[Dict[str, Any]] = list(
+        self.stages: list[dict[str, Any]] = list(
             self.config.get("stages")
             or [
                 {"mode": "random", "episodes": 3, "config": {"obstacles": 6, "pedestrians": 2}},
@@ -55,9 +55,9 @@ class BenchmarkMode(TaskMode):
                 {"mode": "guided", "episodes": 2, "config": {}},
             ]
         )
-        self._cache: Dict[str, TaskMode] = {}
+        self._cache: dict[str, TaskMode] = {}
 
-    def _resolve(self, episode_id: int) -> tuple[TaskMode, Dict[str, Any], int]:
+    def _resolve(self, episode_id: int) -> tuple[TaskMode, dict[str, Any], int]:
         remaining = episode_id
         for stage in self.stages:
             budget = int(stage.get("episodes", 1))

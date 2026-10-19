@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-from benchmark.core.types import Pose2D, StepResult, Twist2D
+from benchmark.common.types import Pose2D, StepResult, Twist2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.world_state import WorldState
 
@@ -19,7 +19,7 @@ _LOG = logging.getLogger(__name__)
 class FakeSimulator(SimulatorAdapter):
     name = "fake"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         rate = float(self.config.get("rate_hz", 10) or 10)
         self.world = WorldState(
@@ -38,7 +38,7 @@ class FakeSimulator(SimulatorAdapter):
         if isinstance(humans_cfg, dict) and humans_cfg.get("enabled") is False:
             return
         try:
-            from benchmark.humans.factory import create_human_model
+            from benchmark.simulators.humans.factory import create_human_model
 
             self.world.human_model = create_human_model(
                 humans_cfg if isinstance(humans_cfg, dict) else {"name": str(humans_cfg)}
@@ -74,9 +74,9 @@ class FakeSimulator(SimulatorAdapter):
         *,
         obstacles: int = 0,
         pedestrians: int = 0,
-        seed: Optional[int] = None,
-        start: Optional[Pose2D] = None,
-        goal: Optional[Pose2D] = None,
+        seed: int | None = None,
+        start: Pose2D | None = None,
+        goal: Pose2D | None = None,
         moving_obstacles: int = 0,
     ) -> Pose2D:
         self.world.clear_dynamic()
@@ -93,7 +93,7 @@ class FakeSimulator(SimulatorAdapter):
         self._step = 0
         return pose
 
-    def reset(self, *, seed: Optional[int] = None) -> Pose2D:
+    def reset(self, *, seed: int | None = None) -> Pose2D:
         obstacles = int(self.config.get("obstacles", 15))
         pedestrians = int(self.config.get("pedestrians", 5))
         moving = int(self.config.get("moving_obstacles", 3))

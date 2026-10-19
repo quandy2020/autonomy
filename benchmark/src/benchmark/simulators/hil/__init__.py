@@ -2,6 +2,8 @@
 #
 # Licensed under the Apache License, Version 2.0.
 
+from __future__ import annotations
+
 from benchmark.simulators.hil.simulator import HilSimulator
 
 __all__ = ["HilSimulator"]

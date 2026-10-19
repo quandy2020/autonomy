@@ -11,17 +11,17 @@ Maps to Arena Unity/photorealistic indoor role: RGB-D scenes via Habitat when
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-from benchmark.core.types import StepResult, Twist2D
-from benchmark.simulators.sidecar import SidecarSimulator
+from benchmark.common.types import StepResult, Twist2D
 from benchmark.simulators.process import resolve_autosim_root
+from benchmark.simulators.sidecar import SidecarSimulator
 
 
 class HabitatSimulator(SidecarSimulator):
     name = "habitat"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         cfg = dict(config or {})
         cfg.setdefault("bridge_node", "benchmark_habitat")
         cfg.setdefault("subscribe_scan", True)
@@ -46,7 +46,7 @@ class HabitatSimulator(SidecarSimulator):
                 result.info["scan_live"] = True
         return result
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "started": self._started,

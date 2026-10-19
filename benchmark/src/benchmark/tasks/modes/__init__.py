@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 from benchmark.tasks.modes.benchmark import BenchmarkMode
@@ -32,7 +32,7 @@ _MODES = {
 }
 
 
-def create_mode(name: str, config: Optional[Dict[str, Any]] = None) -> TaskMode:
+def create_mode(name: str, config: dict[str, Any] | None = None) -> TaskMode:
     key = (name or "scenario").strip().lower()
     cls = _MODES.get(key)
     if cls is None:

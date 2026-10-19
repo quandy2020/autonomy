@@ -11,7 +11,7 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _LOG = logging.getLogger(__name__)
 
@@ -24,7 +24,7 @@ def autonomy_root() -> Path:
     return Path(__file__).resolve().parents[4]
 
 
-def find_controller_binary() -> Optional[Path]:
+def find_controller_binary() -> Path | None:
     root = autonomy_root()
     candidates = [
         root / "install" / "autonomy" / "bin" / "autonomy.control",
@@ -42,9 +42,9 @@ def find_controller_binary() -> Optional[Path]:
 class AutonomyControlBridge:
     """Optional subprocess wrapper around ``autonomy.control``."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.config = dict(config or {})
-        self.proc: Optional[subprocess.Popen[Any]] = None
+        self.proc: subprocess.Popen[Any] | None = None
         self.binary = find_controller_binary()
 
     @property
@@ -58,7 +58,7 @@ class AutonomyControlBridge:
         if self.proc and self.proc.poll() is None:
             return True
         dag = self.config.get("dag") or ""
-        cmd: List[str] = [str(self.binary)]
+        cmd: list[str] = [str(self.binary)]
         if dag:
             cmd.extend(["--dag", str(dag)])
         _LOG.info("starting autonomy.control: %s", " ".join(cmd))

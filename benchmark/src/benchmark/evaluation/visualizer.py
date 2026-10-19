@@ -7,13 +7,14 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Any, Dict, List, Sequence, Union
+from typing import Any
 
 from benchmark.tasks.episode_runner import EpisodeTrace
 
 
-def traces_to_svg(traces: Sequence[EpisodeTrace], path: Union[str, Path], size: int = 400) -> Path:
+def traces_to_svg(traces: Sequence[EpisodeTrace], path: str | Path, size: int = 400) -> Path:
     """Write a simple SVG overlay of paths (no matplotlib required)."""
     out = Path(path)
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -23,7 +24,7 @@ def traces_to_svg(traces: Sequence[EpisodeTrace], path: Union[str, Path], size: 
     def xy(x: float, y: float) -> tuple[float, float]:
         return (10 + x) * scale, (10 - y) * scale
 
-    parts: List[str] = [
+    parts: list[str] = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}">',
         f'<rect width="{size}" height="{size}" fill="#0b1220"/>',
     ]
@@ -44,5 +45,5 @@ def traces_to_svg(traces: Sequence[EpisodeTrace], path: Union[str, Path], size: 
     return out
 
 
-def load_traces_json(path: Union[str, Path]) -> List[Dict[str, Any]]:
+def load_traces_json(path: str | Path) -> list[dict[str, Any]]:
     return json.loads(Path(path).read_text(encoding="utf-8"))

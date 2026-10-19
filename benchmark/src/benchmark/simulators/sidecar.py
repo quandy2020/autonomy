@@ -7,12 +7,12 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 
 from benchmark.bridge.autolink_bridge import AutolinkBridge
-from benchmark.core.types import Pose2D, StepResult, Twist2D
+from benchmark.common.types import Pose2D, StepResult, Twist2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.fake.simulator import FakeSimulator
 from benchmark.simulators.process import AutosimProcess
@@ -20,11 +20,11 @@ from benchmark.simulators.process import AutosimProcess
 _LOG = logging.getLogger(__name__)
 
 
-def _ranges_from_scan(scan: Any, n_beams: int = 36, max_range: float = 8.0) -> Optional[np.ndarray]:
+def _ranges_from_scan(scan: Any, n_beams: int = 36, max_range: float = 8.0) -> np.ndarray | None:
     """Extract planar ranges from LaserScan-like message or list."""
     if scan is None:
         return None
-    raw: Optional[List[float]] = None
+    raw: list[float] | None = None
     if hasattr(scan, "ranges"):
         try:
             raw = [float(x) for x in scan.ranges]
@@ -49,7 +49,7 @@ class SidecarSimulator(SimulatorAdapter):
 
     name = "sidecar"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self._twin = FakeSimulator(config)
         self._proc = AutosimProcess(config)
@@ -110,7 +110,7 @@ class SidecarSimulator(SimulatorAdapter):
     def configure_world(self, **kwargs: Any) -> Pose2D:
         return self._twin.configure_world(**kwargs)
 
-    def reset(self, *, seed: Optional[int] = None) -> Pose2D:
+    def reset(self, *, seed: int | None = None) -> Pose2D:
         return self._twin.reset(seed=seed)
 
     def set_goal(self, goal: Pose2D) -> None:
@@ -155,7 +155,7 @@ class SidecarSimulator(SimulatorAdapter):
                 return live
         return self._twin.get_pose()
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         return {
             "name": self.name,
             "started": self._started,

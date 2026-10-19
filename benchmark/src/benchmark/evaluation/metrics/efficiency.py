@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
-from typing import Dict, Sequence
+from collections.abc import Sequence
 
-from benchmark.core.types import EpisodeStatus
+from benchmark.common.types import EpisodeStatus
 from benchmark.tasks.episode_runner import EpisodeTrace
 
 
@@ -32,7 +32,7 @@ def mean_time_to_goal(traces: Sequence[EpisodeTrace]) -> float:
     return float(sum(t.time_s for t in reached) / len(reached))
 
 
-def efficiency_summary(traces: Sequence[EpisodeTrace]) -> Dict[str, float]:
+def efficiency_summary(traces: Sequence[EpisodeTrace]) -> dict[str, float]:
     return {
         "success_rate": success_rate(traces),
         "mean_path_length": mean_path_length(traces),

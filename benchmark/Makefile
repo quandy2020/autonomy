@@ -1,4 +1,4 @@
-.PHONY: help install install-dev lint test run list-tasks eval train modes compare multi sim nav collect replay hil clean
+.PHONY: help install install-dev lint test run list-tasks eval modes compare multi sim nav collect replay hil dashboard clean
 
 PYTHON ?= python3
 CONFIG ?= configs/default.yaml
@@ -12,8 +12,7 @@ help:
 	@echo "  make list-tasks|modes|compare|multi"
 	@echo "  make run TASK=navigate MODE=random"
 	@echo "  make eval EPISODES=10"
-	@echo "  make train"
-	@echo "  make nav|collect|replay|hil"
+	@echo "  make nav|collect|replay|hil|dashboard"
 
 install:
 	$(PYTHON) -m pip install -e .
@@ -41,12 +40,6 @@ run:
 eval:
 	benchmark eval --config $(CONFIG) --episodes $(EPISODES)
 
-train:
-	benchmark train --backend simple --episodes 30 --curriculum --export data/checkpoints/policy
-
-tune:
-	benchmark tune --trials 5 --episodes 3
-
 compare:
 	$(PYTHON) scripts/benchmark_planners.py
 
@@ -67,6 +60,9 @@ replay:
 
 hil:
 	benchmark run --config configs/default.yaml --task hil
+
+dashboard:
+	benchmark dashboard --host 127.0.0.1 --port 8090
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

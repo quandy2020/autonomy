@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchmark.core.config import load_config
+from benchmark.common.config import load_config
 
 
 def test_load_default(default_config_path: Path) -> None:

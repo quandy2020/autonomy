@@ -8,16 +8,15 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import List
 
 from benchmark.bridge.autolink_bridge import AutolinkBridge
-from benchmark.core.config import BenchmarkConfig
-from benchmark.core.geometry import reached
-from benchmark.core.types import EpisodeResult, EpisodeStatus, Pose2D, Twist2D
-from benchmark.planning.factory import create_planner
+from benchmark.common.config import BenchmarkConfig
+from benchmark.common.geometry import reached
+from benchmark.common.types import EpisodeResult, EpisodeStatus, Twist2D
 from benchmark.simulators.factory import create_simulator
 from benchmark.tasks.base import Task
 from benchmark.tasks.modes import create_mode
+from benchmark.tasks.planning.factory import create_planner
 
 _LOG = logging.getLogger(__name__)
 
@@ -33,7 +32,7 @@ def _clamp_twist(twist: Twist2D, max_v: float, max_w: float) -> Twist2D:
 class HilTask(Task):
     name = "hil"
 
-    def run(self) -> List[EpisodeResult]:
+    def run(self) -> list[EpisodeResult]:
         safety = dict(self.task_cfg.get("safety") or {})
         max_v = float(safety.get("max_linear_vel", self.task_cfg.get("max_linear_vel", 0.3)))
         max_w = float(safety.get("max_angular_vel", 0.8))
@@ -69,7 +68,7 @@ class HilTask(Task):
             estop,
         )
 
-        results: List[EpisodeResult] = []
+        results: list[EpisodeResult] = []
         with sim:
             setup = mode.setup(0, sim)
             if hasattr(sim, "configure_world"):

@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any
 
-from benchmark.core.types import Pose2D, StepResult, Twist2D
+from benchmark.common.types import Pose2D, StepResult, Twist2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.fake.simulator import FakeSimulator
 
@@ -19,9 +19,9 @@ _LOG = logging.getLogger(__name__)
 class HilSimulator(SimulatorAdapter):
     name = "hil"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
-        self._twin: Optional[FakeSimulator] = None
+        self._twin: FakeSimulator | None = None
         if self.config.get("use_sim_twin", True):
             self._twin = FakeSimulator(config)
 
@@ -43,7 +43,7 @@ class HilSimulator(SimulatorAdapter):
             return self._twin.configure_world(**kwargs)
         return Pose2D()
 
-    def reset(self, *, seed: Optional[int] = None) -> Pose2D:
+    def reset(self, *, seed: int | None = None) -> Pose2D:
         if self._twin:
             return self._twin.reset(seed=seed)
         return Pose2D()

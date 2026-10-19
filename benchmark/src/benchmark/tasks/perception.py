@@ -9,11 +9,11 @@ from __future__ import annotations
 import logging
 import math
 import time
-from typing import List, Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
-from benchmark.core.types import EpisodeResult, EpisodeStatus, Pose2D
+from benchmark.common.types import EpisodeResult, EpisodeStatus, Pose2D
 from benchmark.simulators.factory import create_simulator
 from benchmark.simulators.fake.simulator import FakeSimulator
 from benchmark.simulators.world_state import ObstacleDisk
@@ -23,9 +23,11 @@ from benchmark.tasks.modes import create_mode
 _LOG = logging.getLogger(__name__)
 
 
-def _detect_from_lidar(pose: Pose2D, ranges: np.ndarray, cluster_gap: float = 0.6) -> List[Tuple[float, float]]:
+def _detect_from_lidar(
+    pose: Pose2D, ranges: np.ndarray, cluster_gap: float = 0.6
+) -> list[tuple[float, float]]:
     """Cluster lidar hits into obstacle centroids (xy)."""
-    pts: List[Tuple[float, float]] = []
+    pts: list[tuple[float, float]] = []
     n = ranges.size
     for i, r in enumerate(ranges):
         if not np.isfinite(r) or r >= 7.5:
@@ -35,7 +37,7 @@ def _detect_from_lidar(pose: Pose2D, ranges: np.ndarray, cluster_gap: float = 0.
     if not pts:
         return []
     # Greedy clustering
-    clusters: List[List[Tuple[float, float]]] = []
+    clusters: list[list[tuple[float, float]]] = []
     for p in pts:
         placed = False
         for c in clusters:
@@ -56,10 +58,10 @@ def _detect_from_lidar(pose: Pose2D, ranges: np.ndarray, cluster_gap: float = 0.
 
 
 def _match_precision_recall(
-    dets: Sequence[Tuple[float, float]],
+    dets: Sequence[tuple[float, float]],
     gt: Sequence[ObstacleDisk],
     match_dist: float = 1.0,
-) -> Tuple[float, float]:
+) -> tuple[float, float]:
     if not gt and not dets:
         return 1.0, 1.0
     if not gt:
@@ -89,7 +91,7 @@ def _match_precision_recall(
 class PerceptionTask(Task):
     name = "perception"
 
-    def run(self) -> List[EpisodeResult]:
+    def run(self) -> list[EpisodeResult]:
         episodes = int(self.task_cfg.get("episodes", 5))
         match_dist = float(self.task_cfg.get("match_dist", 1.0))
         mode = create_mode(
@@ -97,7 +99,7 @@ class PerceptionTask(Task):
             dict(self.task_cfg.get("mode_config") or self.task_cfg),
         )
         sim = self.simulator or create_simulator(self.config)
-        results: List[EpisodeResult] = []
+        results: list[EpisodeResult] = []
         _LOG.info("PerceptionTask episodes=%s", episodes)
 
         with sim:
@@ -116,14 +118,14 @@ class PerceptionTask(Task):
                     pose = sim.reset(seed=ep)
                 t0 = time.perf_counter()
                 # One sensing step
-                from benchmark.core.types import Twist2D
+                from benchmark.common.types import Twist2D
 
                 step = sim.step(Twist2D())
                 latency_ms = (time.perf_counter() - t0) * 1000.0
                 obs = step.info.get("observation") or {}
                 lidar = np.asarray(obs.get("lidar", []), dtype=np.float32)
                 dets = _detect_from_lidar(step.pose, lidar) if lidar.size else []
-                gt: List[ObstacleDisk] = []
+                gt: list[ObstacleDisk] = []
                 if isinstance(sim, FakeSimulator):
                     gt = list(sim.world.obstacles)
                 elif hasattr(sim, "_twin") and isinstance(getattr(sim, "_twin"), FakeSimulator):

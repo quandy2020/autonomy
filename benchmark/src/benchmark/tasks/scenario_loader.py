@@ -8,15 +8,15 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 import yaml
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.tasks.modes.base import EpisodeSetup
 
 
-def load_scenario(path: Union[str, Path]) -> EpisodeSetup:
+def load_scenario(path: str | Path) -> EpisodeSetup:
     p = Path(path).expanduser()
     text = p.read_text(encoding="utf-8")
     if p.suffix.lower() in {".yaml", ".yml"}:
@@ -26,14 +26,14 @@ def load_scenario(path: Union[str, Path]) -> EpisodeSetup:
     return scenario_dict_to_setup(data)
 
 
-def scenario_dict_to_setup(data: Dict[str, Any]) -> EpisodeSetup:
+def scenario_dict_to_setup(data: dict[str, Any]) -> EpisodeSetup:
     robot = data.get("robot") or data.get("robots") or {}
     if isinstance(robot, list):
         robot = robot[0] if robot else {}
     start = robot.get("start") or data.get("start") or {}
     goal = robot.get("goal") or data.get("goal") or {}
     waypoints_raw = robot.get("waypoints") or data.get("waypoints") or []
-    waypoints: List[Pose2D] = []
+    waypoints: list[Pose2D] = []
     for wp in waypoints_raw:
         if isinstance(wp, dict):
             waypoints.append(Pose2D(x=float(wp.get("x", 0)), y=float(wp.get("y", 0))))

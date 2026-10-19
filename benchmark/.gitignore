@@ -34,6 +34,11 @@ data/checkpoints/*
 data/eval_results/*
 !data/eval_results/.gitkeep
 
+# BicMap local build (source kept; deps/artifacts ignored)
+third_party/bic-map-src/node_modules/
+third_party/bic-map-src/dist/
+third_party/bic-map-src/index.html
+
 # OS
 .DS_Store
 Thumbs.db

@@ -9,10 +9,10 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any
 
 
-def write_report(summary: Dict[str, Any], output_dir: Union[str, Path], name: str = "summary") -> Path:
+def write_report(summary: dict[str, Any], output_dir: str | Path, name: str = "summary") -> Path:
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     path = out / f"{name}.json"
@@ -26,7 +26,7 @@ def write_report(summary: Dict[str, Any], output_dir: Union[str, Path], name: st
     return path
 
 
-def write_html_report(summary: Dict[str, Any], path: Union[str, Path], title: str = "report") -> Path:
+def write_html_report(summary: dict[str, Any], path: str | Path, title: str = "report") -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -43,7 +43,9 @@ def write_html_report(summary: Dict[str, Any], path: Union[str, Path], title: st
                         f"<td><code>{html.escape(str(v))}</code></td></tr>"
                     )
             return "".join(parts)
-        return f"<tr><td>{html.escape(prefix or 'value')}</td><td><code>{html.escape(str(obj))}</code></td></tr>"
+        label = html.escape(prefix or "value")
+        value = html.escape(str(obj))
+        return f"<tr><td>{label}</td><td><code>{value}</code></td></tr>"
 
     # Highlight common Arena Evaluation blocks
     blocks = ""
@@ -51,6 +53,8 @@ def write_html_report(summary: Dict[str, Any], path: Union[str, Path], title: st
         if section in summary and isinstance(summary[section], dict):
             blocks += f"<h2>{html.escape(section)}</h2><table>{rows(summary[section])}</table>"
 
+    skip = ("efficiency", "safety", "smoothness", "status", "episodes")
+    raw = {k: v for k, v in summary.items() if k not in skip}
     body = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"/><title>{html.escape(title)}</title>
 <style>
@@ -62,7 +66,7 @@ h1,h2{{color:#4cc9f0}} code{{color:#b5e48c}}
 <h1>Arena Evaluation — {html.escape(title)}</h1>
 {blocks}
 <h2>raw</h2>
-<table>{rows({k: v for k, v in summary.items() if k not in ("efficiency", "safety", "smoothness", "status", "episodes")})}</table>
+<table>{rows(raw)}</table>
 </body></html>
 """
     path.write_text(body, encoding="utf-8")

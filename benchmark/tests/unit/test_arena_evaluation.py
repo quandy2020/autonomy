@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchmark.core.config import load_config
+from benchmark.common.config import load_config
 from benchmark.evaluation.arena_evaluation import ArenaEvaluation
 
 

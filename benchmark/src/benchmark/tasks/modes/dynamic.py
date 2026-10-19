@@ -6,20 +6,20 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.world_state import WorldState
+from benchmark.simulators.worlds.generators.dynamic_map import generate_dynamic_layout
+from benchmark.simulators.worlds.generators.maze import MazeSpec, generate_maze_obstacles
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
-from benchmark.worlds.generators.dynamic_map import generate_dynamic_layout
-from benchmark.worlds.generators.maze import MazeSpec, generate_maze_obstacles
 
 
 class DynamicMode(TaskMode):
     name = "dynamic"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self.map_kind = str(self.config.get("map", "maze")).lower()
         self.pedestrians = int(self.config.get("pedestrians", 4))
@@ -29,8 +29,9 @@ class DynamicMode(TaskMode):
     def setup(self, episode_id: int, simulator: SimulatorAdapter) -> EpisodeSetup:
         seed = episode_id + int(self.config.get("seed", 0))
         # If Fake/Flatland, inject maze disks into world after configure.
-        if hasattr(simulator, "world") and isinstance(getattr(simulator, "world", None), WorldState):
-            world: WorldState = simulator.world  # type: ignore[attr-defined]
+        if hasattr(simulator, "world") and isinstance(
+            getattr(simulator, "world", None), WorldState
+        ):
             if self.map_kind == "maze":
                 disks = generate_maze_obstacles(MazeSpec(seed=seed))
             else:

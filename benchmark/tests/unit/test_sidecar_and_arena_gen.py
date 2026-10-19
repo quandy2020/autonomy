@@ -6,11 +6,11 @@ from __future__ import annotations
 
 import numpy as np
 
-from benchmark.core.types import Twist2D
+from benchmark.common.types import Twist2D
 from benchmark.simulators.habitat.simulator import HabitatSimulator
 from benchmark.simulators.isaac.simulator import IsaacSimulator
 from benchmark.simulators.sidecar import SidecarSimulator, _ranges_from_scan
-from benchmark.worlds.generators.arena_gen import generate_from_prompt, parse_prompt
+from benchmark.simulators.worlds.generators.arena_gen import generate_from_prompt, parse_prompt
 
 
 def test_ranges_from_scan_resample() -> None:

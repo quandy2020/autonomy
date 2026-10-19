@@ -1,0 +1,13 @@
+name: teleop
+type: teleop
+description: 遥操 — 开环/脚本速度指令
+mode: scenario
+episodes: 2
+timeout_s: 25
+goal_tolerance_m: 0.45
+teleop_profile: smooth   # smooth | aggressive | cautious
+goal_x: 4.0
+goal_y: 0.5
+obstacles: 5
+pedestrians: 0
+moving_obstacles: 0

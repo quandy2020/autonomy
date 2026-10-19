@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from benchmark.core.config import package_root
+from benchmark.common.config import package_root
 
 
 @pytest.fixture

@@ -6,19 +6,18 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Sequence
+from collections.abc import Sequence
+from typing import Any
 
-from benchmark.core.types import EpisodeResult, EpisodeStatus
+from benchmark.common.types import EpisodeResult, EpisodeStatus
 
 
 class Evaluator:
-    def summarize(self, episodes: Sequence[EpisodeResult]) -> Dict[str, Any]:
+    def summarize(self, episodes: Sequence[EpisodeResult]) -> dict[str, Any]:
         if not episodes:
             return {"count": 0}
         successes = sum(
-            1
-            for e in episodes
-            if e.status in (EpisodeStatus.GOAL_REACHED, EpisodeStatus.SUCCESS)
+            1 for e in episodes if e.status in (EpisodeStatus.GOAL_REACHED, EpisodeStatus.SUCCESS)
         )
         path = [e.path_length for e in episodes]
         times = [e.time_s for e in episodes]

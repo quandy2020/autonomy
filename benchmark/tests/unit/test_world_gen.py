@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from benchmark.worlds import PRESETS, generate_world
-from benchmark.worlds.generators.maze import MazeSpec, generate_maze_obstacles
+from benchmark.simulators.worlds import PRESETS, generate_world
+from benchmark.simulators.worlds.generators.maze import MazeSpec, generate_maze_obstacles
 
 
 def test_presets() -> None:

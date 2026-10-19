@@ -1,0 +1,13 @@
+name: dock
+type: dock
+description: 回充 — 驶向充电桩位姿并精停
+mode: scenario
+episodes: 3
+timeout_s: 40
+goal_tolerance_m: 0.12
+dock_x: 3.5
+dock_y: 0.0
+dock_yaw: 0.0
+obstacles: 4
+pedestrians: 0
+moving_obstacles: 0

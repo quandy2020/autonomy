@@ -7,14 +7,14 @@
 from __future__ import annotations
 
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 
 
-def _sample_in_zone(zone: Dict[str, Any], rng: random.Random) -> Tuple[float, float]:
+def _sample_in_zone(zone: dict[str, Any], rng: random.Random) -> tuple[float, float]:
     x0 = float(zone.get("x_min", -2.0))
     x1 = float(zone.get("x_max", 2.0))
     y0 = float(zone.get("y_min", -2.0))
@@ -25,10 +25,14 @@ def _sample_in_zone(zone: Dict[str, Any], rng: random.Random) -> Tuple[float, fl
 class ZonesMode(TaskMode):
     name = "zones"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
-        self.start_zones: List[Dict[str, Any]] = list(self.config.get("start_zones") or [{"x_min": -1, "x_max": 1, "y_min": -1, "y_max": 1}])
-        self.goal_zones: List[Dict[str, Any]] = list(self.config.get("goal_zones") or [{"x_min": 3, "x_max": 5, "y_min": -1, "y_max": 1}])
+        self.start_zones: list[dict[str, Any]] = list(
+            self.config.get("start_zones") or [{"x_min": -1, "x_max": 1, "y_min": -1, "y_max": 1}]
+        )
+        self.goal_zones: list[dict[str, Any]] = list(
+            self.config.get("goal_zones") or [{"x_min": 3, "x_max": 5, "y_min": -1, "y_max": 1}]
+        )
         self.obstacles = int(self.config.get("obstacles", 8))
         self.pedestrians = int(self.config.get("pedestrians", 4))
         self.moving = int(self.config.get("moving_obstacles", 1))

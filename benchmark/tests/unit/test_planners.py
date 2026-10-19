@@ -4,8 +4,8 @@
 
 from __future__ import annotations
 
-from benchmark.core.types import Pose2D
-from benchmark.planning.factory import create_planner, list_planners
+from benchmark.common.types import Pose2D
+from benchmark.tasks.planning.factory import create_planner, list_planners
 
 
 def test_list_planners() -> None:

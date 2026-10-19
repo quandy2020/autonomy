@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 from benchmark.tasks.scenario_loader import load_scenario
@@ -18,7 +18,7 @@ from benchmark.tasks.scenario_loader import load_scenario
 class ScenarioMode(TaskMode):
     name = "scenario"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self.scenario_path = self.config.get("scenario") or self.config.get("scenario_file")
         self.start = Pose2D(

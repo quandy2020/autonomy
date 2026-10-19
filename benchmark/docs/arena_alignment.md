@@ -20,9 +20,9 @@
 | LightSFM / Deep Social | `lightsfm` / `deep_social` | ✅ |
 | Crowd flow | `crowd_flow` | ✅ |
 | Planners: DWA / TEB / MPC | ✅ | ✅ |
-| ROSNavRL | `rosnav_rl` / `policy` + ONNX | ✅ |
+| Policy ONNX | `policy` + ONNX（无 ROS） | ✅ |
 | CADRL / CrowdNav / RLCA / SARL / Applr / Dragon / Trail | 同名 planner（ONNX 或 reactive） | ✅ 接口 |
-| Move Base Flex hybrid | `hybrid` / `mbf` | ✅ |
+| Hybrid switching | `hybrid` / `switching` | ✅ |
 | MPPI / NMPC | `mppi` / `nmpc` / autonomy.control | ✅ |
 | World gen: maze / barn / canteen / office / industrial | `generate-world` + `dynamic` mode | ✅ |
 | Prebuilt worlds | hospital / warehouse / canteen / office / posts | ✅ |
@@ -30,10 +30,9 @@
 | Arena Evaluation: safety / efficiency / smoothness | ✅ | ✅ |
 | Social: private zone / facing / seen-by | `evaluation.social` | ✅ |
 | Multi-robot | `benchmark multi-robot` | ✅ |
-| SB3 / curriculum / Optuna | `train` / `tune` | ✅ |
 | Dataset collect / replay | `collect` / `replay` | ✅（额外） |
 | SLAM / perception tasks | ✅（额外） | ✅ |
-| HTTP API | `benchmark serve` | ✅ |
+| Flask dashboard | `benchmark dashboard` | ✅ |
 | Arena-Gen LLM world | `benchmark generate-world --prompt "…"`（关键词映射，无 LLM） | ✅ lite |
 | 原生 Gazebo/Unity 二进制 | 走 autosim sidecar，非原生引擎 | ⏳ 适配层 |
 | Sidecar scan→obs / odom sync | `inject_scan` + `sync_odom`（habitat/isaac/gazebo/unity） | ✅ |

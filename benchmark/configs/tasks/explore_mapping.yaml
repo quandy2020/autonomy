@@ -1,0 +1,12 @@
+name: explore_mapping
+type: explore_mapping
+description: 探索建图 — 覆盖式探索采集轨迹
+mode: explore
+episodes: 2
+timeout_s: 45
+coverage_target: 0.55
+explore_radius: 7.0
+cell_size: 1.0
+obstacles: 18
+pedestrians: 0
+moving_obstacles: 0

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from benchmark.core.registry import get_registry
+from benchmark.common.registry import get_registry
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.factory import create_simulator
 from benchmark.simulators.fake import FakeSimulator

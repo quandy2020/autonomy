@@ -1,0 +1,6 @@
+{
+  "name": "@x-humanoid-cloud/bic-map",
+  "version": "0.0.8",
+  "source": "third_party/bic-map-src",
+  "built": "local"
+}

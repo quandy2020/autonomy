@@ -7,11 +7,11 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any
 
 import numpy as np
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 
@@ -19,11 +19,11 @@ from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 class ExploreMode(TaskMode):
     name = "explore"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         self.cell = float(self.config.get("cell_size", 1.0))
         self.coverage_target = float(self.config.get("coverage_target", 0.6))
-        self.visited: Set[Tuple[int, int]] = set()
+        self.visited: set[tuple[int, int]] = set()
 
     def setup(self, episode_id: int, simulator: SimulatorAdapter) -> EpisodeSetup:
         del simulator

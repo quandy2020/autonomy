@@ -9,14 +9,15 @@ from __future__ import annotations
 import logging
 import math
 import time
-from typing import Any, Callable, Dict, Optional, Tuple
+from collections.abc import Callable
+from typing import Any
 
-from benchmark.core.types import Pose2D, Twist2D
+from benchmark.common.types import Pose2D, Twist2D
 
 _LOG = logging.getLogger(__name__)
 
 
-def _stamp_now() -> Tuple[int, int]:
+def _stamp_now() -> tuple[int, int]:
     now = time.time()
     sec = int(now)
     nsec = int((now - sec) * 1e9)
@@ -55,8 +56,8 @@ class AutolinkBridge:
         self._node: Any = None
         self._cmd_writer: Any = None
         self._connected = False
-        self._latest_odom: Optional[Pose2D] = None
-        self._latest_scan: Optional[Any] = None
+        self._latest_odom: Pose2D | None = None
+        self._latest_scan: Any | None = None
         self._null_log: list[Twist2D] = []
 
     @property
@@ -137,7 +138,7 @@ class AutolinkBridge:
             except Exception as exc:  # noqa: BLE001
                 _LOG.debug("publish_twist failed: %s", exc)
 
-    def latest_pose(self) -> Optional[Pose2D]:
+    def latest_pose(self) -> Pose2D | None:
         return self._latest_odom
 
     def latest_scan(self) -> Any:
@@ -148,7 +149,7 @@ class AutolinkBridge:
         if self._link is None:
             return
         for attr in ("spin_once", "spinOnce", "WaitForShutdown"):
-            fn: Optional[Callable[..., Any]] = getattr(self._link, attr, None)
+            fn: Callable[..., Any] | None = getattr(self._link, attr, None)
             if callable(fn) and attr.startswith("spin"):
                 try:
                     fn()

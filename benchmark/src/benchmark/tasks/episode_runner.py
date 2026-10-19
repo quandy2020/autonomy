@@ -7,19 +7,20 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any
 
-from benchmark.core.geometry import distance, reached
-from benchmark.core.types import EpisodeResult, EpisodeStatus, Pose2D, Twist2D
-from benchmark.planning.base import Planner
-from benchmark.planning.factory import create_planner
+from benchmark.common.geometry import distance, reached
+from benchmark.common.types import EpisodeResult, EpisodeStatus, Pose2D, Twist2D
+from benchmark.evaluation.social_metrics import update_social_step
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.simulators.fake.simulator import FakeSimulator
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 from benchmark.tasks.modes.dynamic import DynamicMode
 from benchmark.tasks.modes.explore import ExploreMode
-from benchmark.utils.social_metrics import update_social_step
+from benchmark.tasks.planning.base import Planner
+from benchmark.tasks.planning.factory import create_planner
 
 
 @dataclass
@@ -34,7 +35,7 @@ class TrajectoryPoint:
 class EpisodeTrace:
     episode_id: int
     setup: EpisodeSetup
-    points: List[TrajectoryPoint] = field(default_factory=list)
+    points: list[TrajectoryPoint] = field(default_factory=list)
     status: EpisodeStatus = EpisodeStatus.RUNNING
     collisions: int = 0
     coverage: float = 0.0
@@ -61,7 +62,7 @@ class EpisodeTrace:
             return float("inf")
         return min(p.clearance for p in self.points)
 
-    def twists(self) -> List[Twist2D]:
+    def twists(self) -> list[Twist2D]:
         return [p.twist for p in self.points]
 
 
@@ -132,42 +133,58 @@ def run_episode(
         if step.info.get("collision"):
             trace.collisions += 1
             trace.status = EpisodeStatus.COLLISION
-            trace.points.append(
-                TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
-            )
+            trace.points.append(TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear))
             return trace
 
         if isinstance(mode, ExploreMode):
             trace.coverage = mode.update_coverage(pose)
             if trace.coverage >= float(mode.config.get("coverage_target", 0.6)):
                 trace.status = EpisodeStatus.GOAL_REACHED
-                trace.points.append(
-                    TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
-                )
+                trace.points.append(TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear))
                 return trace
 
         if reached(pose, current_goal, goal_tolerance):
             wp_idx += 1
             if wp_idx >= len(waypoints):
                 trace.status = EpisodeStatus.GOAL_REACHED
-                trace.points.append(
-                    TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
-                )
+                trace.points.append(TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear))
                 return trace
             current_goal = waypoints[wp_idx]
             if isinstance(simulator, FakeSimulator):
                 simulator.set_goal(current_goal)
 
-        trace.points.append(
-            TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear)
-        )
+        trace.points.append(TrajectoryPoint(t=now, pose=pose, twist=twist, clearance=clear))
 
     trace.status = EpisodeStatus.TIMEOUT
     return trace
 
 
+def _path_samples(trace: EpisodeTrace, *, max_points: int = 400) -> list[dict[str, float]]:
+    pts = trace.points
+    if not pts:
+        return []
+    step = max(1, len(pts) // max_points)
+    idx = list(range(0, len(pts), step))
+    if idx[-1] != len(pts) - 1:
+        idx.append(len(pts) - 1)
+    return [
+        {
+            "t": float(pts[i].t),
+            "x": float(pts[i].pose.x),
+            "y": float(pts[i].pose.y),
+            "yaw": float(pts[i].pose.yaw),
+        }
+        for i in idx
+    ]
+
+
 def trace_to_result(trace: EpisodeTrace) -> EpisodeResult:
+    from benchmark.evaluation.control_curves import curves_from_trace
+
     success = trace.status == EpisodeStatus.GOAL_REACHED
+    curves = curves_from_trace(trace)
+    stats = curves.get("stats") or {}
+    goal = trace.setup.goal
     return EpisodeResult(
         episode_id=trace.episode_id,
         status=trace.status,
@@ -185,10 +202,25 @@ def trace_to_result(trace: EpisodeTrace) -> EpisodeResult:
             "time_in_private_zone": trace.time_in_private_zone,
             "time_facing_pedestrians": trace.time_facing_pedestrians,
             "time_seen_by_pedestrians": trace.time_seen_by_pedestrians,
+            "v_max": float(stats.get("v_max", 0.0)),
+            "a_max": float(stats.get("a_max", 0.0)),
+            "jerk_max": float(stats.get("jerk_max", 0.0)),
+            "jerk_mean_abs": float(stats.get("jerk_mean_abs", 0.0)),
         },
-        info={"mode": trace.setup.info.get("mode"), **trace.setup.info},
+        info={
+            "mode": trace.setup.info.get("mode"),
+            **trace.setup.info,
+            "control_curves": curves,
+            "path": _path_samples(trace),
+            "goal": {"x": float(goal.x), "y": float(goal.y), "yaw": float(goal.yaw)},
+            "start": {
+                "x": float(trace.setup.start.x),
+                "y": float(trace.setup.start.y),
+                "yaw": float(trace.setup.start.yaw),
+            },
+        },
     )
 
 
-def make_planner(config: Dict[str, Any]) -> Planner:
+def make_planner(config: dict[str, Any]) -> Planner:
     return create_planner(config)

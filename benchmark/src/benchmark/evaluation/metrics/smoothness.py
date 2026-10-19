@@ -7,12 +7,12 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, List, Sequence
+from collections.abc import Sequence
 
 from benchmark.tasks.episode_runner import EpisodeTrace
 
 
-def _angular_series(trace: EpisodeTrace) -> List[float]:
+def _angular_series(trace: EpisodeTrace) -> list[float]:
     return [p.twist.angular for p in trace.points]
 
 
@@ -48,7 +48,7 @@ def roughness(trace: EpisodeTrace) -> float:
     return yaw_changes / trace.path_length
 
 
-def smoothness_summary(traces: Sequence[EpisodeTrace]) -> Dict[str, float]:
+def smoothness_summary(traces: Sequence[EpisodeTrace]) -> dict[str, float]:
     if not traces:
         return {
             "mean_curvature": 0.0,

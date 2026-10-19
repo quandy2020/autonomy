@@ -6,14 +6,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchmark.core.config import load_config, package_root
-from benchmark.core.registry import get_registry
+from benchmark.common.config import load_config, package_root
+from benchmark.common.registry import get_registry
 from benchmark.evaluation.arena_evaluation import ArenaEvaluation
-from benchmark.humans import create_human_model, list_human_models
-from benchmark.planning.factory import create_planner, list_planners
+from benchmark.simulators.humans import create_human_model, list_human_models
+from benchmark.tasks.planning.factory import create_planner, list_planners
 from benchmark.tasks.modes import create_mode, list_modes
 from benchmark.tasks.scenario_loader import load_scenario
-from benchmark.worlds.generators.dynamic_map import generate_dynamic_layout
+from benchmark.simulators.worlds.generators.dynamic_map import generate_dynamic_layout
 
 
 def test_arena_simulators_registered() -> None:
@@ -59,7 +59,7 @@ def test_arena_human_models() -> None:
 
 
 def test_arena_planners() -> None:
-    for name in ("cadrl", "crowdnav", "rlca", "sarl", "applr", "dragon", "trail", "mbf", "dwa"):
+    for name in ("cadrl", "crowdnav", "rlca", "sarl", "applr", "dragon", "trail", "hybrid", "dwa"):
         assert name in list_planners()
         p = create_planner({"name": name})
         assert p is not None

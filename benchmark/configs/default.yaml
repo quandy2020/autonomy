@@ -2,7 +2,6 @@
 # Examples:
 #   benchmark run --mode random
 #   benchmark eval --episodes 10
-#   benchmark train --backend simple --episodes 30
 
 experiment:
   name: default

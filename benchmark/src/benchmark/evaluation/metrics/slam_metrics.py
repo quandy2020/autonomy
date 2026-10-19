@@ -7,9 +7,9 @@
 from __future__ import annotations
 
 import math
-from typing import Dict, Sequence, Tuple
+from collections.abc import Sequence
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 
 
 def ate(gt: Sequence[Pose2D], est: Sequence[Pose2D]) -> float:
@@ -43,7 +43,7 @@ def rpe(gt: Sequence[Pose2D], est: Sequence[Pose2D], delta: int = 1) -> float:
 
 
 def occupancy_coverage(
-    hits: Sequence[Tuple[float, float]],
+    hits: Sequence[tuple[float, float]],
     *,
     cell: float = 0.5,
     map_half: float = 10.0,
@@ -55,7 +55,9 @@ def occupancy_coverage(
     return len(visited) / float(dim * dim)
 
 
-def slam_summary(gt: Sequence[Pose2D], est: Sequence[Pose2D], hits: Sequence[Tuple[float, float]]) -> Dict[str, float]:
+def slam_summary(
+    gt: Sequence[Pose2D], est: Sequence[Pose2D], hits: Sequence[tuple[float, float]]
+) -> dict[str, float]:
     return {
         "ate": ate(gt, est),
         "rpe": rpe(gt, est),

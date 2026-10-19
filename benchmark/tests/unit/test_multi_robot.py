@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from benchmark.robots import run_multi_robot
+from benchmark.tasks.multi_robot import run_multi_robot
 
 
 def test_multi_robot_batch() -> None:

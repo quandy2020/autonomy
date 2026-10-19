@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
-from benchmark.humans import create_human_model, list_human_models
+from benchmark.simulators.humans import create_human_model, list_human_models
 from benchmark.simulators.fake.simulator import FakeSimulator
-from benchmark.core.types import Twist2D
+from benchmark.common.types import Twist2D
 
 
 def test_list_human_models() -> None:

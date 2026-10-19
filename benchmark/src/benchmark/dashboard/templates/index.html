@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ page_title }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}?v=set6" />
+</head>
+<body>
+  <div class="page-glow" aria-hidden="true"></div>
+  <div id="toast-host" class="toast-host" aria-live="polite"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="mark" aria-hidden="true">BM</span>
+      <div class="brand-text">
+        <strong>Benchmark</strong>
+        <small>实验工作台</small>
+      </div>
+    </div>
+    <div class="topbar-meta">
+      <span class="pill" id="conn-pill"><i class="dot"></i><span id="conn-label">…</span></span>
+      <span class="meta-line" id="job-meta">idle</span>
+    </div>
+    <div class="topbar-actions">
+      <button type="button" class="btn ghost" id="btn-cancel" disabled>取消</button>
+      <button type="button" class="btn primary" id="btn-run">运行</button>
+    </div>
+  </header>
+
+  <div class="layout nav-compact">
+    <aside class="sidebar compact" aria-label="主导航">
+      <nav class="side-nav" role="tablist" aria-label="模块">
+        <button type="button" class="side-nav-btn" data-nav="settings" role="tab" aria-selected="false">
+          <span class="side-nav-ico" data-ico="set" aria-hidden="true"></span>
+          <span>设置</span>
+        </button>
+        <button type="button" class="side-nav-btn active" data-nav="tasks" role="tab" aria-selected="true">
+          <span class="side-nav-ico" data-ico="task" aria-hidden="true"></span>
+          <span>任务</span>
+        </button>
+        <button type="button" class="side-nav-btn" data-nav="data" role="tab" aria-selected="false">
+          <span class="side-nav-ico" data-ico="data" aria-hidden="true"></span>
+          <span>数据</span>
+        </button>
+        <button type="button" class="side-nav-btn" data-nav="test" role="tab" aria-selected="false">
+          <span class="side-nav-ico" data-ico="test" aria-hidden="true"></span>
+          <span>测试</span>
+        </button>
+        <button type="button" class="side-nav-btn" data-nav="ops" role="tab" aria-selected="false">
+          <span class="side-nav-ico" data-ico="ops" aria-hidden="true"></span>
+          <span>运维</span>
+        </button>
+      </nav>
+
+      <div class="side-body">
+        <div class="side-panel" data-nav-panel="settings" hidden></div>
+
+        <div class="side-panel" data-nav-panel="tasks"></div>
+
+        <div class="side-panel" data-nav-panel="data" hidden>
+          <section class="setup-card">
+            <h2 class="block-title">数据采集</h2>
+            <p class="side-lead">Record 录制 automsgs 通道，Play 回放至 Autolink。</p>
+            <div class="side-actions">
+              <button type="button" class="btn ghost sm" data-data-jump="record">打开 Record</button>
+              <button type="button" class="btn ghost sm" data-data-jump="play">打开 Play</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="side-panel" data-nav-panel="test" hidden>
+          <section class="setup-card">
+            <h2 class="block-title">评测分析</h2>
+            <p class="side-lead">查看控制曲线与任务摘要结果。</p>
+            <div class="side-actions">
+              <button type="button" class="btn ghost sm" data-tab-jump="curves">曲线</button>
+              <button type="button" class="btn ghost sm" data-tab-jump="results">结果</button>
+            </div>
+          </section>
+        </div>
+
+        <div class="side-panel" data-nav-panel="ops" hidden>
+          <section class="setup-card">
+            <h2 class="block-title">系统运维</h2>
+            <p class="side-lead">OTA / SystemService gRPC（automsgs/proto/rpcs）。</p>
+            <dl class="side-kv">
+              <div><dt>supports_ota</dt><dd id="side-ota-supports">—</dd></div>
+              <div><dt>target</dt><dd id="side-ota-target">localhost:50051</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <input type="hidden" id="mode-select" value="{{ catalog.experiment.sections.task.mode | default('scenario') }}" />
+        <input type="hidden" id="episodes-input" value="{{ catalog.experiment.sections.task.episodes | default(3) }}" />
+        <div id="task-grid" class="hidden-tasks" hidden></div>
+
+        <section class="live-strip">
+          <h2 class="block-title">运行状态</h2>
+          <div class="progress-track"><div class="progress-bar" id="progress-bar"></div></div>
+          <div class="live-row">
+            <span id="live-status">idle</span>
+            <span id="live-current">—</span>
+            <span id="live-progress">0%</span>
+          </div>
+          <div class="task-progress" id="task-progress"></div>
+          <b class="mono" id="live-job" hidden>—</b>
+          <span id="m-uptime" hidden>—</span>
+          <span id="m-jobs" hidden>0</span>
+          <span id="m-okfail" hidden>0/0</span>
+        </section>
+      </div>
+    </aside>
+
+    <main class="stage">
+      <div class="stage-shell panel">
+        <div class="stage-chrome">
+          <div class="stage-tabs" role="tablist" aria-label="视图">
+            <button type="button" class="tab active" role="tab" aria-selected="true" data-tab="orchestrate" data-nav-scope="tasks" data-task-kind="orchestration" id="tab-btn-orchestrate">编排</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="schedule" data-nav-scope="tasks" data-task-kind="schedule" id="tab-btn-schedule">定时</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="named" data-nav-scope="tasks" data-task-kind="named" id="tab-btn-named">命令</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="map" data-nav-scope="tasks" id="tab-btn-map">地图</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="data" data-nav-scope="data" id="tab-btn-data">Record / Play</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="curves" data-nav-scope="test" id="tab-btn-curves">
+              曲线<span class="tab-dot" id="curves-dot" hidden></span>
+            </button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="results" data-nav-scope="test" id="tab-btn-results">结果</button>
+            <button type="button" class="tab" role="tab" aria-selected="false" data-tab="ota" data-nav-scope="ops" id="tab-btn-ota">OTA</button>
+          </div>
+          <div class="stage-chrome-actions" data-chrome-scope="tasks" id="tasks-chrome-actions">
+            <label class="toggle chrome-toggle" title="运行时同步录制数据">
+              <input type="checkbox" id="record-enable" />
+              <span>同时录制</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="stage-body">
+          <div class="tab-pane active" id="tab-orchestrate" role="tabpanel" data-pane="orchestrate">
+            <div class="orch-layout">
+              <div class="orch-body" id="orch-body" style="--orch-picker-w: 22rem">
+                <aside class="orch-picker" id="orch-picker" aria-label="可选任务">
+                  <div class="orch-picker-head">
+                    <input type="search" id="orch-filter" placeholder="搜索任务…" autocomplete="off" spellcheck="false" />
+                    <span class="orch-picker-count" id="orch-picker-count">0</span>
+                  </div>
+                  <div class="orch-mission-list" id="mission-grid" role="list"></div>
+                </aside>
+                <div
+                  class="orch-resize"
+                  id="orch-resize"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="拖动调整任务栏宽度"
+                  aria-controls="orch-picker"
+                  tabindex="0"
+                ></div>
+                <section class="orch-detail" aria-label="编排队列">
+                  <div class="orch-detail-card">
+                    <header class="orch-toolbar" aria-label="编排参数">
+                      <label class="orch-field">
+                        <span>默认次数</span>
+                        <input type="number" id="orch-episodes" min="1" max="200" value="{{ catalog.experiment.sections.task.episodes | default(3) }}" title="添加步骤时的默认 episodes；可在步骤里改" />
+                      </label>
+                      <label class="orch-field">
+                        <span>执行方式</span>
+                        <select id="orch-execution">
+                          <option value="sync" selected>同步</option>
+                          <option value="async">异步</option>
+                        </select>
+                      </label>
+                      <label class="orch-field">
+                        <span>步骤间隔(s)</span>
+                        <input type="number" id="orch-step-interval" min="0" max="86400" step="1" value="0" title="同步时步骤之间等待；异步忽略" />
+                      </label>
+                      <label class="orch-field">
+                        <span>队列循环</span>
+                        <input type="number" id="orch-repeat" min="1" max="9999" value="1" title="整条队列重复几轮" />
+                      </label>
+                      <div class="orch-toolbar-actions">
+                        <span class="orch-count" id="orch-count">0 步</span>
+                        <button type="button" class="btn ghost sm" id="btn-orch-all" title="每个任务各加一步">全加</button>
+                        <button type="button" class="btn ghost sm" id="btn-orch-none">清空</button>
+                      </div>
+                    </header>
+                    <div class="orch-steps-wrap">
+                      <div class="orch-steps-head">
+                        <strong>步骤队列</strong>
+                        <span id="orch-steps-hint">点击左侧添加 · 可同任务多步、改次数、排序</span>
+                      </div>
+                      <ol class="orch-steps" id="orch-steps" aria-label="编排步骤"></ol>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-schedule" role="tabpanel" data-pane="schedule" hidden>
+            <div class="sched-layout">
+              <div class="sched-body" id="sched-body" style="--sched-picker-w: 22rem">
+                <aside class="sched-picker" id="sched-picker" aria-label="可选任务">
+                  <div class="sched-picker-head">
+                    <input type="search" id="sched-filter" placeholder="搜索任务…" autocomplete="off" spellcheck="false" />
+                    <span class="sched-picker-count" id="sched-picker-count">0</span>
+                  </div>
+                  <div class="sched-mission-list" id="sched-mission-list" role="list"></div>
+                </aside>
+
+                <div
+                  class="sched-resize"
+                  id="sched-resize"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="拖动调整左侧栏宽度"
+                  aria-controls="sched-picker"
+                  tabindex="0"
+                ></div>
+
+                <section class="sched-detail" aria-label="定时编排">
+                  <div class="sched-detail-card">
+                    <header class="sched-toolbar" aria-label="调度参数">
+                      <label class="sched-field">
+                        <span>执行方式</span>
+                        <select id="sched-execution">
+                          <option value="sync" selected>同步</option>
+                          <option value="async">异步</option>
+                        </select>
+                      </label>
+                      <label class="sched-field">
+                        <span>每轮次数</span>
+                        <input type="number" id="sched-episodes" min="1" max="200" value="1" title="每轮每个任务的 episodes" />
+                      </label>
+                      <label class="sched-field">
+                        <span>循环次数</span>
+                        <input type="number" id="sched-repeat" min="1" max="9999" value="1" title="整条步骤队列重复几轮" />
+                      </label>
+                      <label class="sched-field">
+                        <span>循环间隔(s)</span>
+                        <input type="number" id="sched-interval" min="0" max="86400" step="1" value="0" title="两轮之间等待秒数；0=连续" />
+                      </label>
+                      <label class="sched-field">
+                        <span>延迟启动(s)</span>
+                        <input type="number" id="sched-delay" min="0" max="86400" step="1" value="0" title="到开始时间后再额外等待的秒数" />
+                      </label>
+                      <label class="sched-field sched-field-wide">
+                        <span>开始时间</span>
+                        <input type="datetime-local" id="sched-start-at" title="到此时间才开始执行；留空=立即（仍可延迟）" />
+                      </label>
+                      <label class="sched-field sched-field-wide">
+                        <span>结束时间</span>
+                        <input type="datetime-local" id="sched-end-at" title="到点后不再开新一轮/新步骤；留空=不限" />
+                      </label>
+                      <label class="sched-check" title="勾选后按循环间隔一直跑，直到结束时间或手动取消">
+                        <input type="checkbox" id="sched-loop" />
+                        <span>无限循环</span>
+                      </label>
+                      <div class="sched-toolbar-actions">
+                        <button type="button" class="btn ghost sm" id="btn-sched-add" title="添加默认步骤">+</button>
+                        <button type="button" class="btn ghost sm" id="btn-sched-clear">清空</button>
+                      </div>
+                    </header>
+                    <div class="sched-steps-wrap">
+                      <div class="sched-steps-head">
+                        <strong>步骤队列</strong>
+                        <span id="sched-steps-hint">点击左侧任务添加 · 可排序</span>
+                      </div>
+                      <ol class="sched-steps" id="sched-steps" aria-label="定时步骤"></ol>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-named" role="tabpanel" data-pane="named" hidden>
+            <div class="cmd-layout">
+              <div class="cmd-body" id="cmd-body" style="--cmd-picker-w: 27.5rem">
+                <aside class="cmd-picker" id="cmd-picker" aria-label="命令列表">
+                  <div class="cmd-picker-head">
+                    <input type="search" id="named-filter" placeholder="搜索方法 / 中文…" autocomplete="off" spellcheck="false" />
+                    <span class="cmd-picker-count" id="named-picker-title">0</span>
+                    <details class="cmd-conn" id="named-conn">
+                      <summary class="cmd-conn-sum" id="named-link" title="连接设置" data-state="checking">
+                        <span class="cmd-link-dot" id="named-link-dot" aria-hidden="true"></span>
+                      </summary>
+                      <div class="cmd-conn-panel" role="dialog" aria-label="连接设置">
+                        <label class="cmd-field">
+                          <span>地址</span>
+                          <input type="text" class="cmd-target" id="named-target" value="localhost:50051" spellcheck="false" placeholder="host:port" />
+                        </label>
+                        <label class="cmd-field">
+                          <span>执行</span>
+                          <select id="named-execution" class="cmd-exec">
+                            <option value="sync" selected>同步</option>
+                            <option value="async">异步</option>
+                          </select>
+                        </label>
+                        <div class="cmd-conn-status">
+                          <span class="cmd-link-text" id="named-link-text">检测中…</span>
+                          <span class="cmd-link-meta" id="named-link-meta"></span>
+                          <button type="button" class="btn ghost sm" id="btn-named-link" title="重新检测">检测</button>
+                        </div>
+                      </div>
+                    </details>
+                  </div>
+                  <nav class="cmd-group-tabs" id="named-group-tabs" aria-label="命令分组"></nav>
+                  <div class="named-list" id="named-task-list" role="list"></div>
+                </aside>
+
+                <div
+                  class="cmd-resize"
+                  id="cmd-resize"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="拖动调整左侧栏宽度"
+                  aria-controls="cmd-picker"
+                  tabindex="0"
+                ></div>
+
+                <section class="cmd-detail" aria-label="命令详情">
+                  <div class="cmd-detail-card" id="named-detail">
+                    <div class="cmd-detail-empty" id="named-detail-empty">选择左侧指令</div>
+                    <div class="cmd-detail-main" id="named-detail-main" hidden>
+                      <header class="cmd-detail-bar">
+                        <div class="cmd-detail-title">
+                          <h4 id="named-title">—</h4>
+                          <code id="named-method">—</code>
+                        </div>
+                        <div class="cmd-detail-actions">
+                          <button type="button" class="btn ghost sm" id="btn-named-reset" title="恢复默认参数">填充</button>
+                          <button type="button" class="btn primary cmd-send-btn" id="btn-named-send" title="发送 (Enter)">发送</button>
+                        </div>
+                        <p id="named-desc" class="cmd-detail-desc" hidden></p>
+                      </header>
+
+                      <div class="cmd-io">
+                        <section class="cmd-io-block" aria-label="发布参数">
+                          <header class="cmd-io-head"><strong>请求</strong></header>
+                          <div class="cmd-form" id="named-form"></div>
+                          <details class="cmd-advanced" id="named-advanced">
+                            <summary id="named-json-summary">JSON</summary>
+                            <textarea id="named-body" rows="16" spellcheck="false" aria-label="请求 JSON">{}</textarea>
+                          </details>
+                        </section>
+                        <section class="cmd-io-block" aria-label="返回参数">
+                          <header class="cmd-io-head">
+                            <strong>响应</strong>
+                            <div class="cmd-io-tools">
+                              <span class="cmd-io-status" id="named-response-status">—</span>
+                              <button type="button" class="btn ghost sm" id="btn-named-copy" title="复制响应">复制</button>
+                            </div>
+                          </header>
+                          <pre class="cmd-response" id="named-response" aria-live="polite">尚未发送</pre>
+                          <div class="cmd-history" id="named-history" aria-label="调用历史"></div>
+                        </section>
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-map" role="tabpanel" data-pane="map" hidden>
+            <div class="map-layout">
+            <div class="map-stage">
+              <div id="bicmap-container" class="bicmap-container" role="img" aria-label="BicMap"></div>
+              <canvas id="canvasMap" class="slam-canvas" width="1" height="1" aria-hidden="true"></canvas>
+              <div class="map-overlay map-overlay-top">
+                <div class="map-toolbar map-glass">
+                  <div class="map-toolbar-cluster">
+                    <label class="map-float-field map-float-field-plain">
+                      <span>场景</span>
+                      <select id="scene-select" aria-label="地图场景">
+                        {% for s in catalog.bicmap.scenes %}
+                        <option value="{{ s.id }}" data-mission="{{ s.mission }}" {% if s.id == catalog.bicmap.default_scene %}selected{% endif %}>{{ s.label }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <div class="map-mode" role="tablist" aria-label="交互模式">
+                      <button type="button" class="map-mode-btn active" data-map-mode="navigate" id="btn-map-mode-nav" title="Foxglove 2D Pose：按下定点，拖动定朝向">Goal Pose</button>
+                      <button type="button" class="map-mode-btn" data-map-mode="teleop" id="btn-map-mode-teleop">遥操</button>
+                    </div>
+                    <span class="map-toolbar-sep" aria-hidden="true"></span>
+                    <div class="map-mode" role="tablist" aria-label="视图">
+                      <button type="button" class="map-mode-btn active" data-map-view="2d" id="btn-map-view-2d" title="俯视 2D">2D</button>
+                      <button type="button" class="map-mode-btn" data-map-view="3d" id="btn-map-view-3d" title="倾斜 3D · 可拖转视角">3D</button>
+                    </div>
+                  </div>
+                  <span class="map-status" id="map-status">…</span>
+                  <div class="map-toolbar-cluster map-toolbar-end">
+                    <button type="button" class="map-chip-btn" id="btn-map-displays" title="显示 / 隐藏 Displays" aria-expanded="false" aria-controls="map-displays">Displays</button>
+                    <button type="button" class="map-chip-btn" id="btn-map-images" title="显示 / 隐藏 Image" aria-expanded="false" aria-controls="map-images">Image</button>
+                    <span class="map-toolbar-sep" aria-hidden="true"></span>
+                    <button type="button" class="map-chip-btn" id="btn-map-fit">适配</button>
+                    <button type="button" class="map-chip-btn" id="btn-map-clear">清除</button>
+                  </div>
+                </div>
+                <p class="map-hint" id="map-interact-hint">按下定点 · 拖动定朝向 · 松开发送</p>
+              </div>
+              <aside class="map-displays map-glass" id="map-displays" aria-label="Displays" hidden>
+                <header class="map-displays-head">
+                  <div class="map-displays-title">
+                    <strong>Displays</strong>
+                    <span>选 topic 后 Add</span>
+                  </div>
+                  <button type="button" class="map-displays-close" id="btn-map-displays-close" title="隐藏面板" aria-label="关闭 Displays">×</button>
+                </header>
+                <div class="map-displays-add" id="map-displays-add">
+                  <select class="map-display-topic" id="map-display-add-kind" aria-label="Display topic"></select>
+                  <button type="button" class="map-displays-add-btn" id="btn-map-display-add" title="添加选中的 topic">Add</button>
+                </div>
+                <div class="map-displays-section">
+                  <ul class="map-displays-list" id="map-displays-list" role="list"></ul>
+                </div>
+              </aside>
+              <aside class="map-images map-glass" id="map-images" aria-label="Image" hidden>
+                <header class="map-displays-head">
+                  <div class="map-displays-title">
+                    <strong>Image</strong>
+                    <span>选 channel 后 Add</span>
+                  </div>
+                  <div class="map-images-head-actions">
+                    <div class="map-images-layout" role="tablist" aria-label="布局">
+                      <button type="button" class="map-images-layout-btn active" data-image-layout="stack" title="纵向堆叠">≡</button>
+                      <button type="button" class="map-images-layout-btn" data-image-layout="grid" title="宫格">▦</button>
+                    </div>
+                    <button type="button" class="map-displays-close" id="btn-map-images-close" title="隐藏面板" aria-label="关闭 Image">×</button>
+                  </div>
+                </header>
+                <div class="map-images-add" id="map-images-add">
+                  <select class="map-image-topic" id="map-image-add-topic" aria-label="Image topic"></select>
+                  <select class="map-image-channel" id="map-image-add-channel" aria-label="Image channel"></select>
+                  <button type="button" class="map-images-add-btn" id="btn-map-image-add" title="添加选中的 channel">Add</button>
+                </div>
+                <div class="map-images-body" id="map-images-body" data-layout="stack"></div>
+              </aside>
+              <div id="map-pose-ghost" class="map-pose-ghost" hidden aria-hidden="true">
+                <div class="map-pose-arrow" id="map-pose-arrow">
+                  <div class="map-pose-shaft"></div>
+                  <div class="map-pose-head"></div>
+                </div>
+                <div class="map-pose-dot"></div>
+                <span class="map-pose-label" id="map-pose-label">0°</span>
+              </div>
+              <div class="map-overlay map-overlay-teleop" id="map-teleop-pad" hidden>
+                <div class="teleop-pad map-glass" id="teleop-pad" aria-label="遥操圆盘">
+                  <div class="teleop-ring" aria-hidden="true"></div>
+                  <div class="teleop-cross" aria-hidden="true"></div>
+                  <div class="teleop-knob" id="teleop-knob" aria-hidden="true"></div>
+                  <span class="teleop-readout" id="teleop-readout">0.00 / 0.00</span>
+                </div>
+                <button type="button" class="btn ghost sm map-float-btn map-glass" id="btn-teleop-stop">停车</button>
+              </div>
+              <div id="bicmap-scenes" class="scene-sync" hidden>
+                {% for s in catalog.bicmap.scenes %}
+                <button type="button" class="scene-btn {% if s.id == catalog.bicmap.default_scene %}active{% endif %}"
+                        data-scene="{{ s.id }}" data-mission="{{ s.mission }}">{{ s.label }}</button>
+                {% endfor %}
+              </div>
+            </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-params" role="tabpanel" data-pane="params" hidden>
+            <div class="pane-toolbar settings-toolbar">
+              <div class="pane-title-wrap">
+                <strong class="pane-title">设置</strong>
+                <span class="pane-hint">运行栈与白名单参数</span>
+              </div>
+              <div class="pane-toolbar-right">
+                <button type="button" class="btn ghost sm" id="btn-params-reset" title="还原为当前配置默认值">重置参数</button>
+              </div>
+            </div>
+            <div class="settings-simple" id="settings-scroll">
+              <div class="settings-canvas">
+                <section class="settings-card" id="settings-runtime">
+                  <header class="settings-card-head">
+                    <h3>运行环境</h3>
+                    <span class="settings-card-tag">stack</span>
+                  </header>
+                  <div class="settings-grid settings-grid-stack">
+                    <label class="field settings-field-wide">
+                      <span>配置文件</span>
+                      <select id="config-select">
+                        {% for c in catalog.configs %}
+                        <option value="{{ c.path }}" {% if c.path == catalog.config_path %}selected{% endif %}>{{ c.path }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>仿真器</span>
+                      <select id="simulator-select">
+                        {% for sim in catalog.registry.simulators %}
+                        <option value="{{ sim }}" {% if sim == catalog.scene.simulator %}selected{% endif %}>{{ sim }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                    <label class="field">
+                      <span>行人模型</span>
+                      <select id="humans-select">
+                        {% for h in catalog.registry.humans %}
+                        <option value="{{ h }}" {% if h == catalog.scene.humans %}selected{% endif %}>{{ h }}</option>
+                        {% endfor %}
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                <section class="settings-card" id="settings-params">
+                  <header class="settings-card-head">
+                    <h3>实验参数</h3>
+                    <span class="settings-count" id="settings-param-badge">0</span>
+                  </header>
+                  <div id="param-fields" class="param-fields" aria-label="可调参数">
+                    <div class="settings-empty" id="param-fields-empty">加载参数…</div>
+                  </div>
+                </section>
+
+                <details class="settings-yaml" id="settings-yaml">
+                  <summary>
+                    <span>配置原文</span>
+                    <em>YAML · 只读</em>
+                  </summary>
+                  <pre class="yaml-view" id="yaml-view">{{ catalog.config_text or '（空）' }}</pre>
+                </details>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-data" role="tabpanel" data-pane="data" hidden>
+            <div class="pane-toolbar">
+              <div class="pane-title-wrap">
+                <strong class="pane-title">数据</strong>
+                <div class="data-mode" role="tablist" aria-label="Record / Play">
+                  <button type="button" class="data-mode-btn active" data-data-mode="record" role="tab" aria-selected="true">Record</button>
+                  <button type="button" class="data-mode-btn" data-data-mode="play" role="tab" aria-selected="false">Play</button>
+                </div>
+                <span class="pane-hint" id="data-mode-hint">采集 episode JSONL · automsgs</span>
+              </div>
+              <div class="pane-toolbar-right">
+                <button type="button" class="btn ghost sm" id="btn-refresh-datasets">刷新列表</button>
+              </div>
+            </div>
+            <div class="settings-layout">
+              <div class="settings-groups">
+                <section class="data-pane active" id="data-pane-record" data-data-pane="record">
+                  <section class="settings-group">
+                    <header class="settings-group-head">
+                      <h3>录制参数</h3>
+                      <span>输出目录与帧率</span>
+                    </header>
+                    <div class="settings-grid">
+                      <label class="field settings-field-wide">
+                        <span>输出目录</span>
+                        <input type="text" id="collect-output" value="{{ catalog.collect.output }}" />
+                      </label>
+                      <label class="field">
+                        <span>Episodes</span>
+                        <input type="number" id="collect-episodes" min="1" max="200" value="{{ catalog.collect.episodes }}" />
+                      </label>
+                      <label class="field">
+                        <span>FPS</span>
+                        <input type="number" id="collect-fps" min="1" max="60" value="{{ catalog.collect.fps }}" />
+                      </label>
+                      <label class="field">
+                        <span>帧/集</span>
+                        <input type="number" id="collect-frames" min="1" max="5000" value="{{ catalog.collect.episode_frames }}" />
+                      </label>
+                    </div>
+                  </section>
+                  <section class="settings-group">
+                    <header class="settings-group-head">
+                      <h3>automsgs 通道</h3>
+                      <span>
+                        <button type="button" class="btn ghost sm" id="btn-ch-all">全选</button>
+                        <button type="button" class="btn ghost sm" id="btn-ch-none">清空</button>
+                      </span>
+                    </header>
+                    <div class="channel-tree" id="channel-list" role="tree" aria-label="automsgs 录制通道"></div>
+                    <div class="data-actions">
+                      <button type="button" class="btn primary" id="btn-record-run">开始录制</button>
+                    </div>
+                  </section>
+                </section>
+
+                <section class="data-pane" id="data-pane-play" data-data-pane="play" hidden>
+                  <section class="settings-group">
+                    <header class="settings-group-head">
+                      <h3>回放参数</h3>
+                      <span>Autolink cmd_vel</span>
+                    </header>
+                    <div class="settings-grid">
+                      <label class="field settings-field-wide">
+                        <span>数据源</span>
+                        <input type="text" id="replay-source" value="{{ catalog.replay.source }}" list="dataset-paths" />
+                        <datalist id="dataset-paths">
+                          {% for d in catalog.datasets %}
+                          <option value="{{ d.path }}"></option>
+                          {% endfor %}
+                        </datalist>
+                      </label>
+                      <label class="field">
+                        <span>速率</span>
+                        <input type="number" id="replay-rate" min="0.1" max="10" step="0.1" value="{{ catalog.replay.rate }}" />
+                      </label>
+                      <label class="field bool-inline">
+                        <span>循环</span>
+                        <input type="checkbox" id="replay-loop" {% if catalog.replay.loop %}checked{% endif %} />
+                      </label>
+                      <label class="field bool-inline">
+                        <span>Dry-run</span>
+                        <input type="checkbox" id="replay-dry" {% if catalog.replay.dry_run %}checked{% endif %} />
+                      </label>
+                    </div>
+                    <div class="data-actions">
+                      <button type="button" class="btn primary" id="btn-play-run">开始回放</button>
+                    </div>
+                  </section>
+                  <section class="settings-group">
+                    <header class="settings-group-head">
+                      <h3>Datasets</h3>
+                      <span>点击填入数据源</span>
+                    </header>
+                    <ul class="dataset-list" id="dataset-list">
+                      {% if catalog.datasets %}
+                        {% for d in catalog.datasets %}
+                        <li class="dataset-item" data-path="{{ d.path }}" role="button" tabindex="0">
+                          <code>{{ d.path }}</code>
+                          <span>{{ d.episodes }} eps</span>
+                        </li>
+                        {% endfor %}
+                      {% else %}
+                        <li class="empty">尚无数据集 · Record 后出现在这里</li>
+                      {% endif %}
+                    </ul>
+                  </section>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-ota" role="tabpanel" data-pane="ota" hidden>
+            <div class="pane-toolbar">
+              <div class="pane-title-wrap">
+                <strong class="pane-title">OTA</strong>
+                <span class="pane-hint" id="ota-footnote">SystemService · Python gRPC + automsgs/proto</span>
+              </div>
+              <div class="pane-toolbar-right">
+                <button type="button" class="btn ghost sm" id="btn-ota-refresh">刷新</button>
+              </div>
+            </div>
+            <div class="settings-layout">
+              <div class="settings-groups">
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>连接与状态</h3>
+                    <span id="ota-progress-label">0%</span>
+                  </header>
+                  <div class="settings-grid">
+                    <label class="field settings-field-wide">
+                      <span>gRPC target</span>
+                      <input type="text" id="ota-target" value="localhost:50051" spellcheck="false" />
+                    </label>
+                  </div>
+                  <div class="ota-status-head">
+                    <span class="ota-state" id="ota-state">—</span>
+                  </div>
+                  <div class="progress-track ota-track"><div class="progress-bar" id="ota-progress-bar"></div></div>
+                  <dl class="ota-meta" id="ota-meta">
+                    <div><dt>当前版本</dt><dd id="ota-current">—</dd></div>
+                    <div><dt>目标版本</dt><dd id="ota-target-ver">—</dd></div>
+                    <div><dt>详情</dt><dd id="ota-detail">—</dd></div>
+                  </dl>
+                </section>
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>升级包</h3>
+                    <span>StartOta / AbortOta</span>
+                  </header>
+                  <div class="settings-grid">
+                    <label class="field settings-field-wide">
+                      <span>package_uri</span>
+                      <input type="text" id="ota-package-uri" placeholder="file:///path/or/https://…/package" spellcheck="false" />
+                    </label>
+                    <label class="field">
+                      <span>package_type</span>
+                      <select id="ota-package-type">
+                        <option value="">auto</option>
+                        <option value="full">full</option>
+                        <option value="delta">delta</option>
+                      </select>
+                    </label>
+                    <label class="field bool-inline">
+                      <span>prefer_delta</span>
+                      <input type="checkbox" id="ota-prefer-delta" />
+                    </label>
+                    <label class="field settings-field-wide">
+                      <span>Abort reason</span>
+                      <input type="text" id="ota-abort-reason" value="operator" />
+                    </label>
+                  </div>
+                  <div class="data-actions">
+                    <button type="button" class="btn primary" id="btn-ota-start">StartOta</button>
+                    <button type="button" class="btn ghost" id="btn-ota-abort">AbortOta</button>
+                  </div>
+                </section>
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>Robot / Caps</h3>
+                    <span>GetInfo · GetCapabilities</span>
+                  </header>
+                  <dl class="ota-meta" id="ota-info">
+                    <div><dt>supports_ota</dt><dd id="ota-supports">—</dd></div>
+                    <div><dt>model</dt><dd id="ota-model">—</dd></div>
+                    <div><dt>serial</dt><dd id="ota-serial">—</dd></div>
+                    <div><dt>firmware</dt><dd id="ota-fw">—</dd></div>
+                    <div><dt>software</dt><dd id="ota-sw">—</dd></div>
+                    <div><dt>autonomy</dt><dd id="ota-autonomy">—</dd></div>
+                  </dl>
+                </section>
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>通用 gRPC</h3>
+                    <span>SystemService 透传调用</span>
+                  </header>
+                  <div class="settings-grid">
+                    <label class="field settings-field-wide">
+                      <span>method</span>
+                      <input type="text" id="ota-rpc-method" value="GetCapabilities" list="ota-rpc-methods" spellcheck="false" />
+                      <datalist id="ota-rpc-methods">
+                        <option value="GetCapabilities"></option>
+                        <option value="GetInfo"></option>
+                        <option value="GetOtaStatus"></option>
+                        <option value="GetHealth"></option>
+                        <option value="Heartbeat"></option>
+                        <option value="GetProcessStatus"></option>
+                        <option value="ApplyConfigPackage"></option>
+                      </datalist>
+                    </label>
+                    <label class="field settings-field-wide">
+                      <span>JSON body</span>
+                      <textarea id="ota-rpc-body" rows="4" spellcheck="false">{}</textarea>
+                    </label>
+                  </div>
+                  <div class="data-actions">
+                    <button type="button" class="btn ghost" id="btn-ota-rpc">调用</button>
+                  </div>
+                  <pre class="yaml-view ota-rpc-out" id="ota-rpc-out">（尚未调用）</pre>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-curves" role="tabpanel" data-pane="curves" hidden>
+            <div class="pane-toolbar">
+              <div class="pane-title-wrap">
+                <strong class="pane-title">控制曲线</strong>
+                <span class="pane-hint" id="curve-stats"></span>
+              </div>
+              <div class="pane-toolbar-right">
+                <a class="link sm" id="btn-dl-curves" href="/api/export/curves" download>导出</a>
+              </div>
+            </div>
+            <div class="settings-layout settings-layout-wide">
+              <div class="settings-groups settings-groups-wide">
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>任务选择</h3>
+                    <span>切换 episode 曲线源</span>
+                  </header>
+                  <div class="settings-grid">
+                    <label class="field settings-field-wide">
+                      <span>任务</span>
+                      <select id="curve-task" aria-label="任务曲线"></select>
+                    </label>
+                  </div>
+                  <div class="curve-toolbar">
+                    {% for ch in catalog.curve_channels %}
+                    <label data-series="{{ ch.id }}">
+                      <input type="checkbox" data-series="{{ ch.id }}" {% if ch.id in ['v', 'w', 'a', 'jerk'] %}checked{% endif %} />
+                      {{ ch.label }}
+                    </label>
+                    {% endfor %}
+                  </div>
+                </section>
+                <section class="settings-group settings-group-fill">
+                  <header class="settings-group-head">
+                    <h3>曲线视图</h3>
+                    <span>v / ω / a / jerk</span>
+                  </header>
+                  <div class="curve-wrap">
+                    <canvas id="curve-canvas" width="1200" height="420" aria-label="controller curves"></canvas>
+                    <div class="curve-tip" id="curve-tip" hidden></div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-pane" id="tab-results" role="tabpanel" data-pane="results" hidden>
+            <div class="pane-toolbar">
+              <div class="pane-title-wrap">
+                <strong class="pane-title">运行结果</strong>
+                <span class="pane-hint">摘要 · 日志 · 历史</span>
+              </div>
+              <div class="pane-toolbar-right">
+                <a class="link sm" id="btn-dl-summary" href="/api/export/summary" download>summary</a>
+              </div>
+            </div>
+            <div class="settings-layout">
+              <div class="settings-groups">
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>任务卡片</h3>
+                    <span>本轮汇总</span>
+                  </header>
+                  <div class="result-cards" id="result-cards" hidden></div>
+                  <pre class="summary-view tall" id="summary-view">尚无结果</pre>
+                </section>
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>事件日志</h3>
+                    <span>实时 SSE</span>
+                  </header>
+                  <ol class="event-log tall" id="event-log" aria-live="polite"></ol>
+                </section>
+                <section class="settings-group">
+                  <header class="settings-group-head">
+                    <h3>最近任务</h3>
+                    <span>点击恢复历史</span>
+                  </header>
+                  <ul class="history-list" id="history-list">
+                    <li class="empty">尚无历史</li>
+                  </ul>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script id="bootstrap-catalog" type="application/json">{{ catalog_json | safe }}</script>
+  <script>
+    window.__BICMAP__ = {{ catalog.bicmap | tojson }};
+    window.__BICMAP_ASSETS__ = {
+      robotSvg: "{{ url_for('static', filename='assets/robot.svg') }}"
+    };
+  </script>
+  <script src="{{ url_for('static', filename=catalog.bicmap.local_js) }}"></script>
+  <script src="{{ url_for('static', filename='js/bicmap_view.js') }}?v=map7"></script>
+  <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=set6"></script>
+</body>
+</html>

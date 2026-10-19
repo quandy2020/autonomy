@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from benchmark.cli.main import main
+from benchmark.main import main
 
 if __name__ == "__main__":
     main(["run", "--task", "navigate"], standalone_mode=True)

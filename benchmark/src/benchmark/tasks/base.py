@@ -7,10 +7,10 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from benchmark.core.config import BenchmarkConfig
-from benchmark.core.types import EpisodeResult
+from benchmark.common.config import BenchmarkConfig
+from benchmark.common.types import EpisodeResult
 from benchmark.simulators.base import SimulatorAdapter
 
 
@@ -20,14 +20,13 @@ class Task(ABC):
     def __init__(
         self,
         config: BenchmarkConfig,
-        simulator: Optional[SimulatorAdapter] = None,
+        simulator: SimulatorAdapter | None = None,
         **kwargs: Any,
     ) -> None:
         self.config = config
-        self.task_cfg: Dict[str, Any] = config.section("task")
+        self.task_cfg: dict[str, Any] = config.section("task")
         self.simulator = simulator
         self.extra = kwargs
 
     @abstractmethod
-    def run(self) -> List[EpisodeResult]:
-        ...
+    def run(self) -> list[EpisodeResult]: ...

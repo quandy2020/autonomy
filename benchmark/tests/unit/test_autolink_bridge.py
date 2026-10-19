@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from benchmark.bridge import AutolinkBridge
-from benchmark.core.types import Twist2D
+from benchmark.common.types import Twist2D
 
 
 def test_null_transport_publish() -> None:

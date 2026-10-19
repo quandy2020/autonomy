@@ -2,7 +2,7 @@
 
 ## AutolinkBridge
 
-`benchmark.bridge.AutolinkBridge` mirrors Arena's ROS bridge:
+`benchmark.bridge.AutolinkBridge` is the Autolink transport (no ROS runtime):
 
 | Direction | Channel | Message |
 |-----------|---------|---------|

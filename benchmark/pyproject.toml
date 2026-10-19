@@ -20,12 +20,11 @@ dependencies = [
 [project.optional-dependencies]
 sim = []  # autosim installed from sibling package
 dev = ["pytest>=7.0", "pytest-cov>=4.0", "ruff>=0.4", "pre-commit>=3.5"]
-train = ["torch>=2.0", "stable-baselines3>=2.0", "optuna>=3.0"]
-api = ["fastapi>=0.110", "uvicorn>=0.27"]
-all = ["autonomy-benchmark[sim,dev,train,api]"]
+dashboard = ["flask>=3.0", "grpcio>=1.60", "protobuf>=4.21"]
+all = ["autonomy-benchmark[sim,dev,dashboard]"]
 
 [project.scripts]
-benchmark = "benchmark.cli.main:main"
+benchmark = "benchmark.main:main"
 
 [project.entry-points."benchmark.simulators"]
 fake = "benchmark.simulators.fake:FakeSimulator"
@@ -38,6 +37,10 @@ unity = "benchmark.simulators.unity:UnitySimulator"
 
 [project.entry-points."benchmark.tasks"]
 navigate = "benchmark.tasks.navigate:NavigateTask"
+dock = "benchmark.tasks.missions:DockTask"
+explore_mapping = "benchmark.tasks.missions:ExploreMappingTask"
+patrol = "benchmark.tasks.missions:PatrolTask"
+teleop = "benchmark.tasks.missions:TeleopTask"
 slam = "benchmark.tasks.slam:SlamTask"
 perception = "benchmark.tasks.perception:PerceptionTask"
 collect = "benchmark.tasks.collect:CollectTask"
@@ -49,7 +52,14 @@ where = ["src"]
 include = ["benchmark*"]
 
 [tool.setuptools.package-data]
-benchmark = ["py.typed"]
+benchmark = [
+  "py.typed",
+  "dashboard/templates/*.html",
+  "dashboard/static/css/*.css",
+  "dashboard/static/js/*.js",
+  "dashboard/static/assets/*",
+  "dashboard/static/vendor/bic-map/*",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

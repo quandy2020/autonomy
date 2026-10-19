@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 
 
@@ -22,15 +22,14 @@ class EpisodeSetup:
     pedestrians: int = 5
     moving_obstacles: int = 2
     waypoints: list = field(default_factory=list)
-    info: Dict[str, Any] = field(default_factory=dict)
+    info: dict[str, Any] = field(default_factory=dict)
 
 
 class TaskMode(ABC):
     name: str = "base"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.config = dict(config or {})
 
     @abstractmethod
-    def setup(self, episode_id: int, simulator: SimulatorAdapter) -> EpisodeSetup:
-        ...
+    def setup(self, episode_id: int, simulator: SimulatorAdapter) -> EpisodeSetup: ...

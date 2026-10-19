@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
@@ -16,7 +16,7 @@ from benchmark.tasks.modes.random import RandomMode
 class ParametrizedMode(TaskMode):
     name = "parametrized"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         # difficulty in [0, 1] scales obstacle/pedestrian density
         self.difficulty = float(self.config.get("difficulty", 0.5))

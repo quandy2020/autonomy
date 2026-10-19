@@ -6,14 +6,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 from benchmark.tasks.modes.parametrized import ParametrizedMode
 
-
-_DEFAULT_STAGES: List[Dict[str, Any]] = [
+_DEFAULT_STAGES: list[dict[str, Any]] = [
     {"difficulty": 0.2, "obstacles": 4, "pedestrians": 1, "episodes": 5},
     {"difficulty": 0.5, "obstacles": 8, "pedestrians": 3, "episodes": 5},
     {"difficulty": 0.8, "obstacles": 14, "pedestrians": 6, "episodes": 5},
@@ -25,12 +24,12 @@ class StagedMode(TaskMode):
 
     name = "staged"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
-        self.stages: List[Dict[str, Any]] = list(self.config.get("stages") or _DEFAULT_STAGES)
+        self.stages: list[dict[str, Any]] = list(self.config.get("stages") or _DEFAULT_STAGES)
         self._inner = ParametrizedMode({})
 
-    def _stage_for(self, episode_id: int) -> Dict[str, Any]:
+    def _stage_for(self, episode_id: int) -> dict[str, Any]:
         # Walk cumulative episode budgets
         remaining = episode_id
         for stage in self.stages:

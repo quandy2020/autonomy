@@ -11,7 +11,7 @@ import os
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 _LOG = logging.getLogger(__name__)
 
@@ -24,12 +24,12 @@ def resolve_autosim_root() -> Path:
     return Path(__file__).resolve().parents[4] / "autosim"
 
 
-def resolve_run_sh() -> Optional[Path]:
+def resolve_run_sh() -> Path | None:
     script = resolve_autosim_root() / "scripts" / "run.sh"
     return script if script.is_file() else None
 
 
-def resolve_autosim_config(config: Dict[str, Any], *, backend: str = "") -> Optional[Path]:
+def resolve_autosim_config(config: dict[str, Any], *, backend: str = "") -> Path | None:
     """Pick autosim YAML for habitat / isaac / fake."""
     explicit = config.get("autosim_config")
     if explicit:
@@ -65,11 +65,11 @@ def resolve_autosim_config(config: Dict[str, Any], *, backend: str = "") -> Opti
 class AutosimProcess:
     """Managed ``autosim/scripts/run.sh sim`` child process."""
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         self.config = dict(config or {})
-        self.proc: Optional[subprocess.Popen[Any]] = None
+        self.proc: subprocess.Popen[Any] | None = None
         self.last_log: str = ""
-        self.config_path: Optional[Path] = None
+        self.config_path: Path | None = None
 
     def start(self) -> bool:
         script = resolve_run_sh()
@@ -90,7 +90,7 @@ class AutosimProcess:
         # Habitat / Isaac scene overrides
         if self.config.get("scene"):
             env["AUTOSIM_SCENE"] = str(self.config["scene"])
-        cmd: List[str] = ["bash", str(script), "sim"]
+        cmd: list[str] = ["bash", str(script), "sim"]
         _LOG.info(
             "launching autosim backend=%s CONFIG=%s %s",
             backend or "?",
@@ -148,7 +148,7 @@ class AutosimProcess:
     def alive(self) -> bool:
         return self.proc is not None and self.proc.poll() is None
 
-    def status(self) -> Dict[str, Any]:
+    def status(self) -> dict[str, Any]:
         return {
             "alive": self.alive,
             "pid": None if self.proc is None else self.proc.pid,

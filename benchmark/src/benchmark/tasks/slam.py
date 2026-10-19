@@ -8,19 +8,18 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import List, Tuple
 
 import numpy as np
 
 from benchmark.bridge.autolink_bridge import AutolinkBridge
-from benchmark.core.geometry import reached
-from benchmark.core.types import EpisodeResult, EpisodeStatus, Pose2D
+from benchmark.common.geometry import reached
+from benchmark.common.types import EpisodeResult, EpisodeStatus, Pose2D
 from benchmark.evaluation.metrics.slam_metrics import slam_summary
-from benchmark.planning.factory import create_planner
 from benchmark.simulators.factory import create_simulator
 from benchmark.tasks.base import Task
 from benchmark.tasks.episode_runner import _apply_setup
 from benchmark.tasks.modes import create_mode
+from benchmark.tasks.planning.factory import create_planner
 
 _LOG = logging.getLogger(__name__)
 
@@ -43,7 +42,7 @@ class SlamTask(Task):
 
     name = "slam"
 
-    def run(self) -> List[EpisodeResult]:
+    def run(self) -> list[EpisodeResult]:
         episodes = int(self.task_cfg.get("episodes", 1))
         timeout_steps = int(self.task_cfg.get("timeout_steps", 200))
         noise = float(self.task_cfg.get("odom_noise", 0.05))
@@ -57,7 +56,7 @@ class SlamTask(Task):
         sim = self.simulator or create_simulator(self.config)
         bridge = AutolinkBridge(node_name="benchmark_slam")
         bridge_ok = bridge.connect(subscribe_odom=True) if use_autolink else False
-        results: List[EpisodeResult] = []
+        results: list[EpisodeResult] = []
 
         _LOG.info("SlamTask episodes=%s autolink=%s noise=%.3f", episodes, bridge_ok, noise)
         with sim:
@@ -66,9 +65,9 @@ class SlamTask(Task):
                 setup = mode.setup(ep, sim)
                 pose = _apply_setup(sim, setup, seed=ep)
                 goal = setup.goal
-                gt_traj: List[Pose2D] = [pose]
-                est_traj: List[Pose2D] = [_noisy_odom(pose, rng, noise)]
-                hits: List[Tuple[float, float]] = [(pose.x, pose.y)]
+                gt_traj: list[Pose2D] = [pose]
+                est_traj: list[Pose2D] = [_noisy_odom(pose, rng, noise)]
+                hits: list[tuple[float, float]] = [(pose.x, pose.y)]
                 status = EpisodeStatus.TIMEOUT
                 for step_i in range(timeout_steps):
                     if hasattr(planner, "set_observation") and hasattr(sim, "world"):
@@ -91,7 +90,12 @@ class SlamTask(Task):
                         for i, r in enumerate(ranges[:: max(1, n // 12)]):
                             ang = pose.yaw + (2 * math.pi * i / max(1, n // 12)) - math.pi
                             if r < 7.5:
-                                hits.append((pose.x + float(r) * math.cos(ang), pose.y + float(r) * math.sin(ang)))
+                                hits.append(
+                                    (
+                                        pose.x + float(r) * math.cos(ang),
+                                        pose.y + float(r) * math.sin(ang),
+                                    )
+                                )
                     hits.append((pose.x, pose.y))
                     if result.info.get("collision"):
                         status = EpisodeStatus.COLLISION

@@ -9,11 +9,10 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import List
 
 from benchmark.bridge.autolink_bridge import AutolinkBridge
-from benchmark.core.types import EpisodeResult, EpisodeStatus, Twist2D
-from benchmark.data.recorder import load_jsonl_episode
+from benchmark.common.types import EpisodeResult, EpisodeStatus, Twist2D
+from benchmark.evaluation.dataset import load_jsonl_episode
 from benchmark.tasks.base import Task
 
 _LOG = logging.getLogger(__name__)
@@ -22,12 +21,16 @@ _LOG = logging.getLogger(__name__)
 class ReplayTask(Task):
     name = "replay"
 
-    def run(self) -> List[EpisodeResult]:
+    def run(self) -> list[EpisodeResult]:
         source = Path(str(self.task_cfg.get("source", "data/datasets/collect")))
         rate = float(self.task_cfg.get("rate", 1.0))
         loop = bool(self.task_cfg.get("loop", False))
         dry_run = bool(self.task_cfg.get("dry_run", False))
-        files = sorted(source.glob("episode_*.jsonl")) if source.is_dir() else ([source] if source.is_file() else [])
+        files = (
+            sorted(source.glob("episode_*.jsonl"))
+            if source.is_dir()
+            else ([source] if source.is_file() else [])
+        )
         if not files:
             _LOG.warning("ReplayTask: no episodes under %s", source)
             return [
@@ -48,7 +51,7 @@ class ReplayTask(Task):
             dry_run,
         )
 
-        results: List[EpisodeResult] = []
+        results: list[EpisodeResult] = []
         for ep, path in enumerate(files):
             frames = load_jsonl_episode(path)
             published = 0

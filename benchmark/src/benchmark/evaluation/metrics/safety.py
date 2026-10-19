@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Sequence
+from collections.abc import Sequence
 
 from benchmark.tasks.episode_runner import EpisodeTrace
 
@@ -22,7 +22,7 @@ def mean_min_clearance(traces: Sequence[EpisodeTrace]) -> float:
     return float(sum(vals) / len(vals))
 
 
-def safety_summary(traces: Sequence[EpisodeTrace]) -> Dict[str, float]:
+def safety_summary(traces: Sequence[EpisodeTrace]) -> dict[str, float]:
     return {
         "collision_amount": collision_amount(traces),
         "mean_min_clearance": mean_min_clearance(traces),

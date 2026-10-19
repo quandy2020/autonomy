@@ -6,9 +6,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 
@@ -16,14 +16,14 @@ from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 class GuidedMode(TaskMode):
     name = "guided"
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
         super().__init__(config)
         raw = self.config.get("waypoints") or [
             {"x": 2.0, "y": 0.0},
             {"x": 4.0, "y": 2.0},
             {"x": 6.0, "y": 0.0},
         ]
-        self.waypoints: List[Pose2D] = [
+        self.waypoints: list[Pose2D] = [
             Pose2D(x=float(w["x"]), y=float(w.get("y", 0.0)), yaw=float(w.get("yaw", 0.0)))
             for w in raw
         ]

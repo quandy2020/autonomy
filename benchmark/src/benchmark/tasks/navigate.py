@@ -7,9 +7,8 @@
 from __future__ import annotations
 
 import logging
-from typing import List
 
-from benchmark.core.types import EpisodeResult
+from benchmark.common.types import EpisodeResult
 from benchmark.simulators.factory import create_simulator
 from benchmark.tasks.base import Task
 from benchmark.tasks.episode_runner import make_planner, run_episode, trace_to_result
@@ -21,7 +20,7 @@ _LOG = logging.getLogger(__name__)
 class NavigateTask(Task):
     name = "navigate"
 
-    def run(self) -> List[EpisodeResult]:
+    def run(self) -> list[EpisodeResult]:
         sim = self.simulator or create_simulator(self.config)
         episodes = int(self.task_cfg.get("episodes", 1))
         timeout_s = float(self.task_cfg.get("timeout_s", 60))
@@ -53,7 +52,7 @@ class NavigateTask(Task):
 
         mode = create_mode(mode_name, mode_cfg)
         planner = make_planner(self.config.section("planner"))
-        results: List[EpisodeResult] = []
+        results: list[EpisodeResult] = []
 
         with sim:
             for ep in range(episodes):

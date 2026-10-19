@@ -12,15 +12,14 @@
 |--------------|-------------------|
 | Flatland / Gazebo / Unity / Isaac | `flatland`·`fake` / `gazebo` / `unity`·`habitat` / `isaac` (+ `hil`) |
 | Task modes | `scenario` `random` `parametrized` `guided` `explore` `zones` `staged` `dynamic` `benchmark` |
-| Planners | `dwa` `teb` `mpc` `mppi` `rosnav_rl` `cadrl` `crowdnav` `rlca` `sarl` `applr` `dragon` `trail` `hybrid`/`mbf` … |
+| Planners | `dwa` `teb` `mpc` `mppi` `policy` `cadrl` `crowdnav` `rlca` `sarl` `applr` `dragon` `trail` `hybrid` …（无 ROS） |
 | Social force / HuNav | `social_force` `pysocialforce` `orca` `rvo2` `evacuation` `spinny` `hunav` `lightsfm` `deep_social` `crowd_flow` |
 | Dynamic map / maze | `benchmark generate-world` + `mode=dynamic`（barn/canteen/office/industrial…） |
 | Arena Evaluation | safety / efficiency / smoothness / **social**（private zone · facing · seen-by）+ HTML |
-| ROSNavRL + SB3 | `benchmark train` / `tune` / `--export` |
 | Multi-robot | `benchmark multi-robot` |
 | Robots | turtlebot3 · waffle · jackal · husky · ridgeback · tiago · dingo · youbot · go1 · cob4 |
 | Worlds | hospital · canteen · warehouse · office · posts · maze |
-| Data / API | collect·replay · `benchmark serve` |
+| Data / UI | collect·replay · `benchmark dashboard` |
 
 ## 快速开始
 
@@ -55,12 +54,23 @@ benchmark generate-world --prompt "hard hospital level 3 with 12 pedestrians" -o
 ```bash
 benchmark run --task navigate|slam|perception|collect|replay|hil
 benchmark eval --episodes 5
-benchmark train --curriculum --export data/checkpoints/policy
-benchmark tune --trials 5
-benchmark serve --port 8088        # pip install -e '.[api]'
+benchmark dashboard --port 8090    # pip install -e '.[dashboard]'
 benchmark multi-robot --robots 3 --planner hybrid
 benchmark generate-world maze --seed 3 -o configs/worlds/maze_gen.yaml
 ```
+
+### Flask 监控面板
+
+`benchmark.dashboard` 为 **Flask 网页版**（Jinja 首屏 + SSE 实时），内嵌于主包，调用 `benchmark.common` / `tasks` / `evaluation`。
+
+```bash
+pip install -e ".[dashboard]"
+benchmark dashboard --host 127.0.0.1 --port 8090
+# 或: python -m benchmark.dashboard --port 8090
+# 浏览器打开 http://127.0.0.1:8090
+```
+
+布局：场景 → **BicMap 地图** → 模型 → 任务 → 录制 → 监控。BicMap **本地源码** `third_party/bic-map-src/`，构建产物 `static/vendor/bic-map/`（`bash scripts/build_bicmap.sh`），运行不上网。详见 [`src/benchmark/dashboard/README.md`](src/benchmark/dashboard/README.md)。
 
 ## 行人模型
 
@@ -76,13 +86,19 @@ humans:
 
 ```
 benchmark/
-├── configs/     # sim / planner / robot / world / task / humans / scenarios / eval
+├── configs/
 ├── src/benchmark/
-│   ├── core/ simulators/ tasks/ planning/ humans/ worlds/
-│   ├── evaluation/ rl/ bridge/ data/ api/ cli/
-├── scripts/     # smoke_e2e · benchmark_planners · export_onnx · run_isaac
+│   ├── main.py       # Click entry (``benchmark`` / ``python -m benchmark``)
+│   ├── common/       # config / registry / types
+│   ├── tasks/        # missions · modes · planning · multi_robot
+│   ├── simulators/   # backends + worlds/ + humans/ (+ cli)
+│   ├── evaluation/   # metrics · dataset · curves (+ cli)
+│   ├── bridge/
+│   └── dashboard/    # Flask + BicMap (+ cli)
+├── third_party/bic-map-src/
+├── scripts/
 ├── tests/
-└── docs/        # architecture · tasks · bridge · arena_alignment
+└── docs/
 ```
 
 更多：[architecture](docs/architecture.md) · [tasks](docs/tasks.md) · [bridge](docs/bridge.md) · [arena_alignment](docs/arena_alignment.md) · [Arena-Rosnav](https://github.com/Arena-Rosnav)

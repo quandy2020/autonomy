@@ -1,6 +1,7 @@
 name: navigate
 type: navigate
-description: Goal-directed navigation with autonomy planner/controller
+description: 导航 — 目标点导航（Arena modes）
+mode: scenario
 episodes: 10
 timeout_s: 120
 goal_tolerance_m: 0.3
@@ -11,3 +12,6 @@ metrics:
   - time_to_goal
   - collisions
   - clearance
+  - v_max
+  - a_max
+  - jerk_max

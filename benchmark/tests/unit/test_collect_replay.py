@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchmark.core.config import load_config
-from benchmark.data.recorder import load_jsonl_episode
+from benchmark.common.config import load_config
+from benchmark.evaluation.dataset import load_jsonl_episode
 from benchmark.tasks.manager import run_task
 
 

@@ -11,7 +11,7 @@ benchmark eval --episodes 5 --set planner.name=dwa
 In Python:
 
 ```python
-from benchmark.core.config import load_config
+from benchmark.common.config import load_config
 from benchmark.evaluation.arena_evaluation import ArenaEvaluation
 
 cfg = load_config("configs/default.yaml", overrides=["task.episodes=3", "planner.name=hybrid"])

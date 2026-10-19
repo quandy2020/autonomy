@@ -2,31 +2,26 @@
 #
 # Licensed under the Apache License, Version 2.0.
 
-from benchmark.evaluation.metrics.efficiency import efficiency_summary, success_rate
+from __future__ import annotations
+
+# Back-compat helper used by unit tests on EpisodeResult lists
+from collections.abc import Sequence
+
+from benchmark.common.types import EpisodeResult, EpisodeStatus
+from benchmark.evaluation.metrics.efficiency import efficiency_summary
 from benchmark.evaluation.metrics.safety import safety_summary
 from benchmark.evaluation.metrics.smoothness import smoothness_summary
 from benchmark.evaluation.metrics.social import social_summary
 from benchmark.evaluation.metrics.status import status_counts
 
-# Back-compat helper used by unit tests on EpisodeResult lists
-from typing import Sequence
 
-from benchmark.core.types import EpisodeResult, EpisodeStatus
-
-
-def success_rate_results(episodes: Sequence[EpisodeResult]) -> float:
+def success_rate(episodes: Sequence[EpisodeResult]) -> float:
+    """Success rate over ``EpisodeResult`` lists (unit-test helper)."""
     if not episodes:
         return 0.0
-    ok = sum(
-        1
-        for e in episodes
-        if e.status in (EpisodeStatus.GOAL_REACHED, EpisodeStatus.SUCCESS)
-    )
+    ok = sum(1 for e in episodes if e.status in (EpisodeStatus.GOAL_REACHED, EpisodeStatus.SUCCESS))
     return ok / len(episodes)
 
-
-# Alias historical name
-success_rate = success_rate_results  # type: ignore[assignment]
 
 __all__ = [
     "efficiency_summary",

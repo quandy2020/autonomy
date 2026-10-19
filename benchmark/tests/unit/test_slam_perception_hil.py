@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from benchmark.core.config import load_config
-from benchmark.core.types import EpisodeStatus
+from benchmark.common.config import load_config
+from benchmark.common.types import EpisodeStatus
 from benchmark.tasks.manager import run_task
 
 

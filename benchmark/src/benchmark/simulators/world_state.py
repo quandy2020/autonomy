@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, List, Optional, Sequence, Tuple
+from typing import Any
 
 import numpy as np
 
-from benchmark.core.types import Pose2D, Twist2D
+from benchmark.common.types import Pose2D, Twist2D
 
 
 @dataclass
@@ -43,8 +43,8 @@ class WorldState:
     width: float = 20.0
     height: float = 20.0
     robot_radius: float = 0.2
-    obstacles: List[ObstacleDisk] = field(default_factory=list)
-    pedestrians: List[PedestrianAgent] = field(default_factory=list)
+    obstacles: list[ObstacleDisk] = field(default_factory=list)
+    pedestrians: list[PedestrianAgent] = field(default_factory=list)
     pose: Pose2D = field(default_factory=Pose2D)
     goal: Pose2D = field(default_factory=lambda: Pose2D(x=5.0, y=0.0))
     dt: float = 0.1
@@ -56,9 +56,9 @@ class WorldState:
     def reset(
         self,
         *,
-        seed: Optional[int] = None,
-        start: Optional[Pose2D] = None,
-        goal: Optional[Pose2D] = None,
+        seed: int | None = None,
+        start: Pose2D | None = None,
+        goal: Pose2D | None = None,
     ) -> Pose2D:
         if seed is not None:
             self.rng = np.random.default_rng(seed)
@@ -72,7 +72,9 @@ class WorldState:
         self.obstacles.clear()
         self.pedestrians.clear()
 
-    def spawn_random_obstacles(self, count: int, radius_range: Tuple[float, float] = (0.3, 0.8)) -> None:
+    def spawn_random_obstacles(
+        self, count: int, radius_range: tuple[float, float] = (0.3, 0.8)
+    ) -> None:
         for _ in range(max(0, count)):
             r = float(self.rng.uniform(*radius_range))
             x, y = self._sample_free(r + self.robot_radius + 0.5)
@@ -83,7 +85,13 @@ class WorldState:
             x, y = self._sample_free(0.5)
             gx, gy = self._sample_free(0.5)
             self.pedestrians.append(
-                PedestrianAgent(x=x, y=y, goal_x=gx, goal_y=gy, preferred_speed=float(self.rng.uniform(0.6, 1.2)))
+                PedestrianAgent(
+                    x=x,
+                    y=y,
+                    goal_x=gx,
+                    goal_y=gy,
+                    preferred_speed=float(self.rng.uniform(0.6, 1.2)),
+                )
             )
 
     def _on_start_goal_corridor(self, x: float, y: float, width: float = 1.2) -> bool:
@@ -102,7 +110,7 @@ class WorldState:
         lat = abs(-uy * wx + ux * wy)
         return lat < width
 
-    def _sample_free(self, margin: float) -> Tuple[float, float]:
+    def _sample_free(self, margin: float) -> tuple[float, float]:
         for _ in range(200):
             x = float(self.rng.uniform(-self.width / 2 + margin, self.width / 2 - margin))
             y = float(self.rng.uniform(-self.height / 2 + margin, self.height / 2 - margin))

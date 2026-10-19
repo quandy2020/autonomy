@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from benchmark.core.config import load_config  # noqa: E402
+from benchmark.common.config import load_config  # noqa: E402
 from benchmark.evaluation.arena_evaluation import ArenaEvaluation  # noqa: E402
 from benchmark.evaluation.visualizer import traces_to_svg  # noqa: E402
 

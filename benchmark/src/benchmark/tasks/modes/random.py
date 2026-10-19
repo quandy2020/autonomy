@@ -7,11 +7,10 @@
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, Optional
 
 import numpy as np
 
-from benchmark.core.types import Pose2D
+from benchmark.common.types import Pose2D
 from benchmark.simulators.base import SimulatorAdapter
 from benchmark.tasks.modes.base import EpisodeSetup, TaskMode
 
@@ -38,14 +37,18 @@ class RandomMode(TaskMode):
         return EpisodeSetup(
             start=start,
             goal=goal,
-            obstacles=int(rng.integers(
-                int(self.config.get("obstacles_min", 8)),
-                int(self.config.get("obstacles_max", 25)) + 1,
-            )),
-            pedestrians=int(rng.integers(
-                int(self.config.get("pedestrians_min", 0)),
-                int(self.config.get("pedestrians_max", 10)) + 1,
-            )),
+            obstacles=int(
+                rng.integers(
+                    int(self.config.get("obstacles_min", 8)),
+                    int(self.config.get("obstacles_max", 25)) + 1,
+                )
+            ),
+            pedestrians=int(
+                rng.integers(
+                    int(self.config.get("pedestrians_min", 0)),
+                    int(self.config.get("pedestrians_max", 10)) + 1,
+                )
+            ),
             moving_obstacles=int(self.config.get("moving_obstacles", 3)),
             info={"mode": self.name},
         )

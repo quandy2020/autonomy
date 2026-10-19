@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from benchmark.core.types import EpisodeResult, EpisodeStatus
+from benchmark.common.types import EpisodeResult, EpisodeStatus
 from benchmark.evaluation.evaluator import Evaluator
 from benchmark.evaluation.metrics import success_rate
 
