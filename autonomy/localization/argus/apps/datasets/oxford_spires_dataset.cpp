@@ -68,13 +68,12 @@ bool ParseTCamLidarYaml(const std::string& path, const std::string& camera,
     }
     if (trimmed.rfind("T_cam_lidar:", 0) == 0) {
       in_T = true;
-      // Same-line values unlikely; continue.
-      continue;
+      // DiffCal often puts the first matrix row on the same line — keep parsing.
     }
     if (!in_T) {
       continue;
     }
-    // Collect floats from nested list lines.
+    // Collect floats from nested list lines (and same-line T_cam_lidar: [[...]).
     for (std::size_t p = 0; p < line.size();) {
       if (line[p] == '-' || line[p] == '.' ||
           (line[p] >= '0' && line[p] <= '9')) {

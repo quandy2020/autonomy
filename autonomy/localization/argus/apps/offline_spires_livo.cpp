@@ -135,14 +135,15 @@ bool LoadLidarImuExtrinsic(const fs::path& yaml_path, Eigen::Matrix3d* R_li,
   if (!find_arr("C_q_CI:", 4, &q_ci) || !find_arr("C_r_CI:", 3, &r_ci)) {
     return false;
   }
-  // Flatten first 4x4 T_cam_lidar under cam0
+  // Flatten first 4x4 T_cam_lidar under cam0 (may be multi-line nested lists).
   const auto tpos = text.find("T_cam_lidar:");
   if (tpos == std::string::npos) {
     return false;
   }
-  std::string block = text.substr(tpos, 800);
+  std::string block = text.substr(tpos, 1200);
   for (char& c : block) {
-    if (c == ',' || c == '[' || c == ']' || c == ':') {
+    if (c == ',' || c == '[' || c == ']' || c == ':' || c == '\n' ||
+        c == '\r') {
       c = ' ';
     }
   }

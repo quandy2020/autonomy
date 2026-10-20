@@ -438,6 +438,13 @@ private:
     void InitIntrinsicsAndPoseJacobians();
     /** @brief Compute image grid dimensions from `grid_size`. */
     void InitImageGrid();
+    /**
+     * @brief Map pixel → dense grid index; false if outside buffered cells.
+     *
+     * Guards against ceil truncation so u/v near image borders cannot write
+     * past `grid_num` / `scan_value` (heap overflow → later double-free).
+     */
+    bool GridIndexFromPixel(const Eigen::Vector2d& pc, int* index) const;
     /** @brief Precompute per-cell ray sample points when `enable_raycast`. */
     void InitRaycastSamples();
     /** @brief Open Colmap dump streams when `enable_colmap_output`. */

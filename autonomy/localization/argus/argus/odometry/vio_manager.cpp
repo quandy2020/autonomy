@@ -127,15 +127,39 @@ void VIOManager::InitIntrinsicsAndPoseJacobians() {
 }
 
 void VIOManager::InitImageGrid() {
+    // Must divide as double then ceil — `(width / grid_size)` is int truncation
+    // and under-covers the image (FAST-LIVO2 upstream bug).
     if (grid_size > 10) {
-        grid_n_width = ceil(static_cast<double>(width / grid_size));
-        grid_n_height = ceil(static_cast<double>(height / grid_size));
+        grid_n_width = static_cast<int>(
+            std::ceil(static_cast<double>(width) / grid_size));
+        grid_n_height = static_cast<int>(
+            std::ceil(static_cast<double>(height) / grid_size));
     } else {
-        grid_size = static_cast<int>(height / grid_n_height);
-        grid_n_height = ceil(static_cast<double>(height / grid_size));
-        grid_n_width = ceil(static_cast<double>(width / grid_size));
+        if (grid_n_height <= 0) {
+            grid_n_height = 1;
+        }
+        grid_size = std::max(1, height / grid_n_height);
+        grid_n_height = static_cast<int>(
+            std::ceil(static_cast<double>(height) / grid_size));
+        grid_n_width = static_cast<int>(
+            std::ceil(static_cast<double>(width) / grid_size));
     }
+    grid_n_width = std::max(1, grid_n_width);
+    grid_n_height = std::max(1, grid_n_height);
     length = grid_n_width * grid_n_height;
+}
+
+bool VIOManager::GridIndexFromPixel(const Vector2d& pc, int* index) const {
+    if (index == nullptr || grid_size <= 0 || length <= 0) {
+        return false;
+    }
+    const int gx = static_cast<int>(pc[0] / grid_size);
+    const int gy = static_cast<int>(pc[1] / grid_size);
+    if (gx < 0 || gy < 0 || gx >= grid_n_width || gy >= grid_n_height) {
+        return false;
+    }
+    *index = gy * grid_n_width + gx;
+    return *index >= 0 && *index < length;
 }
 
 void VIOManager::InitRaycastSamples() {
@@ -219,20 +243,21 @@ void VIOManager::InitColmapLogs() {
 }
 
 void VIOManager::InitPatchBuffers() {
-    grid_num.resize(length);
-    map_index.resize(length);
-    map_dist.resize(length);
-    update_flag.resize(length);
-    scan_value.resize(length);
+    grid_num.resize(static_cast<std::size_t>(length));
+    map_index.resize(static_cast<std::size_t>(length));
+    map_dist.resize(static_cast<std::size_t>(length));
+    update_flag.resize(static_cast<std::size_t>(length));
+    scan_value.resize(static_cast<std::size_t>(length));
 
     patch_size_total = patch_size * patch_size;
     patch_size_half = static_cast<int>(patch_size / 2);
-    patch_buffer.resize(patch_size_total);
+    patch_buffer.resize(static_cast<std::size_t>(patch_size_total));
     warp_len = patch_size_total * patch_pyramid_level;
     border = (patch_size_half + 1) * (1 << patch_pyramid_level);
 
-    retrieve_voxel_points.reserve(length);
-    append_voxel_points.reserve(length);
+    // Size (not only reserve) so Score* can write before first ResetGrid.
+    retrieve_voxel_points.assign(static_cast<std::size_t>(length), nullptr);
+    append_voxel_points.resize(static_cast<std::size_t>(length));
 
     sub_feat_map.clear();
 }
@@ -514,13 +539,12 @@ void VIOManager::CollectVisibleSubmapPoints(
                 // 0.17 80 degree 0.08 85 degree
 
                 Vector2d pc(new_frame_->w2c(pt->pos_));
-                if (new_frame_->cam_->isInFrame(pc.cast<int>(), border)) {
+                int index = 0;
+                if (new_frame_->cam_->isInFrame(pc.cast<int>(), border) &&
+                    GridIndexFromPixel(pc, &index)) {
                     // cv::circle(img_cp, cv::Point2f(pc[0], pc[1]), 3,
                     // cv::Scalar(0, 255, 255), -1, 8);
                     voxel_in_fov = true;
-                    int index =
-                        static_cast<int>(pc[1] / grid_size) * grid_n_width +
-                        static_cast<int>(pc[0] / grid_size);
                     grid_num[index] = TYPE_MAP;
                     Vector3d obs_vec(new_frame_->pos() - pt->pos_);
                     float cur_dist = obs_vec.norm();
@@ -565,12 +589,12 @@ bool VIOManager::TryRaycastHit(
                 continue;
             }
             Vector2d pc(new_frame_->w2c(pt->pos_));
-            if (!new_frame_->cam_->isInFrame(pc.cast<int>(), border)) {
+            int index = 0;
+            if (!new_frame_->cam_->isInFrame(pc.cast<int>(), border) ||
+                !GridIndexFromPixel(pc, &index)) {
                 continue;
             }
             voxel_in_fov = true;
-            int index = static_cast<int>(pc[1] / grid_size) * grid_n_width +
-                        static_cast<int>(pc[0] / grid_size);
             grid_num[index] = TYPE_MAP;
             float cur_dist = (new_frame_->pos() - pt->pos_).norm();
             if (cur_dist <= map_dist[index]) {
@@ -904,13 +928,9 @@ void VIOManager::ScoreCloudCandidates(cv::Mat img,
         Vector3d pt = pg[i].point_w;
         Vector2d pc(new_frame_->w2c(pt));
 
-        if (new_frame_->cam_->isInFrame(
-                pc.cast<int>(),
-                border))  // 20px is the patch size in the matcher
-        {
-            int index = static_cast<int>(pc[1] / grid_size) * grid_n_width +
-                        static_cast<int>(pc[0] / grid_size);
-
+        int index = 0;
+        if (new_frame_->cam_->isInFrame(pc.cast<int>(), border) &&
+            GridIndexFromPixel(pc, &index)) {
             if (grid_num[index] != TYPE_MAP) {
                 float cur_value = vision::ShiTomasiScore(img, pc[0], pc[1]);
                 // if (cur_value < 5) continue;
@@ -929,13 +949,9 @@ void VIOManager::ScoreVoxelCandidates(cv::Mat img) {
         Vector3d pt = visual_submap->add_from_voxel_map[j].point_w;
         Vector2d pc(new_frame_->w2c(pt));
 
-        if (new_frame_->cam_->isInFrame(
-                pc.cast<int>(),
-                border))  // 20px is the patch size in the matcher
-        {
-            int index = static_cast<int>(pc[1] / grid_size) * grid_n_width +
-                        static_cast<int>(pc[0] / grid_size);
-
+        int index = 0;
+        if (new_frame_->cam_->isInFrame(pc.cast<int>(), border) &&
+            GridIndexFromPixel(pc, &index)) {
             if (grid_num[index] != TYPE_MAP) {
                 float cur_value = vision::ShiTomasiScore(img, pc[0], pc[1]);
                 if (cur_value > scan_value[index]) {
