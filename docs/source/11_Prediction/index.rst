@@ -1,7 +1,7 @@
 Prediction 轨迹预测
-======================
+===================
 
-``autonomy/prediction`` 是 Autonomy 的**动态障碍轨迹预测**子系统。文档按 **§1–§9** 编号排列。
+``autonomy/prediction``：预测服务壳 + 共用运动模型（``common/motion_model``）。完整 PredictionServer 流水线仍在接入。
 
 .. toctree::
    :maxdepth: 2
@@ -11,8 +11,6 @@ Prediction 轨迹预测
    2 快速开始 <02_quickstart>
    3 数学原理 <03_math>
    4 使用指南 <04_usage>
-   5 模块架构设计 <05_architecture>
+   5 架构 <05_architecture>
    6 运动模型 <06_motion_models>
-   7 轨迹预测算法 <07_trajectory_prediction>
-   8 行为与交互预测 <08_behavior_prediction>
-   9 预测算法综述 <09_survey>
+   7 综述 <07_survey>

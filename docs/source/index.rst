@@ -40,24 +40,24 @@ Autonomy
 .. toctree::
   :maxdepth: 1
 
-  01 Instructions <01_Instructions/index>
-  02 Installation <02_Installation/index>
-  03 Communication <03_Communication/index>
-  04 Running <04_Running/index>
-  05 Framework <05_Framework/index>
-  06 Localization <06_Localization/index>
-  07 Mapping <07_Map/index>
-  08 Planning <08_Planning/index>
-  09 Control <09_Control/index>
-  10 Perception <10_Perception/index>
-  11 Prediction <11_Prediction/index>
-  12 Simulation <12_Simulation/index>
-  13 Visualization <13_Visualization/index>
-  14 Commsgs <14_Commsgs/index>
-  15 Bridge <15_Bridge/index>
-  16 Navigator <16_Navigator/index>
-  17 Tasks <17_Tasks/index>
-  18 Tools <18_Tools/index>
-  19 FAQ <19_FAQs/index>
-  20 Others <20_Other/index>
+  01 入门指引 <01_Instructions/index>
+  02 安装构建 <02_Installation/index>
+  03 通信层 <03_Communication/index>
+  04 运行部署 <04_Running/index>
+  05 框架核心 <05_Framework/index>
+  06 定位 <06_Localization/index>
+  07 地图 <07_Map/index>
+  08 规划 <08_Planning/index>
+  09 控制 <09_Control/index>
+  10 感知 <10_Perception/index>
+  11 预测 <11_Prediction/index>
+  12 仿真 <12_Simulation/index>
+  13 可视化 <13_Visualization/index>
+  14 消息定义 <14_Commsgs/index>
+  15 通信桥接 <15_Bridge/index>
+  16 导航编排 <16_Navigator/index>
+  17 导航任务 <17_Tasks/index>
+  18 开发工具 <18_Tools/index>
+  19 常见问题 <19_FAQs/index>
+  20 其他 <20_Other/index>
 

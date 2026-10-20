@@ -1,7 +1,7 @@
 Autonomy 框架
 =============
 
-`libautonomy` 应用框架：模块装配、配置管线、Server 生命周期与插件系统。通信 API 详见 [03 Communication](../03_Communication/index.rst)。按 **§1–§8** 编号排列。
+`libautonomy` 应用框架：装配、配置、Server 与插件。通信见 03 Communication。
 
 .. toctree::
    :maxdepth: 2
@@ -15,3 +15,4 @@ Autonomy 框架
    6 插件系统 <06_plugin_system>
    7 消息集成 <07_commsgs_integration>
    8 框架综述 <08_survey>
+   9 Sensor / Vehicle / Audio <09_sensor_vehicle_audio>

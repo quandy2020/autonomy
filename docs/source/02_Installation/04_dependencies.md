@@ -47,7 +47,7 @@ python3 scripts/install_dependencies.py --dry-run --profile board
 
 ```bash
 bash docker/install/install_glog.sh
-AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh   # 内存紧
+AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh # 内存紧
 
 # 与 --prefix 等价：单库也走同一前缀
 AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
@@ -58,6 +58,7 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 ### 4.2 第三方脚本顺序（`full` / `board` 共用核心）
 
 默认安装到 **`/usr/local`**（可用 `--prefix` / `AUTONOMY_INSTALL_PREFIX` 覆盖，全程只用一个前缀）：
+
 | 顺序 | 脚本 | 库 |
 |------|------|-----|
 | 1 | `install_gtest.sh` | Google Test |
@@ -84,12 +85,13 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 ```text
 /usr/local/include/
 /usr/local/lib/
-/usr/local/bin/   # 如 protoc
+/usr/local/bin/ # 如 protoc
 ```
 
 或 `--prefix /opt/autonomy` 时对应 `${prefix}/{include,lib,bin}`。
 
-CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。不要把 gRPC/protobuf 装在 `~/grpc` / `~/.local`，却让 Autonomy 链另一套前缀的库——**混前缀会坏 RPATH / ABI**。
+CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。勿混用 `~/grpc` / `~/.local` 与系统前缀——混前缀会坏 RPATH / ABI。
+
 ---
 
 ### 4.4 可选能力
@@ -109,7 +111,7 @@ CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。不要把 gRPC/protobuf 装在 `~
 ls /usr/local/lib/libceres.so
 ls /usr/local/lib/libbehaviortree_cpp.so
 ls /usr/local/lib/libglog.so
-/usr/local/bin/protoc --version    # 板端期望 3.19.x
+/usr/local/bin/protoc --version # 板端期望 3.19.x
 ```
 
 板端完整流程：[§9](09_embedded_board.md)。排错：[§8](08_troubleshooting.md)。

@@ -2,54 +2,35 @@
 
 ### 8.1 工具选型
 
-| 工具 | 优势 | 适用场景 | Autonomy 接入 |
-|------|------|----------|---------------|
-| **RViz2** | ROS 生态标准、TF/插件丰富 | 本地 ROS 2 开发 | autonomy_ros → rviz2 |
-| **Foxglove** | 多模态、Web/远程、MCAP | 团队协作、远程调试 | foxglove_bridge |
-| **ros2 topic echo** | 零配置 | 快速排错 | 直接 |
-| **glog** | 无依赖 | 纯 C++ CI | 多进程 launch |
-| **PlotJuggler** | 时序曲线强 | 控制调参 | ROS 2 bag / 实时 |
-
-### 8.2 Bridge 与 Foxglove 对比
+| 工具 | 适用 | Autonomy |
+|------|------|----------|
+| RViz2 | 本地 ROS2 | autonomy_ros → rviz2 |
+| Foxglove | 远程、多模态、MCAP | foxglove_bridge |
+| topic echo / glog | 排错 / CI | 直接 |
+| PlotJuggler | 控制时序 | ROS bag |
 
 | 维度 | `autonomy/bridge` | `foxglove_bridge` |
 |------|-------------------|-------------------|
-| 协议 | gRPC / MQTT | WebSocket |
-| 主要用途 | 远程导航 API | 可视化 |
-| 仓库内实现 | ✅（gRPC stub 演进中） | ❌（ROS 包） |
-| 与 Studio 直连 | ❌ | ✅ |
+| 协议 | gRPC/MQTT | WebSocket |
+| 用途 | 远程导航 | 可视化 |
+| 仓库内 | — | （ROS 包） |
 
-### 8.3 实现缺口与路线图
+### 8.2 路线图
 
 | 阶段 | 目标 |
 |------|------|
-| **当前** | ROS 2 + foxglove_bridge 可视化；纯 C++ 日志验证 |
-| **近期** | 实现 `VisualizationServer` + 接入 `autonomy.lua` |
-| **中期** | Autolink Writer 发布 map/path/odom；补全 `visualization_msgs` 转换 |
-| **远期** | 内置 MCAP 录制；Foxglove 自定义面板 |
+| 当前 | ROS2 + foxglove_bridge；C++ 日志 |
+| 近 | VisualizationServer + autonomy.lua |
+| 中 | Autolink Writer；visualization_msgs 转换 |
+| 远 | MCAP 录制；自定义面板 |
 
-### 8.4 文档与资源索引
+### 8.3 索引
 
-| 主题 | 章节 |
-|------|------|
-| 运行验证 | [04 Running · §7](../04_Running/07_verification.md) |
-| ROS 2 集成 | [04 Running · §6](../04_Running/06_ros2_integration.md) |
-| commsgs | [14 Commsgs](../14_Commsgs/index.rst) |
-| Bridge | [15 Bridge](../15_Bridge/index.rst) |
-| 地图 costmap | [07 Map](../07_Map/index.rst) |
+| 主题 | 文档 / 路径 |
+|------|-------------|
+| 运行 / ROS2 | [04 §6–§7](../04_Running/06_ros2_integration.md) |
+| commsgs / Bridge / Map | [14](../14_Commsgs/00_guide.md) · [15](../15_Bridge/00_guide.md) · [07](../07_Map/00_guide.md) |
+| 配置 / 消息 | `config/visualization/visualization.lua`、`commsgs/visualization_msgs.*` |
+| 栅格兼容 / 端口 | `costmap_2d_wrapper.cpp`、`docker_utils.py` 8765 |
 
-### 8.5 外部链接
-
-- [Foxglove 官网](https://foxglove.dev/)
-- [RViz2 文档](https://github.com/ros2/rviz)
-- [foxglove_bridge](https://github.com/foxglove/ros-foxglove-bridge)
-
-### 8.6 源码与配置索引
-
-| 路径 | 说明 |
-|------|------|
-| `config/visualization/visualization.lua` | 可视化配置（未接入） |
-| `autonomy/commsgs/visualization_msgs.*` | Marker 消息定义 |
-| `autonomy/map/costmap_2d/costmap_2d_wrapper.cpp` | RViz 兼容栅格 |
-| `docker/install/install_ros2.sh` | foxglove-bridge 可选安装 |
-| `docker/scripts/docker_utils.py` | 8765 端口映射 |
+外部：[Foxglove](https://foxglove.dev/) · [RViz2](https://github.com/ros2/rviz) · [foxglove_bridge](https://github.com/foxglove/ros-foxglove-bridge)

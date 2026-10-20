@@ -1,7 +1,7 @@
 Visualization 可视化
 ====================
 
-Autonomy 数据可视化：Foxglove、RViz2 与 commsgs 消息类型。按 **§1–§8** 编号排列。
+Autonomy 数据可视化：Autoviz、Foxglove、RViz2 与 commsgs。
 
 .. toctree::
    :maxdepth: 2
@@ -15,3 +15,4 @@ Autonomy 数据可视化：Foxglove、RViz2 与 commsgs 消息类型。按 **§1
    6 Foxglove <06_foxglove>
    7 RViz2 与 ROS 2 <07_rviz2_ros2>
    8 可视化综述 <08_survey>
+   9 Autoviz <09_autoviz>

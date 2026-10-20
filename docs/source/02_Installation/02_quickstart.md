@@ -48,9 +48,9 @@ python3 scripts/install_dependencies.py --skip-installed
 ```bash
 mkdir -p build && cd build
 cmake -G Ninja .. \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/usr/local \
-  -DCMAKE_INSTALL_PREFIX=/usr/local
+-DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_PREFIX_PATH=/usr/local \
+-DCMAKE_INSTALL_PREFIX=/usr/local
 ninja -j$(nproc)
 cd ..
 ```

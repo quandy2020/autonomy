@@ -1,10 +1,10 @@
-4 速度平滑器
+3 速度平滑器
 ============
 
-VelocitySmoother 专题（``smoother/``）。算法总览见 :doc:`总览 <../04_velocity_smoother>`。
+VelocitySmoother（``smoother/``）。总览见 :doc:`../03_velocity_smoother`。
 
 .. toctree::
    :maxdepth: 1
 
-   总览 <../04_velocity_smoother>
-   实现详解 <20_velocity_smoother_impl>
+   总览 <../03_velocity_smoother>
+   1 实现详解 <01_velocity_smoother_impl>

@@ -1,11 +1,7 @@
 Communication 通信框架
 ========================
 
-``autolink`` 是 Autonomy 的 **分布式通信运行时**，对标 Apollo Cyber RT / ROS 2 DDS 层。
-
-**§0–§14**：指南 · 架构 · 核心模块 · 综述 · 可选 FastDDS。
-
-**阅读路径** — 新手：§0 → §2 → §3；写模块：§10 → §9 → §12。
+``autolink``：Autonomy 分布式通信运行时。按角色选路径见 ``00_guide``。
 
 .. toctree::
    :maxdepth: 2

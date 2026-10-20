@@ -1,157 +1,52 @@
 (simulation-math)=
 # 3. 数学原理
 
-> 本文推导 Autonomy 仿真涉及的运动学模型与数值积分公式。进程内 `nav_test` 已移除；车辆限幅见 [08_vehicle_stage.md](08_vehicle_stage.md)，外部仿真见 [07_gazebo_ros.md](07_gazebo_ros.md)。
+车辆限幅：[§8](08_vehicle_stage.md)；Gazebo：[§7](07_gazebo_ros.md)。
 
----
+### 3.1 差速运动学
 
-### 3.1 差速驱动运动学
-
-#### Step 1：本体速度
-
-差速机器人在本体坐标系下 $v_y^{body} = 0$。控制输入 $u = (v, \omega)^\top$，其中 $v$ 为线速度，$\omega$ 为角速度。
-
-#### Step 2：世界坐标系速度
+本体 $v_y=0$；输入 $(v,\omega)$：
 
 $$
-\begin{bmatrix} \dot{x} \\ \dot{y} \end{bmatrix}
-=
-\begin{bmatrix} \cos\theta \\ \sin\theta \end{bmatrix} v
+\dot x=v\cos\theta,\quad \dot y=v\sin\theta,\quad \dot\theta=\omega
 $$
 
-$$
-\dot{\theta} = \omega
-$$
-
-#### Step 3：连续时间状态方程
+前向欧拉（`sim_dt`，默认 0.1 s）：
 
 $$
-\frac{d}{dt} \begin{bmatrix} x \\ y \\ \theta \end{bmatrix}
-=
-\begin{bmatrix} \cos\theta \\ \sin\theta \\ 0 \end{bmatrix} v
-+
-\begin{bmatrix} 0 \\ 0 \\ 1 \end{bmatrix} \omega
+x\leftarrow x+v\cos\theta\,\Delta t,\quad
+y\leftarrow y+v\sin\theta\,\Delta t,\quad
+\theta\leftarrow\mathrm{NormalizeAngle}(\theta+\omega\Delta t)
 $$
 
-#### Step 4：前向欧拉离散化（运动学仿真常用）
+姿态四元数：$q_z=\sin(\theta/2)$，$q_w=\cos(\theta/2)$。
 
-`IntegrateDiffDrive` 实现：
+### 3.2 轮速 / 全向 / Ackermann
 
-$$
-\begin{aligned}
-x_{k+1} &= x_k + v \cos\theta_k \cdot \Delta t \\
-y_{k+1} &= y_k + v \sin\theta_k \cdot \Delta t \\
-\theta_{k+1} &= \mathrm{NormalizeAngle}(\theta_k + \omega \cdot \Delta t)
-\end{aligned}
-$$
+| 模型 | 公式 |
+|------|------|
+| 差速逆解 | $v=r(\omega_R+\omega_L)/2$，$\omega=r(\omega_R-\omega_L)/L$ |
+| 差速正解 | $\omega_R=(v+\omega L/2)/r$，$\omega_L=(v-\omega L/2)/r$ |
+| 全向 | $[\dot x,\dot y,\dot\theta]^\top=R(\theta)[v_x,v_y,\omega]^\top$ |
+| Ackermann | $\omega=v\tan\delta/L$，$R_{min}=L/\tan\delta_{max}$ |
 
-其中 $\Delta t =$ `sim_dt`（默认 0.1 s）。
+### 3.3 里程计与限幅
 
-#### Step 5：四元数姿态
-
-航向 $\theta$ 转四元数（绕 $z$ 轴）：
+$\mathbf z_k=[x,y,\theta]^\top+\mathbf n_k$，$\mathbf n\sim\mathcal N(0,\Sigma)$（理想仿真常无噪声）。
 
 $$
-q_z = \sin(\theta/2), \quad q_w = \cos(\theta/2)
+v^{cmd}=\mathrm{clip}(v^{raw},-v_{rev},v_{max}),\quad
+\omega^{cmd}=\mathrm{clip}(\omega^{raw},-\omega_{max},\omega_{max})
 $$
 
----
+加速度：$v_k=\mathrm{clip}(v_{k-1}+a_{max}\Delta t,v_{min},v_{max})$。
 
-### 3.2 轮速逆运动学（差速）
+### 3.4 仿真时间
 
-轮距 $L$，左右轮半径 $r$，角速度 $\omega_L, \omega_R$：
+$t_{sim}=t_0+\sum\Delta t_{sim}$；由 Gazebo `/clock` 或 Autolink `MODE_SIMULATION` 驱动。
 
-$$
-v = \frac{r(\omega_R + \omega_L)}{2}, \quad
-\omega = \frac{r(\omega_R - \omega_L)}{L}
-$$
-
-正运动学（轮速指令）：
-
-$$
-\omega_R = \frac{v + \omega L/2}{r}, \quad
-\omega_L = \frac{v - \omega L/2}{r}
-$$
-
-Gazebo 差速插件内部执行此映射。
-
----
-
-### 3.3 全向驱动（Holonomic）
-
-$$
-\begin{bmatrix} \dot{x} \\ \dot{y} \\ \dot{\theta} \end{bmatrix}
-= R(\theta) \begin{bmatrix} v_x \\ v_y \\ \omega \end{bmatrix}
-$$
-
-$R(\theta)$ 为 2D 旋转矩阵。`KinematicsControl` 对 $v_x, v_y, \omega$ 分别限幅。
-
----
-
-### 3.4 Ackermann 运动学
-
-轴距 $L$，前轮转角 $\delta$：
-
-$$
-\omega = \frac{v \tan\delta}{L}, \quad
-R_{min} = \frac{L}{\tan\delta_{max}}
-$$
-
-最小转弯半径约束：$|\omega| \leq |v| / R_{min}$。
-
----
-
-### 3.5 里程计模型
-
-离散时刻 $k$，带噪声的里程计观测：
-
-$$
-\mathbf{z}_k = \begin{bmatrix} x_k \\ y_k \\ \theta_k \end{bmatrix} + \mathbf{n}_k, \quad
-\mathbf{n}_k \sim \mathcal{N}(0, \Sigma_{odom})
-$$
-
-理想运动学仿真通常无噪声；扩展时可加高斯噪声。
-
----
-
-### 3.6 速度限幅（KinematicsControl）
-
-给定模型上限 $v_{max}, \omega_{max}, a_{max}$：
-
-$$
-v^{cmd} = \operatorname{clip}(v^{raw}, -v_{rev}, v_{max})
-$$
-
-$$
-\omega^{cmd} = \operatorname{clip}(\omega^{raw}, -\omega_{max}, \omega_{max})
-$$
-
-加速度限幅（离散）：
-
-$$
-v_k = \operatorname{clip}\big(v_{k-1} + a_{max}\Delta t, \; v_{min}, v_{max}\big)
-$$
-
----
-
-### 3.7 仿真时间
-
-**仿真时钟**（`use_sim_time:=true`）：
-
-$$
-t_{sim} = t_0 + \sum_k \Delta t_{sim}
-$$
-
-与墙钟解耦，由 Gazebo `/clock` 或 Autolink `MODE_SIMULATION` 驱动。
-
----
-
-### 3.8 符号表
+### 3.5 符号表
 
 | 符号 | 含义 |
 |------|------|
-| $v, \omega$ | 线速度、角速度 |
-| $\Delta t$ | 仿真步长 `sim_dt` |
-| $L$ | 轮距 / 轴距 |
-| $\theta$ | 航向角 |
-| $R_{min}$ | 最小转弯半径 |
+| $v,\omega,\Delta t,L,\theta,R_{min}$ | 线/角速度、步长、轮距/轴距、航向、最小转弯半径 |

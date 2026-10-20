@@ -35,14 +35,14 @@ cmake --version && g++ --version && ninja --version
 
 | 架构 | 本机 | Docker |
 |------|------|--------|
-| x86-64 | ✅ | `run_autonomy.py -p x86_64` |
-| aarch64 | ✅ | `run_autonomy.py -p aarch64` |
+| x86-64 | — | `run_autonomy.py -p x86_64` |
+| aarch64 | — | `run_autonomy.py -p aarch64` |
 | NVIDIA GPU | 可选 | `-p x86_64 -n yes` |
 
 ### 3.5 网络
 
-- 克隆与 submodule 需访问 GitHub / Gitee  
-- `docker/install/*.sh` 会下载第三方源码  
+- 克隆与 submodule 需访问 GitHub / Gitee 
+- `docker/install/*.sh` 会下载第三方源码 
 - 板端装依赖需出网（常经开发机 NAT，见 [§9](09_embedded_board.md)）
 
 下一步：[§2 快速安装](02_quickstart.md) 或 [§4 依赖](04_dependencies.md)。

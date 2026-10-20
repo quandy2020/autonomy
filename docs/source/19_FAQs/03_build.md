@@ -1,42 +1,35 @@
 # 3. 编译问题
 
-### Q: `Could NOT find Protobuf`？
+### Q: 找不到 Protobuf？
 
 ```bash
 sudo apt install libprotobuf-dev protobuf-compiler
-# 或运行 install_protobuf.sh
 ```
 
-### Q: `Could NOT find Ceres`？
+### Q: 找不到 Ceres？
 
 ```bash
-# 运行第三方安装
 python3 -m install_deps --thirdparty-only
-# 确认 /usr/local/lib 在链接路径
 export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ```
 
-### Q: `Could NOT find Lua`？
+### Q: 找不到 Lua？
 
 ```bash
 sudo apt install liblua5.3-dev
 ```
 
-### Q: gRPC 相关 CMake 错误？
-
-安装 gRPC 或关闭选项：
+### Q: gRPC CMake 错？
 
 ```bash
 cmake .. -DBUILD_GRPC=OFF
 ```
 
-### Q: C++17 编译错误 / 编译器过旧？
+### Q: 编译器过旧？
 
-升级 GCC 至 11+（Ubuntu 22.04 默认满足）。
+GCC 11+（Ubuntu 22.04 默认即可）。
 
-### Q: 编译时 OOM / 编译器被 kill？
-
-限制并行度：
+### Q: OOM？
 
 ```bash
 ninja -j2
@@ -48,8 +41,8 @@ ninja -j2
 git submodule update --init --recursive
 ```
 
-### Q: 清理后重配？
+### Q: 清理重配？
 
 ```bash
-cd build && rm -rf * && cmake -G Ninja .. && ninja
+rm -rf build/* && cmake -G Ninja -B build && ninja -C build
 ```

@@ -8,9 +8,9 @@
 脚本参数全文见仓库 [`scripts/README.md`](../../../scripts/README.md)。
 
 ```text
-[开发机]  autonomy 源码根  ──NFS──►  [板] ~/autonomy（源码）
-                                      [板] ~/autonomy_ws/build（本地产物）
-                                      [板] /usr/local（第三方库）
+[开发机] autonomy 源码根 ──NFS──► [板] ~/autonomy（源码）
+[板] ~/autonomy_ws/build（本地产物）
+[板] /usr/local（第三方库）
 ```
 
 ---
@@ -26,11 +26,11 @@ ssh-copy-id -i ~/.ssh/id_ed25519.pub firefly@192.168.234.1
 # 开发机开启转发（换电脑时做一次）
 sudo sysctl -w net.ipv4.ip_forward=1
 sudo iptables -t nat -A POSTROUTING \
-  -s 192.168.234.0/24 ! -d 192.168.234.0/24 -j MASQUERADE
+-s 192.168.234.0/24 ! -d 192.168.234.0/24 -j MASQUERADE
 
 # 板子默认路由走开发机
 ssh firefly@192.168.234.1 \
-  'sudo ip route replace default via 192.168.234.50'
+'sudo ip route replace default via 192.168.234.50'
 ```
 
 ---
@@ -51,8 +51,8 @@ bash scripts/share_nfs_workspace.sh status --board-ip 192.168.234.1
 
 ```bash
 bash scripts/share_nfs_workspace.sh all \
-  --board-ip 10.0.0.5 --board-user firefly \
-  --host-ip 10.0.0.1 --client-net 10.0.0.0/24
+--board-ip 10.0.0.5 --board-user firefly \
+--host-ip 10.0.0.1 --client-net 10.0.0.0/24
 ```
 
 或用配置档：`scripts/nfs_boards/<name>.env` + `--board-profile <name>`。
@@ -65,7 +65,7 @@ bash scripts/share_nfs_workspace.sh all \
 
 ```bash
 ssh firefly@192.168.234.1
-ping -c1 8.8.8.8          # 确认出网
+ping -c1 8.8.8.8 # 确认出网
 
 cd ~/autonomy
 python3 scripts/install_dependencies.py --profile board --skip-installed
@@ -81,7 +81,7 @@ python3 scripts/install_dependencies.py --profile board --skip-installed
 
 ```bash
 python3 scripts/install_dependencies.py --list --profile board
-/usr/local/bin/protoc --version    # 期望 3.19.x
+/usr/local/bin/protoc --version # 期望 3.19.x
 ```
 
 ---
@@ -92,13 +92,13 @@ python3 scripts/install_dependencies.py --list --profile board
 cd ~/autonomy_ws
 
 cmake -S src/autonomy -B build \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/usr/local \
-  -DCMAKE_INSTALL_PREFIX=/usr/local \
-  -DBUILD_AUTOVIZ=OFF \
-  -DBUILD_ORBISVIEW=OFF \
-  -DBUILD_DOCS=OFF \
-  -DBUILD_TEST=OFF
+-DCMAKE_BUILD_TYPE=Release \
+-DCMAKE_PREFIX_PATH=/usr/local \
+-DCMAKE_INSTALL_PREFIX=/usr/local \
+-DBUILD_AUTOVIZ=OFF \
+-DBUILD_ORBISVIEW=OFF \
+-DBUILD_DOCS=OFF \
+-DBUILD_TEST=OFF
 
 cmake --build build -j$(nproc)
 # 内存紧：-j2 或 -j4
@@ -139,7 +139,7 @@ autolink launch start task.launch
 ```bash
 # 开发机
 bash scripts/share_nfs_workspace.sh down --board-ip 192.168.234.1
-bash scripts/share_nfs_workspace.sh all  --board-ip 192.168.234.20
+bash scripts/share_nfs_workspace.sh all --board-ip 192.168.234.20
 ```
 
 换开发机后若板子仍挂旧 IP：
