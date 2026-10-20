@@ -1,8 +1,12 @@
 # 4. 仓库与生态
 
-**源码根**：含顶层 `CMakeLists.txt` 的目录。路径均相对源码根。版本见 `version.json`（**0.2.0**）。分层见 [§3](03_system_architecture.md)；安装见 [02 Installation](../02_Installation/00_guide.md)。
+日常开发要在源码树里快速定位模块、对齐 build 产物路径，并选对 CMake 开关。安装步骤在 [02 Installation](../02_Installation/00_guide.md)；分层在 [§3](03_system_architecture.md)。
 
-## 4.1 顶层分区
+**源码根**：含顶层 `CMakeLists.txt` 的目录。路径均相对源码根。版本见 `version.json`（**0.2.0**）。
+
+仓库按「平台库 + 业务域 + 硬件 HAL + 工具链脚本」分区；构建产物分散在 `build/lib` 与 `build/bin`，无单一 `libautonomy.so`。运行时统一经 `setup_environment.bash` 注入 PATH / 插件路径。
+
+## 顶层分区
 
 | 分区 | 目录 | 作用 |
 |------|------|------|
@@ -13,22 +17,22 @@
 | 基建 | `cmake/`、`docker/`、`scripts/`、`docs/`、`tools/` | 依赖、容器、环境、文档 |
 | 部署 | `ansible/` | 装机（可选） |
 
-## 4.2 目录树
+## 目录树与「改哪里」
 
 ```text
-autonomy/ # 源码根
+autonomy/                    # 源码根
 ├── CMakeLists.txt / CMakePresets.json / version.json
-├── autolink/ # 通信运行时
-├── automsgs/ # 消息与 RPC schema
-├── autonomy/ # 业务域（AUTONOMY_BUILD_*）
-│ ├── common/ transform/ map/ planning/ control/ task/
-│ ├── localization/ perception/ prediction/
-│ ├── sensor/ vehicle/ audio/ system/ bridge/
-│ ├── orbisview/ visualization/ tools/
-├── autodriver/ # HAL
-├── automanip/ # 机械臂 + bolza
+├── autolink/                # 通信运行时
+├── automsgs/                # 消息与 RPC schema
+├── autonomy/                # 业务域（AUTONOMY_BUILD_*）
+│   ├── common/ transform/ map/ planning/ control/ task/
+│   ├── localization/ perception/ prediction/
+│   ├── sensor/ vehicle/ audio/ system/ bridge/
+│   └── orbisview/ visualization/ tools/
+├── autodriver/              # HAL
+├── automanip/               # 机械臂 + bolza
 ├── autoviz/ autosim/
-├── config/ data/ cmake/ docker/ docs/ scripts/ tools/ ansible/
+└── config/ data/ cmake/ docker/ docs/ scripts/ tools/ ansible/
 ```
 
 | 要改… | 先看 |
@@ -41,14 +45,14 @@ autonomy/ # 源码根
 | 远程发令 | `autonomy/bridge/` |
 | 相机雷达底盘 | `autodriver/` |
 
-## 4.3 构建产物
+## 构建产物
 
 默认 `源码根/build/`（板端 build **必须本地盘**）。无单一 `libautonomy.so`。
 
 | 类型 | 路径 | 说明 |
 |------|------|------|
 | 域库 | `build/lib/libautonomy_*.so` | 如 `libautonomy_common.so` |
-| 平台库 | `build/lib/libautolink.so`、`libautomsgs*.so` | — |
+| 平台库 | `build/lib/libautolink.so`、`libautomsgs*.so` | 通信与消息 |
 | 可执行 | `build/bin/` | `autolink`、`autonomy.planning`、`autonomy.task`… |
 | 插件 | `build/lib/` | `*_planner*.so`、`autonomy_behavior_tree_*.so` |
 
@@ -58,7 +62,7 @@ source scripts/setup_environment.bash
 # build 非默认路径：export AUTONOMY_BUILD_DIR=/你的/build
 ```
 
-## 4.4 配置与 launch
+## 配置与 launch
 
 | 用途 | 位置 |
 |------|------|
@@ -71,7 +75,7 @@ source scripts/setup_environment.bash
 
 跨进程须一致：`global_frame` / `robot_base_frame`、默认 `planner_id` / `controller_id`。运行见 [04 Running](../04_Running/00_guide.md)。
 
-## 4.5 编译开关
+## 编译开关
 
 | 层级 | 前缀 | 例子 |
 |------|------|------|
@@ -83,13 +87,13 @@ source scripts/setup_environment.bash
 | `AUTONOMY_BUILD_<域>` | 多数 ON | 关后不进构建；依赖不满足则 FATAL |
 | `BUILD_AUTODRIVER` | ON | 传感器 / 底盘 |
 | `BUILD_GRPC` | ON | Bridge |
-| `BUILD_AUTOVIZ` / `BUILD_AUTOSIM` / `BUILD_ORBISVIEW` | ON / OFF / ON | — |
+| `BUILD_AUTOVIZ` / `BUILD_AUTOSIM` / `BUILD_ORBISVIEW` | ON / OFF / ON | 可视化 / 仿真 / Web HMI |
 | `BUILD_ONNXRUNTIME` | ON | 感知推理 |
-| `BUILD_TEST` / `BUILD_DOCS` | OFF / ON | — |
+| `BUILD_TEST` / `BUILD_DOCS` | OFF / ON | 单测 / Sphinx |
 
 完整 cmake 示例：[Installation §6.2](../02_Installation/06_build.md)。
 
-## 4.6 生态
+## 生态入口与日常命令
 
 | 方式 | 组件 | 文档 |
 |------|------|------|
@@ -99,8 +103,6 @@ source scripts/setup_environment.bash
 | 远程 API | `autonomy.bridge` | [15](../15_Bridge/00_guide.md) |
 | ROS 2 | 可选包装 | [Running · ROS 2](../04_Running/06_ros2_integration.md) |
 | 可视化 / 仿真 | Autoviz、OrbisView、Autosim | [13](../13_Visualization/index.rst) · [12](../12_Simulation/index.rst) |
-
-## 4.7 日常命令
 
 ```bash
 source scripts/setup_environment.bash

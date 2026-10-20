@@ -1,6 +1,6 @@
 # 9. Sensor、Vehicle、Audio
 
-三个支撑目录，都在 `autonomy/` 下。
+导航栈旁边三个支撑目录，都在 `autonomy/` 下。车不动或 costmap 空，往往要查这里而不只是 planning。 导航不动或 costmap 空时，沿 sensor→localization/costmap 与 vehicle→底盘 两条链查，而不只盯 planning。Audio 与闭环解耦，不参与路径跟踪。
 
 **Sensor**（`sensor/`）把激光、IMU、里程计、点云等收成可注入 localization / control / costmap 的数据结构，时间对齐走 collator / consumer。
 

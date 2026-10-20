@@ -1,8 +1,10 @@
 # 12. 调度 Scheduler
 
-调度 CRoutine（Reader 回调、Component `Proc`、Timer）。策略：**classic** / **choreography**。
+Reader 回调、Component `Proc`、Timer 由 Scheduler 调度。控制环延迟敏感时可换 **choreography** 绑核。
 
-## 12.1 配置
+默认 scheduler 对多数模块够用；控制环 latency 敏感时在 `autolink.pb.conf` 切 choreography 并绑核。Reader 与 Timer 抢同一核会导致 cmd 周期不稳，先 profiling 再绑。
+
+## 配置
 
 ```bash
 export AUTOLINK_SCHED_CONF=autolink/autolink/conf/compute_sched_choreography.conf
@@ -11,7 +13,7 @@ mainboard -d foo.dag
 
 未设置时用 `autolink.pb.conf` 默认。模板目录：`autolink/autolink/conf/`（`example_sched_*`、`compute_sched_*`、`control_sched_*`）。
 
-## 12.2 classic
+## classic
 
 线程池按 group；任务按名入组，组内按 `prio` 调度。
 
@@ -24,11 +26,11 @@ mainboard -d foo.dag
 
 适合通用负载；可为 `async_log`、`shm` 单独绑核。
 
-## 12.3 choreography
+## choreography
 
 关键任务绑 **processor 编号**；其余进 pool。适合控制环等延迟敏感链路。
 
-## 12.4 联调
+## 联调
 
 | 要点 | 说明 |
 |------|------|

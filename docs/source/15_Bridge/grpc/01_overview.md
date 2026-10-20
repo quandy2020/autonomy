@@ -1,25 +1,24 @@
 (async-grpc-overview)=
 # async_grpc
 
-路径：`autonomy/common/async_grpc/`。上游：[cartographer async_grpc](https://github.com/cartographer-project/async_grpc)。消费方：`autonomy/bridge/grpc`。
-
-固定 CQ/EQ 线程池 Multiplex 连接；`RpcHandler` 抽象替代手写异步 tag 状态机。
-
-| 目标 | 说明 |
-|------|------|
-| 双队列 | CQ=I/O；EQ=Handler（[02](02_dual_queue.md)） |
-| 单 Rpc 单线程 | Handler 不必 thread-safe |
-| 四种 RPC | `Stream<T>`（[03](03_rpc_lifecycle.md)） |
+**路径：** `autonomy/common/async_grpc/`（上游 Cartographer async_grpc）。消费方：`autonomy/bridge/grpc`。
+| 设计点 | 说明 |
+|--------|------|
+| 双队列 | CQ 做 I/O，EQ 跑 Handler → [02](02_dual_queue.md) |
+| 单 Rpc 单线程 | Handler 实例不必 thread-safe |
+| 四种 RPC | Unary / Server stream / Client stream / Bidi → [03](03_rpc_lifecycle.md) |
 | 跨线程写 | `GetWriter()` + `WRITE_NEEDED` |
-| 共享上下文 | `ExecutionContext` |
+| 共享状态 | `ExecutionContext` / Bridge `Context` |
 
-### 1.2 组件
+是什么：** Bridge 用的 gRPC 服务端框架，避免手写 completion-queue tag 状态机。
+
+### 核心类
 
 | 类 | 职责 |
 |----|------|
-| `Server` | 线程池、注册表、Context |
-| `Service` / `Rpc` | 路由与单次状态机 |
-| `RpcHandler` | `OnRequest` / `Send` / `GetWriter` |
+| `Server` | 线程池、Handler 注册 |
+| `Rpc` | 单次调用状态机 |
+| `RpcHandler` | `OnRequest` / `Send` / `Finish` |
 
 ```{figure} images/diagram.png
 :alt: async_grpc 架构
@@ -28,10 +27,6 @@
 :name: fig-async-grpc-architecture
 ```
 
-### 1.3 默认常量
+### 消息大小
 
-| 常量 | 值 |
-|------|-----|
-| `kDefaultMaxMessageSize` | 10 MB |
-| Bridge `kMaxMessageSize` | 100 MB |
-| `kPopEventTimeout` | 100 ms |
+Bridge 侧上限约 **100 MB**（大点云/地图片段）；默认 async_grpc 约 10 MB。超大 payload 仍应走专用通道或分片。

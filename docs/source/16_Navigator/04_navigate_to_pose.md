@@ -1,54 +1,46 @@
 # 4. 单点导航行为树
 
-文件：`config/navigator/behavior_tree/navigate_to_pose.xml`。
+**默认 XML：** `autonomy/task/conf/behavior_tree/navigation/navigate_to_pose.xml`。
 
-### 4.1 目标
+**什么时候改：** 到点判据、Recovery 太 aggressive、或 TF 丢时行为不对。
 
-| 目标 | 实现 |
+BT 在 autonomy/task/；TaskServer 编排。
+
+### 设计目标
+
+| 目标 | 做法 |
 |------|------|
-| nav2 流水线 | 规划→平滑→验证→跟踪 |
-| 定位韧性 | TF 丢失 → 局部生存 |
-| 快速 SUCCESS | `GoalReached` 为 ReactiveFallback 首子 |
-| 失败恢复 | 清图+后退+旋转，最多 8 次 |
+| Nav2 主链 | 规划 → 平滑 → 验证 → FollowPath |
+| TF 丢 | LocalSurvival 相对运动 + 清局部 costmap |
+| 早停 | `GoalReached` 放在 ReactiveFallback 最前 |
+| 失败 | RecoveryNode：清图 + 后退 + 旋转，次数见 XML |
 
-### 4.2 树形结构
+### 结构（摘要）
 
 ```text
-RecoveryNode [SafeNavigate, retries=8]
-├── ReactiveFallback [AdaptiveNavigation]
-│ ├── GoalReached ← XY 到达 → SUCCESS
-│ ├── Sequence [GlobalMode] ← TF 可用
-│ │ ├── InitialPoseReceived
-│ │ ├── TransformAvailable(map←base)
-│ │ └── PipelineSequence
-│ │ ├── Controller/Planner/Smoother Selector
-│ │ ├── RateController(5Hz) → ComputePathToPose
-│ │ ├── SmoothPath → IsPathValid → FollowPath
-│ └── RecoveryNode [LocalSurvivalMode] ← TF 不可用
-│ └── RoundRobin → DriveOnHeading / Spin / BackUp
-│ + ClearEntireCostmap(local) + Wait
-└── Sequence [NavigationRecovery]
-├── ClearEntireCostmap(local+global)
-├── BackUp(0.25m) → Spin(1.57)
+RecoveryNode [SafeNavigate]
+├── ReactiveFallback
+│   ├── GoalReached
+│   ├── Sequence [GlobalMode] → Pipeline：Selector → Rate(ComputePath) → Smooth → Valid → Follow
+│   └── LocalSurvival → RoundRobin(DriveOnHeading / Spin / BackUp) + 清局部图
+└── NavigationRecovery（清图、BackUp、Spin）
 ```
 
-### 4.3 关键分支
+### 分支优先级
 
-| 优先级 | 分支 | 条件 |
-|--------|------|------|
-| 1 | GoalReached | $d_{xy}\le\varepsilon_{xy}$（默认 0.25 m） |
-| 2 | GlobalMode | 初位姿 + TF OK → Pipeline |
-| 3 | LocalSurvival | TF 丢 → 相对运动 + 清局部图，待 TF 恢复 |
-
-`SafeNavigate`：主分支 FAILURE → `NavigationRecovery` → 重试，最多 8 次。
-
-### 4.4 调优
-
-| 参数 | 位置 | 建议 |
+| 顺序 | 分支 | 条件 |
 |------|------|------|
-| `goal_reached_tol` | common / navigator | 与 Control GoalChecker 对齐 |
-| ComputePath Hz | RateController | 5（单点）/ 10（多点） |
-| `local_survival_timeout` | navigator.lua | 默认 120 s |
+| 1 | GoalReached | XY 容差（常与 navigator conf 一致，**不一定**等于 control GoalChecker 的 yaw） |
+| 2 | GlobalMode | 初位姿 + TF OK |
+| 3 | LocalSurvival | TF 不可用 |
+
+### 调优
+
+| 参数 | 位置 | 提示 |
+|------|------|------|
+| `goal_reached_tol` | common / navigator pb | 与 [control GoalChecker](../../09_Control/00_guide.md) 一起对 |
+| ComputePath 频率 | XML RateController | 单点常见 5 Hz |
+| `local_survival_timeout` | navigator 配置 | 默认量级约 120 s |
 | Recovery retries | XML | 默认 8 |
 
-与 Nav2 默认树差异：增加 LocalSurvivalMode 与 GoalReached 前置。
+与 Nav2 默认树差异：**LocalSurvival** + **GoalReached 前置**。

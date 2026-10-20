@@ -1,12 +1,17 @@
 # 2. 快速安装（本机 Ubuntu）
 
-面向 **Ubuntu 22.04 x86-64 / aarch64 宿主机**。Docker / 板端请分别走 [§5](05_docker.md) / [§9](09_embedded_board.md)。
+## 背景
 
-下面每一步在前一步成功后再继续。
+面向 **Ubuntu 22.04 x86-64 / aarch64 宿主机**，需要从零到 `which autolink` 可用的逐步清单。Docker / 板端走其它章节。
 
----
+## 思路
 
-### Step 1 — 克隆源码
+五步串行：确认源码根 → 装依赖 → Release 构建 → source 环境 → 按目标跳 Running / Docker / 板端。每一步在前一步成功后再继续。
+
+
+## 步骤
+
+### 1. 克隆源码
 
 ```bash
 git clone --recurse-submodules https://github.com/quandy2020/autonomy.git
@@ -23,9 +28,7 @@ git submodule update --init --recursive
 cd /path/to/workspace/src/autonomy
 ```
 
----
-
-### Step 2 — 安装依赖
+### 2. 安装依赖
 
 需 `sudo`。首次会编译 OpenCV / Ceres 等，耗时长、吃内存。
 
@@ -41,9 +44,7 @@ python3 scripts/install_dependencies.py --skip-installed
 
 默认 profile 为 `full`（桌面/CI，含 Assimp/Ogre 等）。细节与验证见 [§4](04_dependencies.md)。
 
----
-
-### Step 3 — 配置并编译
+### 3. 配置并编译
 
 ```bash
 mkdir -p build && cd build
@@ -61,9 +62,7 @@ cd ..
 
 只要部分模块：见 [§6.2 模块化编译](06_build.md)。
 
----
-
-### Step 4 — 加载环境并验证
+### 4. 加载环境并验证
 
 ```bash
 source scripts/setup_environment.bash
@@ -81,9 +80,7 @@ sudo cmake --install build --prefix /usr/local
 source /usr/local/share/autonomy/setup.bash
 ```
 
----
-
-### Step 5 — 下一步
+### 5. 下一步
 
 | 目标 | 文档 |
 |------|------|

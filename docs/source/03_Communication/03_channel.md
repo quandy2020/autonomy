@@ -1,8 +1,8 @@
 # 3. 通道 Channel
 
-持续数据流抽象，类似 ROS 2 topic。匹配：**channel 名一致 + 消息类型一致**。
+进程间持续数据流（类似 ROS 2 topic）。对端收不到，先核对 **channel 名 + 消息类型** 是否完全一致。 Channel 语义是「名称 + 消息类型」完全一致的持续流；对端收不到时先核对类型与 spelling，而不是怀疑序列化。同机默认同进程/SHM 路径，跨机才涉及 Fast DDS（见 [§14](14_fastdds.md)）。
 
-## 3.1 传输与发现
+## 传输与发现
 
 | 场景 | 传输 |
 |------|------|
@@ -12,7 +12,7 @@
 
 拓扑发现：本机文件总线（`/tmp/autolink_topology_events.log`）。跨机需 `AUTOLINK_ENABLE_FASTDDS`、`diff_host: RTPS`、相同 `AUTOLINK_DOMAIN_ID`、可达 `AUTOLINK_IP`。
 
-## 3.2 发布与订阅
+## 发布与订阅
 
 ```cpp
 auto writer = node->CreateWriter<Chatter>("channel/chatter");
@@ -24,14 +24,14 @@ node->CreateReader<Chatter>("channel/chatter",
 
 回调在 Scheduler 线程执行，勿长阻塞。业务消息：`commsgs` struct → 边界 `ToProto()`。POD 见 `pod_talker_listener.cpp`。
 
-## 3.3 ReaderConfig / QoS
+## ReaderConfig / QoS
 
 | 字段 | 默认 | 含义 |
 |------|------|------|
 | `history` | `KEEP_LAST` | 保留最近 N 条 |
 | `depth` | `1` | 历史深度 |
-| `reliability` | `RELIABLE` | — |
-| `durability` | `VOLATILE` | — |
+| `reliability` | `RELIABLE` | 可靠传输 |
+| `durability` | `VOLATILE` | 不保留历史给晚加入者 |
 | `pending_queue_size` | 默认常量 | 待处理回调队列 |
 
 控制环建议 `pending_queue_size = 1`：
@@ -43,7 +43,7 @@ cfg.pending_queue_size = 1;
 node->CreateReader<Path>(cfg, callback);
 ```
 
-## 3.4 Rate
+## Rate
 
 ```cpp
 Rate rate(10.0); // 10 Hz
@@ -53,7 +53,7 @@ while (autolink::OK()) {
 }
 ```
 
-## 3.5 CLI
+## CLI
 
 | 工具 | 用途 |
 |------|------|

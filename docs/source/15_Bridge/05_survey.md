@@ -1,53 +1,40 @@
 (bridge-survey)=
 # 5. 协议综述
 
-选型与能力边界。实现见 [§2](02_architecture.md) · 契约见 [§3](03_rpc_protocol.md)。
+实现 [02](02_architecture.md)，契约 [03](03_rpc_protocol.md)。
 
-### 5.1 能力边界
+在 rosbridge / Foxglove / REST 与本栈 gRPC 之间做选型。
 
-| 能力 | 状态 |
-|------|------|
-| gRPC + `automsgs.rpcs.*` | — |
-| async_grpc 服务端 | （Handler 按域陆续接线） |
-| BotStates / BotEvents Stream | — |
-| MQTT | 已移除 |
-| TLS / 认证 / uplink | Proto 预留 |
+Bridge 到 Stub/GoalChannel；BT 在 TaskServer（autonomy/task/）。
 
-明细：[grpc/07](grpc/07_handlers.md)。
+### 现在有什么
 
-### 5.2 交互模式
+- **gRPC + `automsgs.rpcs.*`**：主路径  
+- **async_grpc 服务端**：框架在；各域 Handler 接线进度不一，见 [grpc/07](grpc/07_handlers.md)  
+- **Unary**：Get* / Estop / CancelAll  
+- **Server Streaming**：Navigate / Explore / Follow / Charge 等  
+- **Bidi**：Teleop  
 
-| 模式 | 映射 |
-|------|------|
-| Server Streaming | Navigate / Explore / Follow / Charge 等 |
-| Bidi | Teleop |
-| Unary | Get* / Estop / CancelAll |
+TLS / 认证 / 云上 uplink 在 Proto 里有预留，产品化未闭合。BotStates / BotEvents Stream 仍在演进。
 
-### 5.3 业界对照
+### 和常见方案的差别
 
-| 方案 | 传输 | 与 Autonomy |
-|------|------|-------------|
-| rosbridge | WS + JSON | 弱类型 |
-| foxglove_bridge | WS + Protobuf | 可视化生态 |
-| Apollo Gateway | gRPC / HTTP | async_grpc 同源 |
-| Autoware AD API | REST / WS | ROS 2 |
+| 方案 | 传输 | 备注 |
+|------|------|------|
+| rosbridge | WS + JSON | 弱类型，偏临时调试 |
+| foxglove_bridge | WS + Protobuf | 可视化，不是命令面 |
+| Apollo Gateway | gRPC / HTTP | 与 async_grpc 思路近 |
+| Autoware AD API | REST / WS | 绑 ROS 2 |
 | Nav2 commander | 进程内 | 无跨网契约 |
 
-Autonomy：**gRPC + Protobuf** 为主。
+Autonomy 对外命令面以 **gRPC + Protobuf** 为准。
 
-### 5.4 选型
+### 实用选型
 
-| 场景 | 推荐 |
+| 场景 | 建议 |
 |------|------|
-| 局域网 App | gRPC + TLS |
-| 云端调度 | gRPC Stream |
-| 本机调试 | `127.0.0.1:5005` |
+| 本机调试 | `127.0.0.1:5005`，先 `GetCapabilities` |
+| 局域网 App | gRPC；量产再上 TLS |
+| 云端调度 | 优先 Stream；注意断线重连与取消 |
 
-### 5.5 工程约束（摘要）
-
-| 主题 | 要点 |
-|------|------|
-| 延迟 | 遥控 < 200 ms；导航启动 < 2 s |
-| 背压 | Stream 降采样或断慢连接 |
-| 重连 | 指数退避，上限约 30 s |
-| 安全 | 默认 localhost；生产 mTLS |
+联调顺序见 [00 指南](00_guide.md) 与 [rpcs/01](rpcs/01_connection_guide.md)。

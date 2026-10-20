@@ -1,8 +1,10 @@
 # 6. ROS 2 集成（可选）
 
-核心库可不依赖 ROS 2。本节面向 RViz2、Gazebo 或与现有 ROS 2 栈共存。
+核心栈可不依赖 ROS 2。本节只在你要 RViz2、Gazebo 或与现有 ROS 2 工具链并存时读。
 
-## 6.1 组件
+核心栈可不依赖 ROS 2；本节只在需要 RViz2、Gazebo 或并存现有 ROS 工具链时读。车内语义以 commsgs/automsgs 为准，`autonomy_ros` 是桥接层而非唯一真相源。
+
+## 组件
 
 | 组件 | 说明 |
 |------|------|
@@ -12,15 +14,15 @@
 
 若仓库无 `autonomy_ros`，命令需在对应 overlay 中执行。
 
-## 6.2 环境
+## 环境
 
 ```bash
 export GLOG_logtostderr=1
 source /opt/ros/humble/setup.bash
-source /path/to/autonomy/install/setup.bash # 若用 colcon overlay
+source /path/to/autonomy/install/setup.bash   # 若用 colcon overlay
 ```
 
-## 6.3 Launch
+## Launch
 
 ```bash
 ros2 launch autonomy_ros autonomy.launch.py
@@ -38,7 +40,7 @@ ros2 launch autonomy_ros autonomy.launch.py use_gazebo:=true world_type:=house
 
 Gazebo 世界见 [12 Simulation](../12_Simulation/index.rst)。
 
-## 6.4 Docker + ROS 2
+## Docker + ROS 2
 
 ```bash
 docker exec -it SpaceHero /bin/bash
@@ -47,7 +49,7 @@ source /workspace/autonomy/install/setup.bash
 ros2 launch autonomy_ros autonomy.launch.py
 ```
 
-## 6.5 选型
+## 选型
 
 | 场景 | 推荐 |
 |------|------|

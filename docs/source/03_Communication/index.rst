@@ -1,7 +1,7 @@
 Communication 通信框架
 ========================
 
-``autolink``：Autonomy 分布式通信运行时。按角色选路径见 ``00_guide``。
+``autolink``：Autonomy 分布式通信运行时。怎么读本章见 ``00_guide``。
 
 .. toctree::
    :maxdepth: 2

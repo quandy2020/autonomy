@@ -1,35 +1,58 @@
 # 5. 可视化架构
 
-### 5.1 目标（规划）
+理解「业务进程为什么不带 GUI」以及数据如何到 Autoviz / ROS / Foxglove。
 
-```
-Map/Planner/Controller/Sensor → VisualizationServer (ws:8765) → Foxglove
-Stack → autonomy_ros → RViz2
-```
+说明当前**实际出口**；域内 `VisualizationServer` **不存在**，`visualization.lua` **未加载**。
 
-职责：订 Autolink / 回调 → 序列化 → WebSocket；可选 MCAP（依赖已装，C++ 未接）。
-
-### 5.2 当前
-
-| 出口 | 方式 |
+| 条件 | 工具 |
 |------|------|
-| Map | 回调 → costmap；无 Writer |
-| Planning | `GetPlan()` 返回值 |
-| Costmap | `snapshotOccupancyGrid()` 内存快照 |
-| Sensor | → ObstacleLayer |
+| 无 ROS | Autoviz |
+| 远程浏览器 | Foxglove |
+| 已有 ROS 工具链 | RViz2 |
+| 只要日志 | glog + `ros2 topic echo` |
 
-无统一 Autolink Writer。栅格：`INSCRIBED`→ occupancy `99`（RViz 兼容）。`Costmap2DPublisher` ROS 发布已注释。
+### 当前数据怎么被看见
 
-### 5.3 Bridge 边界
+| 来源 | 到显示端的路径 |
+|------|----------------|
+| Map / costmap | 内存快照、回调；无统一 Autolink「viz Writer」 |
+| Planning | `GetPlan()` 等；ROS 侧由 autonomy_ros 发 `/plan` |
+| Sensor → 导航 | 先进 ObstacleLayer，不是先进可视化 |
+| 视觉 base/follow | Autolink 话题；Autoviz 或 bridge 订阅 |
+
+栅格代价值与 RViz 兼容时，常见映射如 `INSCRIBED` → occupancy `99`（见 map 发布代码注释）。
+
+### 三条推荐路径
+
+```text
+Stack ──Autolink──→ Autoviz（Qt+Ogre，无 ROS）
+
+Stack ──autonomy_ros──→ ROS topics ──→ RViz2
+                      └─→ foxglove_bridge ── ws://host:8765 ──→ Foxglove Studio
+```
+
+### 与 Bridge 的边界
 
 | 模块 | 协议 | 用途 |
 |------|------|------|
-| `autonomy/bridge` | gRPC/MQTT | 远程导航 |
-| `foxglove_bridge` | WebSocket+ROS2 | 可视化 |
-| `VisualizationServer`（规划） | WebSocket+commsgs | 原生可视化 |
+| `autonomy/bridge` | gRPC 等 | 远程发令、状态，**不是**画地图 |
+| foxglove_bridge | WebSocket + ROS 2 | 可视化 |
+| 规划中的 VisualizationServer | 未实现 | 勿等待 |
 
-互不替代。见 [15 Bridge](../15_Bridge/00_guide.md)。
+见 [15 Bridge](../15_Bridge/00_guide.md)。
 
-### 5.4 参见
+### MCAP
 
-- [§6](06_foxglove.md) · [07 Map](../07_Map/00_guide.md) · [08 Planning](../08_Planning/00_guide.md)
+`install_mcap.sh` 可装依赖；**业务 C++ 未**接 MCAP 录制 API。离线可看 ROS bag / 外部录包。
+
+### 常见坑
+
+| 现象 | 说明 |
+|------|------|
+| ps 找不到 VisualizationServer | 正常 |
+| Foxglove 空 | bridge 未起或端口未映射 |
+| 规划路径在 C++ 有、RViz 无 | autonomy_ros 是否 launch |
+
+### 延伸阅读
+
+[§6](06_foxglove.md) · [07 Map](../07_Map/00_guide.md)

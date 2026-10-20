@@ -1,11 +1,40 @@
-(planning-guide)=
-# 0. Planning 路径规划指南
+# 0. Planning 指南
 
-`autonomy/planning`：全局路径规划（nav2_planner）。输入起终点 + Costmap2D，输出 `Path`。
+## 背景
 
----
+规划总是超时、有路径却贴障——一半情况是 **costmap 不健康**，另一半才是算法选型。本章讲 **全局路径规划**：输入起终点 + Costmap2D，输出几何 `Path`（无时间戳轨迹）；局部跟踪在 [09 Control](../09_Control/00_guide.md)。
 
-## 0.2 快速开始
+## 思路
+
+```text
+Goal → PlannerServer → Path → ControllerServer
+         ↑ Costmap2D（常共享或同进程配置）
+```
+
+- 角色对齐 Nav2 planner；**不要在 planning 里找 `cmd_vel`**。  
+- **`default_planner_id` / `planner_plugins`** 字符串必须和注册名一致。  
+- 频率通常 1–5 Hz 或事件触发，不要按控制环频率去调规划。  
+- costmap 问题先查 [07 Map](../07_Map/00_guide.md)。
+
+
+## 步骤
+
+### 1. 按问题选页
+
+| 文档 | 解决什么 |
+|------|----------|
+| [01 架构](01_architecture.md) | PlannerServer、结果码、时序 |
+| [02 算法总览](02_planner_algorithms.md) | 三种插件怎么选 |
+| [03 NavFn](03_navfn.md) | 默认势场类 |
+| [04 Dijkstra](04_dijkstra.md) | 经典最短路 |
+| [05 Theta*](05_theta_star.md) | 任意角 |
+| [06 综述](06_survey.md) | 对照与边界 |
+
+**默认室内网格** → NavFn（[03](03_navfn.md)）。  
+**要更直的路径** → Theta*（[05](05_theta_star.md)）。  
+**失败码含义** → [01](01_architecture.md)。
+
+### 2. 最短示例
 
 ```lua
 default_planner_id = "navfn_planner"
@@ -17,57 +46,12 @@ auto server = std::make_shared<PlannerServer>(CreateOptions("config"));
 auto path = server->GetPlan(start, goal, "navfn_planner", []{ return false; });
 ```
 
-时序 [§1.3](01_architecture.md)；对比 [§2](02_planner_algorithms.md)。
+时序与结果码：[01](01_architecture.md)。算法对比：[02](02_planner_algorithms.md)。
 
----
-
-## 0.3 形式化
-
-$$
-J(\tau)=\int_0^1\big(w_l\|\tau'(s)\|+w_c\,c(\tau(s))\big)\,ds
-$$
-
-分类见 [§6](06_survey.md)。
-
----
-
-## 0.4 代价地图
-
-| 值 | NavFn | Theta* |
-|----|-------|--------|
-| 0 | 通行 | 通行 |
-| 1–252 | $F=C_n+\kappa_F c$ | $\tau\propto c/252$ |
-| 253/254 | 阻塞 | LOS 阻塞 |
-| 255 | `allow_unknown` | 同左 |
-
-详见 [Map · Costmap](../07_Map/03_costmap2d.md)。
-
----
-
-## 0.5 配置与 API
-
-| 字段 | 说明 |
-|------|------|
-| `default_planner_id` | 默认插件 |
-| `planner_plugins` | 启用列表 |
-| `path_simplify_epsilon` / `auto_smooth_after_plan` | 后处理（默认关） |
-| `costmap` | 全局图 |
-
-| API | 用途 |
-|-----|------|
-| `GetPlan` / `IsPathValid` | 规划 / 校验 |
-| `GetCostmapWrapper` | 共享 costmap |
-
----
-
-## 0.8 故障排查
+### 3. 常见坑
 
 | 现象 | 先查 |
 |------|------|
-| `NoValidPathCouldBeFound` | 连通、`tolerance`、goal 自由 |
-| `Start/GoalOccupied` | 位姿、膨胀 |
-| `PlannerTimedOut` | `isCurrent()`、地图尺寸 |
-| `PlannerTFError` | frame / TF |
-| 锯齿 | `theta_star` 或后处理 |
-
-结果码 [§1.5](01_architecture.md)；选型 [§6](06_survey.md)。
+| 总是超时 | costmap 未 current；地图太大；起点在障碍里 |
+| 有路径但很难跟 | 路径贴障；膨胀与 control 配合 |
+| 换了 planner 无效 | plugins 字符串；是否重新加载 conf |

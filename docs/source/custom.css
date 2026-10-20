@@ -56,13 +56,14 @@
    ---------------------------------------------------------------------------- */
 
 .wy-nav-content {
-    max-width: 1200px !important;
-    padding: 2rem 2.5rem !important;
+    /* 略收窄正文，长文更易扫读 */
+    max-width: 52rem !important;
+    padding: 1.75rem 2rem 3rem !important;
 }
 
 @media screen and (min-width: 1400px) {
     .wy-nav-content {
-        max-width: 1320px !important;
+        max-width: 56rem !important;
     }
 }
 
@@ -76,12 +77,18 @@
 
 .rst-content {
     color: var(--color-text);
-    font-size: 0.95rem;
+    font-size: 0.98rem;
+    letter-spacing: 0.01em;
 }
 
 .rst-content p {
-    line-height: 1.75;
-    margin-bottom: 1rem;
+    line-height: 1.8;
+    margin-bottom: 0.95rem;
+    color: var(--color-text);
+}
+
+.rst-content > p:first-of-type {
+    font-size: 1.02rem;
     color: var(--color-text);
 }
 
@@ -204,33 +211,39 @@
 
 .rst-content table.docutils {
     width: 100%;
-    margin: 1.25rem 0;
+    margin: 1.1rem 0 1.5rem;
     border-collapse: collapse;
-    border-radius: var(--radius);
+    border-radius: 6px;
     overflow: hidden;
     border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-sm);
+    font-size: 0.92rem;
+    line-height: 1.55;
 }
 
 .rst-content table.docutils thead {
-    background: linear-gradient(180deg, #fdf2f6 0%, #f8f5f7 100%);
-    color: #4a3540;
+    background: var(--color-nav-surface);
+    color: var(--color-nav-text);
 }
 
 .rst-content table.docutils thead th {
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.85rem;
     font-weight: 600;
     text-align: left;
-    border-bottom: 2px solid #ead7df;
+    border-bottom: 1px solid #d5e4da;
 }
 
 .rst-content table.docutils td {
-    padding: 0.65rem 1rem;
+    padding: 0.55rem 0.85rem;
     border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+}
+
+.rst-content table.docutils tbody tr:nth-child(even) {
+    background-color: #fafcfa;
 }
 
 .rst-content table.docutils tbody tr:hover {
-    background-color: #f4faf6;
+    background-color: #f0f7f2;
 }
 
 .rst-content table.docutils tbody tr:last-child td {

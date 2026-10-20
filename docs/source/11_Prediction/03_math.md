@@ -1,57 +1,54 @@
 (prediction-math)=
 # 3. 数学原理
 
-实现：[§6](06_motion_models.md)；综述：[§7](07_survey.md)。
+自研跟踪/预测或读 motion_model 代码时查公式；**不是**已实现算法清单。
 
-### 3.1 问题形式化
+形式化多障碍预测问题，并与 [§6](06_motion_models.md) 里**已有** CV/差速模型对照。CTRV、匈牙利等下文有式子，但仓库**无**完整 Prediction 栈实现。
 
-障碍状态 $\mathbf x_i(t)\in\mathbb{R}^n$；给定历史 $\mathcal H_t$ 与时域 $T_p$：
+公式与实现一一对应；调参时区分 network 后处理与 costmap/层参数。
+
+### 问题形式化
+
+障碍状态 $\mathbf x_i(t)$；给定历史与时域 $T_p$：
 
 $$
 \hat{\mathbf x}_i(t+\tau)=f(\mathbf x_i(t),\tau,\mathcal H_t),\quad
-\hat{\mathcal T}_i=\{\hat{\mathbf x}_i(t+k\Delta t)\}_{k=0}^{K},\quad K=T_p/\Delta t
+\hat{\mathcal T}_i=\{\hat{\mathbf x}_i(t+k\Delta t)\}_{k=0}^{K}
 $$
 
-### 3.2 运动模型
+### 运动模型（代码对照）
 
-| 模型 | 状态 | 转移 |
+| 模型 | 状态 | 仓库 |
 |------|------|------|
-| CV | $[x,y,v_x,v_y]$ | $x\leftarrow x+v_x\Delta t$（$F$ 恒速矩阵） |
-| CTRV | $[x,y,v,\theta,\omega]$ | $\omega\neq0$：$x\leftarrow x+\frac v\omega(\sin(\theta+\omega\Delta t)-\sin\theta)$ 等；$\omega\to0$ 退化为 CV |
-| CA | $[x,y,v_x,v_y,a_x,a_y]$ | $x\leftarrow x+v_x\Delta t+\frac12 a_x\Delta t^2$，$v_x\leftarrow v_x+a_x\Delta t$ |
+| CV | $[x,y,v_x,v_y]$ | `LinearMotionModel` + 4 维 State |
+| 差速 | $[x,y,\theta,v,\omega]$ 等 | `DifferentialDriveMotionModel` |
+| 静止 | 任意 | `StationaryMotionModel` |
+| CTRV / CA | 见下式 | **无**独立类；CA 需自扩状态 |
 
-### 3.3 卡尔曼预测 / 更新
-
-$$
-\hat{\mathbf x}_{k|k-1}=F\hat{\mathbf x},\quad P\leftarrow FPF^\top+Q
-$$
-$$
-K=PH^\top(HPH^\top+R)^{-1},\quad
-\hat{\mathbf x}\leftarrow\hat{\mathbf x}+K(\mathbf z-H\hat{\mathbf x}),\quad
-P\leftarrow(I-KH)P
-$$
-
-多步：$F^j\hat{\mathbf x}$；$P$ 累加过程噪声传播。
-
-### 3.4 数据关联
-
-代价 $C_{ij}=1-\mathrm{IoU}$ 或 $\|\hat{\mathbf x}_i-\mathbf z_j\|_2$；匈牙利最小匹配。门控：
+CTRV（$\omega\neq0$）：
 
 $$
-d_M^2=(\mathbf z-H\hat{\mathbf x})^\top S^{-1}(\mathbf z-H\hat{\mathbf x})<\chi^2_{\alpha},\quad S=HPH^\top+R
+x\leftarrow x+\frac v\omega(\sin(\theta+\omega\Delta t)-\sin\theta),\ \ldots
 $$
 
-### 3.5 不确定性与风险
+### 卡尔曼
 
-| 项 | 公式 |
-|----|------|
-| 置信椭圆 | $(\mathbf p-\boldsymbol\mu)^\top P_{xy}^{-1}(\mathbf p-\boldsymbol\mu)=k^2$ |
-| 多模态 | $\{\hat{\mathcal T}^{(l)},\pi_l\}$，$\sum\pi_l=1$ |
-| TTC | $\min_{\tau>0}\{\tau:\|\mathbf p_{ego}(\tau)-\mathbf p_i(\tau)\|<r_{safe}\}$ |
+预测：$\hat{\mathbf x}_{k|k-1}=F\hat{\mathbf x}$，$P\leftarrow FPF^\top+Q$。  
+更新：$K=PH^\top(HPH^\top+R)^{-1}$，$\hat{\mathbf x}\leftarrow\hat{\mathbf x}+K(\mathbf z-H\hat{\mathbf x})$。
 
-### 3.6 符号表
+实现积木：`common/state_estimation/kalman_filter/`。
+
+### 关联与风险（规划参考）
+
+代价 $C_{ij}=1-\mathrm{IoU}$ 或马氏距离；门控 $\chi^2$。TTC、多模态轨迹为规划扩展，**无**默认 C++ 模块。
+
+### 符号
 
 | 符号 | 含义 |
 |------|------|
-| $T_p,\Delta t,F,H$ | 时域、步长、转移、观测矩阵 |
-| $Q,R,\omega,\pi_l$ | 过程/观测噪声、角速度、模态概率 |
+| $T_p,\Delta t$ | 预测时域、步长 |
+| $F,H,Q,R$ | 转移、观测、噪声 |
+
+### 延伸阅读
+
+[§6](06_motion_models.md) · [§7](07_survey.md)

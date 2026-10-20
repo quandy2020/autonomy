@@ -16,26 +16,24 @@
 Autonomy
 ============
 
-`Autonomy <https://github.com/quandy2020/autonomy>`_ 是一套面向移动机器人的 C++ 导航与自主系统框架，涵盖通信、定位、建图、规划、控制、感知与仿真等模块。`源码跳转 <https://github.com/quandy2020/autonomy>`_
+`Autonomy <https://github.com/quandy2020/autonomy>`_ 是面向移动机器人的 C++ 整机栈：通信、定位、建图、规划、控制、感知与仿真等。推荐从下方「01 入门指引」读起。`源码 <https://github.com/quandy2020/autonomy>`_
 
 .. figure:: ../assets/autonomy_architecture.png
    :align: center
    :width: 85%
 
-   系统分层架构（Cloud Service → Application → Software Core → Hardware）
+   系统分层（云服务 → 应用 → 软件核心 → 硬件）
 
-快速开始
---------
-
-克隆仓库并进入文档目录：
+本地预览文档
+------------
 
 .. code-block:: bash
 
    git clone --recurse-submodules https://github.com/quandy2020/autonomy.git
    cd autonomy/docs && python3 -m sphinx -b html source build
 
-文档目录
---------
+章节
+----
 
 .. toctree::
   :maxdepth: 1

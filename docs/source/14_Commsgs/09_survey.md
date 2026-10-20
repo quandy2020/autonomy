@@ -1,61 +1,69 @@
 (commsgs-survey)=
 # 9. 消息体系综述
 
-### 9.1 与 ROS 2 对照
+联调前要确认「这个包能不能过 Autolink 边界」、该用 struct 还是 proto Action。
 
-| 维度 | ROS 2 | Autonomy |
-|------|-------|----------|
-| 定义 | .msg/.idl → rosidl | .proto + 手写 hpp |
-| 序列化 / 中间件 | CDR / DDS | Protobuf / Autolink |
-| 坐标系 | REP 103/105 | 继承 |
-
-### 9.2 完整度矩阵
-
-| 包 | struct/proto | ToProto | 综合 |
-|----|--------------|---------|------|
-| builtin / std | — | | ★★★★★ |
-| geometry / planning | — | 大部分 / Path | ★★★★☆ |
-| sensor / map / vision | — | | ★★★☆☆ |
-| nav_msgs | SpeedLimit + proto Action | — | ★★★☆☆ |
-| visualization / trajectory / diagnostic | — | stub | ★★☆☆☆ |
-| shape / pcl / vehicle | 问题/空 | — | ★☆☆☆☆ |
-| error_code | 仅 proto | N/A | ★★★★☆ |
-
-已知 stub：`Polygon`/`PoseArray` 字段遗漏；sensor/map 不完整；visualization/trajectory 空函数体。
-
-### 9.3 包映射（高频）
-
-| ROS 2 | commsgs |
-|-------|---------|
-| geometry PoseStamped/Twist/TF | geometry_msgs 同名 |
-| nav OccupancyGrid/Odometry/Path | map_msgs / planning_msgs |
-| sensor LaserScan/Imu/PointCloud2 | sensor_msgs |
-| nav2 NavigateToPose | `proto::nav_msgs::*Action` |
-
-geometry 额外：`PointENU`/`PointLLH`/`Inertia`。
-
-### 9.4 设计模式
-
-Stamped、WithCovariance、child_frame_id、Action 三段式、Service、分段错误码、packed covariance、SmartPtr 宏。
-
-### 9.5 选型与路线
+对照 ROS 2 常见包，说明 commsgs 里 **struct/proto 是否齐全、ToProto 是否可信**。
 
 | 场景 | 建议 |
 |------|------|
-| 栈内算法 | C++ struct |
-| Autolink 服务 | proto + 边界转换 |
-| 与 ROS 互通 | bridge，勿直连 commsgs |
-| 性能路径 | 同进程传引用 |
+| 同进程算法 | C++ struct，零拷贝引用 |
+| Autolink Pub/Sub | struct（框架内序列化） |
+| Service / Action | 边界 `FromProto` / `ToProto` |
+| 与 ROS 互通 | autonomy_ros bridge，勿假设 commsgs 与 rosidl 比特级一致 |
 
-| 阶段 | 目标 | 状态 |
-|------|------|------|
-| 1–2 | 定义 + 核心转换 | / |
-| 3–4 | 传感器地图、viz/traj | — |
-| 5–6 | bridge、shape 命名空间 | — |
+### 与 ROS 2 差异
 
-### 9.6 参考
+| 维度 | ROS 2 | Autonomy commsgs |
+|------|-------|------------------|
+| 定义 | .msg / rosidl | `.proto` + 手写 hpp |
+| 线上格式 | CDR | Protobuf |
+| 坐标约定 | REP 103/105 | 语义继承 |
 
-| 资源 | 链接 |
+### 包选型（按联调把握）
+
+| 包 | struct + proto | ToProto/FromProto | 建议 |
+|----|----------------|-------------------|------|
+| builtin_interfaces / std_msgs | 完整 | 完整 | 默认优先 |
+| geometry_msgs / planning_msgs | 完整 | 大部分完整 | 路径、位姿、TF |
+| sensor_msgs / map_msgs | 完整 | 部分字段/类型需实测 | 激光、栅格上线前往返测 |
+| vision_msgs | 有 | 部分 | 视觉联调前测 |
+| nav_msgs | SpeedLimit + proto Action | Action 走 proto；SpeedLimit 常用 | 导航 Action 用 `proto::nav_msgs::*` |
+| visualization_msgs / trajectory_msgs / diagnostic_msgs | 有定义 | 多为 stub 空体 | 勿默认能过边界 |
+| shape_msgs | 有 | 有已知命名空间问题 | 慎用 |
+| pcl_msgs / vehicle_msgs | 占位 | 无 | 勿依赖 |
+| error_code | 仅 proto | N/A | Bridge / Action 结果 |
+
+「stub」指 `ToProto`/`FromProto` 空实现或未填字段；表现常为**编译过、对端全零**。
+
+### 已知问题（联调前扫一眼）
+
+- `Polygon` / `PoseArray` 等部分 geometry 转换字段遗漏。  
+- sensor / map 大包体消息需测性能与字段对齐。  
+- visualization / trajectory：`Marker` 等 **stub**。  
+- shape_msgs：hpp 命名空间与 proto 不一致的历史问题。
+
+细节字段见 [§3 Schema](03_schema.md)、分册 [§6–§8](06_core_msgs.md)。
+
+### ROS 2 → commsgs 高频映射
+
+| ROS 2 | commsgs |
+|-------|---------|
+| geometry PoseStamped / Twist / TF | geometry_msgs 同名 |
+| nav OccupancyGrid / Odometry / Path | map_msgs / planning_msgs |
+| sensor LaserScan / Imu / PointCloud2 | sensor_msgs |
+| nav2 NavigateToPose | `commsgs::proto::nav_msgs::*Action` |
+
+geometry 额外：`PointENU`、`PointLLH`、`Inertia`（Apollo 风格扩展）。
+
+### 常见坑
+
+| 现象 | 先查 |
 |------|------|
-| common_interfaces / nav2_msgs / vision_msgs | GitHub ros2 / navigation2 / ros-perception |
-| 通信 / 框架 | [03](../03_Communication/00_guide.md) · [05](../05_Framework/00_guide.md) |
+| 对端解包全 0 | 是否 stub ToProto |
+| ROS 字段少一截 | bridge 转换表，不是 commsgs 同名即同布局 |
+| 找 gRPC 探索字段 | automsgs.rpcs，见 [15 Bridge](../15_Bridge/00_guide.md) |
+
+### 延伸阅读
+
+[§3 Schema](03_schema.md) · [03 Communication](../03_Communication/00_guide.md)

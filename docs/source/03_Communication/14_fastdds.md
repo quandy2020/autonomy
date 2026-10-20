@@ -1,8 +1,10 @@
 # 14. 可选 FastDDS（跨机 RTPS）
 
-默认本机 INTRA + SHM。打开 Fast DDS 后可用 RTPS 数据面。
+默认同机 INTRA + SHM 就够。只有**跨主机**传 channel 时才编 `AUTOLINK_ENABLE_FASTDDS` 并配 RTPS 环境变量。
 
-## 14.1 编译
+同机 channel 走 INTRA/SHM 即可，不必编 Fast DDS。只有跨主机 RTPS 才开 `AUTOLINK_ENABLE_FASTDDS` 并配置 FastRTPS 环境；连通与 QoS 验证通过后再上车，latency 与运维成本都会上升。
+
+## 编译
 
 ```bash
 bash docker/install/install_fastdds.sh
@@ -22,7 +24,7 @@ ctest --test-dir autolink/build-fastdds \
 -R 'rtps_transceiver|topology_backend_factory|rtps_topology_backend' -V
 ```
 
-## 14.2 环境变量
+## 环境变量
 
 | 变量 | 默认 | 含义 |
 |------|------|------|
@@ -32,9 +34,9 @@ ctest --test-dir autolink/build-fastdds \
 | `AUTOLINK_DISCOVERY_SERVER` | 空（SIMPLE） | `ip:port` → CLIENT |
 | `AUTOLINK_RTPS_MAX_PAYLOAD_BYTES` | 4 MiB | payload 软限 |
 | `AUTOLINK_RTPS_SECURITY` | 关 | `1` → DDS Security |
-| `AUTOLINK_RTPS_SECURITY_DIR` | — | 证书目录（Security 时必填） |
+| `AUTOLINK_RTPS_SECURITY_DIR` | 空 | 证书目录（Security 时必填） |
 
-## 14.3 双机清单
+## 双机清单
 
 两端均 `AUTOLINK_ENABLE_FASTDDS=ON`，且：
 
@@ -50,14 +52,14 @@ ctest --test-dir autolink/build-fastdds \
 
 Security（可选）：`AUTOLINK_RTPS_SECURITY=1` + 六文件证书目录（identity/permissions CA、cert/key、governance/permissions.smime）。一侧 ON 一侧 OFF 不应明文互通。
 
-## 14.4 Discovery Server
+## Discovery Server
 
 ```bash
 fast-discovery-server -i 0.0.0.0 -p 11811
 export AUTOLINK_DISCOVERY_SERVER=192.168.1.10:11811
 ```
 
-## 14.5 构建注意
+## 构建注意
 
 | 项 | 说明 |
 |----|------|

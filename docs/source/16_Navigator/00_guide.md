@@ -1,13 +1,40 @@
 (navigator-guide)=
 # 0. Navigator 指南
 
-`autonomy/navigator`：导航编排层，对齐 nav2 `bt_navigator`。用 BT 协调 planning / control / map / localization。
+## 背景
 
-### 0.2 快速开始
+Action 成功但车不动、一直 Recovery、到点不结束——很多在 **行为树编排层**：BT 调度 ComputePath → FollowPath → Recovery，不算路径、不发电机指令。实现主路径在 `autonomy/task/navigation/`（文档章名仍叫 Navigator）；任务类型与 TaskServer 见 [17 Tasks](../17_Tasks/00_guide.md)。
 
-1. 配置：`config/navigator/navigator.lua`（帧、容差、BT XML、插件）
-2. BT XML：`config/navigator/behavior_tree/`
-3. 启动：`autolink_launch autonomy.launch`，经 Bridge / Action 发令
+## 思路
+
+- 角色接近 Nav2 `bt_navigator`；**GoalReached 与 FollowPath 内 GoalChecker 容差可能不同**（XY-only vs XY+yaw，见 [04 NavigateToPose](04_navigate_to_pose.md)）。  
+- **TF 丢了会进生存模式** — 超时与行为在 conf，别当成「规划坏了」。  
+- BT 插件 `.so` 依赖 **`AUTONOMY_BT_PLUGIN_PATH`** 指到 `build/lib`。  
+- `global_frame` / `robot_base_frame` / 默认 planner·controller id 必须与 08/09 一致。
+
+
+## 步骤
+
+### 1. 按问题选页
+
+| 文档 | 解决什么 |
+|------|----------|
+| [01 架构](01_architecture.md) | 编排与域进程关系 |
+| [02 BT 算法](02_bt_algorithms.md) | 树怎么设计 |
+| [03 BT 引擎](03_bt_engine.md) | 引擎与 tick |
+| [04 NavigateToPose](04_navigate_to_pose.md) | 主任务行为（常翻） |
+| [05 插件](05_bt_plugins.md) | 插件清单 |
+| [06 综述](06_survey.md) | 边界与对照 |
+
+**改 NavigateToPose 树** → [04](04_navigate_to_pose.md)。  
+**加 BT 插件** → [05](05_bt_plugins.md)。  
+**从 Bridge 发目标** → [15 Bridge](../15_Bridge/00_guide.md) + Tasks。
+
+### 2. 最短启动
+
+1. 配帧、容差、BT XML、插件列表（`autonomy/task/conf/navigator.pb.txt`）  
+2. BT XML 在 `autonomy/task/conf/behavior_tree/navigation/`  
+3. `autolink_launch autonomy.launch`，经 Bridge / Action 发 Goal  
 
 ```bash
 export PATH="$PWD/build/bin:$PATH"
@@ -16,44 +43,11 @@ export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
 autolink_launch autonomy.launch
 ```
 
-`global_frame` / `robot_base_frame` / 默认 planner·controller id 须与 planning、control 一致。
+### 3. 常见坑
 
-### 0.3 形式化（摘要）
-
-给定 $q_s,q_g\in\mathrm{SE}(2)$，编排层通过 BT 调度 ComputePath → FollowPath → Recovery，不直接解路径。 
-`GoalReached` 仅检 XY（$\varepsilon_{xy}=0.25\,\mathrm{m}$）；`FollowPath` 内 GoalChecker 检 XY+航向。
-
-TF 分支：GoalReached → GlobalMode（TF OK）→ LocalSurvivalMode（TF 丢失）。详见 [§4](04_navigate_to_pose.md)。
-
-### 0.4 能力边界
-
-| 能力 | 状态 |
+| 现象 | 先查 |
 |------|------|
-| Options / Interface / Muxer / BT XML | — |
-| 52 插件清单 + Groot 模型 | `.so` 演进中 |
-| `BtEngine` / `BtActionServer` | — |
-| 直驱 `NavigateDirectToPose` | — |
-
-### 0.5 配置
-
-| 字段 | 默认 |
-|------|------|
-| `bt_loop_duration` | 10 ms |
-| `default_server_timeout` | 20000 ms |
-| `local_survival_timeout` | 120 s |
-| `goal_reached_tolerance` | 0.25 m |
-| `plugin_lib_names` | 52 |
-| `navigate_to_pose.behavior_tree_file` | `navigate_to_pose.xml` |
-
-自定义 BT：改 XML → 更新 `behavior_tree_file` 或 Goal 字段 → 同步 `autonomy_tree_nodes.xml` 与 `plugin_lib_names`。 
-插件路径：`export AUTONOMY_BT_PLUGIN_PATH=.../lib`。
-
-### 0.6 故障排查
-
-| 码 | 含义 | 处理 |
-|----|------|------|
-| 9001 | 未初始化 | 查 Configure |
-| 9005 | 加载 BT 失败 | XML / `AUTONOMY_BT_PLUGIN_PATH` |
-| 9006 | TF 错误 | localization / map→base |
-| 9008–9010 | 规划/控制失败 | Planning / Control 排错 |
-| 9013 | GoalChecker | 增大 yaw 容差 |
+| 树加载失败 | XML 路径；plugin_lib_names；`.so` 路径 |
+| 一直 Recovery | costmap / TF / 控制是否失败 |
+| 到点不结束 | GoalReached 容差 vs FollowPath GoalChecker |
+| 和 task 文档对不上目录 | 实现多在 `autonomy/task/navigation/` |

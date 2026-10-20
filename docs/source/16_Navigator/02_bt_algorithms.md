@@ -1,37 +1,38 @@
 # 2. BT 算法总览
 
-专题索引；引擎 [§3](03_bt_engine.md)、单点树 [§4](04_navigate_to_pose.md)、插件 [§5](05_bt_plugins.md)。
+改 XML 结构、加 Recovery，或对比单点 / 多点 / 直驱。引擎见 [§3](03_bt_engine.md)，单点树 [§4](04_navigate_to_pose.md)，插件 [§5](05_bt_plugins.md)。
 
-### 2.1 组件
+行为树在 `autonomy/task/` 由 TaskServer 加载 XML 与 BT 插件 `.so`，每 tick 驱动 planning/control Action。先选形态（单点 `navigate_to_pose`、多点 `navigate_through_poses`、或调试直驱），再按「规划 → 平滑 → 验路 → FollowPath」流水线挂 Recovery（清图、备份、旋转等）。控制节点语义（Sequence/PipelineSequence、ReactiveFallback、RecoveryNode）决定失败时是否重试或切局部生存。
+
+### 核心组件
 
 | 组件 | 职责 |
 |------|------|
-| `BtEngine` | 加载插件、解析 XML |
-| `BtActionServer` | Goal ↔ tick 循环 |
-| `BtContext` | planner / controller / TF / options |
-| 插件 `.so` | 52 节点 |
+| BtRunner / TaskApp | Goal ↔ tick 循环 |
+| 插件 `.so` | 52 量级节点（以 conf 列表为准） |
+| XML | 组合 control/decorator/action |
 
-### 2.2 模式对比
+### 三种运行形态
 
-| 模式 | 树 | 特点 |
-|------|-----|------|
-| 单点 | `navigate_to_pose.xml` | GoalReached + 局部生存 |
-| 多点 | `navigate_through_poses.xml` | 航点序列，10 Hz 规划 |
-| 直驱 | 无 BT | GetPlan 调试 |
+| 形态 | 树/路径 | 特点 |
+|------|---------|------|
+| 单点 | `navigate_to_pose.xml` | GoalReached + LocalSurvival |
+| 多点 | `navigate_through_poses.xml` | 航点序列，更高频规划 |
+| 直驱 | 无完整 BT | GetPlan 调试 |
 
-### 2.3 控制节点
+### 常用控制节点
 
 | 节点 | 语义 |
 |------|------|
 | `Sequence` / `PipelineSequence` | 顺序；Pipeline 允许前子 RUNNING 时推进 |
-| `ReactiveFallback` | 每 tick 重检首子 |
-| `RecoveryNode` | 主分支失败 → 恢复 → 重试 |
-| `RoundRobin` | 轮转子节点 |
-| `RateController` | 限频 tick 子树 |
+| `ReactiveFallback` | 每 tick 从首子重试 |
+| `RecoveryNode` | 主失败 → 恢复子 → 重试 |
+| `RoundRobin` | 轮转子节点（局部生存） |
+| `RateController` | 限频（规划 5–10 Hz） |
 
-### 2.4 标准流水线
+### 标准流水线
 
 ```text
-Selector×3 → ComputePath → SmoothPath → IsPathValid → FollowPath
+Selector(planner/controller/…) → ComputePath → SmoothPath → IsPathValid → FollowPath
 失败 → ClearCostmap + BackUp + Spin（Recovery）
 ```

@@ -1,8 +1,12 @@
 # 4. bag_convert
 
-ROS1 `.bag` → autolink `.record`，供 `autolink recorder play` 回放。
+ROS1 `.bag` → autolink `.record`。
 
-### 4.1 用法
+**什么时候用：** 手里是 ROS1 `.bag`，要在 autolink `recorder play` 或 Cartographer 示例里回放。
+
+### 用法
+
+在 **`src/autonomy` 根**或已设 `PYTHONPATH` 的环境：
 
 ```bash
 python -m autonomy.tools.bag_convert input.bag -o ./data/records --backpack-2d
@@ -10,27 +14,31 @@ python -m autonomy.tools.bag_convert --list-types
 python -m autonomy.tools.bag_convert --info input.bag
 ```
 
-在 `src/autonomy` 根或已配置 `PYTHONPATH` 的环境执行。
-
-### 4.2 预设
+### 预设
 
 | 预设 | 用途 |
 |------|------|
 | `--backpack-2d` | 2D 激光 + IMU（Cartographer 示例） |
 | `--vbr` | `/ouster/points` + `/imu/data`（保留 leading `/`） |
 
-| 常用参数 | 含义 |
-|----------|------|
+| 参数 | 含义 |
+|------|------|
 | `-o` | 输出目录 |
 | `--duration-sec` | 截取时长 |
-| `--list-types` | 支持的 ROS→proto 类型 |
 
-### 4.3 依赖与实现
+### 依赖
 
 ```bash
 python -m pip install -r autonomy/autonomy/tools/bag_convert/requirements.txt
 ```
 
-包路径：`autonomy/autonomy/tools/bag_convert/`（模块名仍为 `autonomy.tools.bag_convert`）。
+源码目录：`autonomy/autonomy/tools/bag_convert/`（模块名 `autonomy.tools.bag_convert`）。
 
-Cartographer 流程：[Localization · Cartographer](../06_Localization/07_cartographer/guide.md)。
+### 常见坑
+
+| 现象 | 说明 |
+|------|------|
+| No module named autonomy.tools | 未在 src/autonomy 根或未安装 editable |
+| 播 record 无激光 | 话题名与 preset 不一致；用 `--info` 对 bag |
+
+Cartographer：[Localization · Cartographer](../06_Localization/07_cartographer/guide.md)。

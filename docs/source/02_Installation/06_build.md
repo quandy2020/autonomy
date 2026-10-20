@@ -1,17 +1,27 @@
 # 6. 编译构建
 
-依赖就绪后，在本机 / Docker / 板端用 **同一套 CMake 开关** 编译。路径差异见文末；板端 NFS 细节见 [§9](09_embedded_board.md)。
+## 背景
 
-| 目标 | 章节 |
-|------|------|
-| 全量编译 | [§6.1](#61-全量编译) |
-| 只编部分域 / 产品 | [§6.2](#62-模块化编译) |
-| 已配置工程只编某 target | [§6.3](#63-按-target-增量编译) |
-| 测试 / 文档 / 清理 | [§6.4](#64-测试文档与清理) |
+依赖就绪后，仍可能因域开关依赖、板端 NFS build、或只想编 planning+control+task 而需要不同的 CMake 配置。本机 / Docker / 板端应使用**同一套开关语义**。
 
----
+## 思路
 
-## 6.1 全量编译
+始终构建 `autolink` + `automsgs`；业务域由 `AUTONOMY_BUILD_*` 控制，产品与 HAL 由 `BUILD_*` 控制，两层勿混。关掉某域若仍开启依赖它的域，configure 会 FATAL。
+
+| 目标 | 下文小节 |
+|------|----------|
+| 全量编译 | §1 |
+| 只编部分域 / 产品 | §2 |
+| 已配置工程只编某 target | §3 |
+| 测试 / 文档 / 清理 | §4 |
+| 本机 / Docker / 板端差异 | §5 |
+
+板端 NFS 见 [§9](09_embedded_board.md)。
+
+
+## 步骤
+
+### 1. 全量编译
 
 在 **源码根**（含顶层 `CMakeLists.txt`）：
 
@@ -42,9 +52,7 @@ ls build/bin/autolink build/bin/autonomy.* 2>/dev/null | head
 
 可选：`sudo cmake --install build --prefix /usr/local`。
 
----
-
-## 6.2 模块化编译
+### 2. 模块化编译
 
 Autonomy 是超工程：
 
@@ -54,7 +62,7 @@ Autonomy 是超工程：
 
 定义见顶层 [`CMakeLists.txt`](../../../CMakeLists.txt)（`AUTONOMY_BUILD_*` 选项）。
 
-### 6.2.1 两层开关（勿混用）
+#### 2.1 两层开关（勿混用）
 
 | 层级 | 前缀 | 例子 | 作用 |
 |------|------|------|------|
@@ -63,11 +71,11 @@ Autonomy 是超工程：
 
 关掉某域后，若仍开启依赖它的域，**configure 阶段 FATAL**。
 
-### 6.2.2 域依赖与主要目标
+#### 2.2 域依赖与主要目标
 
 | 域开关 | 硬依赖 | 主要目标 |
 |--------|--------|----------|
-| `AUTONOMY_BUILD_COMMON` | — | `autonomy_common` |
+| `AUTONOMY_BUILD_COMMON` | 无 | `autonomy_common` |
 | `AUTONOMY_BUILD_TRANSFORM` | COMMON | `autonomy_transform` |
 | `AUTONOMY_BUILD_MAP` | COMMON, TRANSFORM | `autonomy_map` |
 | `AUTONOMY_BUILD_VEHICLE` | COMMON | `autonomy_vehicle` |
@@ -90,7 +98,7 @@ Autonomy 是超工程：
 | `BUILD_AUTOVIZ` / `BUILD_AUTOSIM` / `BUILD_ORBISVIEW` | 可视化 / 仿真 / Web HMI |
 | `BUILD_ONNXRUNTIME` | 感知 `base_component`（与 PERCEPTION 域独立） |
 
-### 6.2.3 场景示例
+#### 2.3 场景示例
 
 未列出的 `AUTONOMY_BUILD_*` 建议显式 OFF，避免默认 ON 把多余域编进来。
 
@@ -146,7 +154,7 @@ cmake --build --preset autonomy-minimal
 
 见 [`CMakePresets.json`](../../../CMakePresets.json)。
 
-### 6.2.4 产品级开关速查
+#### 2.4 产品级开关速查
 
 | 选项 | 默认 | 说明 |
 |------|------|------|
@@ -160,9 +168,7 @@ cmake --build --preset autonomy-minimal
 | `BUILD_ONNXRUNTIME` | ON | 感知 Base |
 | `BUILD_TENSORRT` | OFF | TensorRT |
 
----
-
-## 6.3 按 target 增量编译
+### 3. 按 target 增量编译
 
 改过 `AUTONOMY_BUILD_*` / `BUILD_*` 后须重新 `cmake`。开关未变时：
 
@@ -175,9 +181,7 @@ cmake --build . -j$(nproc) --target autodriver autodriver_main
 cmake --build . -j$(nproc) --target autonomy.monitor autonomy.bridge
 ```
 
----
-
-## 6.4 测试、文档与清理
+### 4. 测试、文档与清理
 
 ```bash
 # 测试
@@ -193,9 +197,7 @@ cd build && ninja clean
 # 彻底重配：rm -rf build && 重新 cmake
 ```
 
----
-
-## 6.5 本机 / Docker / 板端路径差异
+### 5. 本机 / Docker / 板端路径差异
 
 | 环境 | 源码 | build 目录 | 依赖 |
 |------|------|------------|------|

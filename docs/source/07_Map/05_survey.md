@@ -1,48 +1,44 @@
 # 5. 地图表示综述
 
-> 实现 [§3](03_costmap2d.md) · [§4](04_grid_map.md)；上手 [§0](00_guide.md)。
+导航栈里「地图」分三条线：静态占据、规划代价、2.5D 地形。实现细节见 [03 Costmap2D](03_costmap2d.md)、[04 GridMap](04_grid_map.md)；上手 [00 指南](00_guide.md)。
 
-### 5.1 在导航栈中
+## 在栈中的位置
 
-| 子问题 | 表示 | Autonomy |
-|--------|------|----------|
-| 静态图 | OccupancyGrid | MapServer |
-| 规划/避障 | Costmap | Costmap2D |
-| 地形 | 2.5D 多层 | GridMap |
+```text
+SLAM / YAML+PGM → MapServer → OccupancyGrid
+                                    ↓
+                              static_layer ─┐
+/scan ──────────────────► obstacle_layer ──┼─► Costmap2D → Planning / Control
+                              inflation_layer ┘
 
+点云 / Follow ──► GridMap（并行，不自动进 Costmap）
 ```
-SLAM/文件 → MapServer → static → obstacle → inflation → Planning
-深度/点云 → GridMap（并行）
-```
 
-### 5.2 形式化
+| 子问题 | 表示 | Autonomy 组件 |
+|--------|------|----------------|
+| 静态图可视化、static_layer | OccupancyGrid | MapServer |
+| 路径搜索、动态障 | uint8 Costmap | Costmap2DWrapper |
+| 坡度、跟人 | float 多层 | GridMapWrapper |
 
-占据：$p(m_{ij}=\mathrm{occ}\mid z_{1:t})$，$o\in\{-1,0..100\}$。
+## 形式化（查阅用）
 
-代价：$c_{ij}=f(d_{ij}^{\mathrm{obs}},r_i,\lambda)\in[0,255]$。
+占据：单元 $m_{ij}$ 占用概率；ROS 消息常用 $o\in\{-1,0..100\}$。
 
-2.5D：$\mathcal{M}=\{L_k(i,j)\}$（elevation / variance / slope …）。
+代价：$c_{ij}=f(d^{\mathrm{obs}}, r_i, \lambda)\in[0,255]$，254 致命。
 
-| 未内置 | 用途 |
-|--------|------|
-| OctoMap / ESDF | 3D 占据 / 距离场 |
-| 拓扑 / 语义图 | 多楼层、任务 |
-| 点云稠密图 | LIO 建图侧 |
+2.5D：$\mathcal{M}=\{L_k(i,j)\}$，层名如 elevation / variance / slope。
 
-### 5.3 分类对照
+## 仓库里尚未作为一等公民的
 
-| 族 | 代表 | 规划直接用 | Autonomy |
-|----|------|------------|----------|
-| 2D 占据 | OccupancyGrid | 经 static | — |
-| 2D 代价 | Costmap | — | |
-| 2.5D | GridMap | 需桥接 | — |
-| 3D 体素 | OctoMap | 投影后 | — |
+OctoMap、ESDF、拓扑/语义图、稠密点云地图等多在 **定位侧**（Atlas/Argus 点云图）或外部工具；**全局 planner 插件** 当前只读 2D Costmap 快照。
 
-### 5.4 选型
+## 怎么选
 
 | 场景 | 选 |
 |------|-----|
-| 室内 2D 导航 | Costmap 三层标准配置 |
-| 仅加载地图 | MapServer |
-| 越野 / 坡度 | GridMap + 应用映射 |
-| 大范围局部 | rolling Costmap |
+| 室内 2D 导航 | Costmap：static + obstacle + inflation |
+| 只加载 PGM 给 RViz | MapServer |
+| 越野 / 坡度约束 | GridMap + 自写映射或 MPPI critic |
+| 大范围户外局部窗 | Costmap `rolling_window=true` |
+
+Costmap 与 GridMap 原点不同，联调时先画同一世界点对齐，再谈融合策略。

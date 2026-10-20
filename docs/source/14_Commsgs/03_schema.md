@@ -1,65 +1,52 @@
 (commsgs-schema)=
 # 3. 消息模型与 Schema
 
-字段详解：[§6–§8](06_core_msgs.md)；ROS 对照：[§9](09_survey.md)。
+查 Header/Stamped/协方差约定，或 Action、error_code 分段。
 
-### 3.1 双层模型
+struct 与 proto 成对；大包体联调前实测。
 
+### 双层模型
+
+```text
+C++ struct ──ToProto/FromProto──► proto ──Serialize──► Autolink / 网络
 ```
-应用 C++ struct ──ToProto/FromProto──► proto Message ──Serialize──► Autolink/网络
-```
-
-| 层 | 作用 |
-|----|------|
-| C++ struct | 算法无 protobuf 开销 |
-| Proto | 跨语言、版本化、二进制传输 |
 
 命名：`autonomy::commsgs::geometry_msgs::Pose` ↔ `autonomy.commsgs.proto.geometry_msgs.Pose`。
 
-### 3.2 约定模式
+### 约定
 
 | 模式 | 结构 |
 |------|------|
-| Stamped | `Header`（stamp + frame_id）+ payload |
-| child_frame_id | TransformStamped / Odometry：父=`header.frame_id`，子=`child_frame_id` |
-| WithCovariance | `pose` + `vector<double>` 6×6 行主序 |
-| SmartPtr | `AUTONOMY_SMART_PTR_DEFINITIONS(T)` → SharedPtr 等 |
+| Stamped | Header + payload |
+| TF | 父=`header.frame_id`，子=`child_frame_id` |
+| WithCovariance | pose/twist + 36 元协方差 |
+| SmartPtr | `AUTONOMY_SMART_PTR_DEFINITIONS` |
 
-### 3.3 Time / Duration
+### Time / Duration
 
-| 类型 | 存储 | API |
-|------|------|-----|
-| `Time` | sec + nanosec | `Now()`、`ToUnixTimeNanos()`、比较运算 |
-| `Duration` | int64 纳秒 | 与 `std::chrono` 互转；`Time-Time` |
+`Time`：sec + nanosec，`Now()`。`Duration`：纳秒，与 chrono 互转。
 
-### 3.4 Proto 构建与 Action
+### Action / error_code
 
-`protoc` → `${BUILD}/autonomy/commsgs/proto/*.pb.h`。Action：`Goal`/`Feedback`/`Result`（含 `error_code`）。
-
-### 3.5 错误码分段
+Action：Goal / Feedback / Result（含 error_code）。分段见下表。
 
 | 范围 | 模块 |
 |------|------|
 | 0 | OK |
 | 1000–1099 | Control |
 | 3000–3099 | Localization/TF |
-| 4000–4599 | Recovery |
 | 6000–6299 | Planning |
 | 7000–7099 | Map |
-| 8000–8099 | Routing |
 | 9000–9299 | Task |
 
-### 3.6 类型映射与已知问题
+完整枚举：`error_code.proto`。
 
-| C++ | Proto |
-|-----|-------|
-| 标量 / string / vector | 对应 / string / repeated |
-| 协方差 vector\<float\> | packed repeated |
+### 已知问题
 
-| 问题 | 说明 |
-|------|------|
-| Duration proto | 形似 Header；转换时拆纳秒 |
-| shape_msgs 命名空间 | hpp 误放 builtin_interfaces |
-| 部分 ToProto | stub，见 [§9.2](09_survey.md) |
+Duration proto 与 C++ 拆分方式；shape_msgs 命名空间；部分 ToProto stub — [§9](09_survey.md)。
 
-### 3.7 参见
+字段分册：[§6–§8](06_core_msgs.md)。
+
+### 延伸阅读
+
+[§4 用法](04_usage.md)

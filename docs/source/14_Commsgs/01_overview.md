@@ -1,50 +1,48 @@
 (commsgs-overview)=
 # 1. 模块概览
 
-| 维度 | 说明 |
-|------|------|
-| 输出 | C++ struct、`.proto`、`ToProto`/`FromProto` |
-| 下游 | planning、map、control、localization、transform、bridge |
-| 类似 | ROS 2 common_msgs、nav2_msgs、vision_msgs |
-| 序列化 | Protobuf（非 rosidl/CDR） |
+第一次接触 commsgs，或要在 struct 与 proto 之间选型。
 
-### 1.2 能力
+`autonomy/commsgs` 提供 **C++ struct + `.proto` + ToProto/FromProto**，语义靠近 ROS 2 common_msgs / nav2_msgs / vision_msgs，线上为 Protobuf（非 rosidl/CDR）。
 
-| 能力 | 状态 |
-|------|------|
-| 16 消息包 struct + proto | — |
-| ToProto/FromProto | 核心较全，传感器/地图等部分 stub |
-| PointCloud2 迭代器 | — |
-| Nav2 Action/Service、error_code | proto |
-| ROS 序列化兼容 | — |
+**包怎么选（联调把握）**
 
-### 1.3 源码
+| 包 | 建议 |
+|----|------|
+| builtin / std / geometry | 默认优先，转换较完整 |
+| sensor / map / planning | 常用；大包体与部分字段需实测 |
+| nav_msgs | Action 用 proto；SpeedLimit 等看 [§8](08_nav_planning_msgs.md) |
+| vision | 视觉联调前往返测 |
+| visualization / trajectory / diagnostic | 多 stub，见 [§9](09_survey.md) |
+| pcl / vehicle | 占位，勿依赖 |
 
+struct 与 proto **成对维护**；RPC 探索等字段在 **automsgs.rpcs**，见 [15 Bridge](../15_Bridge/00_guide.md)。
+
+### 数据流角色
+
+```text
+算法 struct →（边界）proto → Autolink / gRPC
+传感器 → map / perception → OccupancyGrid、Path → control
+geometry / TF 贯穿各域
 ```
+
+### 源码布局
+
+```text
 autonomy/commsgs/
-├── proto/*.proto # 16 包 + error_code
-├── <pkg>_msgs.{hpp,cpp} # struct + 转换
+├── proto/*.proto
+├── <pkg>_msgs.{hpp,cpp}
 ├── point_cloud2_iterator.hpp
 └── impl/
 ```
 
-### 1.4 数据流
+### 常见坑
 
-```
-sensor_msgs → map/perception → OccupancyGrid → Path → Control
-geometry_msgs (TF) 贯穿；Autolink 边界 → proto → 网络
-```
+| 现象 | 说明 |
+|------|------|
+| 有 hpp 就能过网络 | 可能 stub ToProto |
+| 与 ROS bit 级一致 | 否，经 bridge 转换 |
 
-### 1.5 消息包一览
+### 延伸阅读
 
-| 包 | 用途 | 完整度 |
-|----|------|--------|
-| builtin / std / geometry | 时间、Header、位姿/TF | 高 |
-| sensor / map / planning | 激光/点云、栅格、Path | 中 |
-| nav_msgs | SpeedLimit；Action 在 proto | — |
-| vision / visualization | 检测、Marker | / stub |
-| trajectory / diagnostic / stereo / shape | 辅助 | stub / 低 |
-| pcl / vehicle | 空或占位 | — |
-| error_code | 分段错误码 | proto |
-
-### 1.6 参见
+[00 指南](00_guide.md) · [§4 用法](04_usage.md)

@@ -1,62 +1,48 @@
 # 8. 车辆抽象与 Stage
 
-### 8.1 结构
+用 `VehicleInterface` 做限幅抽象，或理解 `map/conf/simulation/` 里 world 文件能/不能做什么。
 
-```
-VehicleServer → Vehicle (VehicleInterface)
-Initialize / ApplyCommand / GetVehicleInfo
-└─ KinematicsControl::ApplyLimits
-```
+`vehicle/` 提供底盘尺寸与 **KinematicsControl** 限幅；`ApplyCommand` 当前多仅缓存，需接 Gazebo/真机/sim 后端。
 
-### 8.2 VehicleInterface
+Stage 相关：**只有** world/yaml 资源（如 `cave.world`），**无**本仓库 C++ Stage 客户端读 `AUTONOMY_SIMULATION`。
 
-文件：`vehicle/common/vehicle_inteface.hpp`。
+| 目标 | 做法 |
+|------|------|
+| 测限幅逻辑 | vehicle 单测 + KinematicsControl |
+| 2D 仿真 | 自接 Stage 或 Gazebo |
+| 仅文件在仓库 | 勿当已集成 |
+
+### VehicleInterface
+
+文件：`vehicle/common/vehicle_inteface.hpp`（拼写以源码为准）。
 
 | 方法 | 说明 |
 |------|------|
-| `Initialize(model)` | 尺寸、动力学约束 |
-| `GetVehicleInfo` | 速度等状态 |
-| `ApplyCommand` | 下发指令（当前仅缓存） |
+| `Initialize(model)` | 尺寸、约束 |
+| `GetVehicleInfo` | 状态查询 |
+| `ApplyCommand` | 下发（待接后端） |
 
-对接目标：Gazebo 差速插件、真实底盘、运动学后端。
+### KinematicsControl
 
-### 8.3 KinematicsControl / VehicleModel
+Proto：`vehicle/proto/vehicle_options.proto`。字段含 `max_linear_speed`、`max_angular_speed`、加减速上限等。公式 [§3](03_math.md)。
 
-| 约束 | 字段 |
+### cave.world（示例资源）
+
+| 元素 | 说明 |
 |------|------|
-| 线/倒车/角速度 | `max_linear_speed`、`max_reverse_speed`、`max_angular_speed` |
-| 线/角加速度 | `max_linear_acceleration`、`max_angular_acceleration` |
-
-Proto：`vehicle/proto/vehicle_options.proto`（尺寸、diff/holonomic/ackermann、上限）。公式：[§3.6](03_math.md)。
-
-### 8.4 Stage 配置
-
-```lua
-AUTONOMY_SIMULATION = {
-    stage = {
-        world_file = ".../willow-erratic.world", -- 与仓库 cave.world 路径可能不一致
-        map_file = ".../willow-erratic.yaml",
-    },
-    pedsim = {}, -- 行人占位，未实现
-}
-```
-
-| cave.world 元素 | 说明 |
-|-----------------|------|
-| `pioneer2dx_with_laser` | `robot_0` |
+| `pioneer2dx_with_laser` | 机器人模型 |
 | `hokuyolaser` | 270° 激光 |
-| `camera_realsens_d435` | RGB-D |
-| floorplan cave | 16×16 m（`maps/cave.png`） |
+| floorplan | 约 16×16 m |
 
-Player/Stage 格式；无本仓库 C++ 客户端。
+Player/Stage 格式；要跑需 **外部** Stage/Gazebo，不是 launch 自动加载。
 
-### 8.5 后端规划
+### 常见坑
 
-```cpp
-// StageSimulator / GazeboSimulator : VehicleInterface
-// ApplyCommand → Stage position2d 或 ROS cmd_vel
-```
+| 误解 | 事实 |
+|------|------|
+| Lua AUTONOMY_SIMULATION.stage | 无 SimulationServer 读取 |
+| ApplyCommand 会动 Gazebo | 需 ROS cmd_vel 或自写后端 |
 
-建议：`ApplyCommand` 内 `ApplyLimits` 后 `simulator_->Step`；Bridge 侧持有 Vehicle 注入 odom/TF。
+### 延伸阅读
 
-### 8.6 参见
+[§5 架构](05_architecture.md)

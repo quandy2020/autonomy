@@ -1,39 +1,34 @@
 # 1. Map 模块架构
 
-### 1.1 三条管线
+地图域分三条并行管线：静态占据发布、2D 代价融合、2.5D 多层栅格。Costmap 是 planning/control 的主输入；GridMap 不自动并进 Costmap。
+
+## 三条管线
 
 | 管线 | 入口 | 输出 | 消费者 |
 |------|------|------|--------|
-| 静态地图 | `MapServer` | OccupancyGrid | `static_layer`、可视化 |
-| 2D 代价 | `Costmap2DWrapper` | uint8 0–255 | `PlannerServer` |
-| 2.5D | `GridMapWrapper` | float 多层 | 应用层（未自动桥接 Costmap） |
+| 静态地图 | `MapServer` | OccupancyGrid | `static_layer`、RViz |
+| 2D 代价 | `Costmap2DWrapper` | uint8 0–255 | `PlannerServer`、控制器 |
+| 2.5D | `GridMapWrapper` | float 多层 | Follow / MPPI 等应用 |
 
-```
+```text
 YAML+PGM → MapServer → OccupancyGrid → static_layer ─┐
 /scan ──────────────────────────► obstacle_layer ──────┼─► Costmap2D → Planning
-inflation_layer ┘
-点云 → GridMapWrapper（应用写入）→ elevation / slope
+inflation_layer ───────────────────────────────────────┘
+点云 / 应用 ──► GridMapWrapper → elevation / slope …
 ```
 
----
+## Costmap2D
 
-### 1.2 Costmap2D
-
-```
+```text
 Costmap2DWrapper
 ├── LayeredCostmap（plugins_ / filters_ / combined_costmap_）
 ├── TF Buffer、footprint_
 └── map_update_thread_ ← Start() 后 updateMap + publishMap
 ```
 
-**生命周期**：构造 `init()` → `Start()` 后台更新 → `Pause`/`Stop`。`isReady()`：至少一次更新；`isCurrent()`：图层未超时。
+**生命周期**：构造 `init()` → `Start()` 开后台线程 → `Pause`/`Stop`。`isReady()`：至少完成一次更新；`isCurrent()`：各图层观测未超时。
 
-**单次 `updateMap`**：
-
-1. 取位姿；rolling 则居中平移 origin 
-2. 各 plugin `updateBounds` → 合并窗口 → `resetMap` 
-3. 按序 `updateCosts`（常 `updateWithMax`） 
-4. 有 filter：primary → combined → filter 
+**单次 `updateMap`**：取位姿 → rolling 则平移 origin → 各 plugin `updateBounds` → 合并窗口 → `resetMap` → 按序 `updateCosts`（常 `updateWithMax`）→ 可选 filter 链。
 
 | 顺序 | 图层 | 写出 |
 |------|------|------|
@@ -41,19 +36,15 @@ Costmap2DWrapper
 | 2 | obstacle | marking / clearing |
 | 3 | inflation | 1–253 梯度 |
 
-**入数据**：`applyOccupancyGrid` / `loadMap` → Static；`feedLaserScan` / `feedPointCloud2` → ObservationBuffer；TF → 位姿。
+**入数据**：`applyOccupancyGrid` / `loadMap` → Static；`feedLaserScan` / `feedPointCloud2` → ObservationBuffer；TF → 机器人位姿。
 
-**规划读**：加锁复制 `getCharMap()`，搜索不持锁。
+**规划读法**：加锁复制 `getCharMap()`，搜索过程不长期持锁。
 
----
+## GridMap
 
-### 1.3 GridMap
+`GridMapWrapper` 持有 `grid_map::GridMap`（多层 `Eigen::MatrixXf`，中心原点，`move()` 循环 buffer）。无内置 `feed*`；由 perception 或应用写层。
 
-`GridMapWrapper` → `grid_map::GridMap`（多层 `Eigen::MatrixXf`，中心原点，`move()` 循环 buffer）。无自动 `feed*`；应用层投影点云写层。
-
----
-
-### 1.4 线程
+## 线程
 
 | 线程 | 职责 |
 |------|------|
@@ -61,4 +52,4 @@ Costmap2DWrapper
 | 规划 / 控制 | 快照复制后只读 |
 | 传感器回调 | 写入 ObservationBuffer |
 
-扩展图层：继承 `CostmapLayer`，实现 `updateBounds`/`updateCosts`，注册 `plugins`。详见 [§3](03_costmap2d.md) · [§4](04_grid_map.md)。
+自定义图层：继承 `CostmapLayer`，实现 `updateBounds`/`updateCosts`，在 conf 的 `plugins` 注册。详见 [03 Costmap2D](03_costmap2d.md)、[04 GridMap](04_grid_map.md)。

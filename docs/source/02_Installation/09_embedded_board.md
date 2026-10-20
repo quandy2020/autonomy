@@ -1,11 +1,13 @@
 (installation-embedded-board)=
 # 9. 嵌入式板端（逐步操作）
 
-面向 **Firefly / RK3588 等 aarch64**：开发机改代码，经 **NFS** 同步源码，在板子 **本地盘** 编译运行。
+## 背景
 
-**原则**：源码可 NFS；**`build` 必须在板子本地盘**（勿用 `~/autonomy/build` 当主产物目录）。
+Firefly / RK3588 等 **aarch64** 上，常见做法是开发机改代码、经 **NFS** 同步源码，在板子 **本地盘** 编译运行。若在 NFS 上 build，会极慢且易 OOM。
 
-脚本参数全文见仓库 [`scripts/README.md`](../../../scripts/README.md)。
+## 思路
+
+源码可挂 NFS；**`build` 必须在板子本地盘**（勿用 `~/autonomy/build` 当主产物目录）。依赖用 `--profile board` 对齐镜像；环境与车上运行优先 `cmake --install` + `/usr/local/share/autonomy/setup.bash`。
 
 ```text
 [开发机] autonomy 源码根 ──NFS──► [板] ~/autonomy（源码）
@@ -13,9 +15,12 @@
 [板] /usr/local（第三方库）
 ```
 
----
+脚本参数全文见仓库 [`scripts/README.md`](../../../scripts/README.md)。
 
-### Step 1 — 开发机：SSH 与出网（装依赖需要）
+
+## 步骤
+
+### 1. 开发机：SSH 与出网（装依赖需要）
 
 把下面 IP 换成你的板 / 开发机地址：
 
@@ -33,9 +38,7 @@ ssh firefly@192.168.234.1 \
 'sudo ip route replace default via 192.168.234.50'
 ```
 
----
-
-### Step 2 — 开发机：一键 NFS
+### 2. 开发机：一键 NFS
 
 在 **开发机源码根**：
 
@@ -59,9 +62,7 @@ bash scripts/share_nfs_workspace.sh all \
 
 卸挂载：`bash scripts/share_nfs_workspace.sh down --board-ip …`
 
----
-
-### Step 3 — 板端：安装依赖
+### 3. 板端：安装依赖
 
 ```bash
 ssh firefly@192.168.234.1
@@ -84,9 +85,7 @@ python3 scripts/install_dependencies.py --list --profile board
 /usr/local/bin/protoc --version # 期望 3.19.x
 ```
 
----
-
-### Step 4 — 板端：CMake 构建（本地盘）
+### 4. 板端：CMake 构建（本地盘）
 
 ```bash
 cd ~/autonomy_ws
@@ -108,9 +107,7 @@ cmake --build build -j$(nproc)
 
 开发机改代码后 NFS 即时可见，板子再执行 `cmake --build build` 即可。
 
----
-
-### Step 5 — 板端：环境与验证
+### 5. 板端：环境与验证
 
 **方式 A — 直接用 build（开发）**
 
@@ -132,9 +129,7 @@ autolink launch start task.launch
 
 板端资源实测：[板端 task.launch 报告](../04_Running/09_board_task_launch_benchmark.md)。
 
----
-
-### Step 6 — 换板 / 换开发机
+### 6. 换板 / 换开发机
 
 ```bash
 # 开发机
@@ -152,9 +147,7 @@ sudo sed -i '\#/home/firefly/autonomy#d' /etc/fstab
 
 再在新电脑源码根执行 Step 2。
 
----
-
-### 常见问题（板端）
+### 7. 常见问题（板端）
 
 | 现象 | 处理 |
 |------|------|

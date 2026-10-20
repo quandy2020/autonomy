@@ -1,36 +1,22 @@
 # 8. 可视化综述
 
-### 8.1 工具选型
+见下文步骤中的现象与配置上下文。
 
-| 工具 | 适用 | Autonomy |
-|------|------|----------|
-| RViz2 | 本地 ROS2 | autonomy_ros → rviz2 |
-| Foxglove | 远程、多模态、MCAP | foxglove_bridge |
-| topic echo / glog | 排错 / CI | 直接 |
-| PlotJuggler | 控制时序 | ROS bag |
+**工具怎么选**
 
-| 维度 | `autonomy/bridge` | `foxglove_bridge` |
-|------|-------------------|-------------------|
-| 协议 | gRPC/MQTT | WebSocket |
-| 用途 | 远程导航 | 可视化 |
-| 仓库内 | — | （ROS 包） |
+| 工具 | 适用 | 在本仓库怎么接 |
+|------|------|----------------|
+| **Autoviz** | 本机桌面、无 ROS | [09](09_autoviz.md)，`BUILD_AUTOVIZ` |
+| **Foxglove** | 远程、多模态 | [06](06_foxglove.md)，常映射 8765 |
+| **RViz2** | 已有 ROS 2 | [07](07_rviz2_ros2.md) + autonomy_ros |
+| topic / glog | 排错、CI | 直接看日志或 echo |
+| PlotJuggler | 控制时序 | 通常吃 ROS bag |
 
-### 8.2 路线图
+`autonomy/bridge` 是 **发令 / 状态** 的 gRPC，不是可视化通道；别和 foxglove_bridge 混用。
 
-| 阶段 | 目标 |
-|------|------|
-| 当前 | ROS2 + foxglove_bridge；C++ 日志 |
-| 近 | VisualizationServer + autonomy.lua |
-| 中 | Autolink Writer；visualization_msgs 转换 |
-| 远 | MCAP 录制；自定义面板 |
+### 现状（务实版）
 
-### 8.3 索引
+当前靠 **Autoviz / Foxglove / RViz2 + 日志** 就够联调。域内 VisualizationServer、Autolink 专用 Writer、完整 visualization_msgs 转换仍未产品化——有需求再跟代码，不必等「路线图阶段」。
 
-| 主题 | 文档 / 路径 |
-|------|-------------|
-| 运行 / ROS2 | [04 §6–§7](../04_Running/06_ros2_integration.md) |
-| commsgs / Bridge / Map | [14](../14_Commsgs/00_guide.md) · [15](../15_Bridge/00_guide.md) · [07](../07_Map/00_guide.md) |
-| 配置 / 消息 | `config/visualization/visualization.lua`、`commsgs/visualization_msgs.*` |
-| 栅格兼容 / 端口 | `costmap_2d_wrapper.cpp`、`docker_utils.py` 8765 |
-
+相关链接：[Running · ROS 2](../04_Running/06_ros2_integration.md)、[Commsgs](../14_Commsgs/00_guide.md)、[Map](../07_Map/00_guide.md)。  
 外部：[Foxglove](https://foxglove.dev/) · [RViz2](https://github.com/ros2/rviz) · [foxglove_bridge](https://github.com/foxglove/ros-foxglove-bridge)

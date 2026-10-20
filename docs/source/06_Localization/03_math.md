@@ -1,9 +1,9 @@
 (localization-math)=
 # 3. 数学原理
 
-> 对比选型见 [§9](09_survey.md)；架构见 [§5](05_architecture.md)。
+选型看 [09 综述](09_survey.md)；进程与目录看 [05 架构](05_architecture.md)。本节是 **Atlas 视觉前端 / Cartographer** 等的公式背景，不是三条后端的操作手册。
 
-### 3.1 问题形式化
+## 问题形式化
 
 位姿 $T_{wb}\in SE(3)$（2D 为 $SE(2)$）：
 
@@ -15,7 +15,7 @@ $$
 
 ---
 
-### 3.2 相机投影
+## 相机投影
 
 **针孔**：$\tilde{\mathbf{p}}=\frac{1}{Z}\mathbf{K}\mathbf{P}_c$。
 
@@ -25,7 +25,7 @@ $$
 
 ---
 
-### 3.3 ORB
+## ORB
 
 尺度 $\sigma_\ell=s^\ell$（$s=1.2$）。流程：FAST-9 → 强度质心方向 → rBRIEF（256 bit）。
 
@@ -33,7 +33,7 @@ Hamming：$d_H=\mathrm{popcount}(\mathbf{d}_1\oplus\mathbf{d}_2)$；Lowe ratio $
 
 ---
 
-### 3.4 两视图几何
+## 两视图几何
 
 对极：$\mathbf{b}_2^\top\mathbf{E}_{21}\mathbf{b}_1=0$，$\mathbf{E}=[\mathbf{t}]_\times\mathbf{R}$。5 点 / 8 点 + RANSAC。平面场景用 $\mathbf{H}$。
 
@@ -41,7 +41,7 @@ SVD 分解 $\mathbf{E}$ 得 4 组 $(R,t)$，cheirality 选解。三角化 DLT：
 
 ---
 
-### 3.5 PnP
+## PnP
 
 EPnP + RANSAC（4 点最小集）→ 重投影内点 → Gauss-Newton 精化。
 
@@ -49,7 +49,7 @@ Bearing 误差：$e_j=\arccos(\mathbf{b}_j^\top\hat{\mathbf{b}}_j)$，阈值约 
 
 ---
 
-### 3.6 位姿图 / BA
+## 位姿图 / BA
 
 $$
 \mathbf{T}^*,\mathbf{X}^*=\arg\min\sum_k\rho\big(\|\mathbf{r}_k\|_{\mathbf{\Omega}_k}^2\big)
@@ -65,13 +65,13 @@ $$
 
 ---
 
-### 3.7 回环与 Sim3
+## 回环与 Sim3
 
 BoW（TF-IDF）检索候选 → 几何验证。单目估计 Sim(3)（含尺度 $s$），校正共视关键帧与路标后异步 Loop BA。
 
 ---
 
-### 3.8 跟踪状态
+## 跟踪状态
 
 恒速模型：$\mathbf{T}_{c_k w}=\Delta\mathbf{T}\cdot\mathbf{T}_{c_{k-1}w}$。
 
@@ -83,13 +83,13 @@ BoW（TF-IDF）检索候选 → 几何验证。单目估计 Sim(3)（含尺度 $
 
 ---
 
-### 3.9 立体 / RGB-D
+## 立体 / RGB-D
 
 立体：$Z=f_x b/d$。RGB-D：$Z=d_{\mathrm{pix}}/f_{\mathrm{dmap}}$（TUM 典型 $f_{\mathrm{dmap}}=5000$）。
 
 ---
 
-### 3.11 视觉流水线
+## 视觉流水线
 
 ```
 Image → ORB → Match → PnP/BA → Keyframe → LBA → BoW Loop → Sim3+GBA
@@ -97,7 +97,7 @@ Image → ORB → Match → PnP/BA → Keyframe → LBA → BoW Loop → Sim3+GB
 
 ---
 
-### 3.12 Cartographer
+## Cartographer
 
 **扫描匹配**（子图 $M_i$）：
 

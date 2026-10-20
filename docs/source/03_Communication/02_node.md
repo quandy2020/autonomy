@@ -1,8 +1,8 @@
 # 2. 节点 Node
 
-通信句柄：创建 Writer/Reader、Service/Client、Action、Parameter 的统一入口。类似 `rclcpp::Node` / `cyber::Node`。
+**Node** 是创建 Writer/Reader、Service/Client、Action、Parameter 的入口，角色接近 `rclcpp::Node` / `cyber::Node`。对着 `autolink/examples/cpp/talker.cpp` 改时读这篇。 Node 是进程内一切通信对象的工厂：全局 `Init()` 成功后才能 `CreateNode`，Writer/Reader/Service/Action 都挂在同一节点名下。改 talker 示例时先保证节点名在拓扑内唯一，再按下文 API 表逐项创建资源。
 
-## 2.1 定义与约束
+## 定义与约束
 
 | 约束 | 说明 |
 |------|------|
@@ -12,7 +12,7 @@
 
 内部：`NodeChannelImpl` + `NodeServiceImpl`；Action / Parameter 经独立 API 挂到同一 Node。
 
-## 2.2 创建与生命周期
+## 创建与生命周期
 
 ```cpp
 #include "autolink/autolink.hpp"
@@ -49,7 +49,7 @@ while (autolink::OK()) {
 
 Listener：`CreateReader` 后 `WaitForShutdown()`，回调由 Scheduler 触发。
 
-## 2.3 Create* API
+## Create* API
 
 | 方法 | 专题 |
 |------|------|
@@ -59,7 +59,7 @@ Listener：`CreateReader` 后 `WaitForShutdown()`，回调由 Scheduler 触发�
 
 同进程多 Node：用 PID+时间戳后缀避免名冲突（见 `service.cpp`、`action_*.cpp`）。
 
-## 2.4 Component
+## Component
 
 `Init()` 内用已注入的 `node_`，**不要**再 `CreateNode`：
 
@@ -70,7 +70,7 @@ bool Init() override {
 }
 ```
 
-## 2.5 Python
+## Python
 
 ```python
 from autolink_py3 import autolink

@@ -1,38 +1,49 @@
 (async-grpc-bridge-integration)=
 # Bridge 集成
 
-链路：`BridgeOptions` → `BridgeServer` → `Server::Builder` → Handler。
+**链路：** `BridgeOptions` → `BridgeServer` → `grpc::Server` → `RegisterHandlers`。
 
-### 5.1 启动
+改 `BridgeServer` 启动、端口/线程，或接入 `GrpcOptions`。
+
+### 启动（概念）
 
 ```cpp
-Server::Builder b;
-b.SetServerAddress(/* host:port from GrpcOptions */);
-b.SetNumGrpcThreads(o.num_grpc_threads());
-b.SetNumEventThreads(o.num_event_threads());
-b.RegisterHandler</* domain handlers */>();
-grpc_server_ = b.Build();
+// bridge_server.cpp：构造时传入 GrpcOptions + identity + capabilities
+grpc_bridge_ = std::make_unique<grpc::Server>(
+    options_.grpc(), options_.identity(), options_.capabilities());
+grpc_bridge_->Start();
 ```
 
-| 线程 | 职责 |
+Lua / `bridge.pb.txt` 经 `CreateOptions` 填 `BridgeOptions`；字段见 [01 参数](../01_options.md)。
+
+### 线程
+
+| 池 | 配置字段 | 职责 |
+|----|----------|------|
+| CQ | `num_grpc_threads` | 网络 I/O |
+| EQ | `num_event_threads` | Handler 逻辑 |
+| WorkScheduler | `num_worker_threads`（0=自动） | 阻塞 Action 卸荷 |
+
+建议 `num_event_threads` ≥ `num_grpc_threads`。
+
+### Context
+
+运行期共享：`TaskMuxer`、`StateHub`、`DomainBundle`（各 Stub）、`CancelRegistry`。  
+不变量与测试清单：`autonomy/bridge/grpc/DESIGN.md`。
+
+### 构建开关
+
+- 根 CMake **`BUILD_GRPC=ON`**（默认）才编 `autonomy.bridge`。  
+- 关则无 gRPC 端口；`Capabilities` 再全 true 也连不上。
+
+### 接线现状（写文档时请以代码为准）
+
+部分 `Server::Builder` 仍可能硬编码线程数或地址；以 `grpc/server.cpp` 与 [04 gRPC](../04_grpc.md) 为准。联调以 `grpcurl GetCapabilities` 为金标准。
+
+### 常见坑
+
+| 现象 | 说明 |
 |------|------|
-| CQ / EQ | I/O / Handler |
-| WorkScheduler | Action 阻塞卸荷 |
-
-### 5.2 配置映射
-
-| `GrpcOptions` | Builder | 现状 |
-|---------------|---------|------|
-| `host`+`port` | `SetServerAddress` | 待全量接线 |
-| `num_*_threads` | 对应 Setter | 部分硬编码 |
-| SSL / uplink | — | 预留 |
-
-### 5.3 Context
-
-`Context` = Muxer · StateHub · DomainBundle · WorkScheduler。不变量见 `grpc/DESIGN.md`。
-
-### 5.4 Checklist
-
-- [x] 域 Handler 宏与 Stub
-- [ ] `GrpcOptions` 全量传入 Builder
-- [ ] `grpcurl` / `rpc-cli.py` E2E
+| conf 改 port 不生效 | Builder 未接全 GrpcOptions |
+| Handler 在、Stub 未接 Autolink | 命令 ACK 但下游无动作 |
+| 关 BUILD_GRPC 后找 bridge 二进制 | 目标未生成 |

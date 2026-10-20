@@ -1,9 +1,20 @@
 (installation-troubleshooting)=
 # 8. 故障排查
 
-按现象对照；板端专项亦见 [§9.8](09_embedded_board.md)。
+## 背景
 
-### 8.1 依赖安装
+安装、配置、编译、Docker 阶段失败，现象分散（CMake、链接、容器挂载、板端 NFS），需要按阶段查表而不是从头重读全文。
+
+## 思路
+
+先判断阶段（依赖 / configure / 编译 / 容器 / 运行时 / 板端），再对照现象；多数根因是前缀混用、域开关依赖、或未完成 `source setup`。
+
+板端 NFS / glog 专项见 [§9](09_embedded_board.md) 文末。
+
+
+## 步骤
+
+### 1. 依赖安装
 
 | 现象 | 处理 |
 |------|------|
@@ -12,7 +23,7 @@
 | 找不到 Ceres / BT | 对应 `bash docker/install/install_*.sh`，确认在 `/usr/local` |
 | 非 Ubuntu 警告 | 对照脚本 APT 列表自行装等效包 |
 
-### 8.2 CMake 配置
+### 2. CMake 配置
 
 | 现象 | 处理 |
 |------|------|
@@ -27,7 +38,7 @@ rm -rf build && mkdir build && cd build
 cmake -G Ninja .. -DCMAKE_PREFIX_PATH=/usr/local && ninja -j$(nproc)
 ```
 
-### 8.3 编译
+### 3. 编译
 
 | 现象 | 处理 |
 |------|------|
@@ -36,7 +47,7 @@ cmake -G Ninja .. -DCMAKE_PREFIX_PATH=/usr/local && ninja -j$(nproc)
 | protobuf / protoc 版本冲突 | 统一 `/usr/local`；清 build 重配；勿用 `~/grpc` 的 3.14 混 3.19 |
 | submodule 缺失 | `git submodule update --init --recursive` |
 
-### 8.4 Docker
+### 4. Docker
 
 | 现象 | 处理 |
 |------|------|
@@ -46,7 +57,7 @@ cmake -G Ninja .. -DCMAKE_PREFIX_PATH=/usr/local && ninja -j$(nproc)
 | GPU 不可用 | 装 NVIDIA Container Toolkit |
 | Isaac 镜像自动起 Kit | 不要加 `--keep-isaac-entrypoint`（默认已覆盖 entrypoint） |
 
-### 8.5 运行时
+### 5. 运行时
 
 | 现象 | 处理 |
 |------|------|
@@ -56,7 +67,7 @@ cmake -G Ninja .. -DCMAKE_PREFIX_PATH=/usr/local && ninja -j$(nproc)
 | 配置加载失败 | 确认 `config/autonomy.lua` 与 `AUTONOMY_CONFIG_DIR` |
 | autoviz GLX | 容器 Mesa / `xhost +local:docker`；见 Running 文档 |
 
-### 8.6 嵌入式板 / NFS
+### 6. 嵌入式板 / NFS
 
 | 现象 | 处理 |
 |------|------|
@@ -65,7 +76,7 @@ cmake -G Ninja .. -DCMAKE_PREFIX_PATH=/usr/local && ninja -j$(nproc)
 | glog 符号 / 版本混乱 | `--profile board`，purge apt glog，只用 `/usr/local` 0.6 |
 | NFS 上编译极慢 | `-B` 必须在本地盘（如 `~/autonomy_ws/build`） |
 
-### 8.7 获取帮助
+### 7. 获取帮助
 
 | 渠道 | 链接 |
 |------|------|

@@ -1,6 +1,8 @@
 # 10. Perception Base
 
-目录：`autonomy/perception/base/`。共享一套 RGB 加载器，具体任务在 `tasks/<name>/`。权重放 `config/perception/base/`，不进 git。配置用 `proto/base.proto` 里的 `repeated tasks`。
+出 `/perception/base/*` 检测/跟踪/深度话题，或导出 MoGe/YOLO engine。
+
+目录 `autonomy/perception/base/`：共享 RGB 加载，任务在 `tasks/<name>/`。配置 `proto/base.proto` 的 `repeated tasks`；权重在 `config/perception/base/`（不进 git）。
 
 | 任务 | `kind` | 话题 |
 |------|--------|------|
@@ -12,11 +14,24 @@
 | 跟踪 | `TASK_TRACK` | `/perception/base/tracks` |
 | 深度 | `TASK_DEPTH` | `/perception/base/depth` |
 
-深度用 MoGe，样例配置 `config/perception/base/base_depth_moge.pb.txt`。输入 `image [1,3,H,W]`、RGB 归一化到 `[0,1]`，深度大致是 `(points.z + shift) * metric_scale`。
+MoGe 样例：`config/perception/base/base_depth_moge.pb.txt`。深度尺度：$(points.z + shift) * metric_scale$。
 
 ```bash
 XFORMERS_DISABLED=1 python config/perception/base/export_moge_trt.py \
   --pretrained config/perception/base/moge_ckpt/model.pt
 ```
 
-Detect 导出约定：`output0 [1,max_det,6]` = `x1,y1,x2,y2,score,class`。Track 在检测结果上写稳定 `id`。除 MoGe 外，YOLO head 的 decode 绑定还在补，开任务前先确认 engine 已导出。更多细节直接看源码 `base/README.md`。
+Detect 输出约定：`output0 [1,max_det,6]` = x1,y1,x2,y2,score,class。
+
+- 与 **costmap** 无自动连接；跟 MPPI 见 [§11 Follow](11_follow.md)。  
+- 除 MoGe 外，部分 YOLO decode 仍在补；开任务前确认 engine 已导出。  
+- 启动用 base DAG/launch，**不是** `PerceptionServer`。
+
+### 常见坑
+
+| 现象 | 先查 |
+|------|------|
+| 无输出 | 模型路径、task kind、相机 topic |
+| 与 network 文档混读 | Base 已包业务；network 是底层引擎 [§7](07_vision_detection.md) |
+
+细节：`base/README.md`。

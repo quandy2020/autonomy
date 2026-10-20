@@ -1,9 +1,10 @@
 # 9. 启动 Launch
 
-**mainboard**：单进程加载 DAG、拉起 Component。 
-**autolink_launch**：解析 `.launch`、编排多进程。
+车上多进程靠 **`.launch`** 编排；单进程里用 **mainboard + `.dag`** 拉 Component。Autonomy 的 `autonomy.launch` / `task.launch` 都是这一层。
 
-## 9.1 DAG
+`.launch` 描述多进程/多 DAG 编排，`.dag`+mainboard 拉 Component；`autonomy.launch` 与精简 `task.launch` 差别在启哪些 Server。改 launch 前先确认 `AUTOLINK_PATH` 与 working dir，否则找不到 `.so` 或 conf。
+
+## DAG
 
 ```text
 module_config {
@@ -29,7 +30,7 @@ TimerComponent：`timer_components` + `interval`（ms），无 `readers`。
 | `readers[].channel` | 输入 channel |
 | `interval` | Timer 周期（ms） |
 
-## 9.2 Launch XML
+## Launch XML
 
 ```xml
 <autolink>

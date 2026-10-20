@@ -1,64 +1,71 @@
 (localization-usage)=
 # 4. 使用指南
 
-## 4.1 Cartographer
+三条后端共用 `autonomy.localization`，靠 `--localization_mode` 切换。Cartographer 用 Lua 目录；Atlas / Argus 用 yaml + 话题覆盖。
 
-> 完整步骤：[07_cartographer/guide.md](07_cartographer/guide.md)
+## Cartographer
+
+完整步骤：[07_cartographer/guide.md](07_cartographer/guide.md)
 
 | 项 | 值 |
 |----|-----|
 | 配置 | `autonomy/localization/conf/cartographer/` |
-| 二进制 | `autonomy.localization --localization_mode=cartographer` |
-| Launch | `localization.launch` / `cartographer_2d.launch` |
+| Launch | `localization.launch`、`cartographer_2d.launch` 等 |
 
 ```bash
 autonomy.localization \
---localization_mode=cartographer \
---configuration_directory=autonomy/localization/conf/cartographer \
---configuration_basename=autosim_2d.lua \
---save_state_filename=data/maps/cartographer.pbstream
+  --localization_mode=cartographer \
+  --configuration_directory=autonomy/localization/conf/cartographer \
+  --configuration_basename=autosim_2d.lua \
+  --save_state_filename=data/maps/cartographer.pbstream
 ```
 
-## 4.2 Atlas
+纯定位：`--load_state_filename` + `pure_localization_trimmer`（见 Cartographer 指南）。
 
-见 [08_atlas/guide.md](08_atlas/guide.md)。
+## Atlas
+
+见 [08_atlas/guide.md](08_atlas/guide.md)。autosim 纯 LIO 示例：
 
 ```bash
 autonomy.localization \
---localization_mode=atlas \
---atlas_config=src/autonomy/autonomy/localization/atlas/config/autosim_lio.yaml \
---atlas_imu_topic=/imu \
---atlas_lidar_topic=/points
+  --localization_mode=atlas \
+  --atlas_config=src/autonomy/autonomy/localization/atlas/config/autosim_lio.yaml \
+  --atlas_imu_topic=/imu \
+  --atlas_lidar_topic=/points
 ```
 
-## 4.3 Argus
+## Argus
 
-见 [§6](06_argus.md)。离线数据：[Tools §8](../18_Tools/08_datasets.md)。
+见 [06_argus.md](06_argus.md)。离线 bag：[Tools · 数据集](../18_Tools/08_datasets.md)。
 
-## 4.4 与导航栈
+## 与导航栈
 
+```text
+Driver → Localization → TF (map→odom→base) → Planning
+                     → /map（可选）→ Map
 ```
-Driver → Localization (Carto / Atlas / Argus) → TF → Planning
-→ /map → Map（可选）
-```
 
-| 场景 | 推荐 |
+| 场景 | 后端 |
 |------|------|
 | 激光 2D 建图/定位 | Cartographer |
-| 激光 + IMU LIO | Atlas / Argus |
-| 相机 / 多传感器 | Atlas |
+| 激光 + IMU LIO/LIVO | Atlas 或 Argus |
+| 多相机 / RGB-D | Atlas（选对 yaml mission） |
 
-## 4.5 故障排查
+全栈 frame 名与 [Running](../04_Running/00_guide.md) 一致。
+
+## 故障排查
 
 | 现象 | 排查 |
 |------|------|
-| Cartographer 无地图 | 话题名；[Cartographer 排错](07_cartographer/guide.md#9-调参与排错) |
-| Atlas / Argus 无输出 | `--*_topic` 与 yaml 外参 |
+| Cartographer 无 `/map` | Lua `publish_occupancy_grid`；是否 `echoes_*` 而非错 topic |
+| Atlas / Argus 无输出 | `--*_topic`；yaml 外参；LIVO 是否缺图像 |
+| TF 断 | 谁在发 `map→odom`；仿真是否只发 `odom→base` |
+| 找 AMCL | 未合入；2D 激光用 Cartographer 纯定位或 SLAM |
 
 (atlas-lio-resources)=
-## 4.6 资源占用（Atlas LIO）
+## Atlas LIO 资源占用（参考）
 
-测量：`autosim_lio.yaml` + autosim，约 18 min，无 GPU。主机 32 核。
+`autosim_lio.yaml` + autosim，约 18 min，无 GPU，32 核主机：
 
 | 项 | 数值 |
 |----|------|
@@ -66,4 +73,4 @@ Driver → Localization (Carto / Atlas / Argus) → TF → Planning
 | RSS / 峰值 | 1.15 / 1.27 GiB |
 | 线程 | 57 |
 
-采样命令见 [Atlas](08_atlas/guide.md#资源占用)。
+采样命令见 [Atlas 指南](08_atlas/guide.md#资源占用参考)。

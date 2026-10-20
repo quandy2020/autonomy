@@ -1,13 +1,20 @@
 (cartographer-guide)=
 # Cartographer 激光 SLAM
 
+## 背景
+
+**何时用：** 激光（+ 可选 IMU）为主的 2D/3D 建图或纯定位；需要 `.pbstream` / PGM 工作流时。多相机 LIO/LIVO 请转 [Atlas](../08_atlas/guide.md) 或 [Argus](../06_argus.md)。
+
+
+## 步骤
+
 `autonomy/localization/cartographer`：Google Cartographer，经 autolink 提供 2D/3D 建图、纯定位、`/map` 与 `.pbstream`。
 
 > 公式 [§3.12](../03_math.md#312-cartographer)；架构 [§5.2](../05_architecture.md#52-cartographer)。
 
 ---
 
-## 1. 能力与二进制
+### 1. . 能力与二进制
 
 | 能力 | 说明 |
 |------|------|
@@ -24,7 +31,7 @@
 
 ---
 
-## 2. 快速开始（Backpack 2D）
+### 2. . 快速开始（Backpack 2D）
 
 ```bash
 # 1) bag → record
@@ -35,7 +42,7 @@ python -m autonomy.tools.bag_convert \
 # 2) SLAM（内嵌 /map）
 export PATH=$PWD/build/bin:$PATH
 export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
-autolink_launch start cartographer_2d.launch
+autolink launch start cartographer_2d.launch
 
 # 等价：
 # localization \
@@ -60,7 +67,7 @@ autolink_launch start cartographer_2d.launch
 
 ---
 
-## 3. 启动模式
+### 3. . 启动模式
 
 | 场景 | Launch | 配置 | 进程 |
 |------|--------|------|------|
@@ -78,7 +85,7 @@ TRAJECTORY_BUILDER.pure_localization_trimmer = { max_submaps_to_keep = 3 }
 
 ---
 
-## 4. 命令行参数
+### 4. . 命令行参数
 
 | 参数 | 默认 | 说明 |
 |------|------|------|
@@ -93,7 +100,7 @@ Atlas / Argus：[§4](../04_usage.md)。
 
 ---
 
-## 5. 配置
+### 5. . 配置
 
 目录：`config/localization/cartographer/`
 
@@ -119,7 +126,7 @@ Atlas / Argus：[§4](../04_usage.md)。
 
 ---
 
-## 6. 话题与服务
+### 6. . 话题与服务
 
 **订阅**：`scan` / `echoes_*` / `points2` / `imu` / `odom` / `tf`（按 Lua 开关）。
 
@@ -129,7 +136,7 @@ Atlas / Argus：[§4](../04_usage.md)。
 
 ---
 
-## 7. 地图持久化
+### 7. . 地图持久化
 
 ```bash
 # 运行结束写 pbstream
@@ -145,13 +152,13 @@ cartographer_pbstream_to_map \
 
 ---
 
-## 8. 源码要点
+### 8. . 源码要点
 
 `cartographer/node/`：`cartographer_node`、`map_builder_bridge`、`sensor_bridge`、`occupancy_grid_node`、`pbstream_to_map_main`。引擎：`mapping/{2d,3d}`、`io/`、`common/`。
 
 ---
 
-## 9. 调参与排错
+### 9. . 调参与排错
 
 | 现象 | 处理 |
 |------|------|
@@ -165,13 +172,13 @@ cartographer_pbstream_to_map \
 
 ---
 
-## 10. 与 cartographer_ros
+### 10. . 与 cartographer_ros
 
 | 项 | Autonomy |
 |----|----------|
 | 中间件 | autolink + `commsgs` |
 | 配置 | 同 Lua 语义，目录见上 |
-| 启动 | `autolink_launch` |
+| 启动 | `autolink launch` |
 | 数据 | `bag_convert` → `.record` |
 
 官方：[Cartographer 文档](https://google-cartographer.readthedocs.io/)。

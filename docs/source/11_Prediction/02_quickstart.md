@@ -1,13 +1,19 @@
 # 2. 快速开始
 
-### 2.1 可用能力
+若需在单元测试或离线工具里调用运动模型，而不是启动「预测服务」。
 
-| 能力 | 入口 |
+仓库里**能跑起来的**是 `common/motion_model` 单测与示例调用；没有 `prediction_main` 一类可交互服务。
+
+- **不要**按下面 Lua 片段期望车上有预测进程；`prediction.lua` 未接入主配置加载。  
+- Perception→Prediction→Planning 整链**未实现**；检测话题来自 [10 Base](../10_Perception/10_base.md)，与 prediction 无自动连接。
+
+| 需求 | 做法 |
 |------|------|
-| Linear / DiffDrive / Stationary | `common/motion_model/*.hpp` |
-| 卡尔曼 | `common/state_estimation/kalman_filter/` |
+| 验证 CV 传播 | 跑 motion_model 测试 |
+| 车上动态障碍 | costmap + 感知刷新 |
+| 完整预测栈 | 自研或等 Server 落地 |
 
-### 2.2 运动模型示例
+### 运动模型示例
 
 ```cpp
 #include "autonomy/common/motion_model/linear_motion_model.hpp"
@@ -21,31 +27,9 @@ state.Set(2, 0.5); state.Set(3, 0.0);
 State2D predicted = model.predict(state, std::chrono::milliseconds(100));
 ```
 
-### 2.3 未来接入（规划）
+差速、静止模型见 [§6](06_motion_models.md)。
 
-1. 编辑 `config/prediction/prediction.lua`
-2. `autonomy.lua` 设 `prediction = AUTONOMY_PREDICTION`
-3. `options.cpp` 加载；`Autonomy::Start()` 构造 `PredictionServer`
-
-```lua
-AUTONOMY_PREDICTION = {
-    enabled = true,
-    frequency = 10.0,
-    prediction_horizon = 5.0,
-    prediction_dt = 0.1,
-    motion_model = "cv", -- cv | ctrv | diffdrive | stationary
-}
-```
-
-### 2.4 规划数据流
-
-```
-Detection2DArray → 关联 → KF 更新 → MotionModel 多步 → PredictedTrajectory[] → Planning
-```
-
-依赖 [10 Perception](../10_Perception/00_guide.md) 检测输出。
-
-### 2.5 测试
+### 测试目标
 
 ```bash
 ./autonomy.common.motion_model.linear_motion_model_test
@@ -53,4 +37,30 @@ Detection2DArray → 关联 → KF 更新 → MotionModel 多步 → PredictedTr
 ./autonomy.common.motion_model.stationary_motion_model_test
 ```
 
-### 2.6 参见
+（二进制名以构建目录实际产物为准。）
+
+### 预留配置（仅供将来接线参考）
+
+```lua
+-- config/prediction/prediction.lua（当前未挂 AUTONOMY）
+AUTONOMY_PREDICTION = {
+    enabled = true,
+    frequency = 10.0,
+    prediction_horizon = 5.0,
+    prediction_dt = 0.1,
+    motion_model = "cv",
+}
+```
+
+`ctrv` 等字符串在代码中**无**对应实现类。
+
+### 常见坑
+
+| 现象 | 说明 |
+|------|------|
+| 链接 PredictionServer | 构造/析构可能未定义，勿依赖 |
+| 等 `/prediction/*` 话题 | 不存在 |
+
+### 延伸阅读
+
+[§6](06_motion_models.md) · [§4](04_usage.md)

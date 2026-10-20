@@ -1,8 +1,8 @@
 # 6. 参数 Parameter
 
-跨节点键值配置。类似 ROS 2 Parameter Server。
+运行时键值对，类似 ROS 2 Parameter Server。启动期大块算法 conf 仍走各域 `*.pb.txt`（见 [Framework · 配置](../05_Framework/04_configuration.md)）。 Parameter 适合运行时小改（开关 debug、微调系数）；各域大块算法配置仍以 `*.pb.txt` 为主（见 Framework 配置章）。若目标 Server 未暴露 Parameter API，改 pb 后仍需重启对应进程。
 
-## 6.1 角色
+## 角色
 
 | 角色 | 类 | 说明 |
 |------|-----|------|
@@ -11,7 +11,7 @@
 
 服务名通常为 `global_parameter_service`（示例）。
 
-## 6.2 C++
+## C++
 
 ```cpp
 #include "autolink/parameter/parameter_server.hpp"
@@ -30,7 +30,7 @@ client.GetParameter("max_speed", &p);
 |------|------|
 | double / int / bool / string | `Parameter(name, value)` |
 
-## 6.3 配置分工
+## 配置分工
 
 | 类型 | 落点 |
 |------|------|

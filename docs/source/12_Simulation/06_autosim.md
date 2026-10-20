@@ -1,35 +1,42 @@
 # 6. AutoSim
 
-`autosim`：autolink 仿真桥（fake / Habitat / Isaac）。向定位与导航发布 `/imu`、`/points`、相机等。
+用 Autolink 仿真桥给 **Atlas/Argus** 等定位喂 IMU、点云、相机，而不是找 Gazebo。
 
-### 6.1 启动
+`autosim`：fake / Habitat / Isaac 等后端，向栈发布 `/imu`、`/points`、相机与 TF 等。
+
+| 需求 | 对比 |
+|------|------|
+| 要物理碰撞 | Gazebo [§7](07_gazebo_ros.md) |
+| 要 LIO 联调 | AutoSim |
+| 仅导航 costmap | Bridge 注入 `/scan` 即可 |
+
+### 启动
 
 ```bash
-# 仓库内（路径随布局调整）
 CONFIG=src/autonomy/autosim/config/lightning.yaml \
-src/autonomy/autosim/scripts/run.sh sim
+  src/autonomy/autosim/scripts/run.sh sim
 ```
 
-Isaac：用 NVIDIA 容器；`python` 常被 alias 成 Kit，系统工具请用 `/usr/bin/python3`。
+（路径随仓库布局调整。）Isaac 常用 NVIDIA 容器；**勿**用被 Kit alias 的 `python`，系统脚本用 `/usr/bin/python3`。
 
-### 6.2 与定位联调
+### 与定位联调
 
 | 后端 | 配置提示 |
 |------|----------|
-| Atlas LIO | `atlas/config/autosim_lio.yaml`（相机关） |
+| Atlas LIO | `atlas/config/autosim_lio.yaml` |
 | Argus | `localization_argus.launch`；话题对齐 `lio.yaml` |
 
-`config/lightning.yaml` 为 AutoSim 场景配置名，**不是**定位后端。
+`lightning.yaml` 是 **AutoSim 场景名**，不是定位后端名称。
 
-典型话题：`/imu` · `/points` · `/camera/rgb/image_raw` · `/tf`。
+典型话题：`/imu`、`/points`、`/camera/rgb/image_raw`、`/tf`。
 
-### 6.3 目录
+### 常见坑
 
-```text
-autosim/
-├── autosim/ # runtime · backends · bridge
-├── config/ # lightning.yaml · isaac.yaml · …
-└── scripts/run.sh
-```
+| 现象 | 先查 |
+|------|------|
+| 定位无点云 | run.sh 是否 sim、yaml topic |
+| 找 Lightning 定位 | 已移除 |
 
-定位步骤：[Atlas](../06_Localization/08_atlas/guide.md) · [Argus](../06_Localization/06_argus.md)。
+### 延伸阅读
+
+[Atlas](../06_Localization/08_atlas/guide.md) · [Argus](../06_Localization/06_argus.md)

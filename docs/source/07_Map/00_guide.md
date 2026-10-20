@@ -1,15 +1,43 @@
-(map-guide)=
-# 0. Map 地图模块指南
+# 0. Map 指南
 
-`autonomy/map`：静态 OccupancyGrid、Costmap2D（规划/避障）、GridMap（2.5D 地形）。对齐 nav2_costmap_2d 与 ETH grid_map。
+## 背景
 
-流水线：SLAM / 静态地图 → MapServer → Costmap2D → Planning / Control；GridMap 2.5D 并行。
+规划超时、穿墙、脚下全是障碍——很多不是 planner 坏了，而是 **Costmap2D 图层、膨胀或坐标约定** 不对。本章讲静态栅格、Costmap2D（规划/避障）、GridMap（2.5D）；实现思路接近 nav2_costmap_2d 与 ETH grid_map。
 
----
+## 思路
 
-## 0.2 快速开始
+日常流水线：
 
-**Costmap2D**（经 PlannerServer）：在 `planner.lua` 配 `costmap` 块；`autonomy.lua` 挂 `planning`；MapServer 发 `/map` 或 `static_layer` 订阅。
+```text
+SLAM / 静态地图 → MapServer → Costmap2D → Planning / Control
+GridMap（高程等）可并行，不替代 2D costmap
+```
+
+- **规划真正吃的是 Costmap2D**：静态图 `static_layer`，激光 `obstacle_layer`，膨胀 `inflation_layer`。  
+- **坐标系**：Costmap2D 原点在左下角；GridMap 常以中心为原点（见 [03](03_costmap2d.md) / [04](04_grid_map.md)）。  
+- **代价值**：0 自由，254 致命，255 未知。  
+- 全局 costmap 常写在 planner 侧 conf；改一处要确认进程是否加载同一份。
+
+
+## 步骤
+
+### 1. 按问题选页
+
+| 文档 | 解决什么 |
+|------|----------|
+| [01 架构](01_architecture.md) | MapServer / Costmap / GridMap 边界 |
+| [02 组件](02_map_components.md) | 模块清单 |
+| [03 Costmap2D](03_costmap2d.md) | 图层、代价值、API（最常翻） |
+| [04 GridMap](04_grid_map.md) | 2.5D、与 Follow 的关系 |
+| [05 综述](05_survey.md) | 选型与对照 |
+
+**穿墙 / 贴边** → [03](03_costmap2d.md) 膨胀与图层。  
+**跟人 / 2.5D** → [04](04_grid_map.md) + [Perception · Follow](../10_Perception/11_follow.md)。  
+**静态地图不更新** → MapServer 与 `map_topic`。
+
+### 2. Costmap2D 最短配置
+
+在 planner 配置里典型长这样：
 
 ```lua
 costmap = {
@@ -20,7 +48,9 @@ costmap = {
     static_layer = { enabled = true, map_topic = "map" },
     obstacle_layer = {
         enabled = true,
-        sensor_sources = { scan = { topic = "scan", data_type = "LaserScan", marking = true, clearing = true } },
+        sensor_sources = {
+            scan = { topic = "scan", data_type = "LaserScan", marking = true, clearing = true },
+        },
     },
     inflation_layer = { enabled = true, inflation_radius = 0.35, cost_scaling_factor = 3.0 },
 }
@@ -31,51 +61,14 @@ auto costmap = std::make_shared<Costmap2DWrapper>(CreateCostmap2DOptions("config
 costmap->Start();
 ```
 
-**MapServer** / **GridMap**：`MapServer::Start()`；`GridMapWrapper` 由应用层写 `elevation`（无自动传感器管线）。
+验证：`HasStaticMap()` / `isCurrent()`；自由格约 0、障碍约 254。
 
-验证：`HasStaticMap()` · `isCurrent()` · 自由≈0、障碍≈254。
+### 3. 常见坑
 
----
-
-## 0.3 坐标与代价值
-
-| — | Costmap2D | GridMap |
-|--|-----------|---------|
-| 原点 | 左下角 | **中心** |
-| 数值 | uint8 0–255 | float / NaN |
-
-| 值 | 含义 |
-|----|------|
-| 0 | FREE |
-| 1–252 | 膨胀梯度 |
-| 253 / 254 | INSCRIBED / LETHAL |
-| 255 | UNKNOWN |
-
-公式：[§3.5–§3.8](03_costmap2d.md) · [§4.6](04_grid_map.md)。
-
----
-
-## 0.5 API 要点
-
-| API | 时机 |
-|-----|------|
-| `Start()` / `feedLaserScan` / `applyOccupancyGrid` | 启动与传感器 |
-| `getCostmap()` + lock 复制 | 规划前 |
-| `isReady()` / `isCurrent()` | 规划前检查 |
-
-自定义图层：继承 `CostmapLayer`，`.so` + `plugins` 列表。排错见下。
-
----
-
-## 0.7 故障排查
-
-| 现象 | 处理 |
+| 现象 | 先查 |
 |------|------|
 | `PlannerTimedOut` | `update_frequency`、`isCurrent()` |
-| 穿墙 | 增大 `inflation_radius` |
+| 穿墙 | `inflation_radius`、图层是否启用 |
 | 脚下为障 | `footprint_clearing_enabled` |
-| 全未知 | MapServer / `map_topic` |
-| 坐标偏 | `frame_id` / TF |
-| GridMap NaN | 写入与 `move()` 后 buffer |
-
-性能：全局 ≤2048² · 更新 ~5 Hz · 规划复制 char map。
+| 全未知 | MapServer 是否在发 `/map` |
+| GridMap 全 NaN | 是否有人写入 elevation；`move()` 后 buffer |

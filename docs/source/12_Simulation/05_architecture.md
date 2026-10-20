@@ -1,51 +1,52 @@
 # 5. Simulation 架构
 
-### 5.1 实现状态
+理解仿真数据从哪进栈、cmd_vel 从哪出；**不是**找 `SimulationServer` 进程。
 
-| 组件 | 状态 |
+描述 **多进程 Autonomy + 外部物理/Bridge** 的常见拓扑。仓库内无 `autonomy/simulation/` 统一模块。
+
+| 能力 | 说明 |
 |------|------|
-| 多进程 + Bridge | — |
-| Vehicle / KinematicsControl | / |
-| Stage 资源 / Gazebo 外部包 | / |
-| `autonomy/simulation/`、`nav_test` | — |
+| `autolink_launch autonomy.launch` | 规划/控制/任务等多进程，传感器靠 Bridge 或录包注入 |
+| AutoSim | Autolink 仿真桥，见 [§6](06_autosim.md) |
+| Gazebo + autonomy_ros | 外部 ROS 包，见 [§7](07_gazebo_ros.md) |
+| `vehicle/` + `KinematicsControl` | 限幅与接口；`ApplyCommand` 当前多仅缓存 |
+| `map/conf/simulation/` | Stage 风格 world 资源，**无** C++ Stage 客户端读 AUTONOMY_SIMULATION |
+| `SimulationServer`（文档旧名） | **未实现** |
+| `autonomy_nav_test` | 已移除 |
 
-### 5.2 分层
+| 场景 | 路径 |
+|------|------|
+| CI / 栈联调 | launch + Bridge |
+| 要激光相机模型 | Gazebo 或 AutoSim |
+| 只测限幅 | vehicle + KinematicsControl |
+
+### 分层
 
 | 层 | 组件 |
 |----|------|
 | 应用 | Task / Planning / Control |
-| 多进程 | `autonomy.launch`（planning、control、task） |
-| 外部 | Gazebo / Stage / Bridge（physics、scan、odom） |
-| 桥接 | `autonomy.bridge` / `autonomy_ros` / `VehicleInterface` |
+| 进程 | `autonomy.launch` 拆分的 bin |
+| 外部 | Gazebo、AutoSim、Bridge（odom、scan、TF） |
+| 桥接 | `autonomy.bridge`、autonomy_ros、`VehicleInterface` |
 
-### 5.3 数据流
+### 数据流
 
-```
-ControllerServer ──cmd_vel──→ Bridge/ROS ──→ Gazebo
-↑ │
-└──── /odom, /scan, TF ←────────┘
-```
-
-无物理时：Bridge 注入 odom/TF；Action → `autonomy.task`。
-
-### 5.4 SimulationServer（规划）
-
-```cpp
-class SimulationServer {
-    void Step(double dt);
-    void SetCommand(Twist cmd);
-    Odometry GetOdometry() const;
-    void LoadWorld(const SimulationOptions& opts);
-};
+```text
+ControllerServer ── cmd_vel ──→ Bridge / ROS ──→ Gazebo 或 AutoSim
+        ↑                              │
+        └──── /odom, /scan, TF ←───────┘
 ```
 
-### 5.5 路线图
+无物理时：Bridge 注入 odom/TF；任务目标经 Action / gRPC。
 
-| 阶段 | 内容 |
+### 常见坑
+
+| 误解 | 事实 |
 |------|------|
-| P0 | 多进程 + Bridge 文档/示例 |
-| P1 | Vehicle 接仿真后端 |
-| P2 | Stage/Gazebo 统一封装 |
-| P3 | Habitat/Isaac（可选） |
+| cave.world 会自动跑 | 只是地图资源，需外部仿真器 |
+| Lua AUTONOMY_SIMULATION 已读 | 无 SimulationServer 加载 |
+| 仿真=单进程 GUI | 仍是多 bin + 外部源 |
 
-### 5.6 参见
+### 延伸阅读
+
+[§9 综述](09_survey.md) · [§4 用法](04_usage.md)

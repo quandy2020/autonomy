@@ -1,76 +1,55 @@
 # 8. 导航与规划消息
 
-### 8.1 planning_msgs
+发 Path、调 NavigateToPose Action，或解析 error_code。
 
-| 类型 | 字段 | 转换 |
+planning_msgs 承载路径与里程计；nav 相关 **Action/Service 在 proto**，C++ 侧常用 `commsgs::proto::nav_msgs::*`。
+
+| 需求 | 消息 |
+|------|------|
+| 显示/检查路径 | Path |
+| BT 导航 | NavigateToPose Action |
+| 检测框 | Detection2DArray |
+| RViz Marker | 先确认 visualization 转换是否 stub |
+
+### planning_msgs
+
+| 类型 | 组成 | 转换 |
 |------|------|------|
-| `Path` | header + `poses[]` | — |
-| `Odometry` | header、child_frame_id、pose、twist | — |
-| `Goals` | header + goals[] | — |
+| `Path` | header + poses[] | 完整 |
+| `Odometry` | header, child_frame_id, pose, twist | 完整 |
+| `Goals` | header + goals[] | 视实现 |
 
-### 8.2 nav_msgs
+### nav_msgs
 
-**C++**：`SpeedLimit`（percentage / speed_limit）。
+**C++ struct：** 主要是 `SpeedLimit`（percentage / speed_limit）。
 
-**Service（proto）**：
+**Service（proto）：** 如 `IsPathValid`（path + max_cost → is_valid）。
 
-| Service | Request → Response |
-|---------|-------------------|
-| `IsPathValid` | path, max_cost → is_valid, invalid_pose_indices |
-| `ClearEntireCostmap` | 空 → 空 |
-
-**Action（proto）**：统一 `Goal`/`Feedback`/`Result`（含 error_code）。
+**Action（proto）：** 统一 Goal / Feedback / Result（含 error_code）。
 
 | Action | Goal 要点 |
 |--------|-----------|
 | NavigateToPose / ThroughPoses | pose(s)、behavior_tree |
 | FollowPath | path、controller_id |
 | ComputePathToPose / ThroughPoses | start、goal(s)、planner_id |
-| SmoothPath | path、smoother_id |
-| FollowWaypoints | poses |
-| Spin / BackUp / DriveOnHeading / Wait | yaw/x/speed/Duration |
-| AssistedTeleop / DummyBehavior | time_allowance / — |
+| Spin / BackUp / Wait 等 | 各行为参数字段 |
 
-另：`WaypointStatus`。
+### error_code
 
-### 8.3 error_code
+定义在 `error_code.proto`（仅 proto）。例：`OK=0`、`PLANNING_NO_PATH_FOUND=6007`、`MAP_NOT_READY=7003`。Action Result 里常带错误码字段。
 
-仅 proto。常用：`OK=0`、`PLANNING_NO_PATH_FOUND=6007`、`CONTROL_*`、`TASK_*`、`MAP_NOT_READY=7003`。完整见 `error_code.proto`。
+### vision_msgs / visualization_msgs
 
-### 8.4 vision_msgs
+| 包 | 说明 |
+|----|------|
+| vision_msgs | Detection2D/3D、BoundingBox*；Perception base 输出相关 |
+| visualization_msgs | Marker 等；**ToProto 多为 stub**，见 [§9](09_survey.md) |
 
-| 类型 | 组成 |
-|------|------|
-| BoundingBox2D/3D | center + size |
-| Detection2D/3D(+Array) | header + bbox + results + id |
-| Classification / VisionClass / LabelInfo | class_id、score、name |
+### 其他包（低优先）
 
-### 8.5 visualization_msgs
+trajectory_msgs、diagnostic_msgs：stub。shape_msgs：命名空间历史问题。vehicle_msgs / pcl_msgs：占位。
 
-| 类型 | 说明 |
-|------|------|
-| `Marker` | ns/id/type/action/pose/scale/color/points/text/lifetime |
-| Marker type | ARROW=0 … TEXT_VIEW_FACING=9 |
-| 其他 | MarkerArray、InteractiveMarker*、ImageMarker、MeshFile |
-
-ToProto：**stub**。
-
-### 8.6 其他包
-
-| 包 | 类型 | 备注 |
-|----|------|------|
-| trajectory_msgs | JointTrajectory* | stub |
-| diagnostic_msgs | DiagnosticStatus/Array | stub |
-| shape_msgs | SolidPrimitive、Mesh、Plane | 命名空间 bug |
-| vehicle_msgs / pcl_msgs | 空/占位 | — |
-
-### 8.7 选择与 Action 示例
-
-| 需求 | 消息 |
-|------|------|
-| 路径 / 单点目标 | Path / PoseStamped |
-| 导航 Action | NavigateToPose 等 |
-| 检测 / 可视化 | Detection2DArray / Marker |
+### Action 调用示例
 
 ```cpp
 using ActionT = commsgs::proto::nav_msgs::NavigateToPoseAction;
@@ -78,6 +57,14 @@ using ActionT = commsgs::proto::nav_msgs::NavigateToPoseAction;
 client->SendGoal(goal, on_result, on_feedback);
 ```
 
-### 8.8 参见
+### 常见坑
 
-- [§3.9 错误码](03_schema.md) · [§4](04_usage.md) · [13 Visualization](../13_Visualization/00_guide.md)
+| 现象 | 说明 |
+|------|------|
+| Action 编译不过 | 包含 `proto/nav_msgs.pb.h` |
+| Result 错误码未读 | 看 Result proto 字段 |
+| Path frame 错 | header.frame_id 应为 map 等 |
+
+### 延伸阅读
+
+[§3 错误码段](03_schema.md) · [13 Visualization](../13_Visualization/00_guide.md)

@@ -1,10 +1,17 @@
 # 7. 环境配置
 
-编译完成后，**每个新终端**先加载环境，再运行 `autolink` / 各 `autonomy.*`。
+## 背景
 
----
+编过之后，**每个新终端**若不 `source`，会出现找不到 `.so`、launch 搜不到 dag、`autolink` 不在 PATH 等现象。
 
-### Step 1 — 选择哪份 setup
+## 思路
+
+在运行任何 `autolink` / `autonomy.*` 前，先选与当前用法匹配的 setup（开发用 `build/` 或 install 到 `/usr/local`），必要时用 `AUTONOMY_BUILD_DIR` 指向非默认 build。
+
+
+## 步骤
+
+### 1. 选择哪份 setup
 
 | 场景 | 命令 |
 |------|------|
@@ -29,9 +36,7 @@ source $HOME/autonomy/scripts/setup_environment.bash
 # source /usr/local/share/autonomy/setup.bash
 ```
 
----
-
-### Step 2 — 确认生效
+### 2. 确认生效
 
 ```bash
 echo "$AUTONOMY_PATH"
@@ -41,9 +46,7 @@ echo "$AUTOLINK_LAUNCH_PATH" | tr ':' '\n' | head
 
 `PATH` 应优先指向你打算用的 `bin`（install 后不要让旧的 `build/bin` 盖住 `/usr/local/bin`）。
 
----
-
-### Step 3 — 常用覆盖（可选）
+### 3. 常用覆盖（可选）
 
 在 `source` **之前**设置：
 
@@ -64,9 +67,7 @@ export GLOG_log_dir=${HOME}/.autonomy/log
 
 跨机 RTPS 时再改 `AUTOLINK_IP` / `AUTOLINK_DISCOVERY_SERVER`（见 Communication · FastDDS）。
 
----
-
-### Step 4 — 跑起来
+### 4. 跑起来
 
 ```bash
 source scripts/setup_environment.bash

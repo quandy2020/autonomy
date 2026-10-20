@@ -1,8 +1,10 @@
 # 8. 日志 Log
 
-两层：应用宏（`autolink/common/log.hpp`）+ 异步落盘（`AsyncLogger`）。`Init()` 初始化 glog 并注册 `async_log` 线程。
+`AINFO` / `AWARN` 等宏怎么用、`GLOG_*` 怎么设。`Init()` 会初始化 glog 并挂异步落盘线程。
 
-## 8.1 宏
+日志依赖 `Init()` 完成的 glog 与异步落盘线程；控制环排障时用 `GLOG_v` 压低框架噪声、抬高业务模块。关键状态不要只依赖日志尾行——高频率 channel 或 metrics 更可靠。
+
+## 宏
 
 ```cpp
 #include "autolink/autolink.hpp"
@@ -21,7 +23,7 @@ ADEBUG << "debug detail"; // 需 GLOG_v≥4
 
 自定义模块名：`#define MODULE_NAME "planning"` 后再 `#include` log.hpp。Autonomy 层见 `autonomy/common/logging.hpp`。
 
-## 8.2 GLOG
+## GLOG
 
 | 变量 | 含义 |
 |------|------|
@@ -32,6 +34,6 @@ ADEBUG << "debug detail"; // 需 GLOG_v≥4
 
 落盘路径形如：`$GLOG_log_dir/{module}.log.INFO.{timestamp}.{pid}`。
 
-## 8.3 回调内日志
+## 回调内日志
 
 热路径勿每帧 `AINFO`；用 `AINFO_EVERY(n)` 或降到 `ADEBUG`。

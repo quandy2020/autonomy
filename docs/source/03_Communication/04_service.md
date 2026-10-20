@@ -1,8 +1,8 @@
 # 4. 服务 Service
 
-同步请求–响应 RPC。类似 ROS 2 Service。
+一次性请求–响应 RPC，类似 ROS 2 Service。适合查询状态、短计算，不适合长时导航任务（用 Action）。 Service 适合一次性、可阻塞完成的请求–响应（查状态、触发短计算）。长时、可取消、需要周期 feedback 的导航子步骤应走 Action，避免把 FollowPath 类逻辑塞进 Service。
 
-## 4.1 流程
+## 流程
 
 ```text
 Client.SendRequest(req) → 传输 → Server handler → 返回 Response
@@ -16,7 +16,7 @@ Client.SendRequest(req) → 传输 → Server handler → 返回 Response
 
 同进程演示用不同 Node 名（PID 后缀），见 `examples/cpp/service.cpp`。
 
-## 4.2 C++ 示例
+## C++ 示例
 
 ```cpp
 auto server = server_node->CreateService<Driver, Driver>(
@@ -31,7 +31,7 @@ auto client = client_node->CreateClient<Driver, Driver>(service_name);
 auto resp = client->SendRequest(req);
 ```
 
-## 4.3 Python
+## Python
 
 ```python
 def callback(data):

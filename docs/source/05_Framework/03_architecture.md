@@ -1,6 +1,8 @@
 # 3. 框架架构
 
-## 3.1 分层
+Server、插件、commsgs 与 autolink 怎么叠在一起。改导航链路或加 Server 时读这一页。
+
+## 分层
 
 ```text
 进程层：autolink_launch · autonomy.launch → 各 *_main
@@ -12,7 +14,7 @@ Server 层：Map · Planner · Controller · Transform · Task
 基础层：commsgs · autolink · common
 ```
 
-## 3.2 启动顺序
+## 启动顺序
 
 ```mermaid
 sequenceDiagram
@@ -32,7 +34,7 @@ T-->>C: FollowPath
 
 各进程独立加载 conf，非进程内一次装配。见 [04 Running §3](../04_Running/03_autonomy_process.md)。
 
-## 3.3 导航数据流
+## 导航数据流
 
 ```text
 Bridge / Action Client → task
@@ -40,7 +42,7 @@ Bridge / Action Client → task
 → FollowPath → control → cmd_vel → 底盘 / 仿真
 ```
 
-## 3.4 线程
+## 线程
 
 | 组件 | 策略 |
 |------|------|
@@ -49,7 +51,7 @@ Bridge / Action Client → task
 | Autolink 回调 | Scheduler 协程 / 线程池 |
 | BT tick | task 内 `tickOnce` |
 
-## 3.5 与 Autolink 边界
+## 与 Autolink 边界
 
 | 层 | 职责 |
 |----|------|

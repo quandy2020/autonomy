@@ -1,40 +1,47 @@
 # 4. 配置说明
 
-文件：`config/visualization/visualization.lua`。**未**被 `autonomy.lua` 引用，无 `LoadOptions`。
+仓库里看到 `visualization.lua`，想知道改它会不会影响运行——**默认不会**。
 
-### 4.1 服务器与开关
+记录 `config/visualization/visualization.lua` 里**预留**的 WebSocket/Foxglove 风格字段，供将来若有原生可视化进程时使用。
 
-| 字段 | 默认 | 说明 |
+- 该文件 **未被** `autonomy.lua` include，C++ 侧 **无** `LoadOptions("visualization")`。  
+- 改 `host`/`port`/`topic_subscriptions` **不会**改变当前 Autoviz/Foxglove/RViz 行为。  
+- Docker 映射 **8765** 是为 **foxglove_bridge**（ROS），不是未实现的 VisualizationServer。
+
+怎么选调试手段：
+
+| 需求 | 用啥 |
+|------|------|
+| 本机 Autolink 桌面 | [Autoviz](09_autoviz.md) |
+| 浏览器 WS | foxglove_bridge + [§6](06_foxglove.md) |
+| ROS RViz | [§7](07_rviz2_ros2.md) |
+| 改 visualization.lua 立刻生效 | **不支持** |
+
+### 文件内字段（参考）
+
+| 字段 | 默认 | 含义 |
 |------|------|------|
-| `server_name` | `"AutonomyViewer"` | 服务名 |
-| `host` / `port` | `0.0.0.0` / `8765` | WebSocket（对齐 Docker） |
-| `enable_client_publish` | true | 反向发布 |
-| `enable_connection_graph` | true | 连接图 |
-| `enable_autolink` | true | 订阅 Autolink 转发 |
+| `server_name` | `"AutonomyViewer"` | 预留服务名 |
+| `host` / `port` | `0.0.0.0` / `8765` | 与 Foxglove 常用端口对齐 |
+| `enable_autolink` 等 | true | 预留转发开关 |
 
-### 4.2 topic_subscriptions
+`topic_subscriptions` 里列了 `/planning/path`、`/map` 等示例名；实际栈里可能是 `/plan`、`map`，以 [common.lua](../05_Framework/04_configuration.md) 与 launch 为准。
 
-| topic | message_type | enabled |
-|-------|--------------|---------|
-| `/sensor/lidar` | LaserScan | — |
-| `/planning/path` | Path | — |
-| `/localization/odometry` | Odometry | — |
-| `/map` | OccupancyGrid | — |
-| `/sensor/camera` | Image | — |
-| `/sensor/pointcloud` | PointCloud2 | — |
-| `/sensor/imu` | Imu | — |
-| `/visualization/markers` | MarkerArray | — |
-| `/localization/pose` | PoseStamped | — |
-
-注意：地图可能为 `map` 而非 `/map`；ROS 路径常为 `/plan`。统一见 `config/common.lua`。
-
-### 4.3 接入（规划）
+### 若将来接入（未做）
 
 ```lua
+-- 仅为规划片段，当前仓库未启用
 include "visualization/visualization.lua"
 AUTONOMY = { visualization = AUTONOMY_VISUALIZATION }
 ```
 
-### 4.4 参见
+### 常见坑
 
-- [§5](05_architecture.md) · [05 Framework · 配置](../05_Framework/04_configuration.md)
+| 误解 | 事实 |
+|------|------|
+| 8765 没人听 = Server 挂了 | 可能未起 bridge，或 lua 本就不加载 |
+| 配了订阅列表就有数据 | 无进程读该 lua |
+
+### 延伸阅读
+
+[§5 架构](05_architecture.md) · [§6 Foxglove](06_foxglove.md)

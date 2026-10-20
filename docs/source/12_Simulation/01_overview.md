@@ -1,49 +1,43 @@
 (simulation-overview)=
 # 1. 模块概览
 
-| 维度 | 说明 |
+选 AutoSim、Gazebo 还是纯 Bridge 注入，先看清仓库里仿真能力散在哪。
+
+用软件代替真机，发出 **odom / TF / scan（及可选图像）**，让 Map → Planning → Control → Task 在无硬件时运行；控制仍发 `cmd_vel`。
+
+| 方式 | 依赖 | 适合 |
+|------|------|------|
+| launch + Bridge | Autolink | 栈联调、CI |
+| AutoSim | 脚本 / 可选 GPU | 定位（Atlas/Argus） |
+| Gazebo | ROS 2 | 物理 + 传感器 |
+| Stage 资源 only | 外部 Player | 仅当你自有客户端 |
+
+```text
+仿真 / Bridge → odom · TF · scan → planning / control / task
+cmd_vel ← control；目标 ← Bridge / Action
+```
+
+话题名、外参与 **localization conf** 一致；Isaac 环境系统 Python 用 `/usr/bin/python3`。`config/lightning.yaml` 是 AutoSim **场景名**，不是定位后端。
+
+### 仓库里有什么
+
+| 路径 | 作用 |
 |------|------|
-| 输入 | `cmd_vel`、世界配置、初始位姿 |
-| 输出 | `odom`、TF、`/scan`、图像（视后端） |
-| 用途 | 无硬件验证 Map → Planning → Control → Task |
-| 类似 | Gazebo、Stage、Webots、Isaac Sim |
+| [AutoSim](06_autosim.md) | Autolink 仿真桥（fake / Habitat / Isaac） |
+| [Gazebo + autonomy_ros](07_gazebo_ros.md) | 外部 ROS 2 包 |
+| `vehicle/` | `VehicleInterface`、`KinematicsControl` 限幅 |
+| `map/conf/simulation/` | Stage 风格 world（如 cave.world） |
+| Autolink 仿真时间 | 单测、mock |
 
-### 1.2 现状
+**没有** `autonomy/simulation/` 统一目录；**没有** `SimulationServer`；`autonomy_nav_test` 已删。
 
-| 能力 | 状态 | 说明 |
-|------|------|------|
-| 多进程 + 外部仿真 | — | `autolink_launch` + Gazebo/Bridge |
-| `vehicle::Vehicle` | — | 接口就绪，`ApplyCommand` 待接 |
-| `KinematicsControl` | — | 速度/加速度限幅 |
-| Gazebo | 外部 | `autonomy_gazebo` + `autonomy_ros` |
-| Stage 配置 | — | `map/conf/simulation/` |
-| Autolink `MODE_SIMULATION` | — | mock 时间 |
-| `autonomy/simulation/` | — | 无专用目录 |
-| `autonomy_nav_test` | — | 已移除 |
+### 常见坑
 
-### 1.3 相关路径
+| 现象 | 说明 |
+|------|------|
+| cave.world 双击无反应 | 需 Stage/Gazebo 等外部程序 |
+| AUTONOMY_SIMULATION Lua | 无 C++ 读取 |
 
-```
-autonomy/vehicle/ # VehicleInterface, KinematicsControl
-autonomy/map/conf/simulation/ # cave.world, cave.png
-autonomy/system/launch/autonomy.launch
-# 外部：autonomy_ros / autonomy_gazebo
-```
+### 延伸阅读
 
-### 1.4 方式对比
-
-| 方式 | 依赖 | 适用 |
-|------|------|------|
-| 多进程 + Bridge | 无 ROS（可） | 栈联调、发令 |
-| Gazebo | ROS2 + Gazebo | 物理 + 传感器 |
-| Stage | Player/Stage | 轻量 2D（规划） |
-| Autolink 仿真模式 | Autolink | 回放、单测 |
-
-### 1.5 数据流
-
-```
-外部仿真/Bridge → odom/TF/scan → planning/control/task
-cmd_vel ← control；目标 ← Bridge/Action → task
-```
-
-### 1.6 参见
+[00 指南](00_guide.md)

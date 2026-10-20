@@ -1,35 +1,39 @@
 # 2. 全局规划器算法
 
-三种插件均在 Costmap2D 快照上运行。形式化 [§0.3](00_guide.md)；选型 [§6](06_survey.md)。
+三种插件都在 **Costmap2D 快照** 上搜索，输出 `Path`。形式化与 NavFn 起终点对调约定见各专题页；对照 [06 综述](06_survey.md)。
 
-### 2.1 一览
+按「问题 → 算法族 → 插件 id → conf 字段」阅读；默认项以代码注册为准。
 
-| ID | 策略 | 几何 | 文档 |
-|----|------|------|------|
-| `navfn_planner` | 势场 φ，可选 A* | 网格+梯度 | [§3](03_navfn.md) |
-| `dijkstra_planner` | NavFn，$h\equiv0$ | 同上 | [§4](04_dijkstra.md) |
-| `theta_star_planner` | A* + LOS | 任意角折线 | [§5](05_theta_star.md) |
+| 插件 ID | 做法 | 路径形态 | 专题 |
+|---------|------|----------|------|
+| `navfn_planner` | 势场，可选 A* | 网格 + 梯度跟踪 | [03](03_navfn.md) |
+| `dijkstra_planner` | NavFn，$h\equiv 0$ | 同上 | [04](04_dijkstra.md) |
+| `theta_star_planner` | A* + LOS | 任意角折线 | [05](05_theta_star.md) |
 
-```
-GlobalPlanner → NavfnPlanner → DijkstraPlanner
-→ ThetaStarPlanner
-```
+继承：`GlobalPlanner` → `NavfnPlanner` → `DijkstraPlanner`；Theta* 独立实现。
 
-### 2.2 对比
+## 对比（选型）
 
-| — | NavFn | Dijkstra | Theta* |
+| | NavFn | Dijkstra | Theta* |
 |--|-------|----------|--------|
-| 启发式 | 可选 | 无 | $\|n-q_g\|_2$ |
-| 路径 | 中（锯齿） | 同左 | 短 |
-| 算力 | 快 | 快 | 中（LOS） |
-| 场景 | 默认室内 | 基线 | 开阔 |
+| 启发式 | 可选 A* | 无 | 到目标欧氏 |
+| 路径形状 | 易锯齿 | 类似 NavFn | 通常更短更直 |
+| 算力 | 低 | 低 | 中（LOS 检查） |
+| 终点在障附近 | 有容差搜索 | 同 NavFn | **无** 容差，$q_g$ 须可通行 |
 
-### 2.3 选型
+## 怎么选
 
-| 场景 | 推荐 |
+- 默认室内：`navfn_planner`。
+- 地图大、传播慢：NavFn 开 `use_astar=true`。
+- 开阔区域、想要更直路径：`theta_star_planner`；窄走廊改 4-连通防切角。
+- CI / 回归基线：`dijkstra_planner`。
+
+流水线共性：复制 costmap → 搜索 → 提取 pose 序列 → 可选 PathSimplifier / SimpleSmoother。
+
+## 常见坑
+
+| 现象 | 先查 |
 |------|------|
-| 通用室内 | `navfn_planner` |
-| 大地图 | `navfn` + `use_astar` |
-| 短路径 | `theta_star`（窄廊可用 4-连通） |
-
-流水线：复制 → 搜索 → 提取 → 可选平滑。
+| 三种都 NO_PATH | 起点/终点在 LETHAL；static 未加载 |
+| Theta* 失败 NavFn 成功 | 目标格不可通行或 unknown 策略更严 |
+| 换 id 无效 | `default_planner_id` 与 `planner_plugins` 字符串 |

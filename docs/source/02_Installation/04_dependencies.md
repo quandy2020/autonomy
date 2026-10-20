@@ -1,9 +1,12 @@
 # 4. 依赖安装
 
-**唯一推荐入口**（与 Dockerfile / CMake 预期对齐）：
+第三方库装错前缀或与 apt 版 protobuf/glog 混用，会导致 CMake 通过但链接或运行时崩溃。需要与 Dockerfile / CMake 对齐的**单一安装入口**和 profile 选择。
+
+全程只用一个前缀（默认 `/usr/local`），由 `scripts/install_dependencies.py` 按 profile 顺序调用 `docker/install/*.sh`；板端用 `board` profile 并 purge 冲突 apt 包。
+
+唯一推荐入口（在源码根）：
 
 ```bash
-# 在源码根执行
 python3 scripts/install_dependencies.py --skip-installed
 ```
 
@@ -14,9 +17,7 @@ python3 scripts/install_dependencies.py --skip-installed
 
 实现目录 `scripts/install_deps/` 也可：`cd scripts && python3 -m install_deps …`（无 `--profile`）。日常请用上面的 `install_dependencies.py`。
 
----
-
-### 4.1 常用命令
+## 常用命令
 
 ```bash
 # 完整（跳过已检测到的库）
@@ -53,9 +54,7 @@ AUTONOMY_MAKE_JOBS=2 bash docker/install/install_ceres_solver.sh # 内存紧
 AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 ```
 
----
-
-### 4.2 第三方脚本顺序（`full` / `board` 共用核心）
+## 第三方脚本顺序（`full` / `board` 共用核心）
 
 默认安装到 **`/usr/local`**（可用 `--prefix` / `AUTONOMY_INSTALL_PREFIX` 覆盖，全程只用一个前缀）：
 
@@ -76,9 +75,7 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 
 > BehaviorTree.CPP 为 Navigator BT 模式所需。板端会 purge 冲突的 apt 版 glog/protobuf/grpc，避免 ABI 混用。
 
----
-
-### 4.3 安装路径
+## 安装路径与 CMake
 
 默认：
 
@@ -92,9 +89,7 @@ AUTONOMY_INSTALL_PREFIX=/opt/autonomy bash docker/install/install_glog.sh
 
 CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。勿混用 `~/grpc` / `~/.local` 与系统前缀——混前缀会坏 RPATH / ABI。
 
----
-
-### 4.4 可选能力
+## 可选能力
 
 | 组件 | 安装 | CMake |
 |------|------|-------|
@@ -103,9 +98,7 @@ CMake：`-DCMAKE_PREFIX_PATH=<同一前缀>`。勿混用 `~/grpc` / `~/.local` �
 | ONNX | 见 docker/install 中 ONNX 脚本 | `BUILD_ONNXRUNTIME=ON` |
 | ROS 2 Humble | Docker 镜像内可选 | 非构建硬依赖 |
 
----
-
-### 4.5 验证
+## 验证
 
 ```bash
 ls /usr/local/lib/libceres.so
