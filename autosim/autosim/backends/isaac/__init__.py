@@ -20,9 +20,8 @@
     transforms.py        map-frame ↔ world poses
     stage.py             open stage · robot Xform · mesh cloud
     sensors.py           RGB-D · RTX Lidar · surround cameras
-    physics.py           PhysX world · capsule collision
+    physics.py           PhysX world · scene colliders
     articulation.py      generic Articulation helpers
-    robots/beni.py       Beni floating-base articulation
     robots/wheeled.py    differential-drive wheel joints
     randomization.py     light / character randomization
     people.py            PeopleSync (Traffic → USD)

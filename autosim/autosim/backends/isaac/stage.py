@@ -128,7 +128,6 @@ class SceneStage:
         robot_usd: Path | None = None,
         robot_prim_path: str = "/World/Robot",
         base_z: float = 0.0,
-        defer_robot_prim: bool = False,
     ) -> None:
         require_isaac()
         import omni.usd
@@ -166,23 +165,9 @@ class SceneStage:
             )
         except Exception as exc:
             logger.warning("early physics scene repair skipped: %s", exc)
-        # Articulation mode imports Beni URDF later — an empty /Root/Robot
-        # placeholder makes MovePrim land on /Root/Robot_01 instead.
         self.robot_xform: Any = None
-        if defer_robot_prim:
-            # InteriorAgent reserves /beni with PhysX/Robot variants; kill it
-            # before the first Fabric/PhysX sync so it cannot collide with us.
-            try:
-                from autosim.backends.isaac.robots.beni import (
-                    deactivate_scene_beni_stub,
-                )
-
-                deactivate_scene_beni_stub(self.stage)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("early /beni stub deactivate skipped: %s", exc)
-        else:
-            self.ensure_robot_prim()
-            self.bind_robot_xform()
+        self.ensure_robot_prim()
+        self.bind_robot_xform()
 
     def bind_robot_xform(self, prim_path: str | None = None) -> bool:
         """Refresh ``robot_xform`` from ``prim_path`` or ``robot_prim_path``."""
@@ -267,10 +252,9 @@ class SceneStage:
     ) -> None:
         """Teleport plant pose via Isaac Fabric-aware prim APIs.
 
-        Kinematic capsules must use ``SingleXFormPrim`` only. ``SingleRigidPrim``
-        (and any follow-up ``set_*_velocity``) spam PhysX with
-        ``Body must be non-kinematic`` and eventually stop the simulation —
-        which is exactly the 穿模 / 不会倒 failure mode when the plant owns pose.
+        Kinematic plant roots must use ``SingleXFormPrim`` only.
+        ``SingleRigidPrim`` (and any follow-up ``set_*_velocity``) spam PhysX
+        with ``Body must be non-kinematic`` and eventually stop the simulation.
         """
         pos = np.asarray(translation, dtype=np.float64).reshape(3)
         orn = np.asarray(quat_wxyz, dtype=np.float64).reshape(4)
@@ -279,7 +263,7 @@ class SceneStage:
         view_kind = getattr(self, "_isaac_pose_view_kind", None)
         want_kind = "xform" if kinematic else "rigid"
         if view is not None and view is not False and view_kind != want_kind:
-            # Prim mode changed (e.g. articulation fallback → capsule).
+            # Prim kinematic/dynamic mode changed — rebuild the pose view.
             self._isaac_pose_view = None
             view = None
         if view is None:

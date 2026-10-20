@@ -24,7 +24,7 @@
 
 | 症状 | 处理 |
 |------|------|
-| Autoviz 无 RGB / depth | `camera.enabled: true`；Isaac 需 `ENABLE_CAMERAS`（`app/` 已设）；多等 warmup。`physics.enabled: false` 时仍会建 render-only World（否则 RTX 相机无帧）。Beni 外参走 URDF `camera_link`，勿只设负的 `sensor_height` 把镜头埋进机身 |
+| Autoviz 无 RGB / depth | `camera.enabled: true`；Isaac 需 `ENABLE_CAMERAS`（`app/` 已设）；多等 warmup。`physics.enabled: false` 时仍会建 render-only World（否则 RTX 相机无帧）。外参走 URDF `camera_link`，勿只设负的 `sensor_height` 把镜头埋进机身 |
 | 全黑 | 场景无灯（simple_room 已补光）；酷家乐确认 HDR / 材质 |
 | Hydra primvar 刷屏 | 已有 `repair_display_primvars` + mute；升级后仍刷可再查 faceVarying |
 | 深度像 RGB / 闪烁 | 确认深度为 `32FC1`；更新清洗与 Autoviz 稳定色带；勿把 RGB overlay 误当成深度 |

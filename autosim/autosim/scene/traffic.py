@@ -99,6 +99,9 @@ class Traffic:
             robot: Optional ``(x, y, yaw)`` for social reactions.
         """
         self.obstacle.step(dt)
+        # HuNavManager may own SFM (own_motion); skip local pedestrian integrate.
+        if getattr(self, "skip_pedestrian_step", False):
+            return
         self.pedestrian.step(
             dt,
             bodies=self.obstacle.position,

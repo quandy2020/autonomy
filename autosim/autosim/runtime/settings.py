@@ -125,7 +125,7 @@ class Config:
         if ply_channel:
             channels["map_cloud"] = ply_channel
         # Autoviz RobotModel needs /robot_description when a URDF is configured.
-        # Resolve profile defaults — YAML may only set ``profile: beni`` without urdf.
+        # Resolve profile defaults — YAML may only set ``profile`` without urdf.
         from autosim.robot.profiles import apply_profile
 
         robot_resolved = apply_profile(robot)
@@ -137,6 +137,11 @@ class Config:
         ).strip()
         if urdf:
             channels["robot_description"] = desc_channel or "/robot_description"
+        hunav = self.data["habitat"].get("hunav")
+        if isinstance(hunav, Mapping) and hunav.get("publish_agents", True):
+            channels["hunav_agents"] = str(
+                hunav.get("agents_channel") or "/hunav/agents"
+            )
         return channels
 
     @classmethod
@@ -308,7 +313,7 @@ class Config:
             raise ValueError("habitat.sensors.lidar_2d angle_max must be >= angle_min")
         if float(block["range_max"]) <= float(block["range_min"]):
             raise ValueError("habitat.sensors.lidar_2d range_max must be > range_min")
-        backend = str(block.get("backend") or "merge").strip().lower()
+        backend = str(block.get("backend") or "rtx").strip().lower()
         if backend not in ("cpu", "rtx", "merge"):
             raise ValueError(
                 "habitat.sensors.lidar_2d.backend must be cpu|rtx|merge"
@@ -499,6 +504,7 @@ class Config:
             cls.validate_isaac_usd(habitat)
         cls.validate_map(habitat.get("map"), procedural=scenario_on)
         cls.validate_dataset(habitat.get("dataset") or habitat.get("record"))
+        cls.validate_hunav(habitat.get("hunav"))
 
         names = [
             robot["cmd_vel"],
@@ -546,6 +552,9 @@ class Config:
         if str(robot_resolved.get("urdf") or "").strip():
             desc = str(robot.get("description_channel") or "").strip()
             names.append(desc or "/robot_description")
+        hunav = habitat.get("hunav")
+        if isinstance(hunav, Mapping) and hunav.get("publish_agents", True):
+            names.append(str(hunav.get("agents_channel") or "/hunav/agents"))
         for name in names:
             if not isinstance(name, str) or not name.strip():
                 raise ValueError("empty channel name in habitat.sensors or habitat.robot")
@@ -589,6 +598,55 @@ class Config:
                 raise ValueError(
                     f"habitat.robot.footprint.points[{index}] must be numeric"
                 ) from exc
+
+    @classmethod
+    def validate_hunav(cls, block: Any) -> None:
+        """Validate optional ``habitat.hunav`` (Autolink ComputeAgents / Agents)."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.hunav must be a mapping")
+        for key in ("service", "manager", "publish_agents", "own_motion", "remote_compute"):
+            if key in block and not isinstance(block[key], bool):
+                raise ValueError(f"habitat.hunav.{key} must be a bool")
+        if "agents_channel" in block:
+            channel = str(block.get("agents_channel") or "").strip()
+            if not channel:
+                raise ValueError("habitat.hunav.agents_channel must be non-empty")
+        channels = block.get("channels")
+        if channels is not None:
+            if not isinstance(channels, Mapping):
+                raise ValueError("habitat.hunav.channels must be a mapping")
+            for key, value in channels.items():
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"habitat.hunav.channels.{key} must be non-empty")
+        agents = block.get("agents")
+        if agents not in (None, ""):
+            if not isinstance(agents, str):
+                raise ValueError("habitat.hunav.agents must be a path string")
+            from pathlib import Path
+
+            path = Path(str(agents)).expanduser()
+            if not path.is_absolute():
+                try:
+                    from autosim.runtime.paths import project_root
+
+                    path = (project_root() / path).resolve()
+                except Exception:
+                    path = path.resolve()
+            if not path.is_file():
+                raise ValueError(f"habitat.hunav.agents missing: {path}")
+        if block.get("manager", False) and block.get("remote_compute", False):
+            # Remote client needs Autolink service channel (default /compute_agents).
+            service_channel = "/compute_agents"
+            if isinstance(channels, Mapping):
+                service_channel = str(
+                    channels.get("compute_agents") or service_channel
+                ).strip()
+            if not service_channel:
+                raise ValueError(
+                    "habitat.hunav.remote_compute requires channels.compute_agents"
+                )
 
     @classmethod
     def validate_scenario(cls, block: Any) -> bool:

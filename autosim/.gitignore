@@ -4,9 +4,8 @@ stubs/
 build/
 __pycache__/
 .pytest_cache/
+.debug_sem/
 datasets/
-# Temp URDF rewrite for Isaac import (unique robot name vs InteriorAgent /beni).
-robot/beni/.AutosimBeni.urdf
 *.pyc
 *.log
 *.log.*

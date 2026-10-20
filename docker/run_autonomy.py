@@ -59,6 +59,10 @@ Examples:
     # 挂载宿主机数据卷（环境变量，逗号或空格分隔多个路径）：
     AUTONOMY_DATA_VOLUMES=/mnt/data4t python3 run_autonomy.py
 
+    # 挂载离线数据集根目录到容器 /data（默认只读；供 autonomy.tools.datasets）：
+    AUTONOMY_DATASETS=/media/quandy/<uuid>/datasets python3 run_autonomy.py
+    python3 run_autonomy.py --datasets /media/quandy/<uuid>/datasets
+
     # 挂载宿主机数据卷（CLI，可重复指定；指定后忽略环境变量）：
     python3 run_autonomy.py --data-volume /mnt/data4t
     python3 run_autonomy.py --data-volume /mnt/data4t:/mnt/data4t:rw
@@ -88,7 +92,8 @@ from docker_utils import (
     check_nvidia_available, check_docker_gpu_support,
     get_nvidia_driver_version, is_isaac_sim_driver_supported,
     normalize_path, resolve_autonomy_env_dir, resolve_data_volumes,
-    prepare_host_data_volume,
+    resolve_datasets_volume, merge_data_and_datasets_volumes,
+    prepare_host_data_volume, DEFAULT_DATASETS_CONTAINER_PATH,
     resolve_container_name, resolve_publish_ports, resolve_network_mode,
     remove_container_if_exists, get_container_state, container_responds,
     find_available_container_name, print_stuck_container_recovery,
@@ -533,6 +538,7 @@ class AutonomyRunner:
         if not self.data_volumes:
             return
 
+        datasets_container = None
         for host, container, mode in self.data_volumes:
             host_path = Path(host)
             if not host_path.is_dir():
@@ -540,9 +546,22 @@ class AutonomyRunner:
                     f"Host path {host} not found; skipping volume {host}:{container}:{mode}"
                 )
                 continue
-            prepare_host_data_volume(host, container)
+            # Skip lerobot layout mkdir/chown on read-only dataset disks.
+            if mode != "ro":
+                prepare_host_data_volume(host, container)
             self.docker_args.extend(["-v", f"{host}:{container}:{mode}"])
             print_info(f"Mounting host data volume: {host} -> {container} ({mode})")
+            if (container.rstrip("/") or "/") == DEFAULT_DATASETS_CONTAINER_PATH:
+                datasets_container = container.rstrip("/") or DEFAULT_DATASETS_CONTAINER_PATH
+
+        if datasets_container:
+            # Tools read this inside the container (host path is not visible there).
+            self.docker_args.extend(["-e", f"AUTONOMY_DATASETS={datasets_container}"])
+            print_info(
+                f"Container AUTONOMY_DATASETS={datasets_container} "
+                "(e.g. python -m autonomy.tools.datasets publish --path "
+                f"{datasets_container}/Oxford/sequences/<name>)"
+            )
 
     def _is_cross_profile(self) -> bool:
         if self.profile == "cross":
@@ -902,6 +921,8 @@ Examples:
 
   \033[91m# 挂载宿主机数据卷\033[0m
   \033[92mAUTONOMY_DATA_VOLUMES=/mnt/data4t python3 %(prog)s\033[0m
+  \033[92mAUTONOMY_DATASETS=/path/to/datasets python3 %(prog)s\033[0m
+  \033[92mpython3 %(prog)s --datasets /path/to/datasets\033[0m
   \033[92mpython3 %(prog)s --data-volume /mnt/data4t\033[0m
   \033[92mpython3 %(prog)s --data-volume /mnt/data4t:/mnt/data4t:rw\033[0m
 
@@ -992,6 +1013,16 @@ Examples:
         help=(
             "宿主机数据卷，格式 HOST、HOST:CONTAINER 或 HOST:CONTAINER:MODE（可重复）。"
             "指定后优先于环境变量 AUTONOMY_DATA_VOLUMES。"
+        ),
+    )
+    parser.add_argument(
+        "--datasets",
+        metavar="SPEC",
+        help=(
+            "离线数据集根目录，默认挂到容器 /data（只读）。"
+            "格式 HOST、HOST:CONTAINER 或 HOST:CONTAINER:MODE。"
+            "也可设置环境变量 AUTONOMY_DATASETS；CLI 优先。"
+            "示例：--datasets /media/quandy/<uuid>/datasets"
         ),
     )
     parser.add_argument(
@@ -1090,7 +1121,14 @@ def main():
     runner.use_nvidia = args.nvidia
     runner.keep_isaac_entrypoint = bool(args.keep_isaac_entrypoint)
     runner.force_recreate = resolve_force_recreate(bool(args.force_recreate))
-    runner.data_volumes = resolve_data_volumes(args.data_volumes)
+    try:
+        runner.data_volumes = merge_data_and_datasets_volumes(
+            resolve_data_volumes(args.data_volumes),
+            resolve_datasets_volume(args.datasets),
+        )
+    except ValueError as exc:
+        print_error(str(exc))
+        sys.exit(1)
     runner.run_as_host_user = resolve_run_as_host_user(bool(args.as_host_user))
     runner.remaining_args = remaining
     runner.run_build = bool(args.build)

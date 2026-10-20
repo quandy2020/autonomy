@@ -133,8 +133,6 @@ class Runner:
         self.policy_driver: Optional[PolicyDriver] = PolicyDriver.create_when_enabled(
             self.settings["habitat"]
         )
-        # PhysX floating-base Beni: policy drives joint targets, not kinematic TF.
-        self._bind_policy_articulation()
         self.dataset: Optional[DatasetCollector] = DatasetCollector.create_when_enabled(
             self.settings["habitat"]
         )
@@ -303,6 +301,8 @@ class Runner:
                 self.world = World.from_block(self.scenario_cfg, built.grid)
                 self.traffic = self.world.traffic
                 self.simulator.traffic = self.traffic
+                # Traffic was rebuilt after bind_bridge — re-attach HuNav.
+                self.rebind_hunav_after_traffic()
             return
         if not capability(self.simulator, "navmesh_map_sample"):
             return
@@ -315,6 +315,25 @@ class Runner:
                 f"autosim occupancy warmup failed (laser wall-clip disabled): {exc!r}",
                 stacklevel=2,
             )
+
+    def rebind_hunav_after_traffic(self) -> None:
+        """Refresh HuNav service / manager after ``World`` / Traffic recreate."""
+        hunav_cfg = (self.settings.data.get("habitat") or {}).get("hunav") or {}
+        if not isinstance(hunav_cfg, dict):
+            hunav_cfg = {}
+        ped = getattr(getattr(self, "traffic", None), "pedestrian", None)
+        engine = getattr(self, "hunav_engine", None)
+        if engine is not None and ped is not None:
+            engine.pedestrian = ped
+            engine.settings = dict(ped.settings)
+        host = getattr(self, "hunav_host", None)
+        if host is not None and ped is not None:
+            host.engine.pedestrian = ped
+            host.engine.settings = dict(ped.settings)
+        if getattr(self.simulator, "hunav_manager", None) is not None:
+            self.simulator.hunav_manager = None
+            self.simulator.hunav_own_motion = False
+        self.bind_hunav_manager(hunav_cfg)
 
     def message_types(self) -> Dict[str, Any]:
         """Build logical-key → protobuf type map for enabled streams.
@@ -383,6 +402,14 @@ class Runner:
             self.robot_cfg.get("urdf") or ""
         ).strip():
             types["robot_description"] = String
+        hunav_cfg = (self.settings.data.get("habitat") or {}).get("hunav")
+        if isinstance(hunav_cfg, dict) and hunav_cfg.get("publish_agents", True):
+            try:
+                from automsgs.msgs.hunav_msgs import agents_pb2
+
+                types["hunav_agents"] = agents_pb2.Agents
+            except Exception:
+                pass
         return types
 
     def bind_bridge(self) -> None:
@@ -390,6 +417,123 @@ class Runner:
         self.link.init("autosim")
         self.node = self.link.Node("autosim_bridge")
         self.bridge = Bridge(self.node, self.settings.channel_map(), self.message_types())
+        self.hunav_host = None
+        self.hunav_codec = None
+        hunav_cfg = (self.settings.data.get("habitat") or {}).get("hunav") or {}
+        if not isinstance(hunav_cfg, dict):
+            hunav_cfg = {}
+        ped_cfg = (self.scenario_cfg or {}).get("pedestrian") or {}
+        self.hunav_engine = None
+        if hunav_cfg.get("service", False) or hunav_cfg.get("manager", False):
+            try:
+                from autosim.scene.hunav.compute import ComputeAgentsEngine
+
+                self.hunav_engine = ComputeAgentsEngine(ped_cfg)
+                if getattr(self, "traffic", None) is not None:
+                    # Share live Traffic.pedestrian so SFM /scan /agents align.
+                    self.hunav_engine.pedestrian = self.traffic.pedestrian
+                    self.hunav_engine.settings = dict(self.traffic.pedestrian.settings)
+            except Exception as exc:
+                logger.warning("HuNav ComputeAgentsEngine not created: %s", exc)
+                self.hunav_engine = None
+        if hunav_cfg.get("service", False):
+            try:
+                from autosim.scene.hunav.service import HunavServiceHost
+
+                engine = self.hunav_engine
+                if engine is None:
+                    from autosim.scene.hunav.compute import ComputeAgentsEngine
+
+                    engine = ComputeAgentsEngine(ped_cfg)
+                    if getattr(self, "traffic", None) is not None:
+                        engine.pedestrian = self.traffic.pedestrian
+                        engine.settings = dict(self.traffic.pedestrian.settings)
+                self.hunav_host = HunavServiceHost(
+                    self.node,
+                    engine,
+                    channels=hunav_cfg.get("channels"),
+                )
+                self.hunav_host.start()
+            except Exception as exc:
+                logger.warning("HuNav service host not started: %s", exc)
+        if hunav_cfg.get("publish_agents", True):
+            try:
+                from autosim.scene.hunav.codec import AgentCodec
+
+                self.hunav_codec = AgentCodec()
+            except Exception:
+                self.hunav_codec = None
+        self.bind_hunav_manager(hunav_cfg)
+
+    def bind_hunav_manager(self, hunav_cfg: Dict[str, Any]) -> None:
+        """Attach Isaac HuNavManager when ``habitat.hunav.manager`` is enabled."""
+        if not hunav_cfg.get("manager", False):
+            return
+        attach = getattr(self.simulator, "attach_hunav", None)
+        if not callable(attach):
+            logger.warning("hunav.manager ignored: backend has no attach_hunav")
+            return
+        ped = getattr(getattr(self, "traffic", None), "pedestrian", None)
+        if ped is None:
+            return
+        agents_path = str(hunav_cfg.get("agents") or "").strip()
+        if not agents_path:
+            agents_path = str(
+                (self.scenario_cfg or {}).get("pedestrian", {}).get("agents") or ""
+            )
+        own_motion = bool(hunav_cfg.get("own_motion", True))
+        client = None
+        if hunav_cfg.get("remote_compute", False):
+            try:
+                from autosim.scene.hunav.client import create_compute_agents_client
+
+                channel = str(
+                    (hunav_cfg.get("channels") or {}).get(
+                        "compute_agents", "/compute_agents"
+                    )
+                )
+                client = create_compute_agents_client(self.node, channel)
+            except Exception as exc:
+                logger.warning("hunav remote client failed: %s", exc)
+
+        def robot_pose() -> Tuple[float, float, float, float, float, float]:
+            x, y, yaw = self.robot.pose()
+            linear, angular = self.robot.velocity()
+            # Body-frame linear → map-frame vx/vy for HuNav robot Agent.
+            vx = float(linear) * math.cos(float(yaw))
+            vy = float(linear) * math.sin(float(yaw))
+            return (float(x), float(y), float(yaw), vx, vy, float(angular))
+
+        try:
+            attach(
+                pedestrian=ped,
+                config_file=agents_path,
+                own_motion=own_motion,
+                compute_client=client,
+                engine=getattr(self, "hunav_engine", None),
+                robot_pose_fn=robot_pose,
+                dt=1.0 / float(self.robot_cfg.get("control_hz", 50.0)),
+            )
+            if own_motion and getattr(self, "traffic", None) is not None:
+                self.traffic.skip_pedestrian_step = True
+        except Exception as exc:
+            logger.warning("HuNavManager attach failed: %s", exc)
+
+    def publish_hunav_agents(self, stamp: Tuple[int, int]) -> None:
+        """Publish ``/hunav/agents`` (HuNav Agents snapshot) when enabled."""
+        codec = getattr(self, "hunav_codec", None)
+        if codec is None or not codec.available:
+            return
+        if "hunav_agents" not in self.bridge.writers:
+            return
+        ped = getattr(getattr(self, "traffic", None), "pedestrian", None)
+        if ped is None or int(ped.position.shape[0]) == 0:
+            return
+        try:
+            msg = codec.pack_agents(ped, stamp=stamp, frame_id="map")
+            self.bridge.publish("hunav_agents", msg)
+        except Exception as exc:
+            logger.debug("publish_hunav_agents failed: %s", exc)
 
     def run(self) -> None:
         """Spin at ``control_hz`` until shutdown or ``max_steps``.
@@ -424,6 +568,12 @@ class Runner:
                     time.sleep(remaining)
         finally:
             self.sensor_worker.stop()
+            host = getattr(self, "hunav_host", None)
+            if host is not None:
+                try:
+                    host.stop()
+                except Exception:
+                    pass
             if self.dataset is not None:
                 self.dataset.close()
             if self.simulator is not None:
@@ -442,22 +592,9 @@ class Runner:
             dt: Period length in seconds (``1 / control_hz``).
         """
         self.poll_command(dt)
-        art_driven = bool(getattr(self.simulator, "articulation_driven", False))
         drive_wheels = getattr(self.simulator, "drive_wheels", None)
         wheeled = callable(drive_wheels) and getattr(self.simulator, "wheeled", None)
-        if art_driven:
-            # PhysX Articulation owns base pose (balance / collision / fall).
-            # Policy already wrote joint drives in poll_command; integrate nothing.
-            x0, y0, yaw0 = self.simulator.pose()
-            self.world.step(dt, robot=(float(x0), float(y0), float(yaw0)))
-            self.simulator.step()
-            x, y, yaw = self.simulator.pose()
-            # Sync plant GT/odom to PhysX without teleport (teleport zeros twist).
-            heading = self.robot.wrap_yaw(float(yaw))
-            self.robot.x = self.robot.odometry_x = float(x)
-            self.robot.y = self.robot.odometry_y = float(y)
-            self.robot.yaw = self.robot.odometry_yaw = heading
-        elif wheeled:
+        if wheeled:
             # Differential-drive PhysX: plant integrates cmd, wheels get twist.
             x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
             linear, angular = self.robot.velocity()
@@ -488,11 +625,18 @@ class Runner:
                 self.robot.odometry_yaw = float(yaw)
             self.simulator.set_pose(x, y, yaw)
             # Step world before USD sync so pedestrians/obstacles draw at the
-            # current pose (IsaacWorld.step → people.sync).
+            # current pose (IsaacWorld.step → people.sync / HuNavManager).
             self.world.step(dt, robot=(float(x), float(y), float(yaw)))
             self.simulator.step()
         self.clock.tick(dt)
         stamp = self.clock.stamp()
+        # HuNavManager: SFM (+ USD People) after plant/world; stamp matches TF.
+        step_hunav = getattr(self.simulator, "step_hunav", None)
+        if callable(step_hunav) and getattr(self.simulator, "hunav_manager", None):
+            try:
+                step_hunav(dt, stamp=stamp)
+            except Exception as exc:
+                logger.debug("step_hunav failed: %s", exc)
         linear, angular = self.robot.velocity()
         # Do not fast-forward sensor due-ness after a hitch, or lidar+camera
         # all fire on the next tick and hitch again.
@@ -507,6 +651,7 @@ class Runner:
         self.emit("tf", self.publish_tf, stamp)
         self.emit("clock", self.publish_clock, stamp)
         self.emit("robot_description", self.publish_robot_description, stamp)
+        self.emit("hunav_agents", self.publish_hunav_agents, stamp)
         # Occupancy / PLY map is static; never block teleop after first sample.
         self.emit("map", self.submit_map, stamp)
         # Habitat: serialize heavy GL samples so TF and image do not hitch.
@@ -996,28 +1141,11 @@ class Runner:
         except Exception as exc:
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
 
-    def _bind_policy_articulation(self) -> None:
-        """Attach Isaac ``BeniArticulation`` to the policy when PhysX is ready."""
-        policy = self.policy_driver
-        if policy is None:
-            return
-        art = getattr(self.simulator, "articulation", None)
-        if art is None or not bool(getattr(art, "ready", False)):
-            return
-        if getattr(policy, "articulation", None) is art:
-            return
-        bind = getattr(policy, "bind_articulation", None)
-        if callable(bind):
-            bind(art)
-
     def poll_command(self, dt: float = 0.02) -> None:
-        """Apply teleop ``cmd_vel`` and/or an optional ONNX RL policy.
+        """Apply teleop ``cmd_vel`` and/or an optional ONNX twist policy.
 
-        Twist policies: teleop wins unless ``exclusive``. Beni 7-DoF: teleop
-        feeds the balance observation (browser joystick model); joints animate
-        via ONNX + TF; the planar plant follows the ramped command.
+        Teleop wins unless the policy is ``exclusive``.
         """
-        self._bind_policy_articulation()
         reader = self.bridge.command_reader
         has_external = hasattr(reader, "has_msg") and reader.has_msg()
         policy = self.policy_driver
@@ -1025,22 +1153,6 @@ class Runner:
         if has_external:
             linear, angular = Messages.parse_command_velocity(reader.get_msg())
             twist_cmd = (float(linear), float(angular))
-
-        if policy is not None and getattr(policy, "action_space", "twist") == "beni":
-            # Teleop → policy command (even when exclusive); plant uses policy output.
-            x, y, yaw = self.robot.pose()
-            linear, angular = self.robot.velocity()
-            cmd = policy.compute_command(
-                float(dt),
-                pose=(float(x), float(y), float(yaw)),
-                velocity=(float(linear), float(angular)),
-                scan=self.last_scan,
-                twist_cmd=twist_cmd,
-            )
-            if cmd is not None:
-                self.last_action = (float(cmd[0]), float(cmd[1]))
-                self.robot.set_twist(cmd[0], cmd[1], t=self.clock.now())
-            return
 
         if has_external and not (policy is not None and policy.exclusive):
             assert twist_cmd is not None
@@ -1056,6 +1168,7 @@ class Runner:
             pose=(float(x), float(y), float(yaw)),
             velocity=(float(linear), float(angular)),
             scan=self.last_scan,
+            twist_cmd=twist_cmd,
         )
         if cmd is not None:
             self.last_action = (float(cmd[0]), float(cmd[1]))
@@ -1115,7 +1228,7 @@ class Runner:
     def footprint_points(self) -> Tuple[Tuple[float, float, float], ...]:
         """Footprint vertices in the published footprint frame (``base_link``).
 
-        Explicit ``footprint.points`` win (e.g. Beni wheel track). Otherwise the
+        Explicit ``footprint.points`` win. Otherwise the
         URDF body box is projected; URDF-root polygons are mapped into ``base_link``.
         """
         points = self.footprint.get("points") or []
@@ -1469,16 +1582,42 @@ class Runner:
         gyro_var = float(imu_noise.get("gyro", 0.0)) ** 2
         accel_var = float(imu_noise.get("accel", 0.0)) ** 2
         frame = self.imu["frame"]
+        # Isaac: prefer PhysX IMUSensor when mounted; else plant kinematics.
+        isaac_imu = None
+        read_imu = getattr(self.simulator, "read_imu", None)
+        if callable(read_imu):
+            try:
+                isaac_imu = read_imu()
+            except Exception:
+                isaac_imu = None
         for i in range(1, n + 1):
             alpha = float(i) / float(n)
             yaw_i = yaw0 + alpha * dyaw
             t_i = t_start + float(i) * sub_dt
+            stamp_i = Clock(start_sec=t_i).stamp()
+            if isinstance(isaac_imu, dict) and isaac_imu.get("lin_acc"):
+                orientation = tuple(isaac_imu.get("orientation") or (0.0, 0.0, 0.0, 1.0))
+                ang = tuple(isaac_imu.get("ang_vel") or (0.0, 0.0, 0.0))
+                lin = tuple(isaac_imu.get("lin_acc") or (0.0, 0.0, 0.0))
+                # Repeat latest Isaac sample across substeps (sensor owns rate).
+                self.bridge.publish(
+                    "imu",
+                    Messages.encode_inertial(
+                        stamp_i,
+                        frame,
+                        orientation,
+                        ang,
+                        lin,
+                        gyro_variance=gyro_var,
+                        accel_variance=accel_var,
+                    ),
+                )
+                continue
             gyro_z, accel_x, accel_y, accel_z = self.robot.update_inertial(
                 yaw_i, linear, t_i
             )
             half = 0.5 * yaw_i
             orientation = (0.0, 0.0, math.sin(half), math.cos(half))
-            stamp_i = Clock(start_sec=t_i).stamp()
             self.bridge.publish(
                 "imu",
                 Messages.encode_inertial(
@@ -1539,11 +1678,6 @@ class Runner:
                 )
             )
         elif urdf is not None:
-            # Live joint angles from Beni ONNX (mesh-relative); empty for twist robots.
-            live_angles: Dict[str, float] = {}
-            policy = getattr(self, "policy_driver", None)
-            if policy is not None:
-                live_angles = dict(getattr(policy, "joint_display_angles", {}) or {})
             for child, (parent, xyz) in urdf.parents.items():
                 if child == odom_child:
                     continue
@@ -1551,12 +1685,6 @@ class Runner:
                 rpy = urdf.joint_rpy.get(
                     child, (0.0, 0.0, float(urdf.joint_yaw.get(child, 0.0)))
                 )
-                angle = live_angles.get(child)
-                if angle is not None and abs(float(angle)) > 1e-9:
-                    axis = urdf.joint_axis.get(child, (0.0, 0.0, 1.0))
-                    from autosim.robot.policy.beni import axis_angle_rpy
-
-                    rpy = axis_angle_rpy(rpy, axis, float(angle))
                 mounts.append(
                     Messages.encode_transform(
                         stamp,

@@ -47,6 +47,13 @@ class Behavior:
         "scared": "scared",
         "curious": "curious",
         "threatening": "threatening",
+        # HuNavSim / hunav_msgs enum spellings
+        "beh_regular": "regular",
+        "beh_impassive": "impassive",
+        "beh_surprised": "surprised",
+        "beh_scared": "scared",
+        "beh_curious": "curious",
+        "beh_threatening": "threatening",
     }
 
     def __init__(

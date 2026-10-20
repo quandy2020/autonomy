@@ -4,7 +4,7 @@
 #
 #   CONFIG=src/autonomy/autosim/config/isaac.yaml src/autonomy/autosim/scripts/run.sh sim
 #
-# Swap robot.profile: turtlebot3_burger | husky | beni (Open Beni RGB-D).
+# Swap robot.profile: turtlebot3_burger | husky.
 
 habitat:
   backend: isaac
@@ -12,9 +12,7 @@ habitat:
   # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
   # Camera path aligned with arena-isaac: RTX Camera + supportMultiTickRate,
   # PhysX ticks without RTX, RGB sampled only in color_depth (Habitat timing).
-  # physics.mode:
-  #   capsule      — kinematic overlap block (or enabled=false → render-only)
-  #   articulation — Beni floating-base PhysX (gravity, collision, true fall)
+  # physics.mode: wheeled — differential-drive USD (turtlebot / husky)
   isaac:
     headless: true
     # seed: 0                         # optional RNG / Replicator seed
@@ -29,8 +27,8 @@ habitat:
       wheel_radius: 0.033
     physics:
       enabled: true
-      mode: articulation      # capsule | articulation | wheeled
-      block_motion: false     # ignored for articulation (dynamic root)
+      mode: wheeled            # differential-drive USD
+      block_motion: true
       freeze_scene: true
       ensure_scene_colliders: true
       add_ground: false       # InteriorAgent floors provide contact
@@ -47,28 +45,41 @@ habitat:
       sync_hz: 30                     # USD pose update rate (CPU step is full rate)
       pedestrian_anim: true           # UsdSkel walk/idle (shared phase)
       anim_walk_mps: 1.2              # clip rate 1x at this planar speed
-      # animation_root: usd/people/Animations
-      # Isaac People Characters (auto: AUTOSIM_PEOPLE_ROOT / ISAAC*_PATH / usd/people/Characters)
-      # character_root: usd/people/Characters
+      # Download: python3 scripts/download_people_assets.py
+      character_root: usd/people/Characters
+      animation_root: usd/people/Animations
 
-  # ONNX policy (docs/07_isaac.md). Beni: 7-DoF balance (obs[40]+GRU → joints).
-  # Ground-nav stack: use config/isaac_nav.yaml (turtlebot + twist off).
-  # Teleop /cmd_vel → Beni obs; with physics.mode=articulation, ONNX drives
-  # PhysX joint targets (true balance/fall). animate_joints auto-on then.
+  # HuNavSim-compatible Autolink services (automsgs hunav_msgs).
+  # Isaac / external wrappers call /compute_agents; autosim SFM answers.
+  # See docs/12_hunav_isaac.md and backends/isaac/hunav/.
+  hunav:
+    service: true                     # expose /compute_agents|/compute_agent|/move_agent
+    publish_agents: true              # Autolink /hunav/agents
+    # agents_channel: /hunav/agents
+    # channels:
+    #   compute_agents: /compute_agents
+    #   compute_agent: /compute_agent
+    #   move_agent: /move_agent
+    # Drive People via HuNavManager (Hunav_isaac_wrapper path: SkelRoot+AnimGraph).
+    # own_motion skips Traffic.pedestrian.step; disables PeopleSync mirroring.
+    # manager: true
+    # own_motion: true
+    # remote_compute: false           # true → Autolink client to /compute_agents
+    # agents: config/scenarios/hunav/warehouse_agents.yaml
+    # Or set scenario.pedestrian.agents to the same YAML.
+
+  # Optional ONNX planar-twist policy (docs/07_isaac.md).
+  # Ground-nav stack: config/isaac_nav.yaml (turtlebot + policy off).
   policy:
-    enabled: true
-    action_space: beni          # twist | beni
-    # Default: robot/beni/models/policy.onnx (Open Beni export)
-    # model_path: robot/beni/models/policy.onnx
-    rate_hz: 100.0              # Open Beni policy rate
+    enabled: false
+    action_space: twist
+    # model_path: path/to/twist_policy.onnx
+    rate_hz: 10.0
     exclusive: false
-    max_vx: 1.5
-    max_wz: 2.0
-    # Standing height command in obs (Open Beni range ≈ [0.10, 0.12]).
-    base_height: 0.11
-    animate_joints: false       # auto true when Articulation bound
-    drive_from_wheels: false    # planar plant unused when articulation owns base
-    use_laser: false
+    max_vx: 0.5
+    max_wz: 1.0
+    drive_from_wheels: false
+    use_laser: true
     laser_bins: 360
 
   # LeRobot v2.1 dataset recording for imitation learning (docs/11_dataset.md).
@@ -119,17 +130,14 @@ habitat:
   gpu: 0
 
   robot:
-    profile: beni   # turtlebot3_burger | husky | beni
-    urdf: robot/beni/beni.urdf   # explicit so channel_map + Autoviz always see it
+    profile: turtlebot3_burger   # turtlebot3_burger | husky
     description_channel: /robot_description   # Autoviz RobotModel
-    # Twist limits roughly match Open Beni velocity command ranges.
-    max_linear: 1.5
-    max_angular: 2.0
-    max_linear_accel: 1.5
-    max_linear_decel: 2.0
-    max_angular_accel: 4.0
-    # Open Beni standing height H_REF ≈ 0.11 m (wheel contact → base_link).
-    base_link_height: 0.11
+    max_linear: 0.22
+    max_angular: 2.84
+    max_linear_accel: 0.5
+    max_linear_decel: 1.0
+    max_angular_accel: 3.0
+    base_link_height: 0.0
     map_frame: map
     watchdog_sec: 0.5
     control_hz: 50.0
@@ -150,12 +158,11 @@ habitat:
       enabled: true
       channel: /footprint
       frame: base_link
-      # Cover body + wheels (track≈0.16, wheel half-width≈0.01); not body box alone.
       points:
-        - [0.09, 0.10]
-        - [0.09, -0.10]
-        - [-0.10, -0.10]
-        - [-0.10, 0.10]
+        - [0.09, 0.09]
+        - [0.09, -0.09]
+        - [-0.09, -0.09]
+        - [-0.09, 0.09]
 
   sensors:
     lidar_2d:
@@ -169,9 +176,10 @@ habitat:
       range_max: 30.0
       num_beams: 360
       noise: 0.0
-      # cpu = floorplan+traffic; rtx = Isaac RTX Lidar; merge = nearer of both
-      backend: merge
-      rtx_config: Example_Rotary
+      # Isaac mode: use Kit RTX only (cpu/merge are debug fallbacks).
+      # Example_Rotary is 3D (elevationDeg≠0) and breaks FlatScan — use a true 2D config.
+      backend: rtx
+      rtx_config: RPLIDAR_S2E
 
     joint_states:
       enabled: true
@@ -199,7 +207,7 @@ habitat:
     camera:
       enabled: true
       # Primary sensor = RGB-D (RGB + depth + optional depth points).
-      # Extrinsics follow beni.urdf camera_link (Open Beni MJCF depth_front).
+      # Extrinsics follow robot URDF camera_link when present.
       width: 1280
       height: 720
       # MJCF depth_front ≈ 86.5° VFOV @ 80×60 → ~98° HFOV; keep 90 for nav.
@@ -250,9 +258,9 @@ habitat:
     padding_m: 0.05
     wall_thickness_m: 0.05
     robot_clearance_m: 0.05   # above floor — carpet / floor verts stay free
-    robot_height_m: 0.25      # beni body top (+ margin); not full room height
+    robot_height_m: 0.25      # robot body top (+ margin); not full room height
     height_margin_m: 0.05
-    mesh_inflate_m: 0.10      # ≈ beni footprint radius (track 0.16)
+    mesh_inflate_m: 0.10      # ≈ footprint radius
     free_doors: true          # punch door meshes free (rooms.json seals openings)
     door_opening_inflate_m: 0.15
     ply:

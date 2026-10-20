@@ -56,13 +56,35 @@ class Force:
         radius: float,
         bodies: np.ndarray | None = None,
         body_radius: float = 0.0,
+        *,
+        goal_force_factor: np.ndarray | float | None = None,
+        social_force_factor: np.ndarray | float | None = None,
+        obstacle_force_factor: np.ndarray | float | None = None,
     ) -> np.ndarray:
-        """Net planar acceleration from desired, social, and body forces."""
+        """Net planar acceleration from desired, social, and body forces.
+
+        Optional per-agent gain arrays (HuNav YAML) broadcast as ``(N, 1)``.
+        """
         gain = self.settings
-        accel = gain["goal_force_factor"] * self.desired(velocity, preferred)
-        accel = accel + gain["social_force_factor"] * self.social(position, radius)
+        n = int(np.asarray(position).reshape(-1, 2).shape[0])
+
+        def _gain(value: np.ndarray | float | None, key: str) -> np.ndarray | float:
+            if value is None:
+                return float(gain[key])
+            arr = np.asarray(value, dtype=np.float64).reshape(-1)
+            if arr.size == 1:
+                return float(arr[0])
+            if arr.size != n:
+                return float(gain[key])
+            return arr.reshape(n, 1)
+
+        goal_g = _gain(goal_force_factor, "goal_force_factor")
+        social_g = _gain(social_force_factor, "social_force_factor")
+        obstacle_g = _gain(obstacle_force_factor, "obstacle_force_factor")
+        accel = goal_g * self.desired(velocity, preferred)
+        accel = accel + social_g * self.social(position, radius)
         if bodies is not None and np.asarray(bodies).size:
-            accel = accel + gain["obstacle_force_factor"] * self.bodies(
+            accel = accel + obstacle_g * self.bodies(
                 position, radius, bodies, body_radius
             )
         return accel

@@ -716,7 +716,7 @@ void Robot::draw(rendering::SceneOverlay& scene, common::DisplayContext* context
       visual.rotate(geometry.rotation);
       const QVector3D half = VisualHalfExtents(geometry);
       const QVector3D origin = visual.map(QVector3D(0.f, 0.f, 0.f));
-      // Scale with the link visual; floor used to be 8 cm and dwarfed Beni.
+      // Scale with the link visual; floor used to be 8 cm and dwarfed small robots.
       const float axis_len = std::clamp(half.length() * 0.55f, 0.02f, 0.12f);
       const QColor red(220, 60, 60, static_cast<int>(alpha * 255));
       const QColor green(60, 220, 60, static_cast<int>(alpha * 255));

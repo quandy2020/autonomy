@@ -71,7 +71,7 @@ def prim_exists(stage: Any, path: str) -> bool:
 def robot_tree_root(articulation_root: str) -> str:
     """Return robot mount Xform from an articulation link path.
 
-    ``/beni/base_footprint`` → ``/beni``;
+    ``/World/Robot/base_footprint`` → ``/World/Robot``;
     ``/Root/Robot/base_footprint`` → ``/Root/Robot``.
     """
     path = str(articulation_root).rstrip("/")
@@ -91,7 +91,7 @@ def ensure_articulation_dynamic(stage: Any, articulation_root: str) -> int:
     """Force every rigid link under the articulation to be dynamic (not kinematic).
 
     InteriorAgent scene prep freezes furniture as kinematic; if the robot skip
-    prefix is wrong, Beni links become static and PhysX refuses joints
+    prefix is wrong, robot links become static and PhysX refuses joints
     (``CreateJoint - cannot create a joint between static bodies``) → 0 DOFs.
     Kinematic root also means no gravity fall (不会倒) and free teleports (穿模).
     """

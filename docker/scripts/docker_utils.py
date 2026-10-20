@@ -150,6 +150,9 @@ def resolve_data_volumes(cli_volumes: list[str] | None = None) -> list[tuple[str
     1. CLI ``--data-volume`` (when any value is passed)
     2. ``AUTONOMY_DATA_VOLUMES`` environment variable (comma- or space-separated)
     3. No data volumes
+
+    Dataset roots for ``autonomy.tools.datasets`` use ``resolve_datasets_volume``
+    (``AUTONOMY_DATASETS`` / ``--datasets``) and are merged by the caller.
     """
     if cli_volumes is not None:
         specs = cli_volumes
@@ -163,6 +166,76 @@ def resolve_data_volumes(cli_volumes: list[str] | None = None) -> list[tuple[str
     for spec in specs:
         volumes.append(parse_volume_spec(spec))
     return volumes
+
+
+# Default in-container mount point for offline datasets (Oxford Spires, etc.).
+DEFAULT_DATASETS_CONTAINER_PATH = "/data"
+
+
+def resolve_datasets_volume(
+    cli_spec: str | None = None,
+) -> tuple[str, str, str] | None:
+    """Resolve the offline datasets root mount (``AUTONOMY_DATASETS`` / ``--datasets``).
+
+    Spec forms (default container path ``/data``, default mode ``ro``):
+
+    - ``HOST`` → ``HOST:/data:ro``
+    - ``HOST:CONTAINER`` → ``HOST:CONTAINER:ro``
+    - ``HOST:CONTAINER:MODE`` → as given
+
+    Priority: CLI ``--datasets`` when set, else ``AUTONOMY_DATASETS``.
+    """
+    if cli_spec is not None:
+        raw = cli_spec.strip()
+    else:
+        raw = os.environ.get("AUTONOMY_DATASETS", "").strip()
+    if not raw:
+        return None
+
+    parts = raw.split(":")
+    if len(parts) == 1:
+        host = parts[0].strip()
+        if not host:
+            return None
+        return host, DEFAULT_DATASETS_CONTAINER_PATH, "ro"
+    if len(parts) == 2:
+        host, container = parts[0].strip(), parts[1].strip()
+        if not host or not container:
+            raise ValueError(
+                f"invalid AUTONOMY_DATASETS / --datasets spec '{raw}': "
+                "expected HOST, HOST:CONTAINER, or HOST:CONTAINER:MODE"
+            )
+        return host, container, "ro"
+    if len(parts) == 3:
+        return parse_volume_spec(raw)
+    raise ValueError(
+        f"invalid AUTONOMY_DATASETS / --datasets spec '{raw}': "
+        "expected HOST, HOST:CONTAINER, or HOST:CONTAINER:MODE"
+    )
+
+
+def merge_data_and_datasets_volumes(
+    data_volumes: list[tuple[str, str, str]],
+    datasets_volume: tuple[str, str, str] | None,
+) -> list[tuple[str, str, str]]:
+    """Append datasets mount; warn when another volume already targets the same path."""
+    if datasets_volume is None:
+        return list(data_volumes)
+    host, container, mode = datasets_volume
+    container_norm = container.rstrip("/") or "/"
+    conflict = [
+        (h, c, m)
+        for h, c, m in data_volumes
+        if (c.rstrip("/") or "/") == container_norm
+    ]
+    if conflict:
+        print_warning(
+            f"AUTONOMY_DATASETS mounts {host} -> {container}:{mode}, but "
+            f"AUTONOMY_DATA_VOLUMES / --data-volume already targets {container_norm} "
+            f"({conflict[0][0]}:{conflict[0][1]}:{conflict[0][2]}). "
+            "Both will be passed to docker; the later mount wins."
+        )
+    return list(data_volumes) + [datasets_volume]
 
 
 def resolve_container_name() -> str:

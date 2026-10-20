@@ -41,7 +41,17 @@ logger = logging.getLogger(__name__)
 
 # Isaac People bipeds face -Y; autosim map yaw=0 faces +X.
 CHARACTER_YAW_OFFSET = -0.5 * math.pi
-SKIP_CHARACTER_NAME_PARTS = ("biped", "setup", "retarget", "animation")
+SKIP_CHARACTER_NAME_PARTS = (
+    "biped",
+    "setup",
+    "retarget",
+    "animation",
+    "test",
+    "tests",
+    "golden",
+    "conveyor",
+    "empty_stage",
+)
 
 
 class PeopleSync:
@@ -132,6 +142,7 @@ class PeopleSync:
             ).reshape(-1, 2)
             radius = float(pedestrian.settings.get("radius", 0.25))
             height = float(pedestrian.settings.get("height", 1.7))
+            skins = getattr(pedestrian, "skins", None)
             self.sync_character_group(
                 stage,
                 f"{self.root_path}/Pedestrians",
@@ -141,6 +152,7 @@ class PeopleSync:
                 height=height,
                 prefix="ped",
                 dt=dt if dt > 0.0 else (self.sync_period or 1.0 / 30.0),
+                skins=skins,
                 UsdGeom=UsdGeom,
                 UsdPhysics=UsdPhysics,
                 Gf=Gf,
@@ -161,6 +173,17 @@ class PeopleSync:
                 visible=self.pedestrian_visual == "capsule",
             )
 
+    def character_asset_for_skin(self, skin: int, index: int) -> str:
+        """Map HuNav ``skin`` (0=round-robin, 1..N=specific) to a character USD."""
+        assets = self.character_assets
+        if not assets:
+            return ""
+        value = int(skin)
+        if value <= 0:
+            return assets[index % len(assets)]
+        # HuNav skins are 1-based into the character list.
+        return assets[(value - 1) % len(assets)]
+
     def sync_character_group(
         self,
         stage: Any,
@@ -172,6 +195,7 @@ class PeopleSync:
         height: float,
         prefix: str,
         dt: float,
+        skins: Any = None,
         UsdGeom: Any,
         UsdPhysics: Any,
         Gf: Any,
@@ -188,11 +212,20 @@ class PeopleSync:
         if not stage.GetPrimAtPath(group_path).IsValid():
             UsdGeom.Xform.Define(stage, group_path)
         count = int(poses.shape[0])
+        skin_arr = (
+            np.asarray(skins, dtype=np.int32).reshape(-1)
+            if skins is not None
+            else None
+        )
         for index in range(count):
             path = f"{group_path}/{prefix}_{index:03d}"
             prim = stage.GetPrimAtPath(path)
             if not prim.IsValid():
-                asset = self.character_assets[index % len(self.character_assets)]
+                skin = int(skin_arr[index]) if skin_arr is not None and index < len(skin_arr) else 0
+                asset = self.character_asset_for_skin(skin, index)
+                if not asset or not looks_like_character_usd(Path(asset)):
+                    logger.warning("skip non-skin character asset %s", asset)
+                    continue
                 xform = UsdGeom.Xform.Define(stage, path)
                 prim = xform.GetPrim()
                 try:
@@ -386,7 +419,23 @@ def looks_like_character_usd(path: Path) -> bool:
     name = path.name.lower()
     if not name.endswith((".usd", ".usda", ".usdc")):
         return False
-    return not any(part in name for part in SKIP_CHARACTER_NAME_PARTS)
+    stem = path.stem.lower()
+    parent = path.parent.name.lower()
+    # Only check file / parent folder names — full paths often contain "test".
+    if any(part in stem or part in parent for part in SKIP_CHARACTER_NAME_PARTS):
+        return False
+    # Never spawn retarget sources as pedestrians (white / incomplete meshes).
+    if "biped" in stem or stem.endswith("_setup"):
+        return False
+    # Prefer People character packs (F_/M_ names or folder matching stem).
+    if stem.startswith(("f_", "m_", "female", "male")):
+        return True
+    if parent and parent not in {".", "characters"} and stem.startswith(parent[:4]):
+        return True
+    # Loose files directly under Characters/ are usually Biped_Setup — skip.
+    if parent == "characters":
+        return False
+    return parent not in {"stage", "tests", "data", "ogn"}
 
 
 def list_character_usds(root: str | Path) -> list[str]:
@@ -394,6 +443,7 @@ def list_character_usds(root: str | Path) -> list[str]:
     base = Path(root).expanduser()
     if not base.is_dir():
         return []
+    # Never recursively scan a whole Isaac install — only Characters layout.
     found: list[Path] = []
     for child in sorted(base.iterdir()):
         if not child.is_dir():
@@ -404,7 +454,10 @@ def list_character_usds(root: str | Path) -> list[str]:
         if usds:
             found.append(usds[0])
     if not found:
-        found = sorted(p for p in base.rglob("*") if looks_like_character_usd(p))
+        # One-level files directly under Characters/ (no subfolders).
+        found = sorted(
+            p for p in base.iterdir() if p.is_file() and looks_like_character_usd(p)
+        )
     return [str(p.resolve()) for p in found]
 
 
@@ -428,9 +481,12 @@ def discover_character_root(explicit: str = "") -> str:
         if not value:
             continue
         root = Path(value).expanduser()
+        # Never treat the Isaac/Lab install root itself as Characters.
+        if key in ("AUTOSIM_PEOPLE_ROOT", "ISAAC_PEOPLE_ROOT"):
+            candidates.append(root)
+            candidates.append(root / "Characters")
         candidates.extend(
             [
-                root,
                 root / "People" / "Characters",
                 root / "Isaac" / "People" / "Characters",
                 root / "assets" / "Isaac" / "People" / "Characters",
@@ -462,7 +518,7 @@ def discover_character_root(explicit: str = "") -> str:
             continue
         if list_character_usds(path):
             return str(path.resolve())
-        if path.name.lower() == "characters":
+        if path.name.lower() == "characters" and any(path.iterdir()):
             return str(path.resolve())
     return ""
 
@@ -539,6 +595,7 @@ def maybe_create_people_sync(
         enabled=anim_on,
         walk_mps=float(cfg.get("anim_walk_mps", 1.2)),
         clip_assets=clip_assets,
+        character_root=character_root,
     )
     sync = PeopleSync(
         stage,

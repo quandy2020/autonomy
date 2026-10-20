@@ -6,7 +6,6 @@ Per-robot package layout: URDF + optional meshes under one folder.
 |-----------|--------|
 | `turtlebot3_burger/` | ROBOTIS TurtleBot3 Burger |
 | `husky/` | Clearpath Husky A200 |
-| `beni/` | Open Beni wheeled-biped (RGB-D) |
 
 ```
 robot/<name>/
@@ -31,10 +30,10 @@ robot/<name>/
 ```yaml
 habitat:
   robot:
-    profile: beni   # or turtlebot3_burger / husky
-    # urdf: robot/beni/beni.urdf
+    profile: turtlebot3_burger   # or husky
+    # urdf: robot/turtlebot3_burger/turtlebot3_burger.urdf
 ```
 
-Paths are relative to the `autosim/` project root. Visual meshes live under each robot’s `meshes/` (ROBOTIS STL / Clearpath DAE / Open Beni OBJ). Collision geometry stays primitive for simulation speed. Autoviz resolves mesh paths relative to the URDF directory.
+Paths are relative to the `autosim/` project root. Visual meshes live under each robot’s `meshes/` (ROBOTIS STL / Clearpath DAE). Collision geometry stays primitive for simulation speed. Autoviz resolves mesh paths relative to the URDF directory.
 
-Motion is always planar `/cmd_vel` (unicycle). BENI’s native RL balancer stays in Open Beni; autosim uses wheel track ≈ 0.16 m.
+Motion is always planar `/cmd_vel` (unicycle).

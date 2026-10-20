@@ -12,20 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Robot-specific Isaac adapters (URDF import, articulation drivers)."""
+"""Robot-specific Isaac adapters (differential-drive USD)."""
 
 from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["BeniArticulation", "WheeledDrive"]
+__all__ = ["WheeledDrive"]
 
 
 def __getattr__(name: str) -> Any:
-    if name == "BeniArticulation":
-        from autosim.backends.isaac.robots.beni import BeniArticulation
-
-        return BeniArticulation
     if name == "WheeledDrive":
         from autosim.backends.isaac.robots.wheeled import WheeledDrive
 

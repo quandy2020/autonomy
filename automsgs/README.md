@@ -4,7 +4,7 @@ Protocol Buffer message and service definitions for the autonomy stack, with C++
 
 ## Features
 
-- **Proto definitions**: ROS-style messages, services, and actions under `proto/msgs/`, `proto/srvs/`, and `proto/actions/` (e.g. `geometry_msgs`, `sensor_msgs`, `std_msgs`, `nav_msgs`). All `.proto` filenames use **lowercase and underscores** (snake_case).
+- **Proto definitions**: ROS-style messages, services, and actions under `proto/msgs/`, `proto/srvs/`, and `proto/actions/` (e.g. `geometry_msgs`, `sensor_msgs`, `std_msgs`, `nav_msgs`, **`hunav_msgs`** for HuNavSim / Isaac social agents). All `.proto` filenames use **lowercase and underscores** (snake_case).
 - **Code generation**: C++ (`.pb.h` / `.pb.cc`) and Python (`_pb2.py`) generated at build time via `protoc` and the `automsgs_msgs_generate.py` script; optional `details/` layout and `MessageTypes.hh` factory header.
 - **Core library**: `automsgs_core` provides version config, install prefix, and **Factory** / **MessageFactory** / **DynamicFactory** for creating messages by type name and loading descriptors.
 - **CLI**: `automsgs-msgs` lists installed message types and prints proto file contents (`--list`, `--info TYPE`).

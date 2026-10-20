@@ -49,7 +49,7 @@ habitat:
 
 | 字段 | 含义 |
 |------|------|
-| `robot.profile` | `turtlebot3_burger` / `husky` / `beni`（填 URDF、USD、轮距） |
+| `robot.profile` | `turtlebot3_burger` / `husky`（填 URDF、USD、轮距） |
 | `robot.control_hz` | 控制与积分频率 |
 | `robot.tf.publish_map_odom` | 可被 `mode` 覆盖 |
 | `sensors.*.rate_hz` | 发布频率门控 |

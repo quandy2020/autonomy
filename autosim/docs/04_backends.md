@@ -53,9 +53,8 @@
 | `transforms.py` | — | map 系 ↔ 世界位姿 |
 | `stage.py` | `SceneStage` | 打开舞台 · 机器人 Xform · 网格点云 |
 | `sensors.py` | `SensorSuite` | RGB-D · RTX Lidar · surround |
-| `physics.py` | `PhysicsContext` | PhysX · 胶囊碰撞 |
+| `physics.py` | `PhysicsContext` | PhysX · 场景碰撞 |
 | `articulation.py` | — | 通用 Articulation 辅助 |
-| `robots/beni.py` | `BeniArticulation` | Beni 浮动基关节 |
 | `robots/wheeled.py` | `WheeledDrive` | 差速轮速驱动 |
 | `randomization.py` | — | 光照 / 行人外观随机 |
 | `people.py` | `PeopleSync` | CPU Traffic → USD 行人 |

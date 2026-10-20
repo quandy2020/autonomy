@@ -82,6 +82,18 @@ autonomy.localization \
 | `/argus/occupancy` | 2D 占用栅格 |
 | `/tf` | `map→odom`；无轮式 TF 时补 `odom→base_link` |
 
+**离线数据集 → Argus（Oxford Spires）**
+
+```bash
+# 终端 A：localization_argus.launch
+# 终端 B：
+python -m autonomy.tools.datasets publish \
+  --dataset spires --path /path/to/sequences/<name> --rate 1.0
+# LIO-only：加 --no-image
+```
+
+详见 `autonomy/tools/datasets/README.md`。
+
 ## autosim 验证 Atlas LIO
 
 工作区根目录是 `/workspace/autonomy`。三个终端都在容器里。

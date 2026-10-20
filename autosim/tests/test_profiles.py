@@ -43,21 +43,6 @@ def test_apply_profile_fills_defaults():
     assert merged["wheel_separation"] == pytest.approx(0.512)
 
 
-def test_apply_profile_beni():
-    merged = apply_profile({"profile": "beni"})
-    assert merged["urdf"] == "robot/beni/beni.urdf"
-    assert merged["wheel_separation"] == pytest.approx(0.160)
-    assert merged["base_link_height"] == pytest.approx(0.11)
-    model = UrdfModel.load(merged["urdf"])
-    assert model is not None
-    assert model.root == "base_footprint"
-    assert "camera_link" in model.parents
-    cx, cy, cz = model.camera_xyz()
-    assert abs(cx - 0.07) < 1e-6
-    assert abs(cy - 0.03) < 1e-6
-    assert abs(cz - (-0.016 + 0.11)) < 1e-6  # via base_footprint→base_link
-
-
 def test_apply_profile_keeps_overrides():
     merged = apply_profile(
         {
@@ -73,7 +58,7 @@ def test_apply_profile_keeps_overrides():
 def test_isaac_yaml_loads():
     settings = Config.load(ROOT / "config" / "isaac.yaml")
     assert settings["habitat"]["backend"] == "isaac"
-    assert settings["habitat"]["robot"]["profile"] == "beni"
+    assert settings["habitat"]["robot"]["profile"] == "turtlebot3_burger"
     assert settings.channel_map().get("robot_description") == "/robot_description"
     camera = settings["habitat"]["sensors"]["camera"]
     assert camera["enabled"] is True

@@ -129,13 +129,13 @@ def test_isaac_sensors_sync_world_pose_follows_robot():
     assert float(orn[0]) == pytest.approx(1.0)  # w
     assert axes == "world"
 
-    # URDF-style XY offset must rotate with yaw (Beni camera_link).
-    beni = SensorSuite(
+    # URDF-style XY offset must rotate with yaw (camera_link).
+    offset = SensorSuite(
         width=64, height=48, eye_offset=(0.07, 0.03, -0.016)
     )
     cam2 = _FakeCam()
-    beni.attach(camera=cam2)
-    beni.sync_world_pose(0.0, 0.0, 0.0, base_z=0.11)
+    offset.attach(camera=cam2)
+    offset.sync_world_pose(0.0, 0.0, 0.0, base_z=0.11)
     px, py, pz = cam2.poses[0][0]
     assert float(px) == pytest.approx(0.07)
     assert float(py) == pytest.approx(0.03)
@@ -211,45 +211,41 @@ def test_physics_config_from_habitat_defaults():
 
     cfg = physics_config_from_habitat({"isaac": {}})
     assert cfg["enabled"] is True
-    assert cfg["mode"] == "capsule"
-    assert cfg["block_motion"] is True
+    assert cfg["mode"] == "wheeled"
+    assert cfg["block_motion"] is False
     assert cfg["strip_nested_rigid_bodies"] is True
     assert cfg["physics_scene_path"] == "/physicsScene"
     assert cfg["robot_radius"] == pytest.approx(0.12)
 
     cfg2 = physics_config_from_habitat(
-        {"isaac": {"physics": {"enabled": False, "robot_radius": 0.2}}}
+        {"isaac": {"physics": {"enabled": False, "robot_radius": 0.2, "mode": "wheeled"}}}
     )
     assert cfg2["enabled"] is False
+    assert cfg2["mode"] == "wheeled"
     assert cfg2["robot_radius"] == pytest.approx(0.2)
 
 
-def test_physics_config_articulation_forces_collision_world():
-    """Floating-base Beni needs PhysX + scene colliders, not free teleop."""
+def test_physics_config_rejects_removed_modes():
+    """Legacy articulation/capsule modes are rejected; wheeled is the only mode."""
     from autosim.backends.isaac.physics import physics_config_from_habitat
 
     cfg = physics_config_from_habitat(
-        {
-            "isaac": {
-                "physics": {
-                    "mode": "articulation",
-                    "enabled": False,
-                    "block_motion": True,
-                    "ensure_scene_colliders": False,
-                }
-            }
-        }
+        {"isaac": {"physics": {"mode": "wheeled", "enabled": True}}}
     )
-    assert cfg["mode"] == "articulation"
-    assert cfg["enabled"] is True
-    assert cfg["block_motion"] is False
-    assert cfg["ensure_scene_colliders"] is True
-    assert cfg["strip_nested_rigid_bodies"] is True
+    assert cfg["mode"] == "wheeled"
 
-    bad = physics_config_from_habitat(
-        {"isaac": {"physics": {"mode": "unknown"}}}
-    )
-    assert bad["mode"] == "capsule"
+    with pytest.raises(ValueError, match="wheeled"):
+        physics_config_from_habitat(
+            {"isaac": {"physics": {"mode": "unknown"}}}
+        )
+    with pytest.raises(ValueError, match="removed"):
+        physics_config_from_habitat(
+            {"isaac": {"physics": {"mode": "capsule"}}}
+        )
+    with pytest.raises(ValueError, match="removed"):
+        physics_config_from_habitat(
+            {"isaac": {"physics": {"mode": "articulation"}}}
+        )
 
 
 def test_strip_nested_rigid_bodies_disables_child():

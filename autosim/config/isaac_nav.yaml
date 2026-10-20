@@ -4,7 +4,7 @@
 #
 #   CONFIG=src/autonomy/autosim/config/isaac.yaml src/autonomy/autosim/scripts/run.sh sim
 #
-# Ground-nav / SLAM sensor stack (differential drive). For Beni use isaac.yaml.
+# Ground-nav / SLAM sensor stack (differential drive).
 
 habitat:
   backend: isaac
@@ -12,14 +12,15 @@ habitat:
   # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
   # Camera path aligned with arena-isaac: RTX Camera + supportMultiTickRate,
   # PhysX ticks without RTX, RGB sampled only in color_depth (Habitat timing).
-  # physics.mode:
-  #   capsule      — kinematic overlap block (or enabled=false → render-only)
-  #   articulation — Beni floating-base PhysX (gravity, collision, true fall)
+  # physics.mode: wheeled — differential-drive USD (turtlebot / husky)
   isaac:
     headless: true
+    wheeled:
+      track_width: 0.16
+      wheel_radius: 0.033
     physics:
       enabled: true
-      mode: capsule           # capsule for planar nav (articulation = Beni)
+      mode: wheeled
       block_motion: true
       freeze_scene: true
       ensure_scene_colliders: true
@@ -44,17 +45,12 @@ habitat:
   policy:
     enabled: false
     action_space: twist
-    # Default: robot/beni/models/policy.onnx (Open Beni export)
-    # model_path: robot/beni/models/policy.onnx
-    rate_hz: 100.0              # Open Beni policy rate
+    rate_hz: 10.0
     exclusive: false
-    max_vx: 1.5
-    max_wz: 2.0
-    # Standing height command in obs (Open Beni range ≈ [0.10, 0.12]).
-    base_height: 0.11
-    animate_joints: false       # auto true when Articulation bound
-    drive_from_wheels: false    # planar plant unused when articulation owns base
-    use_laser: false
+    max_vx: 0.5
+    max_wz: 1.0
+    drive_from_wheels: false
+    use_laser: true
     laser_bins: 360
 
   # LeRobot v2.1 dataset recording for imitation learning (docs/11_dataset.md).
@@ -153,8 +149,8 @@ habitat:
       range_max: 30.0
       num_beams: 360
       noise: 0.0
-      backend: merge
-      rtx_config: Example_Rotary
+      backend: rtx
+      rtx_config: RPLIDAR_S2E
 
     joint_states:
       enabled: false
@@ -182,7 +178,7 @@ habitat:
     camera:
       enabled: true
       # Primary sensor = RGB-D (RGB + depth + optional depth points).
-      # Extrinsics follow beni.urdf camera_link (Open Beni MJCF depth_front).
+      # Extrinsics follow robot URDF camera_link when present.
       width: 1280
       height: 720
       # MJCF depth_front ≈ 86.5° VFOV @ 80×60 → ~98° HFOV; keep 90 for nav.

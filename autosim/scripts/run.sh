@@ -116,13 +116,25 @@ if [[ -z "${AUTOLINK_PYTHON_DIR:-}" ]]; then
 fi
 
 PYTHON_ENTRIES=("${AUTOSIM}" "${AUTOLINK_PYTHON_DIR}")
-for messages in \
-  "${ROOT}/build/autonomy/automsgs/proto/gen/python" \
-  "${ROOT}/build/automsgs/proto/gen/python" \
+# Prefer message trees that include hunav_msgs (newer protos). Incomplete
+# install/ trees without hunav would otherwise shadow /usr/local/lib/python.
+MESSAGES_CANDIDATES=(
+  "${ROOT}/build/autonomy/automsgs/proto/gen/python"
+  "${ROOT}/build/automsgs/proto/gen/python"
   "${ROOT}/install/autonomy/lib/python"
-do
-  [[ -d "${messages}" ]] && PYTHON_ENTRIES+=("${messages}")
+  "/usr/local/lib/python"
+)
+MESSAGES_WITH_HUNAV=()
+MESSAGES_OTHER=()
+for messages in "${MESSAGES_CANDIDATES[@]}"; do
+  [[ -d "${messages}/automsgs" ]] || continue
+  if [[ -d "${messages}/automsgs/msgs/hunav_msgs" ]]; then
+    MESSAGES_WITH_HUNAV+=("${messages}")
+  else
+    MESSAGES_OTHER+=("${messages}")
+  fi
 done
+PYTHON_ENTRIES+=("${MESSAGES_WITH_HUNAV[@]}" "${MESSAGES_OTHER[@]}")
 export PYTHONPATH="$(IFS=:; echo "${PYTHON_ENTRIES[*]}")${PYTHONPATH:+:${PYTHONPATH}}"
 
 LIBRARY_ENTRIES=()

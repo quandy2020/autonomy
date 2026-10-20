@@ -57,7 +57,7 @@ class SensorSuite:
         self.width = max(1, int(width))
         self.height = max(1, int(height))
         # Local camera pose in base_link (URDF camera_link). Z-only legacy
-        # (0,0,eye_height) puts Beni's eye inside the body mesh → blank RGB-D.
+        # (0,0,eye_height) can put the eye inside the body mesh → blank RGB-D.
         if eye_offset is None:
             self.eye_offset = (0.0, 0.0, float(eye_height))
         else:
@@ -72,6 +72,8 @@ class SensorSuite:
         self.depth_annotator: Any = None
         self.lidar_annotator: Any = None
         self.lidar_sensor: Any = None
+        self.lidar_flat_scan: bool = False
+        self.imu_sensor: Any = None
         self.surround_cameras: list[Any] = []
 
     def attach(
@@ -152,7 +154,7 @@ class SensorSuite:
                 cam, float(hfov_deg), width=self.width, height=self.height
             )
             try:
-                # Small platforms (Beni) need a near clip below 0.1 m.
+                # Small platforms need a near clip below 0.1 m.
                 cam.set_clipping_range(
                     near_distance=float(self.MIN_DEPTH_M),
                     far_distance=float(self.MAX_DEPTH_M),
@@ -183,18 +185,65 @@ class SensorSuite:
         )
         return True
 
+    @staticmethod
+    def is_2d_lidar_config(config_name: str) -> bool:
+        """True when ``config_name`` is safe for ``IsaacComputeRTXLidarFlatScan``.
+
+        FlatScan requires elevationDeg == 0. ``Example_Rotary`` is 3D (−15°) and
+        will abort the node; prefer RPLIDAR / SICK / Debug_Rotary / *_2D.
+        """
+        text = str(config_name or "").lower()
+        if not text:
+            return False
+        if any(
+            token in text
+            for token in (
+                "rplidar",
+                "tim781",
+                "picoscan",
+                "microscan",
+                "debug_rotary",
+                "2d",
+                "2dtof",
+            )
+        ):
+            return True
+        # Known 3D packs — do not attach FlatScan.
+        if any(
+            token in text
+            for token in (
+                "example_rotary",
+                "velodyne",
+                "hesai",
+                "ouster",
+                "vls",
+                "xt32",
+                "os0",
+                "os1",
+                "os2",
+            )
+        ):
+            return "2d" in text
+        return True
+
     def mount_robot_lidar(
         self,
         robot_prim_path: str,
         *,
         translation: tuple[float, float, float] = (0.0, 0.0, 0.2),
-        config_name: str = "Example_Rotary",
+        config_name: str = "RPLIDAR_S2E",
         prim_suffix: str = "Lidar",
         warmup_frames: int = 4,
+        flat_scan: bool | None = None,
     ) -> bool:
         """Mount an RTX Lidar under ``robot_prim`` (experimental API, then LidarRtx)."""
         prim_path = f"{robot_prim_path.rstrip('/')}/{prim_suffix}"
         tx, ty, tz = (float(v) for v in translation)
+        config = str(config_name or "RPLIDAR_S2E")
+        want_flat = (
+            self.is_2d_lidar_config(config) if flat_scan is None else bool(flat_scan)
+        )
+        self.lidar_flat_scan = want_flat
         sensor: Any = None
 
         # Isaac Sim 6+: isaacsim.sensors.experimental.rtx
@@ -203,14 +252,19 @@ class SensorSuite:
 
             authored = Lidar.create(
                 prim_path,
-                config=str(config_name),
+                config=config,
                 translations=np.array([[tx, ty, tz]], dtype=np.float64),
                 orientations=np.array([[1.0, 0.0, 0.0, 0.0]], dtype=np.float64),
             )
             sensor = LidarSensor(authored, annotators=["generic-model-output"])
             self.lidar_sensor = sensor
             self.lidar_annotator = sensor
-            logger.info("RTX Lidar (experimental) at %s config=%s", prim_path, config_name)
+            logger.info(
+                "RTX Lidar (experimental) at %s config=%s flat_scan=%s",
+                prim_path,
+                config,
+                want_flat,
+            )
         except Exception as exc:
             logger.debug("experimental Lidar unavailable: %s", exc)
             sensor = None
@@ -224,24 +278,37 @@ class SensorSuite:
                     name="autosim_lidar",
                     translation=np.array([tx, ty, tz], dtype=np.float64),
                     orientation=np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64),
-                    config_file_name=str(config_name),
+                    config_file_name=config,
                 )
-                try:
-                    sensor.attach_annotator("IsaacComputeRTXLidarFlatScan")
-                except Exception:
+                if want_flat:
+                    try:
+                        sensor.attach_annotator("IsaacComputeRTXLidarFlatScan")
+                    except Exception as flat_exc:
+                        logger.warning(
+                            "FlatScan annotator failed (%s); falling back to point cloud",
+                            flat_exc,
+                        )
+                        want_flat = False
+                        self.lidar_flat_scan = False
+                if not want_flat:
                     try:
                         sensor.attach_annotator(
                             "IsaacExtractRTXSensorPointCloudNoAccumulator"
                         )
                     except Exception as ann_exc:
-                        logger.debug("LidarRtx annotator skipped: %s", ann_exc)
+                        logger.debug("LidarRtx point-cloud annotator skipped: %s", ann_exc)
                 try:
                     sensor.initialize()
                 except Exception:
                     pass
                 self.lidar_sensor = sensor
                 self.lidar_annotator = sensor
-                logger.info("RTX LidarRtx at %s config=%s", prim_path, config_name)
+                logger.info(
+                    "RTX LidarRtx at %s config=%s flat_scan=%s",
+                    prim_path,
+                    config,
+                    self.lidar_flat_scan,
+                )
             except Exception as exc:
                 logger.warning("failed to mount RTX Lidar at %s: %s", prim_path, exc)
                 return False
@@ -249,6 +316,97 @@ class SensorSuite:
         for _ in range(max(0, int(warmup_frames))):
             update_app()
         return True
+
+    def mount_robot_imu(
+        self,
+        robot_prim_path: str,
+        *,
+        translation: tuple[float, float, float] = (0.0, 0.0, 0.0),
+        frequency: float = 200.0,
+        prim_suffix: str = "Imu",
+    ) -> bool:
+        """Mount an Isaac PhysX ``IMUSensor`` under ``robot_prim``."""
+        prim_path = f"{robot_prim_path.rstrip('/')}/{prim_suffix}"
+        try:
+            from isaacsim.core.utils.extensions import enable_extension
+        except Exception:
+            try:
+                from omni.isaac.core.utils.extensions import enable_extension  # type: ignore
+            except Exception:
+                enable_extension = None  # type: ignore
+        if enable_extension is not None:
+            for ext in ("isaacsim.sensors.physics", "omni.isaac.sensor"):
+                try:
+                    enable_extension(ext)
+                except Exception:
+                    pass
+        try:
+            from isaacsim.sensors.physics import IMUSensor
+        except Exception as exc:
+            logger.warning("Isaac IMUSensor unavailable: %s", exc)
+            return False
+        try:
+            imu = IMUSensor(
+                prim_path=prim_path,
+                name="autosim_imu",
+                frequency=int(max(1.0, float(frequency))),
+                translation=np.array(
+                    [float(translation[0]), float(translation[1]), float(translation[2])],
+                    dtype=np.float64,
+                ),
+            )
+            try:
+                imu.initialize()
+            except Exception:
+                pass
+            self.imu_sensor = imu
+            logger.info(
+                "Isaac IMU at %s (%.0f Hz)", prim_path, float(frequency)
+            )
+            return True
+        except Exception as exc:
+            logger.warning("failed to mount Isaac IMU at %s: %s", prim_path, exc)
+            return False
+
+    def read_imu(self) -> dict[str, Any] | None:
+        """Return Isaac IMU frame ``{lin_acc, ang_vel, orientation}`` or None."""
+        imu = self.imu_sensor
+        if imu is None:
+            return None
+        try:
+            frame = imu.get_current_frame(read_gravity=True)
+        except TypeError:
+            try:
+                frame = imu.get_current_frame()
+            except Exception:
+                return None
+        except Exception:
+            return None
+        if not isinstance(frame, dict):
+            return None
+        try:
+            lin = np.asarray(frame.get("lin_acc"), dtype=np.float64).reshape(-1)
+            ang = np.asarray(frame.get("ang_vel"), dtype=np.float64).reshape(-1)
+            quat = np.asarray(frame.get("orientation"), dtype=np.float64).reshape(-1)
+        except Exception:
+            return None
+        if lin.size < 3 or ang.size < 3:
+            return None
+        # Isaac quat is often wxyz; Autolink Imu uses xyzw.
+        if quat.size >= 4:
+            orientation = (
+                float(quat[1]),
+                float(quat[2]),
+                float(quat[3]),
+                float(quat[0]),
+            )
+        else:
+            orientation = (0.0, 0.0, 0.0, 1.0)
+        return {
+            "lin_acc": (float(lin[0]), float(lin[1]), float(lin[2])),
+            "ang_vel": (float(ang[0]), float(ang[1]), float(ang[2])),
+            "orientation": orientation,
+        }
 
     def mount_surround_cameras(
         self,
@@ -483,6 +641,15 @@ class SensorSuite:
         self.lidar_annotator = None
         lidar = self.lidar_sensor
         self.lidar_sensor = None
+        imu = self.imu_sensor
+        self.imu_sensor = None
+        if imu is not None:
+            try:
+                destroy = getattr(imu, "destroy", None) or getattr(imu, "cleanup", None)
+                if callable(destroy):
+                    destroy()
+            except Exception:
+                pass
         for cam in cams:
             if cam is None:
                 continue
@@ -551,6 +718,92 @@ class SensorSuite:
                 return self.sanitize_depth(data)
         return np.full((self.height, self.width), np.nan, dtype=np.float32)
 
+    def _flat_scan_ranges(
+        self,
+        angle_min: float,
+        angle_max: float,
+        num_beams: int,
+        range_max: float,
+    ) -> np.ndarray | None:
+        """Read ``IsaacComputeRTXLidarFlatScan`` depths into a fixed beam grid."""
+        sensor = self.lidar_sensor if self.lidar_sensor is not None else self.lidar_annotator
+        if sensor is None:
+            return None
+        payload: Any = None
+        try:
+            frame = sensor.get_current_frame()
+            if isinstance(frame, dict):
+                payload = frame.get("IsaacComputeRTXLidarFlatScan")
+                if payload is None:
+                    for key in ("linear_depth_data", "depths", "ranges", "data"):
+                        if key in frame and frame[key] is not None:
+                            payload = frame[key]
+                            break
+        except Exception:
+            payload = None
+        if payload is None:
+            return None
+        depths: np.ndarray | None = None
+        azimuths: np.ndarray | None = None
+        if isinstance(payload, dict):
+            for key in (
+                "linearDepth",
+                "linear_depth",
+                "depths",
+                "ranges",
+                "distances",
+                "data",
+            ):
+                if key in payload and payload[key] is not None:
+                    depths = np.asarray(payload[key], dtype=np.float64).reshape(-1)
+                    break
+            for key in ("azimuths", "azimuth", "angles"):
+                if key in payload and payload[key] is not None:
+                    azimuths = np.asarray(payload[key], dtype=np.float64).reshape(-1)
+                    break
+        else:
+            arr = np.asarray(payload, dtype=np.float64)
+            if arr.ndim == 1 and arr.size > 0:
+                depths = arr.reshape(-1)
+        if depths is None or depths.size == 0:
+            return None
+        out = np.full((int(num_beams),), np.nan, dtype=np.float32)
+        target = np.linspace(
+            float(angle_min), float(angle_max), num=int(num_beams), dtype=np.float64
+        )
+        if azimuths is not None and azimuths.size == depths.size:
+            step = (float(angle_max) - float(angle_min)) / max(int(num_beams) - 1, 1)
+            for ang, dist in zip(azimuths, depths):
+                if not np.isfinite(dist) or float(dist) > float(range_max):
+                    continue
+                # Wrap azimuth into [angle_min, angle_max] neighborhood.
+                delta = ((float(ang) - target + math.pi) % (2 * math.pi)) - math.pi
+                index = int(np.argmin(np.abs(delta)))
+                if abs(float(delta[index])) > 0.5 * step + 1e-3:
+                    continue
+                prev = out[index]
+                if not np.isfinite(prev) or float(dist) < float(prev):
+                    out[index] = float(dist)
+            return out
+        # Densities often match num_beams already (or resample).
+        if depths.size == int(num_beams):
+            clipped = np.where(
+                np.isfinite(depths) & (depths <= float(range_max)),
+                depths,
+                np.nan,
+            )
+            return clipped.astype(np.float32)
+        # Nearest-neighbor resample onto requested beam count.
+        src = np.linspace(
+            float(angle_min), float(angle_max), num=int(depths.size), dtype=np.float64
+        )
+        for i, ang in enumerate(target):
+            index = int(np.argmin(np.abs(src - ang)))
+            dist = float(depths[index])
+            if np.isfinite(dist) and dist <= float(range_max):
+                out[i] = dist
+        return out
+
     def laser_ranges(
         self,
         angle_min: float,
@@ -560,8 +813,11 @@ class SensorSuite:
         *,
         pose: tuple[float, float, float],
     ) -> np.ndarray:
-        """Prefer lidar annotator; else empty (NaN) planar scan."""
+        """Prefer FlatScan / lidar annotator; else empty (NaN) planar scan."""
         del pose
+        flat = self._flat_scan_ranges(angle_min, angle_max, num_beams, range_max)
+        if flat is not None and np.isfinite(flat).any():
+            return flat
         cloud = self.lidar_points_xy()
         if cloud is None:
             return np.full((int(num_beams),), np.nan, dtype=np.float32)

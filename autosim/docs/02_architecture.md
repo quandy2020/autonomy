@@ -22,11 +22,13 @@ autosim/
 │   ├── habitat/
 │   ├── fake/
 │   └── isaac/
+│       └── hunav/        # HuNav_isaac_wrapper 移植（manager / world_builder）
 ├── scene/                # 与引擎无关的几何与动态体
 │   ├── map.py · floorplan.py  # OccupancyGrid / PLY · rooms.json
 │   ├── world.py · traffic.py · arena.py · field.py · cast.py
 │   ├── gen/              # 程序化静态地图（Scenario · Volume · Stage …）
-│   └── agents/           # Obstacle · Pedestrian · Force · Behavior · Agents
+│   ├── agents/           # Obstacle · Pedestrian · Force · Behavior · Agents
+│   └── hunav/            # HuNav Agents 编解码 + /compute_agents (Autolink)
 ├── bridge/               # Autolink I/O + 传感采样
 │   # Bridge · Messages · Clock · Teleop · Sensors · cameras · stitch
 ├── robot/                # plant · profiles · urdf · policy/

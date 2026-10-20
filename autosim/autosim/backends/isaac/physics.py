@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Isaac PhysX bootstrap: World, scene colliders, kinematic robot capsule."""
+"""Isaac PhysX bootstrap: World + scene colliders (wheeled)."""
 
 from __future__ import annotations
 
@@ -23,9 +23,9 @@ logger = logging.getLogger(__name__)
 
 PHYSICS_DEFAULTS = {
     "enabled": True,
-    # capsule: kinematic overlap block; articulation: floating-base PhysX (fall).
-    "mode": "capsule",
-    "block_motion": True,
+    # wheeled: differential-drive USD (turtlebot / husky).
+    "mode": "wheeled",
+    "block_motion": False,
     "dt": 1.0 / 60.0,
     "robot_radius": 0.12,
     "robot_height": 0.28,
@@ -35,6 +35,8 @@ PHYSICS_DEFAULTS = {
     "strip_nested_rigid_bodies": True,
     "physics_scene_path": "/physicsScene",
 }
+
+PHYSICS_MODES = frozenset({"wheeled"})
 
 
 def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
@@ -50,11 +52,17 @@ def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
     out = dict(PHYSICS_DEFAULTS)
     out.update(block)
     out["enabled"] = bool(out.get("enabled", True))
-    mode = str(out.get("mode") or "capsule").strip().lower()
-    if mode not in ("capsule", "articulation"):
-        mode = "capsule"
+    mode = str(out.get("mode") or "wheeled").strip().lower()
+    if mode in ("capsule", "articulation"):
+        raise ValueError(
+            f"habitat.isaac.physics.mode={mode!r} is removed; use mode=wheeled"
+        )
+    if mode not in PHYSICS_MODES:
+        raise ValueError(
+            f"habitat.isaac.physics.mode must be wheeled, got {mode!r}"
+        )
     out["mode"] = mode
-    out["block_motion"] = bool(out.get("block_motion", True))
+    out["block_motion"] = bool(out.get("block_motion", False))
     out["freeze_scene"] = bool(out.get("freeze_scene", True))
     out["add_ground"] = bool(out.get("add_ground", False))
     out["ensure_scene_colliders"] = bool(out.get("ensure_scene_colliders", True))
@@ -67,15 +75,6 @@ def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
     out["physics_scene_path"] = str(
         out.get("physics_scene_path") or "/physicsScene"
     )
-    # Floating-base Beni needs scene colliders + gravity World even if YAML
-    # previously used render-only / free-teleop defaults.
-    if mode == "articulation":
-        out["enabled"] = True
-        out["block_motion"] = False  # root is dynamic; do not reject set_pose
-        out.setdefault("ensure_scene_colliders", True)
-        out["ensure_scene_colliders"] = True
-        # Still strip furniture nested RBs; simulator sets skip_prefix=/Root/Robot
-        # so Beni link RigidBodyAPIs are never removed.
     return out
 
 
@@ -142,9 +141,7 @@ class PhysicsContext:
             except Exception:
                 break
 
-        mode = str(config.get("mode") or "capsule").strip().lower()
-        # Protect the whole robot mount (e.g. /Root/Robot), not only the
-        # articulation link leaf — freeze/strip must not touch Beni links.
+        # Protect the whole robot mount (e.g. /Root/Robot) from freeze/strip.
         skip_prefix = str(
             config.get("skip_prefix") or robot_prim_path or ""
         ).rstrip("/") or str(robot_prim_path)
@@ -158,25 +155,8 @@ class PhysicsContext:
             if config.get("add_ground", False):
                 add_ground_plane(stage)
 
-            # Articulation robots bring their own collision from URDF; capsule
-            # would fight the floating-base rigid root.
-            if mode != "articulation":
-                attach_robot_capsule(
-                    stage,
-                    robot_prim_path,
-                    radius=float(config.get("robot_radius", 0.12)),
-                    height=float(config.get("robot_height", 0.28)),
-                )
-            else:
-                # Undo any accidental kinematic freeze on Beni links.
-                try:
-                    from autosim.backends.isaac.articulation import (
-                        ensure_articulation_dynamic,
-                    )
-
-                    ensure_articulation_dynamic(stage, robot_prim_path)
-                except Exception as exc:  # noqa: BLE001
-                    logger.warning("ensure_articulation_dynamic skipped: %s", exc)
+            # Robot collision comes from wheeled USD — never inject a
+            # kinematic capsule collider under the root.
 
             # Re-strip once more immediately before World so async payload
             # RigidBodyAPIs cannot sneak past the first pass.
@@ -206,7 +186,6 @@ class PhysicsContext:
 
         out_cfg = dict(config)
         if not collision:
-            # Free teleop: no capsule / scene queries; World exists for RTX only.
             out_cfg["block_motion"] = False
             logger.info(
                 "Isaac render-only World (physics.enabled=false, RGB-D on, dt=%.4f)",
@@ -218,7 +197,7 @@ class PhysicsContext:
                 mode,
                 dt,
                 float(config.get("robot_radius", 0.12)),
-                bool(config.get("block_motion", True)),
+                bool(out_cfg.get("block_motion", False)),
             )
         return cls(
             world=world,
@@ -452,68 +431,6 @@ def add_ground_plane(stage: Any, *, path: str = "/World/AutosimGround") -> None:
     xform.AddScaleOp().Set(Gf.Vec3f(200.0, 200.0, 0.1))
     UsdPhysics.CollisionAPI.Apply(cube.GetPrim())
     logger.info("added ground collision plane at %s", path)
-
-
-def attach_robot_capsule(
-    stage: Any,
-    robot_prim_path: str,
-    *,
-    radius: float,
-    height: float,
-) -> str:
-    """Create a Z-up capsule collider under the robot and mark it kinematic."""
-    from pxr import Gf, UsdGeom, UsdPhysics
-
-    robot = stage.GetPrimAtPath(robot_prim_path)
-    if not robot or not robot.IsValid():
-        raise RuntimeError(f"robot prim missing: {robot_prim_path}")
-
-    capsule_path = f"{robot_prim_path.rstrip('/')}/AutosimCollision"
-    if not stage.GetPrimAtPath(capsule_path).IsValid():
-        capsule = UsdGeom.Capsule.Define(stage, capsule_path)
-        capsule.CreateRadiusAttr(float(radius))
-        capsule.CreateHeightAttr(float(max(height, 2.0 * radius)))
-        capsule.CreateAxisAttr("Z")
-        xform = UsdGeom.Xformable(capsule.GetPrim())
-        xform.ClearXformOpOrder()
-        # Center the capsule above the footprint so it clears the floor slightly.
-        z = 0.5 * float(max(height, 2.0 * radius)) + 0.02
-        xform.AddTranslateOp().Set(Gf.Vec3f(0.0, 0.0, float(z)))
-        # Invisible guide geometry — collision only.
-        try:
-            UsdGeom.Imageable(capsule.GetPrim()).MakeInvisible()
-        except Exception:
-            pass
-
-    # Single RigidBody on the robot root (kinematic). Collision lives on the
-    # child capsule — never put a second RigidBodyAPI under the root or PhysX
-    # errors with "missing xformstack reset" and RGB mount becomes unreliable.
-    capsule_prim = stage.GetPrimAtPath(capsule_path)
-    if capsule_prim and capsule_prim.IsValid():
-        try:
-            if capsule_prim.HasAPI(UsdPhysics.RigidBodyAPI):
-                capsule_prim.RemoveAPI(UsdPhysics.RigidBodyAPI)
-        except Exception:
-            pass
-        if not capsule_prim.HasAPI(UsdPhysics.CollisionAPI):
-            UsdPhysics.CollisionAPI.Apply(capsule_prim)
-
-    if not robot.HasAPI(UsdPhysics.RigidBodyAPI):
-        rb = UsdPhysics.RigidBodyAPI.Apply(robot)
-        rb.CreateRigidBodyEnabledAttr(True)
-        rb.CreateKinematicEnabledAttr(True)
-    else:
-        rb = UsdPhysics.RigidBodyAPI(robot)
-        rb.CreateRigidBodyEnabledAttr(True)
-        rb.GetKinematicEnabledAttr().Set(True)
-
-    logger.info(
-        "robot kinematic capsule at %s (r=%.3f h=%.3f)",
-        capsule_path,
-        float(radius),
-        float(height),
-    )
-    return capsule_path
 
 
 def overlap_sphere(position: tuple[float, float, float], radius: float) -> bool:

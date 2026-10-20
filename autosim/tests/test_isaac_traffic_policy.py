@@ -117,12 +117,18 @@ def test_isaac_merge_nearer_and_laser_static_fallback():
         height=48,
         eye_height=0.5,
     )
+    # Explicit merge: empty RTX + Traffic cpu hit → nearer static path.
+    sim.lidar_backend = "merge"
     sim.scenario_grid = (grid, 0.5, 0.0, 0.0, 40, 40)
     sim.x, sim.y, sim.yaw = 5.0, 10.0, 0.0
     sim.traffic = TrafficStub()
     ranges = sim.laser_ranges(-0.1, 0.1, 4, 20.0)
     assert ranges.shape == (4,)
     assert float(ranges[0]) == pytest.approx(1.5)
+    # rtx-only must not silently fall back to CPU when annotator is empty.
+    sim.lidar_backend = "rtx"
+    rtx_only = sim.laser_ranges(-0.1, 0.1, 4, 20.0)
+    assert not np.isfinite(rtx_only).any()
 
 
 def test_policy_config_and_disabled_without_model():

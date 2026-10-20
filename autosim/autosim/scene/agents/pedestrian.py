@@ -84,6 +84,17 @@ class Pedestrian:
         self.speed = np.zeros((0,), dtype=np.float64)
         self.stuck = np.zeros((0,), dtype=np.int32)
         self.kinds = np.zeros((0,), dtype=object)
+        self.agent_ids = np.zeros((0,), dtype=np.int32)
+        self.agent_names = np.zeros((0,), dtype=object)
+        self.group_ids = np.zeros((0,), dtype=np.int32)
+        self.skins = np.zeros((0,), dtype=np.int32)
+        self.radii = np.zeros((0,), dtype=np.float64)
+        self.goal_radii = np.zeros((0,), dtype=np.float64)
+        self.beh_config = np.zeros((0,), dtype=np.int32)
+        self.goal_force_factor = np.zeros((0,), dtype=np.float64)
+        self.social_force_factor = np.zeros((0,), dtype=np.float64)
+        self.obstacle_force_factor = np.zeros((0,), dtype=np.float64)
+        self.other_force_factor = np.zeros((0,), dtype=np.float64)
         self.goal_lists: list[list[tuple[float, float]]] = []
         self.goal_index = np.zeros((0,), dtype=np.int32)
         self.cyclic = np.zeros((0,), dtype=bool)
@@ -135,6 +146,15 @@ class Pedestrian:
                     path = (project_root() / path).resolve()
                 except Exception:
                     path = path.resolve()
+            # HuNavSim / Hunav_isaac_wrapper YAML (hunav_loader + global_goals).
+            try:
+                text = path.read_text(encoding="utf-8")
+            except OSError:
+                text = ""
+            if "hunav_loader" in text or "global_goals" in text:
+                from autosim.scene.hunav.loader import load_hunav_scenario
+
+                return load_hunav_scenario(path)
             return Agents.load(path)
         if isinstance(raw, (list, Mapping)):
             return Agents.from_mapping(raw)
@@ -147,16 +167,98 @@ class Pedestrian:
         if agents.records:
             self.settings["radius"] = float(agents.records[0]["radius"])
             self.settings["height"] = float(agents.records[0]["height"])
+            # Grow arena so HuNav warehouse/hospital spawns are not clipped.
+            xs = [float(r["x"]) for r in agents.records]
+            ys = [float(r["y"]) for r in agents.records]
+            for goals in agents.goal_lists():
+                for gx, gy in goals:
+                    xs.append(float(gx))
+                    ys.append(float(gy))
+            if xs and ys:
+                span = max(max(xs) - min(xs), max(ys) - min(ys), 4.0) + 4.0
+                self.settings["x_length"] = max(
+                    float(self.settings.get("x_length", 10.0)), span
+                )
+                self.settings["y_length"] = max(
+                    float(self.settings.get("y_length", 10.0)), span
+                )
+                self.arena = self.make_arena()
+        n = agents.count
         self.position = agents.positions()
+        self.velocity = np.zeros((n, 2), dtype=np.float64)
         self.goal = agents.first_goals()
+        self.yaw = agents.yaws()
         self.speed = agents.speeds()
         self.kinds = agents.behaviors()
+        self.agent_ids = np.array(
+            [int(row.get("id", i + 1)) for i, row in enumerate(agents.records)],
+            dtype=np.int32,
+        )
+        self.agent_names = np.array(
+            [str(row.get("name") or f"agent{i + 1}") for i, row in enumerate(agents.records)],
+            dtype=object,
+        )
+        self.group_ids = np.array(
+            [int(row.get("group_id", -1)) for row in agents.records], dtype=np.int32
+        )
+        self.skins = np.array(
+            [int(row.get("skin", 0) or 0) for row in agents.records], dtype=np.int32
+        )
+        self.radii = np.array(
+            [float(row.get("radius", self.settings.get("radius", 0.2))) for row in agents.records],
+            dtype=np.float64,
+        )
+        self.goal_radii = np.array(
+            [
+                float(row.get("goal_tolerance", self.settings.get("goal_tolerance", 0.4)))
+                for row in agents.records
+            ],
+            dtype=np.float64,
+        )
+        self.beh_config = np.array(
+            [int(row.get("behavior_configuration", 0) or 0) for row in agents.records],
+            dtype=np.int32,
+        )
+        default_goal = float(self.settings.get("goal_force_factor", 1.0))
+        default_social = float(self.settings.get("social_force_factor", 1.0))
+        default_obs = float(self.settings.get("obstacle_force_factor", 1.0))
+        self.goal_force_factor = np.array(
+            [
+                float((row.get("force") or {}).get("goal_force_factor", default_goal))
+                for row in agents.records
+            ],
+            dtype=np.float64,
+        )
+        self.social_force_factor = np.array(
+            [
+                float((row.get("force") or {}).get("social_force_factor", default_social))
+                for row in agents.records
+            ],
+            dtype=np.float64,
+        )
+        self.obstacle_force_factor = np.array(
+            [
+                float((row.get("force") or {}).get("obstacle_force_factor", default_obs))
+                for row in agents.records
+            ],
+            dtype=np.float64,
+        )
+        self.other_force_factor = np.array(
+            [
+                float((row.get("force") or {}).get("other_force_factor", 1.0))
+                for row in agents.records
+            ],
+            dtype=np.float64,
+        )
         self.goal_lists = agents.goal_lists()
-        self.goal_index = np.zeros((agents.count,), dtype=np.int32)
+        self.goal_index = np.zeros((n,), dtype=np.int32)
         self.cyclic = np.array(
             [bool(row["cyclic_goals"]) for row in agents.records], dtype=bool
         )
-        self.stuck = np.zeros((agents.count,), dtype=np.int32)
+        self.stuck = np.zeros((n,), dtype=np.int32)
+        if n:
+            self.settings["radius"] = float(self.radii[0])
+            self.settings["goal_tolerance"] = float(self.goal_radii[0])
         if self.field is not None and self.arena is not None:
             self.position = self.field.relocate(
                 self.arena, self.position, float(self.settings["radius"]), self.rng
@@ -169,9 +271,36 @@ class Pedestrian:
             raise ValueError("scenario.pedestrian.count must be >= 0")
         kind = Behavior.kind_name(self.settings.get("behavior", "regular"))
         self.position = self.arena.sample(self.rng, count)
+        self.velocity = np.zeros((count, 2), dtype=np.float64)
         self.goal = self.sample_goals(count)
+        self.yaw = np.zeros((count,), dtype=np.float64)
         self.speed = np.full((count,), float(self.settings["speed"]), dtype=np.float64)
         self.kinds = np.array([kind] * count, dtype=object)
+        self.agent_ids = np.arange(1, count + 1, dtype=np.int32)
+        self.agent_names = np.array(
+            [f"agent{i + 1}" for i in range(count)], dtype=object
+        )
+        self.group_ids = np.full((count,), -1, dtype=np.int32)
+        self.skins = np.zeros((count,), dtype=np.int32)
+        self.radii = np.full(
+            (count,), float(self.settings.get("radius", 0.2)), dtype=np.float64
+        )
+        self.goal_radii = np.full(
+            (count,), float(self.settings.get("goal_tolerance", 0.4)), dtype=np.float64
+        )
+        self.beh_config = np.zeros((count,), dtype=np.int32)
+        self.goal_force_factor = np.full(
+            (count,), float(self.settings.get("goal_force_factor", 1.0)), dtype=np.float64
+        )
+        self.social_force_factor = np.full(
+            (count,), float(self.settings.get("social_force_factor", 1.0)), dtype=np.float64
+        )
+        self.obstacle_force_factor = np.full(
+            (count,),
+            float(self.settings.get("obstacle_force_factor", 1.0)),
+            dtype=np.float64,
+        )
+        self.other_force_factor = np.ones((count,), dtype=np.float64)
         self.goal_lists = [[(float(x), float(y))] for x, y in self.goal]
         self.goal_index = np.zeros((count,), dtype=np.int32)
         self.cyclic = np.ones((count,), dtype=bool)
@@ -246,6 +375,9 @@ class Pedestrian:
             float(self.settings["radius"]),
             force_bodies,
             force_radius,
+            goal_force_factor=self.goal_force_factor,
+            social_force_factor=self.social_force_factor,
+            obstacle_force_factor=self.obstacle_force_factor,
         )
         self.velocity = self.limit_speed(self.velocity + accel * dt, self.speed)
         start = np.array(self.position, dtype=np.float64, copy=True)
@@ -526,7 +658,10 @@ class Pedestrian:
         """Advance waypoints, or resample when stuck without a waypoint list."""
         if self.arena is None or self.position.shape[0] == 0:
             return
-        tolerance = float(self.settings["goal_tolerance"])
+        if self.goal_radii.shape[0] == self.position.shape[0]:
+            tolerance = self.goal_radii
+        else:
+            tolerance = float(self.settings["goal_tolerance"])
         reached = np.linalg.norm(self.goal - self.position, axis=1) <= tolerance
         stalled = self.stuck >= int(self.settings["stuck_steps"])
         for index in np.flatnonzero(reached | stalled):

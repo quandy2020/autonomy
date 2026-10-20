@@ -63,20 +63,6 @@ PROFILES: Dict[str, RobotProfile] = {
         },
         usd_prim="/World/Husky",
     ),
-    # Open Beni wheeled-biped: planar /cmd_vel plant (wheel r=0.038, track≈0.16).
-    "beni": RobotProfile(
-        name="beni",
-        urdf="robot/beni/beni.urdf",
-        usd_robot="usd/robots/beni/beni.usd",
-        wheel_separation=0.160,
-        base_link_height=0.11,
-        sensor_frames={
-            "laser": "laser_link",
-            "imu": "imu_link",
-            "camera": "camera_link",
-        },
-        usd_prim="/World/Beni",
-    ),
 }
 
 

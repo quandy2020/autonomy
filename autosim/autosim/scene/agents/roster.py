@@ -88,6 +88,7 @@ class Agents:
         if not isinstance(pose, Mapping):
             raise ValueError(f"agent[{index}].pose must be a mapping")
         behavior_raw = raw.get("behavior", "regular")
+        configuration = 0
         if isinstance(behavior_raw, Mapping):
             kind = Behavior.kind_name(behavior_raw.get("type", "regular"))
             force = {
@@ -96,9 +97,11 @@ class Agents:
                     "goal_force_factor",
                     "obstacle_force_factor",
                     "social_force_factor",
+                    "other_force_factor",
                 )
                 if key in behavior_raw
             }
+            configuration = int(behavior_raw.get("configuration", 0) or 0)
             speed_override = behavior_raw.get("vel")
         else:
             kind = Behavior.kind_name(behavior_raw)
@@ -113,6 +116,8 @@ class Agents:
         return {
             "id": int(raw.get("id", index + 1)),
             "name": str(raw.get("name") or f"agent{index + 1}"),
+            "group_id": int(raw.get("group_id", -1)),
+            "skin": int(raw.get("skin", 0) or 0),
             "x": float(pose.get("x", 0.0)),
             "y": float(pose.get("y", 0.0)),
             "yaw": float(pose.get("yaw", pose.get("h", 0.0))),
@@ -120,6 +125,7 @@ class Agents:
             "height": float(raw.get("height", 1.7)),
             "speed": speed,
             "behavior": kind,
+            "behavior_configuration": configuration,
             "goal_tolerance": float(
                 raw.get("goal_tolerance", raw.get("goal_radius", 0.4))
             ),

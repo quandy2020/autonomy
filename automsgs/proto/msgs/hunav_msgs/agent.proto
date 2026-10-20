@@ -1,0 +1,52 @@
+// Copyright 2026 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.hunav_msgs;
+
+import "automsgs/msgs/geometry_msgs/point.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/twist.proto";
+import "automsgs/msgs/hunav_msgs/agent_behavior.proto";
+
+// One HuNav pedestrian / robot agent (mirrors hunav_msgs/Agent.msg).
+message Agent {
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    PERSON = 1;
+    ROBOT = 2;
+    OTHER = 3;
+  }
+
+  int32 id = 1;
+  Type type = 2;
+  // Character / skin index (Isaac People model selection, Gazebo skins, …).
+  uint32 skin = 3;
+  string name = 4;
+  int32 group_id = 5;
+  automsgs.msgs.geometry_msgs.Pose position = 6;
+  float yaw = 7;
+  automsgs.msgs.geometry_msgs.Twist velocity = 8;
+  float desired_velocity = 9;
+  float radius = 10;
+  float linear_vel = 11;
+  float angular_vel = 12;
+  AgentBehavior behavior = 13;
+  repeated automsgs.msgs.geometry_msgs.Pose goals = 14;
+  bool cyclic_goals = 15;
+  float goal_radius = 16;
+  // Nearby obstacle sample points (ray hits); far sentinel ≈ 1e4 when no hit.
+  repeated automsgs.msgs.geometry_msgs.Point closest_obs = 17;
+}

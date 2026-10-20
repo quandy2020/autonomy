@@ -1,0 +1,60 @@
+// Copyright 2026 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.hunav_msgs;
+
+// Social / reaction profile for a HuNav-style pedestrian agent.
+// Field numbers and enum values mirror robotics-upo/hunav_msgs AgentBehavior.msg
+// so autosim ↔ Isaac wrappers stay wire-compatible with HuNavSim semantics.
+message AgentBehavior {
+  // Behavior kinds (HuNavSim).
+  enum Type {
+    TYPE_UNSPECIFIED = 0;
+    BEH_REGULAR = 1;
+    BEH_IMPASSIVE = 2;
+    BEH_SURPRISED = 3;
+    BEH_SCARED = 4;
+    BEH_CURIOUS = 5;
+    BEH_THREATENING = 6;
+  }
+
+  // Behavior state machine.
+  enum State {
+    BEH_NO_ACTIVE = 0;
+    BEH_ACTIVE_1 = 1;
+    BEH_ACTIVE_2 = 2;
+  }
+
+  // How SFM gains are sourced.
+  enum Configuration {
+    BEH_CONF_DEFAULT = 0;
+    BEH_CONF_CUSTOM = 1;
+    BEH_CONF_RANDOM_NORMAL = 2;
+    BEH_CONF_RANDOM_UNIFORM = 3;
+  }
+
+  Type type = 1;
+  State state = 2;
+  Configuration configuration = 3;
+  float duration = 4;
+  bool once = 5;
+  float vel = 6;
+  float dist = 7;
+  float social_force_factor = 8;
+  float goal_force_factor = 9;
+  float obstacle_force_factor = 10;
+  float other_force_factor = 11;
+}

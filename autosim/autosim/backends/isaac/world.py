@@ -87,12 +87,15 @@ class IsaacWorld:
         self.map_builder: Any = None
         self.physics: PhysicsContext | None = None
         self.people: Any = None
+        self.people_sync: Any = None
+        self.hunav_manager: Any = None
+        self.hunav_own_motion: bool = False
         self.scenario_grid: Any = None
         self.scenario_points: Any = None
-        self.articulation: Any = None  # BeniArticulation when mode=articulation
+        self.articulation: Any = None
         self.wheeled: Any = None  # WheeledDrive when mode=wheeled
-        self.physics_mode: str = "capsule"
-        self.lidar_backend: str = "merge"  # cpu | rtx | merge
+        self.physics_mode: str = "wheeled"
+        self.lidar_backend: str = "rtx"  # cpu | rtx | merge (Isaac default: rtx)
         self._paused: bool = False
         self._contact_hits: int = 0
         self._domain_random: dict[str, Any] = {}
@@ -111,16 +114,21 @@ class IsaacWorld:
         """Factory from validated config; requires Isaac Sim Python APIs."""
         habitat = settings["habitat"]
         camera = habitat["sensors"]["camera"]
-        # Only load RTX rendering when RGB-D images are actually enabled.
-        # A lone depth_points_channel does not require the camera experience.
+        lidar_2d_cfg = (habitat.get("sensors") or {}).get("lidar_2d") or {}
+        lidar_backend = str(lidar_2d_cfg.get("backend") or "rtx").strip().lower()
         want_camera = bool(camera.get("enabled", False))
+        # RTX Lidar also needs the rendering / rtx_sensors experience.
+        want_rtx = want_camera or (
+            bool(lidar_2d_cfg.get("enabled", False))
+            and lidar_backend in ("rtx", "merge")
+        )
         isaac_block = habitat.get("isaac") if isinstance(habitat.get("isaac"), Mapping) else {}
         headless_cfg = None
         if isinstance(isaac_block, Mapping) and "headless" in isaac_block:
             headless_cfg = bool(isaac_block["headless"])
         ensure_simulation_app(
             headless=headless_cfg,
-            enable_cameras=want_camera,
+            enable_cameras=want_rtx,
         )
         # Optional episode seed (isaac.seed or domain_random.seed).
         seed_val = None
@@ -148,7 +156,7 @@ class IsaacWorld:
             urdf = UrdfModel.load(str(robot_cfg.get("urdf") or ""))
         except (FileNotFoundError, ValueError):
             urdf = None
-        # Prefer URDF camera_link (Beni: 0.07, 0.03, -0.016) over Z-only height.
+        # Prefer URDF camera_link XYZ over Z-only height.
         if urdf is not None:
             try:
                 cx, cy, cz, _ = urdf.link_pose("camera_link")
@@ -172,16 +180,17 @@ class IsaacWorld:
             or "/World/Robot"
         )
         phys_cfg = physics_config_from_habitat(habitat)
-        physics_mode = str(phys_cfg.get("mode") or "capsule").strip().lower()
-        # Articulation: open world without empty robot USD stub, then import URDF.
-        # defer_robot_prim avoids an empty /Root/Robot that breaks MovePrim/paths.
-        stage_robot_usd = None if physics_mode == "articulation" else robot_usd
+        physics_mode = str(phys_cfg.get("mode") or "wheeled").strip().lower()
+        if physics_mode != "wheeled":
+            raise RuntimeError(
+                f"habitat.isaac.physics.mode={physics_mode!r} is unsupported; "
+                "use mode=wheeled (turtlebot3_burger | husky)"
+            )
         stage = SceneStage(
             world_usd,
-            robot_usd=stage_robot_usd,
+            robot_usd=robot_usd,
             robot_prim_path=prim,
             base_z=base_z,
-            defer_robot_prim=(physics_mode == "articulation"),
         )
         sensors = SensorSuite(
             width=width, height=height, eye_height=eye, eye_offset=eye_offset
@@ -200,77 +209,14 @@ class IsaacWorld:
         sim.seed_scenario_geometry(habitat)
         # World first (needed for Replicator RGB even when collision is off),
         # then camera under robot so the view tracks teleop like Habitat.
-        art_prim = prim
-        if physics_mode == "articulation":
-            art_prim = sim._bootstrap_beni_articulation(robot_cfg, prim)
-            physics_mode = sim.physics_mode  # may fall back to capsule on import fail
-            phys_cfg = dict(phys_cfg)
-            phys_cfg["mode"] = physics_mode
-            if physics_mode != "articulation":
-                art_prim = prim
-                sim._restore_capsule_robot(prim, robot_usd)
-            else:
-                # Skip the whole Beni tree (/beni), not the YAML /Root/Robot path.
-                from autosim.backends.isaac.articulation import robot_tree_root
-
-                phys_cfg["skip_prefix"] = robot_tree_root(art_prim)
-            # PhysX attach uses articulation root (may differ from /World/Robot).
-            sim.physics = PhysicsContext.attach(
-                stage,
-                robot_prim_path=art_prim,
-                config=phys_cfg,
-                render=want_camera,
-            )
-            if physics_mode == "articulation":
-                sim._finalize_beni_articulation(art_prim, base_z=base_z)
-                physics_mode = sim.physics_mode  # finalize may fall back
-                if physics_mode != "articulation":
-                    # Articulation view failed after World.reset — restore capsule.
-                    art_prim = prim
-                    phys_cfg = dict(phys_cfg)
-                    phys_cfg["mode"] = "capsule"
-                    # Capsule must block walls — articulation YAML leaves this false.
-                    phys_cfg["block_motion"] = True
-                    phys_cfg.pop("skip_prefix", None)
-                    try:
-                        from autosim.backends.isaac.robots.beni import (
-                            deactivate_autosim_beni,
-                        )
-
-                        deactivate_autosim_beni(stage.stage)
-                    except Exception:
-                        pass
-                    try:
-                        if sim.physics is not None:
-                            sim.physics.close()
-                    except Exception:
-                        pass
-                    sim.physics = None
-                    sim._restore_capsule_robot(prim, robot_usd)
-                    sim.physics = PhysicsContext.attach(
-                        stage,
-                        robot_prim_path=prim,
-                        config=phys_cfg,
-                        render=want_camera,
-                    )
-            camera_parent = (
-                art_prim if sim.physics_mode == "articulation" else prim
-            )
-        else:
-            # wheeled shares capsule scene colliders; wheel joints bound later.
-            attach_cfg = dict(phys_cfg)
-            if physics_mode == "wheeled":
-                attach_cfg["mode"] = "capsule"
-                attach_cfg["block_motion"] = bool(
-                    attach_cfg.get("block_motion", False)
-                )
-            sim.physics = PhysicsContext.attach(
-                stage,
-                robot_prim_path=prim,
-                config=attach_cfg,
-                render=want_camera,
-            )
-            camera_parent = prim
+        # wheeled: robot USD collision + scene colliders; wheel joints later.
+        sim.physics = PhysicsContext.attach(
+            stage,
+            robot_prim_path=prim,
+            config=dict(phys_cfg),
+            render=want_camera,
+        )
+        camera_parent = prim
         if want_camera:
             sensors.mount_robot_camera(
                 camera_parent,
@@ -285,7 +231,8 @@ class IsaacWorld:
                     rate_hz=float(camera.get("surround_rate_hz", camera.get("rate_hz", 15.0))),
                 )
         lidar_2d = (habitat.get("sensors") or {}).get("lidar_2d") or {}
-        sim.lidar_backend = str(lidar_2d.get("backend") or "merge").strip().lower()
+        # Isaac world defaults to Kit RTX — cpu/merge are explicit debug overrides.
+        sim.lidar_backend = str(lidar_2d.get("backend") or "rtx").strip().lower()
         want_rtx_lidar = sim.lidar_backend in ("rtx", "merge") and bool(
             lidar_2d.get("enabled", False)
         )
@@ -298,10 +245,34 @@ class IsaacWorld:
                         break
                     except ValueError:
                         continue
+            rtx_name = str(lidar_2d.get("rtx_config") or "RPLIDAR_S2E")
+            if not SensorSuite.is_2d_lidar_config(rtx_name):
+                logger.warning(
+                    "lidar_2d.rtx_config=%r is not a 2D FlatScan profile "
+                    "(elevationDeg≠0); forcing RPLIDAR_S2E",
+                    rtx_name,
+                )
+                rtx_name = "RPLIDAR_S2E"
             sensors.mount_robot_lidar(
                 camera_parent,
                 translation=(float(lx), float(ly), float(lz)),
-                config_name=str(lidar_2d.get("rtx_config") or "Example_Rotary"),
+                config_name=rtx_name,
+                flat_scan=True,
+            )
+        imu_cfg = (habitat.get("sensors") or {}).get("imu") or {}
+        if bool(imu_cfg.get("enabled", False)):
+            ix = iy = iz = 0.0
+            if urdf is not None:
+                for link in ("imu_link", "imu", "base_link"):
+                    try:
+                        ix, iy, iz, _ = urdf.link_pose(link)
+                        break
+                    except ValueError:
+                        continue
+            sensors.mount_robot_imu(
+                camera_parent,
+                translation=(float(ix), float(iy), float(iz)),
+                frequency=float(imu_cfg.get("rate_hz", 200.0)),
             )
         if physics_mode == "wheeled":
             from autosim.backends.isaac.robots.wheeled import WheeledDrive
@@ -319,8 +290,10 @@ class IsaacWorld:
                 joint_names=wheel_cfg.get("joints"),
             )
             if sim.wheeled is None:
-                logger.warning("physics.mode=wheeled but no wheel joints; using capsule pose")
-                sim.physics_mode = "capsule"
+                raise RuntimeError(
+                    "physics.mode=wheeled but no wheel joints found on "
+                    f"{camera_parent!r}; check isaac.wheeled.joints / robot USD"
+                )
         sim._domain_random = randomization_config(
             isaac_block if isinstance(isaac_block, Mapping) else None
         )
@@ -336,13 +309,6 @@ class IsaacWorld:
         if not traffic_cfg.get("usd_root"):
             traffic_cfg["usd_root"] = f"{parent}/AutosimTraffic"
         sim.people_sync = maybe_create_people_sync(stage, config=traffic_cfg)
-        # Articulation YAML sets block_motion=false. If PhysX never took the
-        # floating base, plant teleports would 穿模 — force capsule collision.
-        if not sim.articulation_driven and sim.physics is not None:
-            if sim.physics_mode == "articulation":
-                sim.physics_mode = "capsule"
-            sim.physics.config["block_motion"] = True
-            sim.physics.config["mode"] = "capsule"
         from autosim.backends.isaac.articulation import kit_log
 
         kit_log(
@@ -351,174 +317,6 @@ class IsaacWorld:
             f"block_motion={bool(getattr(sim.physics, 'block_motion', False))}"
         )
         return sim
-
-    def _restore_capsule_robot(
-        self, prim: str, robot_usd: Path | str | None
-    ) -> None:
-        """Re-bind stage robot Xform after a failed articulation import."""
-        from pxr import UsdGeom
-
-        stage = self.stage
-        stage.robot_prim_path = prim
-        if robot_usd is not None:
-            stage.robot_usd = Path(robot_usd)
-        try:
-            robot_path = Path(robot_usd) if robot_usd is not None else None
-            robot_prim = stage.stage.GetPrimAtPath(prim)
-            if robot_path is not None and robot_path.is_file():
-                if robot_prim and robot_prim.IsValid():
-                    try:
-                        robot_prim.GetReferences().ClearReferences()
-                    except Exception:
-                        pass
-                    robot_prim.GetReferences().AddReference(str(robot_path))
-                else:
-                    stage.ensure_robot_prim()
-            else:
-                stage.ensure_robot_prim()
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("capsule fallback robot USD attach failed: %s", exc)
-        try:
-            update_app()
-        except Exception:
-            pass
-        prim_obj = stage.stage.GetPrimAtPath(prim)
-        if prim_obj and prim_obj.IsValid():
-            stage.robot_xform = UsdGeom.Xformable(prim_obj)
-        else:
-            logger.error("capsule fallback robot prim still invalid: %s", prim)
-
-    def _bootstrap_beni_articulation(
-        self, robot_cfg: Mapping[str, Any], fallback_prim: str
-    ) -> str:
-        """Import Beni URDF as floating-base articulation; return prim path."""
-        from autosim.backends.isaac.robots.beni import (
-            configure_joint_drives,
-            import_beni_urdf,
-        )
-        from autosim.runtime.paths import project_root
-
-        urdf_rel = str(robot_cfg.get("urdf") or "robot/beni/beni.urdf")
-        urdf_path = Path(urdf_rel)
-        if not urdf_path.is_absolute():
-            urdf_path = (project_root() / urdf_rel).resolve()
-        cache = (project_root() / "usd" / "robots" / "beni" / "beni_articulation.usd").resolve()
-        try:
-            prim_path = import_beni_urdf(
-                urdf_path,
-                dest_usd=cache,
-                stage_prim=fallback_prim,
-                stage=self.stage.stage,
-            )
-        except Exception as exc:  # noqa: BLE001
-            logger.error("Beni URDF import failed (%s); falling back to capsule", exc)
-            self.physics_mode = "capsule"
-            return fallback_prim
-        # Prefer imported articulation; keep stage.robot_prim_path aligned when possible.
-        try:
-            configure_joint_drives(self.stage.stage, prim_path)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("joint drive configure skipped: %s", exc)
-        from autosim.backends.isaac.articulation import robot_tree_root
-
-        tree = robot_tree_root(prim_path)
-        self.stage.robot_prim_path = prim_path
-        self.stage.bind_robot_xform(prim_path)
-        from autosim.backends.isaac.articulation import kit_log
-
-        kit_log(f"Beni robot tree at {tree} (art root {prim_path})")
-        return prim_path
-
-    def _finalize_beni_articulation(self, prim_path: str, *, base_z: float) -> None:
-        """Initialize Articulation view after PhysX World.reset()."""
-        from autosim.backends.isaac.articulation import (
-            ensure_articulation_dynamic,
-            kit_log,
-        )
-        from autosim.backends.isaac.robots.beni import (
-            BeniArticulation,
-            find_beni_articulation_on_stage,
-        )
-
-        found = find_beni_articulation_on_stage(self.stage.stage)
-        if found and found != prim_path:
-            kit_log(f"articulation path retarget {prim_path} → {found}")
-            prim_path = found
-
-        # World.reset() may have re-applied kinematic opinions — force dynamic again.
-        try:
-            ensure_articulation_dynamic(self.stage.stage, prim_path)
-        except Exception:
-            pass
-        # Kit ticks so PhysX registers the imported articulation.
-        for _ in range(3):
-            update_app()
-        # Second pass after PhysX parse (critical for gravity / fall).
-        try:
-            ensure_articulation_dynamic(self.stage.stage, prim_path)
-        except Exception:
-            pass
-        try:
-            if self.physics is not None and self.physics.physics_world is not None:
-                self.physics.physics_world.reset()
-        except Exception:
-            pass
-        for _ in range(2):
-            update_app()
-
-        art = BeniArticulation(prim_path)
-        if not art.initialize():
-            kit_log("Beni Articulation init failed; using kinematic plant")
-            logger.error("Beni Articulation init failed; using kinematic plant")
-            self.physics_mode = "capsule"
-            self.articulation = None
-            return
-        # Reject "ready" articulations whose root is still kinematic (不会倒).
-        try:
-            from pxr import UsdPhysics
-
-            root = self.stage.stage.GetPrimAtPath(art.prim_path)
-            if root and root.HasAPI(UsdPhysics.RigidBodyAPI):
-                kin = UsdPhysics.RigidBodyAPI(root).GetKinematicEnabledAttr()
-                if kin and kin.Get():
-                    kit_log(
-                        f"articulation root still kinematic at {art.prim_path}; "
-                        "forcing dynamic"
-                    )
-                    ensure_articulation_dynamic(self.stage.stage, art.prim_path)
-            try:
-                art.art.enable_gravity()
-            except Exception:
-                pass
-            # Final USD check — if still kinematic, fall back to capsule plant.
-            root = self.stage.stage.GetPrimAtPath(art.prim_path)
-            still_kin = False
-            if root and root.HasAPI(UsdPhysics.RigidBodyAPI):
-                kin = UsdPhysics.RigidBodyAPI(root).GetKinematicEnabledAttr()
-                still_kin = bool(kin and kin.Get())
-            if still_kin:
-                kit_log(
-                    f"articulation root remains kinematic at {art.prim_path}; "
-                    "falling back to capsule (block walls)"
-                )
-                self.physics_mode = "capsule"
-                self.articulation = None
-                return
-        except Exception:
-            pass
-        self.articulation = art
-        self.physics_mode = "articulation"
-        # Keep stage Xform handle on the live articulation root.
-        self.stage.bind_robot_xform(art.prim_path)
-        # Plant must not write Fabric pose on the dynamic root.
-        self.stage._isaac_pose_view = None
-        self.stage._isaac_pose_view_kind = None
-        art.teleport(self.x, self.y, self.yaw, z=float(base_z), joint_defaults=True)
-        n_dof = len(getattr(art, "_dof_index", {}) or {})
-        kit_log(
-            f"Beni floating-base Articulation ACTIVE at {art.prim_path} "
-            f"({n_dof}/7 DOFs, gravity+collision+fall)"
-        )
 
     def attach_floorplan_map(
         self, world_usd: str, map_cfg: Mapping[str, Any] | None
@@ -661,7 +459,7 @@ class IsaacWorld:
         scenario.setdefault("spawn_radius", 0.8)
 
     def reset(self, x: float, y: float, yaw: float) -> None:
-        # Spawn must teleport even if the capsule overlaps furniture initially.
+        # Spawn must teleport even if the footprint overlaps furniture initially.
         self.set_pose(x, y, yaw, force=True)
         if self._domain_random.get("enabled"):
             apply_randomization(
@@ -677,7 +475,7 @@ class IsaacWorld:
         """Write planar pose to the robot Xform / Articulation root.
 
         When PhysX ``block_motion`` is on, overlapping queries keep the previous
-        pose (kinematic capsule vs scene colliders). Articulation mode ignores
+        pose (footprint sphere vs scene colliders). Articulation mode ignores
         non-force teleports so dynamics own the base (balance / fall).
         """
         nx, ny, nyaw = float(x), float(y), float(yaw)
@@ -697,7 +495,9 @@ class IsaacWorld:
         self.y = ny
         self.yaw = nyaw
         if self.articulation_driven and force:
-            base_z = float(getattr(self.stage, "base_z", 0.11) or 0.11)
+            base_z = float(getattr(self.stage, "base_z", 0.14) or 0.14)
+            if base_z < 0.12:
+                base_z = 0.14
             self.articulation.teleport(nx, ny, nyaw, z=base_z, joint_defaults=True)
         else:
             try:
@@ -773,7 +573,7 @@ class IsaacWorld:
         return dq
 
     def fallen(self) -> bool:
-        """True when Beni articulation reports a fall heuristic."""
+        """True when an articulation fall heuristic is available (unused)."""
         art = self.articulation
         if art is None or not hasattr(art, "fallen"):
             return False
@@ -822,17 +622,101 @@ class IsaacWorld:
             return []
         return list(read())
 
+    def attach_hunav(
+        self,
+        *,
+        pedestrian: Any,
+        config_file: str = "",
+        own_motion: bool = True,
+        compute_client: Any | None = None,
+        engine: Any | None = None,
+        robot_pose_fn: Any | None = None,
+        dt: float = 0.02,
+    ) -> Any:
+        """Bind :class:`HuNavManager` (Hunav_isaac_wrapper port).
+
+        Spawns SkelRoot characters + AnimationGraph under ``{World|Root}/Characters``.
+        When ``own_motion`` is True, Runner should skip ``Traffic.pedestrian.step``
+        and let ``step_hunav`` drive SFM via ``/compute_agents`` (in-process).
+        """
+        from autosim.backends.isaac.hunav import HuNavManager
+
+        habitat = self.settings.get("habitat") or {}
+        isaac_cfg = habitat.get("isaac") if isinstance(habitat, Mapping) else {}
+        stage = getattr(self.stage, "stage", None)
+        if stage is None:
+            return None
+        # Wrapper layout: /World/Characters (or /Root/Characters on InteriorAgent).
+        root = "/World/Characters"
+        for candidate in ("/World", "/Root"):
+            prim = stage.GetPrimAtPath(candidate)
+            if prim and prim.IsValid():
+                root = f"{candidate}/Characters"
+                break
+        # Stop PeopleSync from mirroring Traffic (manager owns USD people).
+        if self.people_sync is not None:
+            try:
+                self.people_sync.enabled = False
+            except Exception:
+                pass
+        self.hunav_own_motion = bool(own_motion)
+        self.hunav_dt = float(dt)
+        pose_fn = robot_pose_fn or (
+            lambda: (
+                float(self.x),
+                float(self.y),
+                float(self.yaw),
+                0.0,
+                0.0,
+                0.0,
+            )
+        )
+        self.hunav_manager = HuNavManager(
+            stage,
+            config_file=config_file or None,
+            robot_pose_fn=pose_fn,
+            people_sync=self.people_sync,
+            isaac_cfg=isaac_cfg if isinstance(isaac_cfg, Mapping) else {},
+            engine=engine,
+            compute_client=compute_client,
+            pedestrian=pedestrian,
+            own_motion=self.hunav_own_motion,
+            root_path=root,
+        )
+        logger.info(
+            "HuNavManager attached (own_motion=%s usd_agents=%s ped=%s)",
+            self.hunav_own_motion,
+            len(getattr(self.hunav_manager, "agents", []) or []),
+            int(pedestrian.position.shape[0]) if pedestrian is not None else 0,
+        )
+        return self.hunav_manager
+
+    def step_hunav(self, dt: float | None = None, stamp: tuple[int, int] = (0, 0)) -> Any:
+        """Run one HuNavManager tick when attached; else ``None``."""
+        manager = self.hunav_manager
+        if manager is None:
+            return None
+        return manager.send_agents(
+            dt=float(dt if dt is not None else getattr(self, "hunav_dt", 0.02)),
+            stamp=stamp,
+        )
+
     def step(self) -> None:
         """Advance PhysX without RTX (Habitat: render only on camera sample)."""
         if self._paused:
             return
-        if self.people_sync is not None and self.traffic is not None:
-            try:
-                self.people_sync.sync(self.traffic)
-            except Exception as exc:
-                if not getattr(self, "people_sync_warned", False):
-                    self.people_sync_warned = True
-                    logger.warning("people.sync failed (further errors muted): %s", exc)
+        # HuNavManager owns USD people sync (and optionally SFM). Otherwise
+        # mirror Traffic poses via PeopleSync.
+        if self.hunav_manager is None:
+            if self.people_sync is not None and self.traffic is not None:
+                try:
+                    self.people_sync.sync(self.traffic)
+                except Exception as exc:
+                    if not getattr(self, "people_sync_warned", False):
+                        self.people_sync_warned = True
+                        logger.warning(
+                            "people.sync failed (further errors muted): %s", exc
+                        )
         physics = self.physics
         if physics is not None:
             # Never render here — color_depth() owns the single Kit/RTX frame.
@@ -854,6 +738,7 @@ class IsaacWorld:
             pass
         self.physics = None
         self.people_sync = None
+        self.hunav_manager = None
         try:
             self.engine_sensors.close()
         except Exception:
@@ -879,9 +764,9 @@ class IsaacWorld:
         num_beams: int,
         range_max: float,
     ) -> np.ndarray:
-        """2D scan: ``lidar_2d.backend`` = cpu | rtx | merge (default)."""
+        """2D scan: ``lidar_2d.backend`` = cpu | rtx | merge (Isaac default rtx)."""
         angles = self.linspace_angles(angle_min, angle_max, num_beams)
-        backend = str(self.lidar_backend or "merge").strip().lower()
+        backend = str(self.lidar_backend or "rtx").strip().lower()
         cpu = np.full(angles.shape, np.nan, dtype=np.float64)
         rtx = np.full(angles.shape, np.nan, dtype=np.float64)
         if backend in ("cpu", "merge"):
@@ -900,10 +785,24 @@ class IsaacWorld:
         if backend == "cpu":
             depths = cpu
         elif backend == "rtx":
-            depths = rtx if np.isfinite(rtx).any() else cpu
+            # Do not silently fall back to CPU floorplan — Isaac mode owns RTX.
+            depths = rtx
+            if not np.isfinite(depths).any():
+                logger.debug("RTX lidar returned empty scan (FlatScan/warmup)")
         else:
             depths = self.merge_nearer_ranges(cpu, rtx)
         return depths.astype(np.float32)
+
+    def read_imu(self) -> dict[str, Any] | None:
+        """Isaac PhysX IMU sample, or None when unmounted / invalid."""
+        sensors = getattr(self, "engine_sensors", None)
+        read = getattr(sensors, "read_imu", None)
+        if not callable(read):
+            return None
+        try:
+            return read()
+        except Exception:
+            return None
 
     def laser_origin_xy(self) -> tuple[float, float]:
         """Map-frame XY of ``laser_link`` / ``base_scan`` (matches Autoviz TF)."""
@@ -1023,8 +922,9 @@ class IsaacWorld:
         cloud, rings = self.engine_sensors.lidar_points(
             h_min, h_max, h_beams, v_min, v_max, v_rings, range_max
         )
-        # When annotator empty, synthesize a planar ring from laser_ranges.
-        if cloud.shape[0] == 0:
+        # Only synthesize a planar ring from /scan when using cpu/merge backends.
+        backend = str(getattr(self, "lidar_backend", "rtx") or "rtx").strip().lower()
+        if cloud.shape[0] == 0 and backend in ("cpu", "merge"):
             ranges = self.laser_ranges(h_min, h_max, h_beams, range_max)
             angles = self.linspace_angles(h_min, h_max, h_beams)
             pts: list[list[float]] = []

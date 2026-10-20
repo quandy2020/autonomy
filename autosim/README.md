@@ -40,7 +40,7 @@
 |-------------------|------|------|
 | `habitat` | `config/default.yaml` | Habitat-Sim + GLB / MP3D |
 | `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario |
-| `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体（默认 Beni） |
+| `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体（默认 turtlebot3） |
 | ↳ 导航 | `config/isaac_nav.yaml` | 差速 turtlebot + 真人行人；对接外部导航/SLAM |
 
 ## 快速命令

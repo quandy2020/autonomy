@@ -35,8 +35,8 @@ isaac:
   headless: true
   physics:
     enabled: true
-    mode: capsule           # capsule | articulation
-    block_motion: true      # 胶囊重叠则拒绝 set_pose（articulation 忽略）
+    mode: wheeled           # 差速 USD（turtlebot / husky）
+    block_motion: true
     freeze_scene: true      # 场景刚体改为 kinematic
     ensure_scene_colliders: true
     add_ground: false       # InteriorAgent 已有地板
@@ -47,8 +47,7 @@ isaac:
 
 | `mode` | 行为 |
 |--------|------|
-| `capsule` | 根 prim kinematic + 子 Capsule；`block_motion` 阻挡穿墙 |
-| `articulation` | 导入 `beni.urdf`（`fix_base=False`）→ PhysX 浮动基；重力 / 碰撞 / 真实跌倒 |
+| `wheeled` | 差速 USD + 轮关节；碰撞来自机器人 USD；无轮关节则报错 |
 
 | 场景类型 | `add_ground` | `ensure_scene_colliders` |
 |----------|--------------|---------------------------|
@@ -63,7 +62,7 @@ isaac:
 |----|------|
 | 世界 | `habitat.path` → 如 `usd/worlds/InteriorAgent/kujiale_0021/...` |
 | 机器人 prim | `habitat.usd.robot_prim`（酷家乐常用 `/Root/Robot`） |
-| 档案 | `robot.profile: turtlebot3_burger` / `husky` / `beni` |
+| 档案 | `robot.profile: turtlebot3_burger` / `husky` |
 | 大场景 | `usd/worlds/InteriorAgent/` 被 `usd/.gitignore` 忽略，需本地下载 |
 
 打开舞台后会：修复 faceVarying display\* primvar、挂相机、启用 PhysX、构建 floorplan 地图。
@@ -81,17 +80,21 @@ isaac:
 
 ### 4.1 `/scan` 后端
 
+Isaac 模式默认 **只用 Kit RTX 传感器**（相机 / 2D Lidar / IMU），不再静默回退 CPU 射线。
+
 | `sensors.lidar_2d.backend` | 行为 |
 |----------------------------|------|
-| `cpu` | floorplan 射线 + Traffic 圆柱 |
-| `rtx` | Isaac RTX Lidar（`rtx_config`，默认 `Example_Rotary`） |
-| `merge`（默认） | 取更近命中 |
+| `rtx`（Isaac 默认） | Isaac RTX Lidar + FlatScan（`rtx_config` 须为 2D，默认 `RPLIDAR_S2E`） |
+| `cpu` | floorplan 射线 + Traffic 圆柱（调试） |
+| `merge` | 取更近命中（调试） |
+
+> `Example_Rotary` 是 3D（elevationDeg≠0），挂 FlatScan 会报错并得到空 `/scan`。
 
 ### 4.2 关节 / 轮式 / 随机 / 调试
 
 | 项 | 配置 |
 |----|------|
-| `/joint_states` | `sensors.joint_states.enabled`（articulation 时有数据） |
+| `/joint_states` | `sensors.joint_states.enabled`（轮关节有数据时） |
 | 差速 PhysX | `isaac.physics.mode: wheeled` + `isaac.wheeled.*` |
 | 域随机 | `isaac.domain_random.enabled`（光照 / 行人外观） |
 | 种子 | `isaac.seed` |
@@ -106,12 +109,11 @@ isaac:
 |------|------|
 | 创建 | `isaacsim.core.api.world.World`（`stage_units_in_meters=1`） |
 | 场景 | 非机器人刚体 → kinematic（防家具掉落） |
-| 机器人（capsule） | 根 prim kinematic + 子 Capsule 碰撞体 |
-| 机器人（articulation） | `URDFParseAndImportFile` + `SingleArticulation`；无 capsule |
-| 步进 | `IsaacWorld.step` → `world.step`；articulation 回读根位姿 |
-| 阻挡 | capsule：`block_motion` + overlap；articulation：动力学自碰墙/跌倒 |
+| 机器人（wheeled） | 机器人 USD 碰撞 + 轮关节驱动 |
+| 步进 | `IsaacWorld.step` → `world.step` |
+| 阻挡 | 可选 `block_motion` + overlap |
 
-源码：`autosim/backends/isaac/physics.py`、`articulation.py`、`robots/beni.py`。
+源码：`autosim/backends/isaac/physics.py`、`robots/wheeled.py`。
 
 ---
 
@@ -129,6 +131,8 @@ isaac:
 ## 7. 动态障碍与行人
 
 无 ROS。CPU 侧 `World` 管理场地、占据与社会力运动；Isaac 只镜像 USD **真人角色**（或可选胶囊）供 RGB。
+
+HuNavSim 兼容层（Autolink `/compute_agents`、`automsgs/hunav_msgs`、场景 YAML）见 **[12_hunav_isaac.md](12_hunav_isaac.md)**。
 
 | 能力 | 行为 |
 |------|------|
@@ -172,7 +176,7 @@ habitat:
 
 出生点 / 航点若落在占据格上，绑定 floorplan 后会自动 `relocate` 到自由空间。
 
-地面导航联调请用 [`config/isaac_nav.yaml`](../config/isaac_nav.yaml)（turtlebot + capsule PhysX，关 ONNX）。
+地面导航联调请用 [`config/isaac_nav.yaml`](../config/isaac_nav.yaml)（turtlebot + wheeled PhysX，关 ONNX）。
 
 录制：`habitat.dataset.include_people: true` 时写入 `observation.people` 与 `episode_*_people.jsonl`。
 
@@ -202,34 +206,5 @@ habitat:
 |----|------|
 | 输入 | `observation_kinematic` `[1,6]`；可选 laser |
 | 输出 | `(vx, wz)`，按 `max_vx` / `max_wz` 裁剪 |
-
-### 8.2 Open Beni 7-DoF 平衡（`action_space: beni`）
-
-加载 Open Beni 导出的 `policy.onnx`（`obs[1,40]` + GRU `h_in[1,1,512]` → `actions[1,7]` + `h_out`）。
-
-```yaml
-habitat:
-  isaac:
-    physics:
-      mode: articulation      # 真平衡/跌倒；capsule 则仅运动学关节
-  policy:
-    enabled: true
-    action_space: beni
-    # model_path 默认可省略 → robot/beni/models/policy.onnx
-    rate_hz: 100.0
-    max_vx: 1.5
-    max_wz: 2.0
-    base_height: 0.11
-    animate_joints: false     # articulation 绑定时自动 true
-    drive_from_wheels: false  # articulation 时底盘由 PhysX 拥有
-```
-
-| 项 | 说明 |
-|----|------|
-| 依赖 | `pip install onnxruntime` |
-| `/cmd_vel` | 写入观测 twist 命令（与浏览器摇杆一致） |
-| `mode: capsule` | 动作 → 运动学关节跟踪；平面 plant 跟命令；无真实跌倒 |
-| `mode: articulation` | 动作 → PhysX joint drive；obs 用实测 ω / 投影重力；碰障可跌倒 |
-| TF | Autoviz 用 `display_angles()`（`q−q_default`）；绑定时自动开 live 关节 |
 
 栈内正式 Twist 部署请用 ControllerServer + `policy_controller`。

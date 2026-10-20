@@ -615,7 +615,7 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
   }
   const float user_scale = props_.marker_scale;
   const double timeout = props_.frame_timeout;
-  // Auto Scale: size axes from TF tree spacing so Beni-scale robots are not
+  // Auto Scale: size axes from TF tree spacing so small-scale robots are not
   // buried under RViz's fixed 0.2 m / 0.02 m shafts.
   const float base_len =
       props_.auto_scale

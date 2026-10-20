@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Optional ONNX / Beni policy drivers."""
+"""Optional ONNX twist policy drivers."""
 
 from autosim.robot.policy.driver import PolicyDriver, policy_config_from_habitat
 

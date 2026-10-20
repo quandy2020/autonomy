@@ -182,11 +182,14 @@ autolink_launch autonomy.launch
 </table>
 
 <details>
-<summary><b>Argus localization</b> (autosim <code>/imu</code> · <code>/points</code>)</summary>
+<summary><b>Argus localization</b> (autosim / Oxford Spires → <code>/imu</code> · <code>/points</code>)</summary>
 
 ```bash
 export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/localization/launch"
 autolink launch start localization_argus.launch
+# 另一终端：数据集 publish（见 autonomy/tools/datasets/README.md）
+python -m autonomy.tools.datasets publish \
+  --dataset spires --path /path/to/sequences/<name> --rate 1.0
 ```
 
 </details>

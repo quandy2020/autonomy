@@ -62,7 +62,7 @@ CONFIG=src/autonomy/autosim/config/default.yaml \
 
 ```bash
 ISAACLAB_PATH=/workspace/isaaclab \
-# 地面导航 / SLAM 传感：isaac_nav.yaml；Beni 运控：isaac.yaml
+# 地面导航 / SLAM 传感：isaac_nav.yaml；默认 Isaac：isaac.yaml
 CONFIG=src/autonomy/autosim/config/isaac_nav.yaml \
   src/autonomy/autosim/scripts/run.sh sim
 ```
