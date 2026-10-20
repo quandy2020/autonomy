@@ -22,6 +22,7 @@
 | `convert_kalibr_camera.py` | Kalibr → Argus Equidistant YAML |
 | `run_spires_eval.sh` | 单模式离线 + ATE 图 |
 | `run_spires_modes.sh` | LIVO/LIO/LO 同图对比 |
+| `run_spires_loop_ab.sh` | baseline vs loop+FPR A/B（Ceres 编译） |
 | `run_spires_batch.sh` | 多序列批量评测 |
 | `run_spires_open3d.sh` | 离线 + ATE + Open3D 全流程 |
 | `plot_traj_ate.py` | 单轨迹 Umeyama ATE |

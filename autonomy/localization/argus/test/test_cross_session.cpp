@@ -144,7 +144,11 @@ int main() {
   link.T_cur_prior = transform::Rigid3d::Identity();
   link.confidence = 0.95;
 
-  if (!linker.LinkAndOptimize(graph, link, 20)) {
+  argus::backend::PoseGraphFprConfig fpr;
+  fpr.enable = true;
+  fpr.max_loop_residual = 5.0;
+
+  if (!linker.LinkAndOptimize(graph, link, fpr, 20)) {
     return Fail("LinkAndOptimize");
   }
 
@@ -172,8 +176,25 @@ int main() {
     return Fail("prior session drifted");
   }
 
+  // Outrageous measurement must FPR-reject and leave loop count unchanged.
+  const int loops_ok = graph.loop_factor_count();
+  CrossSessionLink bad = link;
+  bad.T_cur_prior =
+      transform::Rigid3d::Translation(Eigen::Vector3d(80, 80, 80));
+  fpr.max_loop_residual = 0.5;
+  argus::backend::PoseGraphOptimizeResult bad_opt;
+  if (linker.LinkAndOptimize(graph, bad, fpr, 20, &bad_opt)) {
+    return Fail("bad link should fail");
+  }
+  if (!bad_opt.rejected_by_fpr) {
+    return Fail("bad link should set rejected_by_fpr");
+  }
+  if (graph.loop_factor_count() != loops_ok) {
+    return Fail("loop count changed after FPR reject");
+  }
+
   std::cout << "OK cross_session (err " << err_before << " -> " << err_after
             << ", |t_ws_B|=" << b_meta->T_world_session.translation().norm()
-            << ")\n";
+            << ", fpr_reject)\n";
   return 0;
 }

@@ -1,0 +1,56 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Example 4 — 智能遥操.
+
+  Processes:
+    autonomy.monitor
+    autonomy.task         (teleop.xml：CommandValid → PerceptionValid → TrackCommand)
+    autonomy.perception   (assist 开时点云新鲜度门控；透传模式可恒 SUCCESS)
+    autonomy.bridge       (SendTeleopCommand START/VELOCITY/STOP；需 -DBUILD_GRPC=ON)
+
+  速度由 TeleopClient 写 /cmd_vel；可选 TeleopMppiAssist（teleop_assist.lua）。
+  不拉起 planning / control（与导航式 FollowPath 解耦）。
+
+  Prerequisites:
+    - task/conf/behavior_tree/teleop/teleop.xml
+    - bridge/conf/bridge.pb.txt
+    - PATH: build/bin；底盘或 autosim 订阅 /cmd_vel
+
+  Dev (repo root):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+    autolink_launch examples/teleop.launch
+
+  Do not run together with autonomy.launch（task / bridge 重叠）.
+-->
+<autolink>
+  <module>
+    <name>monitor</name>
+    <type>binary</type>
+    <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <process_name>autonomy.task</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>perception</name>
+    <type>binary</type>
+    <process_name>autonomy.perception --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>bridge</name>
+    <type>binary</type>
+    <process_name>autonomy.bridge --conf=bridge.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

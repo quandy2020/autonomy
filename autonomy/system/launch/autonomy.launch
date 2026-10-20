@@ -1,20 +1,31 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Recommended Autonomy entry: multi-process stack via autolink_launch.
+  Recommended Autonomy entry (autolink_launch multi-process stack).
 
-  Processes:
-    autonomy.monitor (same as system/launch/monitor.launch),
-    planning, control, task, perception (disabled by default),
-    autonomy.bridge (same as bridge/launch/bridge.launch; needs -DBUILD_GRPC=ON)
+  Layout (by layer, then name):
+    monitor
+    localization   Cartographer 2D → data/maps/*.pbstream
+    audio / perception
+    control / planning / task
+    bridge         needs -DBUILD_GRPC=ON
 
-  Not started here (intentional — use dedicated launches):
-    localization_*, autodriver / chassis, replay / sim_fullstack
+  Not started here:
+    autodriver / chassis, replay / sim_fullstack
+    Argus / Atlas — swap localization process_name
+      (see localization_*.launch)
+
+  Scene examples (do not combine with this file):
+    examples/slam.launch
+    examples/navigation.launch
+    examples/follow.launch
+    examples/teleop.launch
+    → examples/README.md
 
   Prerequisites:
-    - system/conf/autonomy.pb.txt, task/conf/*, system/conf/monitor.pb.txt
-    - bridge/conf/bridge.pb.txt when using bridge
-    - PATH: build/bin
+    PATH=build/bin, mkdir -p data/maps
+    system/conf/{autonomy,monitor}.pb.txt, task/conf/*
+    audio/dag/audio.dag, bridge/conf/bridge.pb.txt
 
   Dev (repo root):
     export PATH=$PWD/build/bin:$PATH
@@ -22,10 +33,53 @@
     autolink_launch autonomy.launch
 -->
 <autolink>
+
+  <!-- monitor -->
   <module>
     <name>monitor</name>
     <type>binary</type>
     <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+
+  <!-- localization (Cartographer 2D; see localization.launch) -->
+  <module>
+    <name>localization</name>
+    <type>binary</type>
+    <process_name>
+      autonomy.localization
+        --localization_mode=cartographer
+        --configuration_directory=autonomy/localization/conf/cartographer
+        --configuration_basename=autosim_2d.lua
+        --start_trajectory_with_default_topics=true
+        --save_state_filename=data/maps/cartographer.pbstream
+    </process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+
+  <!-- sensing -->
+  <module>
+    <name>audio</name>
+    <dag_conf>audio/dag/audio.dag</dag_conf>
+    <process_name>audio</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>perception</name>
+    <type>binary</type>
+    <process_name>autonomy.perception --conf=autonomy.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+
+  <!-- navigation stack -->
+  <module>
+    <name>control</name>
+    <type>binary</type>
+    <process_name>autonomy.control --conf=autonomy.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
@@ -37,26 +91,14 @@
     <respawn_limit>3</respawn_limit>
   </module>
   <module>
-    <name>control</name>
-    <type>binary</type>
-    <process_name>autonomy.control --conf=autonomy.pb.txt</process_name>
-    <exception_handler>respawn</exception_handler>
-    <respawn_limit>3</respawn_limit>
-  </module>
-  <module>
     <name>task</name>
     <type>binary</type>
     <process_name>autonomy.task</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
-  <module>
-    <name>perception</name>
-    <type>binary</type>
-    <process_name>autonomy.perception --conf=autonomy.pb.txt</process_name>
-    <exception_handler>respawn</exception_handler>
-    <respawn_limit>3</respawn_limit>
-  </module>
+
+  <!-- external I/O -->
   <module>
     <name>bridge</name>
     <type>binary</type>
@@ -64,4 +106,5 @@
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
+
 </autolink>

@@ -33,6 +33,7 @@
 #include "argus/map/visual_map.hpp"
 #include "argus/mapping/map_builder_interface.hpp"
 #include "argus/mapping/map_package.hpp"
+#include "argus/relocalization/loop_closure/types.hpp"
 #include "argus/relocalization/prior_map.hpp"
 
 namespace argus {
@@ -108,6 +109,10 @@ public:
         return ikd_.size();
     }
 
+    /** @return Mutable incremental kd-tree (LTA history inject). */
+    map::IkdTree& ikd() {
+        return ikd_;
+    }
     /** @return Const incremental kd-tree map. */
     const map::IkdTree& ikd() const {
         return ikd_;
@@ -155,6 +160,16 @@ public:
     const std::vector<MapBuilderKeyFrame>& keyframes() const {
         return keyframes_;
     }
+
+    /**
+     * @brief Export package keyframes as loop-closure KeyFrames (body cloud).
+     *
+     * Sets `id = node_id_base + local_id` for cross-session SC matching.
+     * World-frame stored clouds are converted to body via \(T_{wb}^{-1}\).
+     *
+     * @return Non-empty-cloud keyframes suitable for RegisterPriorSession.
+     */
+    std::vector<loop_closure::KeyFrame> ExportLoopKeyFrames() const;
 
     /**
      * @brief 2.5D occupancy map when `build_occupancy_grid` is enabled.

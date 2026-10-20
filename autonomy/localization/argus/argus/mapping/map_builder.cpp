@@ -422,6 +422,42 @@ bool MapBuilder::Load(const std::string& directory) {
     return true;
 }
 
+std::vector<loop_closure::KeyFrame> MapBuilder::ExportLoopKeyFrames() const {
+    const map::SessionMeta* meta = session_.Get(config_.session_id);
+    const int base = (meta != nullptr) ? meta->node_id_base : config_.node_id_base;
+    std::vector<loop_closure::KeyFrame> out;
+    out.reserve(keyframes_.size());
+    for (const MapBuilderKeyFrame& mk : keyframes_) {
+        if (mk.cloud.empty()) {
+            continue;
+        }
+        loop_closure::KeyFrame kf;
+        kf.id = base + mk.local_id;
+        kf.stamp_sec = mk.stamp_sec;
+        kf.T_w_b = mk.T_w_b;
+        kf.session_id = config_.session_id;
+        kf.session_local_id = mk.local_id;
+        if (mk.cloud_in_world) {
+            // Prior LTA / SC expect body-frame clouds.
+            const transform::Rigid3d T_b_w = mk.T_w_b.inverse();
+            kf.cloud.reserve(mk.cloud.size());
+            for (const auto& p : mk.cloud.points) {
+                const Eigen::Vector3d pb =
+                    T_b_w * Eigen::Vector3d(p.x, p.y, p.z);
+                sensor::PointType q = p;
+                q.x = static_cast<float>(pb.x());
+                q.y = static_cast<float>(pb.y());
+                q.z = static_cast<float>(pb.z());
+                kf.cloud.push_back(q);
+            }
+        } else {
+            kf.cloud = mk.cloud;
+        }
+        out.push_back(std::move(kf));
+    }
+    return out;
+}
+
 relocalization::PriorOccupancyMap::SharedPtr MapBuilder::ExportPriorMap()
     const {
     const sensor::PointCloudXYZI cloud = CollectMapCloud();

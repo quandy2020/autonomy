@@ -1,0 +1,74 @@
+# Gentle accuracy loops on default LIO (resolution 0.2).
+enable: true
+method: scan_context
+multi_modal_consensus: true
+min_confidence: 0.58
+async: true
+enable_pose_inject: true
+current_session_id: live
+wait_second_loop: false
+max_loop_translation_m: 1.5
+max_inject_translation_m: 0.6
+inject_clamp_only: true
+loop_information_scale: 200.0
+
+temporal:
+  enable: true
+  min_confirmations: 1
+  max_match_id_delta: 10
+  max_query_span: 20
+
+revisit_signature:
+  enable: true
+  min_odom_gap_m: 0.3
+  max_icp_trans_m: 1.0
+  min_gap_minus_icp_m: 0.1
+  max_fitness_m: 0.38
+
+fpr:
+  enable: true
+  max_loop_residual: 2.5
+  max_cost_rms: 1.2
+
+geometric_verify:
+  enable: true
+  max_iterations: 18
+  max_fitness_m: 0.42
+  max_translation_m: 1.2
+  max_yaw_rad: 0.60
+  subsample_stride: 3
+  min_correspondences: 45
+  max_corr_dist_m: 1.8
+  min_inlier_ratio: 0.32
+  seed_xy_steps: 1
+  seed_xy_step_m: 0.7
+  seed_yaw_steps: 1
+  seed_yaw_step_rad: 0.10
+
+lta:
+  enable: false
+  keyframe_buffer: 400
+
+scan_context:
+  num_rings: 20
+  num_sectors: 60
+  max_radius_m: 80.0
+  max_candidates: 8
+  exclude_recent_count: 30
+  min_score: 0.53
+  enable_lateral_search: true
+  lateral_max_shift: 2
+  lateral_step_m: 0.8
+
+consensus:
+  geometric_weight: 0.55
+  visual_weight: 0.05
+  topology_weight: 0.30
+  pose_consistency_weight: 0.10
+  max_relative_yaw_rad: 0.60
+  max_relative_trans_m: 1.5
+  min_id_gap: 30
+  min_path_separation_m: 25.0
+
+cross_session:
+  enable: false

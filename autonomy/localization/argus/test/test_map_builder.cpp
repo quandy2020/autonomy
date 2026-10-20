@@ -44,6 +44,7 @@ int main() {
 
   MapBuilderConfig cfg;
   cfg.session_id = "S0";
+  cfg.node_id_base = 1000;
   cfg.ikd_downsample_resolution = 0.5;
   cfg.prior_resolution = 0.5;
   MapBuilder builder(cfg);
@@ -123,6 +124,18 @@ int main() {
   }
   if (loaded.package_meta().session_id != "S0") {
     return Fail("loaded meta session_id");
+  }
+  {
+    const auto loop_kfs = loaded.ExportLoopKeyFrames();
+    if (loop_kfs.size() != 5) {
+      return Fail("ExportLoopKeyFrames count");
+    }
+    if (loop_kfs[0].id != 1000 || loop_kfs[0].session_local_id != 0) {
+      return Fail("ExportLoopKeyFrames global id");
+    }
+    if (loop_kfs[0].cloud.empty() || loop_kfs[0].session_id != "S0") {
+      return Fail("ExportLoopKeyFrames cloud/session");
+    }
   }
 
   // Re-save after load must keep full cloud (ExportPoints, not empty kf clouds).

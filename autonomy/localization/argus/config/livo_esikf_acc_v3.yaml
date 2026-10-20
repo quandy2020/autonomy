@@ -1,0 +1,150 @@
+# Argus LIVO + ESIKF 主配置（配置驱动模态；无 ROS）
+# 内外参见 config/calibration/；鲁棒子配置见 config/robustness/。
+odometry:
+  type: livo
+  modalities: [lidar, imu, camera]
+
+backend:
+  type: state_filter
+  filter: esikf
+  max_iterations: 3
+  convergence_eps: 1.0e-6
+
+coupling: sequential
+
+camera:
+  # FAST-LIVO2-style intrinsics (under config/calibration/).
+  calib_file: calibration/camera_pinhole.yaml
+
+extrinsic:
+  # Nested files under config/calibration/ (inline Rcl/Pcl still accepted).
+  lidar_camera: calibration/extrinsic_lidar_camera.yaml
+  imu_lidar: calibration/extrinsic_imu_lidar.yaml
+
+vio:
+  grid_size: 5
+  grid_n_width: 17
+  grid_n_height: 14
+  patch_size: 8
+  patch_pyramid_level: 3
+  max_iterations: 5
+  outlier_threshold: 1000.0
+  image_point_cov: 100.0
+  enable_normal: 1
+  enable_inverse_composition: 0
+  enable_raycast: 0
+  enable_exposure_estimate: 1
+  enable_colmap_output: 0
+  log_dir: ""
+
+frontend:
+  lidar:
+    feature_type: point_to_plane
+    map_type: voxel_map
+  visual:
+    tracker: direct_patch
+    min_features: 50
+  dynamic_filter:
+    # Wire via LivoOdometryConfig.dynamic_filter (ParseDynamicFilterType).
+    # lidar/visual: spatiotemporal | semantic | none
+    lidar: none
+    visual: none
+    # ONNX path when lidar=semantic and backend=onnx
+    semantic_model: ""
+    mask_threshold: 0.5
+    config: robustness/dynamic_filter.yaml
+
+robustness:
+  degeneracy:
+    # Scene FIM degeneracy → anisotropic cov (default on).
+    enable: true
+    config: robustness/degeneracy.yaml
+  confidence_gating:
+    # Wire via LivoOdometryConfig.enable_confidence_gating (default false).
+    enable: false
+    config: robustness/confidence_gating.yaml
+  intensity_aided:
+    # Helps when geometry is weak; pair with degeneracy.
+    enable: true
+
+map:
+  lidar:
+    type: voxel_map
+    resolution: 0.2
+    confidence_enabled: false
+  visual:
+    type: sparse_visual
+    max_landmarks: 2000
+  self_cleaning:
+    enable: false
+    config: robustness/map_cleaning.yaml
+
+loop_closure:
+  # Wire via LivoOdometryConfig.loop_closure.enable (default false; async only).
+  enable: true
+  config: loop_closure_acc_v3.yaml
+
+mapping:
+  # Persist map package: map_meta + session + map.xyz + prior.xyz + visual + tum.
+  enable: true
+  session_id: live
+  output_dir: ""
+  ikd_downsample_resolution: 0.2
+  prior_resolution: 0.5
+
+cross_session:
+  enable: false
+  chain_linking: true
+
+relocalization:
+  # Enable when prior_map_path points to .xyz or a saved map package directory.
+  enable: true
+  method: branch_and_bound
+  # tracking_lost | manual | cross_session_load
+  trigger: tracking_lost
+  min_lost_streak: 3
+  cooldown_sec: 2.0
+  seed_with_current_pose: true
+  # .xyz or MapBuilder package dir (prior.xyz / map.xyz)
+  prior_map_path: ""
+  prior_resolution: 0.5
+  thread_pool:
+    worker_count: 4
+    max_queue_size: 256
+    enable_low_priority: true
+  branch_and_bound:
+    max_depth: 6
+    resolution: 0.5
+    z_resolution: 0.5
+    score_threshold: 0.7
+    # se2 | se3_yaw | se3 (6-DoF local refine)
+    search_space: se3
+    search_radius_z_steps: 4
+    roll_pitch_refine_rad: 0.12
+    roll_pitch_steps: 3
+    se3_trans_refine_m: 0.25
+    se3_yaw_refine_rad: 0.15
+    se3_refine_passes: 2
+  # Scan Context++ candidate crop before BnB (large priors).
+  place_recognition:
+    enable: false
+    top_k: 5
+    min_score: 0.45
+    crop_radius_steps: 3
+    fallback_full_search: true
+    num_rings: 20
+    num_sectors: 60
+    max_radius_m: 80.0
+    keyframe_spacing_m: 5.0
+    min_points_per_keyframe: 30
+    ring_key_prefilter_k: 50
+    enable_lateral_search: true
+    lateral_max_shift: 2
+    lateral_step_m: 1.5
+
+threading:
+  backend_threads: 1
+  lidar_frontend_threads: 1
+  visual_frontend_threads: 1
+  async_loop_threads: 2
+  use_global_thread_pool: false

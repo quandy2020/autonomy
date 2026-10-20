@@ -92,15 +92,20 @@ public:
         const CrossSessionLink& link) const;
 
     /**
-     * @brief Add chain factors, Optimize, refresh `T_world_session` for
-     * current.
+     * @brief TryAcceptLoops (FPR) + gauge restore prior + refresh current
+     *        `T_world_session`.
      * @param graph Pose graph to optimize in place.
      * @param link Cross-session link to apply.
+     * @param fpr Hard FPR gates (same as intra-session).
      * @param max_iterations LM / GN iteration cap for Optimize.
-     * @return false if confidence / sessions invalid.
+     * @param[out] opt_out Optional TryAcceptLoops diagnostics.
+     * @return false if confidence / sessions invalid or FPR rejects.
      */
     bool LinkAndOptimize(backend::PoseGraph& graph,
-                         const CrossSessionLink& link, int max_iterations = 10);
+                         const CrossSessionLink& link,
+                         const backend::PoseGraphFprConfig& fpr,
+                         int max_iterations = 10,
+                         backend::PoseGraphOptimizeResult* opt_out = nullptr);
 
 private:
     map::MapSession* sessions_ = nullptr;

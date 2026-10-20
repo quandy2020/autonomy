@@ -1,0 +1,55 @@
+<!--
+  Copyright 2026 The Openbot Authors
+
+  Example 1 — SLAM 建图与定位.
+
+  Processes:
+    autonomy.monitor
+    autonomy.localization (Cartographer 2D；默认建图并落盘 pbstream)
+    autonomy.task         (mapping / localization BT：map_ops、StartLocalization)
+
+  建图（默认）：写 data/maps/cartographer.pbstream
+  纯定位：将下方 localization 的 process_name 改为带
+    --load_state_filename=data/maps/cartographer.pbstream
+    并去掉 --save_state_filename（或保留作增量更新）。
+
+  3D LIO 可改用 Argus（见 localization_argus.launch 的 process_name）。
+
+  Not started (intentional):
+    planning / control / perception / bridge — 见 examples/navigation.launch 等
+
+  Prerequisites:
+    - PATH: build/bin
+    - mkdir -p data/maps
+    - 传感器：/scan + /odom + /tf（Cartographer）；或 /imu+/points（Argus）
+
+  Dev (repo root):
+    export PATH=$PWD/build/bin:$PATH
+    export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+    autolink_launch examples/slam.launch
+
+  Do not run together with autonomy.launch / exploration.launch (task overlap).
+-->
+<autolink>
+  <module>
+    <name>monitor</name>
+    <type>binary</type>
+    <process_name>autonomy.monitor --conf=monitor.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>localization</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=cartographer --configuration_directory=autonomy/localization/conf/cartographer --configuration_basename=autosim_2d.lua --start_trajectory_with_default_topics=true --save_state_filename=data/maps/cartographer.pbstream</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+  <module>
+    <name>task</name>
+    <type>binary</type>
+    <process_name>autonomy.task</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

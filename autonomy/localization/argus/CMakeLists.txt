@@ -77,6 +77,11 @@ find_package(OpenMP)
 if(NOT OnnxRuntime_FOUND)
   find_package(OnnxRuntime QUIET)
 endif()
+option(ARGUS_USE_GTSAM "Use GTSAM iSAM2 for pose-graph (optional)" OFF)
+find_package(Ceres QUIET)
+if(ARGUS_USE_GTSAM)
+  find_package(GTSAM QUIET)
+endif()
 
 if(NOT TARGET automsgs::automsgs)
   message(FATAL_ERROR "automsgs found but target automsgs::automsgs missing")
@@ -89,10 +94,14 @@ if(ARGUS_USE_ONNXRUNTIME AND NOT OnnxRuntime_FOUND)
     "ARGUS_USE_ONNXRUNTIME=ON but OnnxRuntime not found; "
     "SemanticDynamicFilter stays pass-through / mask_file")
 endif()
+if(ARGUS_USE_GTSAM AND NOT GTSAM_FOUND)
+  message(WARNING "ARGUS_USE_GTSAM=ON but GTSAM not found; using Ceres/GN")
+endif()
 
 message(STATUS
   "Argus deps: Eigen3 OpenCV/${OpenCV_VERSION} glog automsgs "
   "OpenMP=${OpenMP_CXX_FOUND} OnnxRuntime=${OnnxRuntime_FOUND} "
+  "Ceres=${Ceres_FOUND} GTSAM=${GTSAM_FOUND} "
   "embedded=${ARGUS_IS_EMBEDDED}")
 
 file(GLOB_RECURSE ALL_LIBRARY_HDRS
@@ -133,6 +142,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   automsgs::automsgs
   $<$<BOOL:${OpenMP_CXX_FOUND}>:OpenMP::OpenMP_CXX>
 )
+if(Ceres_FOUND)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC ARGUS_HAS_CERES=1)
+  target_link_libraries(${PROJECT_NAME} PUBLIC Ceres::ceres)
+endif()
+if(ARGUS_USE_GTSAM AND GTSAM_FOUND)
+  target_compile_definitions(${PROJECT_NAME} PUBLIC ARGUS_HAS_GTSAM=1)
+  target_link_libraries(${PROJECT_NAME} PUBLIC gtsam)
+endif()
 if(OnnxRuntime_FOUND)
   target_compile_definitions(${PROJECT_NAME} PUBLIC ARGUS_HAS_ONNXRUNTIME=1)
   target_link_libraries(${PROJECT_NAME} PUBLIC OnnxRuntime::OnnxRuntime)

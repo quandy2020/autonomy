@@ -22,15 +22,17 @@
  *   offline_spires_livo --spires <seq_dir> --calib <calibration_dir>
  *       [--config livo_esikf.yaml] [--camera-yaml cam.yaml]
  *       [--out-dir <dir>] [--max-frames N] [--mode lio|livo|lo]
- *       [--camera cam0]
+ *       [--camera cam0] [--loop|--no-loop]
  */
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <Eigen/Geometry>
@@ -222,6 +224,10 @@ int main(int argc, char** argv) {
   std::string mode = "livo";  // livo | lio | lo
   std::string camera = "cam0";
   int max_frames = 0;  // 0 = all
+  int loop_override = 0;  // 0=yaml, 1=force on, -1=force off
+  int drift_enable = -1;  // -1=yaml, 0=off, 1=on
+  double drift_yaw_per_m = -1.0;
+  double drift_tx_per_m = -1.0;
 
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
@@ -248,10 +254,25 @@ int main(int argc, char** argv) {
       mode = need("--mode");
     } else if (a == "--camera") {
       camera = need("--camera");
+    } else if (a == "--loop") {
+      loop_override = 1;
+    } else if (a == "--no-loop") {
+      loop_override = -1;
+    } else if (a == "--drift") {
+      drift_enable = 1;
+    } else if (a == "--no-drift") {
+      drift_enable = 0;
+    } else if (a == "--drift-yaw-per-m") {
+      drift_yaw_per_m = std::stod(need("--drift-yaw-per-m"));
+      drift_enable = 1;
+    } else if (a == "--drift-tx-per-m") {
+      drift_tx_per_m = std::stod(need("--drift-tx-per-m"));
+      drift_enable = 1;
     } else if (a == "--help" || a == "-h") {
       std::cout
           << "Usage: offline_spires_livo --spires <seq> --calib <dir> "
-             "[--mode livo|lio|lo]\n";
+             "[--mode livo|lio|lo] [--loop|--no-loop] "
+             "[--drift|--drift-yaw-per-m R]\n";
       return 0;
     }
   }
@@ -315,10 +336,42 @@ int main(int argc, char** argv) {
   cfg.mapping.session_id = "spires";
   cfg.mapping_output_dir = (fs::path(out_dir) / "map").string();
   cfg.relocalization.enable = false;
-  cfg.loop_closure.enable = false;
+  if (loop_override > 0) {
+    cfg.loop_closure.enable = true;
+  } else if (loop_override < 0) {
+    cfg.loop_closure.enable = false;
+  }
+  if (drift_enable == 0) {
+    cfg.synthetic_drift.enable = false;
+  } else if (drift_enable > 0) {
+    cfg.synthetic_drift.enable = true;
+    if (drift_yaw_per_m >= 0.0) {
+      cfg.synthetic_drift.yaw_rad_per_m = drift_yaw_per_m;
+    }
+    if (drift_tx_per_m >= 0.0) {
+      cfg.synthetic_drift.tx_m_per_m = drift_tx_per_m;
+    }
+    if (cfg.synthetic_drift.yaw_rad_per_m == 0.0 &&
+        cfg.synthetic_drift.tx_m_per_m == 0.0) {
+      // Defaults chosen so Umeyama-aligned ATE still sees residual error
+      // (pure yaw is largely absorbed by trajectory alignment).
+      cfg.synthetic_drift.yaw_rad_per_m = 0.002;
+      cfg.synthetic_drift.tx_m_per_m = 0.008;
+    }
+  }
+  // Offline eval: keep async worker (refuse sync Optimize).
+  if (cfg.loop_closure.enable) {
+    cfg.loop_closure.async = true;
+  }
   cfg.enable_degeneracy = true;
   cfg.dynamic_filter.lidar = argus::frontend::DynamicFilterType::kNone;
   cfg.dynamic_filter.visual = argus::frontend::DynamicFilterType::kNone;
+  std::cout << "[offline_spires] loop_closure.enable="
+            << (cfg.loop_closure.enable ? 1 : 0)
+            << " fpr=" << (cfg.loop_closure.fpr.enable ? 1 : 0)
+            << " lta=" << (cfg.loop_closure.lta.enable ? 1 : 0)
+            << " drift=" << (cfg.synthetic_drift.enable ? 1 : 0)
+            << " yaw_per_m=" << cfg.synthetic_drift.yaw_rad_per_m << "\n";
 
   if (mode == "lo") {
     cfg.slam_mode = argus::frontend::ONLY_LO;
@@ -430,6 +483,30 @@ int main(int argc, char** argv) {
   if (processed == 0) {
     std::cerr << "[offline_spires] no frames processed\n";
     return 1;
+  }
+
+  if (auto* lc = odom.loop_closure_manager()) {
+    // Drain async detections / FPR for the last keyframes.
+    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    lc->Stop();
+    const auto st = lc->Stats();
+    std::cout << "[offline_spires] loop stats: accepted=" << st.accepted
+              << " fpr_reject=" << st.fpr_reject
+              << " inject_restore=" << st.inject_restore
+              << " geom_reject=" << st.geometric_reject
+              << " geom{miss=" << st.geom_missing_cloud
+              << ",fit=" << st.geom_fitness << ",corr=" << st.geom_corr
+              << ",t=" << st.geom_translation << ",yaw=" << st.geom_yaw
+              << ",inlier=" << st.geom_inlier << "}"
+              << " temporal_reject=" << st.temporal_reject
+              << " temporal_pending=" << st.temporal_pending
+              << " signature_reject=" << st.signature_reject
+              << " cross_session=" << st.cross_session
+              << " prior_clouds=" << lc->prior_cloud_count() << "\n";
+  }
+  if (cfg.synthetic_drift.enable) {
+    std::cout << "[offline_spires] synthetic_drift_distance_m="
+              << odom.synthetic_drift_distance_m() << "\n";
   }
 
   odom.SaveBuiltMap();

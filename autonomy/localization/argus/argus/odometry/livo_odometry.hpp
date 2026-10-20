@@ -257,6 +257,11 @@ public:
         return loop_closure_manager_.get();
     }
 
+    /** @return Accumulated travel distance used for synthetic drift (m). */
+    double synthetic_drift_distance_m() const {
+        return synthetic_drift_distance_m_;
+    }
+
     /** @return Map self-cleaning worker (null when disabled). */
     map::MapSelfCleaning* map_self_cleaning() {
         return map_cleaning_.get();
@@ -307,6 +312,10 @@ private:
     bool ProcessVio(OdometryOutput* out);
     void ApplyVioConfigToManager();
     void TrySubmitKeyFrame();
+    /** @brief Eval-only: accumulate yaw/scale bias after LIO updates. */
+    void MaybeApplySyntheticDrift();
+    /** @brief ESIKF pose, or \(T_d\,T_{\mathrm{esikf}}\) when synthetic drift on. */
+    transform::Rigid3d ReportedPose() const;
     void TryRequestRelocalization();
     void TryInjectRelocalization();
     void TryInjectLoopCorrection();
@@ -366,6 +375,16 @@ private:
     transform::Rigid3d last_keyframe_T_ = transform::Rigid3d::Identity();
     bool has_keyframe_ = false;
     bool cross_session_reloc_requested_ = false;
+    bool has_drift_anchor_ = false;
+    Eigen::Vector3d drift_anchor_pos_ = Eigen::Vector3d::Zero();
+    double synthetic_drift_distance_m_ = 0.0;
+    /**
+     * @brief World-frame bias composed as \(T_{\mathrm{report}}=T_d\,T_{\mathrm{esikf}}\).
+     *        Kept off the ESIKF state so lidar residuals cannot cancel it.
+     */
+    transform::Rigid3d eval_drift_T_ = transform::Rigid3d::Identity();
+    /** @brief After a successful loop inject, stop growing \(T_d\). */
+    bool synthetic_drift_frozen_ = false;
 };
 
 }  // namespace odometry

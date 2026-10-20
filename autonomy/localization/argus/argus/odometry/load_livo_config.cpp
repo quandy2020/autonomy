@@ -210,6 +210,13 @@ void LoadLoopClosureYaml(const std::string& path,
                               out->enable_pose_inject ? 1 : 0)) != 0;
     out->consensus.min_confidence =
         y.Get<double>("min_confidence", out->consensus.min_confidence);
+    out->consensus.min_id_gap =
+        y.Get<int>("consensus/min_id_gap",
+                   y.Get<int>("min_id_gap", out->consensus.min_id_gap));
+    out->consensus.min_path_separation_m = y.Get<double>(
+        "consensus/min_path_separation_m",
+        y.Get<double>("min_path_separation_m",
+                      out->consensus.min_path_separation_m));
     out->scan_context.num_rings = y.Get<int>(
         "scan_context/num_rings",
         y.Get<int>("scan_context/ring_num", out->scan_context.num_rings));
@@ -221,6 +228,11 @@ void LoadLoopClosureYaml(const std::string& path,
     out->scan_context.max_candidates = y.Get<int>(
         "scan_context/max_candidates",
         y.Get<int>("scan_context/top_k", out->scan_context.max_candidates));
+    out->scan_context.exclude_recent_count = y.Get<int>(
+        "scan_context/exclude_recent_count",
+        out->scan_context.exclude_recent_count);
+    out->scan_context.min_score = y.Get<double>(
+        "scan_context/min_score", out->scan_context.min_score);
     out->scan_context.enable_lateral_search =
         y.Get<int>("scan_context/enable_lateral_search",
                    out->scan_context.enable_lateral_search ? 1 : 0) != 0;
@@ -254,6 +266,97 @@ void LoadLoopClosureYaml(const std::string& path,
     out->cross_session.freeze_prior_nodes =
         y.Get<int>("cross_session/freeze_prior_nodes",
                    out->cross_session.freeze_prior_nodes ? 1 : 0) != 0;
+    out->fpr.enable =
+        y.Get<int>("fpr/enable", out->fpr.enable ? 1 : 0) != 0;
+    out->fpr.max_loop_residual = y.Get<double>(
+        "fpr/max_loop_residual", out->fpr.max_loop_residual);
+    out->fpr.max_cost_rms =
+        y.Get<double>("fpr/max_cost_rms", out->fpr.max_cost_rms);
+    out->geometric_verify.enable =
+        y.Get<int>("geometric_verify/enable",
+                   out->geometric_verify.enable ? 1 : 0) != 0;
+    out->geometric_verify.max_iterations = y.Get<int>(
+        "geometric_verify/max_iterations",
+        out->geometric_verify.max_iterations);
+    out->geometric_verify.max_fitness_m = y.Get<double>(
+        "geometric_verify/max_fitness_m",
+        out->geometric_verify.max_fitness_m);
+    out->geometric_verify.max_translation_m = y.Get<double>(
+        "geometric_verify/max_translation_m",
+        out->geometric_verify.max_translation_m);
+    out->geometric_verify.max_yaw_rad = y.Get<double>(
+        "geometric_verify/max_yaw_rad", out->geometric_verify.max_yaw_rad);
+    out->geometric_verify.subsample_stride = y.Get<int>(
+        "geometric_verify/subsample_stride",
+        out->geometric_verify.subsample_stride);
+    out->geometric_verify.min_correspondences = y.Get<int>(
+        "geometric_verify/min_correspondences",
+        out->geometric_verify.min_correspondences);
+    out->geometric_verify.max_corr_dist_m = y.Get<double>(
+        "geometric_verify/max_corr_dist_m",
+        out->geometric_verify.max_corr_dist_m);
+    out->geometric_verify.min_inlier_ratio = y.Get<double>(
+        "geometric_verify/min_inlier_ratio",
+        out->geometric_verify.min_inlier_ratio);
+    out->geometric_verify.seed_xy_steps = y.Get<int>(
+        "geometric_verify/seed_xy_steps",
+        out->geometric_verify.seed_xy_steps);
+    out->geometric_verify.seed_xy_step_m = y.Get<double>(
+        "geometric_verify/seed_xy_step_m",
+        out->geometric_verify.seed_xy_step_m);
+    out->geometric_verify.seed_yaw_steps = y.Get<int>(
+        "geometric_verify/seed_yaw_steps",
+        out->geometric_verify.seed_yaw_steps);
+    out->geometric_verify.seed_yaw_step_rad = y.Get<double>(
+        "geometric_verify/seed_yaw_step_rad",
+        out->geometric_verify.seed_yaw_step_rad);
+    out->wait_second_loop =
+        y.Get<int>("wait_second_loop", out->wait_second_loop ? 1 : 0) != 0;
+    out->max_loop_translation_m = y.Get<double>(
+        "max_loop_translation_m", out->max_loop_translation_m);
+    out->max_inject_translation_m = y.Get<double>(
+        "max_inject_translation_m", out->max_inject_translation_m);
+    out->loop_information_scale = y.Get<double>(
+        "loop_information_scale", out->loop_information_scale);
+    out->inject_clamp_only =
+        y.Get<int>("inject_clamp_only", out->inject_clamp_only ? 1 : 0) != 0;
+    out->temporal.enable =
+        y.Get<int>("temporal/enable", out->temporal.enable ? 1 : 0) != 0;
+    out->temporal.min_confirmations = y.Get<int>(
+        "temporal/min_confirmations", out->temporal.min_confirmations);
+    out->temporal.max_match_id_delta = y.Get<int>(
+        "temporal/max_match_id_delta", out->temporal.max_match_id_delta);
+    out->temporal.max_query_span = y.Get<int>(
+        "temporal/max_query_span", out->temporal.max_query_span);
+    out->revisit_signature.enable =
+        y.Get<int>("revisit_signature/enable",
+                   out->revisit_signature.enable ? 1 : 0) != 0;
+    out->revisit_signature.min_odom_gap_m = y.Get<double>(
+        "revisit_signature/min_odom_gap_m",
+        out->revisit_signature.min_odom_gap_m);
+    out->revisit_signature.max_icp_trans_m = y.Get<double>(
+        "revisit_signature/max_icp_trans_m",
+        out->revisit_signature.max_icp_trans_m);
+    out->revisit_signature.min_gap_minus_icp_m = y.Get<double>(
+        "revisit_signature/min_gap_minus_icp_m",
+        out->revisit_signature.min_gap_minus_icp_m);
+    out->revisit_signature.max_fitness_m = y.Get<double>(
+        "revisit_signature/max_fitness_m",
+        out->revisit_signature.max_fitness_m);
+    out->lta.enable = y.Get<int>("lta/enable", out->lta.enable ? 1 : 0) != 0;
+    out->lta.points_per_frame = static_cast<std::size_t>(y.Get<int>(
+        "lta/points_per_frame", static_cast<int>(out->lta.points_per_frame)));
+    out->lta.max_queued_clouds = static_cast<std::size_t>(y.Get<int>(
+        "lta/max_queued_clouds", static_cast<int>(out->lta.max_queued_clouds)));
+    out->lta.downsample_resolution_m = y.Get<double>(
+        "lta/downsample_resolution_m", out->lta.downsample_resolution_m);
+    out->lta.prior_neighbor_keyframes = y.Get<int>(
+        "lta/prior_neighbor_keyframes", out->lta.prior_neighbor_keyframes);
+    out->lta_keyframe_buffer =
+        y.Get<int>("lta/keyframe_buffer", out->lta_keyframe_buffer);
+    out->lta_reload_prior_on_cross_session =
+        y.Get<int>("lta/reload_prior_on_cross_session",
+                   out->lta_reload_prior_on_cross_session ? 1 : 0) != 0;
 }
 
 void ParseModalities(const std::string& yaml_path, LivoOdometryConfig* cfg) {
@@ -697,6 +800,15 @@ LoadLivoConfigResult LoadLivoOdometryConfig(const std::string& yaml_path) {
     }
 
     LoadMappingSection(root, &cfg);
+    cfg.synthetic_drift.enable =
+        root.Get<int>("synthetic_drift/enable",
+                      cfg.synthetic_drift.enable ? 1 : 0) != 0;
+    cfg.synthetic_drift.yaw_rad_per_m = root.Get<double>(
+        "synthetic_drift/yaw_rad_per_m", cfg.synthetic_drift.yaw_rad_per_m);
+    cfg.synthetic_drift.tx_m_per_m = root.Get<double>(
+        "synthetic_drift/tx_m_per_m", cfg.synthetic_drift.tx_m_per_m);
+    cfg.synthetic_drift.step_m =
+        root.Get<double>("synthetic_drift/step_m", cfg.synthetic_drift.step_m);
     LoadRelocalizationSection(root, &cfg);
 
     if (root.Get<int>("threading/use_global_thread_pool", 0) != 0) {

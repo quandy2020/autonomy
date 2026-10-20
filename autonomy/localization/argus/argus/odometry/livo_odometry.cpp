@@ -300,26 +300,17 @@ bool LivoOdometry::LoadBuiltMap(const std::string& directory) {
         const std::string sid = config_.mapping.session_id;
         const map::SessionMeta* meta = map_builder_->session().Get(sid);
         if (meta != nullptr) {
-            std::vector<loop_closure::KeyFrame> scan_context_keyframes;
-            for (const auto& mk : map_builder_->keyframes()) {
-                if (mk.cloud.empty()) {
-                    continue;
-                }
-                loop_closure::KeyFrame kf;
-                kf.id = mk.local_id;
-                kf.stamp_sec = mk.stamp_sec;
-                kf.T_w_b = mk.T_w_b;
-                kf.cloud = mk.cloud;
-                kf.session_id = sid;
-                kf.session_local_id = mk.local_id;
-                scan_context_keyframes.push_back(std::move(kf));
-            }
+            // Package keyframes/ → SC + prior LTA buffer (body frame, global ids).
+            const auto scan_context_keyframes =
+                map_builder_->ExportLoopKeyFrames();
             loop_closure_manager_->RegisterPriorSession(
                 *meta, map_builder_->session().Trajectory(sid),
                 scan_context_keyframes);
             ARGUS_INFO << "[map] registered prior session " << sid
                        << " scan_context_keyframes="
-                       << scan_context_keyframes.size();
+                       << scan_context_keyframes.size()
+                       << " prior_lta_clouds="
+                       << loop_closure_manager_->prior_cloud_count();
         }
     }
     return true;
@@ -514,9 +505,23 @@ bool LivoOdometry::ProcessVio(OdometryOutput* out) {
     return true;
 }
 
+transform::Rigid3d LivoOdometry::ReportedPose() const {
+    const transform::Rigid3d T_esikf(
+        state_.pos_end, Eigen::Quaterniond(state_.rot_end));
+    if (!config_.synthetic_drift.enable) {
+        return T_esikf;
+    }
+    return eval_drift_T_ * T_esikf;
+}
+
 void LivoOdometry::FillLioOutput(OdometryOutput* out, bool map_updated) {
     out->ekf_phase = measures_.ekf_phase;
     out->state = state_;
+    if (config_.synthetic_drift.enable) {
+        const transform::Rigid3d T = ReportedPose();
+        out->state.pos_end = T.translation();
+        out->state.rot_end = T.rotation().toRotationMatrix();
+    }
     out->timestamp = measures_.last_lio_update_time;
     out->undistorted = lio_frame_.feats_undistort;
     out->downsampled_body = lio_frame_.feats_down_body;
@@ -625,7 +630,33 @@ void LivoOdometry::UpdateLioMapAfterEsikf(double now_sec) {
     if (voxel_manager_->config_setting_.map_sliding_en_) {
         voxel_manager_->MapSliding();
     }
+    MaybeApplySyntheticDrift();
     TrySubmitKeyFrame();
+}
+
+void LivoOdometry::MaybeApplySyntheticDrift() {
+    if (!config_.synthetic_drift.enable || synthetic_drift_frozen_) {
+        return;
+    }
+    // Grow an external bias \(T_d\); do NOT touch ESIKF state_ (lidar would
+    // cancel an in-filter bias within one update).
+    if (!has_drift_anchor_) {
+        drift_anchor_pos_ = state_.pos_end;
+        has_drift_anchor_ = true;
+        return;
+    }
+    const double step = std::max(0.1, config_.synthetic_drift.step_m);
+    const double dist = (state_.pos_end - drift_anchor_pos_).norm();
+    if (dist < step) {
+        return;
+    }
+    const double yaw = config_.synthetic_drift.yaw_rad_per_m * dist;
+    const double tx = config_.synthetic_drift.tx_m_per_m * dist;
+    const transform::Rigid3d dT =
+        transform::FromXyzRpy(tx, 0.0, 0.0, 0.0, 0.0, yaw);
+    eval_drift_T_ = eval_drift_T_ * dT;
+    drift_anchor_pos_ = state_.pos_end;
+    synthetic_drift_distance_m_ += dist;
 }
 
 bool LivoOdometry::ProcessLio(OdometryOutput* out) {
@@ -776,19 +807,51 @@ void LivoOdometry::TryInjectRelocalization() {
 }
 
 void LivoOdometry::TryInjectLoopCorrection() {
-    if (!loop_closure_manager_ || !config_.loop_closure.enable ||
-        !config_.loop_closure.enable_pose_inject) {
+    if (!loop_closure_manager_ || !config_.loop_closure.enable) {
         return;
     }
-    for (const loop_closure::LoopCorrection& c : loop_closure_manager_->TakeCorrections()) {
-        transform::Rigid3d T = transform::Rigid3d(
-            state_.pos_end, Eigen::Quaterniond(state_.rot_end));
-        T = c.delta_w * T;
-        state_.rot_end = T.rotation().toRotationMatrix();
-        state_.pos_end = T.translation();
-        state_propagated_ = state_;
-        // Mild inflation after loop jump.
-        state_.cov.block<3, 3>(3, 3) += Eigen::Matrix3d::Identity() * 0.05;
+    if (config_.loop_closure.enable_pose_inject) {
+        bool jumped = false;
+        for (const loop_closure::LoopCorrection& c :
+             loop_closure_manager_->TakeCorrections()) {
+            if (c.apply_to_state) {
+                // Apply in reported frame (still includes \(T_d\) if any).
+                transform::Rigid3d T = ReportedPose();
+                T = c.delta_w * T;
+                state_.rot_end = T.rotation().toRotationMatrix();
+                state_.pos_end = T.translation();
+                state_propagated_ = state_;
+                state_.cov.block<3, 3>(3, 3) +=
+                    Eigen::Matrix3d::Identity() * 0.05;
+                jumped = true;
+            }
+            // Verified recovery: stop growing \(T_d\). If we skipped state yank,
+            // absorb current \(T_d\) into ESIKF so the logged trajectory stays
+            // continuous (Umeyama then removes the residual rigid offset).
+            if (config_.synthetic_drift.enable && c.clear_eval_drift) {
+                if (!c.apply_to_state) {
+                    const transform::Rigid3d T_rep = ReportedPose();
+                    state_.pos_end = T_rep.translation();
+                    state_.rot_end = T_rep.rotation().toRotationMatrix();
+                    state_propagated_ = state_;
+                }
+                eval_drift_T_ = transform::Rigid3d::Identity();
+                synthetic_drift_frozen_ = true;
+            }
+        }
+        if (jumped) {
+            loop_closure_manager_->NotifyPoseJump();
+        }
+    }
+
+    // LTA: drain corrected history points into mapping ikd (estimate thread).
+    if (config_.loop_closure.lta.enable && map_builder_) {
+        sensor::PointCloudXYZI chunk;
+        const std::size_t n = loop_closure_manager_->map_reload().Drain(
+            &chunk, config_.loop_closure.lta.points_per_frame);
+        if (n > 0) {
+            map_builder_->ikd().AddPoints(chunk);
+        }
     }
 }
 
@@ -818,8 +881,7 @@ void LivoOdometry::TrySubmitKeyFrame() {
         lio_frame_.feats_down_body->empty()) {
         return;
     }
-    const transform::Rigid3d T =
-        transform::Rigid3d(state_.pos_end, Eigen::Quaterniond(state_.rot_end));
+    const transform::Rigid3d T = ReportedPose();
 
     const double kf_dist = config_.loop_closure.keyframe_distance_m;
     const double kf_yaw = config_.loop_closure.keyframe_yaw_rad;

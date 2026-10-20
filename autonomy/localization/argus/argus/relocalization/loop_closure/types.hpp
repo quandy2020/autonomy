@@ -55,6 +55,10 @@ struct LoopCandidate {
     /** @brief Relative \(T_{\mathrm{query}\leftarrow\mathrm{match}}\)
      * (match → query). */
     transform::Rigid3d T_query_match = transform::Rigid3d::Identity();
+    /** @brief ICP mean NN distance after refine (m); set by geometric verify. */
+    double fitness_m = 1e9;
+    /** @brief ICP inlier ratio after refine. */
+    double inlier_ratio = 0.0;
 };
 
 /**
@@ -67,6 +71,13 @@ struct LoopCorrection {
     int match_id = 0;
     transform::Rigid3d delta_w = transform::Rigid3d::Identity();
     double confidence = 0.0;
+    /** @brief When false, estimate thread skips applying \(\Delta_w\) to ESIKF. */
+    bool apply_to_state = true;
+    /**
+     * @brief When true, estimate thread clears synthetic eval drift \(T_d\).
+     *        Only set for verified recovery (revisit signature / safe inject).
+     */
+    bool clear_eval_drift = false;
 };
 
 /** @brief Pluggable loop detector (Scan Context, etc.). */

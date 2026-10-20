@@ -62,10 +62,26 @@ def umeyama_se3(src: np.ndarray, dst: np.ndarray):
     U, _, Vt = np.linalg.svd(W)
     R = U @ Vt
     if np.linalg.det(R) < 0:
+        U = U.copy()
         U[:, -1] *= -1
         R = U @ Vt
     t = mu_d - R @ mu_s
     return R, t
+
+
+def interp_xyz(t_src: np.ndarray, xyz_src: np.ndarray, t_query: np.ndarray) -> np.ndarray:
+    """Linear interpolate xyz on t_src to t_query (clamped)."""
+    out = np.zeros((len(t_query), 3))
+    for i, t in enumerate(t_query):
+        j = int(np.searchsorted(t_src, t))
+        if j <= 0:
+            out[i] = xyz_src[0]
+        elif j >= len(t_src):
+            out[i] = xyz_src[-1]
+        else:
+            u = (t - t_src[j - 1]) / (t_src[j] - t_src[j - 1] + 1e-12)
+            out[i] = (1.0 - u) * xyz_src[j - 1] + u * xyz_src[j]
+    return out
 
 
 def main() -> None:
@@ -74,6 +90,11 @@ def main() -> None:
     ap.add_argument("--est", required=True, help="Estimate TUM trajectory")
     ap.add_argument("--out", required=True, help="Output PNG path")
     ap.add_argument("--max-dt", type=float, default=0.5)
+    ap.add_argument(
+        "--interp-gt",
+        action="store_true",
+        help="Interpolate sparse GT to each estimate stamp (recommended when GT ≪ est)",
+    )
     ap.add_argument("--title", default="Argus LIVO vs Ground Truth")
     args = ap.parse_args()
 
@@ -82,9 +103,19 @@ def main() -> None:
     if len(t_gt) < 2 or len(t_est) < 2:
         raise SystemExit(f"empty traj gt={len(t_gt)} est={len(t_est)}")
 
-    te, pe, pg = associate(t_est, xyz_est, t_gt, xyz_gt, args.max_dt)
-    if len(te) < 3:
-        raise SystemExit(f"too few associations: {len(te)} (max_dt={args.max_dt})")
+    # Auto-enable interp when GT is much sparser than estimate (Spires VILENS).
+    use_interp = args.interp_gt or (len(t_gt) * 3 < len(t_est))
+    if use_interp:
+        m = (t_est >= t_gt[0]) & (t_est <= t_gt[-1])
+        te = t_est[m]
+        pe = xyz_est[m]
+        pg = interp_xyz(t_gt, xyz_gt, te)
+        if len(te) < 3:
+            raise SystemExit("too few stamps in GT time span")
+    else:
+        te, pe, pg = associate(t_est, xyz_est, t_gt, xyz_gt, args.max_dt)
+        if len(te) < 3:
+            raise SystemExit(f"too few associations: {len(te)} (max_dt={args.max_dt})")
 
     R, t = umeyama_se3(pe, pg)
     pe_a = (R @ pe.T).T + t
@@ -121,8 +152,9 @@ def main() -> None:
     )
     ax1.grid(True, alpha=0.3)
 
+    mode = "interp-GT" if use_interp else f"assoc max_dt={args.max_dt}"
     fig.suptitle(
-        f"{args.title}\nmatched={len(te)}  gt={len(t_gt)}  est={len(t_est)}",
+        f"{args.title}\nmatched={len(te)}  gt={len(t_gt)}  est={len(t_est)}  ({mode})",
         fontsize=11,
     )
     fig.tight_layout()

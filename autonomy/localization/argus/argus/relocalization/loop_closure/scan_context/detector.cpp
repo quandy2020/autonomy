@@ -169,16 +169,15 @@ std::vector<LoopCandidate> ScanContextDetector::Detect(const KeyFrame& kf) {
         candidate.match_id =
             keyframes_[static_cast<std::size_t>(s.match_index)].id;
         candidate.score = s.score;
-        const transform::Rigid3d& T_w_query =
-            keyframes_[static_cast<std::size_t>(query_index)].T_w_b;
-        const transform::Rigid3d& T_w_match =
-            keyframes_[static_cast<std::size_t>(s.match_index)].T_w_b;
-        transform::Rigid3d T_qm = T_w_query.inverse() * T_w_match;
+        // Relative measurement from SC++ only (yaw + lateral). Do NOT use
+        // \(T_{wq}^{-1}T_{wm}\) — that embeds odometry drift and makes the
+        // loop factor nearly tautological / harmful after inject.
         const double yaw_delta =
             static_cast<double>(s.sector_shift) * sector_res;
-        const transform::Rigid3d T_align = transform::FromXyzRpy(
+        // Query was y-shifted by +lateral for matching → match in query ≈
+        // FromXyzRpy(0, -lateral, 0, 0, 0, yaw).
+        candidate.T_query_match = transform::FromXyzRpy(
             0.0, -s.lateral_m, 0.0, 0.0, 0.0, yaw_delta);
-        candidate.T_query_match = T_qm * T_align;
         out.push_back(candidate);
     }
     return out;

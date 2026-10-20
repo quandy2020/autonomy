@@ -25,9 +25,9 @@
  *   prior.xyz         — occupancy prior cloud for BnB
  *   visual.xyz        — sparse visual landmarks
  *   trajectory.tum    — TUM poses
- *   keyframes/        — optional body clouds for Scan Context cross-session
- *     index.txt
- *     000000.bin …
+ *   keyframes/        — optional body (or world) clouds for SC + prior LTA
+ *     index.txt       — `local_id stem.bin npts cloud_in_world`
+ *     000000.bin …    — float32 xyz i; LoadBuiltMap → ExportLoopKeyFrames
  *
  * Writes are atomic (temp file + rename). Load verifies fingerprint when
  * present.

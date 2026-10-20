@@ -1,0 +1,83 @@
+# Drift-recovery eval: revisit signature + clamp-only inject (clear Td safely).
+enable: true
+method: scan_context
+multi_modal_consensus: true
+min_confidence: 0.55
+async: true
+enable_pose_inject: true
+current_session_id: live
+wait_second_loop: false
+max_loop_translation_m: 2.0
+max_inject_translation_m: 3.5
+inject_clamp_only: true
+loop_information_scale: 60.0
+
+temporal:
+  enable: true
+  min_confirmations: 1
+  max_match_id_delta: 12
+  max_query_span: 25
+
+# Require: large pose-graph gap, small ICP |t|, tight fitness.
+revisit_signature:
+  enable: true
+  min_odom_gap_m: 2.5
+  max_icp_trans_m: 1.2
+  min_gap_minus_icp_m: 1.5
+  max_fitness_m: 0.40
+
+fpr:
+  enable: true
+  max_loop_residual: 2.0
+  max_cost_rms: 1.0
+
+geometric_verify:
+  enable: true
+  max_iterations: 15
+  max_fitness_m: 0.45
+  max_translation_m: 1.5
+  max_yaw_rad: 0.70
+  subsample_stride: 4
+  min_correspondences: 40
+  max_corr_dist_m: 2.2
+  min_inlier_ratio: 0.30
+  seed_xy_steps: 1
+  seed_xy_step_m: 1.0
+  seed_yaw_steps: 1
+  seed_yaw_step_rad: 0.12
+
+lta:
+  enable: false
+  points_per_frame: 20000
+  max_queued_clouds: 32
+  downsample_resolution_m: 0.75
+  keyframe_buffer: 240
+  prior_neighbor_keyframes: 2
+  reload_prior_on_cross_session: true
+
+scan_context:
+  num_rings: 20
+  num_sectors: 60
+  max_radius_m: 80.0
+  max_candidates: 5
+  exclude_recent_count: 40
+  min_score: 0.52
+  enable_lateral_search: true
+  lateral_max_shift: 2
+  lateral_step_m: 1.0
+
+consensus:
+  geometric_weight: 0.50
+  visual_weight: 0.10
+  topology_weight: 0.30
+  pose_consistency_weight: 0.10
+  max_relative_yaw_rad: 0.70
+  max_relative_trans_m: 2.0
+  min_id_gap: 40
+  min_path_separation_m: 25.0
+
+cross_session:
+  enable: false
+  min_confidence: 0.65
+  loop_information_scale: 150.0
+  freeze_prior_nodes: true

@@ -23,6 +23,7 @@
 
 #include <Eigen/Dense>
 
+#include "argus/backend/pose_graph/pose_graph_internal.hpp"
 #include "argus/common/math/so3.hpp"
 #include "argus/common/math/transform/transform.hpp"
 
@@ -39,11 +40,9 @@ Eigen::Matrix<double, 6, 1> Se3Log(const transform::Rigid3d& T) {
 
 transform::Rigid3d Se3Exp(const Eigen::Matrix<double, 6, 1>& xi) {
     const Eigen::Vector3d phi(xi(3), xi(4), xi(5));
-    const Eigen::Matrix3d R = math::Exp(phi);
-    return transform::Rigid3d(xi.head<3>(), Eigen::Quaterniond(R));
+    return transform::Rigid3d(xi.head<3>(), Eigen::Quaterniond(math::Exp(phi)));
 }
 
-/** @brief Right-perturb: T ⊕ δ = T * Exp(δ). */
 transform::Rigid3d RightPlus(const transform::Rigid3d& T,
                              const Eigen::Matrix<double, 6, 1>& delta) {
     return T * Se3Exp(delta);
@@ -63,65 +62,111 @@ void FiniteDiffJacobians(const transform::Rigid3d& Ti,
     *Ji = Eigen::Matrix<double, 6, 6>::Zero();
     *Jj = Eigen::Matrix<double, 6, 6>::Zero();
     for (int d = 0; d < 6; ++d) {
-        Eigen::Matrix<double, 6, 1> delta =
-            Eigen::Matrix<double, 6, 1>::Zero();
+        Eigen::Matrix<double, 6, 1> delta = Eigen::Matrix<double, 6, 1>::Zero();
         delta(d) = eps;
-        const Eigen::Matrix<double, 6, 1> rip =
-            RelativeError(RightPlus(Ti, delta), Tj, Tij);
-        const Eigen::Matrix<double, 6, 1> rim =
-            RelativeError(RightPlus(Ti, -delta), Tj, Tij);
-        Ji->col(d) = (rip - rim) / (2.0 * eps);
-
-        const Eigen::Matrix<double, 6, 1> rjp =
-            RelativeError(Ti, RightPlus(Tj, delta), Tij);
-        const Eigen::Matrix<double, 6, 1> rjm =
-            RelativeError(Ti, RightPlus(Tj, -delta), Tij);
-        Jj->col(d) = (rjp - rjm) / (2.0 * eps);
+        Ji->col(d) =
+            (RelativeError(RightPlus(Ti, delta), Tj, Tij) -
+             RelativeError(RightPlus(Ti, -delta), Tj, Tij)) /
+            (2.0 * eps);
+        Jj->col(d) =
+            (RelativeError(Ti, RightPlus(Tj, delta), Tij) -
+             RelativeError(Ti, RightPlus(Tj, -delta), Tij)) /
+            (2.0 * eps);
     }
 }
 
-void AccumulateEdge(int from_id, int to_id, const transform::Rigid3d& T_i_j,
-                    double information,
-                    const std::unordered_map<int, int>& id_to_index,
-                    const std::vector<transform::Rigid3d>& poses, double eps,
-                    Eigen::MatrixXd* H, Eigen::VectorXd* b, double* cost) {
-    if (!id_to_index.count(from_id) || !id_to_index.count(to_id)) {
-        return;
+PoseGraphOptimizeResult OptimizeGaussNewton(
+    std::unordered_map<int, transform::Rigid3d>* poses,
+    const std::vector<PoseGraphSnapshot::Edge>& edges, int max_iterations) {
+    PoseGraphOptimizeResult result;
+    if (poses == nullptr || poses->size() < 2 || edges.empty()) {
+        return result;
     }
-    const int from_index = id_to_index.at(from_id);
-    const int to_index = id_to_index.at(to_id);
-    const transform::Rigid3d& Ti =
-        poses[static_cast<std::size_t>(from_index)];
-    const transform::Rigid3d& Tj =
-        poses[static_cast<std::size_t>(to_index)];
-    const Eigen::Matrix<double, 6, 1> residual =
-        RelativeError(Ti, Tj, T_i_j);
-    *cost += information * residual.squaredNorm();
 
-    Eigen::Matrix<double, 6, 6> Ji;
-    Eigen::Matrix<double, 6, 6> Jj;
-    FiniteDiffJacobians(Ti, Tj, T_i_j, eps, &Ji, &Jj);
-
-    const double weight = information;
-    H->block<6, 6>(6 * from_index, 6 * from_index) +=
-        weight * Ji.transpose() * Ji;
-    H->block<6, 6>(6 * to_index, 6 * to_index) +=
-        weight * Jj.transpose() * Jj;
-    H->block<6, 6>(6 * from_index, 6 * to_index) +=
-        weight * Ji.transpose() * Jj;
-    H->block<6, 6>(6 * to_index, 6 * from_index) +=
-        weight * Jj.transpose() * Ji;
-    b->segment<6>(6 * from_index) += weight * Ji.transpose() * residual;
-    b->segment<6>(6 * to_index) += weight * Jj.transpose() * residual;
-}
-
-void FixGauge(Eigen::MatrixXd* H, Eigen::VectorXd* b) {
-    for (int k = 0; k < 6; ++k) {
-        H->row(k).setZero();
-        H->col(k).setZero();
-        (*H)(k, k) = 1.0;
-        (*b)(k) = 0.0;
+    std::vector<int> ids;
+    ids.reserve(poses->size());
+    for (const auto& kv : *poses) {
+        ids.push_back(kv.first);
     }
+    std::sort(ids.begin(), ids.end());
+    const int node_count = static_cast<int>(ids.size());
+    std::unordered_map<int, int> id_to_index;
+    for (int k = 0; k < node_count; ++k) {
+        id_to_index[ids[static_cast<std::size_t>(k)]] = k;
+    }
+
+    std::vector<transform::Rigid3d> work(static_cast<std::size_t>(node_count));
+    for (int k = 0; k < node_count; ++k) {
+        work[static_cast<std::size_t>(k)] =
+            poses->at(ids[static_cast<std::size_t>(k)]);
+    }
+
+    constexpr double kEps = 1e-6;
+    double cost = 0.0;
+    int iters = 0;
+    for (; iters < max_iterations; ++iters) {
+        const int dim = 6 * node_count;
+        Eigen::MatrixXd H = Eigen::MatrixXd::Zero(dim, dim);
+        Eigen::VectorXd b = Eigen::VectorXd::Zero(dim);
+        cost = 0.0;
+        for (const auto& edge : edges) {
+            if (!id_to_index.count(edge.from_id) ||
+                !id_to_index.count(edge.to_id)) {
+                continue;
+            }
+            const int fi = id_to_index.at(edge.from_id);
+            const int ti = id_to_index.at(edge.to_id);
+            const auto& Ti = work[static_cast<std::size_t>(fi)];
+            const auto& Tj = work[static_cast<std::size_t>(ti)];
+            const Eigen::Matrix<double, 6, 1> residual =
+                RelativeError(Ti, Tj, edge.T_i_j);
+            cost += edge.information * residual.squaredNorm();
+            Eigen::Matrix<double, 6, 6> Ji;
+            Eigen::Matrix<double, 6, 6> Jj;
+            FiniteDiffJacobians(Ti, Tj, edge.T_i_j, kEps, &Ji, &Jj);
+            const double w = edge.information;
+            H.block<6, 6>(6 * fi, 6 * fi) += w * Ji.transpose() * Ji;
+            H.block<6, 6>(6 * ti, 6 * ti) += w * Jj.transpose() * Jj;
+            H.block<6, 6>(6 * fi, 6 * ti) += w * Ji.transpose() * Jj;
+            H.block<6, 6>(6 * ti, 6 * fi) += w * Jj.transpose() * Ji;
+            b.segment<6>(6 * fi) += w * Ji.transpose() * residual;
+            b.segment<6>(6 * ti) += w * Jj.transpose() * residual;
+        }
+        for (int k = 0; k < 6; ++k) {
+            H.row(k).setZero();
+            H.col(k).setZero();
+            H(k, k) = 1.0;
+            b(k) = 0.0;
+        }
+        const Eigen::VectorXd dx = H.ldlt().solve(-b);
+        if (!dx.allFinite()) {
+            break;
+        }
+        for (int k = 0; k < node_count; ++k) {
+            work[static_cast<std::size_t>(k)] = RightPlus(
+                work[static_cast<std::size_t>(k)], dx.segment<6>(6 * k));
+        }
+        if (dx.norm() < 1e-6) {
+            ++iters;
+            break;
+        }
+    }
+
+    int active = 0;
+    for (const auto& edge : edges) {
+        if (id_to_index.count(edge.from_id) && id_to_index.count(edge.to_id)) {
+            ++active;
+        }
+    }
+    result.cost_rms =
+        (active > 0) ? std::sqrt(cost / static_cast<double>(active)) : 0.0;
+    result.iterations = iters;
+    result.ok = true;
+    for (int k = 0; k < node_count; ++k) {
+        (*poses)[ids[static_cast<std::size_t>(k)]] =
+            work[static_cast<std::size_t>(k)];
+    }
+    return result;
 }
 
 }  // namespace
@@ -161,6 +206,33 @@ void PoseGraph::AddLoopFactor(const LoopFactor& factor) {
     ++loop_factor_count_;
 }
 
+PoseGraphSnapshot PoseGraph::Snapshot() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    PoseGraphSnapshot snap;
+    snap.poses = poses_;
+    snap.edges.reserve(edges_.size());
+    for (const Edge& e : edges_) {
+        snap.edges.push_back(PoseGraphSnapshot::Edge{
+            e.from_id, e.to_id, e.T_i_j, e.information, e.is_loop});
+    }
+    snap.loop_factor_count = loop_factor_count_;
+    snap.last_cost = last_cost_;
+    return snap;
+}
+
+void PoseGraph::Restore(const PoseGraphSnapshot& snapshot) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    poses_ = snapshot.poses;
+    edges_.clear();
+    edges_.reserve(snapshot.edges.size());
+    for (const auto& e : snapshot.edges) {
+        edges_.push_back(
+            Edge{e.from_id, e.to_id, e.T_i_j, e.information, e.is_loop});
+    }
+    loop_factor_count_ = snapshot.loop_factor_count;
+    last_cost_ = snapshot.last_cost;
+}
+
 bool PoseGraph::HasNode(int id) const {
     std::lock_guard<std::mutex> lock(mutex_);
     return poses_.count(id) > 0;
@@ -195,78 +267,151 @@ double PoseGraph::last_cost() const {
     return last_cost_;
 }
 
-void PoseGraph::Optimize(int max_iterations) {
+double PoseGraph::MaxLoopResidualUnlocked() const {
+    double max_r = 0.0;
+    for (const Edge& e : edges_) {
+        if (!e.is_loop) {
+            continue;
+        }
+        auto it_i = poses_.find(e.from_id);
+        auto it_j = poses_.find(e.to_id);
+        if (it_i == poses_.end() || it_j == poses_.end()) {
+            continue;
+        }
+        max_r = std::max(
+            max_r, RelativeError(it_i->second, it_j->second, e.T_i_j).norm());
+    }
+    return max_r;
+}
+
+double PoseGraph::MaxLoopResidual() const {
     std::lock_guard<std::mutex> lock(mutex_);
-    if (poses_.size() < 2 || edges_.empty()) {
-        return;
+    return MaxLoopResidualUnlocked();
+}
+
+PoseGraphOptimizeResult PoseGraph::OptimizeUnlocked(int max_iterations) {
+    PoseGraphOptimizeResult result;
+
+    std::vector<pose_graph_detail::CeresEdge> solver_edges;
+    solver_edges.reserve(edges_.size());
+    for (const Edge& e : edges_) {
+        solver_edges.push_back(pose_graph_detail::CeresEdge{
+            e.from_id, e.to_id, e.T_i_j, e.information});
     }
 
-    std::vector<int> ids;
-    ids.reserve(poses_.size());
-    for (const auto& kv : poses_) {
-        ids.push_back(kv.first);
-    }
-    std::sort(ids.begin(), ids.end());
-    const int node_count = static_cast<int>(ids.size());
-    std::unordered_map<int, int> id_to_index;
-    for (int k = 0; k < node_count; ++k) {
-        id_to_index[ids[static_cast<std::size_t>(k)]] = k;
-    }
-
-    std::vector<transform::Rigid3d> poses(static_cast<std::size_t>(node_count));
-    for (int k = 0; k < node_count; ++k) {
-        poses[static_cast<std::size_t>(k)] =
-            poses_[ids[static_cast<std::size_t>(k)]];
-    }
-
-    constexpr double kEps = 1e-6;
-    double cost = 0.0;
-
-    for (int iter = 0; iter < max_iterations; ++iter) {
-        const int dim = 6 * node_count;
-        Eigen::MatrixXd H = Eigen::MatrixXd::Zero(dim, dim);
-        Eigen::VectorXd b = Eigen::VectorXd::Zero(dim);
-        cost = 0.0;
-
-        for (const Edge& edge : edges_) {
-            AccumulateEdge(edge.from_id, edge.to_id, edge.T_i_j,
-                           edge.information, id_to_index, poses, kEps, &H, &b,
-                           &cost);
-        }
-
-        // Gauge: fix first node.
-        FixGauge(&H, &b);
-
-        const Eigen::VectorXd dx = H.ldlt().solve(-b);
-        if (!dx.allFinite()) {
-            break;
-        }
-
-        for (int k = 0; k < node_count; ++k) {
-            poses[static_cast<std::size_t>(k)] = RightPlus(
-                poses[static_cast<std::size_t>(k)], dx.segment<6>(6 * k));
-        }
-        if (dx.norm() < 1e-6) {
-            break;
+#if defined(ARGUS_HAS_GTSAM) && ARGUS_HAS_GTSAM
+    {
+        std::unordered_map<int, transform::Rigid3d> out;
+        double cost_rms = 0.0;
+        int iters = 0;
+        result.ok = pose_graph_detail::OptimizeWithGtsam(
+            poses_, solver_edges, max_iterations, &out, &cost_rms, &iters);
+        if (result.ok) {
+            poses_.swap(out);
+            result.cost_rms = cost_rms;
+            result.iterations = iters;
+            last_cost_ = cost_rms;
         }
     }
-
-    int active_edge_count = 0;
-    for (const Edge& edge : edges_) {
-        if (id_to_index.count(edge.from_id) &&
-            id_to_index.count(edge.to_id)) {
-            ++active_edge_count;
+#elif defined(ARGUS_HAS_CERES) && ARGUS_HAS_CERES
+    {
+        std::unordered_map<int, transform::Rigid3d> out;
+        double cost_rms = 0.0;
+        int iters = 0;
+        result.ok = pose_graph_detail::OptimizeWithCeres(
+            poses_, solver_edges, max_iterations, &out, &cost_rms, &iters);
+        if (result.ok) {
+            poses_.swap(out);
+            result.cost_rms = cost_rms;
+            result.iterations = iters;
+            last_cost_ = cost_rms;
         }
     }
-    last_cost_ =
-        (active_edge_count > 0)
-            ? std::sqrt(cost / static_cast<double>(active_edge_count))
-            : 0.0;
-
-    for (int k = 0; k < node_count; ++k) {
-        poses_[ids[static_cast<std::size_t>(k)]] =
-            poses[static_cast<std::size_t>(k)];
+#else
+    std::vector<PoseGraphSnapshot::Edge> snap_edges;
+    snap_edges.reserve(edges_.size());
+    for (const Edge& e : edges_) {
+        snap_edges.push_back(PoseGraphSnapshot::Edge{
+            e.from_id, e.to_id, e.T_i_j, e.information, e.is_loop});
     }
+    result = OptimizeGaussNewton(&poses_, snap_edges, max_iterations);
+    last_cost_ = result.cost_rms;
+#endif
+    result.max_loop_residual = MaxLoopResidualUnlocked();
+    return result;
+}
+
+PoseGraphOptimizeResult PoseGraph::Optimize(int max_iterations) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return OptimizeUnlocked(max_iterations);
+}
+
+PoseGraphOptimizeResult PoseGraph::TryAcceptLoops(
+    const std::vector<LoopFactor>& trial, const PoseGraphFprConfig& fpr,
+    int max_iterations) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    PoseGraphOptimizeResult result;
+    if (trial.empty()) {
+        result.ok = false;
+        return result;
+    }
+
+    const PoseGraphSnapshot backup = [&]() {
+        PoseGraphSnapshot snap;
+        snap.poses = poses_;
+        snap.edges.reserve(edges_.size());
+        for (const Edge& e : edges_) {
+            snap.edges.push_back(PoseGraphSnapshot::Edge{
+                e.from_id, e.to_id, e.T_i_j, e.information, e.is_loop});
+        }
+        snap.loop_factor_count = loop_factor_count_;
+        snap.last_cost = last_cost_;
+        return snap;
+    }();
+
+    for (const LoopFactor& f : trial) {
+        edges_.push_back(
+            Edge{f.from_id, f.to_id, f.T_i_j, f.information, true});
+        ++loop_factor_count_;
+    }
+
+    result = OptimizeUnlocked(max_iterations);
+    if (!result.ok) {
+        poses_ = backup.poses;
+        edges_.clear();
+        for (const auto& e : backup.edges) {
+            edges_.push_back(
+                Edge{e.from_id, e.to_id, e.T_i_j, e.information, e.is_loop});
+        }
+        loop_factor_count_ = backup.loop_factor_count;
+        last_cost_ = backup.last_cost;
+        result.rejected_by_fpr = true;
+        return result;
+    }
+
+    if (fpr.enable) {
+        const bool residual_bad =
+            result.max_loop_residual > fpr.max_loop_residual;
+        const bool cost_bad =
+            fpr.max_cost_rms > 0.0 && result.cost_rms > fpr.max_cost_rms;
+        if (residual_bad || cost_bad) {
+            poses_ = backup.poses;
+            edges_.clear();
+            for (const auto& e : backup.edges) {
+                edges_.push_back(
+                    Edge{e.from_id, e.to_id, e.T_i_j, e.information, e.is_loop});
+            }
+            loop_factor_count_ = backup.loop_factor_count;
+            last_cost_ = backup.last_cost;
+            result.ok = false;
+            result.rejected_by_fpr = true;
+            return result;
+        }
+    }
+
+    result.ok = true;
+    result.rejected_by_fpr = false;
+    return result;
 }
 
 }  // namespace backend

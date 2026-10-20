@@ -60,6 +60,13 @@ bool MultiModalConsensus::AcceptCandidate(const LoopCandidate& cand,
         }
         return false;
     }
+    // Hard path gate (soft topology score alone was too weak on Spires).
+    if (path_separation_m < config_.min_path_separation_m) {
+        if (confidence != nullptr) {
+            *confidence = 0.0;
+        }
+        return false;
+    }
 
     const double topology_score = std::min(
         1.0,

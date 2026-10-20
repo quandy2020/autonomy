@@ -93,9 +93,13 @@ std::vector<backend::LoopFactor> CrossSessionLinker::BuildChainFactors(
     return out;
 }
 
-bool CrossSessionLinker::LinkAndOptimize(backend::PoseGraph& graph,
-                                         const CrossSessionLink& link,
-                                         int max_iterations) {
+bool CrossSessionLinker::LinkAndOptimize(
+    backend::PoseGraph& graph, const CrossSessionLink& link,
+    const backend::PoseGraphFprConfig& fpr, int max_iterations,
+    backend::PoseGraphOptimizeResult* opt_out) {
+    if (opt_out != nullptr) {
+        *opt_out = backend::PoseGraphOptimizeResult{};
+    }
     auto factors = BuildChainFactors(link);
     if (factors.empty()) {
         return false;
@@ -107,11 +111,10 @@ bool CrossSessionLinker::LinkAndOptimize(backend::PoseGraph& graph,
         if (!graph.HasNode(f.from_id) || !graph.HasNode(f.to_id)) {
             return false;
         }
-        graph.AddLoopFactor(f);
     }
 
     // Snapshot prior poses — PoseGraph fixes the lowest id, which is often the
-    // live session; we restore prior as the absolute gauge after Optimize.
+    // live session; we restore prior as the absolute gauge after accept.
     const auto& prior_traj = sessions_->Trajectory(link.session_prior);
     std::vector<std::pair<int, transform::Rigid3d>> prior_snapshot;
     prior_snapshot.reserve(prior_traj.size());
@@ -131,8 +134,19 @@ bool CrossSessionLinker::LinkAndOptimize(backend::PoseGraph& graph,
         return false;
     }
     const transform::Rigid3d T_prior_fixed = graph.Pose(gid_prior);
+    const int loops_before = graph.loop_factor_count();
 
-    graph.Optimize(max_iterations);
+    const auto accept =
+        graph.TryAcceptLoops(factors, fpr, max_iterations);
+    if (opt_out != nullptr) {
+        *opt_out = accept;
+    }
+    if (!accept.ok) {
+        return false;
+    }
+    if (graph.loop_factor_count() <= loops_before) {
+        return false;
+    }
 
     for (const auto& kv : prior_snapshot) {
         graph.SetPose(kv.first, kv.second);

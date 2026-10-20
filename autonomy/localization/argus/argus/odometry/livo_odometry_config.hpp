@@ -70,6 +70,20 @@ struct VioConfig {
  *
  * Loaded by `LoadLivoOdometryConfig`; nested structs carry their own docs.
  */
+/**
+ * @brief Eval-only accumulating pose bias (drift-recovery A/B).
+ *        Applied on the estimate thread after each LIO map update.
+ */
+struct SyntheticDriftConfig {
+    bool enable = false;
+    /** @brief Extra yaw (rad) per meter of travel. */
+    double yaw_rad_per_m = 0.0;
+    /** @brief Body +X stretch (m) per meter of travel. */
+    double tx_m_per_m = 0.0;
+    /** @brief Min travel (m) between bias applications. */
+    double step_m = 0.5;
+};
+
 struct LivoOdometryConfig {
     frontend::SlamMode slam_mode =
         frontend::kOnlyLio; /**< @brief LIO / VIO / LIVO. */
@@ -131,6 +145,9 @@ struct LivoOdometryConfig {
 
     /** @brief Isolated BnB pool; results drained on estimate thread. */
     relocalization::RelocalizationConfig relocalization;
+
+    /** @brief Synthetic odometry drift for loop recovery benchmarks. */
+    SyntheticDriftConfig synthetic_drift;
 };
 
 }  // namespace odometry
