@@ -22,7 +22,7 @@
 | 包路径 | `backends/habitat/simulator.py` | `backends/fake/{world,map,sensor}` | `backends/isaac/*` |
 | capabilities | 默认（surround/navmesh） | `FAKE_CAPABILITIES` | 默认 + PhysX/USD 私有 |
 
-后端之间 **禁止** 互相 import；共享逻辑放在 `scenario/`、`map/`、`sensing/`。
+后端之间 **禁止** 互相 import；共享逻辑放在 `scene/`、`bridge/`。
 
 ---
 
@@ -45,17 +45,24 @@
 
 ## 4. Isaac
 
-| 模块 | 文件 | 作用 |
-|------|------|------|
-| App | `app.py` | SimulationApp / AppLauncher 单例 |
-| Stage | `usd_stage.py` | 打开 USD、机器人 Xform、网格点云采样 |
-| Sensors | `sensors.py` | Camera RGB-D、深度清洗 |
-| Physics | `physics.py` | PhysX World、胶囊、穿墙阻挡 |
-| Floorplan | `floorplan_map.py` | InteriorAgent → `/map` |
-| Traffic USD | `traffic_usd.py` | 障碍 / 行人运动学胶囊 |
-| Simulator | `simulator.py` | 组装上述组件；栅格激光 + Traffic 融合 |
+一文件一职责（模块名对齐 isaacsim 惯用词）：
 
-可选 ONNX 运控在共享层 `policy_driver.py`（非 Isaac 私有）。细节见 [07](07_isaac.md)。
+| 文件 | 类型 | 作用 |
+|------|------|------|
+| `app/` | — | Kit AppLauncher / SimulationApp · seed/pause/录屏 |
+| `transforms.py` | — | map 系 ↔ 世界位姿 |
+| `stage.py` | `SceneStage` | 打开舞台 · 机器人 Xform · 网格点云 |
+| `sensors.py` | `SensorSuite` | RGB-D · RTX Lidar · surround |
+| `physics.py` | `PhysicsContext` | PhysX · 胶囊碰撞 |
+| `articulation.py` | — | 通用 Articulation 辅助 |
+| `robots/beni.py` | `BeniArticulation` | Beni 浮动基关节 |
+| `robots/wheeled.py` | `WheeledDrive` | 差速轮速驱动 |
+| `randomization.py` | — | 光照 / 行人外观随机 |
+| `people.py` | `PeopleSync` | CPU Traffic → USD 行人 |
+| `animation.py` | `PeopleAnimator` | UsdSkel walk / idle |
+| `world.py` | `IsaacWorld` | WorldBackend 组装 |
+
+可选 ONNX 运控在共享层 `robot/policy/`（非 Isaac 私有）。细节见 [07](07_isaac.md)。
 
 ---
 

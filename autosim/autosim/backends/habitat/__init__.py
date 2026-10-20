@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Any, Mapping
 
-from autosim.backend.registry import register
+from autosim.backends.registry import register
 
 
 def create(settings: Mapping[str, Any]) -> Any:

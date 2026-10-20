@@ -24,21 +24,21 @@ from __future__ import annotations
 
 import logging
 import math
-from typing import Any, Optional, Tuple
+from typing import Any
 
 import numpy as np
 
 from autosim.backends.isaac.app import update_app
-from autosim.backends.isaac.coords import map_to_world
+from autosim.backends.isaac.transforms import map_to_world
 
 logger = logging.getLogger(__name__)
 
 
-class IsaacSensors:
+class SensorSuite:
     """Read RGB-D / lidar from an Isaac Camera (or raw annotators).
 
     When no camera is mounted, methods return empty / placeholder arrays so
-    Sensors / Runner keep working (pose-only smoke).
+    SensorSuite / Runner keep working (pose-only smoke).
     """
 
     # Keep far clip in the robotics band. Isaac defaults (~1e5 m) produce
@@ -52,7 +52,7 @@ class IsaacSensors:
         width: int = 640,
         height: int = 480,
         eye_height: float = 0.5,
-        eye_offset: Optional[Tuple[float, float, float]] = None,
+        eye_offset: tuple[float, float, float | None] = None,
     ) -> None:
         self.width = max(1, int(width))
         self.height = max(1, int(height))
@@ -71,6 +71,8 @@ class IsaacSensors:
         self.rgb_annotator: Any = None
         self.depth_annotator: Any = None
         self.lidar_annotator: Any = None
+        self.lidar_sensor: Any = None
+        self.surround_cameras: list[Any] = []
 
     def attach(
         self,
@@ -181,10 +183,157 @@ class IsaacSensors:
         )
         return True
 
+    def mount_robot_lidar(
+        self,
+        robot_prim_path: str,
+        *,
+        translation: tuple[float, float, float] = (0.0, 0.0, 0.2),
+        config_name: str = "Example_Rotary",
+        prim_suffix: str = "Lidar",
+        warmup_frames: int = 4,
+    ) -> bool:
+        """Mount an RTX Lidar under ``robot_prim`` (experimental API, then LidarRtx)."""
+        prim_path = f"{robot_prim_path.rstrip('/')}/{prim_suffix}"
+        tx, ty, tz = (float(v) for v in translation)
+        sensor: Any = None
+
+        # Isaac Sim 6+: isaacsim.sensors.experimental.rtx
+        try:
+            from isaacsim.sensors.experimental.rtx import Lidar, LidarSensor
+
+            authored = Lidar.create(
+                prim_path,
+                config=str(config_name),
+                translations=np.array([[tx, ty, tz]], dtype=np.float64),
+                orientations=np.array([[1.0, 0.0, 0.0, 0.0]], dtype=np.float64),
+            )
+            sensor = LidarSensor(authored, annotators=["generic-model-output"])
+            self.lidar_sensor = sensor
+            self.lidar_annotator = sensor
+            logger.info("RTX Lidar (experimental) at %s config=%s", prim_path, config_name)
+        except Exception as exc:
+            logger.debug("experimental Lidar unavailable: %s", exc)
+            sensor = None
+
+        if sensor is None:
+            try:
+                from isaacsim.sensors.rtx import LidarRtx
+
+                sensor = LidarRtx(
+                    prim_path=prim_path,
+                    name="autosim_lidar",
+                    translation=np.array([tx, ty, tz], dtype=np.float64),
+                    orientation=np.array([1.0, 0.0, 0.0, 0.0], dtype=np.float64),
+                    config_file_name=str(config_name),
+                )
+                try:
+                    sensor.attach_annotator("IsaacComputeRTXLidarFlatScan")
+                except Exception:
+                    try:
+                        sensor.attach_annotator(
+                            "IsaacExtractRTXSensorPointCloudNoAccumulator"
+                        )
+                    except Exception as ann_exc:
+                        logger.debug("LidarRtx annotator skipped: %s", ann_exc)
+                try:
+                    sensor.initialize()
+                except Exception:
+                    pass
+                self.lidar_sensor = sensor
+                self.lidar_annotator = sensor
+                logger.info("RTX LidarRtx at %s config=%s", prim_path, config_name)
+            except Exception as exc:
+                logger.warning("failed to mount RTX Lidar at %s: %s", prim_path, exc)
+                return False
+
+        for _ in range(max(0, int(warmup_frames))):
+            update_app()
+        return True
+
+    def mount_surround_cameras(
+        self,
+        robot_prim_path: str,
+        views: list[dict[str, Any]],
+        *,
+        rate_hz: float = 15.0,
+        warmup_frames: int = 4,
+    ) -> int:
+        """Mount extra surround cameras; returns how many succeeded.
+
+        Each view dict: ``name``, ``yaw_deg`` (relative to base), optional
+        ``xyz``, ``hfov_deg``, ``width``, ``height``.
+        """
+        mounted = 0
+        saved = (
+            self.camera_prim,
+            self.width,
+            self.height,
+            self.eye_offset,
+        )
+        for index, view in enumerate(views or []):
+            if not isinstance(view, dict):
+                continue
+            name = str(view.get("name") or f"Surround{index}")
+            yaw_deg = float(view.get("yaw_deg", 0.0))
+            xyz = view.get("xyz") or view.get("sensor_xyz")
+            if isinstance(xyz, (list, tuple)) and len(xyz) >= 3:
+                self.eye_offset = (float(xyz[0]), float(xyz[1]), float(xyz[2]))
+            w = int(view.get("width") or self.width)
+            h = int(view.get("height") or self.height)
+            self.width, self.height = max(1, w), max(1, h)
+            # Temporarily clear primary so mount does not overwrite tracking.
+            primary = self.camera_prim
+            self.camera_prim = None
+            ok = self.mount_robot_camera(
+                robot_prim_path,
+                hfov_deg=float(view.get("hfov_deg", 90.0)),
+                rate_hz=float(rate_hz),
+                prim_suffix=name,
+                warmup_frames=0,
+            )
+            cam = self.camera_prim
+            self.camera_prim = primary
+            if not ok or cam is None:
+                continue
+            # Yaw offset about +Z in local frame (simple surround ring).
+            try:
+                half = 0.5 * math.radians(yaw_deg)
+                quat = [math.cos(half), 0.0, 0.0, math.sin(half)]
+                ox, oy, oz = self.eye_offset
+                cam.set_local_pose(
+                    translation=[ox, oy, oz],
+                    orientation=quat,
+                    camera_axes="world",
+                )
+            except Exception as exc:
+                logger.debug("surround local pose skipped: %s", exc)
+            self.surround_cameras.append(cam)
+            mounted += 1
+        self.camera_prim, self.width, self.height, self.eye_offset = saved
+        for _ in range(max(0, int(warmup_frames))):
+            update_app()
+        if mounted:
+            logger.info("mounted %d surround cameras under %s", mounted, robot_prim_path)
+        return mounted
+
+    def read_surround_rgb(self) -> list[np.ndarray]:
+        """RGB frames from surround cameras (may be empty placeholders)."""
+        frames: list[np.ndarray] = []
+        for cam in self.surround_cameras:
+            try:
+                data = cam.get_rgb(device="cpu")
+            except Exception:
+                data = None
+            rgb = self.reshape_rgb(data) if data is not None else None
+            if rgb is None:
+                rgb = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            frames.append(rgb)
+        return frames
+
     @staticmethod
     def snap_camera_frequency(
         rate_hz: float, *, default_render_hz: int = 60
-    ) -> Optional[int]:
+    ) -> int | None:
         """Nearest divisor of Kit render rate (arena-isaac ``_snap_rate``).
 
         Isaac ``Camera(frequency=…)`` raises unless
@@ -326,21 +475,32 @@ class IsaacSensors:
 
     def close(self) -> None:
         """Detach annotators / destroy render product when present."""
-        cam = self.camera_prim
+        cams = [self.camera_prim, *list(self.surround_cameras)]
         self.camera_prim = None
+        self.surround_cameras = []
         self.rgb_annotator = None
         self.depth_annotator = None
         self.lidar_annotator = None
-        if cam is None:
-            return
-        try:
-            destroy = getattr(cam, "destroy", None)
-            if callable(destroy):
-                destroy()
-        except Exception:
-            pass
+        lidar = self.lidar_sensor
+        self.lidar_sensor = None
+        for cam in cams:
+            if cam is None:
+                continue
+            try:
+                destroy = getattr(cam, "destroy", None)
+                if callable(destroy):
+                    destroy()
+            except Exception:
+                pass
+        if lidar is not None:
+            try:
+                destroy = getattr(lidar, "destroy", None)
+                if callable(destroy):
+                    destroy()
+            except Exception:
+                pass
 
-    def color_depth(self) -> Tuple[np.ndarray, np.ndarray]:
+    def color_depth(self) -> tuple[np.ndarray, np.ndarray]:
         color = self.read_rgb()
         depth = self.read_depth()
         return color, depth
@@ -363,7 +523,7 @@ class IsaacSensors:
         out[..., 2] = 64
         return out
 
-    def reshape_rgb(self, arr: Any) -> Optional[np.ndarray]:
+    def reshape_rgb(self, arr: Any) -> np.ndarray | None:
         """Normalize RGB annotator output to ``(H, W, 3)`` uint8."""
         data = np.asarray(arr)
         if data.ndim != 3 or data.shape[-1] < 3 or data.size == 0:
@@ -398,7 +558,7 @@ class IsaacSensors:
         num_beams: int,
         range_max: float,
         *,
-        pose: Tuple[float, float, float],
+        pose: tuple[float, float, float],
     ) -> np.ndarray:
         """Prefer lidar annotator; else empty (NaN) planar scan."""
         del pose
@@ -434,7 +594,7 @@ class IsaacSensors:
         v_max: float,
         v_rings: int,
         range_max: float,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray]:
         del h_min, h_max, h_beams, v_min, v_max, v_rings
         cloud = self.lidar_points_xyz()
         if cloud is None or cloud.shape[0] == 0:
@@ -445,16 +605,88 @@ class IsaacSensors:
         rings = np.zeros((cloud.shape[0],), dtype=np.float32)
         return cloud.astype(np.float32), rings
 
-    def lidar_points_xy(self) -> Optional[np.ndarray]:
+    def lidar_points_xy(self) -> np.ndarray | None:
         xyz = self.lidar_points_xyz()
         if xyz is None:
             return None
         return xyz[:, :2]
 
-    def lidar_points_xyz(self) -> Optional[np.ndarray]:
-        if self.lidar_annotator is None:
+    def lidar_points_xyz(self) -> np.ndarray | None:
+        sensor = self.lidar_sensor if self.lidar_sensor is not None else self.lidar_annotator
+        if sensor is None:
             return None
-        data = np.asarray(self.lidar_annotator.get_data(), dtype=np.float32)
-        if data.size == 0:
+        # LidarSensor (experimental): get_data("generic-model-output")
+        try:
+            packed = sensor.get_data("generic-model-output")
+            if isinstance(packed, tuple) and packed:
+                data = packed[0]
+            else:
+                data = packed
+            cloud = self._points_from_gmo(data)
+            if cloud is not None:
+                return cloud
+        except Exception:
+            pass
+        # LidarRtx: get_current_frame / get_data dict
+        try:
+            frame = sensor.get_current_frame()
+            if isinstance(frame, dict):
+                for key in (
+                    "IsaacComputeRTXLidarFlatScan",
+                    "linear_depth_data",
+                    "point_cloud_data",
+                    "data",
+                ):
+                    if key in frame and frame[key] is not None:
+                        cloud = self._coerce_point_cloud(frame[key])
+                        if cloud is not None:
+                            return cloud
+        except Exception:
+            pass
+        try:
+            data = sensor.get_data()
+            cloud = self._coerce_point_cloud(data)
+            if cloud is not None:
+                return cloud
+        except Exception:
+            pass
+        if self.lidar_annotator is not None and self.lidar_annotator is not sensor:
+            try:
+                data = np.asarray(self.lidar_annotator.get_data(), dtype=np.float32)
+                return self._coerce_point_cloud(data)
+            except Exception:
+                pass
+        return None
+
+    @staticmethod
+    def _coerce_point_cloud(data: Any) -> np.ndarray | None:
+        if data is None:
+            return None
+        arr = np.asarray(data)
+        if arr.size == 0:
             return np.zeros((0, 3), dtype=np.float32)
-        return data.reshape(-1, data.shape[-1])[:, :3]
+        if arr.ndim == 1 and arr.size % 3 == 0:
+            return arr.reshape(-1, 3).astype(np.float32, copy=False)
+        if arr.ndim >= 2 and arr.shape[-1] >= 3:
+            return arr.reshape(-1, arr.shape[-1])[:, :3].astype(np.float32, copy=False)
+        # FlatScan depths → synthesize XY ring later in laser_ranges.
+        if arr.ndim == 1:
+            return None
+        return None
+
+    @staticmethod
+    def _points_from_gmo(data: Any) -> np.ndarray | None:
+        """Best-effort GenericModelOutput → Nx3."""
+        try:
+            from isaacsim.sensors.experimental.rtx import parse_generic_model_output_data
+
+            gmo = parse_generic_model_output_data(data)
+            for attr in ("azimElevRangeToPointCloud", "points", "xyz"):
+                pts = getattr(gmo, attr, None)
+                if pts is not None:
+                    cloud = SensorSuite._coerce_point_cloud(pts)
+                    if cloud is not None:
+                        return cloud
+        except Exception:
+            pass
+        return SensorSuite._coerce_point_cloud(data)

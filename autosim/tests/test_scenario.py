@@ -17,10 +17,10 @@
 import numpy as np
 import pytest
 
-from autosim.config import Config
-from autosim.map import Map
-from autosim.scenario import Scenario, Traffic
-from autosim.scenario.field import Field
+from autosim.runtime import Config
+from autosim.scene import Map
+from autosim.scene import Scenario, Traffic
+from autosim.scene.field import Field
 from autosim.backends.habitat.simulator import Simulator
 
 
@@ -155,7 +155,7 @@ def test_empty_path_installs_scenario_mesh(tmp_path):
 
 
 def test_obstacle_stays_inside_and_moves():
-    from autosim.scenario import Obstacle
+    from autosim.scene import Obstacle
 
     agent = Obstacle(
         {
@@ -178,7 +178,7 @@ def test_obstacle_stays_inside_and_moves():
 
 
 def test_pedestrian_walks_toward_a_goal():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {
@@ -202,7 +202,7 @@ def test_pedestrian_walks_toward_a_goal():
 
 
 def test_obstacle_reverses_at_the_boundary():
-    from autosim.scenario import Obstacle
+    from autosim.scene import Obstacle
 
     agent = Obstacle(
         {
@@ -225,7 +225,7 @@ def test_obstacle_reverses_at_the_boundary():
 
 
 def test_obstacle_bounces_off_an_occupied_cell():
-    from autosim.scenario import Obstacle
+    from autosim.scene import Obstacle
 
     agent = Obstacle(
         {
@@ -251,7 +251,7 @@ def test_obstacle_bounces_off_an_occupied_cell():
 
 
 def test_pedestrian_replaces_a_reached_goal():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {
@@ -274,7 +274,7 @@ def test_pedestrian_replaces_a_reached_goal():
 
 
 def test_map_smaller_than_an_agent_is_rejected():
-    from autosim.scenario import Obstacle, Pedestrian
+    from autosim.scene import Obstacle, Pedestrian
 
     with pytest.raises(ValueError, match="smaller than an obstacle"):
         Obstacle(
@@ -397,7 +397,7 @@ def test_lidar_keeps_the_nearer_dynamic_hit():
 
 
 def test_pedestrian_follows_the_free_direction():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {
@@ -423,7 +423,7 @@ def test_pedestrian_follows_the_free_direction():
 
 
 def test_pedestrian_replaces_a_goal_when_stuck():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {
@@ -451,7 +451,7 @@ def test_pedestrian_replaces_a_goal_when_stuck():
 
 
 def test_refreshed_goal_stays_off_walls():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {
@@ -476,7 +476,7 @@ def test_refreshed_goal_stays_off_walls():
 
 
 def test_pedestrian_stays_outside_the_robot_disk():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {
@@ -498,7 +498,7 @@ def test_pedestrian_stays_outside_the_robot_disk():
 
 
 def test_pedestrian_does_not_enter_an_obstacle():
-    from autosim.scenario import Pedestrian
+    from autosim.scene import Pedestrian
 
     agent = Pedestrian(
         {

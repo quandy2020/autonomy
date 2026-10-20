@@ -14,20 +14,14 @@
 
 """autosim: multi-backend sensor–actuator bridge + LeRobot IL recording.
 
-Canonical packages::
+Package layout::
 
-    runtime/    Runner orchestration
-    backend/    WorldBackend contract + registry
-    backends/   habitat | fake | isaac
-    scenario/   shared geometry / traffic
-    sensing/    sampler, cameras, stitch
-    io/         bridge, messages, clock, teleop
-    dataset/    LeRobot collector
-    policy/     ONNX twist driver
-    robot/      plant, profiles, urdf
-    map/        ground-truth occupancy helpers
-    config/     YAML load + validation
-    paths.py    project-root discovery
+    runtime/   Runner · Config · paths
+    backends/  WorldBackend protocol · registry · habitat|fake|isaac
+    scene/     Map · World · Traffic · gen/ · agents/
+    bridge/    Bridge · Messages · Clock · Teleop · Sensors
+    robot/     plant · urdf · profiles · policy/
+    dataset/   LeRobot collector
 
 Style: no leading-underscore names; attributes are nouns; functions are
 verb + noun (``poll_command``, ``flush_episode``, ``build_feeds``).

@@ -10,9 +10,9 @@ from typing import List, Optional, Sequence, Tuple
 import numpy as np
 import pytest
 
-from autosim.policy.beni import DEFAULT_Q, BeniBalancePolicy
-from autosim.policy.beni_sequences import BENI_SEQUENCES, SequenceStep
-from autosim.policy.driver import PolicyDriver
+from autosim.robot.policy.beni import DEFAULT_Q, BeniBalancePolicy
+from autosim.robot.policy.beni_sequences import BENI_SEQUENCES, SequenceStep
+from autosim.robot.policy.driver import PolicyDriver
 
 ROOT = Path(__file__).resolve().parents[1]
 BENI_ONNX = ROOT / "robot" / "beni" / "models" / "policy.onnx"

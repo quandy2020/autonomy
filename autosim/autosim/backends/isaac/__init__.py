@@ -12,13 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Isaac Sim (USD) WorldBackend."""
+"""Isaac Sim WorldBackend — module names mirror isaacsim idioms.
+
+::
+
+    app/                 Kit AppLauncher / SimulationApp (isaaclab.app)
+    transforms.py        map-frame ↔ world poses
+    stage.py             open stage · robot Xform · mesh cloud
+    sensors.py           RGB-D · RTX Lidar · surround cameras
+    physics.py           PhysX world · capsule collision
+    articulation.py      generic Articulation helpers
+    robots/beni.py       Beni floating-base articulation
+    robots/wheeled.py    differential-drive wheel joints
+    randomization.py     light / character randomization
+    people.py            PeopleSync (Traffic → USD)
+    animation.py         PeopleAnimator (UsdSkel walk/idle)
+    world.py             WorldBackend assembly (IsaacWorld)
+"""
 
 from __future__ import annotations
 
 from typing import Any, Mapping
 
-from autosim.backend.registry import register
+from autosim.backends.registry import register
 
 
 def create(settings: Mapping[str, Any]) -> Any:
@@ -28,9 +44,9 @@ def create(settings: Mapping[str, Any]) -> Any:
         ImportError: Isaac Sim / Omniverse Python packages are unavailable.
         FileNotFoundError: Configured USD world path does not exist.
     """
-    from autosim.backends.isaac.simulator import IsaacSimulator
+    from autosim.backends.isaac.world import IsaacWorld
 
-    return IsaacSimulator.create(dict(settings))
+    return IsaacWorld.create(dict(settings))
 
 
 register("isaac", create)

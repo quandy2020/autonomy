@@ -192,8 +192,28 @@ class LeRobotWriter:
                         arr = np.concatenate([arr, pad])
                     lasers.append(arr[: self.laser_bins].tolist())
             columns["observation.laser"] = lasers
+        if any(bool(f.meta.get("people")) for f in frames):
+            columns["observation.people"] = [
+                json.dumps(f.meta.get("people") or [], separators=(",", ":"))
+                for f in frames
+            ]
         table = pa.Table.from_pydict(columns)
         pq.write_table(table, path)
+        if any(bool(f.meta.get("people")) for f in frames):
+            people_path = path.with_name(path.stem + "_people.jsonl")
+            with people_path.open("w", encoding="utf-8") as handle:
+                for index, frame in enumerate(frames):
+                    handle.write(
+                        json.dumps(
+                            {
+                                "frame_index": index,
+                                "timestamp": float(frame.timestamp),
+                                "people": frame.meta.get("people") or [],
+                            },
+                            separators=(",", ":"),
+                        )
+                        + "\n"
+                    )
 
     def write_video(
         self, frames: Sequence[Frame], *, episode_index: int, chunk: int

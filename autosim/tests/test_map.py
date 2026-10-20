@@ -19,7 +19,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from autosim.map import Map
+from autosim.scene import Map
 
 
 def test_project_grid_carves_free_and_marks_occupied():

@@ -24,7 +24,7 @@ dev = ["pytest>=7.0", "pyarrow>=14.0"]
 
 [project.scripts]
 autosim = "autosim.__main__:run"
-autosim-teleop = "autosim.io.teleop:Teleop.main"
+autosim-teleop = "autosim.bridge.teleop:Teleop.main"
 
 [tool.setuptools.packages.find]
 where = ["."]

@@ -9,7 +9,7 @@ import pytest
 
 
 def test_arena_offset_keeps_spawn_disk():
-    from autosim.scenario.arena import Arena
+    from autosim.scene.arena import Arena
 
     arena = Arena(
         10.0,
@@ -31,7 +31,7 @@ def test_arena_offset_keeps_spawn_disk():
 
 
 def test_traffic_from_floorplan_style_grid():
-    from autosim.scenario.traffic import Traffic
+    from autosim.scene.traffic import Traffic
 
     # 4x4 free center, walls on border (occupancy 100).
     grid = np.full((20, 20), 100, dtype=np.int8)
@@ -78,7 +78,7 @@ def test_traffic_from_floorplan_style_grid():
 
 
 def test_isaac_merge_nearer_and_laser_static_fallback():
-    from autosim.backends.isaac.simulator import IsaacSimulator
+    from autosim.backends.isaac.world import IsaacWorld
 
     class StageStub:
         def set_pose(self, *a):
@@ -108,7 +108,7 @@ def test_isaac_merge_nearer_and_laser_static_fallback():
 
     grid = np.full((40, 40), 0, dtype=np.int8)
     grid[:, 30] = 100  # wall at x≈15 when origin 0 res 0.5
-    sim = IsaacSimulator(
+    sim = IsaacWorld(
         settings={"habitat": {"sensors": {"lidar_2d": {"range_max": 30.0}}}},
         stage=StageStub(),
         sensors=SensorsStub(),
@@ -126,7 +126,7 @@ def test_isaac_merge_nearer_and_laser_static_fallback():
 
 
 def test_policy_config_and_disabled_without_model():
-    from autosim.policy import PolicyDriver, policy_config_from_habitat
+    from autosim.robot.policy import PolicyDriver, policy_config_from_habitat
 
     cfg = policy_config_from_habitat(
         {"policy": {"enabled": True, "model_path": "", "max_vx": 0.3}}
@@ -143,27 +143,65 @@ def test_policy_config_and_disabled_without_model():
     )
 
 
-def test_traffic_usd_config_defaults_to_capsules():
-    from autosim.backends.isaac.traffic_usd import traffic_config_from_isaac
+def test_agents_usd_character_config_and_listing(tmp_path):
+    import math
 
-    cfg = traffic_config_from_isaac(
+    from autosim.backends.isaac.animation import (
+        anim_rate,
+        classify_clip_name,
+        list_animation_usds,
+    )
+    from autosim.backends.isaac.people import (
+        CHARACTER_YAW_OFFSET,
+        list_character_usds,
+        maybe_create_people_sync,
+        people_sync_config_from_isaac,
+    )
+
+    cfg = people_sync_config_from_isaac(
         {
             "traffic": {
                 "usd_sync": True,
-                "obstacle_visual": "invisible",
-                "pedestrian_visual": "capsule",
-                # Legacy People keys must be ignored (capsule-only sync).
+                "obstacle_visual": "none",
+                "pedestrian_visual": "character",
                 "character_root": "usd/people/Characters",
+                "character_yaw_offset_deg": -90,
+                "collision_proxy": True,
+                "sync_hz": 20,
                 "pedestrian_anim": True,
+                "anim_walk_mps": 1.0,
             }
         }
     )
     assert cfg["usd_sync"] is True
-    assert cfg["obstacle_visual"] == "invisible"
-    assert cfg["pedestrian_visual"] == "capsule"
-    assert "character_root" not in cfg
-    assert "pedestrian_anim" not in cfg
+    assert cfg["pedestrian_visual"] == "character"
+    assert cfg["character_root"] == "usd/people/Characters"
+    assert abs(cfg["character_yaw_offset"] - math.radians(-90)) < 1e-9
+    assert cfg["collision_proxy"] is True
+    assert cfg["sync_hz"] == 20.0
+    assert cfg["pedestrian_anim"] is True
+    assert abs(CHARACTER_YAW_OFFSET - math.radians(-90)) < 1e-9
 
-    defaults = traffic_config_from_isaac({"traffic": {}})
-    assert defaults["obstacle_visual"] == "capsule"
-    assert defaults["pedestrian_visual"] == "capsule"
+    defaults = people_sync_config_from_isaac({"traffic": {}})
+    assert defaults["usd_sync"] is False
+    assert defaults["pedestrian_visual"] == "none"
+    assert maybe_create_people_sync(None, config=defaults) is None
+
+    person = tmp_path / "female_adult_01"
+    person.mkdir()
+    (person / "female_adult_01.usd").write_text("#usda 1.0\n")
+    (tmp_path / "Biped_Setup.usd").write_text("#usda 1.0\n")
+    assets = list_character_usds(tmp_path)
+    assert len(assets) == 1
+    assert assets[0].endswith("female_adult_01.usd")
+
+    anim_dir = tmp_path / "Animations"
+    anim_dir.mkdir()
+    (anim_dir / "Male_Walk.usd").write_text("#usda 1.0\n")
+    (anim_dir / "Female_Idle.usd").write_text("#usda 1.0\n")
+    clips = list_animation_usds(anim_dir)
+    assert clips["walk"].endswith("Male_Walk.usd")
+    assert clips["idle"].endswith("Female_Idle.usd")
+    assert classify_clip_name("jog_loop") == "walk"
+    assert anim_rate(1.2, walk_mps=1.2, moving=True) == pytest.approx(1.0)
+    assert anim_rate(0.0, walk_mps=1.2, moving=False) == 0.0

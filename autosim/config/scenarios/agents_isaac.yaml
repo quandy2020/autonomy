@@ -1,0 +1,47 @@
+# Native autosim pedestrian agents (map frame, meters).
+# behavior: regular | impassive | surprised | scared | curious | threatening
+agents:
+  - id: 1
+    pose: {x: 6.5, y: 0.8, yaw: 0.0}
+    radius: 0.22
+    height: 1.7
+    speed: 0.9
+    behavior: regular
+    goal_tolerance: 0.4
+    cyclic_goals: true
+    goals:
+      - {x: 9.0, y: 0.8}
+      - {x: 6.5, y: -1.2}
+  - id: 2
+    pose: {x: 9.5, y: -1.5, yaw: 1.57}
+    radius: 0.22
+    height: 1.7
+    speed: 0.8
+    behavior: curious
+    goal_tolerance: 0.4
+    cyclic_goals: true
+    goals:
+      - {x: 7.0, y: -1.5}
+      - {x: 9.5, y: 0.5}
+  - id: 3
+    pose: {x: 5.5, y: -2.0, yaw: 0.0}
+    radius: 0.22
+    height: 1.7
+    speed: 1.0
+    behavior: scared
+    goal_tolerance: 0.4
+    cyclic_goals: true
+    goals:
+      - {x: 8.0, y: -2.0}
+      - {x: 5.5, y: 0.2}
+  - id: 4
+    pose: {x: 10.0, y: 0.0, yaw: 3.14}
+    radius: 0.22
+    height: 1.7
+    speed: 0.85
+    behavior: impassive
+    goal_tolerance: 0.4
+    cyclic_goals: true
+    goals:
+      - {x: 7.2, y: 0.0}
+      - {x: 10.0, y: -1.0}

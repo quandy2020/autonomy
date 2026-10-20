@@ -9,13 +9,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from autosim.policy.beni import (
+from autosim.robot.policy.beni import (
     ACTION_JOINTS,
     DEFAULT_Q,
     BeniBalancePolicy,
     axis_angle_rpy,
 )
-from autosim.policy.driver import PolicyDriver, policy_config_from_habitat
+from autosim.robot.policy.driver import PolicyDriver, policy_config_from_habitat
 from autosim.robot.urdf import UrdfModel
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -181,7 +181,7 @@ def test_policy_driver_binds_articulation_and_applies_action():
 
 def test_beni_articulation_fallen_heuristic():
     """fallen() uses projected gravity tilt + low z (no Kit required)."""
-    from autosim.backends.isaac.beni_articulation import BeniArticulation
+    from autosim.backends.isaac.robots.beni import BeniArticulation
 
     art = BeniArticulation("/World/Beni")
     art._ready = True

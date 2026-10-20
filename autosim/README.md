@@ -25,14 +25,12 @@
 
 | 层 | 路径 | 职责 |
 |----|------|------|
-| 编排 | `autosim/runtime/` | Runner 控制环、SensorWorker |
-| 契约 | `autosim/backend/` | WorldBackend、registry、capabilities |
-| 引擎 | `autosim/backends/{habitat,fake,isaac}/` | 互不耦合的后端实现 |
-| 几何 | `autosim/scenario/` | 静态图 + 动态障碍/行人 |
-| 传感 / I/O | `autosim/sensing/` · `autosim/io/` | 采样噪声、Bridge、Teleop |
-| 地图 / 配置 | `autosim/map/` · `autosim/config/` | 真值占据、YAML 校验 |
-| 数据集 | `autosim/dataset/` | LeRobot 采集（模仿学习基础） |
-| 策略 / 机器人 | `autosim/policy/` · `autosim/robot/` | ONNX Twist、URDF、差速植物 |
+| 编排 | `runtime/` | Runner、Config、paths |
+| 引擎 | `backends/` | 契约（protocol/registry）+ habitat/fake/isaac |
+| 场景 | `scene/` | Map、World、Traffic、`gen/`、`agents/` |
+| 桥接 | `bridge/` | Bridge、Messages、Teleop、Sensors |
+| 机器人 | `robot/` | plant、URDF、profiles、`policy/` |
+| 数据集 | `dataset/` | LeRobot 采集 |
 
 详见 [架构](docs/02_architecture.md) · [数据集](docs/11_dataset.md)。
 
@@ -42,7 +40,8 @@
 |-------------------|------|------|
 | `habitat` | `config/default.yaml` | Habitat-Sim + GLB / MP3D |
 | `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario |
-| `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体 |
+| `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体（默认 Beni） |
+| ↳ 导航 | `config/isaac_nav.yaml` | 差速 turtlebot + 真人行人；对接外部导航/SLAM |
 
 ## 快速命令
 

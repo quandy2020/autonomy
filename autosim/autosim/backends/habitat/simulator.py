@@ -28,14 +28,14 @@ from typing import Any, Mapping, Tuple
 
 import numpy as np
 
-from autosim.sensing.cameras import (
+from autosim.bridge.cameras import (
     SurroundCamera,
     camera_rig,
     projection_height,
     resolve_surround,
     ros_to_habitat_mount,
 )
-from autosim.sensing.stitch import PANORAMA_UUID, panorama_spec
+from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
 from autosim.robot.urdf import UrdfModel
 
 
@@ -227,7 +227,7 @@ class Simulator:
         block = hab_cfg.get("scenario")
         if not isinstance(block, Mapping) or not block.get("enabled", False):
             return None
-        from autosim.scenario import Scenario
+        from autosim.scene import Scenario
 
         world = Scenario(block).build()
         self.scenario_points = world.points
@@ -262,7 +262,7 @@ class Simulator:
     @staticmethod
     def bundled_mp3d_dataset_config() -> Path:
         """Packaged ``mp3d.scene_dataset_config.json`` (same as autonomy_ros)."""
-        from autosim.paths import project_root
+        from autosim.runtime.paths import project_root
 
         return project_root() / "config" / "mp3d.scene_dataset_config.json"
 

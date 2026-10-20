@@ -56,5 +56,5 @@ autosim/
 | 第一次跑通 | [03](03_quickstart.md) → Fake → Autoviz [08](08_map_and_viz.md) |
 | 换后端 | [04](04_backends.md) → [05](05_configuration.md) |
 | Isaac 室内场景 | [07](07_isaac.md) → [10](10_troubleshooting.md) |
-| 改发布话题 | [06](06_topics.md) → `autosim/runtime/loop.py` |
+| 改发布话题 | [06](06_topics.md) → `autosim/runtime/runner.py` |
 | 加测试 | [09](09_testing.md) |

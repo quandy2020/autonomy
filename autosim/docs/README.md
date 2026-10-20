@@ -34,5 +34,5 @@
 
 - 文件名：`NN_topic.md`（两位序号 + 英文短词），序号即阅读主序。
 - 每篇开头：一句话职责 +「相关文档」表；正文用短节，少重复，细节链到源码路径。
-- 配置真相以 `config/*.yaml` 与 `autosim/config/` 为准；文档只写稳定约定。
+- 配置真相以 `config/*.yaml` 与 `autosim/runtime/settings.py` 为准；文档只写稳定约定。
 - 大体积场景资源不入库，说明写在 [07 Isaac](07_isaac.md) 与 [`../usd/README.md`](../usd/README.md)。

@@ -1,0 +1,261 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Isaac Sim (USD) backend. Same autolink channels as Habitat; requires Isaac Sim.
+#
+#   CONFIG=src/autonomy/autosim/config/isaac.yaml src/autonomy/autosim/scripts/run.sh sim
+#
+# Ground-nav / SLAM sensor stack (differential drive). For Beni use isaac.yaml.
+
+habitat:
+  backend: isaac
+  mode: nav
+  # Kit launch: headless (override with AUTOSIM_ISAAC_HEADLESS=0 for GUI).
+  # Camera path aligned with arena-isaac: RTX Camera + supportMultiTickRate,
+  # PhysX ticks without RTX, RGB sampled only in color_depth (Habitat timing).
+  # physics.mode:
+  #   capsule      — kinematic overlap block (or enabled=false → render-only)
+  #   articulation — Beni floating-base PhysX (gravity, collision, true fall)
+  isaac:
+    headless: true
+    physics:
+      enabled: true
+      mode: capsule           # capsule for planar nav (articulation = Beni)
+      block_motion: true
+      freeze_scene: true
+      ensure_scene_colliders: true
+      add_ground: false       # InteriorAgent floors provide contact
+      dt: 0.0166667
+      robot_radius: 0.10
+      robot_height: 0.22
+    traffic:
+      usd_sync: true                  # RGB sees human characters (CPU still owns motion)
+      obstacle_visual: none
+      pedestrian_visual: character    # character | capsule | none
+      character_z: 0.0                # feet on floor (map z-up)
+      character_yaw_offset_deg: -90   # People face -Y; map yaw=0 is +X
+      collision_proxy: true           # invisible capsule for PhysX bumps
+      sync_hz: 30                     # USD pose update rate (CPU step is full rate)
+      pedestrian_anim: true           # UsdSkel walk/idle (shared phase)
+      anim_walk_mps: 1.2
+      # animation_root: usd/people/Animations
+      # character_root: usd/people/Characters
+
+  # External nav stack owns /cmd_vel (no ONNX).
+  policy:
+    enabled: false
+    action_space: twist
+    # Default: robot/beni/models/policy.onnx (Open Beni export)
+    # model_path: robot/beni/models/policy.onnx
+    rate_hz: 100.0              # Open Beni policy rate
+    exclusive: false
+    max_vx: 1.5
+    max_wz: 2.0
+    # Standing height command in obs (Open Beni range ≈ [0.10, 0.12]).
+    base_height: 0.11
+    animate_joints: false       # auto true when Articulation bound
+    drive_from_wheels: false    # planar plant unused when articulation owns base
+    use_laser: false
+    laser_bins: 360
+
+  # LeRobot v2.1 dataset recording for imitation learning (docs/11_dataset.md).
+  dataset:
+    enabled: false
+    root: datasets/isaac_demo
+    repo_id: autosim/isaac_demo
+    task: navigate
+    fps: 10.0
+    episode_frames: 0
+    include_image: true
+    include_laser: true
+    include_people: true
+
+  # Relative to autosim/ project root (see usd/README.md).
+  # InteriorAgent (酷家乐) sample; fallback: usd/worlds/simple_room/simple_room.usd
+  path: usd/worlds/InteriorAgent/kujiale_0021/kujiale_0021.usda
+  usd:
+    # InteriorAgent scenes use /Root; robot Xform is created under it if missing.
+    robot_prim: /Root/Robot
+  scenario:
+    # Static procedural map off; use floorplan OccupancyGrid for walls.
+    enabled: false
+    # Dynamic agents: agents YAML → SFM + robot reactions (no ROS).
+    # See config/scenarios/agents_isaac.yaml and docs/07_isaac.md §7.
+    obstacle:
+      enabled: false                  # no dynamic cylinders
+      count: 4
+      radius: 0.35
+      height: 1.0
+      speed_min: 0.15
+      speed_max: 0.45
+      seed: 7
+    pedestrian:
+      enabled: true                   # CPU SFM + optional USD characters
+      social: true
+      agents: config/scenarios/agents_isaac.yaml
+      # Fallback when agents is empty: count / radius / behavior apply.
+      count: 4
+      radius: 0.22                    # social / wall clearance
+      laser_radius: 0.28              # /scan + map cloud (shoulder width)
+      height: 1.7
+      speed: 0.85
+      behavior: regular   # regular|impassive|surprised|scared|curious|threatening
+      seed: 11
+  # Living-room centroid from InteriorAgent rooms.json (map xy + yaw).
+  spawn: [7.93, -0.39, 0.0]
+  gpu: 0
+
+  robot:
+    profile: turtlebot3_burger
+    # urdf from profile
+    description_channel: /robot_description   # Autoviz RobotModel
+    max_linear: 0.22
+    max_angular: 2.84
+    max_linear_accel: 0.5
+    max_linear_decel: 1.0
+    max_angular_accel: 3.0
+    base_link_height: 0.0
+    map_frame: map
+    watchdog_sec: 0.5
+    control_hz: 50.0
+    cmd_vel: /cmd_vel
+    truth:
+      enabled: false
+      channel: /gt/pose
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      # Forced true in nav (drift-corrected map→odom so /scan matches GT /map).
+      publish_map_odom: true
+    clock:
+      enabled: true
+      channel: /clock
+    footprint:
+      enabled: true
+      channel: /footprint
+      frame: base_link
+      # TurtleBot3 Burger approximate footprint.
+      points:
+        - [0.09, 0.09]
+        - [0.09, -0.09]
+        - [-0.09, -0.09]
+        - [-0.09, 0.09]
+
+  sensors:
+    lidar_2d:
+      enabled: true
+      channel: /scan
+      frame: laser_link
+      rate_hz: 10.0
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      num_beams: 360
+      noise: 0.0
+      backend: merge
+      rtx_config: Example_Rotary
+
+    joint_states:
+      enabled: false
+      channel: /joint_states
+      frame: base_link
+
+    lidar_3d:
+      enabled: false
+      channel: /points
+      frame: lidar_link
+      rate_hz: 10.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.26
+        angle_max: 0.26
+        num_rings: 16
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.015
+      motion_compensate: true
+
+    camera:
+      enabled: true
+      # Primary sensor = RGB-D (RGB + depth + optional depth points).
+      # Extrinsics follow beni.urdf camera_link (Open Beni MJCF depth_front).
+      width: 1280
+      height: 720
+      # MJCF depth_front ≈ 86.5° VFOV @ 80×60 → ~98° HFOV; keep 90 for nav.
+      hfov_deg: 90.0
+      # Fallback Z only; Isaac prefers URDF camera_link (0.07, 0.03, -0.016).
+      sensor_height: -0.016
+      # Optional override: sensor_xyz: [0.07, 0.03, -0.016]
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      depth_points_channel: /camera/depth/points
+      depth_points_stride: 4
+      info_channel: /camera/camera_info
+      semantic_enabled: false
+      semantic_channel: /camera/semantic/image_raw
+      semantic_ids_channel: /camera/semantic/instance_ids
+      frame: camera_link
+      rate_hz: 30.0
+      noise:
+        depth: 0.0
+
+    imu:
+      enabled: true
+      channel: /imu
+      frame: imu_link
+      rate_hz: 200.0
+      gravity: 9.80665
+      noise:
+        gyro: 0.01
+        accel: 0.05
+        gyro_bias: 0.001
+        accel_bias: 0.01
+
+    odom:
+      enabled: true
+      channel: /odom
+      frame: odom
+      child_frame: base_link
+      noise: 0.0
+
+  map:
+    # OccupancyGrid: rooms.json free + USD mesh carved in the *robot body* slab.
+    # Traversable rule (ground robot): ignore floor (z < clearance) and overhangs
+    # (z > height) so tables can be passed under; inflate ≈ footprint radius.
+    enabled: true
+    publish: true
+    frame: map
+    rate_hz: 1.0
+    padding_m: 0.05
+    wall_thickness_m: 0.05
+    robot_clearance_m: 0.05   # above floor — carpet / floor verts stay free
+    robot_height_m: 0.35      # turtlebot body slab
+    height_margin_m: 0.05
+    mesh_inflate_m: 0.12      # ≈ burger footprint
+    free_doors: true          # punch door meshes free (rooms.json seals openings)
+    door_opening_inflate_m: 0.15
+    ply:
+      # Default 0: keep rooms.json dense wall cloud (fast). Set >0 to densify USD faces.
+      channel: /overall/map
+      stride: 1                 # publish downsample (Autoviz)
+      mesh_stride: 1
+      surface_spacing_m: 0.0    # >0 = slow USD face densify (e.g. 0.08)
+      max_points: 400000
+      range_max: 30.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.5
+        angle_max: 0.5
+        num_rings: 32
+    grid:
+      channel: /map
+      resolution: 0.05
+      z_min: 0.0   # floor / wall feet at world ground (was 0.1 → floated)
+      z_max: 2.5

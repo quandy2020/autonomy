@@ -19,7 +19,7 @@ from pathlib import Path
 
 import pytest
 
-from autosim.config import Config
+from autosim.runtime import Config
 from autosim.robot.urdf import UrdfModel
 
 

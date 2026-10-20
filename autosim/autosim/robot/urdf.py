@@ -64,7 +64,7 @@ class UrdfModel:
     @staticmethod
     def package_root() -> Path:
         """autosim project root (parent of the Python package)."""
-        from autosim.paths import project_root
+        from autosim.runtime.paths import project_root
 
         return project_root()
 

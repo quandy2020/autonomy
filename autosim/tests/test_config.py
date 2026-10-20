@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from autosim.config import Config
+from autosim.runtime import Config
 
 
 ROOT = Path(__file__).resolve().parents[1]

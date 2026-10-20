@@ -25,13 +25,13 @@ from typing import List, Optional, Sequence, Tuple
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from autosim.policy.beni_sequences import BENI_SEQUENCES, SequenceStep  # noqa: E402
+from autosim.robot.policy.beni_sequences import BENI_SEQUENCES, SequenceStep  # noqa: E402
 
 Twist = Tuple[float, float]
 
 
 def run_offline(sequences: dict[str, List[SequenceStep]]) -> int:
-    from autosim.policy.driver import PolicyDriver
+    from autosim.robot.policy.driver import PolicyDriver
 
     onnx = ROOT / "robot" / "beni" / "models" / "policy.onnx"
     if not onnx.is_file():
@@ -103,7 +103,7 @@ def run_live(sequences: dict[str, List[SequenceStep]], *, channel: str, rate_hz:
     except ImportError:
         print("autolink not available; use offline mode", flush=True)
         return 2
-    from autosim.io.messages import Messages
+    from autosim.bridge.messages import Messages
     from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 
     node = Node("beni_action_seq")

@@ -20,7 +20,7 @@ from pathlib import Path
 
 import pytest
 
-from autosim.config import Config
+from autosim.runtime import Config
 from autosim.robot.profiles import PROFILES, apply_profile, get_profile, resolve_path
 from autosim.robot.urdf import UrdfModel
 

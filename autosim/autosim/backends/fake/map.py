@@ -20,7 +20,7 @@ from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
 
-from autosim.scenario.map.scenario import Scenario
+from autosim.scene.gen.scenario import Scenario
 
 
 class Map:

@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Mapping, Optional
+from typing import Any, Mapping
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ def physics_config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
     return out
 
 
-class IsaacPhysics:
+class PhysicsContext:
     """Owns ``isaacsim.core.api.world.World`` and robot / scene collision setup."""
 
     def __init__(
@@ -108,7 +108,7 @@ class IsaacPhysics:
         robot_prim_path: str,
         config: Mapping[str, Any],
         render: bool = True,
-    ) -> Optional["IsaacPhysics"]:
+    ) -> "PhysicsContext" | None:
         """Create PhysicsScene + robot collider.
 
         When ``enabled: false`` but ``render`` is True (RGB-D on), still builds a
@@ -170,7 +170,7 @@ class IsaacPhysics:
             else:
                 # Undo any accidental kinematic freeze on Beni links.
                 try:
-                    from autosim.backends.isaac.beni_articulation import (
+                    from autosim.backends.isaac.articulation import (
                         ensure_articulation_dynamic,
                     )
 

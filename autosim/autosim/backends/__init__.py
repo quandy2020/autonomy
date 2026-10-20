@@ -12,14 +12,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Engine backends — each package is self-contained and self-registers.
+"""WorldBackend contract + engine implementations.
 
-| Package | WorldBackend | Notes |
-|---------|--------------|-------|
-| ``habitat`` | ``Simulator`` | Habitat-Sim + GLB / MP3D |
-| ``fake`` | ``FakeWorld`` | Scenario occupancy + raycast |
-| ``isaac`` | ``IsaacSimulator`` | Isaac Sim + USD / PhysX |
+Root modules (no engine deps)::
 
-Shared geometry (scenario traffic, occupancy tools) lives outside this tree.
-Backends must not import sibling backends.
+    protocol.py · registry.py · capabilities.py
+
+Engine packages (must not import each other)::
+
+    habitat/ · fake/ · isaac/
 """
+
+from autosim.backends.capabilities import capability
+from autosim.backends.protocol import WorldBackend, optional_call
+from autosim.backends.registry import BACKENDS, create_backend
+
+__all__ = [
+    "BACKENDS",
+    "WorldBackend",
+    "capability",
+    "create_backend",
+    "optional_call",
+]

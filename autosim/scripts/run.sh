@@ -154,14 +154,14 @@ case "$MODE" in
     exec "${PY}" -m autosim --config "$CONFIG"
     ;;
   telop|teleop)
-    exec "${PY}" -c "from autosim.io.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
+    exec "${PY}" -c "from autosim.bridge.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
     ;;
   both)
     "${PY}" -m autosim --config "$CONFIG" &
     SIM_PID=$!
     trap 'kill "$SIM_PID" 2>/dev/null || true' EXIT INT TERM
     sleep 0.5
-    exec "${PY}" -c "from autosim.io.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
+    exec "${PY}" -c "from autosim.bridge.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
     ;;
   *)
     echo "usage: $0 [sim|telop|teleop|both]" >&2

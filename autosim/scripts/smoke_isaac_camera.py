@@ -16,14 +16,14 @@ sys.path.insert(0, str(ROOT))
 
 logging.basicConfig(level=logging.INFO)
 
-from autosim.backends.isaac.simulator import IsaacSimulator  # noqa: E402
-from autosim.config import Config  # noqa: E402
+from autosim.backends.isaac.world import IsaacWorld  # noqa: E402
+from autosim.runtime import Config  # noqa: E402
 
 
 def main() -> int:
     cfg = Config.load(ROOT / "config" / "isaac.yaml")
     print("creating...", flush=True)
-    sim = IsaacSimulator.create(cfg.data)
+    sim = IsaacWorld.create(cfg.data)
     print("mounted", sim._sensors._camera is not None, flush=True)
     sim.reset(0.0, 0.0, 0.0)
     for _ in range(30):

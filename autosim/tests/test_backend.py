@@ -21,9 +21,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from autosim.backend import WorldBackend, create_backend
-from autosim.backend.registry import BACKENDS, ensure_builtins
-from autosim.config import Config
+from autosim.backends import WorldBackend, create_backend
+from autosim.backends.registry import BACKENDS, ensure_builtins
+from autosim.runtime import Config
 from tests.fake_simulator import FakeSimulator
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -67,7 +67,7 @@ def test_isaac_create_raises_without_omni():
 
 
 def test_coords_roundtrip():
-    from autosim.backends.isaac.coords import map_to_world, world_to_map
+    from autosim.backends.isaac.transforms import map_to_world, world_to_map
 
     t, q = map_to_world(1.0, -2.0, 0.75, z=0.01)
     x, y, yaw = world_to_map(t, q)
@@ -79,17 +79,17 @@ def test_coords_roundtrip():
 
 def test_isaac_snap_camera_frequency_nearest_divisor():
     """arena-isaac _snap_rate: 30→30 on 60Hz, 25→20 (nearest divisor)."""
-    from autosim.backends.isaac.sensors import IsaacSensors
+    from autosim.backends.isaac.sensors import SensorSuite
 
-    assert IsaacSensors.snap_camera_frequency(30.0, default_render_hz=60) == 30
-    assert IsaacSensors.snap_camera_frequency(25.0, default_render_hz=60) == 20
-    assert IsaacSensors.snap_camera_frequency(15.0, default_render_hz=60) == 15
-    assert IsaacSensors.safe_camera_frequency(30.0, default_render_hz=60) == 30
+    assert SensorSuite.snap_camera_frequency(30.0, default_render_hz=60) == 30
+    assert SensorSuite.snap_camera_frequency(25.0, default_render_hz=60) == 20
+    assert SensorSuite.snap_camera_frequency(15.0, default_render_hz=60) == 15
+    assert SensorSuite.safe_camera_frequency(30.0, default_render_hz=60) == 30
 
 
 def test_densify_mesh_local_fills_large_triangle():
     """A 2×2 m wall triangle must yield far more than 3 vertices."""
-    from autosim.backends.isaac.usd_stage import densify_mesh_local
+    from autosim.backends.isaac.stage import densify_mesh_local
 
     verts = np.array([[0.0, 0.0, 0.0], [2.0, 0.0, 0.0], [0.0, 0.0, 2.0]], dtype=np.float64)
     dense = densify_mesh_local(verts, counts=[3], indices=[0, 1, 2], spacing=0.25)
@@ -99,7 +99,7 @@ def test_densify_mesh_local_fills_large_triangle():
 
 def test_isaac_sensors_sync_world_pose_follows_robot():
     """sync_world_pose pushes eye height + yaw into Camera.set_world_pose."""
-    from autosim.backends.isaac.sensors import IsaacSensors
+    from autosim.backends.isaac.sensors import SensorSuite
 
     class _FakeCam:
         def __init__(self):
@@ -117,7 +117,7 @@ def test_isaac_sensors_sync_world_pose_follows_robot():
         def destroy(self):
             pass
 
-    sensors = IsaacSensors(width=64, height=48, eye_height=0.5)
+    sensors = SensorSuite(width=64, height=48, eye_height=0.5)
     cam = _FakeCam()
     sensors.attach(camera=cam)
     sensors.sync_world_pose(1.0, 2.0, 0.0, base_z=0.01)
@@ -130,7 +130,7 @@ def test_isaac_sensors_sync_world_pose_follows_robot():
     assert axes == "world"
 
     # URDF-style XY offset must rotate with yaw (Beni camera_link).
-    beni = IsaacSensors(
+    beni = SensorSuite(
         width=64, height=48, eye_offset=(0.07, 0.03, -0.016)
     )
     cam2 = _FakeCam()
@@ -143,8 +143,8 @@ def test_isaac_sensors_sync_world_pose_follows_robot():
 
 
 def test_isaac_sensors_reads_mounted_camera():
-    """IsaacSensors prefers Camera.get_rgb/get_depth over placeholder frames."""
-    from autosim.backends.isaac.sensors import IsaacSensors
+    """Sensors prefers Camera.get_rgb/get_depth over placeholder frames."""
+    from autosim.backends.isaac.sensors import SensorSuite
 
     class _FakeCam:
         def get_rgb(self, device=None):
@@ -160,7 +160,7 @@ def test_isaac_sensors_reads_mounted_camera():
         def destroy(self):
             pass
 
-    sensors = IsaacSensors(width=64, height=48, eye_height=0.5)
+    sensors = SensorSuite(width=64, height=48, eye_height=0.5)
     sensors.attach(camera=_FakeCam())
     color, depth = sensors.color_depth()
     assert color.shape == (48, 64, 3)
@@ -172,7 +172,7 @@ def test_isaac_sensors_reads_mounted_camera():
 
 def test_isaac_sensors_transposes_wh_depth_and_sanitizes_far_hits():
     """Isaac annotators are (W, H, 1); far-clip outliers must become NaN."""
-    from autosim.backends.isaac.sensors import IsaacSensors
+    from autosim.backends.isaac.sensors import SensorSuite
 
     class _FakeCam:
         def get_rgb(self, device=None):
@@ -193,7 +193,7 @@ def test_isaac_sensors_transposes_wh_depth_and_sanitizes_far_hits():
         def destroy(self):
             pass
 
-    sensors = IsaacSensors(width=64, height=48, eye_height=0.5)
+    sensors = SensorSuite(width=64, height=48, eye_height=0.5)
     sensors.attach(camera=_FakeCam())
     color, depth = sensors.color_depth()
     assert color.shape == (48, 64, 3)
@@ -278,7 +278,7 @@ def test_strip_nested_rigid_bodies_disables_child():
 
 def test_isaac_simulator_set_pose_block_motion():
     """Overlapping PhysX query must keep the previous planar pose."""
-    from autosim.backends.isaac.simulator import IsaacSimulator
+    from autosim.backends.isaac.world import IsaacWorld
 
     class StageStub:
         def __init__(self):
@@ -307,7 +307,7 @@ def test_isaac_simulator_set_pose_block_motion():
         def close(self):
             pass
 
-    sim = IsaacSimulator(
+    sim = IsaacWorld(
         settings={"habitat": {}},
         stage=StageStub(),
         sensors=SensorsStub(),
@@ -330,7 +330,7 @@ def test_floorplan_map_from_rooms_json():
     """InteriorAgent rooms.json → free cells inside, OccupancyGrid on /map."""
     from pathlib import Path
 
-    from autosim.backends.isaac.floorplan_map import FloorplanMap
+    from autosim.scene.floorplan import FloorplanMap
 
     rooms_path = (
         Path(__file__).resolve().parents[1]
@@ -361,7 +361,7 @@ def test_floorplan_map_from_rooms_json():
     row = int((sy - oy) / res)
     assert 0 <= row < height and 0 <= col < width
     assert int(grid[row, col]) == 0
-    # USD mesh override path used by IsaacSimulator for /overall/map.
+    # USD mesh override path used by IsaacWorld for /overall/map.
     fake = np.array([[1.0, 2.0, 0.5], [3.0, 4.0, 1.5]], dtype=np.float32)
     built.set_cloud(fake)
     cloud2, *_ = built.sample()
@@ -371,7 +371,7 @@ def test_floorplan_map_from_rooms_json():
 
 def test_robot_body_band_ignores_floor_and_overhangs():
     """Ground-robot slab: clearance…body; overhang config uses robot_height_m."""
-    from autosim.backends.isaac.floorplan_map import FloorplanMap
+    from autosim.scene.floorplan import FloorplanMap
 
     z0, z1, inf = FloorplanMap.robot_body_band(
         {"robot_clearance_m": 0.05, "robot_height_m": 0.35, "mesh_inflate_m": 0.12}
@@ -385,7 +385,7 @@ def test_floorplan_free_openings_clears_door_cells():
     """Door footprints punch through rooms.json wall rings."""
     from pathlib import Path
 
-    from autosim.backends.isaac.floorplan_map import FloorplanMap
+    from autosim.scene.floorplan import FloorplanMap
 
     rooms_path = (
         Path(__file__).resolve().parents[1]
@@ -419,7 +419,7 @@ def test_floorplan_mark_elevated_obstacles_carves_furniture():
     """Body-band hits occupied; floor + high overhang stay free."""
     from pathlib import Path
 
-    from autosim.backends.isaac.floorplan_map import FloorplanMap
+    from autosim.scene.floorplan import FloorplanMap
 
     rooms_path = (
         Path(__file__).resolve().parents[1]
@@ -465,7 +465,7 @@ def test_floorplan_mark_elevated_obstacles_carves_furniture():
 def test_repair_display_primvars_constantizes_facevarying():
     """Length-1 faceVarying displayColor must become constant (InteriorAgent)."""
     pytest.importorskip("pxr")
-    from autosim.backends.isaac.usd_stage import repair_display_primvars
+    from autosim.backends.isaac.stage import repair_display_primvars
     from pxr import Sdf, Usd, UsdGeom
 
     stage = Usd.Stage.CreateInMemory()

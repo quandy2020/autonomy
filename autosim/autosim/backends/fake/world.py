@@ -21,10 +21,10 @@ from typing import Any, Mapping, Optional, Tuple
 
 import numpy as np
 
-from autosim.backend.capabilities import FAKE_CAPABILITIES
+from autosim.backends.capabilities import FAKE_CAPABILITIES
 from autosim.backends.fake.map import Map as FakeMap
 from autosim.backends.fake.sensor import Sensor as FakeSensor
-from autosim.scenario.map.volume import Volume
+from autosim.scene.gen.volume import Volume
 from autosim.robot.urdf import UrdfModel
 
 

@@ -17,9 +17,19 @@ habitat:
   #   articulation — Beni floating-base PhysX (gravity, collision, true fall)
   isaac:
     headless: true
+    # seed: 0                         # optional RNG / Replicator seed
+    # record_path: /tmp/autosim_vp.mp4
+    domain_random:
+      enabled: false
+      light_intensity: [800, 2500]
+      light_color_jitter: 0.15
+      shuffle_characters: true
+    wheeled:
+      track_width: 0.16
+      wheel_radius: 0.033
     physics:
       enabled: true
-      mode: articulation      # capsule | articulation (Beni balance/fall)
+      mode: articulation      # capsule | articulation | wheeled
       block_motion: false     # ignored for articulation (dynamic root)
       freeze_scene: true
       ensure_scene_colliders: true
@@ -28,9 +38,21 @@ habitat:
       robot_radius: 0.10
       robot_height: 0.22
     traffic:
-      usd_sync: false                 # no AutosimTraffic capsules in the stage
+      usd_sync: true                  # RGB sees human characters (CPU still owns motion)
+      obstacle_visual: none
+      pedestrian_visual: character    # character | capsule | none
+      character_z: 0.0                # feet on floor (map z-up)
+      character_yaw_offset_deg: -90   # People face -Y; map yaw=0 is +X
+      collision_proxy: true           # invisible capsule for PhysX bumps
+      sync_hz: 30                     # USD pose update rate (CPU step is full rate)
+      pedestrian_anim: true           # UsdSkel walk/idle (shared phase)
+      anim_walk_mps: 1.2              # clip rate 1x at this planar speed
+      # animation_root: usd/people/Animations
+      # Isaac People Characters (auto: AUTOSIM_PEOPLE_ROOT / ISAAC*_PATH / usd/people/Characters)
+      # character_root: usd/people/Characters
 
   # ONNX policy (docs/07_isaac.md). Beni: 7-DoF balance (obs[40]+GRU → joints).
+  # Ground-nav stack: use config/isaac_nav.yaml (turtlebot + twist off).
   # Teleop /cmd_vel → Beni obs; with physics.mode=articulation, ONNX drives
   # PhysX joint targets (true balance/fall). animate_joints auto-on then.
   policy:
@@ -59,6 +81,7 @@ habitat:
     episode_frames: 0
     include_image: true
     include_laser: true
+    include_people: true          # observation.people + *_people.jsonl
 
   # Relative to autosim/ project root (see usd/README.md).
   # InteriorAgent (酷家乐) sample; fallback: usd/worlds/simple_room/simple_room.usd
@@ -69,9 +92,10 @@ habitat:
   scenario:
     # Static procedural map off; use floorplan OccupancyGrid for walls.
     enabled: false
-    # Dynamic agents off (no capsules / no CPU movers).
+    # Dynamic agents: agents YAML → SFM + robot reactions (no ROS).
+    # See config/scenarios/agents_isaac.yaml and docs/07_isaac.md §7.
     obstacle:
-      enabled: false
+      enabled: false                  # no dynamic cylinders
       count: 4
       radius: 0.35
       height: 1.0
@@ -79,11 +103,16 @@ habitat:
       speed_max: 0.45
       seed: 7
     pedestrian:
-      enabled: false
+      enabled: true                   # CPU SFM + optional USD characters
+      social: true
+      agents: config/scenarios/agents_isaac.yaml
+      # Fallback when agents is empty: count / radius / behavior apply.
       count: 4
-      radius: 0.22
+      radius: 0.22                    # social / wall clearance
+      laser_radius: 0.28              # /scan + map cloud (shoulder width)
       height: 1.7
       speed: 0.85
+      behavior: regular   # regular|impassive|surprised|scared|curious|threatening
       seed: 11
   # Living-room centroid from InteriorAgent rooms.json (map xy + yaw).
   spawn: [7.93, -0.39, 0.0]
@@ -140,6 +169,14 @@ habitat:
       range_max: 30.0
       num_beams: 360
       noise: 0.0
+      # cpu = floorplan+traffic; rtx = Isaac RTX Lidar; merge = nearer of both
+      backend: merge
+      rtx_config: Example_Rotary
+
+    joint_states:
+      enabled: true
+      channel: /joint_states
+      frame: base_link
 
     lidar_3d:
       enabled: false

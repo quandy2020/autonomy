@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 from pathlib import Path
 
-from autosim.sensing import Sensors
+from autosim.bridge import Sensors
 from autosim.backends.habitat.simulator import Simulator
 from tests.fake_simulator import FakeSimulator
 

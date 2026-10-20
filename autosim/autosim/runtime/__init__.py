@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Runtime orchestration: control loop + encode/publish worker.
+"""Runtime orchestration: config, control loop, encode/publish worker.
 
 Data flow (one tick)::
 
@@ -22,7 +22,7 @@ Data flow (one tick)::
          Robot.step  ──►  WorldBackend.set_pose / step
             │                      │
             │                      ▼
-            │              Traffic.step (shared scenario)
+            │              World.step (scene agents)
             │                      │
             ▼                      ▼
          Sensors.sample_*  ◄── WorldBackend sensing APIs
@@ -31,7 +31,22 @@ Data flow (one tick)::
          Messages.encode_*  →  Bridge  →  Autolink
 """
 
-from autosim.runtime.loop import Runner
-from autosim.runtime.worker import SensorWorker
+from __future__ import annotations
 
-__all__ = ["Runner", "SensorWorker"]
+from typing import Any
+
+from autosim.runtime.settings import Config
+
+__all__ = ["Config", "Runner", "SensorWorker"]
+
+
+def __getattr__(name: str) -> Any:
+    if name == "Runner":
+        from autosim.runtime.runner import Runner
+
+        return Runner
+    if name == "SensorWorker":
+        from autosim.runtime.worker import SensorWorker
+
+        return SensorWorker
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

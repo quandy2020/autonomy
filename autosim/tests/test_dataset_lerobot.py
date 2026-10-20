@@ -27,6 +27,7 @@ def test_feature_schema_and_config():
                 "root": "/tmp/ds",
                 "fps": 5,
                 "include_laser": True,
+                "include_people": True,
             },
             "sensors": {
                 "camera": {"width": 64, "height": 48},
@@ -38,6 +39,7 @@ def test_feature_schema_and_config():
     assert cfg["fps"] == pytest.approx(5.0)
     assert cfg["laser_bins"] == 16
     assert cfg["image_hw"] == (48, 64)
+    assert cfg["include_people"] is True
 
 
 def test_lerobot_writer_roundtrip(tmp_path: Path):
@@ -65,6 +67,11 @@ def test_lerobot_writer_roundtrip(tmp_path: Path):
                 action=np.array([0.1, 0.0], dtype=np.float32),
                 rgb=rgb,
                 laser=np.full(8, 1.5, dtype=np.float32),
+                meta={
+                    "people": [
+                        {"id": 1, "x": float(i), "y": 0.0, "yaw": 0.0, "behavior": "regular"}
+                    ]
+                },
             )
         )
     idx = writer.write_episode(ep)
@@ -77,6 +84,9 @@ def test_lerobot_writer_roundtrip(tmp_path: Path):
     assert info["total_episodes"] == 1
     assert info["total_frames"] == 5
     assert (root / "data" / "chunk-000" / "episode_000000.parquet").is_file()
+    people_sidecar = root / "data" / "chunk-000" / "episode_000000_people.jsonl"
+    assert people_sidecar.is_file()
+    assert '"behavior":"regular"' in people_sidecar.read_text(encoding="utf-8")
     episodes = (root / "meta" / "episodes.jsonl").read_text(encoding="utf-8").strip()
     assert '"length": 5' in episodes
 
@@ -120,7 +130,7 @@ def test_collector_fps_and_flush(tmp_path: Path):
 
 
 def test_config_validate_dataset():
-    from autosim.config import Config
+    from autosim.runtime import Config
 
     with pytest.raises(ValueError, match="dataset.root"):
         Config.validate_dataset({"enabled": True, "root": ""})

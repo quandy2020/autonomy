@@ -23,7 +23,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from autosim.config import Config
+from autosim.runtime import Config
 from autosim.backends.fake import Map as FakeMap
 from autosim.backends.fake import Robot as FakeRobot
 from autosim.backends.fake import Sensor as FakeSensor
@@ -134,7 +134,7 @@ def test_fake_sensor_occludes_far_voxel():
 
 def test_dda_does_not_tunnel_thin_shell():
     """1-voxel-thick front shell occludes a back shell (posts-style hollow)."""
-    from autosim.scenario.map.volume import Volume
+    from autosim.scene.gen.volume import Volume
 
     occupied = np.zeros((40, 8, 8), dtype=bool)
     occupied[12, :, :] = True  # front face
@@ -154,7 +154,7 @@ def test_dda_does_not_tunnel_thin_shell():
 
 
 def test_traffic_cloud_includes_obstacles_and_pedestrians():
-    from autosim.scenario.traffic import Traffic
+    from autosim.scene.traffic import Traffic
 
     traffic = Traffic.from_block(
         {
@@ -203,7 +203,7 @@ def test_config_fake_yaml_backend():
 
 
 def test_fake_runner_smoke_without_habitat(monkeypatch):
-    import autosim.runtime.loop as runner_module
+    import autosim.runtime.runner as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
     monkeypatch.setattr(

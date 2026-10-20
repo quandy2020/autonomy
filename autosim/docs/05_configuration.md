@@ -1,6 +1,6 @@
 # 05 · 配置
 
-配置真相：`config/*.yaml` + `autosim/config/` 校验。本节只列稳定约定。
+配置真相：`config/*.yaml` + `autosim/runtime/settings.py` 校验。本节只列稳定约定。
 
 | 相关 | 链接 |
 |------|------|
@@ -76,4 +76,4 @@ YAML 显式字段优先于档案默认值。
 ## 5. 校验失败时
 
 `Config.load` 抛 `ValueError`（空通道、重复通道、非法 backend 等）。  
-先对照本表与目标 YAML，再查 `autosim/config/settings.py` 中 `validate_*`。
+先对照本表与目标 YAML，再查 `autosim/runtime/settings.py` 中 `validate_*`。

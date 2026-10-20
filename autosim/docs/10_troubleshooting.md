@@ -24,7 +24,7 @@
 
 | 症状 | 处理 |
 |------|------|
-| Autoviz 无 RGB / depth | `camera.enabled: true`；Isaac 需 `ENABLE_CAMERAS`（`app.py` 已设）；多等 warmup。`physics.enabled: false` 时仍会建 render-only World（否则 RTX 相机无帧）。Beni 外参走 URDF `camera_link`，勿只设负的 `sensor_height` 把镜头埋进机身 |
+| Autoviz 无 RGB / depth | `camera.enabled: true`；Isaac 需 `ENABLE_CAMERAS`（`app/` 已设）；多等 warmup。`physics.enabled: false` 时仍会建 render-only World（否则 RTX 相机无帧）。Beni 外参走 URDF `camera_link`，勿只设负的 `sensor_height` 把镜头埋进机身 |
 | 全黑 | 场景无灯（simple_room 已补光）；酷家乐确认 HDR / 材质 |
 | Hydra primvar 刷屏 | 已有 `repair_display_primvars` + mute；升级后仍刷可再查 faceVarying |
 | 深度像 RGB / 闪烁 | 确认深度为 `32FC1`；更新清洗与 Autoviz 稳定色带；勿把 RGB overlay 误当成深度 |
@@ -36,7 +36,7 @@
 | 症状 | 处理 |
 |------|------|
 | 无 `/map` | `mode: nav`、`map.enabled/publish: true`；Isaac 需旁路 `rooms.json` |
-| `/overall/map` 只有墙线 | 旧逻辑；应走 USD Mesh 采样（见 `usd_stage.sample_mesh_cloud`） |
+| `/overall/map` 只有墙线 | 旧逻辑；应走 USD Mesh 采样（见 `stage.sample_mesh_cloud`） |
 | `/scan` 与家具形状对不齐 | Isaac 需把 USD 家具刻进占用栅格（`mark_elevated_obstacles`）；Autoviz Fixed Frame=`map`；`nav` 下发 `map→odom` |
 | 点云过大卡顿 | 增大 `map.ply.stride`；Autoviz Decimate |
 

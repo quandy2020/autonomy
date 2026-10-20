@@ -21,8 +21,8 @@ from typing import Any, Mapping, Tuple
 
 import numpy as np
 
-from autosim.io.messages import Messages
-from autosim.scenario.map.volume import Volume
+from autosim.bridge.messages import Messages
+from autosim.scene.gen.volume import Volume
 
 
 class Sensor:
@@ -71,7 +71,7 @@ class Sensor:
             volume_origin: Map-frame minimum corner of voxel ``(0,0,0)``.
             resolution: Voxel edge length (meters).
             pose: Robot ``(x, y, yaw)`` in the map frame.
-            traffic: Optional :class:`~autosim.scenario.traffic.Traffic`.
+            traffic: Optional :class:`~autosim.scene.traffic.Traffic`.
 
         Returns:
             ``Mx3`` float32 in REP-103 ``camera_link`` (x forward, y left, z up).

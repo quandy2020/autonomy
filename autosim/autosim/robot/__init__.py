@@ -12,10 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Robot plant, URDF helpers, and named hardware profiles."""
+"""Robot plant, URDF helpers, profiles, and optional policy drivers."""
 
 from autosim.robot.plant import Robot
+from autosim.robot.policy import PolicyDriver, policy_config_from_habitat
 from autosim.robot.profiles import PROFILES, apply_profile, get_profile
 from autosim.robot.urdf import UrdfModel
 
-__all__ = ["PROFILES", "Robot", "UrdfModel", "apply_profile", "get_profile"]
+__all__ = [
+    "PROFILES",
+    "PolicyDriver",
+    "Robot",
+    "UrdfModel",
+    "apply_profile",
+    "get_profile",
+    "policy_config_from_habitat",
+]

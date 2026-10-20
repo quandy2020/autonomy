@@ -56,6 +56,7 @@ habitat:
     max_episodes: 0       # 0 = 不限
     include_image: true
     include_laser: true
+    include_people: false   # true → observation.people + episode_*_people.jsonl
 ```
 
 别名：`habitat.record` 与 `habitat.dataset` 等价。

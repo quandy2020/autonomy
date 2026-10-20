@@ -6,29 +6,39 @@
 |------|------|
 | 后端 | [04](04_backends.md) |
 | 数据集 | [11](11_dataset.md) |
-| 源码 | `autosim/runtime/` · `autosim/backend/` · `autosim/backends/` · `autosim/dataset/` |
+| 源码 | `autosim/runtime/` · `backends/` · `scene/` · `bridge/` · `robot/` · `dataset/` |
 
 ---
 
-## 1. 专业化包树
+## 1. 包树
 
 ```text
 autosim/
-├── runtime/           # 编排：Runner · SensorWorker
-├── backend/           # 契约：Protocol · registry · capabilities
-├── backends/          # 引擎（互不耦合）
-│   ├── habitat/       # Habitat-Sim Simulator
-│   ├── fake/          # FakeWorld · map/sensor/robot
-│   └── isaac/         # USD / PhysX / 相机
-├── scenario/          # 纯几何：静态图 · Traffic · 障碍/行人
-├── sensing/           # Sensors · cameras · stitch
-├── io/                # Bridge · Messages · Clock · Teleop
-├── dataset/           # LeRobot v2.1 采集
-├── policy/            # 可选 ONNX Twist
-├── robot/             # plant · profiles · urdf
-├── map/               # 共享真值占据 / PLY
-└── config/            # YAML 加载与校验
+├── runtime/              # 编排：Runner · SensorWorker · Config · paths
+├── backends/             # 契约 + 引擎（引擎子包互不 import）
+│   ├── protocol.py       # WorldBackend
+│   ├── registry.py       # create_backend / register
+│   ├── capabilities.py
+│   ├── habitat/
+│   ├── fake/
+│   └── isaac/
+├── scene/                # 与引擎无关的几何与动态体
+│   ├── map.py · floorplan.py  # OccupancyGrid / PLY · rooms.json
+│   ├── world.py · traffic.py · arena.py · field.py · cast.py
+│   ├── gen/              # 程序化静态地图（Scenario · Volume · Stage …）
+│   └── agents/           # Obstacle · Pedestrian · Force · Behavior · Agents
+├── bridge/               # Autolink I/O + 传感采样
+│   # Bridge · Messages · Clock · Teleop · Sensors · cameras · stitch
+├── robot/                # plant · profiles · urdf · policy/
+└── dataset/              # LeRobot v2.1 采集
 ```
+
+| 易混 | 含义 |
+|------|------|
+| `backends/` 根模块 | 抽象契约（protocol / registry） |
+| `backends/{habitat,fake,isaac}/` | 具体引擎 |
+| `scene/gen/` | 程序化静态场景生成 |
+| `scene/map.py` · `floorplan.py` | 真值 OccupancyGrid / PLY；InteriorAgent rooms.json |
 
 ---
 
@@ -40,8 +50,8 @@ teleop /cmd_vel / PolicyDriver
             ▼
 ┌───────────────────────────────────────┐
 │  runtime.Runner                       │
-│  Robot · sensing.Sensors · Traffic    │
-│  io.Bridge · dataset.Collector        │
+│  Robot · bridge.Sensors · scene.World │
+│  bridge.Bridge · dataset.Collector    │
 └───────────────┬───────────────────────┘
                 ▼
 ┌───────────────────────────────────────┐
@@ -56,9 +66,10 @@ teleop /cmd_vel / PolicyDriver
 
 | 层 | 职责 |
 |----|------|
-| `runtime` | 周期积分、传感发布、录制钩子 |
-| `sensing` / `io` | 采样噪声与 Autolink 编解码 |
-| `scenario` | 与引擎无关的占据 / 动态体 |
+| `runtime` | 配置、周期积分、传感发布、录制钩子 |
+| `bridge` | 采样噪声与 Autolink 编解码 |
+| `scene` | 占据 / 环境 / 动态体（无 Kit / Habitat API） |
+| `robot` | 差速植物、URDF、可选 ONNX 策略 |
 | `dataset` | Episode 缓冲 → parquet / video / meta |
 | `backends.*` | 唯一接触 Habitat / Kit / 过程射线的代码 |
 
@@ -67,7 +78,7 @@ teleop /cmd_vel / PolicyDriver
 ## 3. 一拍（nav）
 
 1. 读 `/cmd_vel` 或 Policy → `Robot.step`  
-2. `WorldBackend.set_pose` / `step`；`Traffic.step`  
+2. `WorldBackend.set_pose` / `step`；`World.step(dt, robot=…)`  
 3. 按 rate 采 scan / camera → Bridge 发布  
 4. `DatasetCollector.tick`（若 `habitat.dataset.enabled`）  
 
@@ -85,9 +96,9 @@ teleop /cmd_vel / PolicyDriver
 
 | 类别 | 规则 | 示例 |
 |------|------|------|
-| 属性 / 变量 | 名词，无前缀 `_` | `last_scan`, `sensor_worker`, `episode` |
-| 函数 / 方法 | 动词 + 名词 | `poll_command`, `flush_episode`, `build_feeds` |
-| 常量 | 全大写 | `CAPABILITY_DEFAULTS`, `MAX_DEPTH_M` |
-| 日志 | `logger` | `logger = logging.getLogger(__name__)` |
+| 包 / 文件 | 名词；一文件一类（实现不放 `__init__`） | `runner.py` → `Runner` |
+| 属性 / 变量 | 名词，无前缀 `_` | `sensor_worker`, `episode` |
+| 函数 / 方法 | 动词 + 名词 | `poll_command`, `build_feeds` |
+| 常量 | 全大写 | `CAPABILITY_DEFAULTS` |
 
 保留 Python 惯例：`__init__` / `__all__` 等 dunder；循环中故意忽略的 `_` 除外。

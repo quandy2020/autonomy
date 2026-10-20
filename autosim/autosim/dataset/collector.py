@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 class DatasetCollector:
     """Buffer demonstration frames and write LeRobot episodes on flush.
 
-    Typical wiring from :class:`~autosim.runtime.loop.Runner`::
+    Typical wiring from :class:`~autosim.runtime.runner.Runner`::
 
         collector.record_frame(dt, timestamp=..., pose=..., velocity=..., action=...)
         ...
@@ -78,6 +78,7 @@ class DatasetCollector:
         action: Tuple[float, float],
         rgb: Optional[np.ndarray] = None,
         laser: Optional[np.ndarray] = None,
+        people: Optional[list] = None,
     ) -> None:
         """Accumulate time and append a frame when the record period elapses."""
         if not self.enabled or self.writer is None or self.closed:
@@ -89,12 +90,16 @@ class DatasetCollector:
         x, y, yaw = pose
         vx, wz = velocity
         command_vx, command_wz = action
+        meta: dict[str, Any] = {}
+        if people is not None and bool(self.config.get("include_people", False)):
+            meta["people"] = list(people)
         frame = Frame(
             timestamp=float(timestamp),
             state=np.array([x, y, yaw, vx, wz], dtype=np.float32),
             action=np.array([command_vx, command_wz], dtype=np.float32),
             rgb=None if rgb is None else np.asarray(rgb),
             laser=None if laser is None else np.asarray(laser, dtype=np.float32),
+            meta=meta,
         )
         self.episode.append(frame)
         limit = int(self.config.get("episode_frames", 0))

@@ -121,6 +121,7 @@ def config_from_habitat(habitat: Mapping[str, Any]) -> dict[str, Any]:
         "max_episodes": int(block.get("max_episodes", 0)),  # 0 = unlimited
         "include_image": bool(block.get("include_image", True)),
         "include_laser": bool(block.get("include_laser", True)),
+        "include_people": bool(block.get("include_people", False)),
         "image_hw": (height, width),
         "laser_bins": int(lidar.get("num_beams", 360))
         if bool(block.get("include_laser", True))

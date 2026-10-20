@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from autosim.io.messages import Messages
-from autosim.io.teleop import Teleop, constrain, make_simple_profile
+from autosim.bridge.messages import Messages
+from autosim.bridge.teleop import Teleop, constrain, make_simple_profile
 
 
 class FakeWriter:

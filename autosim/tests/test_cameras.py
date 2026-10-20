@@ -17,7 +17,7 @@ from pathlib import Path
 
 import pytest
 
-from autosim.sensing.cameras import (
+from autosim.bridge.cameras import (
     COMMODITY_HFOV_DEG,
     covers_full_circle,
     layout_names,
@@ -25,7 +25,7 @@ from autosim.sensing.cameras import (
     resolve_surround,
     ros_to_habitat_mount,
 )
-from autosim.config import Config
+from autosim.runtime import Config
 
 
 def test_four_and_six_cover_360_with_commodity_fov():
