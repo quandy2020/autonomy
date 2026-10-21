@@ -14,7 +14,8 @@ SPIRES_DEST="${ARGUS_SPIRES_DEST:-${HOME}/Downloads/oxford_spires_dataset}"
 SPIRES_SEQ="${ARGUS_SPIRES_SEQ:-2024-07-09-new-college-01}"
 SPIRES_CALIB="${ARGUS_SPIRES_CALIB:-${SPIRES_DEST}/calibration}"
 SPIRES_BIN="${ARGUS_SPIRES_BIN:-${ARGUS_ROOT}/build_spires/offline_spires_livo}"
-LIVO_CONFIG="${ARGUS_LIVO_CONFIG:-${ARGUS_ROOT}/config/livo_esikf.yaml}"
+# Default to Spires DiffCal YAML so offline scripts match live ArgusNode.
+LIVO_CONFIG="${ARGUS_LIVO_CONFIG:-${ARGUS_ROOT}/config/livo_esikf_spires.yaml}"
 HF_BIN="${HF_BIN:-hf}"
 
 argus_need() {

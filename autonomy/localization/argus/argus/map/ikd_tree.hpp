@@ -26,7 +26,9 @@
 #define ARGUS_MAP_IKD_TREE_HPP_
 
 #include <cstddef>
+#include <cstdint>
 #include <mutex>
+#include <unordered_set>
 #include <vector>
 
 #include <Eigen/Core>
@@ -70,10 +72,14 @@ public:
     void Build(const sensor::PointCloudXYZI& cloud);
 
     /**
-     * @brief Incremental insert; may trigger rebuild.
-     * @param cloud Points to insert (optionally downsampled).
+     * @brief Incremental insert (O(log n) per point); may trigger rebuild.
+     *
+     * When @c downsample_resolution > 0, keeps at most one point per voxel
+     * across the whole tree (not only within @p cloud).
+     * @param cloud Points to insert (world frame; caller convention).
+     * @return Number of points newly accepted into the tree.
      */
-    void AddPoints(const sensor::PointCloudXYZI& cloud);
+    std::size_t AddPoints(const sensor::PointCloudXYZI& cloud);
 
     /**
      * @brief k-NN search.
@@ -128,17 +134,22 @@ private:
     void Destroy(Node* n);
     Node* BuildRecursive(std::vector<Eigen::Vector3d>* pts, int begin, int end,
                          int depth);
+    void InsertRecursive(Node*& n, const Eigen::Vector3d& p, int depth);
+    void MaybeRebuildUnlocked();
     void NearestRecursive(const Node* n, const Eigen::Vector3d& q, int k,
                           std::vector<HeapItem>* heap) const;
     void RadiusRecursive(const Node* n, const Eigen::Vector3d& q, float r2,
                          std::vector<HeapItem>* out) const;
     void Flatten(const Node* n, std::vector<Eigen::Vector3d>* out) const;
     static Eigen::Vector3d ToVec(const sensor::PointType& p);
+    static std::int64_t VoxelKey(const Eigen::Vector3d& p, double res);
 
     IkdTreeConfig config_;
     Node* root_ = nullptr;
     std::size_t size_ = 0;
     std::size_t size_at_build_ = 0;
+    /** @brief Occupied voxels when downsample_resolution > 0 (cross-scan). */
+    std::unordered_set<std::int64_t> voxel_keys_;
     mutable std::mutex mutex_;
 };
 

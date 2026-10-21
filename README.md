@@ -133,19 +133,23 @@ Modern C++ · Autolink RT · Behavior trees · *No ROS runtime required*
     <td width="25%"><b>Runtime</b><br/><code>autolink/</code><br/><sub>SHM · RTPS · Action</sub></td>
     <td width="25%"><b>Messages</b><br/><code>automsgs/</code><br/><sub>Protobuf · codegen</sub></td>
     <td width="25%"><b>Localization</b><br/><code>autonomy/localization/</code><br/><sub>Cartographer · Atlas · Argus</sub></td>
-    <td width="25%"><b>Perception</b><br/><code>autonomy/perception/</code><br/><sub>Detect · track · depth</sub></td>
+    <td width="25%"><b>Perception</b><br/><code>autonomy/perception/</code><br/><sub>Base · Follow · costmap layers</sub></td>
   </tr>
   <tr>
-    <td><b>Map / Plan / Ctrl</b><br/><code>map · planning · control</code><br/><sub>costmap · Theta* · MPPI</sub></td>
-    <td><b>Tasks</b><br/><code>autonomy/task/</code><br/><sub>Behavior-tree nav</sub></td>
-    <td><b>Hardware</b><br/><code>autodriver/</code><br/><sub>Camera · LiDAR · IMU</sub></td>
-    <td><b>Sim / Viz</b><br/><code>autosim/ · autoviz/</code><br/><sub>Isaac · Qt OpenGL</sub></td>
+    <td><b>Map / Plan / Ctrl</b><br/><code>map · planning · control</code><br/><sub>Costmap · NavFn · RPP / MPPI</sub></td>
+    <td><b>Tasks</b><br/><code>autonomy/task/</code><br/><sub>BT navigator · TaskServer</sub></td>
+    <td><b>Bridge</b><br/><code>autonomy/bridge/</code><br/><sub>gRPC · <code>BUILD_GRPC</code></sub></td>
+    <td><b>HW / Sim / Viz</b><br/><code>autodriver · autosim · autoviz</code><br/><sub>Sensors · Isaac · Qt</sub></td>
   </tr>
 </table>
+
+Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `control` (`cmd_vel`), with TF `map → odom → base_link`. Domains can be trimmed via `AUTONOMY_BUILD_*` / `BUILD_*`.
 
 ---
 
 ## Quick Start
+
+Work from the **source root** (directory with top-level `CMakeLists.txt`, `scripts/`, `docker/`). In a monorepo that is often `…/src/autonomy`.
 
 <table>
   <tr>
@@ -156,9 +160,15 @@ Modern C++ · Autolink RT · Behavior trees · *No ROS runtime required*
 ```bash
 git clone --recurse-submodules \
   https://github.com/quandy2020/autonomy.git
-cd autonomy
+cd autonomy   # or cd …/src/autonomy
+
 export AUTONOMY_ENV="$PWD"
+# optional offline datasets → container /data
+# export AUTONOMY_DATASETS=/path/to/datasets
+
 python3 docker/run_autonomy.py -p x86_64
+# GPU image:
+# python3 docker/run_autonomy.py -p x86_64 -n yes
 ```
 
 </td>
@@ -167,14 +177,24 @@ python3 docker/run_autonomy.py -p x86_64
 **② Build & launch stack**
 
 ```bash
-cd /workspace/autonomy
-cmake -S . -B build -G Ninja
+cd /workspace/autonomy   # inside container
+# host path if building outside Docker
+
+python3 scripts/install_dependencies.py --skip-installed
+cmake -S . -B build -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_PREFIX_PATH=/usr/local
 cmake --build build -j"$(nproc)"
 
-export PATH="$PWD/build/bin:$PATH"
-export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/system/launch"
-export AUTONOMY_BT_PLUGIN_PATH="$PWD/build/lib"
+source scripts/setup_environment.bash
 autolink_launch autonomy.launch
+```
+
+Nav-only smoke (planning + control + task):
+
+```bash
+autolink launch start task.launch
+# do not run together with autonomy.launch
 ```
 
 </td>
@@ -185,16 +205,31 @@ autolink_launch autonomy.launch
 <summary><b>Argus localization</b> (autosim / Oxford Spires → <code>/imu</code> · <code>/points</code>)</summary>
 
 ```bash
+# Host: mount datasets, then recreate the container if needed
+export AUTONOMY_DATASETS=/path/to/datasets
+AUTONOMY_FORCE_RECREATE=1 python3 docker/run_autonomy.py -p x86_64 -n yes
+
+# Container: localization
 export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/localization/launch"
 autolink launch start localization_argus.launch
-# 另一终端：数据集 publish（见 autonomy/tools/datasets/README.md）
-python -m autonomy.tools.datasets publish \
-  --dataset spires --path /path/to/sequences/<name> --rate 1.0
+
+# Another terminal: publish sequence (under /data)
+export LD_LIBRARY_PATH="/workspace/autonomy/install/autonomy/lib:/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="/workspace/autonomy/src/autonomy:/workspace/autonomy/install/autonomy/python:/workspace/autonomy/install/autonomy/lib/python:${PYTHONPATH:-}"
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset spires \
+  --path /data/Oxford/sequences/2024-03-12-keble-college-02 \
+  --rate 1.0
 ```
+
+
+See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/localization/README.md).
 
 </details>
 
 <p align="center">
+  <a href="docs/source/01_Instructions/00_guide.md">Getting started</a>
+  &nbsp;·&nbsp;
   <a href="docs/source/04_Running/02_quickstart.md">Quick Run</a>
   &nbsp;·&nbsp;
   <a href="docs/source/02_Installation/05_docker.md">Docker</a>
@@ -215,6 +250,8 @@ python -m autonomy.tools.datasets publish \
   &nbsp;·&nbsp;
   <a href="autonomy/localization/README.md">Localization</a>
   &nbsp;·&nbsp;
+  <a href="autonomy/bridge/README.md">Bridge</a>
+  &nbsp;·&nbsp;
   <a href="autodriver/README.md">AutoDriver</a>
   &nbsp;·&nbsp;
   <a href="autosim/README.md">AutoSim</a>
@@ -222,18 +259,20 @@ python -m autonomy.tools.datasets publish \
   <a href="autoviz/README.md">AutoViz</a>
   &nbsp;·&nbsp;
   <a href="ansible/README.md">Ansible</a>
-  &nbsp;·&nbsp;
-  <a href="autocmake/README.md">autocmake</a>
 </p>
 
 <p align="center">
   <sub>
     <a href="docs/source/02_Installation/00_guide.md">Install</a> ·
+    <a href="docs/source/03_Communication/00_guide.md">Autolink</a> ·
     <a href="docs/source/04_Running/00_guide.md">Run</a> ·
-    <a href="docs/source/06_Localization/index.rst">SLAM</a> ·
-    <a href="docs/source/12_Simulation/index.rst">Sim</a> ·
-    <a href="docs/source/17_Tasks/index.rst">Tasks</a> ·
-    <a href="docs/source/19_FAQs/index.rst">FAQs</a> ·
+    <a href="docs/source/06_Localization/00_guide.md">Localization</a> ·
+    <a href="docs/source/08_Planning/00_guide.md">Planning</a> ·
+    <a href="docs/source/09_Control/00_guide.md">Control</a> ·
+    <a href="docs/source/15_Bridge/00_guide.md">Bridge</a> ·
+    <a href="docs/source/16_Navigator/00_guide.md">Navigator</a> ·
+    <a href="docs/source/18_Tools/08_datasets.md">Datasets</a> ·
+    <a href="docs/source/19_FAQs/00_guide.md">FAQs</a> ·
     <a href="https://autonomy.readthedocs.io/en/latest/index.html">readthedocs</a>
   </sub>
 </p>

@@ -71,6 +71,60 @@ class DisplayTreeWidget : public QTreeWidget {
    */
   bool isEditing() const { return state() == EditingState; }
 
+  /**
+   * @brief True while DisplaysPanel is clearing / rebuilding items.
+   *
+   * Delegates and paint must not touch @c QTreeWidgetItem via model indexes.
+   */
+  bool isRebuilding() const { return rebuilding_ > 0; }
+
+  /**
+   * @brief When true, skip all paints (startup / post-Ogre first-frame races).
+   *
+   * QTreeView::drawRow has SEGV'd on the first paint after RenderSystem ready
+   * under Docker/X11 with a fully populated TF property tree.
+   */
+  void setPaintSuppressed(bool suppressed) { paint_suppressed_ = suppressed; }
+
+  bool isPaintSuppressed() const { return paint_suppressed_; }
+
+  /**
+   * @class RebuildGuard
+   * @brief RAII: blocks paints and marks @ref isRebuilding() for structural edits.
+   */
+  class RebuildGuard {
+   public:
+    explicit RebuildGuard(DisplayTreeWidget* tree) : tree_(tree) {
+      if (tree_ == nullptr) {
+        return;
+      }
+      ++tree_->rebuilding_;
+      if (tree_->rebuilding_ == 1) {
+        restore_updates_ = tree_->updatesEnabled();
+        if (restore_updates_) {
+          tree_->setUpdatesEnabled(false);
+        }
+      }
+    }
+    ~RebuildGuard() {
+      if (tree_ == nullptr) {
+        return;
+      }
+      if (tree_->rebuilding_ > 0) {
+        --tree_->rebuilding_;
+      }
+      if (tree_->rebuilding_ == 0 && restore_updates_) {
+        tree_->setUpdatesEnabled(true);
+      }
+    }
+    RebuildGuard(const RebuildGuard&) = delete;
+    RebuildGuard& operator=(const RebuildGuard&) = delete;
+
+   private:
+    DisplayTreeWidget* tree_ = nullptr;
+    bool restore_updates_ = false;
+  };
+
  signals:
   /**
    * @brief Emitted after a successful drop reorders or regroups Displays.
@@ -123,6 +177,16 @@ class DisplayTreeWidget : public QTreeWidget {
    * @param event Paint event.
    */
   void paintEvent(QPaintEvent* event) override;
+
+  /**
+   * @brief Skips style polish / layout while updates are disabled (tree rebuild).
+   */
+  bool event(QEvent* event) override;
+
+  /**
+   * @brief Avoids walking dead QTreeWidgetItems during structural rebuild.
+   */
+  int sizeHintForColumn(int column) const override;
 
  private:
   /**
@@ -321,6 +385,12 @@ class DisplayTreeWidget : public QTreeWidget {
 
   /** Debounced timer for hover-expand during drag. */
   QTimer* hover_expand_timer_ = nullptr;
+
+  /** Nesting count for @ref RebuildGuard (structural wipe in progress). */
+  int rebuilding_ = 0;
+
+  /** Blocks QTreeView::paintEvent until DisplaysPanel arms painting. */
+  bool paint_suppressed_ = false;
 };
 
 }  // namespace autoviz

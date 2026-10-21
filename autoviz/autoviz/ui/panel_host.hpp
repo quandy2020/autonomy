@@ -100,6 +100,12 @@ class MainPanelHost : public QMainWindow {
   bool hostsPanel(const QDockWidget* dock) const;
 
   /**
+   * @brief Docks currently attached under the mosaic splitter tree.
+   * @return Hosted docks (order not significant).
+   */
+  QList<QDockWidget*> hostedPanels() const;
+
+  /**
    * @brief Attach a single panel (e.g. after show) without a full retile.
    * @param dock Dock to add to the current splitter layout.
    */
@@ -117,6 +123,12 @@ class MainPanelHost : public QMainWindow {
    * Call after undock / close so remaining panes expand into freed space.
    */
   void scrubEmptyPanes();
+
+  /**
+   * @brief Whether @ref removePanel / @ref scrubEmptyPanes is restructuring the
+   *        mosaic (visibilityChanged must not re-enter those paths).
+   */
+  bool isMutatingMosaic() const { return mutating_mosaic_; }
 
   /**
    * @brief Replace @p old_dock with @p new_dock in the same mosaic leaf.
@@ -261,12 +273,6 @@ class MainPanelHost : public QMainWindow {
   void equalizeTopLevel();
 
   /**
-   * @brief Collects docks currently attached under @c root_splitter_.
-   * @return List of hosted docks.
-   */
-  QList<QDockWidget*> hostedPanels() const;
-
-  /**
    * @brief Parks a dock under @ref parking_ (never as a QMainWindow child).
    *
    * @c QDockWidget::setParent(QMainWindow*) engages Qt dock machinery and can
@@ -285,6 +291,13 @@ class MainPanelHost : public QMainWindow {
 
   /** Re-entrancy guard while @ref tilePanels() rebuilds the tree. */
   bool tiling_ = false;
+
+  /**
+   * Re-entrancy guard for @ref removePanel / @ref scrubEmptyPanes.
+   * @c QSplitter::replaceWidget hides children and emits
+   * @c QDockWidget::visibilityChanged — handlers must not mutate again.
+   */
+  bool mutating_mosaic_ = false;
 
   /** Edge-drop highlight drawn above mosaic panes while dragging. */
   DropOverlay* drop_overlay_ = nullptr;

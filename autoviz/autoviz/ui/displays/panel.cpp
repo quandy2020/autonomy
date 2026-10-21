@@ -26,7 +26,7 @@
 #include <QQuaternion>
 #include <QSet>
 #include <QSignalBlocker>
-#include <QTextBrowser>
+#include <QLabel>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QVector3D>
@@ -41,6 +41,7 @@
 #include "autoviz/plugins/displays/display_group.hpp"
 #include "autoviz/plugins/displays/tf/tf_display.hpp"
 #include "autoviz/ui/displays/add_dialog.hpp"
+#include "autoviz/ui/displays/tree.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
@@ -98,6 +99,18 @@ void SetTreeItemMeta(QTreeWidgetItem* item, DisplayTreeItemKind kind,
   };
   write_col(kDisplayTreeColName);
   write_col(kDisplayTreeColValue);
+}
+
+void SetTreeItemTypeId(QTreeWidgetItem* item, const QString& type_id) {
+  item->setData(kDisplayTreeColName, kDisplayTreeRoleTypeId, type_id);
+  item->setData(kDisplayTreeColValue, kDisplayTreeRoleTypeId, type_id);
+}
+
+void SetTreeItemStatusLevel(QTreeWidgetItem* item,
+                            display::DisplayStatusLevel level) {
+  const int v = static_cast<int>(level);
+  item->setData(kDisplayTreeColName, kDisplayTreeRoleStatusLevel, v);
+  item->setData(kDisplayTreeColValue, kDisplayTreeRoleStatusLevel, v);
 }
 
 Qt::ItemFlags NameColumnFlags(bool editable_value) {
@@ -423,6 +436,12 @@ void RebuildTfTreeCategory(QTreeWidgetItem* tree_cat, int display_index,
   CollectExpandedTreeKeys(tree_cat, &expanded_keys);
   const bool tree_expanded = tree_cat->isExpanded();
 
+  // Structural wipe must not interleave with QTreeView::paintEvent — that
+  // races Qt's stylesheet matcher (QCss::Selector::pseudoClass SEGV).
+  auto* display_tree =
+      qobject_cast<DisplayTreeWidget*>(tree_cat->treeWidget());
+  DisplayTreeWidget::RebuildGuard rebuild_guard(display_tree);
+
   while (tree_cat->childCount() > 0) {
     delete tree_cat->takeChild(0);
   }
@@ -517,7 +536,40 @@ DisplaysPanel::DisplaysPanel(
   tf_pose_timer_->setTimerType(Qt::PreciseTimer);
   tf_pose_timer_->setInterval(50);  // 20Hz for expanded Frames pose fields
   connect(tf_pose_timer_, &QTimer::timeout, this, &DisplaysPanel::onTfPoseTick);
+  status_refresh_grace_.start();
+  // Build the tree under paint suppress so the first QTreeView::drawRow after
+  // Ogre "RenderSystem ready" does not SEGV (Docker/X11 + live Argus).
+  // FrameSession::applyStartupWindowState() calls armTreePainting() after show;
+  // keep a short fallback so the panel is never blank for many seconds.
+  if (tree_ != nullptr) {
+    tree_->setPaintSuppressed(true);
+  }
   refresh();
+  QTimer::singleShot(2500, this, [this]() { armTreePainting(); });
+}
+
+void DisplaysPanel::armTreePainting() {
+  if (tree_ == nullptr || !tree_->isPaintSuppressed()) {
+    return;
+  }
+  tree_->setPaintSuppressed(false);
+  tree_->setUpdatesEnabled(true);
+  tree_->viewport()->update();
+  tree_->update();
+}
+
+DisplaysPanel::~DisplaysPanel() {
+  live_updates_paused_ = true;
+  updating_ = true;
+  if (tf_pose_timer_ != nullptr) {
+    tf_pose_timer_->stop();
+  }
+  // Do not clear() here: Qt destroys the tree/header after this returns;
+  // clear()+RebuildGuard re-enable raced QHeaderView::~QHeaderView (SEGV).
+  if (tree_ != nullptr) {
+    tree_->blockSignals(true);
+    tree_->setUpdatesEnabled(false);
+  }
 }
 
 void DisplaysPanel::paintEvent(QPaintEvent* /*event*/) {
@@ -531,11 +583,10 @@ void DisplaysPanel::setupUi() {
   layout->setContentsMargins(4, 4, 4, 4);
   layout->setSpacing(0);
 
-  splitter_ = new QSplitter(Qt::Vertical, this);
-  splitter_->setObjectName(QStringLiteral("DisplayPanel/TreeWithHelp"));
-  splitter_->setStyleSheet(style::sheet(QStringLiteral("displays"), style::tokens()));
-
-  tree_ = new DisplayTreeWidget(manager_, splitter_);
+  // Tree fills the panel; help is a compact strip under it (not a QSplitter
+  // pane — the old vertical splitter let help steal most of the height and
+  // left a huge blank band above Add/Duplicate/Remove).
+  tree_ = new DisplayTreeWidget(manager_, this);
   tree_->setObjectName(QStringLiteral("DisplayPanel/PropertyTree"));
   tree_->setColumnCount(2);
   tree_->setHeaderHidden(true);
@@ -544,7 +595,8 @@ void DisplaysPanel::setupUi() {
   // Match rviz PropertyTree density (status / class icons ~16px, not Foxglove 28).
   tree_->setIconSize(QSize(16, 16));
   tree_->setUniformRowHeights(true);
-  tree_->setAnimated(true);
+  // Off: expand animation during live TF/property refresh races tree rebuild.
+  tree_->setAnimated(false);
   tree_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   tree_->setAttribute(Qt::WA_TranslucentBackground, true);
   tree_->setAutoFillBackground(false);
@@ -552,13 +604,22 @@ void DisplaysPanel::setupUi() {
   tree_->viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
   tree_->setAttribute(Qt::WA_MacShowFocusRect, false);
   tree_->setAllColumnsShowFocus(false);
+  tree_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   tree_->header()->setStretchLastSection(true);
+  // Interactive (not ResizeToContents): content-sizing walks every index via
+  // sizeHintForColumn during updateGeometries, which UAF's QTreeWidgetItem::data
+  // while TF Frames/Tree children are wiped under live /tf.
   tree_->header()->setSectionResizeMode(kDisplayTreeColName,
-                                        QHeaderView::ResizeToContents);
+                                        QHeaderView::Interactive);
+  tree_->header()->resizeSection(kDisplayTreeColName, 220);
   tree_->setItemDelegateForColumn(kDisplayTreeColName,
                                   new DisplayNameTreeDelegate(tree_));
-  tree_->setStyleSheet(PanelFrostedTreeStyle());
+  // Bypass app QSS (::item/::branch) — live Argus refresh MetaCalls otherwise
+  // SEGV in QCss::Selector::pseudoElement against a mutating property tree.
+  DetachItemViewFromStyleSheets(tree_);
   QPalette tree_pal = tree_->palette();
+  tree_pal.setBrush(QPalette::Base, Qt::transparent);
+  tree_pal.setBrush(QPalette::Window, Qt::transparent);
   tree_pal.setBrush(QPalette::Highlight, Qt::transparent);
   tree_pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
   tree_pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
@@ -566,25 +627,32 @@ void DisplaysPanel::setupUi() {
                     QColor(0x0F, 0x76, 0x6E));
   tree_->setPalette(tree_pal);
 
-  help_ = new QTextBrowser(splitter_);
+  help_ = new QLabel(this);
   help_->setObjectName(QStringLiteral("DisplayPanel/Help"));
+  help_->setTextFormat(Qt::RichText);
+  help_->setWordWrap(true);
+  help_->setAlignment(Qt::AlignLeft | Qt::AlignTop);
   help_->setOpenExternalLinks(true);
+  help_->setTextInteractionFlags(Qt::TextBrowserInteraction);
   help_->setAttribute(Qt::WA_StyledBackground, true);
-  help_->setStyleSheet(PanelFrostedHelpStyle());
-  // Keep title + multi-line description readable (splitter default was ~1px).
-  help_->setMinimumHeight(120);
-  help_->setMaximumHeight(260);
-  help_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  help_->setStyleSheet(QString());
+  {
+    QPalette pal = help_->palette();
+    pal.setColor(QPalette::WindowText, QColor(0x47, 0x55, 0x69));
+    pal.setColor(QPalette::Text, QColor(0x47, 0x55, 0x69));
+    pal.setBrush(QPalette::Window, QColor(255, 255, 255, 108));
+    pal.setBrush(QPalette::Base, QColor(255, 255, 255, 108));
+    help_->setPalette(pal);
+    help_->setAutoFillBackground(true);
+  }
+  help_->setContentsMargins(12, 8, 14, 8);
+  help_->setMinimumHeight(0);
+  help_->setMaximumHeight(140);
+  help_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+  help_->hide();
 
-  splitter_->addWidget(tree_);
-  splitter_->addWidget(help_);
-  splitter_->setStretchFactor(0, 5);
-  splitter_->setStretchFactor(1, 0);
-  splitter_->setCollapsible(0, false);
-  splitter_->setCollapsible(1, false);
-  splitter_->setSizes({1000, 140});
-
-  layout->addWidget(splitter_, 1);
+  layout->addWidget(tree_, /*stretch=*/1);
+  layout->addWidget(help_, /*stretch=*/0);
 
   auto* footer = new QFrame(this);
   footer->setObjectName(QStringLiteral("DisplaysFrostedFooter"));
@@ -659,6 +727,13 @@ void DisplaysPanel::setupUi() {
     if (updating_ || item == nullptr || manager_ == nullptr) {
       return;
     }
+    // Same startup race as pose tick — structural TF sync during first paints
+    // after Ogre ready has SEGV'd in QTreeWidgetItem::data / sizeHint.
+    constexpr qint64 kGraceMs = 10000;
+    if (!status_refresh_grace_.isValid() ||
+        status_refresh_grace_.elapsed() < kGraceMs) {
+      return;
+    }
     const auto kind = static_cast<DisplayTreeItemKind>(
         item->data(kDisplayTreeColName, kDisplayTreeRoleKind).toInt());
     if (kind != DisplayTreeItemKind::kDisplay &&
@@ -708,8 +783,8 @@ void DisplaysPanel::setupUi() {
 void DisplaysPanel::populateGlobalOptions() {
   auto* global = new QTreeWidgetItem(tree_);
   global->setText(kDisplayTreeColName, tr("Global Options"));
-  global->setIcon(kDisplayTreeColName,
-                  IconLoader::load(QStringLiteral(":/autoviz/icons/tool/options.svg")));
+  // No setIcon on tree items: QIcon/QPixmap in item data SEGV's under live
+  // Argus paint (QIcon::actualSize / QPixmapIconEngine recursion).
   global->setExpanded(true);
   global->setFlags(NameColumnFlags(false));
   SetTreeItemMeta(global, DisplayTreeItemKind::kGlobalOptions, -1, {},
@@ -801,8 +876,6 @@ void DisplaysPanel::updateGlobalStatus() {
       auto* child = new QTreeWidgetItem(status);
       child->setText(kDisplayTreeColName, row.name);
       child->setText(kDisplayTreeColValue, row.message);
-      child->setIcon(kDisplayTreeColValue,
-                     IconLoader::statusIcon(row.level, true));
       child->setFlags(NameColumnFlags(false));
       child->setForeground(
           kDisplayTreeColValue,
@@ -811,6 +884,7 @@ void DisplaysPanel::updateGlobalStatus() {
                      : QColor(200, 140, 0)));
       SetTreeItemMeta(child, DisplayTreeItemKind::kGlobalStatusMessage,
                       row.index);
+      SetTreeItemStatusLevel(child, row.level);
     }
   }
 
@@ -819,21 +893,15 @@ void DisplaysPanel::updateGlobalStatus() {
     status->setText(kDisplayTreeColValue, summary);
   }
   if (errors > 0) {
-    status->setIcon(kDisplayTreeColValue,
-                    IconLoader::statusIcon(display::DisplayStatusLevel::kError,
-                                           true));
     status->setForeground(kDisplayTreeColValue, QBrush(Qt::red));
+    SetTreeItemStatusLevel(status, display::DisplayStatusLevel::kError);
   } else if (warns > 0) {
-    status->setIcon(kDisplayTreeColValue,
-                    IconLoader::statusIcon(display::DisplayStatusLevel::kWarn,
-                                           true));
     status->setForeground(kDisplayTreeColValue, QBrush(QColor(200, 140, 0)));
+    SetTreeItemStatusLevel(status, display::DisplayStatusLevel::kWarn);
   } else {
-    status->setIcon(kDisplayTreeColValue,
-                    IconLoader::statusIcon(display::DisplayStatusLevel::kOk,
-                                           true));
     status->setForeground(kDisplayTreeColValue,
                           tree_->palette().brush(QPalette::Text));
+    SetTreeItemStatusLevel(status, display::DisplayStatusLevel::kOk);
   }
 
   const int issue_count = errors + warns;
@@ -848,9 +916,6 @@ void DisplaysPanel::updateGlobalStatus() {
 void DisplaysPanel::populateGlobalStatus() {
   auto* status = new QTreeWidgetItem(tree_);
   status->setText(kDisplayTreeColName, tr("Global Status"));
-  status->setIcon(
-      kDisplayTreeColName,
-      IconLoader::load(QStringLiteral(":/autoviz/icons/status/global.svg")));
   status->setFlags(NameColumnFlags(false));
   SetTreeItemMeta(status, DisplayTreeItemKind::kGlobalStatus, -1, {},
                   tr("Shows aggregated errors and warnings from displays."));
@@ -865,14 +930,13 @@ void DisplaysPanel::populateDisplayProperties(QTreeWidgetItem* display_item,
   status->setText(kDisplayTreeColName, tr("Status"));
   status->setFlags(NameColumnFlags(false));
   const display::DisplayStatus display_status = display->status();
-  status->setIcon(kDisplayTreeColValue,
-                  IconLoader::statusIcon(display_status.level, display->enabled()));
   status->setText(kDisplayTreeColValue,
                   display_status.message.empty()
                       ? tr("Ok")
                       : QString::fromStdString(display_status.message));
   SetTreeItemMeta(status, DisplayTreeItemKind::kDisplayStatus,
                   static_cast<int>(index), {}, {}, child_index);
+  SetTreeItemStatusLevel(status, display_status.level);
 
   // Topic-backed displays always expose Channel — even when empty — so the
   // user can pick a topic after adding by type (Status "No topic set").
@@ -1040,8 +1104,6 @@ void DisplaysPanel::populateDisplays() {
     }
     auto* item = new QTreeWidgetItem(tree_);
     item->setText(kDisplayTreeColName, QString::fromStdString(display->name()));
-    item->setIcon(kDisplayTreeColName,
-                  IconLoader::displayIcon(QString::fromStdString(display->typeId())));
     item->setFlags(DisplayRowFlags());
     item->setCheckState(kDisplayTreeColValue,
                         display->enabled() ? Qt::Checked : Qt::Unchecked);
@@ -1049,6 +1111,7 @@ void DisplaysPanel::populateDisplays() {
     SetTreeItemMeta(item, DisplayTreeItemKind::kDisplay, static_cast<int>(i),
                     {}, tr("Drag onto a Group to nest, or above/below to "
                            "reorder. Use the grip on the left."));
+    SetTreeItemTypeId(item, QString::fromStdString(display->typeId()));
     populateDisplayProperties(item, display, i, -1);
 
     if (auto* group = dynamic_cast<display::DisplayGroup*>(display)) {
@@ -1061,9 +1124,6 @@ void DisplaysPanel::populateDisplays() {
         auto* child_item = new QTreeWidgetItem(item);
         child_item->setText(kDisplayTreeColName,
                             QString::fromStdString(child->name()));
-        child_item->setIcon(
-            kDisplayTreeColName,
-            IconLoader::displayIcon(QString::fromStdString(child->typeId())));
         child_item->setFlags(DisplayRowFlags());
         child_item->setCheckState(kDisplayTreeColValue,
                                   child->enabled() ? Qt::Checked : Qt::Unchecked);
@@ -1072,6 +1132,7 @@ void DisplaysPanel::populateDisplays() {
                         static_cast<int>(i), {},
                         tr("Drag to reorder or move into another Group."),
                         static_cast<int>(ci));
+        SetTreeItemTypeId(child_item, QString::fromStdString(child->typeId()));
         populateDisplayProperties(child_item, child, i, static_cast<int>(ci));
       }
     }
@@ -1079,6 +1140,10 @@ void DisplaysPanel::populateDisplays() {
 }
 
 void DisplaysPanel::populateTree() {
+  // Always gate paints around clear()+rebuild — callers that forget
+  // RebuildGuard otherwise race QTreeView::paintEvent and SEGV in
+  // QTreeWidgetItem::data via DisplayNameTreeDelegate::paint.
+  DisplayTreeWidget::RebuildGuard rebuild_guard(tree_);
   tree_->clear();
   populateGlobalOptions();
   populateGlobalStatus();
@@ -1102,17 +1167,20 @@ void DisplaysPanel::refresh() {
   }
 
   updating_ = true;
-  global_status_issue_count_ = 0;
-  channel_list_fingerprint_.clear();
-  global_status_fingerprint_.clear();
-  updateChannelDelegate();
-  for (const auto& name : manager_->channelNames()) {
-    channel_list_fingerprint_ += QString::fromStdString(name);
-    channel_list_fingerprint_ += QLatin1Char('\n');
-  }
-  populateTree();
-  if (preserve_expansion) {
-    ApplyTreeExpansionState(tree_, expanded_state);
+  {
+    DisplayTreeWidget::RebuildGuard rebuild_guard(tree_);
+    global_status_issue_count_ = 0;
+    channel_list_fingerprint_.clear();
+    global_status_fingerprint_.clear();
+    updateChannelDelegate();
+    for (const auto& name : manager_->channelNames()) {
+      channel_list_fingerprint_ += QString::fromStdString(name);
+      channel_list_fingerprint_ += QLatin1Char('\n');
+    }
+    populateTree();
+    if (preserve_expansion) {
+      ApplyTreeExpansionState(tree_, expanded_state);
+    }
   }
   updating_ = false;
 }
@@ -1138,6 +1206,7 @@ void DisplaysPanel::syncTfDisplayProperties(QTreeWidgetItem* display_item,
   // Creating checkable items emits itemChanged with Unchecked by default;
   // block so we never persist a spurious All Enabled / per-frame disable.
   const QSignalBlocker blocker(tree_);
+  DisplayTreeWidget::RebuildGuard rebuild_guard(tree_);
 
   const int display_index =
       display_item->data(kDisplayTreeColName, kDisplayTreeRoleDisplayIndex)
@@ -1275,7 +1344,15 @@ void DisplaysPanel::updateTfPoseTimerState() {
   }
 }
 
-void DisplaysPanel::onTfPoseTick() { syncTfExpandedPoseFields(); }
+void DisplaysPanel::onTfPoseTick() {
+  // Same startup race as refreshStatus — skip until grace elapses.
+  constexpr qint64 kGraceMs = 10000;
+  if (!status_refresh_grace_.isValid() ||
+      status_refresh_grace_.elapsed() < kGraceMs) {
+    return;
+  }
+  syncTfExpandedPoseFields();
+}
 
 void DisplaysPanel::syncTfExpandedPoseFields() {
   if (live_updates_paused_ || updating_ || tree_ == nullptr ||
@@ -1361,9 +1438,15 @@ void DisplaysPanel::syncTfExpandedPoseFields() {
 }
 
 void DisplaysPanel::refreshStatus() {
+  // Periodic status tree writes race Ogre/Qt paint under live Autolink and
+  // have SEGV'd (deep walk UAF, then QCss/getOpaqueChildren). Status still
+  // updates via populateTree / selection; keep the 1Hz path off for now.
+  Q_UNUSED(status_refresh_grace_);
+  return;
   // Do not touch the tree while an in-place editor is open — setText/setData
   // would close/commit the editor and make property clicks feel frozen.
-  if (tree_ != nullptr && tree_->isEditing()) {
+  if (tree_ == nullptr || manager_ == nullptr || tree_->isEditing() ||
+      updating_) {
     return;
   }
 
@@ -1380,73 +1463,78 @@ void DisplaysPanel::refreshStatus() {
     updateChannelDelegate();
   }
 
+  // Shallow only: top-level display rows → direct Status/Channel children.
+  // Deep recursion into TF Frames/Tree under live /tf UAF'd QTreeWidgetItems
+  // (refreshStatus lambda SEGV) and then corrupted QCss paint.
   int display_items = 0;
-  std::function<void(QTreeWidgetItem*)> walk = [&](QTreeWidgetItem* item) {
-    if (item == nullptr) {
-      return;
+  const int top_count = tree_->topLevelItemCount();
+  for (int ti = 0; ti < top_count; ++ti) {
+    QTreeWidgetItem* display_item = tree_->topLevelItem(ti);
+    if (display_item == nullptr) {
+      continue;
     }
-    const auto kind = static_cast<DisplayTreeItemKind>(
-        item->data(kDisplayTreeColName, kDisplayTreeRoleKind).toInt());
-    if (kind == DisplayTreeItemKind::kDisplay) {
+    const auto display_kind = static_cast<DisplayTreeItemKind>(
+        display_item->data(kDisplayTreeColName, kDisplayTreeRoleKind).toInt());
+    if (display_kind != DisplayTreeItemKind::kDisplay &&
+        display_kind != DisplayTreeItemKind::kDisplayChild) {
+      continue;
+    }
+    if (display_kind == DisplayTreeItemKind::kDisplay) {
       ++display_items;
     }
-    if (kind == DisplayTreeItemKind::kDisplay ||
-        kind == DisplayTreeItemKind::kDisplayChild) {
-      const int index =
-          item->data(kDisplayTreeColName, kDisplayTreeRoleDisplayIndex).toInt();
-      const int child_index =
-          item->data(kDisplayTreeColName, kDisplayTreeRoleChildIndex).toInt();
-      display::Display* display =
-          manager_->displayAt(static_cast<std::size_t>(index), child_index);
-      if (auto* tf = dynamic_cast<display::TfDisplay*>(display)) {
-        syncTfDisplayProperties(item, tf);
+    const int child_count = display_item->childCount();
+    for (int ci = 0; ci < child_count; ++ci) {
+      QTreeWidgetItem* item = display_item->child(ci);
+      if (item == nullptr) {
+        continue;
       }
-    }
-    if (kind == DisplayTreeItemKind::kDisplayStatus ||
-        kind == DisplayTreeItemKind::kDisplayChannel) {
+      const auto kind = static_cast<DisplayTreeItemKind>(
+          item->data(kDisplayTreeColName, kDisplayTreeRoleKind).toInt());
+      if (kind != DisplayTreeItemKind::kDisplayStatus &&
+          kind != DisplayTreeItemKind::kDisplayChannel) {
+        continue;
+      }
       const int index =
           item->data(kDisplayTreeColName, kDisplayTreeRoleDisplayIndex).toInt();
       const int child_index =
           item->data(kDisplayTreeColName, kDisplayTreeRoleChildIndex).toInt();
       display::Display* display =
           manager_->displayAt(static_cast<std::size_t>(index), child_index);
-      if (display != nullptr) {
-        if (kind == DisplayTreeItemKind::kDisplayStatus) {
-          const display::DisplayStatus display_status = display->status();
-          const QString text = display_status.message.empty()
-                                   ? tr("Ok")
-                                   : QString::fromStdString(display_status.message);
-          if (item->text(kDisplayTreeColValue) != text) {
-            item->setText(kDisplayTreeColValue, text);
-          }
-          item->setIcon(kDisplayTreeColValue,
-                        IconLoader::statusIcon(display_status.level,
-                                               display->enabled()));
-        } else if (channels_changed) {
-          const QString joined =
-              CompatibleChannelsForDisplay(*manager_, *display)
-                  .join(QLatin1Char('\n'));
-          if (item->data(kDisplayTreeColValue, kDisplayTreeRoleChannelOptions)
-                  .toString() != joined) {
-            item->setData(kDisplayTreeColName, kDisplayTreeRoleChannelOptions,
-                          joined);
-            item->setData(kDisplayTreeColValue, kDisplayTreeRoleChannelOptions,
-                          joined);
-          }
+      if (display == nullptr) {
+        continue;
+      }
+      if (kind == DisplayTreeItemKind::kDisplayStatus) {
+        const display::DisplayStatus display_status = display->status();
+        const QString text = display_status.message.empty()
+                                 ? tr("Ok")
+                                 : QString::fromStdString(display_status.message);
+        if (item->text(kDisplayTreeColValue) != text) {
+          item->setText(kDisplayTreeColValue, text);
+        }
+      } else if (channels_changed) {
+        const QString joined =
+            CompatibleChannelsForDisplay(*manager_, *display)
+                .join(QLatin1Char('\n'));
+        if (item->data(kDisplayTreeColValue, kDisplayTreeRoleChannelOptions)
+                .toString() != joined) {
+          item->setData(kDisplayTreeColName, kDisplayTreeRoleChannelOptions,
+                        joined);
+          item->setData(kDisplayTreeColValue, kDisplayTreeRoleChannelOptions,
+                        joined);
         }
       }
     }
-    for (int i = 0; i < item->childCount(); ++i) {
-      walk(item->child(i));
-    }
-  };
-  for (int i = 0; i < tree_->topLevelItemCount(); ++i) {
-    walk(tree_->topLevelItem(i));
   }
 
+  // Mismatch: defer full rebuild to next idle tick — sync refresh() here
+  // races paint under Autolink discovery storms.
   if (display_items != static_cast<int>(manager_->displays().size())) {
     updating_ = false;
-    refresh();
+    QTimer::singleShot(0, this, [this]() {
+      if (!updating_ && tree_ != nullptr && !tree_->isEditing()) {
+        refresh();
+      }
+    });
     return;
   }
   updateGlobalStatus();
@@ -1488,25 +1576,31 @@ QTreeWidgetItem* DisplaysPanel::findItemByKind(
 }
 
 void DisplaysPanel::updateHelp(QTreeWidgetItem* item) {
-  if (item == nullptr || help_ == nullptr) {
+  if (help_ == nullptr) {
+    return;
+  }
+  if (item == nullptr) {
     help_->clear();
+    help_->hide();
     return;
   }
   const QString heading = item->text(kDisplayTreeColName);
   const QString body =
       item->data(kDisplayTreeColName, kDisplayTreeRoleDescription).toString();
   if (body.isEmpty()) {
-    help_->setHtml(QString());
+    help_->clear();
+    help_->hide();
     return;
   }
-  help_->setHtml(
+  // QLabel rich text — avoids QTextBrowser/QTextDocument heap corruption seen
+  // under live Argus (paint UAF / free(): invalid next size on teardown).
+  help_->setText(
       QStringLiteral(
-          "<html><body style=\"margin:0; padding:0;\">"
           "<div style=\"font-weight:700; color:#1E293B; margin-bottom:6px;\">"
           "%1</div>"
-          "<div style=\"color:#475569; line-height:1.45;\">%2</div>"
-          "</body></html>")
+          "<div style=\"color:#475569; line-height:1.45;\">%2</div>")
           .arg(heading.toHtmlEscaped(), body.toHtmlEscaped()));
+  help_->show();
 }
 
 void DisplaysPanel::updateActionButtons() {

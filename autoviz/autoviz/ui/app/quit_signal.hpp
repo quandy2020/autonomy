@@ -17,4 +17,10 @@ namespace autoviz {
  */
 void InstallQuitSignalHandler(QWidget* main_window);
 
+/**
+ * @brief True after SIGINT/SIGTERM was delivered to Autoviz (not bare Autolink
+ *        state flips).
+ */
+bool UserRequestedQuit();
+
 }  // namespace autoviz

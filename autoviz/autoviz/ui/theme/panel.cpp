@@ -97,6 +97,8 @@ void ApplyTransparentSelectionPalette(QWidget* widget) {
     return;
   }
   QPalette pal = widget->palette();
+  pal.setBrush(QPalette::Base, Qt::transparent);
+  pal.setBrush(QPalette::Window, Qt::transparent);
   pal.setBrush(QPalette::Highlight, Qt::transparent);
   pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
@@ -440,6 +442,23 @@ void StyleFilterLineEdit(QLineEdit* edit) {
   edit->setStyleSheet(PanelFilterLineEditStyle());
 }
 
+void DetachItemViewFromStyleSheets(QWidget* widget) {
+  if (widget == nullptr) {
+    return;
+  }
+  // Drop widget-level ::item/::branch sheets. App theme likewise omits generic
+  // QTreeWidget::item rules — together this avoids Qt 6.2 QCss::Selector
+  // crashes while Displays trees rebuild under live Argus traffic.
+  // Note: QWidget::setStyle(Fusion) still wraps in QStyleSheetStyle when the
+  // app has a stylesheet, so it is not a real bypass; do not use it here.
+  widget->setStyleSheet(QString());
+  if (auto* view = qobject_cast<QAbstractItemView*>(widget)) {
+    if (QWidget* viewport = view->viewport()) {
+      viewport->setStyleSheet(QString());
+    }
+  }
+}
+
 void StylePanelTree(QWidget* tree) {
   if (auto* view = qobject_cast<QAbstractItemView*>(tree)) {
     StyleFrostedPanelTree(view, 0);
@@ -449,7 +468,8 @@ void StylePanelTree(QWidget* tree) {
     return;
   }
   tree->setObjectName(QString::fromLatin1(AppThemeIds::kPanelTree));
-  tree->setStyleSheet(PanelFrostedTreeStyle());
+  DetachItemViewFromStyleSheets(tree);
+  ApplyTransparentSelectionPalette(tree);
 }
 
 void StyleFrostedPanelTree(QAbstractItemView* tree, int name_column) {
@@ -464,7 +484,7 @@ void StyleFrostedPanelTree(QAbstractItemView* tree, int name_column) {
     tree->viewport()->setAutoFillBackground(false);
     tree->viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
   }
-  tree->setStyleSheet(PanelFrostedTreeStyle());
+  DetachItemViewFromStyleSheets(tree);
   ApplyTransparentSelectionPalette(tree);
   tree->setItemDelegateForColumn(
       name_column, new ContinuousNameColumnDelegate(name_column, tree));
@@ -481,7 +501,7 @@ void StyleFrostedPanelList(QAbstractItemView* list) {
     list->viewport()->setAutoFillBackground(false);
     list->viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
   }
-  list->setStyleSheet(PanelFrostedListStyle());
+  DetachItemViewFromStyleSheets(list);
   ApplyTransparentSelectionPalette(list);
   list->setItemDelegate(new ContinuousNameColumnDelegate(0, list));
 }

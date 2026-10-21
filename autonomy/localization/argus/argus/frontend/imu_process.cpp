@@ -59,10 +59,17 @@ void ImuProcess::Reset() {
     mean_acc_ = V3D(0, 0, -1.0);
     mean_gyr_ = V3D(0, 0, 0);
     angvel_last_ = V3D::Zero();
+    acc_s_last_ = V3D::Zero();
     need_imu_init = true;
+    imu_time_init = false;
+    is_first_frame_ = true;
     init_iter_num_ = 1;
     imu_pose_.clear();
+    pending_cloud_.clear();
     last_imu_ = sensor::ImuData();
+    last_prop_end_time_ = 0.0;
+    time_last_scan_ = 0.0;
+    first_lidar_time = 0.0;
 }
 
 void ImuProcess::DisableImu() {

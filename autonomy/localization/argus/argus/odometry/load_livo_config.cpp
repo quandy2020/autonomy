@@ -821,6 +821,22 @@ LoadLivoConfigResult LoadLivoOdometryConfig(const std::string& yaml_path) {
     LoadVioSection(root, base_dir, &cfg);
     LoadExtrinsics(root, yaml_path, base_dir, &cfg);
 
+    // IMU / world-frame init (shared by offline_spires + live ArgusNode).
+    cfg.enable_gravity_align =
+        root.Get<int>("imu/enable_gravity_align",
+                      cfg.enable_gravity_align ? 1 : 0) != 0;
+    cfg.enable_gravity_estimate =
+        root.Get<int>("imu/enable_gravity_estimate",
+                      cfg.enable_gravity_estimate ? 1 : 0) != 0;
+    cfg.enable_bias_estimate =
+        root.Get<int>("imu/enable_bias_estimate",
+                      cfg.enable_bias_estimate ? 1 : 0) != 0;
+    cfg.enable_motion_compensate =
+        root.Get<int>("imu/enable_motion_compensate",
+                      cfg.enable_motion_compensate ? 1 : 0) != 0;
+    cfg.imu_init_frames =
+        root.Get<int>("imu/imu_init_frames", cfg.imu_init_frames);
+
     result.error = ValidateLivoConfig(cfg);
     if (!result.error.empty()) {
         return result;

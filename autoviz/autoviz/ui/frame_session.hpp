@@ -152,6 +152,14 @@ class FrameSession {
   void applyStartupWindowState();
 
   /**
+   * @brief True once post-show grace elapsed (WM close is safe to honor).
+   *
+   * Spurious X11 CloseEvents during the first Ogre map are ignored until then
+   * unless @c UserRequestedQuit().
+   */
+  bool startupCloseAllowed() const;
+
+  /**
    * @brief Applies settings-dialog results (backend, FPS, docks, language, …).
    *
    * @param settings Values accepted from @ref AppSettingsDialog.
@@ -507,6 +515,9 @@ class FrameSession {
 
   /** Guards @ref onAboutToQuit() so closeEvent + aboutToQuit stay idempotent. */
   bool quit_teardown_done_ = false;
+
+  /** Started in @ref applyStartupWindowState(); gates early WM close. */
+  QElapsedTimer startup_close_grace_;
 
   /** Maximum entries kept in @c recent_configs_. */
   static constexpr int kRecentConfigCount = 10;

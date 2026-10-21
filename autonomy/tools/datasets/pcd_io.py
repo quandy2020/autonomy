@@ -111,8 +111,17 @@ def _find(fields: list[_Field], *names: str) -> _Field | None:
     return None
 
 
-def load_pcd_xyzi(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
-    """Load a PCD file as ``(Nx3 xyz, N intensity)`` float32 arrays."""
+def load_pcd_xyzi(
+    path: str | Path,
+    *,
+    header_time: float | None = None,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray | None]:
+    """Load PCD as ``(Nx3 xyz, N intensity, N relative_time_ms|None)``.
+
+    When the file has a ``timestamp`` field (Oxford Spires Hesai), returns
+    sweep-relative milliseconds for Argus ``curvature``. Otherwise the third
+    value is ``None`` and callers may synthesize index-based times.
+    """
     path = Path(path)
     with path.open("rb") as fh:
         fields, npts, data_mode = _parse_header(fh)
@@ -122,12 +131,16 @@ def load_pcd_xyzi(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
         if fx is None or fy is None or fz is None:
             raise ValueError(f"PCD missing xyz: {path}")
         fi = _find(fields, "intensity", "reflectivity")
+        ft = _find(fields, "timestamp", "time")
         point_step = sum(f.size * f.count for f in fields)
         if point_step <= 0:
             raise ValueError(f"invalid PCD point_step: {path}")
 
         xyz = np.zeros((npts, 3), dtype=np.float32)
         intensity = np.zeros((npts,), dtype=np.float32)
+        time_ms: np.ndarray | None = (
+            np.zeros((npts,), dtype=np.float32) if ft is not None else None
+        )
 
         if data_mode == "ascii":
             i = 0
@@ -146,7 +159,7 @@ def load_pcd_xyzi(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
                 xyz[i, 2] = vals[2]
                 intensity[i] = vals[3] if len(vals) > 3 else 0.0
                 i += 1
-            return xyz[:i], intensity[:i]
+            return xyz[:i], intensity[:i], None
 
         if data_mode == "binary_compressed":
             raise ValueError(f"binary_compressed PCD not supported: {path}")
@@ -154,6 +167,7 @@ def load_pcd_xyzi(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
         blob = fh.read(point_step * npts)
         if len(blob) < point_step * npts:
             raise ValueError(f"truncated PCD body: {path}")
+        abs_ts = np.zeros((npts,), dtype=np.float64) if ft is not None else None
         for i in range(npts):
             base = i * point_step
             chunk = blob[base : base + point_step]
@@ -161,4 +175,16 @@ def load_pcd_xyzi(path: str | Path) -> tuple[np.ndarray, np.ndarray]:
             xyz[i, 1] = _read_float(chunk, fy)
             xyz[i, 2] = _read_float(chunk, fz)
             intensity[i] = _read_float(chunk, fi) if fi is not None else 0.0
-        return xyz, intensity
+            if ft is not None and abs_ts is not None:
+                if ft.type_char == "F" and ft.size == 8:
+                    abs_ts[i] = struct.unpack_from("<d", chunk, ft.offset)[0]
+                else:
+                    abs_ts[i] = _read_float(chunk, ft)
+        if abs_ts is not None and time_ms is not None:
+            t0 = float(header_time) if header_time is not None else float(abs_ts.min())
+            # Absolute seconds → relative ms within the sweep.
+            if t0 > 1e12:
+                t0 *= 1e-9
+                abs_ts = abs_ts * 1e-9
+            time_ms[:] = ((abs_ts - t0) * 1000.0).astype(np.float32)
+        return xyz, intensity, time_ms

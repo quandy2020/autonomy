@@ -41,6 +41,7 @@ MessageQueue::MessageQueue(MessageQueue&& other) noexcept {
   {
     std::lock_guard<std::mutex> lock(other.mutex_);
     queue_ = std::move(other.queue_);
+    max_depth_ = other.max_depth_;
   }
   // Point registry entry at the moved-to object.
   std::lock_guard<std::mutex> lock(registryMutex());
@@ -61,6 +62,7 @@ MessageQueue& MessageQueue::operator=(MessageQueue&& other) noexcept {
   {
     std::scoped_lock lock(mutex_, other.mutex_);
     queue_ = std::move(other.queue_);
+    max_depth_ = other.max_depth_;
   }
   return *this;
 }
@@ -86,14 +88,34 @@ void MessageQueue::clearAllPending() {
   }
 }
 
+void MessageQueue::setMaxDepth(std::size_t depth) {
+  std::lock_guard<std::mutex> lock(mutex_);
+  max_depth_ = std::max<std::size_t>(1, depth);
+  while (queue_.size() > max_depth_) {
+    queue_.pop_front();
+  }
+}
+
+std::size_t MessageQueue::maxDepth() const {
+  std::lock_guard<std::mutex> lock(mutex_);
+  return max_depth_;
+}
+
 void MessageQueue::push(std::string payload) {
   if (!accept_incoming_.load(std::memory_order_relaxed)) {
     return;
   }
   std::lock_guard<std::mutex> lock(mutex_);
-  // Latest-only: never retain a backlog for the UI thread to catch up.
-  queue_.clear();
+  if (max_depth_ <= 1) {
+    // Latest-only: never retain a backlog for the UI thread to catch up.
+    queue_.clear();
+    queue_.push_back(std::move(payload));
+    return;
+  }
   queue_.push_back(std::move(payload));
+  while (queue_.size() > max_depth_) {
+    queue_.pop_front();
+  }
 }
 
 std::optional<std::string> MessageQueue::pop() {

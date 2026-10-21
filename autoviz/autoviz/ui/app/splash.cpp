@@ -160,11 +160,12 @@ void SplashScreen::showStatusFor(const QString& message, int hold_ms) {
 }
 
 void SplashScreen::finish(int min_total_ms, int ready_hold_ms) {
+  Q_UNUSED(min_total_ms);
+  Q_UNUSED(ready_hold_ms);
+  // Do not waitMs()/processEvents here: the main VisualizationFrame already
+  // exists and Ogre may be mid-init. Pumping the event loop from the splash
+  // has SEGV'd in QTreeWidget/QIcon paint under live Autolink.
   showStatus(QStringLiteral("AViz is ready."));
-  waitMs(ready_hold_ms);
-  const int remaining =
-      min_total_ms - static_cast<int>(visible_timer_.elapsed());
-  waitMs(remaining);
 }
 
 }  // namespace autoviz

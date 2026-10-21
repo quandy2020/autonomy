@@ -332,6 +332,8 @@ stage_autoviz_prefix() {
 
   install -m 0644 "${AUTOVIZ_ROOT}/config/default.autoviz" \
     "${dest}/share/autonomy/autoviz/default.autoviz"
+  install -m 0644 "${AUTOVIZ_ROOT}/config/argus.autoviz" \
+    "${dest}/share/autonomy/autoviz/argus.autoviz"
   rm -rf "${dest}/share/autonomy/autoviz/ogre_media"
   cp -a "${AUTOVIZ_ROOT}/resources/ogre_media" \
     "${dest}/share/autonomy/autoviz/ogre_media"

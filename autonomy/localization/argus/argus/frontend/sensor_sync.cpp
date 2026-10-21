@@ -29,10 +29,14 @@ void SensorSync::PushLidar(const sensor::PointCloudXYZI::Ptr& cloud,
         return;
     }
     std::lock_guard<std::mutex> lock(mtx_);
-    if (header_time < last_timestamp_lidar_) {
+    if (last_timestamp_lidar_ >= 0.0 && header_time < last_timestamp_lidar_) {
         std::cerr << "lidar loop back, clear buffer" << std::endl;
         lidar_buffer_.clear();
         lidar_header_time_buffer_.clear();
+        // Must clear: otherwise SyncOnlyLio waits forever on the old end time
+        // after the buffered sweep was dropped.
+        lidar_pushed_ = false;
+        loopback_ = true;
     }
     lidar_buffer_.push_back(cloud);
     lidar_header_time_buffer_.push_back(header_time);
@@ -45,9 +49,11 @@ void SensorSync::PushImu(const sensor::ImuData& imu) {
         return;
     }
     std::lock_guard<std::mutex> lock(mtx_);
-    if (imu.timestamp < last_timestamp_imu_) {
+    if (last_timestamp_imu_ >= 0.0 && imu.timestamp < last_timestamp_imu_) {
         std::cerr << "imu loop back, clear buffer" << std::endl;
         imu_buffer_.clear();
+        lidar_pushed_ = false;
+        loopback_ = true;
     }
     imu_buffer_.push_back(imu);
     last_timestamp_imu_ = imu.timestamp;
@@ -59,13 +65,22 @@ void SensorSync::PushImage(const sensor::ImageData& image) {
         return;
     }
     std::lock_guard<std::mutex> lock(mtx_);
-    if (image.timestamp < last_timestamp_image_) {
+    if (last_timestamp_image_ >= 0.0 &&
+        image.timestamp < last_timestamp_image_) {
         std::cerr << "image loop back, clear buffer" << std::endl;
         image_buffer_.clear();
+        loopback_ = true;
     }
     image_buffer_.push_back(image);
     last_timestamp_image_ = image.timestamp;
     cv_.notify_all();
+}
+
+bool SensorSync::ConsumeLoopback() {
+    std::lock_guard<std::mutex> lock(mtx_);
+    const bool hit = loopback_;
+    loopback_ = false;
+    return hit;
 }
 
 bool SensorSync::Sync(LidarMeasureGroup& meas) {
@@ -103,9 +118,14 @@ bool SensorSync::SyncOnlyLio(LidarMeasureGroup& meas) {
             return false;
         }
         meas.lidar_frame_beg_time = lidar_header_time_buffer_.front();
-        meas.lidar_frame_end_time =
-            meas.lidar_frame_beg_time +
-            meas.lidar->points.back().curvature / 1000.0;
+        // curvature stores relative time in milliseconds (FAST-LIVO2).
+        double span_sec = meas.lidar->points.back().curvature / 1000.0;
+        if (span_sec < 1e-6) {
+            // PCD / datasets without per-point time: use a nominal sweep length
+            // so IMU sync can advance past the header stamp.
+            span_sec = kDefaultScanPeriodSec;
+        }
+        meas.lidar_frame_end_time = meas.lidar_frame_beg_time + span_sec;
         meas.cloud_proc_cur = meas.lidar;
         lidar_pushed_ = true;
     }
@@ -132,6 +152,7 @@ bool SensorSync::SyncOnlyLio(LidarMeasureGroup& meas) {
     cv_.notify_all();
 
     meas.ekf_phase = kLio;
+    meas.measures.clear();
     meas.measures.push_back(m);
     lidar_pushed_ = false;
     return true;
@@ -256,9 +277,11 @@ bool SensorSync::SyncOnlyLo(LidarMeasureGroup& meas) {
         }
         meas.lidar = lidar_buffer_.front();
         meas.lidar_frame_beg_time = lidar_header_time_buffer_.front();
-        meas.lidar_frame_end_time =
-            meas.lidar_frame_beg_time +
-            meas.lidar->points.back().curvature / 1000.0;
+        double span_sec = meas.lidar->points.back().curvature / 1000.0;
+        if (span_sec < 1e-6) {
+            span_sec = kDefaultScanPeriodSec;
+        }
+        meas.lidar_frame_end_time = meas.lidar_frame_beg_time + span_sec;
         lidar_pushed_ = true;
     }
     MeasureGroup m;
@@ -271,6 +294,7 @@ bool SensorSync::SyncOnlyLo(LidarMeasureGroup& meas) {
     cv_.notify_all();
     lidar_pushed_ = false;
     meas.ekf_phase = kLo;
+    meas.measures.clear();
     meas.measures.push_back(m);
     return true;
 }

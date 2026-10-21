@@ -24,6 +24,8 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cstddef>
 #include <string>
 
 #include "autoviz/plugins/displays/display.hpp"
@@ -196,30 +198,45 @@ class ChannelDisplay : public Display {
   }
 
   /**
-   * @brief Re-subscribes if needed, takes the latest payload, parses
+   * @brief Re-subscribes if needed, takes queued payload(s), parses
    *        @c ProtoT, and updates status.
    *
-   * Only the newest sample is processed so a full backlog cannot freeze the
-   * UI thread.
+   * Default depth is 1 (newest only). Subclasses that need RViz2-style
+   * message accumulation (e.g. PointCloud2 Decay Time) override
+   * @ref messageQueueDepth() and optionally @ref afterQueueProcessed().
    */
   void onUpdate() override {
     if (subscription_id_ == 0 && !channel_.empty() && context_ != nullptr &&
         context_->autolink != nullptr && context_->autolink->node() != nullptr) {
       subscribeChannel();
     }
-    // Visualization only needs the newest sample; draining/parsing a full
-    // backlog on the UI thread freezes checkbox toggles and the 3D view.
-    if (auto payload = queue_.takeLatest()) {
+    const std::size_t depth = std::max<std::size_t>(1, messageQueueDepth());
+    queue_.setMaxDepth(depth);
+    auto handle_payload = [this](const std::string& payload) {
       ProtoT proto;
-      const std::string decoded = integration::DecodeChannelPayload(*payload);
-      if (proto.ParseFromString(decoded) || proto.ParseFromString(*payload)) {
+      const std::string decoded = integration::DecodeChannelPayload(payload);
+      if (proto.ParseFromString(decoded) || proto.ParseFromString(payload)) {
         has_received_message_ = true;
         parse_failed_ = false;
         processMessage(proto);
       } else {
         parse_failed_ = true;
       }
+    };
+    if (depth <= 1) {
+      // Visualization only needs the newest sample; draining a full backlog
+      // on the UI thread freezes checkbox toggles and the 3D view.
+      if (auto payload = queue_.takeLatest()) {
+        handle_payload(*payload);
+      }
+    } else {
+      // RViz2 PointCloudCommon: process every retained cloud so Decay Time
+      // can accumulate intermediate frames that arrived between UI ticks.
+      while (auto payload = queue_.pop()) {
+        handle_payload(*payload);
+      }
     }
+    afterQueueProcessed();
     if (channel_.empty()) {
       setStatusError("No topic set");
     } else if (parse_failed_) {
@@ -235,6 +252,18 @@ class ChannelDisplay : public Display {
    * @param message Typed protobuf instance for this frame's latest sample.
    */
   virtual void processMessage(const ProtoT& message) = 0;
+
+  /**
+   * @brief Max payloads retained between UI ticks (@c 1 = latest-only).
+   *
+   * Override to &gt;1 for Decay Time / incremental accumulation.
+   */
+  virtual std::size_t messageQueueDepth() const { return 1; }
+
+  /**
+   * @brief Hook after queue drain (e.g. expire Decay Time batches).
+   */
+  virtual void afterQueueProcessed() {}
 
   /**
    * @brief Registers a ChannelReaderRegistry subscription that pushes raw

@@ -104,6 +104,18 @@ constexpr int kDisplayTreeRoleChildIndex = Qt::UserRole + 4;
 constexpr int kDisplayTreeRoleDragBgSaved = Qt::UserRole + 5;
 
 /**
+ * @brief Qt::ItemDataRole storing Display @c typeId for class icons
+ *        (painted by @ref DisplayNameTreeDelegate — never via @c setIcon).
+ */
+constexpr int kDisplayTreeRoleTypeId = Qt::UserRole + 6;
+
+/**
+ * @brief Qt::ItemDataRole storing @c DisplayStatusLevel as @c int for status
+ *        glyphs on Status / Global Status rows.
+ */
+constexpr int kDisplayTreeRoleStatusLevel = Qt::UserRole + 7;
+
+/**
  * @brief Qt::ItemDataRole storing the property-factory kind (int) used by
  *        color / enum editors in @ref DisplayTreeDelegate.
  */

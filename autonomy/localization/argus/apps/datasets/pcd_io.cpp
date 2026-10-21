@@ -16,6 +16,7 @@
 
 #include "apps/datasets/pcd_io.hpp"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdint>
 #include <cstring>
@@ -150,6 +151,15 @@ float ReadFloatField(const char* base, const FieldDesc& f) {
   return 0.f;
 }
 
+double ReadDoubleField(const char* base, const FieldDesc& f) {
+  if (f.type == 'F' && f.size == 8) {
+    double v = 0.0;
+    std::memcpy(&v, base + f.offset, sizeof(double));
+    return v;
+  }
+  return static_cast<double>(ReadFloatField(base, f));
+}
+
 const FieldDesc* FindField(const std::vector<FieldDesc>& fields,
                            const char* name) {
   for (const auto& f : fields) {
@@ -184,6 +194,10 @@ sensor::PointCloudXYZI::Ptr LoadPcdXYZI(const std::string& path) {
   const FieldDesc* fi = FindField(fields, "intensity");
   if (fi == nullptr) {
     fi = FindField(fields, "reflectivity");
+  }
+  const FieldDesc* ft = FindField(fields, "timestamp");
+  if (ft == nullptr) {
+    ft = FindField(fields, "time");
   }
 
   int point_step = 0;
@@ -239,6 +253,15 @@ sensor::PointCloudXYZI::Ptr LoadPcdXYZI(const std::string& path) {
   if (static_cast<std::size_t>(ifs.gcount()) < buf.size()) {
     return cloud;
   }
+  double t0 = 0.0;
+  bool have_t0 = false;
+  if (ft != nullptr) {
+    t0 = ReadDoubleField(buf.data(), *ft);
+    if (t0 > 1e12) {
+      t0 *= 1e-9;
+    }
+    have_t0 = true;
+  }
   for (std::size_t i = 0; i < npts; ++i) {
     const char* base = buf.data() + i * static_cast<std::size_t>(point_step);
     sensor::PointType p;
@@ -246,9 +269,24 @@ sensor::PointCloudXYZI::Ptr LoadPcdXYZI(const std::string& path) {
     p.y = ReadFloatField(base, *fy);
     p.z = ReadFloatField(base, *fz);
     p.intensity = fi != nullptr ? ReadFloatField(base, *fi) : 0.f;
-    p.curvature = static_cast<float>(
-        (static_cast<double>(i) / static_cast<double>(npts)) * 100.0);
+    if (have_t0 && ft != nullptr) {
+      double ts = ReadDoubleField(base, *ft);
+      if (ts > 1e12) {
+        ts *= 1e-9;
+      }
+      p.curvature = static_cast<float>((ts - t0) * 1000.0);
+    } else {
+      p.curvature = static_cast<float>(
+          (static_cast<double>(i) / static_cast<double>(npts)) * 100.0);
+    }
     cloud->push_back(p);
+  }
+  if (have_t0) {
+    std::stable_sort(cloud->points.begin(), cloud->points.end(),
+                     [](const sensor::PointType& a,
+                        const sensor::PointType& b) {
+                       return a.curvature < b.curvature;
+                     });
   }
   return cloud;
 }

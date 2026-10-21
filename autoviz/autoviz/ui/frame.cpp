@@ -21,6 +21,7 @@
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/app/preferences.hpp"
+#include "autoviz/ui/app/quit_signal.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/record/record_panel.hpp"
 #include "autoviz/ui/displays/panel.hpp"
@@ -60,8 +61,9 @@ VisualizationFrame::VisualizationFrame(
   qApp->installEventFilter(this);
   setDockNestingEnabled(true);
   setTabPosition(Qt::AllDockWidgetAreas, QTabWidget::North);
-  setDockOptions(QMainWindow::AnimatedDocks | QMainWindow::AllowNestedDocks |
-                 QMainWindow::AllowTabbedDocks);
+  // No AnimatedDocks: QPropertyAnimation on dock geometry races mosaic
+  // reparent/restore and has SEGV'd in QLayout::totalSizeHint (freed QFrame).
+  setDockOptions(QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks);
   chrome_->setupMenu();
   session_->applyShortcutPreferences(LoadAppUiPreferences().shortcuts);
   chrome_->setupToolbar();
@@ -272,6 +274,7 @@ void VisualizationFrame::setupUi() {
   panels_->displays_dock_ = new PanelDockWidget(tr("Displays"), this);
   panels_->displays_dock_->setObjectName(QStringLiteral("DisplaysDock"));
   panels_->displays_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Displays")));
+  panels_->displays_dock_->setMinimumWidth(280);
   panels_->displays_panel_ = new DisplaysPanel(manager_, panels_->displays_dock_);
   panels_->displays_dock_->setContentWidget(panels_->displays_panel_);
   layout_->addSidebarDock(panels_->displays_dock_, Qt::LeftDockWidgetArea);
@@ -625,6 +628,14 @@ bool VisualizationFrame::eventFilter(QObject* watched, QEvent* event) {
 }
 
 void VisualizationFrame::closeEvent(QCloseEvent* event) {
+  // Docker/X11 often delivers a spurious WM CloseEvent in the first seconds
+  // after Ogre maps the WA_NativeWindow (right after "RenderSystem ready").
+  // Treating that as quit races GLX teardown → focusProxy SEGV. Ignore unless
+  // the user actually sent SIGINT/SIGTERM or startup grace has elapsed.
+  if (!UserRequestedQuit() && !session_->startupCloseAllowed()) {
+    event->ignore();
+    return;
+  }
   // Sync-destroy Ogre/GLX, then leave the event loop WITHOUT accepting the
   // close. Qt's close_helper calls hide()→hideChildren() after an accepted
   // QCloseEvent; that walk SIGSEGVs with WA_PaintOnScreen / GLX children

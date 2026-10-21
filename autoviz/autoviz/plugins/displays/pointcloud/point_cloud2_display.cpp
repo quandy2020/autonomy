@@ -142,7 +142,16 @@ void PointCloud2Display::processMessage(
       propertyValue("channel_name", "intensity");
   const ParsedPointCloud parsed =
       parsePointCloud2(message, decimation, channel_name, max_points);
+  // width/height 0 (or fully filtered): Argus map-reset / clear signal.
+  // Drop Decay history so incremental accumulation does not keep a stale map.
   if (parsed.xs.empty()) {
+    if (message.width() == 0 || message.height() == 0 ||
+        message.data().empty()) {
+      batches_.clear();
+      if (context_->request_redraw) {
+        context_->request_redraw();
+      }
+    }
     return;
   }
 
@@ -323,23 +332,7 @@ void PointCloud2Display::processMessage(
     batches_.push_back(std::move(batch));
   } else {
     batches_.push_back(std::move(batch));
-    const auto cutoff =
-        now - std::chrono::duration_cast<std::chrono::steady_clock::duration>(
-                  std::chrono::duration<float>(decay_sec));
-    batches_.erase(std::remove_if(batches_.begin(), batches_.end(),
-                                  [&cutoff](const PointBatch& b) {
-                                    return b.received_at < cutoff;
-                                  }),
-                   batches_.end());
-    // Decay must not exceed Max Points across retained batches.
-    size_t total = 0;
-    for (const auto& b : batches_) {
-      total += b.points.size();
-    }
-    while (total > max_points && !batches_.empty()) {
-      total -= batches_.front().points.size();
-      batches_.erase(batches_.begin());
-    }
+    evictExpiredBatches();
   }
 
   if (context_->request_redraw) {
@@ -353,6 +346,56 @@ void PointCloud2Display::processMessage(
     }
     setStatusWarn("Point cloud dropped (out of memory); raise Decimate / "
                   "lower Max Points");
+  }
+}
+
+std::size_t PointCloud2Display::messageQueueDepth() const {
+  // RViz2 PointCloudCommon keeps every cloud until Decay expires. Cap the
+  // Autolink→UI backlog so a stalled UI cannot OOM on dense lidar.
+  const float decay_sec =
+      common::ParseFloatProperty(propertyValue("decay_time", "0"), 0.f);
+  return decay_sec > 0.f ? 64 : 1;
+}
+
+void PointCloud2Display::afterQueueProcessed() {
+  const float decay_sec =
+      common::ParseFloatProperty(propertyValue("decay_time", "0"), 0.f);
+  if (decay_sec <= 0.f || batches_.empty()) {
+    return;
+  }
+  const size_t before = batches_.size();
+  evictExpiredBatches();
+  if (batches_.size() != before && context_ != nullptr &&
+      context_->request_redraw) {
+    context_->request_redraw();
+  }
+}
+
+void PointCloud2Display::evictExpiredBatches() {
+  const float decay_sec =
+      common::ParseFloatProperty(propertyValue("decay_time", "0"), 0.f);
+  if (decay_sec <= 0.f) {
+    return;
+  }
+  const auto now = std::chrono::steady_clock::now();
+  const auto cutoff =
+      now - std::chrono::duration_cast<std::chrono::steady_clock::duration>(
+                std::chrono::duration<float>(decay_sec));
+  batches_.erase(std::remove_if(batches_.begin(), batches_.end(),
+                                [&cutoff](const PointBatch& b) {
+                                  return b.received_at < cutoff;
+                                }),
+                 batches_.end());
+  const uint32_t max_points = static_cast<uint32_t>(std::max(
+      1000, common::ParseIntProperty(propertyValue("max_points", "200000"),
+                                     kDefaultMaxPoints)));
+  size_t total = 0;
+  for (const auto& b : batches_) {
+    total += b.points.size();
+  }
+  while (total > max_points && !batches_.empty()) {
+    total -= batches_.front().points.size();
+    batches_.erase(batches_.begin());
   }
 }
 

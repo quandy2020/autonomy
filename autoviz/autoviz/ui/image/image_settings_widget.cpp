@@ -460,26 +460,29 @@ void ImageSettingsWidget::refreshImageChannelItems() {
   if (manager_ != nullptr) {
     manager_->refreshChannelList();
   }
-  const QString current = channel_combo_->currentText().trimmed().isEmpty()
-                              ? config_.image_channel
-                              : channel_combo_->currentText();
+  // Always restore from config_, not combo currentText. Otherwise an empty
+  // config leaves the combo on discovery index 0 (e.g. /camera/...), so the
+  // Properties panel looks subscribed while ImagePanel still has no channel
+  // and the dock HUD says "Select an image topic in Settings".
+  const QString current = config_.image_channel.trimmed();
+  const bool was_blocked = channel_combo_->signalsBlocked();
   channel_combo_->blockSignals(true);
   channel_combo_->clear();
+  channel_combo_->addItem(tr("(select image channel)"), QString());
   const QStringList channels = imageChannels();
-  if (channels.isEmpty()) {
-    channel_combo_->addItem(tr("(no image channel)"));
-    channel_combo_->setItemData(0, QString(), Qt::UserRole);
-  } else {
-    channel_combo_->addItems(channels);
+  for (const QString& channel : channels) {
+    if (channel.isEmpty() || channel.startsWith(QLatin1Char('('))) {
+      continue;
+    }
+    channel_combo_->addItem(channel);
   }
-  const int index = channel_combo_->findText(current);
-  if (index >= 0) {
-    channel_combo_->setCurrentIndex(index);
-  } else if (!current.isEmpty()) {
-    channel_combo_->insertItem(0, current);
-    channel_combo_->setCurrentIndex(0);
+  int index = current.isEmpty() ? 0 : channel_combo_->findText(current);
+  if (index < 0 && !current.isEmpty()) {
+    channel_combo_->insertItem(1, current);
+    index = 1;
   }
-  channel_combo_->blockSignals(false);
+  channel_combo_->setCurrentIndex(index < 0 ? 0 : index);
+  channel_combo_->blockSignals(was_blocked);
 }
 
 void ImageSettingsWidget::refreshChannelLists() {
@@ -732,7 +735,9 @@ void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
 
   title_edit_->setText(config_.title);
   refreshImageChannelItems();
-  {
+  if (config_.image_channel.trimmed().isEmpty()) {
+    channel_combo_->setCurrentIndex(0);
+  } else {
     const int index = channel_combo_->findText(config_.image_channel);
     if (index >= 0) {
       channel_combo_->setCurrentIndex(index);

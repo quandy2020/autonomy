@@ -3,6 +3,9 @@
  *****************************************************************************/
 
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/common/display_status.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/displays/tree.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
 
 #include <algorithm>
@@ -15,12 +18,14 @@
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QFont>
+#include <QHash>
 #include <QHBoxLayout>
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPainterPath>
 #include <QPalette>
+#include <QPixmap>
 #include <QPushButton>
 #include <QSpinBox>
 #include <QStyle>
@@ -30,6 +35,42 @@ namespace autoviz {
 namespace {
 
 constexpr int kColorSwatchSize = 14;
+/** RViz PropertyTree decoration size (logical px). */
+constexpr int kTreeIconLogical = 16;
+constexpr int kTreeIconGap = 4;
+constexpr int kTreeDragGripWidth = 12;
+
+QPixmap CachedTreePixmap(const QString& cache_key, const QIcon& icon) {
+  static QHash<QString, QPixmap> cache;
+  auto it = cache.find(cache_key);
+  if (it != cache.end()) {
+    return it.value();
+  }
+  QPixmap pm;
+  if (!icon.isNull()) {
+    const qreal dpr =
+        qMax<qreal>(1.0, qApp != nullptr ? qApp->devicePixelRatio() : 1.0);
+    pm = icon.pixmap(QSize(kTreeIconLogical, kTreeIconLogical), dpr);
+  }
+  cache.insert(cache_key, pm);
+  return pm;
+}
+
+QPixmap DisplayClassPixmap(const QString& type_id) {
+  if (type_id.isEmpty()) {
+    return {};
+  }
+  return CachedTreePixmap(QStringLiteral("cls:") + type_id,
+                          IconLoader::displayIcon(type_id));
+}
+
+QPixmap StatusLevelPixmap(display::DisplayStatusLevel level, bool enabled) {
+  const QString key =
+      QStringLiteral("st:%1:%2")
+          .arg(static_cast<int>(level))
+          .arg(enabled ? 1 : 0);
+  return CachedTreePixmap(key, IconLoader::statusIcon(level, enabled));
+}
 
 /** Float editor that does not pad trailing zeros (0.01, not 0.0100). */
 class CompactDoubleSpinBox : public QDoubleSpinBox {
@@ -125,11 +166,50 @@ bool IsColorTreeItem(const DisplayTreeItemKind kind, const QString& property_key
 DisplayNameTreeDelegate::DisplayNameTreeDelegate(QObject* parent)
     : QStyledItemDelegate(parent) {}
 
+namespace {
+
+const DisplayTreeWidget* DisplayTreeFromStyleOption(
+    const QStyleOptionViewItem& option) {
+  // Delegates usually see the viewport as option.widget, not the QTreeWidget.
+  const QWidget* w = option.widget;
+  if (const auto* tree = qobject_cast<const DisplayTreeWidget*>(w)) {
+    return tree;
+  }
+  if (w != nullptr) {
+    return qobject_cast<const DisplayTreeWidget*>(w->parentWidget());
+  }
+  return nullptr;
+}
+
+bool DisplayTreePaintBlocked(const QStyleOptionViewItem& option) {
+  if (const DisplayTreeWidget* tree = DisplayTreeFromStyleOption(option)) {
+    return tree->isPaintSuppressed() || tree->isRebuilding() ||
+           !tree->updatesEnabled();
+  }
+  if (const auto* view = qobject_cast<const QAbstractItemView*>(option.widget)) {
+    return !view->updatesEnabled();
+  }
+  return false;
+}
+
+}  // namespace
+
 void DisplayNameTreeDelegate::paint(QPainter* painter,
                                     const QStyleOptionViewItem& option,
                                     const QModelIndex& index) const {
+  if (painter == nullptr || !index.isValid() || index.model() == nullptr ||
+      index.internalPointer() == nullptr) {
+    return;
+  }
+  // initStyleOption → multiData → QTreeWidgetItem::data — refuse while the
+  // Displays tree is mid-rebuild (pointer may be non-null but freed).
+  if (DisplayTreePaintBlocked(option)) {
+    return;
+  }
   QStyleOptionViewItem opt = option;
   initStyleOption(&opt, index);
+  opt.features.setFlag(QStyleOptionViewItem::HasDecoration, false);
+  opt.icon = QIcon();
 
   const bool selected = opt.state.testFlag(QStyle::State_Selected);
   const bool hovered = opt.state.testFlag(QStyle::State_MouseOver);
@@ -182,7 +262,35 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
       }
     }
     painter->restore();
-    opt.rect = opt.rect.adjusted(12, 0, 0, 0);
+    opt.rect = opt.rect.adjusted(kTreeDragGripWidth, 0, 0, 0);
+  }
+
+  // Class / status icons: drawPixmap from a process cache — never QTreeWidgetItem
+  // setIcon / HasDecoration (QIcon::actualSize SEGV under live Argus paint).
+  QPixmap glyph;
+  if (kind == DisplayTreeItemKind::kDisplay ||
+      kind == DisplayTreeItemKind::kDisplayChild) {
+    glyph = DisplayClassPixmap(
+        index.data(kDisplayTreeRoleTypeId).toString());
+  } else if (kind == DisplayTreeItemKind::kDisplayStatus ||
+             kind == DisplayTreeItemKind::kGlobalStatus ||
+             kind == DisplayTreeItemKind::kGlobalStatusMessage) {
+    const QVariant level_v = index.data(kDisplayTreeRoleStatusLevel);
+    const auto level = static_cast<display::DisplayStatusLevel>(
+        level_v.isValid()
+            ? level_v.toInt()
+            : static_cast<int>(display::DisplayStatusLevel::kOk));
+    glyph = StatusLevelPixmap(level, /*enabled=*/true);
+  } else if (kind == DisplayTreeItemKind::kGlobalOptions) {
+    glyph = DisplayClassPixmap(QStringLiteral("Displays"));
+  }
+
+  if (!glyph.isNull()) {
+    const int y = opt.rect.center().y() - kTreeIconLogical / 2;
+    painter->drawPixmap(opt.rect.left(), y, kTreeIconLogical, kTreeIconLogical,
+                        glyph);
+    opt.rect =
+        opt.rect.adjusted(kTreeIconLogical + kTreeIconGap, 0, 0, 0);
   }
 
   QStyledItemDelegate::paint(painter, opt, index);
@@ -190,13 +298,25 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
 
 QSize DisplayNameTreeDelegate::sizeHint(const QStyleOptionViewItem& option,
                                         const QModelIndex& index) const {
+  // Same validity gate as paint — sizeHintForColumn can run while rows are
+  // being deleted (updateGeometries), and index.internalPointer() may be dead.
+  if (!index.isValid() || index.model() == nullptr ||
+      index.internalPointer() == nullptr || DisplayTreePaintBlocked(option)) {
+    return QSize(option.rect.width(), option.fontMetrics.height() + 6);
+  }
   QSize size = QStyledItemDelegate::sizeHint(option, index);
   const auto kind = static_cast<DisplayTreeItemKind>(
       index.data(kDisplayTreeRoleKind).toInt());
   if (kind == DisplayTreeItemKind::kDisplay ||
       kind == DisplayTreeItemKind::kDisplayChild) {
-    size.rwidth() += 12;
+    size.rwidth() += kTreeDragGripWidth + kTreeIconLogical + kTreeIconGap;
+  } else if (kind == DisplayTreeItemKind::kDisplayStatus ||
+             kind == DisplayTreeItemKind::kGlobalStatus ||
+             kind == DisplayTreeItemKind::kGlobalStatusMessage ||
+             kind == DisplayTreeItemKind::kGlobalOptions) {
+    size.rwidth() += kTreeIconLogical + kTreeIconGap;
   }
+  size.rheight() = qMax(size.height(), kTreeIconLogical + 6);
   return size;
 }
 
@@ -206,11 +326,19 @@ DisplayTreeDelegate::DisplayTreeDelegate(QObject* parent)
 void DisplayTreeDelegate::paint(QPainter* painter,
                                 const QStyleOptionViewItem& option,
                                 const QModelIndex& index) const {
+  if (painter == nullptr || !index.isValid() || index.model() == nullptr ||
+      index.internalPointer() == nullptr || DisplayTreePaintBlocked(option)) {
+    return;
+  }
   // Name column paints the full-row selection pill; value column stays clear.
   QStyleOptionViewItem cleared = option;
   cleared.state.setFlag(QStyle::State_Selected, false);
   cleared.state.setFlag(QStyle::State_MouseOver, false);
   cleared.backgroundBrush = Qt::NoBrush;
+  // Never paint item decoration icons — QIcon on QTreeWidgetItem has SEGV'd
+  // (actualSize / scaledPixmap recursion) under live Autolink.
+  cleared.features.setFlag(QStyleOptionViewItem::HasDecoration, false);
+  cleared.icon = QIcon();
 
   if (index.column() != kDisplayTreeColValue) {
     QStyledItemDelegate::paint(painter, cleared, index);
@@ -227,6 +355,8 @@ void DisplayTreeDelegate::paint(QPainter* painter,
 
   QStyleOptionViewItem opt = cleared;
   initStyleOption(&opt, index);
+  opt.features.setFlag(QStyleOptionViewItem::HasDecoration, false);
+  opt.icon = QIcon();
   opt.state.setFlag(QStyle::State_Selected, false);
   opt.state.setFlag(QStyle::State_MouseOver, false);
   const QString color_text = opt.text;

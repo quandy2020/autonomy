@@ -86,6 +86,31 @@ void EncodeXYZI(const float* xyz_i, std::size_t n, PointCloud2* msg,
     msg->set_data(std::move(bytes));
 }
 
+void FillRelativeTimeMs(float* curvature_ms, const char* base,
+                        const FieldOffsets& offsets, double header_sec) {
+    if (curvature_ms == nullptr) {
+        return;
+    }
+    // Unified relative time in `curvature` (milliseconds).
+    if (offsets.time_uint32 >= 0) {
+        *curvature_ms = static_cast<float>(
+                            ReadAt<std::uint32_t>(base, offsets.time_uint32)) /
+                        1e6f;
+    } else if (offsets.time >= 0) {
+        *curvature_ms = ReadAt<float>(base, offsets.time);
+    } else if (offsets.timestamp >= 0) {
+        const double ts = ReadAt<double>(base, offsets.timestamp);
+        if (ts > 1e12) {
+            *curvature_ms =
+                static_cast<float>((ts * 1e-9 - header_sec) * 1000.0);
+        } else if (ts > 1e8) {
+            *curvature_ms = static_cast<float>((ts - header_sec) * 1000.0);
+        } else {
+            *curvature_ms = static_cast<float>(ts * 1000.0);
+        }
+    }
+}
+
 }  // namespace
 
 void FromProto(const PointCloud2& msg, PointCloud<PointXYZINormal>* cloud) {
@@ -99,33 +124,12 @@ void FromProto(const PointCloud2& msg, PointCloud<PointXYZINormal>* cloud) {
         [header_sec](PointXYZINormal& pt, const char* base,
                      const FieldOffsets& offsets) {
             pt.intensity = ReadAt<float>(base, offsets.intensity);
-            // Unified relative time in `curvature` (milliseconds).
-            if (offsets.time_uint32 >= 0) {
-                pt.curvature = static_cast<float>(
-                                   ReadAt<std::uint32_t>(base,
-                                                         offsets.time_uint32)) /
-                               1e6f;
-            } else if (offsets.time >= 0) {
-                pt.curvature = ReadAt<float>(base, offsets.time);
-            } else if (offsets.timestamp >= 0) {
-                const double ts = ReadAt<double>(base, offsets.timestamp);
-                if (ts > 1e12) {
-                    // Nanoseconds (absolute or large offset).
-                    pt.curvature =
-                        static_cast<float>((ts * 1e-9 - header_sec) * 1000.0);
-                } else if (ts > 1e8) {
-                    // Absolute unix seconds.
-                    pt.curvature =
-                        static_cast<float>((ts - header_sec) * 1000.0);
-                } else {
-                    // Already relative seconds.
-                    pt.curvature = static_cast<float>(ts * 1000.0);
-                }
-            }
+            FillRelativeTimeMs(&pt.curvature, base, offsets, header_sec);
         });
 }
 
 void FromProto(const PointCloud2& msg, PointCloud<PointXYZI>* cloud) {
+    // PointXYZI has no curvature; LIVO uses PointCloudXYZI (=PointXYZINormal).
     DecodeWithFiller(
         msg, cloud,
         [](PointXYZI& pt, const char* base, const FieldOffsets& offsets) {

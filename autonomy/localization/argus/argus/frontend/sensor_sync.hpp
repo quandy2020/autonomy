@@ -114,6 +114,15 @@ public:
      */
     bool Sync(LidarMeasureGroup& meas);
 
+    /**
+     * @brief True if a sensor stream restarted (timestamp went backwards).
+     *
+     * Clears the sticky flag. Call after Push* so LIO can reset IMU / measure
+     * state; otherwise Sync can stall forever waiting on a cleared buffer while
+     * `lidar_pushed_` still references the old end time.
+     */
+    bool ConsumeLoopback();
+
     /** @return Last accepted LiDAR header time (s), or -1 if none. */
     double LastLidarTimestamp() const {
         return last_timestamp_lidar_;
@@ -149,10 +158,13 @@ private:
     bool enable_imu_ = true;
     bool enable_image_ = false;
     bool lidar_pushed_ = false;
+    bool loopback_ = false;
     double exposure_time_init_ = 0.0;
     double last_timestamp_lidar_ = -1.0;
     double last_timestamp_imu_ = -1.0;
     double last_timestamp_image_ = -1.0;
+    /** Default sweep length when points lack relative time (curvature). */
+    static constexpr double kDefaultScanPeriodSec = 0.1;
 
     std::deque<sensor::PointCloudXYZI::Ptr> lidar_buffer_;
     std::deque<double> lidar_header_time_buffer_;

@@ -365,6 +365,14 @@ class FramePanels {
   void ensureImageDockExists(const QString& object_name);
 
   /**
+   * @brief Ticks visible Image panels (primary + per-display viewers).
+   *
+   * Safe for the render timer — does not walk @c findChildren (can SEGV if the
+   * dock QObject tree is mid-reparent).
+   */
+  void tickVisibleImagePanels();
+
+  /**
    * @brief Ensures a Plot dock with @p object_name exists (session restore).
    * @param object_name Dock @c objectName to find or create.
    */

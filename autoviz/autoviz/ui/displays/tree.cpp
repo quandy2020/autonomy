@@ -9,6 +9,7 @@
 #include <QDragLeaveEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QEvent>
 #include <QFontMetrics>
 #include <QMimeData>
 #include <QPainter>
@@ -18,6 +19,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/plugins/displays/display_group.hpp"
+#include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
 
 namespace autoviz {
@@ -408,7 +410,11 @@ void DisplayTreeWidget::updateDragVisuals(
 
 QPixmap DisplayTreeWidget::makeDragPixmap(QTreeWidgetItem* row) const {
   const QString text = row->text(kDisplayTreeColName);
-  const QIcon icon = row->icon(kDisplayTreeColName);
+  // Prefer typeId role — item icons are intentionally unset (paint SEGV).
+  const QString type_id =
+      row->data(kDisplayTreeColName, kDisplayTreeRoleTypeId).toString();
+  const QIcon icon =
+      type_id.isEmpty() ? QIcon() : IconLoader::displayIcon(type_id);
   const QFontMetrics fm(font());
   const int icon_sz = 22;
   const int pad = 8;
@@ -425,7 +431,8 @@ QPixmap DisplayTreeWidget::makeDragPixmap(QTreeWidgetItem* row) const {
   painter.setPen(QPen(kGroupDropBorder, 2));
   painter.drawRoundedRect(QRectF(1, 1, w - 2, h - 2), 5, 5);
   if (!icon.isNull()) {
-    icon.paint(&painter, pad, (h - icon_sz) / 2, icon_sz, icon_sz);
+    const QPixmap pm = icon.pixmap(QSize(icon_sz, icon_sz));
+    painter.drawPixmap(pad, (h - icon_sz) / 2, icon_sz, icon_sz, pm);
   }
   painter.setPen(palette().text().color());
   painter.drawText(pad + icon_sz + 6,
@@ -525,9 +532,47 @@ void DisplayTreeWidget::dropEvent(QDropEvent* event) {
   }
 }
 
+bool DisplayTreeWidget::event(QEvent* event) {
+  // Block style polish, layout, and paint during rebuild / startup suppress.
+  // LayoutRequest otherwise drives updateGeometries → sizeHintForColumn over
+  // half-deleted items; Paint would call drawRow on a still-settling tree.
+  if (event != nullptr &&
+      (paint_suppressed_ || rebuilding_ > 0 || !updatesEnabled())) {
+    switch (event->type()) {
+      case QEvent::Polish:
+      case QEvent::PolishRequest:
+      case QEvent::StyleChange:
+      case QEvent::LayoutRequest:
+      case QEvent::Resize:
+      case QEvent::Paint:
+      case QEvent::UpdateRequest:
+        return true;
+      default:
+        break;
+    }
+  }
+  return QTreeWidget::event(event);
+}
+
+int DisplayTreeWidget::sizeHintForColumn(int column) const {
+  if (paint_suppressed_ || rebuilding_ > 0 || !updatesEnabled()) {
+    return column == 0 ? 220 : 120;
+  }
+  return QTreeWidget::sizeHintForColumn(column);
+}
+
 void DisplayTreeWidget::paintEvent(QPaintEvent* event) {
+  // Skip while wiping/rebuilding, or during post-Ogre startup suppress
+  // (QTreeView::drawRow SEGV right after RenderSystem ready).
+  if (paint_suppressed_ || rebuilding_ > 0 || !updatesEnabled() ||
+      !isVisible()) {
+    return;
+  }
   QTreeWidget::paintEvent(event);
 
+  if (!updatesEnabled()) {
+    return;
+  }
   QPainter painter(viewport());
   painter.setRenderHint(QPainter::Antialiasing, false);
 

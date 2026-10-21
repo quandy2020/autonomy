@@ -98,10 +98,11 @@ void Preprocess::FilterCloud(const sensor::PointCloudXYZI& cloud_in) {
         }
         cloud_surf.push_back(pt);
     }
-    std::sort(cloud_surf.points.begin(), cloud_surf.points.end(),
-              [](const sensor::PointType& a, const sensor::PointType& b) {
-                  return a.curvature < b.curvature;
-              });
+    // stable_sort: equal curvature must keep input order (synthetic index times).
+    std::stable_sort(cloud_surf.points.begin(), cloud_surf.points.end(),
+                     [](const sensor::PointType& a, const sensor::PointType& b) {
+                         return a.curvature < b.curvature;
+                     });
 }
 
 void Preprocess::ExtractFeatures(const sensor::PointCloudXYZI& cloud_in) {

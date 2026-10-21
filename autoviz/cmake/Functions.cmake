@@ -367,7 +367,9 @@ endfunction()
 # Desktop entry, AppStream metadata, and multi-size icons.
 # ---------------------------------------------------------------------------
 function(autoviz_install_desktop_assets)
-  install(FILES ${AUTOVIZ_ROOT}/config/default.autoviz
+  install(FILES
+      ${AUTOVIZ_ROOT}/config/default.autoviz
+      ${AUTOVIZ_ROOT}/config/argus.autoviz
     DESTINATION share/autonomy/autoviz)
   install(DIRECTORY ${AUTOVIZ_ROOT}/resources/ogre_media
     DESTINATION share/autonomy/autoviz)

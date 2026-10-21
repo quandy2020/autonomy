@@ -98,7 +98,19 @@ class PointCloud2Display
    */
   void onDisable() override;
 
+  /**
+   * @brief When Decay Time &gt; 0, keep a bounded message backlog (RViz2).
+   */
+  std::size_t messageQueueDepth() const override;
+
+  /**
+   * @brief Expire Decay Time batches every UI tick (not only on new messages).
+   */
+  void afterQueueProcessed() override;
+
  private:
+  /** @brief Drop batches older than Decay Time; enforce Max Points. */
+  void evictExpiredBatches();
   /**
    * @struct CloudPoint
    * @brief One colored point with receive timestamp for decay eviction.

@@ -389,14 +389,24 @@ bool FindDropAt(QSplitter* root, QWidget* host, const QPoint& global_pos,
 /** Foxglove/react-mosaic remove: collapse a splitter that has a single child. */
 void CollapseDegenerateSplitter(QSplitter* splitter, QSplitter* root) {
   while (splitter != nullptr && splitter != root && splitter->count() == 1) {
+    QPointer<QSplitter> alive(splitter);
     QWidget* only = splitter->widget(0);
     auto* parent = qobject_cast<QSplitter*>(splitter->parentWidget());
     if (parent == nullptr || only == nullptr) {
       break;
     }
     const int index = parent->indexOf(splitter);
+    if (index < 0) {
+      break;
+    }
     QList<int> sizes = parent->sizes();
+    // replaceWidget hides/shows and can emit QDockWidget::visibilityChanged.
+    // Callers must hold mutating_mosaic_ so handlers do not re-enter scrub.
     parent->replaceWidget(index, only);
+    if (!alive) {
+      splitter = parent;
+      continue;
+    }
     splitter->setParent(nullptr);
     splitter->deleteLater();
     if (sizes.size() == parent->count()) {
@@ -411,18 +421,30 @@ void ScrubEmptyPanesRecursive(QSplitter* splitter, QSplitter* root) {
   if (splitter == nullptr) {
     return;
   }
-  for (int i = splitter->count() - 1; i >= 0; --i) {
-    QWidget* child = splitter->widget(i);
+  // Snapshot children first — CollapseDegenerateSplitter / delete mutates the
+  // splitter mid-iteration and left dangling QWidget* for qobject_cast (SIGSEGV).
+  QList<QPointer<QWidget>> children;
+  children.reserve(splitter->count());
+  for (int i = 0; i < splitter->count(); ++i) {
+    children.push_back(splitter->widget(i));
+  }
+
+  QList<QPointer<QSplitter>> nested_to_collapse;
+  for (const QPointer<QWidget>& child_guard : children) {
+    QWidget* child = child_guard.data();
     if (child == nullptr) {
       continue;
     }
     if (auto* nested = qobject_cast<QSplitter*>(child)) {
       ScrubEmptyPanesRecursive(nested, root);
+      if (!child_guard) {
+        continue;
+      }
       if (nested->count() == 0) {
         nested->setParent(nullptr);
         delete nested;
       } else {
-        CollapseDegenerateSplitter(nested, root);
+        nested_to_collapse.push_back(nested);
       }
       continue;
     }
@@ -434,6 +456,11 @@ void ScrubEmptyPanesRecursive(QSplitter* splitter, QSplitter* root) {
     if (dock == nullptr || dock->parentWidget() != child) {
       child->setParent(nullptr);
       delete child;
+    }
+  }
+  for (const QPointer<QSplitter>& nested : nested_to_collapse) {
+    if (nested != nullptr) {
+      CollapseDegenerateSplitter(nested.data(), root);
     }
   }
   CollapseDegenerateSplitter(splitter, root);
@@ -707,8 +734,15 @@ void MainPanelHost::removePanel(QDockWidget* dock) {
   if (dock == nullptr || !hostsPanel(dock)) {
     return;
   }
+  // Collapse/scrub emit visibilityChanged; skipping re-entry prevents UAF in
+  // ScrubEmptyPanesRecursive when the Displays/Panels menu hides a leaf.
+  if (mutating_mosaic_) {
+    parkDock(dock);
+    return;
+  }
+  mutating_mosaic_ = true;
   QWidget* pane = dock->parentWidget();
-  QSplitter* parent_splitter = nullptr;
+  QPointer<QSplitter> parent_splitter;
   if (pane != nullptr && pane->property("mainPanelPane").toBool()) {
     parent_splitter = qobject_cast<QSplitter*>(pane->parentWidget());
   }
@@ -717,14 +751,25 @@ void MainPanelHost::removePanel(QDockWidget* dock) {
     pane->setParent(nullptr);
     delete pane;
   }
-  CollapseDegenerateSplitter(parent_splitter, root_splitter_);
-  scrubEmptyPanes();
+  if (parent_splitter != nullptr) {
+    CollapseDegenerateSplitter(parent_splitter.data(), root_splitter_);
+  }
+  // Inline scrub while mutating_mosaic_ is held (scrubEmptyPanes early-outs).
+  if (root_splitter_ != nullptr) {
+    ScrubEmptyPanesRecursive(root_splitter_, root_splitter_);
+    if (root_splitter_->count() > 0) {
+      EqualizeSplitter(root_splitter_);
+      FillSplitter(root_splitter_);
+    }
+  }
+  mutating_mosaic_ = false;
 }
 
 void MainPanelHost::scrubEmptyPanes() {
-  if (root_splitter_ == nullptr) {
+  if (root_splitter_ == nullptr || mutating_mosaic_) {
     return;
   }
+  mutating_mosaic_ = true;
   ScrubEmptyPanesRecursive(root_splitter_, root_splitter_);
   // Remaining panes must expand into the freed space (closing Map / Plot /
   // duplicate 3D View / title-bar undock used to leave a blank gap).
@@ -733,7 +778,8 @@ void MainPanelHost::scrubEmptyPanes() {
     FillSplitter(root_splitter_);
     const QPointer<MainPanelHost> self(this);
     QTimer::singleShot(0, this, [self]() {
-      if (self == nullptr || self->root_splitter_ == nullptr) {
+      if (self == nullptr || self->root_splitter_ == nullptr ||
+          self->mutating_mosaic_) {
         return;
       }
       EqualizeSplitter(self->root_splitter_);
@@ -742,6 +788,7 @@ void MainPanelHost::scrubEmptyPanes() {
     });
   }
   RaiseSplitterHandles(root_splitter_);
+  mutating_mosaic_ = false;
 }
 
 bool MainPanelHost::replacePanel(QDockWidget* old_dock, QDockWidget* new_dock) {

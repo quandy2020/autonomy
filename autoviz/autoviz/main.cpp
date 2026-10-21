@@ -5,6 +5,7 @@
 #include <memory>
 #include <unistd.h>
 
+#include <QAccessible>
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QFile>
@@ -13,6 +14,7 @@
 #include <QLibraryInfo>
 #include <QLocale>
 #include <QTimer>
+#include <QtGlobal>
 
 #include "autoviz/ui/app/preferences.hpp"
 #include "autoviz/ui/theme/application.hpp"
@@ -36,7 +38,17 @@ QString defaultConfigPath() {
 
 int main(int argc, char** argv) {
   autoviz::platform::configureOpenGLDefaults();
+  // Qt6 accessibility walks widget trees during activate/geometry/hide.
+  // With WA_NativeWindow Ogre + mosaic docks this UAF/SEGVs right after
+  // RenderSystem ready (QAccessibleCache / getOpaqueChildren / topLevelWidgets).
+  // Opt-out before QApplication constructs the a11y bridge.
+  qputenv("QT_ACCESSIBILITY", "0");
+  qputenv("QT_LINUX_ACCESSIBILITY_ALWAYS_ON", "0");
   QApplication app(argc, argv);
+  QAccessible::setActive(false);
+  // Keep false until the main frame is shown — destroying the splash must not
+  // quit the app (quitOnLastWindowClosed default) before exec() paints Ogre.
+  app.setQuitOnLastWindowClosed(false);
   app.setApplicationName(QStringLiteral("Autoviz"));
   app.setApplicationDisplayName(QStringLiteral("Aviz"));
   app.setOrganizationName(QStringLiteral("Autonomy"));
@@ -138,14 +150,16 @@ int main(int argc, char** argv) {
   }
 
   if (splash != nullptr) {
-    splash->showStatusFor(QStringLiteral("Loading UI"));
+    // showStatus only — avoid showStatusFor/waitMs processEvents while the
+    // heavy VisualizationFrame / Ogre path is about to run.
+    splash->showStatus(QStringLiteral("Loading UI"));
   }
   int code = 0;
   {
     // Frame must be destroyed before manager shutdown: panels/GL still use it.
     autoviz::VisualizationFrame frame(manager);
     if (splash != nullptr) {
-      splash->showStatusFor(QStringLiteral("Loading config"));
+      splash->showStatus(QStringLiteral("Loading config"));
     }
     if (QFile::exists(config_path)) {
       frame.loadConfig(config_path);
@@ -153,10 +167,14 @@ int main(int argc, char** argv) {
 
     if (splash != nullptr) {
       splash->finish();
+      // Hide without QSplashScreen::finish(main) — that path activates the
+      // main window and has SEGV'd in topLevelWidgets under Docker/X11.
+      splash->hide();
       splash.reset();
     }
 
     frame.applyStartupWindowState();
+    app.setQuitOnLastWindowClosed(true);
 
     // Ctrl+C / SIGTERM → main-window closeEvent (GLX teardown), not a raw
     // Autolink state flip that leaves Qt tearing down WA_PaintOnScreen widgets.

@@ -7,6 +7,7 @@
 #include <QApplication>
 #include <QCursor>
 #include <QFile>
+#include <QHash>
 #include <QImage>
 #include <QPainter>
 #include <QPixmap>
@@ -14,6 +15,7 @@
 #include <QSvgRenderer>
 
 #include <cmath>
+#include <utility>
 
 #include "autoviz/common/display_status.hpp"
 #include "autoviz/ui/theme/application.hpp"
@@ -592,7 +594,27 @@ QIcon IconLoader::applicationIcon() {
   return LoadIconByBase(QStringLiteral(":/autoviz/icons/aviz"));
 }
 
-QIcon IconLoader::load(const QString& resource_path) {
+QHash<QString, QIcon>& IconCache() {
+  // Process-lifetime cache: QTreeWidgetItem::setIcon copies QIcons; reloading
+  // SVG→QPixmap on every populateTree/refresh races paint and SEGV's in
+  // QPixmapIconEngine / QRasterPaintEngine dtors under live Argus.
+  static QHash<QString, QIcon> cache;
+  return cache;
+}
+
+const QIcon& CachedOrLoad(const QString& key, QIcon (*loader)(const QString&),
+                          const QString& arg) {
+  QHash<QString, QIcon>& cache = IconCache();
+  auto it = cache.find(key);
+  if (it != cache.end()) {
+    return it.value();
+  }
+  QIcon icon = loader(arg);
+  it = cache.insert(key, std::move(icon));
+  return it.value();
+}
+
+QIcon LoadPathIcon(const QString& resource_path) {
   QIcon icon = LoadIconByBase(StripExtension(resource_path));
   if (!icon.isNull()) {
     return icon;
@@ -600,8 +622,14 @@ QIcon IconLoader::load(const QString& resource_path) {
   return LoadIconByBase(QStringLiteral(":/autoviz/icons/default/class"));
 }
 
+QIcon IconLoader::load(const QString& resource_path) {
+  const QString key = QStringLiteral("load:") + StripExtension(resource_path);
+  return CachedOrLoad(key, LoadPathIcon, resource_path);
+}
+
 QIcon IconLoader::displayIcon(const QString& display_type) {
-  return LoadDisplayIcon(display_type);
+  const QString key = QStringLiteral("display:") + display_type;
+  return CachedOrLoad(key, LoadDisplayIcon, display_type);
 }
 
 QIcon IconLoader::toolIcon(const QString& tool_id) {
@@ -815,18 +843,29 @@ QIcon StatusIconFromResource(const QString& resource_base) {
 }
 
 QIcon IconLoader::statusIcon(display::DisplayStatusLevel level, bool enabled) {
+  QString key;
+  QString resource;
   if (!enabled) {
-    return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status/disabled"));
+    key = QStringLiteral("status:disabled");
+    resource = QStringLiteral(":/autoviz/icons/status/disabled");
+  } else {
+    switch (level) {
+      case display::DisplayStatusLevel::kError:
+        key = QStringLiteral("status:error");
+        resource = QStringLiteral(":/autoviz/icons/status/error");
+        break;
+      case display::DisplayStatusLevel::kWarn:
+        key = QStringLiteral("status:warn");
+        resource = QStringLiteral(":/autoviz/icons/status/warn");
+        break;
+      case display::DisplayStatusLevel::kOk:
+      default:
+        key = QStringLiteral("status:ok");
+        resource = QStringLiteral(":/autoviz/icons/status/ok");
+        break;
+    }
   }
-  switch (level) {
-    case display::DisplayStatusLevel::kError:
-      return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status/error"));
-    case display::DisplayStatusLevel::kWarn:
-      return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status/warn"));
-    case display::DisplayStatusLevel::kOk:
-    default:
-      return StatusIconFromResource(QStringLiteral(":/autoviz/icons/status/ok"));
-  }
+  return CachedOrLoad(key, StatusIconFromResource, resource);
 }
 
 }  // namespace autoviz

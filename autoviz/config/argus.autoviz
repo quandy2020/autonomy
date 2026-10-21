@@ -1,0 +1,203 @@
+CurrentView:
+  Distance: 25
+  FocalShapeFixedSize: true
+  FocalShapeSize: 0.05000000074505806
+  FpsPitch: 0
+  FpsPosition:
+    X: 0
+    Y: 0
+    Z: 2
+  FpsYaw: 3.140000104904175
+  InvertZAxis: false
+  Name: Current
+  NearClipDistance: 0.009999999776482582
+  Pitch: 0.785398006439209
+  Target:
+    X: 0
+    Y: 0
+    Z: 0
+  Type: Orbit
+  Yaw: 0.785398006439209
+Displays:
+  - Channel: ""
+    Enabled: true
+    Name: TF
+    Type: TF
+  - Channel: ""
+    Enabled: true
+    Name: Grid
+    Properties:
+      alpha: 0.5
+      cell_count: 20
+      cell_size: 1.0
+      color: 160;160;160
+      line_style: Lines
+      line_width: 0.03
+      normal_cell_count: 0
+      offset: 0;0;0
+      plane: XY
+      reference_frame: <Fixed Frame>
+    Type: Grid
+  # Raw /points is lidar-frame; leave off so it does not smear over map.
+  - Channel: /points
+    Enabled: false
+    Name: LidarScan
+    Properties:
+      alpha: "0.85"
+      color_transform: Intensity
+      decay_time: "0"
+      decimate: "2"
+      max_points: "200000"
+      point_world_size: "0.03"
+      style: Flat Squares
+      use_rainbow: "true"
+    Type: PointCloud2
+  - Channel: /argus/cloud_registered
+    Enabled: true
+    Name: ArgusCloudRegistered
+    Properties:
+      alpha: "0.7"
+      color: 0;200;255
+      color_transform: FlatColor
+      decay_time: "0"
+      decimate: "1"
+      max_points: "200000"
+      point_world_size: "0.04"
+      style: Flat Squares
+    Type: PointCloud2
+  - Channel: /argus/cloud_map
+    Enabled: true
+    Name: ArgusCloudMap
+    Properties:
+      alpha: "1.0"
+      color_transform: RGB8
+      # Argus publishes full strided snapshots; decay=0 ⇒ replace (no forget).
+      decay_time: "0"
+      decimate: "1"
+      max_points: "5000000"
+      point_world_size: "0.05"
+      style: Points
+      point_size: "2"
+    Type: PointCloud2
+  - Channel: /argus/trajectory
+    Enabled: true
+    Name: ArgusTrajectory
+    Properties:
+      alpha: "1.0"
+      color: 0;255;80
+      line_style: Billboards
+      line_width: "0.06"
+    Type: Path
+  - Channel: /gt/path
+    Enabled: true
+    Name: GroundTruthPath
+    Properties:
+      alpha: "0.9"
+      color: 255;200;0
+      line_style: Billboards
+      line_width: "0.05"
+    Type: Path
+  - Channel: /argus/odometry
+    Enabled: true
+    Name: ArgusOdometry
+    Properties:
+      keep: "1"
+      shape: Arrow
+      color: 255;100;0
+    Type: Odometry
+  - Channel: /gt/odometry
+    Enabled: true
+    Name: GroundTruthOdometry
+    Properties:
+      keep: "1"
+      shape: Axes
+      color: 255;200;0
+    Type: Odometry
+Global:
+  ActiveTool: Interact
+  BackgroundColor: 48;48;48
+  FixedFrame: map
+  FrameRate: 30
+  RenderBackend: Ogre
+  Transformer: autoviz/AutolinkTf
+  ViewController: Orbit
+ImagePanels:
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: /camera/rgb/image_raw
+    LabelScale: 1
+    ObjectName: ImageDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Camera
+PlotPanels:
+  - LockAxisScales: false
+    MessagePathMode: 1
+    ObjectName: PlotDock
+    SettingsVisible: false
+    SettingsWidth: 300
+    ShowLegendValues: true
+    SyncWithOtherPlots: true
+    Title: Plot
+    XAxisMode: 0
+    XWindowSec: 30
+PublishPanels:
+  - ActivePresetName: ""
+    ButtonColor: ""
+    ButtonLabel: Publish
+    ButtonTooltip: ""
+    Channel: /cmd_vel
+    CustomChannels:
+      - /cmd_vel
+    EditingMode: false
+    LoopPublish: false
+    MessageJson: "{}\n"
+    MessageType: automsgs.msgs.geometry_msgs.TwistStamped
+    ObjectName: PublishDock
+    PublishRateHz: 1
+    SelectedPublisherIndex: -1
+    SettingsVisible: false
+    Title: ""
+Toolbar:
+  - Interact
+  - MoveCamera
+  - Select
+  - FocusCamera
+  - Measure
+  - PoseEstimate
+  - NavGoal
+  - PublishPoint
+Tools:
+  - Id: Interact
+    Properties:
+      client_id: autoviz
+  - Id: PoseEstimate
+    Properties:
+      covariance_x: 0.25
+      covariance_y: 0.25
+      covariance_yaw: 0.0685385
+      topic: /initialpose
+  - Id: NavGoal
+    Properties:
+      topic: /goal_pose
+  - Id: PublishPoint
+    Properties:
+      topic: /clicked_point
+Views: ~
+Window:
+  HideLeftDock: false
+  HideRightDock: false
+  VisiblePanels:
+    - ViewportDock
+    - DisplaysDock
+    - ImageDock
+    - ViewsDock

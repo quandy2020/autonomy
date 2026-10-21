@@ -139,14 +139,22 @@ OgrePointCloud::OgrePointCloud()
   ss << "AvizPointCloudMaterial" << count++;
 
   auto clone_or_create = [&](const char* base, const std::string& suffix) {
-    Ogre::MaterialPtr src =
-        Ogre::MaterialManager::getSingleton().getByName(base);
-    if (src) {
-      return src->clone(ss.str() + suffix);
+    Ogre::MaterialManager& mats = Ogre::MaterialManager::getSingleton();
+    const std::string name = ss.str() + suffix;
+    // Reuse if a prior cloud already registered this name (rapid recreate).
+    if (Ogre::MaterialPtr existing = mats.getByName(name)) {
+      return existing;
     }
-    return Ogre::MaterialManager::getSingleton().create(
-        ss.str() + suffix,
-        Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
+    Ogre::MaterialPtr src = mats.getByName(base);
+    if (src && src->getNumTechniques() > 0) {
+      try {
+        return src->clone(name);
+      } catch (...) {
+        // Heap pressure / concurrent MaterialManager use — fall through.
+      }
+    }
+    return mats.create(
+        name, Ogre::ResourceGroupManager::DEFAULT_RESOURCE_GROUP_NAME);
   };
 
   point_material_ = clone_or_create("aviz/PointCloudPoint", "Point");

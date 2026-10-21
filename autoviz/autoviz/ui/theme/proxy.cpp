@@ -4,6 +4,7 @@
 
 #include "autoviz/ui/theme/proxy.hpp"
 
+#include <QAbstractItemView>
 #include <QApplication>
 #include <QFontMetrics>
 #include <QKeySequence>
@@ -114,11 +115,22 @@ int SimpleMenuContentWidth(int max_label, int max_shortcut, bool need_submenu) {
 }
 
 bool ObjectHasBoolProp(const QObject* object, const char* name) {
-  return object != nullptr && object->property(name).toBool();
+  // During item-view layout, styleObject can be a half-destroyed QObject;
+  // QObject::property then SEGV's in QtPrivate::compareMemory.
+  if (object == nullptr || object->metaObject() == nullptr || name == nullptr) {
+    return false;
+  }
+  const QByteArray key(name);
+  const QMetaObject* meta = object->metaObject();
+  if (meta->indexOfProperty(name) < 0 &&
+      !object->dynamicPropertyNames().contains(key)) {
+    return false;
+  }
+  return object->property(name).toBool();
 }
 
 bool IsPanelsMenuObject(const QObject* object) {
-  if (object == nullptr) {
+  if (object == nullptr || object->metaObject() == nullptr) {
     return false;
   }
   if (object->objectName() == QLatin1String(AppThemeIds::kPanelsMenu)) {
@@ -128,7 +140,7 @@ bool IsPanelsMenuObject(const QObject* object) {
 }
 
 bool IsGlassMenuObject(const QObject* object) {
-  if (object == nullptr) {
+  if (object == nullptr || object->metaObject() == nullptr) {
     return false;
   }
   if (IsPanelsMenuObject(object)) {
@@ -163,6 +175,14 @@ bool IsPanelsMenu(const QWidget* widget, const QStyleOption* option = nullptr) {
 }
 
 bool IsGlassMenu(const QWidget* widget, const QStyleOption* option = nullptr) {
+  // Item views (Displays/Views trees) are never glass menus — skip styleObject
+  // walks that UAF during QTreeView layout (QObject::property SEGV).
+  if (widget != nullptr &&
+      (qobject_cast<const QAbstractItemView*>(widget) != nullptr ||
+       qobject_cast<const QAbstractItemView*>(widget->parentWidget()) !=
+           nullptr)) {
+    return false;
+  }
   if (IsActiveGlassMenuPopup()) {
     return true;
   }
@@ -490,6 +510,49 @@ void DrawSimpleGlassMenuItem(const QStyleOptionMenuItem& opt, QPainter* painter,
   painter->restore();
 }
 
+/**
+ * RViz2-style item-view checkbox: white square, gray rim, dark checkmark.
+ * Fusion + transparent tree palettes otherwise paint solid black indicators.
+ */
+void PaintRvizItemViewCheck(QPainter* painter, const QStyleOption* option) {
+  if (painter == nullptr || option == nullptr) {
+    return;
+  }
+  constexpr int kSize = 13;
+  QRect box(0, 0, kSize, kSize);
+  box.moveCenter(option->rect.center());
+
+  const bool enabled = option->state.testFlag(QStyle::State_Enabled);
+  const bool on = option->state.testFlag(QStyle::State_On);
+  const bool partial = option->state.testFlag(QStyle::State_NoChange);
+  const QColor rim = enabled ? QColor(0x94, 0xA3, 0xB8) : QColor(0xCB, 0xD5, 0xE1);
+  const QColor fill = enabled ? QColor(0xFF, 0xFF, 0xFF) : QColor(0xF8, 0xFA, 0xFC);
+  // Teal check — matches Displays accent, avoids muddy near-black marks.
+  const QColor mark = enabled ? QColor(0x0D, 0x94, 0x88) : QColor(0x99, 0xF6, 0xE4);
+
+  painter->save();
+  painter->setRenderHint(QPainter::Antialiasing, false);
+  painter->setPen(QPen(rim, 1));
+  painter->setBrush(fill);
+  painter->drawRect(box);
+
+  if (on || partial) {
+    QPen check_pen(mark, 1.7);
+    check_pen.setCapStyle(Qt::SquareCap);
+    check_pen.setJoinStyle(Qt::MiterJoin);
+    painter->setPen(check_pen);
+    const int x = box.left();
+    const int y = box.top();
+    if (partial) {
+      painter->drawLine(x + 3, y + kSize / 2, x + kSize - 3, y + kSize / 2);
+    } else {
+      painter->drawLine(QPoint(x + 3, y + 7), QPoint(x + 5, y + 10));
+      painter->drawLine(QPoint(x + 5, y + 10), QPoint(x + 10, y + 3));
+    }
+  }
+  painter->restore();
+}
+
 }  // namespace
 
 ProxyStyle::ProxyStyle(QStyle* base_style)
@@ -531,6 +594,17 @@ void ProxyStyle::drawPrimitive(PrimitiveElement element,
        element == PE_IndicatorItemViewItemCheck) &&
       IsGlassMenu(widget, option)) {
     return;
+  }
+  // Displays / Views property trees: RViz2 checkbox chrome (not Fusion black fill).
+  if (element == PE_IndicatorItemViewItemCheck && option != nullptr) {
+    const QWidget* host = widget;
+    if (host != nullptr && qobject_cast<const QAbstractItemView*>(host) == nullptr) {
+      host = host->parentWidget();
+    }
+    if (host == nullptr || qobject_cast<const QAbstractItemView*>(host) != nullptr) {
+      PaintRvizItemViewCheck(painter, option);
+      return;
+    }
   }
   QProxyStyle::drawPrimitive(element, option, painter, widget);
 }

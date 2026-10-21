@@ -76,7 +76,7 @@ autonomy.localization \
 | 话题 | 说明 |
 |------|------|
 | `/argus/odometry` | `map` 系里程计 |
-| `/argus/trajectory` | 轨迹 Path |
+| `/argus/trajectory` | 轨迹 Path（仅 LIO `kOk` 时追加；datasets 重播会自动 Reset Sync） |
 | `/argus/cloud_map` | 持久全局点云（世界系体素） |
 | `/argus/cloud_registered` | 当前帧配准点云 |
 | `/argus/occupancy` | 2D 占用栅格 |
@@ -84,15 +84,38 @@ autonomy.localization \
 
 **离线数据集 → Argus（Oxford Spires）**
 
+`localization_argus.launch` 默认是 **autosim LIVO**（Habitat 相机标定）。跑 Spires 请用 **LIO-only**，否则视觉对不上、里程计不 `kOk`，**`/argus/cloud_map` 全局点云就不会长出来**。
+
 ```bash
-# 终端 A：localization_argus.launch
-# 终端 B：
-python -m autonomy.tools.datasets publish \
-  --dataset spires --path /path/to/sequences/<name> --rate 1.0
-# LIO-only：加 --no-image
+# 终端 A：Argus LIO（不要用 livo_autosim.yaml 喂 Spires）
+cd /workspace/autonomy
+export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+export LD_LIBRARY_PATH=/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}
+export AUTOLINK_PATH=/workspace/autonomy/src/autonomy/autolink
+autonomy.localization \
+  --localization_mode=argus \
+  --argus_config=autonomy/localization/argus/config/livo_esikf_spires.yaml \
+  --argus_imu_topic=/imu \
+  --argus_lidar_topic=/points
+
+# 终端 B：数据集（图像/GT 可选；LIO 可 --no-image）
+export LD_LIBRARY_PATH="/workspace/autonomy/install/autonomy/lib:/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="/workspace/autonomy/src/autonomy:/workspace/autonomy/install/autonomy/python:/workspace/autonomy/install/autonomy/lib/python:${PYTHONPATH:-}"
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset spires \
+  --path /data/Oxford/sequences/2024-03-12-keble-college-02 \
+  --rate 1.0
 ```
 
-详见 `autonomy/tools/datasets/README.md`。
+Autoviz：**Fixed Frame = `map`**，订 `/argus/cloud_map`（全局）、`/argus/cloud_registered`（当前帧）、`/argus/trajectory`、`/gt/path`、`/camera/rgb/image_raw`。预设：
+
+```bash
+./build/autonomy/bin/autoviz --config src/autonomy/autoviz/config/argus.autoviz
+```
+
+全局图只来自 Argus，datasets 不会发 map 点云。Image 面板 Channel 必须真正选中并应用（Properties 里看到话题 ≠ 已订阅；若 HUD 仍是 “Select an image topic”，重新点选 Channel）。
+
+序列在 `/data/Oxford/sequences/`（宿主机 `AUTONOMY_DATASETS`）。详见 `autonomy/tools/datasets/README.md`。
 
 ## autosim 验证 Atlas LIO
 

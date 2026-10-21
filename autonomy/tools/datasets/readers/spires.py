@@ -39,6 +39,8 @@ class SpiresFrame:
     timestamp: float
     xyz: np.ndarray
     intensity: np.ndarray
+    # Sweep-relative time in milliseconds (Hesai timestamp field), if known.
+    time_ms: np.ndarray | None = None
     image: np.ndarray | None = None
     image_timestamp: float = 0.0
     cloud_path: str = ""
@@ -166,6 +168,7 @@ class SpiresReader:
         self.load_images = load_images
 
         self.raw_dir: Path
+        self.seq_root: Path
         self.lidar_dir: Path
         self.image_dir: Path | None = None
         self.imu_path: Path
@@ -186,14 +189,14 @@ class SpiresReader:
                 "  Inside Docker, set AUTONOMY_DATASETS on the host and recreate:\n"
                 "    export AUTONOMY_DATASETS=/path/to/datasets\n"
                 "    AUTONOMY_FORCE_RECREATE=1 python3 docker/run_autonomy.py\n"
-                "  then pass --path /data/Oxford/sequences/<name>"
+                "  then pass --path /data/Oxford/sequences/SEQ_NAME"
             )
         if (r / "lidar-clouds").is_dir():
             self.raw_dir = r
-            seq_root = r.parent if r.name == "raw" else r
+            self.seq_root = r.parent if r.name == "raw" else r
         elif (r / "raw" / "lidar-clouds").is_dir():
             self.raw_dir = r / "raw"
-            seq_root = r
+            self.seq_root = r
         else:
             raise FileNotFoundError(
                 f"unsupported Spires layout (need lidar-clouds or raw/lidar-clouds): {r}\n"
@@ -202,7 +205,7 @@ class SpiresReader:
 
         lidar = self.raw_dir / "lidar-clouds"
         if self.prefer_undistorted:
-            undist = seq_root / "processed" / "vilens-slam" / "undist-clouds"
+            undist = self.seq_root / "processed" / "vilens-slam" / "undist-clouds"
             if undist.is_dir() and any(undist.glob("*.pcd")):
                 lidar = undist
         self.lidar_dir = lidar
@@ -247,6 +250,7 @@ class SpiresReader:
         t0 = self.lidar_times[0] if self.lidar_times else 0.0
         t1 = self.lidar_times[-1] if self.lidar_times else 0.0
         return {
+            "seq_root": str(self.seq_root),
             "raw_dir": str(self.raw_dir),
             "lidar_dir": str(self.lidar_dir),
             "image_dir": str(self.image_dir) if self.image_dir else "",
@@ -282,12 +286,16 @@ class SpiresReader:
         want_image = self.load_images if load_image is None else load_image
         stem = self.lidar_stems[index]
         cloud_path = self._cloud_path(stem)
-        xyz, intensity = load_pcd_xyzi(cloud_path)
+        header_t = self.lidar_times[index]
+        xyz, intensity, time_ms = load_pcd_xyzi(
+            cloud_path, header_time=header_t
+        )
         frame = SpiresFrame(
             index=index,
-            timestamp=self.lidar_times[index],
+            timestamp=header_t,
             xyz=xyz,
             intensity=intensity,
+            time_ms=time_ms,
             cloud_path=str(cloud_path),
         )
         if want_image and self.image_times:

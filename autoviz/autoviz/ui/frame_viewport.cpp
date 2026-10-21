@@ -164,21 +164,35 @@ void FrameViewport::forEachViewportPanel(
 
 void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry,
                                                bool synchronous) {
-  if (entry.widget != nullptr) {
-    entry.widget->hide();
-    // Reparent off the dock before touching the layout — host may already be
-    // destroying (PanelDockWidget::onChildDestroyed → closed → remove).
-    entry.widget->setParent(nullptr);
-    if (entry.layout != nullptr) {
-      entry.layout->removeWidget(entry.widget);
+  if (entry.widget == nullptr) {
+    return;
+  }
+  QWidget* w = entry.widget;
+  entry.widget = nullptr;
+  entry.ogre_viewport = nullptr;
+
+  // hide() → hide_helper → focusNextPrevChild → focusProxy SEGV'd when the
+  // WA_NativeWindow Ogre child still had a dangling focus chain during quit
+  // (CloseEvent right after RenderSystem ready under Docker/X11).
+  w->setFocusProxy(nullptr);
+  if (QWidget* fw = QApplication::focusWidget()) {
+    if (fw == w || w->isAncestorOf(fw)) {
+      fw->clearFocus();
     }
-    if (synchronous) {
-      delete entry.widget;
-    } else {
-      entry.widget->deleteLater();
-    }
-    entry.widget = nullptr;
-    entry.ogre_viewport = nullptr;
+  }
+  w->clearFocus();
+
+  if (entry.layout != nullptr) {
+    entry.layout->removeWidget(w);
+  }
+  // Detach before hide so hide_helper does not walk dock-host siblings.
+  w->setParent(nullptr);
+  w->hide();
+
+  if (synchronous) {
+    delete w;
+  } else {
+    w->deleteLater();
   }
 }
 
@@ -753,16 +767,25 @@ void FrameViewport::syncToolContext() {
 
 void FrameViewport::updateViewportCursor() {
   forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    if (entry.host == nullptr) {
+      return;
+    }
     common::Tool* tool = frame_->manager_->tools().toolById(entry.local_tool_id);
+    // Shape cursors only on the host widget. Custom pixmap cursors have SEGV'd
+    // in QCursor copy during the first mouse move after RenderSystem ready
+    // (heap already soft-corrupted); keep pixmap cursors off the QWidget path.
+    QCursor cursor = IconLoader::defaultCursor();
+    if (entry.local_tool_id == "Interact") {
+      cursor = QCursor(Qt::PointingHandCursor);
+    } else if (entry.local_tool_id == "Select" ||
+               entry.local_tool_id == "Measure" ||
+               entry.local_tool_id == "PublishPoint") {
+      cursor = QCursor(Qt::CrossCursor);
+    }
     if (tool != nullptr) {
-      tool->setCursor(IconLoader::toolCursor(
-          QString::fromStdString(entry.local_tool_id)));
+      tool->setCursor(cursor);
     }
-    const QCursor cursor =
-        tool != nullptr ? tool->cursor() : IconLoader::defaultCursor();
-    if (entry.host != nullptr) {
-      entry.host->setCursor(cursor);
-    }
+    entry.host->setCursor(cursor);
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->setToolCursor(cursor);
     }

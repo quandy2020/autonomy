@@ -308,6 +308,8 @@ public:
     void ImportVisualMap(const map::VisualMap& visual);
 
 private:
+    /** @brief After sensor timestamp rewind (bag replay), reset sync/IMU clocks. */
+    void HandleSensorLoopback();
     bool ProcessLio(OdometryOutput* out);
     bool ProcessVio(OdometryOutput* out);
     void ApplyVioConfigToManager();

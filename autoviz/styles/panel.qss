@@ -30,7 +30,6 @@ QTreeWidget::item {
 QTreeWidget::item:hover,
 QTreeWidget::item:selected,
 QTreeWidget::item:selected:active,
-QTreeWidget::item:selected:!active,
 QTreeWidget::item:focus {
   background: transparent;
   border: none;
@@ -43,8 +42,7 @@ QTreeWidget::item:selected {
 QTreeWidget::branch,
 QTreeWidget::branch:selected,
 QTreeWidget::branch:hover,
-QTreeWidget::branch:selected:active,
-QTreeWidget::branch:selected:!active {
+QTreeWidget::branch:selected:active {
   background: transparent;
   border: none;
 }
@@ -198,8 +196,7 @@ QListWidget::item {
 }
 QListWidget::item:hover,
 QListWidget::item:selected,
-QListWidget::item:selected:active,
-QListWidget::item:selected:!active {
+QListWidget::item:selected:active {
   background: transparent;
   border: none;
   outline: none;
@@ -381,8 +378,7 @@ QListWidget::item {
 }
 QListWidget::item:hover,
 QListWidget::item:selected,
-QListWidget::item:selected:active,
-QListWidget::item:selected:!active {
+QListWidget::item:selected:active {
   background: rgba(20,184,166,0.18);
   color: #0D9488;
   border: none;
@@ -552,7 +548,7 @@ QTreeWidget#ChannelsTree::item {
 QTreeWidget#ChannelsTree::item:selected {
   background: rgba(8,145,178,0.14); color: {{panel-text}};
 }
-QTreeWidget#ChannelsTree::item:hover:!selected {
+QTreeWidget#ChannelsTree::item:hover {
   background: rgba(15,23,42,0.04);
 }
 QTreeWidget#ChannelsTree::branch {
@@ -586,12 +582,8 @@ QFrame#DisplaysFrostedFooter {
 /* @end */
 
 /* @section displays.splitter */
+/* No ::handle — Qt 6.2 QCss::Selector can SEGV on pseudo-elements during resize. */
 QSplitter { background: transparent; }
-QSplitter::handle {
-  background: {{glass-rim}};
-  height: 1px;
-  margin: 0 8px;
-}
 /* @end */
 
 /* @section image.compact_pick_button */
@@ -734,7 +726,7 @@ QWidget#plot_segmented_toggle QPushButton {
 QWidget#plot_segmented_toggle QPushButton:checked {
   background: #14B8A6; color: #FFFFFF; font-weight: 700;
 }
-QWidget#plot_segmented_toggle QPushButton:hover:!checked {
+QWidget#plot_segmented_toggle QPushButton:hover {
   background: rgba(255,255,255,0.55); color: #0D9488;
 }
 /* @end */
@@ -949,7 +941,7 @@ QTreeWidget#RawMessagesTree::item {
 QTreeWidget#RawMessagesTree::item:selected {
   background: rgba(8,145,178,0.14); color: {{panel-text}};
 }
-QTreeWidget#RawMessagesTree::item:hover:!selected {
+QTreeWidget#RawMessagesTree::item:hover {
   background: rgba(15,23,42,0.04);
 }
 QTreeWidget#RawMessagesTree::branch {
@@ -1091,7 +1083,7 @@ QToolButton {
 QToolButton:checked {
   background: {{accent}}; color: white;
 }
-QToolButton:hover:!checked {
+QToolButton:hover {
   background: rgba(8,145,178,0.10); color: {{accent}};
 }
 /* @end */
@@ -1241,7 +1233,7 @@ TfTreePanel, QWidget#TfTreePanelContent {
 /* @end */
 
 /* @section tf_tree.splitter */
-QSplitter::handle { background: {{panel-border}}; }
+QSplitter { background: transparent; }
 /* @end */
 
 /* @section tf_tree.tree */

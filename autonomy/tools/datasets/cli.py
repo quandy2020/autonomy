@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import time
 from pathlib import Path
 
 from autonomy.tools.datasets.publisher import (
@@ -27,6 +26,7 @@ from autonomy.tools.datasets.publisher import (
     PublishFrames,
 )
 from autonomy.tools.datasets.readers.spires import SpiresReader
+from autonomy.tools.datasets.tum import resolve_spires_gt
 
 
 class DatasetsCli:
@@ -36,8 +36,8 @@ class DatasetsCli:
         parser = argparse.ArgumentParser(
             prog="python -m autonomy.tools.datasets",
             description=(
-                "Load datasets and publish /imu /points [/camera] over autolink "
-                "for Argus (localization_argus)."
+                "Load datasets and publish /imu /points [/camera] [/gt/odometry] "
+                "over autolink for Argus (localization_argus)."
             ),
         )
         sub = parser.add_subparsers(dest="command", required=True)
@@ -93,6 +93,65 @@ class DatasetsCli:
             action="store_true",
             help="Suppress progress prints",
         )
+        gt = pub.add_mutually_exclusive_group()
+        gt.add_argument(
+            "--gt",
+            dest="publish_gt",
+            action="store_true",
+            default=True,
+            help="Publish ground truth when a TUM file is found (default)",
+        )
+        gt.add_argument(
+            "--no-gt",
+            dest="publish_gt",
+            action="store_false",
+            help="Do not publish ground truth",
+        )
+        pub.add_argument(
+            "--gt-file",
+            type=Path,
+            default=None,
+            help="TUM GT path (default: processed/vilens-slam/gt.tum or trajectory/gt-tum.txt)",
+        )
+        pub.add_argument(
+            "--gt-topic",
+            default="/gt/odometry",
+            help="GT Odometry topic (synced to lidar time)",
+        )
+        pub.add_argument(
+            "--gt-path-topic",
+            default="/gt/path",
+            help="GT Path topic (grows with lidar time, synced to playback)",
+        )
+        pub.add_argument("--gt-frame", default="map", help="GT header.frame_id")
+        pub.add_argument(
+            "--gt-child-frame",
+            default="gt_link",
+            help="GT Odometry child_frame_id",
+        )
+        pub.add_argument(
+            "--gt-max-dt",
+            type=float,
+            default=0.5,
+            help="Max |t_gt - t_lidar| for association (sec)",
+        )
+        pub.add_argument(
+            "--gt-path-stride",
+            type=int,
+            default=1,
+            help="Stride when packing /gt/path (1 = all poses)",
+        )
+        pub.add_argument(
+            "--gt-path-every",
+            type=int,
+            default=1,
+            help="Also republish growing /gt/path every N frames if unchanged (late Autoviz)",
+        )
+        pub.add_argument(
+            "--gt-zero-start",
+            action="store_true",
+            help="DEBUG only: rebase GT so first pose is identity (cheating for overlay; default off = absolute TUM)",
+        )
 
         args = parser.parse_args(argv)
         if args.command == "info":
@@ -146,34 +205,49 @@ class DatasetsCli:
 
     def _cmd_info(self, args: argparse.Namespace) -> int:
         reader = self._open_reader(args, load_images=True)
-        print(json.dumps(reader.info(), indent=2, sort_keys=True))
+        info = reader.info()
+        gt = resolve_spires_gt(reader.seq_root, getattr(args, "gt_file", None))
+        info["gt_file"] = str(gt) if gt is not None else ""
+        print(json.dumps(info, indent=2, sort_keys=True))
         return 0
 
     def _cmd_publish(self, args: argparse.Namespace) -> int:
         publish_image = not args.no_image
         reader = self._open_reader(args, load_images=publish_image)
         info = reader.info()
+        gt_path = resolve_spires_gt(reader.seq_root, args.gt_file)
+        publish_gt = bool(args.publish_gt) and gt_path is not None
         print(
             f"[datasets] spires raw={info['raw_dir']} "
             f"lidar={info['lidar_frames']} imu={info['imu_samples']} "
             f"images={info['image_frames']} dur={info['duration_sec']:.1f}s",
             flush=True,
         )
-        print(
-            f"[datasets] publish → {args.imu_topic} {args.points_topic}"
-            + (f" {args.image_topic}" if publish_image else " (no image)")
-            + f" rate={args.rate}",
-            flush=True,
-        )
+        topics = f"{args.imu_topic} {args.points_topic}"
+        if publish_image:
+            topics += f" {args.image_topic}"
+        else:
+            topics += " (no image)"
+        if publish_gt:
+            topics += f" {args.gt_topic} {args.gt_path_topic}"
+        elif args.publish_gt:
+            topics += " (no GT file)"
+        print(f"[datasets] publish → {topics} rate={args.rate}", flush=True)
+        if publish_gt:
+            print(f"[datasets] gt={gt_path}", flush=True)
 
-        last_print = [0.0]
+        # Progress every N lidar frames (sensor cadence), not wall-clock — so
+        # the printed step matches real lidar spacing (~0.1s @ 10 Hz).
+        progress_every = 10
 
         def on_progress(published: int, total: int, t: float) -> None:
             if args.quiet:
                 return
-            now = time.time()
-            if published == 1 or published == total or now - last_print[0] >= 1.0:
-                last_print[0] = now
+            if (
+                published == 1
+                or published == total
+                or published % progress_every == 0
+            ):
                 print(
                     f"[datasets] frame {published}/{total} t={t:.3f}",
                     flush=True,
@@ -185,14 +259,24 @@ class DatasetsCli:
                 imu=args.imu_topic,
                 points=args.points_topic,
                 image=args.image_topic,
+                gt_odom=args.gt_topic,
+                gt_path=args.gt_path_topic,
             ),
             frames=PublishFrames(
                 imu=args.imu_frame,
                 lidar=args.lidar_frame,
                 camera=args.camera_frame,
+                gt=args.gt_frame,
+                gt_child=args.gt_child_frame,
             ),
             rate=args.rate,
             publish_image=publish_image,
+            publish_gt=publish_gt,
+            gt_file=args.gt_file,
+            gt_max_dt=args.gt_max_dt,
+            gt_path_stride=args.gt_path_stride,
+            gt_path_every=args.gt_path_every,
+            gt_zero_start=args.gt_zero_start,
             node_name=args.node_name,
             on_progress=on_progress,
         )

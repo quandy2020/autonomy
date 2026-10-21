@@ -27,6 +27,7 @@
 #include <QDragLeaveEvent>
 #include <QDragMoveEvent>
 #include <QDropEvent>
+#include <QElapsedTimer>
 #include <QEvent>
 #include <QEventLoop>
 #include <QFile>
@@ -45,6 +46,7 @@
 #include <QResizeEvent>
 #include <QScreen>
 #include <QSettings>
+#include <QWindow>
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QStatusBar>
@@ -602,39 +604,113 @@ void FrameSession::applyPanelVisibility() {
   frame_->panels_->syncDeletePanelMenu();
 }
 
+bool FrameSession::startupCloseAllowed() const {
+  // ~5s covers Ogre first map + maximize timers; user Ctrl+C still quits via
+  // UserRequestedQuit() regardless of this gate.
+  constexpr qint64 kGraceMs = 5000;
+  return startup_close_grace_.isValid() &&
+         startup_close_grace_.elapsed() >= kGraceMs;
+}
+
 void FrameSession::applyStartupWindowState() {
+  if (!startup_close_grace_.isValid()) {
+    startup_close_grace_.start();
+  }
   const AppUiPreferences prefs = LoadAppUiPreferences();
   if (!prefs.start_maximized) {
     if (!frame_->isVisible()) {
       frame_->show();
     }
   } else {
-    frame_->setWindowState(Qt::WindowMaximized);
-    frame_->show();
-
-    const auto ensure_maximized = [this]() {
+    // Docker/X11: showMaximized() often sets isMaximized() without resizing,
+    // and setGeometry()+showMaximized() fight (WM restores the pre-maximize
+    // 1280x800 from setupUi). Always force-fill availableGeometry; treat
+    // Maximized as best-effort, never as proof the window fills the screen.
+    const auto screen_for = [this]() -> QScreen* {
+      if (QScreen* s = frame_->screen()) {
+        return s;
+      }
+      if (frame_->windowHandle() != nullptr) {
+        if (QScreen* s = frame_->windowHandle()->screen()) {
+          return s;
+        }
+      }
+      return QGuiApplication::primaryScreen();
+    };
+    const auto fills_screen = [](const QWidget* w, const QRect& area) {
+      if (w == nullptr || area.isEmpty()) {
+        return false;
+      }
+      // Frame chrome may be a few px off availableGeometry; require ≥95%.
+      return w->width() >= static_cast<int>(area.width() * 0.95) &&
+             w->height() >= static_cast<int>(area.height() * 0.95);
+    };
+    const auto force_fill = [this, screen_for, fills_screen]() {
       if (!LoadAppUiPreferences().start_maximized) {
         return;
       }
-      if (frame_->isMaximized()) {
-        frame_->raise();
-        frame_->activateWindow();
+      QScreen* screen = screen_for();
+      if (screen == nullptr) {
         return;
       }
-      frame_->showMaximized();
+      const QRect area = screen->availableGeometry();
+      if (area.isEmpty()) {
+        return;
+      }
+      // Drop FullScreen (user asked for maximize, not F11 fullscreen).
+      Qt::WindowStates st = frame_->windowState();
+      st &= ~(Qt::WindowMinimized | Qt::WindowFullScreen);
+      frame_->setWindowState(st);
+
+      if (!frame_->isVisible()) {
+        // First show with Maximized hint so WMs that honor it skip the
+        // 1280×800 flash from setupUi.
+        frame_->setWindowState(st | Qt::WindowMaximized);
+        frame_->show();
+      }
+
+      if (!fills_screen(frame_, area)) {
+        // WM ignored maximize: clear the bit so setGeometry sticks, then
+        // re-assert Maximized for the title-bar button state.
+        frame_->setWindowState(frame_->windowState() & ~Qt::WindowMaximized);
+        frame_->setGeometry(area);
+        frame_->move(area.topLeft());
+        frame_->resize(area.size());
+        frame_->setWindowState(frame_->windowState() | Qt::WindowMaximized);
+      } else if (!frame_->isMaximized()) {
+        frame_->setWindowState(frame_->windowState() | Qt::WindowMaximized);
+      }
       frame_->raise();
-      frame_->activateWindow();
-      if (frame_->isMaximized()) {
-        return;
-      }
-      if (QScreen* screen = QGuiApplication::primaryScreen()) {
-        frame_->setGeometry(screen->availableGeometry());
-      }
     };
 
-    QTimer::singleShot(0, frame_, ensure_maximized);
-    QTimer::singleShot(150, frame_, ensure_maximized);
+    force_fill();
+    // Retries cover dock restoreState, Ogre first map, and late WM configure.
+    for (int ms : {0, 50, 150, 400, 800, 1500, 2500}) {
+      QTimer::singleShot(ms, frame_, force_fill);
+    }
   }
+
+  // Show Displays tree shortly after the window maps (avoids blank panel from
+  // paint-suppress racing Ogre first paint).
+  QTimer::singleShot(900, frame_, [this]() {
+    if (frame_->panels_ != nullptr &&
+        frame_->panels_->displays_panel_ != nullptr) {
+      frame_->panels_->displays_panel_->armTreePainting();
+    }
+  });
+
+  // Give sidebars usable width once docks are visible (saved Width:2200
+  // sessions otherwise leave Displays as a thin empty strip).
+  QTimer::singleShot(50, frame_, [this]() {
+    if (frame_->panels_->displays_dock_ != nullptr) {
+      frame_->resizeDocks({frame_->panels_->displays_dock_}, {320},
+                          Qt::Horizontal);
+    }
+    if (frame_->panels_->views_dock_ != nullptr) {
+      frame_->resizeDocks({frame_->panels_->views_dock_}, {280},
+                          Qt::Horizontal);
+    }
+  });
 
   // Fresh start (no loadConfig) never hits activateRestoredViewportAndView.
   // After the window is shown, ensure the center mosaic hosts 3D View.
@@ -732,6 +808,9 @@ void FrameSession::restoreWindowLayout() {
   if (!state_b64.empty()) {
     frame_->restoreState(QByteArray::fromBase64(QByteArray::fromStdString(state_b64)));
   }
+  // restoreState can clear WindowMaximized; applyStartupWindowState re-applies
+  // it after loadConfig. Also ignore session Width/Height when launching
+  // maximized (already skipped above) so Docker does not open a 2200x1200 float.
   // Saved layouts may still place Teleop on the left from older builds.
   if (frame_->panels_->teleop_dock_ != nullptr) {
     frame_->layout_->ensureSidebarDockAttached(frame_->panels_->teleop_dock_);
@@ -1044,15 +1123,7 @@ void FrameSession::onRenderTick() {
   if (rendering::ViewController* controller = frame_->viewport_->activeViewController()) {
     controller->appendFocalShape(&frame_->manager_->sceneOverlay());
   }
-  for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
-    if (dock == nullptr || !dock->isVisible() ||
-        frame_->panels_->panelTypeId(dock) != QLatin1String("ImageDock")) {
-      continue;
-    }
-    if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
-      panel->tick();
-    }
-  }
+  frame_->panels_->tickVisibleImagePanels();
   frame_->chrome_->updateFps();
 }
 
@@ -1060,26 +1131,41 @@ void FrameSession::onRefreshTick() {
   if (app_inactive_) {
     return;
   }
+  // Defer ALL channel/UI churn until well after Ogre first paint. At ~8s the
+  // previous path called ensureDisplaysForRecordChannels on a live Argus
+  // session (displays already from .autoviz) → duplicate readers + tree/icon
+  // rebuild under paint → heap corruption (QIcon/QCss/Ogre Material::clone).
+  static QElapsedTimer startup_grace;
+  if (!startup_grace.isValid()) {
+    startup_grace.start();
+  }
+  if (startup_grace.elapsed() < 20000) {
+    return;
+  }
   frame_->manager_->refreshChannelList();
-  // Remember channels already considered so a display the user removed is not
-  // recreated on the next refresh. Kept out of FrameSession so the class
-  // layout stays stable for the rest of the binary.
-  static std::unordered_set<std::string> live_displays_seen;
-  std::unordered_map<std::string, std::string> fresh_channels;
-  for (const auto& channel : frame_->manager_->channels()) {
-    if (channel.message_type.empty() ||
-        live_displays_seen.count(channel.channel_name) != 0) {
-      continue;
+  // Auto-ensure only while a record is open. Live /tf publishers must not
+  // re-create readers for channels already bound by the session config.
+  if (frame_->manager_->playback().isPlaying() ||
+      frame_->manager_->playback().isPaused()) {
+    static std::unordered_set<std::string> live_displays_seen;
+    std::unordered_map<std::string, std::string> fresh_channels;
+    for (const auto& channel : frame_->manager_->channels()) {
+      if (channel.message_type.empty() ||
+          live_displays_seen.count(channel.channel_name) != 0) {
+        continue;
+      }
+      fresh_channels.emplace(channel.channel_name, channel.message_type);
     }
-    fresh_channels.emplace(channel.channel_name, channel.message_type);
-  }
-  if (!fresh_channels.empty()) {
-    frame_->manager_->ensureDisplaysForRecordChannels(fresh_channels);
-    for (const auto& entry : fresh_channels) {
-      live_displays_seen.insert(entry.first);
+    if (!fresh_channels.empty()) {
+      frame_->manager_->ensureDisplaysForRecordChannels(fresh_channels);
+      for (const auto& entry : fresh_channels) {
+        live_displays_seen.insert(entry.first);
+      }
     }
   }
-  frame_->panels_->displays_panel_->refreshStatus();
+  if (frame_->panels_->displays_panel_ != nullptr) {
+    frame_->panels_->displays_panel_->refreshStatus();
+  }
   if (frame_->panels_->views_panel_ != nullptr) {
     frame_->panels_->views_panel_->refreshFrameList();
   }
@@ -1406,12 +1492,20 @@ void FrameSession::safeguardNativeViewportsBeforeHide() {
     if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->hideNativeSurface();
     }
+    QWidget* w = entry.widget;
+    w->setFocusProxy(nullptr);
+    if (QWidget* fw = QApplication::focusWidget()) {
+      if (fw == w || w->isAncestorOf(fw)) {
+        fw->clearFocus();
+      }
+    }
+    w->clearFocus();
     if (entry.layout != nullptr) {
-      entry.layout->removeWidget(entry.widget);
+      entry.layout->removeWidget(w);
     }
     // Out of the QWidget tree — hideChildren will not visit this surface.
-    entry.widget->setParent(nullptr);
-    entry.widget->hide();
+    w->setParent(nullptr);
+    w->hide();
     entry.detached_for_window_hide = true;
   });
 }

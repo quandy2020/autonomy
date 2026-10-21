@@ -16,6 +16,7 @@
 
 #include "argus/odometry/livo_odometry.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <utility>
@@ -29,6 +30,7 @@
 #include "argus/common/math/transform/transform.hpp"
 #include "argus/frontend/semantic_dynamic_filter.hpp"
 #include "argus/sensor/image_data.hpp"
+#include "argus/sensor/point_cloud.hpp"
 
 namespace argus {
 namespace odometry {
@@ -316,25 +318,81 @@ bool LivoOdometry::LoadBuiltMap(const std::string& directory) {
     return true;
 }
 
+void LivoOdometry::HandleSensorLoopback() {
+    // Bag/datasets replay restarts timestamps; without this, Sync stalls with
+    // lidar_pushed_ waiting on a cleared buffer and IMU prop times stay in the
+    // future — /argus/odometry and /argus/trajectory go silent.
+    imu_process_->Reset();
+    measures_ = frontend::LidarMeasureGroup();
+    first_lidar_time_ = -1.0;
+    gravity_align_finished_ = false;
+}
+
 void LivoOdometry::AddLidar(const sensor::PointCloudXYZI::Ptr& cloud,
                             double header_time) {
     health_monitor_.RecordLidar(header_time);
     sync_.PushLidar(cloud, header_time);
+    if (sync_.ConsumeLoopback()) {
+        HandleSensorLoopback();
+    }
 }
 
 void LivoOdometry::AddLidar(
     const ::automsgs::msgs::sensor_msgs::PointCloud2& msg, double header_time) {
+    // Decode first so relative time (`curvature`, ms) exists BEFORE preprocess
+    // sorts. Sorting an all-zero curvature cloud with std::sort permutes points;
+    // synthesizing times afterward assigns a scrambled sweep → LIO diverge.
     auto cloud = sensor::PointCloudXYZI::make_shared();
-    auto msg_ptr =
-        std::shared_ptr<const ::automsgs::msgs::sensor_msgs::PointCloud2>(
-            &msg, [](const ::automsgs::msgs::sensor_msgs::PointCloud2*) {});
-    preprocess_->Process(msg_ptr, cloud);
+    sensor::FromProto(msg, cloud.get());
+    if (cloud && !cloud->empty()) {
+        float t_min = cloud->points.front().curvature;
+        float t_max = t_min;
+        bool has_time = false;
+        for (const auto& pt : cloud->points) {
+            t_min = std::min(t_min, pt.curvature);
+            t_max = std::max(t_max, pt.curvature);
+            if (pt.curvature != 0.f) {
+                has_time = true;
+            }
+        }
+        if (!has_time) {
+            constexpr float kScanMs = 100.f;
+            const std::size_t n = cloud->points.size();
+            for (std::size_t i = 0; i < n; ++i) {
+                cloud->points[i].curvature =
+                    (n <= 1) ? 0.f
+                             : kScanMs * static_cast<float>(i) /
+                                   static_cast<float>(n - 1);
+            }
+            t_min = 0.f;
+            t_max = (n <= 1) ? 0.f : kScanMs;
+        } else {
+            // Hesai / Spires PCD is not strictly time-ordered; IMU undistort
+            // and SyncOnlyLio assume curvature is non-decreasing.
+            std::stable_sort(cloud->points.begin(), cloud->points.end(),
+                             [](const sensor::PointType& a,
+                                const sensor::PointType& b) {
+                                 return a.curvature < b.curvature;
+                             });
+            t_min = cloud->points.front().curvature;
+            t_max = cloud->points.back().curvature;
+        }
+        LOG_EVERY_N(INFO, 50) << "LivoOdometry: lidar time ms=[" << t_min
+                              << "," << t_max << "] pts=" << cloud->size()
+                              << " from_proto_time=" << has_time;
+    }
+    // Match offline_spires_livo / Fast-LIVO2 bag path: push timed cloud as-is.
+    // Preprocess FilterCloud+sort is for feature extraction; live PointCloud2
+    // already carries sweep-relative time in curvature.
     AddLidar(cloud, header_time);
 }
 
 void LivoOdometry::AddImu(const sensor::ImuData& imu) {
     health_monitor_.RecordImu(imu.timestamp);
     sync_.PushImu(imu);
+    if (sync_.ConsumeLoopback()) {
+        HandleSensorLoopback();
+    }
 }
 
 void LivoOdometry::AddImage(const sensor::ImageData& image) {

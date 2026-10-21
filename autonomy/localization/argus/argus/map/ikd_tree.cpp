@@ -50,6 +50,14 @@ void IkdTree::Clear() {
     root_ = nullptr;
     size_ = 0;
     size_at_build_ = 0;
+    voxel_keys_.clear();
+}
+
+std::int64_t IkdTree::VoxelKey(const Eigen::Vector3d& p, double res) {
+    const int64_t ix = static_cast<int64_t>(std::floor(p.x() / res));
+    const int64_t iy = static_cast<int64_t>(std::floor(p.y() / res));
+    const int64_t iz = static_cast<int64_t>(std::floor(p.z() / res));
+    return (ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791);
 }
 
 std::size_t IkdTree::size() const {
@@ -95,27 +103,77 @@ void IkdTree::Build(const sensor::PointCloudXYZI& cloud) {
     std::lock_guard<std::mutex> lock(mutex_);
     Destroy(root_);
     root_ = nullptr;
+    voxel_keys_.clear();
+    if (config_.downsample_resolution > 1e-6) {
+        const double res = config_.downsample_resolution;
+        std::vector<Eigen::Vector3d> unique;
+        unique.reserve(pts.size());
+        for (const Eigen::Vector3d& p : pts) {
+            if (voxel_keys_.insert(VoxelKey(p, res)).second) {
+                unique.push_back(p);
+            }
+        }
+        pts.swap(unique);
+    }
     size_ = pts.size();
     root_ = BuildRecursive(&pts, 0, static_cast<int>(pts.size()), 0);
     size_at_build_ = size_;
 }
 
-void IkdTree::AddPoints(const sensor::PointCloudXYZI& cloud) {
+void IkdTree::InsertRecursive(Node*& n, const Eigen::Vector3d& p, int depth) {
+    if (n == nullptr) {
+        n = new Node;
+        n->point = p;
+        n->axis = depth % 3;
+        n->left = nullptr;
+        n->right = nullptr;
+        return;
+    }
+    const int axis = n->axis;
+    if (p[axis] < n->point[axis]) {
+        InsertRecursive(n->left, p, depth + 1);
+    } else {
+        InsertRecursive(n->right, p, depth + 1);
+    }
+}
+
+void IkdTree::MaybeRebuildUnlocked() {
+    if (size_at_build_ == 0) {
+        size_at_build_ = size_;
+        return;
+    }
+    const double ratio = config_.rebuild_ratio > 1.0 ? config_.rebuild_ratio
+                                                    : 1.5;
+    if (static_cast<double>(size_) <=
+        static_cast<double>(size_at_build_) * ratio) {
+        return;
+    }
+    std::vector<Eigen::Vector3d> all;
+    all.reserve(size_);
+    Flatten(root_, &all);
+    Destroy(root_);
+    root_ = nullptr;
+    root_ = BuildRecursive(&all, 0, static_cast<int>(all.size()), 0);
+    size_ = all.size();
+    size_at_build_ = size_;
+}
+
+std::size_t IkdTree::AddPoints(const sensor::PointCloudXYZI& cloud) {
+    if (cloud.empty()) {
+        return 0;
+    }
+    const bool voxelize = config_.downsample_resolution > 1e-6;
+    const double res = config_.downsample_resolution;
+
     std::vector<Eigen::Vector3d> incoming;
     incoming.reserve(cloud.size());
-
-    if (config_.downsample_resolution > 1e-6) {
-        const double res = config_.downsample_resolution;
-        std::unordered_set<int64_t> seen;
-        auto key = [res](const Eigen::Vector3d& p) {
-            const int64_t ix = static_cast<int64_t>(std::floor(p.x() / res));
-            const int64_t iy = static_cast<int64_t>(std::floor(p.y() / res));
-            const int64_t iz = static_cast<int64_t>(std::floor(p.z() / res));
-            return (ix * 73856093) ^ (iy * 19349663) ^ (iz * 83492791);
-        };
+    if (voxelize) {
+        std::unordered_set<std::int64_t> batch;
+        batch.reserve(cloud.size());
         for (std::size_t i = 0; i < cloud.size(); ++i) {
             const Eigen::Vector3d p = ToVec(cloud[i]);
-            if (seen.insert(key(p)).second) {
+            const std::int64_t key = VoxelKey(p, res);
+            if (batch.insert(key).second) {
                 incoming.push_back(p);
             }
         }
@@ -126,23 +184,23 @@ void IkdTree::AddPoints(const sensor::PointCloudXYZI& cloud) {
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
-    if (root_ == nullptr) {
-        root_ =
-            BuildRecursive(&incoming, 0, static_cast<int>(incoming.size()), 0);
-        size_ = incoming.size();
-        size_at_build_ = size_;
-        return;
+    std::size_t added = 0;
+    for (const Eigen::Vector3d& p : incoming) {
+        if (voxelize) {
+            const std::int64_t key = VoxelKey(p, res);
+            if (!voxel_keys_.insert(key).second) {
+                continue;  // voxel already occupied in the global map
+            }
+        }
+        InsertRecursive(root_, p, 0);
+        ++size_;
+        ++added;
     }
-    // Append via rebuild of flattened + new (simple incremental strategy).
-    std::vector<Eigen::Vector3d> all;
-    all.reserve(size_ + incoming.size());
-    Flatten(root_, &all);
-    all.insert(all.end(), incoming.begin(), incoming.end());
-    Destroy(root_);
-    root_ = BuildRecursive(&all, 0, static_cast<int>(all.size()), 0);
-    size_ = all.size();
-    size_at_build_ = size_;
+    if (added > 0) {
+        MaybeRebuildUnlocked();
+    }
     (void)config_.max_leaf_size;
+    return added;
 }
 
 void IkdTree::NearestRecursive(const Node* n, const Eigen::Vector3d& q, int k,

@@ -48,6 +48,72 @@ Displays:
       plane: XY
       reference_frame: <Fixed Frame>
     Type: Grid
+  - Channel: /points
+    Enabled: true
+    Name: LidarScan
+    Properties:
+      alpha: "0.85"
+      color_transform: Intensity
+      decay_time: "0"
+      decimate: "2"
+      max_points: "200000"
+      point_world_size: "0.03"
+      style: Flat Squares
+      use_rainbow: "true"
+    Type: PointCloud2
+  - Channel: /argus/cloud_registered
+    Enabled: true
+    Name: ArgusCloudRegistered
+    Properties:
+      alpha: "0.7"
+      color: 0;200;255
+      color_transform: FlatColor
+      decay_time: "0"
+      decimate: "1"
+      max_points: "200000"
+      point_world_size: "0.04"
+      style: Flat Squares
+    Type: PointCloud2
+  - Channel: /argus/cloud_map
+    Enabled: true
+    Name: ArgusCloudMap
+    Properties:
+      alpha: "1.0"
+      color_transform: RGB8
+      # Full snapshots from Argus; decay=0 replaces — no FIFO forget.
+      decay_time: "0"
+      decimate: "1"
+      max_points: "5000000"
+      point_world_size: "0.05"
+      style: Points
+      point_size: "2"
+    Type: PointCloud2
+  - Channel: /argus/trajectory
+    Enabled: true
+    Name: ArgusTrajectory
+    Properties:
+      alpha: "1.0"
+      color: 0;255;80
+      line_style: Billboards
+      line_width: "0.06"
+    Type: Path
+  - Channel: /gt/path
+    Enabled: true
+    Name: GroundTruthPath
+    Properties:
+      alpha: "0.9"
+      color: 255;200;0
+      line_style: Billboards
+      line_width: "0.05"
+    Type: Path
+  - Channel: /argus/odometry
+    Enabled: true
+    Name: ArgusOdometry
+    Type: Odometry
+  - Channel: /gt/odometry
+    Enabled: true
+    Name: GroundTruthOdometry
+    Type: Odometry
 Global:
   ActiveTool: Interact
   BackgroundColor: 48;48;48
@@ -67,7 +133,7 @@ ImagePanels:
     FlipHorizontal: false
     FlipVertical: false
     HoverPublishChannel: ""
-    ImageChannel: /fake/image
+    ImageChannel: /camera/rgb/image_raw
     LabelScale: 1
     ObjectName: ImageDock
     Rotation: 0
@@ -128,9 +194,8 @@ Tools:
     Properties:
       topic: /clicked_point
 Views: ~
+# No Window Geometry/Width/Height: start_maximized fills availableGeometry.
 Window:
-  Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAdAAAAHcAAAVzAAADlgAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
-  Height: 1371
   HideLeftDock: false
   HideRightDock: false
   MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJuYW1lIjoiVmlld3BvcnREb2NrIiwidHlwZSI6ImxlYWYifX0=
@@ -147,11 +212,7 @@ Window:
     - Name: PlotDock
     - Name: PublishDock
   PlotSettingsVisible: false
-  State: AAAA/wAAAAD9AAAAAwAAAAAAAAE+AAAFBvwCAAAABfwAAAAA/////wAAAAAA////+gAAAAACAAAAAvsAAAAYAEMAaABhAG4AbgBlAGwAcwBEAG8AYwBrAQAAAAD/////AAAAAAAAAAD7AAAAJABDAGgAYQBuAG4AZQBsAEIAcgBvAHcAcwBlAHIARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABgAUAByAG8AYgBsAGUAbQBzAEQAbwBjAGsBAAAAAP////8AAAAAAAAAAPsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAD8AAAUGAAAArQD////7AAAAHgBTAHQAcgBhAHQAYQBGAGwAbwBvAHIARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAACoAUAByAG8AcABlAHIAdAB5AEkAbgBzAHAAZQBjAHQAbwByAEQAbwBjAGsAAAAEXQAAAOgAAABZAP///wAAAAEAAAFeAAAFBvwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAQAAAD8AAAUGAAAAsAD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAVgBhAHIAaQBhAGIAbABlAHMARABvAGMAawAAAAAA/////wAAAAAAAAAA+wAAACQAVAByAGEAbgBzAGYAbwByAG0AYQB0AGkAbwBuAEQAbwBjAGsBAAAAAP////8AAAAAAAAAAPsAAAAQAEgAZQBsAHAARABvAGMAawAAAAAA/////wAAAAAAAAAAAAAAAwAACb4AAABt/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAAAAAm+AAACogD///8AAAcWAAAFBgAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAACgBUAG8AbwBsAHMBAAAAAP////8AAAAAAAAAAA==
   VisiblePanels:
     - ViewportDock
     - DisplaysDock
     - ViewsDock
-  Width: 2494
-  X: 66
-  Y: 69

@@ -805,6 +805,22 @@ void FramePanels::ensureImageDockExists(const QString& object_name) {
   frame_->layout_->addMainPanelDock(dock, Qt::LeftDockWidgetArea);
 }
 
+void FramePanels::tickVisibleImagePanels() {
+  const auto tick_dock = [](PanelDockWidget* dock) {
+    if (dock == nullptr || !dock->isVisible()) {
+      return;
+    }
+    if (auto* panel = qobject_cast<image::ImagePanel*>(dock->widget())) {
+      panel->tick();
+    }
+  };
+  tick_dock(image_dock_);
+  for (auto it = image_display_docks_.cbegin(); it != image_display_docks_.cend();
+       ++it) {
+    tick_dock(it.value().data());
+  }
+}
+
 void FramePanels::restoreImagePanelConfigs() {
   const std::vector<common::ImagePanelPersistConfig>& saved =
       frame_->manager_->imagePanels();
@@ -1031,7 +1047,12 @@ void FramePanels::restorePublishPanelConfigs() {
 }
 
 void FramePanels::refreshAllPlotSettingsChannels() {
-  for (PanelDockWidget* dock : frame_->findChildren<PanelDockWidget*>()) {
+  // Use orderedDockWidgets (mosaic + direct children) — recursive findChildren
+  // has SEGV'd in QMetaObject::cast from the refresh timer under live Argus.
+  for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+    if (dock == nullptr) {
+      continue;
+    }
     const QString type = panelTypeId(dock);
     if (type == QLatin1String("PlotDock")) {
       if (auto* panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
@@ -1053,6 +1074,15 @@ void FramePanels::refreshAllPlotSettingsChannels() {
       if (auto* panel = qobject_cast<map::MapPanel*>(dock->widget())) {
         panel->refreshSettingsChannels();
       }
+    }
+  }
+  for (auto it = image_display_docks_.cbegin(); it != image_display_docks_.cend();
+       ++it) {
+    if (auto* panel =
+            qobject_cast<image::ImagePanel*>(it.value().isNull()
+                                                 ? nullptr
+                                                 : it.value()->widget())) {
+      panel->refreshSettingsChannels();
     }
   }
 }

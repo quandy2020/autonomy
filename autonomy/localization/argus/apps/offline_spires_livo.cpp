@@ -217,7 +217,7 @@ bool WriteTumLine(std::ofstream& ofs, double t, const Eigen::Vector3d& p,
 int main(int argc, char** argv) {
   argus::common::InitLogging(argv[0]);
 
-  std::string yaml = "config/livo_esikf.yaml";
+  std::string yaml = "config/livo_esikf_spires.yaml";
   std::string spires_root;
   std::string calib_dir;
   std::string camera_yaml;
@@ -372,7 +372,9 @@ int main(int argc, char** argv) {
             << " fpr=" << (cfg.loop_closure.fpr.enable ? 1 : 0)
             << " lta=" << (cfg.loop_closure.lta.enable ? 1 : 0)
             << " drift=" << (cfg.synthetic_drift.enable ? 1 : 0)
-            << " yaw_per_m=" << cfg.synthetic_drift.yaw_rad_per_m << "\n";
+            << " yaw_per_m=" << cfg.synthetic_drift.yaw_rad_per_m
+            << " gravity_align=" << (cfg.enable_gravity_align ? 1 : 0)
+            << "\n";
 
   if (mode == "lo") {
     cfg.slam_mode = argus::frontend::ONLY_LO;

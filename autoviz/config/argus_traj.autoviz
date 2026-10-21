@@ -1,0 +1,62 @@
+# Lightweight Argus vs GT trajectory overlay (no heavy clouds).
+CurrentView:
+  Distance: 40
+  FocalShapeFixedSize: true
+  FocalShapeSize: 0.05
+  Name: Current
+  NearClipDistance: 0.01
+  Pitch: 0.9
+  Target:
+    X: 15
+    Y: -2
+    Z: 0
+  Type: Orbit
+  Yaw: 0.8
+Displays:
+  - Channel: ""
+    Enabled: true
+    Name: Grid
+    Properties:
+      alpha: 0.5
+      cell_count: 40
+      cell_size: 1.0
+      color: 160;160;160
+      line_style: Lines
+      line_width: 0.03
+      plane: XY
+      reference_frame: <Fixed Frame>
+    Type: Grid
+  - Channel: /argus/trajectory
+    Enabled: true
+    Name: ArgusTrajectory
+    Properties:
+      alpha: "1.0"
+      color: 0;255;80
+      line_style: Billboards
+      line_width: "0.08"
+    Type: Path
+  - Channel: /gt/path
+    Enabled: true
+    Name: GroundTruthPath
+    Properties:
+      alpha: "0.85"
+      color: 255;200;0
+      line_style: Billboards
+      line_width: "0.06"
+    Type: Path
+Global:
+  ActiveTool: Interact
+  BackgroundColor: 48;48;48
+  FixedFrame: map
+  FrameRate: 30
+  RenderBackend: Ogre
+  Transformer: autoviz/AutolinkTf
+  ViewController: Orbit
+Window:
+  Height: 900
+  Width: 1400
+  X: 40
+  Y: 40
+  VisiblePanels:
+    - ViewportDock
+    - DisplaysDock

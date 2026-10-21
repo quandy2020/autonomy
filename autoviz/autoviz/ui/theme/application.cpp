@@ -262,7 +262,11 @@ void ApplyAppTheme(QApplication& app) {
                                         : theme.secondary_text);
   app.setStyle(proxy);
   app.setPalette(BuildPaletteFromShell(theme));
-  app.setStyleSheet(BuildShellStylesheet(theme));
+  // Do not install the global theme.qss on QApplication. Under Qt 6.2 +
+  // WA_NativeWindow Ogre + live Autolink, QCss::Selector::pseudoElement /
+  // getOpaqueChildren SEGV during the first paints after RenderSystem ready.
+  // Shell chrome uses Fusion+ProxyStyle+palette; panels keep local sheets.
+  app.setStyleSheet(QString());
 }
 
 }  // namespace autoviz

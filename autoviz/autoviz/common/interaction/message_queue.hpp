@@ -4,11 +4,12 @@
 
 /**
  * @file message_queue.hpp
- * @brief Thread-safe latest-only queue for Autolink callback → Qt UI handoff.
+ * @brief Thread-safe queue for Autolink callback → Qt UI handoff.
  *
  * Reader callbacks push payloads; the UI thread pops or @ref takeLatest().
- * Never drains a backlog for rendering — only the newest sample is kept when
- * using @ref takeLatest(), matching RViz “latest message” display semantics.
+ * Default @ref setMaxDepth(1) keeps only the newest sample (RViz “latest
+ * message” semantics). Depth &gt; 1 retains a bounded FIFO so PointCloud2
+ * Decay Time can accumulate intermediate clouds like RViz2 PointCloudCommon.
  *
  * @see ChannelReaderRegistry
  * @see setAcceptIncoming
@@ -17,6 +18,7 @@
 #pragma once
 
 #include <atomic>
+#include <cstddef>
 #include <deque>
 #include <mutex>
 #include <optional>
@@ -85,6 +87,22 @@ class MessageQueue {
   static void clearAllPending();
 
   /**
+   * @brief Caps how many payloads @ref push() retains (default @c 1).
+   *
+   * - @c 1: latest-only (clear then push one) — default for most displays.
+   * - @c &gt;1: FIFO append; oldest dropped when over the cap (RViz2-style
+   *   decay accumulation for PointCloud2).
+   *
+   * @param depth Minimum @c 1.
+   */
+  void setMaxDepth(std::size_t depth);
+
+  /**
+   * @brief Returns the current payload depth cap.
+   */
+  std::size_t maxDepth() const;
+
+  /**
    * @brief Enqueues @p payload if incoming is accepted.
    *
    * @param payload Opaque channel payload string (moved in).
@@ -127,11 +145,14 @@ class MessageQueue {
   /** Process-wide accept gate for @ref push(). */
   static std::atomic<bool> accept_incoming_;
 
-  /** Guards @c queue_. */
-  std::mutex mutex_;
+  /** Guards @c queue_ and @c max_depth_. */
+  mutable std::mutex mutex_;
 
   /** Pending payloads (FIFO; @ref takeLatest() discards all but the last). */
   std::deque<std::string> queue_;
+
+  /** Max retained payloads on @ref push(); @c 1 = latest-only. */
+  std::size_t max_depth_ = 1;
 };
 
 }  // namespace integration

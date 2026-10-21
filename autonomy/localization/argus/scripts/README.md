@@ -20,6 +20,7 @@
 | `download_spires_subset.sh` | 下载默认序列（包装 `download_spires_sequences`） |
 | `prepare_spires_gt.py` | 生成 / 补齐 `gt.tum` |
 | `convert_kalibr_camera.py` | Kalibr → Argus Equidistant YAML |
+| `run_spires_live.sh` | **一键** Argus + Autoviz + Spires 数据发布（Ctrl+C 停止） |
 | `run_spires_eval.sh` | 单模式离线 + ATE 图 |
 | `run_spires_modes.sh` | LIVO/LIO/LO 同图对比 |
 | `run_spires_loop_ab.sh` | baseline vs loop+FPR A/B（Ceres 编译） |

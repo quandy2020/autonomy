@@ -249,6 +249,17 @@ void StyleSettingsGroupBox(QGroupBox* group);
 void StyleFilterLineEdit(QLineEdit* edit);
 
 /**
+ * @brief Clear widget/viewport stylesheets on an item view.
+ *
+ * Frosted trees use palette + delegates. Combined with an app theme that omits
+ * generic @c QTreeWidget::item rules, this avoids Qt 6.2
+ * @c QCss::Selector::pseudoElement crashes while Displays rebuild under load.
+ *
+ * @param widget Tree, list, or other item view (viewport sheet cleared too).
+ */
+void DetachItemViewFromStyleSheets(QWidget* widget);
+
+/**
  * @brief Applies standard panel tree styling.
  * @param tree Tree or tree-like widget.
  */

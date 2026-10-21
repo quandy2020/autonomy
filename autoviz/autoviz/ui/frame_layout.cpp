@@ -1292,12 +1292,25 @@ void FrameLayout::hideRightDock(bool hide) {
 }
 
 bool FrameLayout::sidebarAreaHasVisibleDock(Qt::DockWidgetArea area) const {
-  if (area != Qt::LeftDockWidgetArea && area != Qt::RightDockWidgetArea) {
+  if ((area != Qt::LeftDockWidgetArea && area != Qt::RightDockWidgetArea) ||
+      frame_ == nullptr || frame_->panels_ == nullptr) {
     return false;
   }
-  for (PanelDockWidget* dock : frame_->findChildren<PanelDockWidget*>()) {
+  // Do not use findChildren — mid-teardown / retile leaves dangling QObject*
+  // and SEGV's in QMetaObject::cast (mousePress → raiseLeftSidebarDisplays).
+  FramePanels* panels = frame_->panels_.get();
+  PanelDockWidget* known[] = {
+      panels->displays_dock_,      panels->properties_dock_,
+      panels->views_dock_,         panels->tool_props_dock_,
+      panels->selection_dock_,     panels->tf_dock_,
+      panels->channel_graph_dock_, panels->teleop_dock_,
+      panels->image_dock_,         panels->plot_dock_,
+      panels->channel_dock_,       panels->channels_dock_,
+      panels->record_dock_,
+  };
+  for (PanelDockWidget* dock : known) {
     if (dock == nullptr || !dock->isVisible() || dock->isFloating() ||
-        dock == frame_->panels_->time_dock_ || isMainPanel(dock)) {
+        dock == panels->time_dock_ || isMainPanel(dock)) {
       continue;
     }
     if (frame_->dockWidgetArea(dock) == area) {
@@ -1404,8 +1417,11 @@ void FrameLayout::onDockPanelVisibilityChange(bool visible) {
       // closeEvent. Do not detach or retile here — sync mosaic teardown under
       // QDockWidget::closeEvent reparents live Ogre windows and SIGSEGVs.
     } else if (main_panel_host_ != nullptr &&
-               main_panel_host_->hostsPanel(dock_widget)) {
+               main_panel_host_->hostsPanel(dock_widget) &&
+               !main_panel_host_->isMutatingMosaic()) {
       // Hide via Panels menu: detach that leaf only (no full mosaic rebuild).
+      // Skip when mosaic collapse already in progress — visibilityChanged from
+      // QSplitter::replaceWidget must not re-enter removePanel (UAF / SEGV).
       // Park viewport GLX first (same hazard as Split / title-bar drag).
       if (frame_->panels_->panelTypeId(dock_widget) ==
           QLatin1String("ViewportDock")) {
@@ -1966,10 +1982,21 @@ QList<PanelDockWidget*> FrameLayout::orderedDockWidgets() const {
                                    frame_->panels_->tf_dock_, frame_->panels_->image_dock_,
                                    frame_->panels_->plot_dock_,       frame_->panels_->teleop_dock_,
                                    frame_->panels_->channel_graph_dock_};
-  for (PanelDockWidget* dock : frame_->findChildren<PanelDockWidget*>()) {
+  docks.removeAll(nullptr);
+  const auto add = [&](PanelDockWidget* dock) {
     if (dock != nullptr && !docks.contains(dock)) {
       docks.push_back(dock);
     }
+  };
+  // Prefer mosaic + direct children over recursive findChildren — the latter
+  // has SEGV'd in QMetaObject::cast when a dock QObject edge was dangling.
+  if (main_panel_host_ != nullptr) {
+    for (QDockWidget* dock : main_panel_host_->hostedPanels()) {
+      add(qobject_cast<PanelDockWidget*>(dock));
+    }
+  }
+  for (QObject* child : frame_->children()) {
+    add(qobject_cast<PanelDockWidget*>(child));
   }
   return docks;
 }

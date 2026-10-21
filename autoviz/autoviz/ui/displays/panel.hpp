@@ -21,16 +21,16 @@
 
 #include <memory>
 
-#include <QSplitter>
+#include <QElapsedTimer>
 #include <QTreeWidget>
 #include <QWidget>
 
 #include "autoviz/ui/displays/tree_delegate.hpp"
 #include "autoviz/ui/displays/tree.hpp"
 
+class QLabel;
 class QPaintEvent;
 class QPushButton;
-class QTextBrowser;
 class QTimer;
 class QTreeWidgetItem;
 
@@ -102,6 +102,13 @@ class DisplaysPanel : public QWidget {
       QWidget* parent = nullptr);
 
   /**
+   * @brief Stops timers and clears the tree before Qt destroys child widgets.
+   *
+   * Avoids QIcon/QPixmap dtors racing a live paint during app teardown.
+   */
+  ~DisplaysPanel() override;
+
+  /**
    * @brief Full rebuild of Global Options, status, and all Display rows.
    *
    * Prefer @ref refreshStatus() for high-rate status-only updates.
@@ -129,6 +136,14 @@ class DisplaysPanel : public QWidget {
    * @see updateTfPoseTimerState()
    */
   void setLiveUpdatesPaused(bool paused);
+
+  /**
+   * @brief End startup paint-suppress and repaint the Displays tree.
+   *
+   * Called after the main window is shown / Ogre ready so the first
+   * QTreeView::drawRow does not race GL init (blank panel until then).
+   */
+  void armTreePainting();
 
  signals:
   /**
@@ -318,14 +333,11 @@ class DisplaysPanel : public QWidget {
   /** Shared manager owning displays and global options. */
   std::shared_ptr<common::VisualizationManager> manager_;
 
-  /** Vertical splitter between the property tree and help browser. */
-  QSplitter* splitter_ = nullptr;
-
   /** Drag-and-drop Displays property tree. */
   DisplayTreeWidget* tree_ = nullptr;
 
-  /** Help / description browser for the selected row. */
-  QTextBrowser* help_ = nullptr;
+  /** Help / description label for the selected row (QLabel avoids QTextDocument UAF). */
+  QLabel* help_ = nullptr;
 
   /** Item delegate for the value column (channel combo, color, etc.). */
   DisplayTreeDelegate* value_delegate_ = nullptr;
@@ -361,6 +373,9 @@ class DisplaysPanel : public QWidget {
 
   /** Fingerprint of Global Status issue rows; skip child rebuild when unchanged. */
   QString global_status_fingerprint_;
+
+  /** Wall clock for post-startup grace before status tree writes. */
+  QElapsedTimer status_refresh_grace_;
 };
 
 }  // namespace autoviz

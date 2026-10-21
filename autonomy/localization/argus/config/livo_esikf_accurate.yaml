@@ -1,4 +1,6 @@
-# High-accuracy LIO eval: finer voxels, more ESIKF iters, gentle loops.
+# High-accuracy LIO eval (Oxford Spires / live Autolink): finer voxels, more
+# ESIKF iters. ALL camera / LiDAR / IMU calib from DiffCal dataset
+# (/data/Oxford/calibration/{cam0,cam-lidar-imu}.yaml) — not TurtleBot autosim.
 odometry:
   type: livo
   modalities: [lidar, imu]
@@ -12,11 +14,11 @@ backend:
 coupling: sequential
 
 camera:
-  calib_file: calibration/camera_pinhole.yaml
+  calib_file: calibration/camera_spires_equidistant.yaml
 
 extrinsic:
-  lidar_camera: calibration/extrinsic_lidar_camera.yaml
-  imu_lidar: calibration/extrinsic_imu_lidar.yaml
+  lidar_camera: calibration/extrinsic_lidar_camera_spires.yaml
+  imu_lidar: calibration/extrinsic_imu_lidar_spires.yaml
 
 vio:
   grid_size: 5
