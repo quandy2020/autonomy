@@ -2,3 +2,11 @@
 	path = autolink
 	url = https://github.com/quandy2020/autolink.git
 	branch = feature/library
+[submodule "autonomy/localization/argus/thirdparty/gtsam"]
+	path = autonomy/localization/argus/thirdparty/gtsam
+	url = https://github.com/borglab/gtsam.git
+	branch = master
+[submodule "autonomy/localization/argus/thirdparty/3d_bbs"]
+	path = autonomy/localization/argus/thirdparty/3d_bbs
+	url = https://github.com/KOKIAOKI/3d_bbs.git
+	branch = main
