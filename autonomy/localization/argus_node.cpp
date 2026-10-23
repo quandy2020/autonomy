@@ -23,6 +23,8 @@
 #include <cstring>
 #include <utility>
 
+#include <Eigen/Dense>
+#include <Eigen/Eigenvalues>
 #include <Eigen/Geometry>
 
 #include "autolink/common/log.hpp"
@@ -464,7 +466,7 @@ void ArgusNode::ResetGlobalIkd() {
     if (cloud_writer_ && running_) {
         std::lock_guard<std::mutex> plock(publish_mutex_);
         CloudMsg empty;
-        SetHeader(empty.mutable_header(), 0.0, options_.map_frame);
+        SetHeader(empty.mutable_header(), 0.0, PublishFrame());
         empty.set_height(0);
         empty.set_width(0);
         empty.set_is_dense(true);
@@ -606,6 +608,7 @@ void ArgusNode::FlushHeavyPublishes(const std::vector<HeavyPublish>& heavy) {
                       << job.state.pos_end.y() << "," << job.state.pos_end.z()
                       << ") pub_xyz=(" << xyz_pub.x() << "," << xyz_pub.y()
                       << "," << xyz_pub.z() << ")"
+                      << " frame=" << PublishFrame()
                       << " map_seeded=" << map_frame_seeded_
                       << " gt_aligned=" << gt_aligned_
                       << " traj_poses=" << trajectory_.poses_size()
@@ -800,6 +803,15 @@ bool ArgusNode::MapFrameReady() const {
     return true;
 }
 
+const std::string& ArgusNode::PublishFrame() const {
+    if ((options_.seed_map_frame_from_gt && map_frame_seeded_) ||
+        (options_.align_to_gt && gt_aligned_)) {
+        return options_.map_frame;
+    }
+    // Honest: LIO world, not GT `map`.
+    return options_.odom_frame;
+}
+
 bool ArgusNode::TrySeedMapFrameFromGt(double timestamp_sec,
                                       const Eigen::Matrix4d& T_est) {
     {
@@ -813,13 +825,18 @@ bool ArgusNode::TrySeedMapFrameFromGt(double timestamp_sec,
         Eigen::Matrix4d T_gt = Eigen::Matrix4d::Identity();
         double gt_stamp = -1.0;
         if (!FindNearestGtUnlocked(timestamp_sec, &T_gt, &gt_stamp)) {
+            AINFO_EVERY(10)
+                << "ArgusNode: waiting for /gt/odometry near est stamp="
+                << timestamp_sec;
             return false;
         }
+
         AlignPair pair;
         pair.stamp = timestamp_sec;
         pair.est_xyz = T_est.block<3, 1>(0, 3);
         pair.gt_xyz = T_gt.block<3, 1>(0, 3);
         pair.T_est = T_est;
+        pair.T_gt = T_gt;
         align_pairs_.push_back(pair);
 
         const Eigen::Vector3d span_est =
@@ -828,18 +845,19 @@ bool ArgusNode::TrySeedMapFrameFromGt(double timestamp_sec,
             align_pairs_.back().gt_xyz - align_pairs_.front().gt_xyz;
         const double span_xy = std::hypot(span_est.x(), span_est.y());
         const double span_gt_xy = std::hypot(span_gt.x(), span_gt.y());
-        if (static_cast<int>(align_pairs_.size()) <
-                options_.gt_align_min_pairs ||
+        if (static_cast<int>(align_pairs_.size()) < options_.gt_align_min_pairs ||
             span_xy < options_.gt_align_min_span_m) {
             AINFO_EVERY(10)
-                << "ArgusNode: collecting GT seed pairs=" << align_pairs_.size()
-                << " span_xy=" << span_xy << "m (need "
-                << options_.gt_align_min_pairs << " / "
-                << options_.gt_align_min_span_m << "m)";
+                << "ArgusNode: collecting path-shape seed pairs="
+                << align_pairs_.size() << " span_xy=" << span_xy
+                << "m (need " << options_.gt_align_min_pairs << " / "
+                << options_.gt_align_min_span_m
+                << "m; first-pose SE3 cannot fix ~90° when both start ≈I)";
             return false;
         }
 
-        // Rigid planar Umeyama (no scale) — same class as offline ATE align.
+        // Planar rigid Umeyama (scale fixed to 1). Path shape reveals the
+        // yaw that first-pose SE3 misses when T_gt≈T_est≈I at t0.
         const int n = static_cast<int>(align_pairs_.size());
         Eigen::MatrixXd src(3, n);
         Eigen::MatrixXd dst(3, n);
@@ -858,12 +876,24 @@ bool ArgusNode::TrySeedMapFrameFromGt(double timestamp_sec,
         }
         mean_est /= static_cast<double>(n);
         mean_gt /= static_cast<double>(n);
+
+        if (span_gt_xy > 1e-3) {
+            const double ratio = span_xy / span_gt_xy;
+            const double rmax = std::max(1.0, options_.gt_seed_max_span_ratio);
+            if (ratio > rmax || ratio < 1.0 / rmax) {
+                AWARN_EVERY(20)
+                    << "ArgusNode: seed span ratio=" << ratio
+                    << " outside [1/" << rmax << "," << rmax
+                    << "] — keep collecting (LIO scale still settling?)";
+                return false;
+            }
+        }
+
         const Eigen::Matrix4d T_xy =
             Eigen::umeyama(src, dst, /*with_scale=*/false);
+        const Eigen::Matrix3d R_xy = T_xy.block<3, 3>(0, 0);
+        const double dyaw = std::atan2(R_xy(1, 0), R_xy(0, 0));
         Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
-        R.block<2, 2>(0, 0) = T_xy.block<2, 2>(0, 0);
-        const double dyaw = std::atan2(R(1, 0), R(0, 0));
-        R.setIdentity();
         R.block<2, 2>(0, 0) = Eigen::Rotation2Dd(dyaw).toRotationMatrix();
         Eigen::Vector3d t = Eigen::Vector3d::Zero();
         t.x() = T_xy(0, 3);
@@ -877,19 +907,12 @@ bool ArgusNode::TrySeedMapFrameFromGt(double timestamp_sec,
             const double ey = pub.y() - p.gt_xyz.y();
             sum_xy_err2 += ex * ex + ey * ey;
         }
-        const double rmse_xy =
-            std::sqrt(sum_xy_err2 / static_cast<double>(n));
-        const double span_ratio =
-            span_gt_xy > 1e-3 ? (span_xy / span_gt_xy) : 1e9;
-        const double max_ratio =
-            std::max(1.0, options_.gt_seed_max_span_ratio);
-        if (rmse_xy > options_.gt_seed_max_rmse_xy_m ||
-            span_ratio > max_ratio || span_ratio < 1.0 / max_ratio) {
-            AWARN << "ArgusNode: reject GT seed (LIO likely diverged)  pairs="
-                  << n << " span_est=" << span_xy << "m span_gt=" << span_gt_xy
-                  << "m ratio=" << span_ratio << " rmse_xy=" << rmse_xy
-                  << "m — clearing pairs, will retry";
-            align_pairs_.clear();
+        const double rmse_xy = std::sqrt(sum_xy_err2 / static_cast<double>(n));
+        if (rmse_xy > options_.gt_seed_max_rmse_xy_m) {
+            AWARN_EVERY(20)
+                << "ArgusNode: seed rmse_xy=" << rmse_xy << "m > "
+                << options_.gt_seed_max_rmse_xy_m
+                << "m — keep collecting (not locking bad Umeyama)";
             return false;
         }
 
@@ -899,11 +922,12 @@ bool ArgusNode::TrySeedMapFrameFromGt(double timestamp_sec,
         gt_align_scale_ = 1.0;
         map_frame_seeded_ = true;
 
-        AINFO << "ArgusNode: seeded map frame from GT once  pairs=" << n
-              << " span_xy=" << span_xy
-              << "m  dyaw_deg=" << (dyaw * 180.0 / M_PI)
-              << " rmse_xy=" << rmse_xy << "m  t=[" << t.x() << "," << t.y()
-              << "," << t.z() << "] (GT untouched, scale=1)";
+        AINFO << "ArgusNode: seeded map frame from GT once (path-shape planar "
+                 "rigid, viz-only)  pairs="
+              << n << " span_xy=" << span_xy << "m gt_span=" << span_gt_xy
+              << "m dyaw_deg=" << (dyaw * 180.0 / M_PI) << " rmse_xy=" << rmse_xy
+              << "m t=[" << t.x() << "," << t.y() << "," << t.z()
+              << "] (ESIKF untouched, GT untouched, scale=1)";
     }
     FlushBufferedTrajectory();
     return true;
@@ -952,7 +976,7 @@ void ArgusNode::FlushBufferedTrajectory() {
             T_pub.block<3, 1>(0, 3) = p.gt_xyz;
         }
         auto* pose = trajectory_.add_poses();
-        SetHeader(pose->mutable_header(), p.stamp, options_.map_frame);
+        SetHeader(pose->mutable_header(), p.stamp, PublishFrame());
         Mat44ToPose(T_pub, pose->mutable_pose());
     }
     const int traj_cap = std::max(2, options_.trajectory_max_poses);
@@ -961,7 +985,7 @@ void ArgusNode::FlushBufferedTrajectory() {
     }
     if (trajectory_writer_ && trajectory_.poses_size() > 0) {
         SetHeader(trajectory_.mutable_header(),
-                  align_pairs_.back().stamp, options_.map_frame);
+                  align_pairs_.back().stamp, PublishFrame());
         if (trajectory_writer_->Write(trajectory_)) {
             ++pub_stats_.traj_ok;
             last_traj_pub_sec_ = align_pairs_.back().stamp;
@@ -1136,12 +1160,12 @@ argus::sensor::PointCloudXYZI ArgusNode::AlignedWorldCloud(
 
 void ArgusNode::PublishPose(double timestamp_sec,
                             const argus::frontend::StatesGroup& state) {
-    // Dual odom:
-    //   /argus/odometry_lio — raw ESIKF (LIO-local), same as offline TUM
-    //   /argus/odometry     — GT-seeded map frame for Autoviz overlay
-    // TF / trajectory / clouds use the seeded pose so live overlay matches GT.
+    // Dual odom (no GT filter update):
+    //   /argus/odometry_lio — always raw ESIKF (ATE)
+    //   /argus/odometry     — same raw unless debug seed/align is enabled
     const Eigen::Matrix4d T_lio_imu = StateToMat44(state);
-    const Eigen::Matrix4d T_map_imu = AlignedPose(T_lio_imu);
+    const Eigen::Matrix4d T_pub_imu = AlignedPose(T_lio_imu);
+    const std::string& pub_frame = PublishFrame();
     auto fill_odom = [&](automsgs::msgs::nav_msgs::Odometry* odom,
                          const Eigen::Matrix4d& T, const char* frame) {
         SetHeader(odom->mutable_header(), timestamp_sec, frame);
@@ -1156,21 +1180,19 @@ void ArgusNode::PublishPose(double timestamp_sec,
     };
     if (odom_lio_writer_) {
         automsgs::msgs::nav_msgs::Odometry odom_lio;
-        // Frame id is informational; ATE uses xyz only. Keep "odom" so it is
-        // clearly not the GT-seeded map topic.
         fill_odom(&odom_lio, T_lio_imu, options_.odom_frame.c_str());
         odom_lio_writer_->Write(odom_lio);
     }
     if (odom_writer_) {
         automsgs::msgs::nav_msgs::Odometry odom;
-        fill_odom(&odom, T_map_imu, options_.map_frame.c_str());
+        fill_odom(&odom, T_pub_imu, pub_frame.c_str());
         odom_writer_->Write(odom);
     }
     if (trajectory_writer_) {
-        SetHeader(trajectory_.mutable_header(), timestamp_sec, options_.map_frame);
+        SetHeader(trajectory_.mutable_header(), timestamp_sec, pub_frame);
         auto* pose = trajectory_.add_poses();
-        SetHeader(pose->mutable_header(), timestamp_sec, options_.map_frame);
-        Eigen::Matrix4d T_traj = T_map_imu;
+        SetHeader(pose->mutable_header(), timestamp_sec, pub_frame);
+        Eigen::Matrix4d T_traj = T_pub_imu;
         if (options_.trajectory_snap_to_gt && options_.align_to_gt &&
             gt_aligned_) {
             Eigen::Matrix4d T_gt = Eigen::Matrix4d::Identity();
@@ -1213,89 +1235,76 @@ void ArgusNode::PublishMapOdomTf(double timestamp_sec,
     lookup_stamp.set_sec(0);
     lookup_stamp.set_nanosec(0);
 
-    Eigen::Matrix4d T_odom_base = Eigen::Matrix4d::Identity();
-    bool have_wheel_odom = false;
-    std::string err;
-    if (tf_buffer_ &&
-        tf_buffer_->canTransform(options_.odom_frame, options_.base_frame,
-                                 lookup_stamp, 0.0f, &err)) {
-        try {
-            const auto stamped = tf_buffer_->lookupTransform(
-                options_.odom_frame, options_.base_frame, lookup_stamp, 0.0f);
-            T_odom_base = TransformMsgToMat44(stamped.transform());
-            have_wheel_odom = true;
-        } catch (const std::exception& ex) {
-            AWARN_EVERY(50) << "ArgusNode: TF lookup failed: " << ex.what();
-        }
-    }
-    if (!have_wheel_odom && !logged_identity_odom_tf_) {
-        AINFO << "ArgusNode: no TF " << options_.odom_frame << " -> "
-              << options_.base_frame << ", treating odom as identity";
-        logged_identity_odom_tf_ = true;
-    }
+    // Match AlignedWorldCloud: p_pub = R_pub * (ext_R * p_lidar + ext_T) + t_pub
+    // so Autoviz FixedFrame → /points (lidar_link) overlays cloud_registered/map.
+    // Tree (Spires / no URDF):
+    //   PublishFrame → imu_link (full 6DoF) → lidar_link (YAML ext)
+    //   PublishFrame → base_link (yaw-only, robot model only; not on lidar path)
+    const Eigen::Matrix4d T_pub_imu = AlignedPose(StateToMat44(state));
+    const std::string& pub_frame = PublishFrame();
+    constexpr const char* kImuFrame = "imu_link";
 
-    // Keep /odometry 6-DoF. TF: yaw-only + imu→base so wheels sit on ground.
-    // Use GT-aligned IMU pose so TF / traj / clouds share one map frame with GT.
-    const Eigen::Matrix4d T_map_base = SensorPoseToBaseLink(
-        AlignedPose(StateToMat44(state)), tf_buffer_, options_.base_frame,
-        "imu_link");
-    const Eigen::Matrix4d T_map_odom =
-        T_map_base * FlattenPlanar(T_odom_base).inverse();
+    Eigen::Matrix4d T_imu_lidar = Eigen::Matrix4d::Identity();
+    T_imu_lidar.block<3, 3>(0, 0) = config_.ext_R;
+    T_imu_lidar.block<3, 1>(0, 3) = config_.ext_T;
+
     TfMsg tf_msg;
-    automsgs::msgs::geometry_msgs::TransformStamped map_odom;
-    SetStamp(map_odom.mutable_header()->mutable_stamp(), timestamp_sec);
-    map_odom.mutable_header()->set_frame_id(options_.map_frame);
-    map_odom.set_child_frame_id(options_.odom_frame);
-    Mat44ToTransformMsg(T_map_odom, map_odom.mutable_transform());
-    if (tf_buffer_) {
-        transform::ApplyTransformStampedToBuffer(tf_buffer_, map_odom, "argus",
-                                                 false);
-    }
-    *tf_msg.add_transforms() = map_odom;
-
-    if (!have_wheel_odom) {
-        automsgs::msgs::geometry_msgs::TransformStamped odom_base;
-        SetStamp(odom_base.mutable_header()->mutable_stamp(), timestamp_sec);
-        odom_base.mutable_header()->set_frame_id(options_.odom_frame);
-        odom_base.set_child_frame_id(options_.base_frame);
-        Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
-                            odom_base.mutable_transform());
+    auto push_tf = [&](const std::string& parent, const std::string& child,
+                       const Eigen::Matrix4d& T) {
+        automsgs::msgs::geometry_msgs::TransformStamped stamped;
+        SetStamp(stamped.mutable_header()->mutable_stamp(), timestamp_sec);
+        stamped.mutable_header()->set_frame_id(parent);
+        stamped.set_child_frame_id(child);
+        Mat44ToTransformMsg(T, stamped.mutable_transform());
         if (tf_buffer_) {
-            transform::ApplyTransformStampedToBuffer(tf_buffer_, odom_base,
+            transform::ApplyTransformStampedToBuffer(tf_buffer_, stamped,
                                                      "argus", false);
         }
-        *tf_msg.add_transforms() = odom_base;
+        *tf_msg.add_transforms() = stamped;
+    };
+
+    push_tf(pub_frame, kImuFrame, T_pub_imu);
+
+    // Planar base for robot / Grid — sibling of imu, not parent of lidar.
+    const Eigen::Matrix4d T_pub_base = SensorPoseToBaseLink(
+        T_pub_imu, tf_buffer_, options_.base_frame, kImuFrame);
+    if (options_.base_frame != kImuFrame &&
+        options_.base_frame != pub_frame) {
+        push_tf(pub_frame, options_.base_frame, FlattenPlanar(T_pub_base));
+        if (!logged_identity_odom_tf_) {
+            AINFO << "ArgusNode: TF " << pub_frame << " -> " << kImuFrame
+                  << " (6DoF, matches cloud_registered) + planar "
+                  << pub_frame << " -> " << options_.base_frame;
+            logged_identity_odom_tf_ = true;
+        }
     }
 
-    // Never overwrite autosim/URDF base→laser with identity (z jumps ~0 vs 0.17).
-    if (!lidar_frame_.empty() && lidar_frame_ != options_.base_frame) {
+    // Viz seed: map→odom = T_align only so FixedFrame=map ∘ odometry_lio(T_lio)
+    // yields T_align*T_lio (= T_pub_imu). Do not publish odom→imu (imu parent is
+    // already pub_frame) — avoids multi-parent TF.
+    if (pub_frame == options_.map_frame &&
+        options_.odom_frame != options_.map_frame && map_frame_seeded_) {
+        push_tf(options_.map_frame, options_.odom_frame, T_gt_align_);
+    }
+
+    if (!lidar_frame_.empty() && lidar_frame_ != kImuFrame) {
         std::string lidar_err;
-        const bool have_lidar_tf =
+        const bool have_imu_lidar =
             tf_buffer_ &&
-            tf_buffer_->canTransform(options_.base_frame, lidar_frame_,
-                                     lookup_stamp, 0.0f, &lidar_err);
-        if (!have_lidar_tf) {
-            automsgs::msgs::geometry_msgs::TransformStamped base_lidar;
-            SetStamp(base_lidar.mutable_header()->mutable_stamp(),
-                     timestamp_sec);
-            base_lidar.mutable_header()->set_frame_id(options_.base_frame);
-            base_lidar.set_child_frame_id(lidar_frame_);
-            Mat44ToTransformMsg(Eigen::Matrix4d::Identity(),
-                                base_lidar.mutable_transform());
-            if (tf_buffer_) {
-                transform::ApplyTransformStampedToBuffer(
-                    tf_buffer_, base_lidar, "argus", false);
-            }
-            *tf_msg.add_transforms() = base_lidar;
+            tf_buffer_->canTransform(kImuFrame, lidar_frame_, lookup_stamp,
+                                     0.0f, &lidar_err);
+        // Prefer external URDF imu→lidar; else YAML ext (same as LIO).
+        if (!have_imu_lidar) {
+            push_tf(kImuFrame, lidar_frame_, T_imu_lidar);
             if (!logged_lidar_tf_) {
-                AINFO << "ArgusNode: publishing identity TF "
-                      << options_.base_frame << " -> " << lidar_frame_
-                      << " (no external extrinsics)";
+                AINFO << "ArgusNode: publishing TF " << kImuFrame << " -> "
+                      << lidar_frame_ << " from LIVO ext_R/ext_T (aligns /points "
+                         "with cloud_registered)";
                 logged_lidar_tf_ = true;
             }
         } else if (!logged_lidar_tf_) {
-            AINFO << "ArgusNode: using external TF " << options_.base_frame
-                  << " -> " << lidar_frame_;
+            AINFO << "ArgusNode: using external TF " << kImuFrame << " -> "
+                  << lidar_frame_;
             logged_lidar_tf_ = true;
         }
     }
@@ -1312,7 +1321,7 @@ void ArgusNode::PublishRegisteredCloud(
     const auto slim =
         SubsampleCloud(world, options_.registered_publish_max_points);
     CloudMsg msg =
-        argus::sensor::ToProto(slim, timestamp_sec, options_.map_frame);
+        argus::sensor::ToProto(slim, timestamp_sec, PublishFrame());
     if (registered_writer_->Write(msg)) {
         ++pub_stats_.reg_ok;
         AINFO_EVERY(10) << "ArgusNode: published cloud_registered points="
@@ -1465,7 +1474,7 @@ bool ArgusNode::WriteMapCloudMsg(double timestamp_sec,
     const float z_span = std::max(z_max - z_min, 0.15f);
 
     CloudMsg cloud;
-    SetHeader(cloud.mutable_header(), timestamp_sec, options_.map_frame);
+    SetHeader(cloud.mutable_header(), timestamp_sec, PublishFrame());
     cloud.set_height(1);
     cloud.set_width(static_cast<uint32_t>(count));
     cloud.set_is_dense(false);

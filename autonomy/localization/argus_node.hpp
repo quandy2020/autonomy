@@ -92,15 +92,19 @@ public:
         int trajectory_max_poses = 800;
         /** Min interval between /argus/trajectory SHM writes (sec). */
         double trajectory_period_sec = 0.2;
-        /** Soft cap on unique voxels kept in /argus/cloud_map (never FIFO-evict). */
-        int global_cloud_max_points = 5000000;
+        /**
+         * Soft cap on unique voxels in /argus/cloud_map (never FIFO-evict).
+         * When hit, later path segments get trajectory but no new points —
+         * raise this for long Spires runs (was 5e6 → empty loop regions).
+         */
+        int global_cloud_max_points = 20000000;
         /**
          * Downsample every Nth point from each scan before ikd insert.
-         * Live default >1: ikd AddPoints every frame was starving Autolink.
+         * 1 = every point (densest viz map).
          */
-        int global_cloud_stride = 3;
-        /** World-frame voxel leaf for ikd downsample (m); matches MapBuilder. */
-        float global_cloud_leaf_m = 0.1f;
+        int global_cloud_stride = 1;
+        /** World-frame voxel leaf for ikd downsample (m). */
+        float global_cloud_leaf_m = 0.05f;
         /** Ikd rebuild when size grows by this factor since last balance. */
         double global_ikd_rebuild_ratio = 1.5;
         /**
@@ -108,10 +112,13 @@ public:
          * large blocks; huge clouds stall writers in TryLockForWrite and
          * starve all subsequent Argus logs/topics.
          */
-        /** Keep PointCloud2 under ~1MB so SHM stays on the 64-block tier. */
-        int registered_publish_max_points = 40000;
-        /** Full-snapshot stride target (~1MB SHM-friendly). */
-        int map_publish_max_points = 120000;
+        /** ~2.4MB XYZI — 8M SHM tier. */
+        int registered_publish_max_points = 150000;
+        /**
+         * Full-snapshot cap (~24MB XYZI → 32M SHM tier). Keep high enough
+         * that long maps do not look like "holes" under index stride.
+         */
+        int map_publish_max_points = 1500000;
         /**
          * Publish /argus/cloud_map as deltas (new voxels) for Autoviz Decay
          * accumulation. Prefer false for live Autoviz: full strided snapshots
@@ -125,12 +132,11 @@ public:
          */
         int map_full_snapshot_every_n = 10;
         /** Min interval between /argus/cloud_registered publishes (sec). */
-        double registered_period_sec = 0.5;
+        double registered_period_sec = 0.35;
         /**
          * Insert into viz ikd only every N ok frames (1 = every frame).
-         * Reduces Flush cost so sensor callbacks return before SHM overruns.
          */
-        int global_map_insert_every_n = 2;
+        int global_map_insert_every_n = 1;
         /** Cap spilled IMU samples when sensor mutex is busy (drop oldest). */
         int imu_spill_max = 2000;
         float occupancy_resolution = 0.1f;
@@ -143,18 +149,15 @@ public:
         /** Stop feeding occupancy once map span exceeds this (m). */
         double occupancy_max_extent_m = 200.0;
         /**
-         * Put Argus publish (odom/traj/clouds) into the same `map` as /gt/*
-         * by locking ONE rigid SE(3) after a short travel (same idea as offline
-         * ATE Umeyama, but scale fixed to 1):
-         *   collect pairs → Umeyama(with_scale=false) → T_map_lio.
-         * GT messages are never modified; ESIKF stays local; only publish TF.
-         * First-pose-only seed is not enough — both start ≈I while body axes
-         * can differ by ~90° until the path has shape.
+         * Viz-only: after ~gt_align_min_span_m of travel, lock ONE planar
+         * rigid (yaw+XY, scale=1) via Umeyama so Autoviz Argus⟷GT overlay.
+         * First-pose SE3 alone fails when both start ≈I but body/world axes
+         * differ by ~90° (Spires). Does NOT update ESIKF; odometry_lio raw.
+         * GT messages are never modified.
          */
         bool seed_map_frame_from_gt = true;
         /**
-         * Debug: multi-pair planar Umeyama+scale on the estimate (GT untouched).
-         * Prefer seed_map_frame_from_gt; leave false for honest live overlay.
+         * Debug only: multi-pair planar Umeyama+scale on publish. Leave false.
          */
         bool align_to_gt = false;
         std::string gt_odom_topic = "/gt/odometry";
@@ -233,6 +236,8 @@ private:
     void PublishWorkerLoop();
     bool NeedsGtSubscription() const;
     bool MapFrameReady() const;
+    /** Header frame for published traj/clouds: map only if GT seed locked. */
+    const std::string& PublishFrame() const;
     bool TrySeedMapFrameFromGt(double timestamp_sec,
                                const Eigen::Matrix4d& T_est);
     bool TryAlignToGt(double timestamp_sec, const Eigen::Matrix4d& T_est);
@@ -354,6 +359,7 @@ private:
         Eigen::Vector3d est_xyz = Eigen::Vector3d::Zero();
         Eigen::Vector3d gt_xyz = Eigen::Vector3d::Zero();
         Eigen::Matrix4d T_est = Eigen::Matrix4d::Identity();
+        Eigen::Matrix4d T_gt = Eigen::Matrix4d::Identity();
     };
     std::vector<AlignPair> align_pairs_;
 };

@@ -631,11 +631,48 @@ void OgreSceneHost::uploadPbrTexturedMeshes(
   }
 }
 
+namespace {
+
+void ApplyPointCloudStyle(OgrePointCloud* cloud, float point_size,
+                          PointCloudStyle style) {
+  if (cloud == nullptr) {
+    return;
+  }
+  const float world_size = std::max(0.002f, point_size * 0.006f);
+  const OgrePointCloud::RenderMode mode = toOgrePointCloudRenderMode(style);
+  // setRenderMode regenerates; only call when mode changes (RViz2).
+  if (cloud->renderMode() != mode) {
+    cloud->setRenderMode(mode);
+  }
+  cloud->setDimensions(world_size, world_size, world_size);
+}
+
+}  // namespace
+
 void OgreSceneHost::setDisplayPoints(const std::string& display_name,
                                      float point_size, PointCloudStyle style,
                                      const std::vector<QVector3D>& positions,
                                      const std::vector<QColor>& colors) {
   if (scene_manager_ == nullptr || positions.empty()) {
+    return;
+  }
+  std::vector<OgrePointCloud::Point> ogre_points;
+  ogre_points.reserve(positions.size());
+  for (std::size_t i = 0; i < positions.size(); ++i) {
+    OgrePointCloud::Point p;
+    p.position =
+        Ogre::Vector3(positions[i].x(), positions[i].y(), positions[i].z());
+    const QColor& c = i < colors.size() ? colors[i] : QColor(200, 200, 200);
+    p.setColor(c.redF(), c.greenF(), c.blueF(), c.alphaF());
+    ogre_points.push_back(p);
+  }
+  setDisplayPoints(display_name, point_size, style, std::move(ogre_points));
+}
+
+void OgreSceneHost::setDisplayPoints(const std::string& display_name,
+                                     float point_size, PointCloudStyle style,
+                                     std::vector<OgrePointCloud::Point>&& points) {
+  if (scene_manager_ == nullptr || points.empty()) {
     return;
   }
   displayNode(display_name);
@@ -645,29 +682,42 @@ void OgreSceneHost::setDisplayPoints(const std::string& display_name,
     entry.cloud->setName(display_name);
     entry.node->attachObject(entry.cloud.get());
   }
-
-  const float world_size = std::max(0.002f, point_size * 0.006f);
-  const OgrePointCloud::RenderMode mode = toOgrePointCloudRenderMode(style);
-  // setRenderMode regenerates geometry; only call when the mode actually changes.
-  if (entry.cloud->renderMode() != mode) {
-    entry.cloud->clearAndRemoveAllPoints();
-    entry.cloud->setRenderMode(mode);
-  } else {
-    entry.cloud->clearAndRemoveAllPoints();
-  }
-  entry.cloud->setDimensions(world_size, world_size, world_size);
-
-  std::vector<OgrePointCloud::Point> ogre_points;
-  ogre_points.reserve(positions.size());
-  for (std::size_t i = 0; i < positions.size(); ++i) {
-    OgrePointCloud::Point p;
-    p.position = Ogre::Vector3(positions[i].x(), positions[i].y(), positions[i].z());
-    const QColor& c = i < colors.size() ? colors[i] : QColor(200, 200, 200);
-    p.setColor(c.redF(), c.greenF(), c.blueF(), c.alphaF());
-    ogre_points.push_back(p);
-  }
-  entry.cloud->setPoints(std::move(ogre_points));
+  ApplyPointCloudStyle(entry.cloud.get(), point_size, style);
+  // setPoints clears once internally — do not clearAndRemoveAllPoints here
+  // (that was destroying HBU_DYNAMIC buffers every UI frame).
+  entry.cloud->setPoints(std::move(points));
   applyEntryVisibility(entry);
+}
+
+void OgreSceneHost::appendDisplayPoints(
+    const std::string& display_name, float point_size, PointCloudStyle style,
+    std::vector<OgrePointCloud::Point>&& points) {
+  if (scene_manager_ == nullptr || points.empty()) {
+    return;
+  }
+  displayNode(display_name);
+  DisplayEntry& entry = displays_[display_name];
+  if (entry.cloud == nullptr) {
+    entry.cloud = std::make_unique<OgrePointCloud>();
+    entry.cloud->setName(display_name);
+    entry.node->attachObject(entry.cloud.get());
+  }
+  ApplyPointCloudStyle(entry.cloud.get(), point_size, style);
+  entry.cloud->addPoints(points.begin(), points.end(),
+                         /*keep_cpu_copy=*/false);
+  applyEntryVisibility(entry);
+}
+
+void OgreSceneHost::popFrontDisplayPoints(const std::string& display_name,
+                                          uint32_t count) {
+  if (count == 0 || scene_manager_ == nullptr) {
+    return;
+  }
+  auto it = displays_.find(display_name);
+  if (it == displays_.end() || it->second.cloud == nullptr) {
+    return;
+  }
+  it->second.cloud->popPoints(count);
 }
 
 void OgreSceneHost::setDisplayBillboardStrip(const std::string& display_name,

@@ -35,6 +35,7 @@
 
 #include "autoviz/common/pick_handle.hpp"
 #include "autoviz/plugins/displays/common/obj_mesh.hpp"
+#include "autoviz/rendering/objects/ogre_point_cloud.hpp"
 #include "autoviz/rendering/render_settings.hpp"
 
 namespace Ogre {
@@ -54,8 +55,6 @@ class OgreBillboardLine;
 class OgreWrenchVisual;
 class OgreScrewVisual;
 class OgreCovarianceVisual;
-
-class OgrePointCloud;
 
 /**
  * @struct OgreColoredLineSegment
@@ -187,6 +186,31 @@ class OgreSceneHost {
                         PointCloudStyle style,
                         const std::vector<QVector3D>& positions,
                         const std::vector<QColor>& colors);
+
+  /**
+   * @brief Replace cloud from prebuilt Ogre points (RViz2-style, no extra copy).
+   *
+   * Prefer this for dense PointCloud2 uploads — avoids splitting into
+   * positions/colors vectors then rebuilding @c OgrePointCloud::Point.
+   */
+  void setDisplayPoints(const std::string& display_name, float point_size,
+                        PointCloudStyle style,
+                        std::vector<OgrePointCloud::Point>&& points);
+
+  /**
+   * @brief Append points to an existing cloud (RViz2 PointCloudCommon add).
+   *
+   * Used when Decay Time &gt; 0 so each message does not rebuild the whole GPU
+   * buffer. Creates the cloud on first call.
+   */
+  void appendDisplayPoints(const std::string& display_name, float point_size,
+                           PointCloudStyle style,
+                           std::vector<OgrePointCloud::Point>&& points);
+
+  /**
+   * @brief Pop @p count points from the front of the cloud (decay eviction).
+   */
+  void popFrontDisplayPoints(const std::string& display_name, uint32_t count);
 
   /**
    * @brief Camera-facing polyline strip (rviz BillboardLine).

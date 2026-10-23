@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <new>
 
@@ -20,6 +21,7 @@
 #include "autoviz/plugins/displays/common/transform_utils.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
 #include "autoviz/rendering/point_cloud_style_utils.hpp"
+#include "autoviz/rendering/scene_overlay.hpp"
 
 namespace autoviz {
 namespace display {
@@ -28,6 +30,8 @@ namespace {
 // JT128-class clouds + Flat Squares (6 verts/point) can exhaust heap after a
 // long run; keep a hard default cap and let users raise Decimate / Max Points.
 constexpr int kDefaultMaxPoints = 200000;
+/** Billboard styles above this count auto-fall back to Points (RViz dense). */
+constexpr std::size_t kBillboardAutoPointsThreshold = 80000;
 
 int AxisIndexFromProperty(const std::string& axis,
                           const std::string& color_transform) {
@@ -60,7 +64,9 @@ std::vector<common::DisplayPropertySpec> PointCloud2Display::propertySpecs()
   // Property set mirrors rviz_default_plugins PointCloudCommon + transformers.
   return {
       {"selectable", "Selectable", "true"},
-      {"style", "Style", "Flat Squares",
+      // Default Points (1 vert/point). Flat Squares = 6× GPU cost — fine for
+      // sparse clouds; dense Argus maps should stay on Points (RViz2).
+      {"style", "Style", "Points",
        {"Points", "Squares", "Flat Squares", "Spheres", "Boxes", "Tiles"}},
       {"point_world_size", "Size (m)", "0.01", {},
        common::DisplayPropertyKind::kAuto, "style",
@@ -293,8 +299,6 @@ void PointCloud2Display::processMessage(
           if (!parsed.rgb_is_rgba) {
             color.setAlphaF(alpha);
           } else {
-            // RViz applies display Alpha on top of per-point alpha via material;
-            // multiply for visual parity.
             color.setAlphaF(color.alphaF() * alpha);
           }
         }
@@ -312,7 +316,6 @@ void PointCloud2Display::processMessage(
             (use_fixed_frame || !need_local) ? draw_positions[i]
                                              : local_positions[i];
         const float v = AxisValue(src, axis);
-        // RViz AxisColor always uses rainbow (no Use rainbow toggle).
         color = colorFromScalar(v, axis_min, axis_max, true, false, Qt::black,
                                 Qt::white);
         color.setAlphaF(alpha);
@@ -322,16 +325,31 @@ void PointCloud2Display::processMessage(
       default:
         break;
     }
-    batch.points.push_back({draw_positions[i], color, now});
+    rendering::OgrePointCloud::Point pt;
+    pt.position = Ogre::Vector3(draw_positions[i].x(), draw_positions[i].y(),
+                                draw_positions[i].z());
+    pt.setColor(color.redF(), color.greenF(), color.blueF(), color.alphaF());
+    batch.points.push_back(pt);
   }
 
   const float decay_sec =
       common::ParseFloatProperty(propertyValue("decay_time", "0"), 0.f);
   if (decay_sec <= 0.f) {
+    // Latest-only: full GPU replace (RViz decay==0).
     batches_.clear();
     batches_.push_back(std::move(batch));
+    gpu_incremental_ok_ = false;
+    gpu_dirty_ = true;
   } else {
+    // Decay accumulate: append to GPU when style unchanged (RViz2 addPoints).
+    std::vector<rendering::OgrePointCloud::Point> to_append = batch.points;
     batches_.push_back(std::move(batch));
+    if (gpu_incremental_ok_ && context_->ogre_scene_host != nullptr) {
+      appendGpuBatch(std::move(to_append));
+    } else {
+      gpu_dirty_ = true;
+      gpu_incremental_ok_ = false;
+    }
     evictExpiredBatches();
   }
 
@@ -341,6 +359,8 @@ void PointCloud2Display::processMessage(
   } catch (const std::bad_alloc&) {
     batches_.clear();
     batches_.shrink_to_fit();
+    gpu_dirty_ = false;
+    gpu_incremental_ok_ = false;
     if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
       context_->ogre_scene_host->removeDisplay(name());
     }
@@ -350,8 +370,6 @@ void PointCloud2Display::processMessage(
 }
 
 std::size_t PointCloud2Display::messageQueueDepth() const {
-  // RViz2 PointCloudCommon keeps every cloud until Decay expires. Cap the
-  // Autolink→UI backlog so a stalled UI cannot OOM on dense lidar.
   const float decay_sec =
       common::ParseFloatProperty(propertyValue("decay_time", "0"), 0.f);
   return decay_sec > 0.f ? 64 : 1;
@@ -381,11 +399,11 @@ void PointCloud2Display::evictExpiredBatches() {
   const auto cutoff =
       now - std::chrono::duration_cast<std::chrono::steady_clock::duration>(
                 std::chrono::duration<float>(decay_sec));
-  batches_.erase(std::remove_if(batches_.begin(), batches_.end(),
-                                [&cutoff](const PointBatch& b) {
-                                  return b.received_at < cutoff;
-                                }),
-                 batches_.end());
+  uint32_t popped = 0;
+  while (!batches_.empty() && batches_.front().received_at < cutoff) {
+    popped += static_cast<uint32_t>(batches_.front().points.size());
+    batches_.erase(batches_.begin());
+  }
   const uint32_t max_points = static_cast<uint32_t>(std::max(
       1000, common::ParseIntProperty(propertyValue("max_points", "200000"),
                                      kDefaultMaxPoints)));
@@ -394,18 +412,115 @@ void PointCloud2Display::evictExpiredBatches() {
     total += b.points.size();
   }
   while (total > max_points && !batches_.empty()) {
+    popped += static_cast<uint32_t>(batches_.front().points.size());
     total -= batches_.front().points.size();
     batches_.erase(batches_.begin());
   }
+  if (popped == 0) {
+    return;
+  }
+  if (gpu_incremental_ok_ && context_ != nullptr &&
+      context_->ogre_scene_host != nullptr) {
+    context_->ogre_scene_host->popFrontDisplayPoints(name(), popped);
+  } else {
+    gpu_dirty_ = true;
+    gpu_incremental_ok_ = false;
+  }
+}
+
+void PointCloud2Display::resolveDrawStyle(rendering::PointCloudStyle* style,
+                                          float* point_size,
+                                          std::size_t total_points) const {
+  const std::string style_name = propertyValue("style", "Points");
+  *style = rendering::parsePointCloudStyle(style_name);
+  // Dense clouds: billboards are 6–36 verts/point — force Points like RViz
+  // users do for Laser_map / dense maps.
+  if (total_points >= kBillboardAutoPointsThreshold &&
+      *style != rendering::PointCloudStyle::kPoints &&
+      *style != rendering::PointCloudStyle::kSpheres) {
+    *style = rendering::PointCloudStyle::kPoints;
+  }
+  if (*style == rendering::PointCloudStyle::kPoints) {
+    *point_size =
+        common::ParseFloatProperty(propertyValue("point_size", "3"), 3.f);
+  } else {
+    *point_size =
+        common::ParseFloatProperty(propertyValue("point_world_size", "0.01"),
+                                   0.01f) /
+        0.006f;
+  }
+}
+
+void PointCloud2Display::uploadGpuFull() {
+  if (context_ == nullptr || context_->ogre_scene_host == nullptr) {
+    return;
+  }
+  if (batches_.empty()) {
+    context_->ogre_scene_host->removeDisplay(name());
+    gpu_dirty_ = false;
+    gpu_incremental_ok_ = false;
+    return;
+  }
+  std::size_t total = 0;
+  for (const auto& b : batches_) {
+    total += b.points.size();
+  }
+  rendering::PointCloudStyle style = rendering::PointCloudStyle::kPoints;
+  float point_size = 3.f;
+  resolveDrawStyle(&style, &point_size, total);
+
+  std::vector<rendering::OgrePointCloud::Point> flat;
+  flat.reserve(total);
+  for (const auto& b : batches_) {
+    flat.insert(flat.end(), b.points.begin(), b.points.end());
+  }
+  context_->ogre_scene_host->setDisplayPoints(name(), point_size, style,
+                                              std::move(flat));
+  last_style_ = style;
+  last_point_size_ = point_size;
+  gpu_dirty_ = false;
+  gpu_incremental_ok_ = true;
+}
+
+void PointCloud2Display::appendGpuBatch(
+    std::vector<rendering::OgrePointCloud::Point>&& points) {
+  if (context_ == nullptr || context_->ogre_scene_host == nullptr ||
+      points.empty()) {
+    return;
+  }
+  // Caller already pushed the batch into batches_; total includes it.
+  std::size_t total = 0;
+  for (const auto& b : batches_) {
+    total += b.points.size();
+  }
+  rendering::PointCloudStyle style = rendering::PointCloudStyle::kPoints;
+  float point_size = 3.f;
+  resolveDrawStyle(&style, &point_size, total);
+  if (last_point_size_ < 0.f || style != last_style_ ||
+      std::abs(point_size - last_point_size_) > 1e-4f) {
+    // First append or style change — fall back to full rebuild next draw.
+    gpu_incremental_ok_ = false;
+    gpu_dirty_ = true;
+    return;
+  }
+  context_->ogre_scene_host->appendDisplayPoints(name(), point_size, style,
+                                                 std::move(points));
 }
 
 void PointCloud2Display::clearReceivedData() {
   batches_.clear();
+  gpu_dirty_ = true;
+  gpu_incremental_ok_ = false;
+  if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
+    context_->ogre_scene_host->removeDisplay(name());
+  }
 }
 
 void PointCloud2Display::onDisable() {
   ChannelDisplay<automsgs::msgs::sensor_msgs::PointCloud2>::onDisable();
   batches_.clear();
+  gpu_dirty_ = false;
+  gpu_incremental_ok_ = false;
   if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
     context_->ogre_scene_host->removeDisplay(name());
   }
@@ -413,39 +528,50 @@ void PointCloud2Display::onDisable() {
 
 void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {
   if (batches_.empty()) {
+    if (gpu_dirty_) {
+      uploadGpuFull();
+    }
     return;
   }
   try {
-  const std::string style_name = propertyValue("style", "Flat Squares");
-  const rendering::PointCloudStyle style =
-      rendering::parsePointCloudStyle(style_name);
-  // OgreSceneHost converts size with `pixels * 0.006 → meters`. Invert that
-  // so RViz "Size (m)" is applied as true world meters for non-Points styles.
-  const float point_size =
-      (style_name == "Points")
-          ? common::ParseFloatProperty(propertyValue("point_size", "3"), 3.f)
-          : common::ParseFloatProperty(propertyValue("point_world_size", "0.01"),
-                                       0.01f) /
-                0.006f;
-
-  std::vector<ColoredPoint3D> colored;
-  size_t total = 0;
+  std::size_t total = 0;
   for (const auto& b : batches_) {
     total += b.points.size();
   }
-  colored.reserve(total);
-  for (const auto& b : batches_) {
-    for (const auto& pt : b.points) {
-      colored.push_back({pt.position, pt.color});
-    }
+  rendering::PointCloudStyle style = rendering::PointCloudStyle::kPoints;
+  float point_size = 3.f;
+  resolveDrawStyle(&style, &point_size, total);
+  if (style != last_style_ ||
+      std::abs(point_size - last_point_size_) > 1e-4f) {
+    gpu_dirty_ = true;
+    gpu_incremental_ok_ = false;
   }
+
+  // RViz2: GPU upload on message / property change — not every camera frame.
+  if (gpu_dirty_ || !gpu_incremental_ok_) {
+    uploadGpuFull();
+  }
+
   const bool selectable =
       common::ParseBoolProperty(propertyValue("selectable", "true"), true);
-  drawColoredPointsOgreOrGl(context_, scene, name(), typeId(), point_size, style,
-                            colored, selectable);
+  if (selectable && context_ != nullptr &&
+      context_->ogre_scene_host != nullptr) {
+    const std::string dn = name();
+    const std::string dt = typeId();
+    scene.setPickSource(&dn, &dt);
+    auto handler =
+        common::CreateSelectionHandler<common::PointCloudSelectionHandler>();
+    handler->setDisplayInfo(dn, dt);
+    handler->setPointIndex(-1);
+    const common::PickHandle cloud_handle =
+        scene.registerPickEntry(QVector3D(), -1, handler);
+    context_->ogre_scene_host->setCloudPickHandle(dn, cloud_handle);
+  }
   } catch (const std::bad_alloc&) {
     batches_.clear();
     batches_.shrink_to_fit();
+    gpu_dirty_ = false;
+    gpu_incremental_ok_ = false;
     if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
       context_->ogre_scene_host->removeDisplay(name());
     }

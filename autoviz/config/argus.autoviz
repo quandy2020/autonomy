@@ -38,32 +38,34 @@ Displays:
       plane: XY
       reference_frame: <Fixed Frame>
     Type: Grid
-  # Raw /points is lidar-frame; leave off so it does not smear over map.
+  # /points: lidar_link; Argus TF map/odom→imu→lidar matches cloud_registered.
   - Channel: /points
-    Enabled: false
+    Enabled: true
     Name: LidarScan
     Properties:
-      alpha: "0.85"
+      alpha: "0.5"
       color_transform: Intensity
       decay_time: "0"
-      decimate: "2"
-      max_points: "200000"
-      point_world_size: "0.03"
-      style: Flat Squares
+      decimate: "1"
+      max_points: "500000"
+      point_world_size: "0.015"
+      style: Points
+      point_size: "2"
       use_rainbow: "true"
     Type: PointCloud2
   - Channel: /argus/cloud_registered
     Enabled: true
     Name: ArgusCloudRegistered
     Properties:
-      alpha: "0.7"
+      alpha: "0.65"
       color: 0;200;255
       color_transform: FlatColor
       decay_time: "0"
       decimate: "1"
-      max_points: "200000"
-      point_world_size: "0.04"
-      style: Flat Squares
+      max_points: "500000"
+      point_world_size: "0.02"
+      style: Points
+      point_size: "2"
     Type: PointCloud2
   - Channel: /argus/cloud_map
     Enabled: true
@@ -71,11 +73,11 @@ Displays:
     Properties:
       alpha: "1.0"
       color_transform: RGB8
-      # Argus publishes full strided snapshots; decay=0 ⇒ replace (no forget).
+      # denser Argus snapshots; decay=0 ⇒ replace (no forget).
       decay_time: "0"
       decimate: "1"
       max_points: "5000000"
-      point_world_size: "0.05"
+      point_world_size: "0.02"
       style: Points
       point_size: "2"
     Type: PointCloud2
@@ -116,6 +118,7 @@ Displays:
 Global:
   ActiveTool: Interact
   BackgroundColor: 48;48;48
+  # map: GT + Argus (after first-pose viz seed) share one Autoviz frame.
   FixedFrame: map
   FrameRate: 30
   RenderBackend: Ogre
