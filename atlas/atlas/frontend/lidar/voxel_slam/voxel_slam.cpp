@@ -122,6 +122,7 @@ void Odometry::ApplyConfigGlobals() {
   min_eigen_value = config_.min_eigen_value;
   max_layer = config_.max_layer;
   imu_coef = config_.imu_coef;
+  min_ba_point = config_.minimum_bundle_adjustment_points;
   plane_eigenvalue_thresholds = config_.plane_eigenvalue_thresholds;
   while (static_cast<int>(plane_eigenvalue_thresholds.size()) <
          config_.max_layer + 1) {
@@ -136,10 +137,15 @@ void Odometry::ApplyConfigGlobals() {
 }
 
 void Odometry::Initialize() {
-  if (config_.win_size <= 0 || config_.worker_thread_count <= 0) {
+  if (config_.win_size <= 0 || config_.worker_thread_count <= 0 ||
+      config_.minimum_bundle_adjustment_points <= 0 ||
+      config_.bias_gyro_random_walk < 0.0 ||
+      config_.bias_accel_random_walk < 0.0 ||
+      config_.gba_voxel_size <= 0.0 ||
+      config_.gba_minimum_eigenvalue <= 0.0 ||
+      config_.gba_maximum_iteration_count <= 0) {
     initialized_ = false;
-    LOG(ERROR) << "Invalid Voxel-SLAM configuration: win_size and "
-                  "worker_thread_count must be positive";
+    LOG(ERROR) << "Invalid Voxel-SLAM configuration";
     return;
   }
   ApplyConfigGlobals();
@@ -149,6 +155,10 @@ void Odometry::Initialize() {
   imu_ekf_.lid_offset_to_imu = config_.extrinsic_t;
   imu_ekf_.cov_gyr = config_.cov_gyr;
   imu_ekf_.cov_acc = config_.cov_acc;
+  imu_ekf_.cov_bias_gyr = Eigen::Vector3d::Constant(
+      config_.bias_gyro_random_walk);
+  imu_ekf_.cov_bias_acc = Eigen::Vector3d::Constant(
+      config_.bias_accel_random_walk);
   imu_ekf_.point_notime = config_.point_notime ? 1 : 0;
   imu_ekf_.livox_imu_scale = config_.livox_imu_scale;
 
@@ -866,13 +876,17 @@ void Odometry::GbaWorker() {
   const int local_window_size = std::max(2, config_.gba_local_win);
   const int merge_window_size = std::max(1, config_.gba_merge_size);
   GlobalBundleAdjustmentConfiguration global_bundle_adjustment_configuration;
-  global_bundle_adjustment_configuration.voxel_size = config_.voxel_size;
+  global_bundle_adjustment_configuration.voxel_size = config_.gba_voxel_size;
   global_bundle_adjustment_configuration.minimum_eigenvalue =
-      config_.min_eigen_value;
+      config_.gba_minimum_eigenvalue;
   global_bundle_adjustment_configuration.eigenvalue_thresholds =
-      config_.plane_eigenvalue_thresholds;
+      config_.gba_eigenvalue_thresholds.empty()
+          ? config_.plane_eigenvalue_thresholds
+          : config_.gba_eigenvalue_thresholds;
   global_bundle_adjustment_configuration.maximum_octree_layer =
       config_.max_layer;
+  global_bundle_adjustment_configuration.maximum_iteration_count =
+      config_.gba_maximum_iteration_count;
   global_bundle_adjustment_configuration.worker_thread_count =
       config_.worker_thread_count;
   HierarchicalBundleAdjustment hierarchical_optimizer(
@@ -1062,6 +1076,13 @@ bool Odometry::Process(::atlas::odometry::OdometryOutput* out) {
   }
 
   sensor::PointCloudXYZI pl = *meas.lidar;
+  // Atlas stores per-point relative time in milliseconds, while the original
+  // Voxel-SLAM deskew and motion-initialization equations consume seconds.
+  // SensorSync deliberately keeps the shared representation unchanged, so
+  // normalize the private working copy at the Voxel-SLAM boundary.
+  for (sensor::PointType& point : pl.points) {
+    point.curvature *= 1e-3f;
+  }
   DownsampleVoxel(&pl, config_.down_size);
 
   std::deque<sensor::ImuData> imus;

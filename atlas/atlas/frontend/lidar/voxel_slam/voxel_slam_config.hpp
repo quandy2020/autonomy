@@ -35,6 +35,9 @@ struct OdometryConfig {
   int max_layer = 2;
   int win_size = 10;
   double imu_coef = 1e-4;
+  double bias_gyro_random_walk = 1e-4;
+  double bias_accel_random_walk = 1e-4;
+  int minimum_bundle_adjustment_points = 20;
   int worker_thread_count = 4;
   int degrade_bound = 50;
   bool point_notime = false;
@@ -63,6 +66,10 @@ struct OdometryConfig {
   int prev_halt = 30;
   int gba_local_win = 10;
   int gba_merge_size = 5;
+  double gba_voxel_size = 1.0;
+  double gba_minimum_eigenvalue = 0.01;
+  std::vector<double> gba_eigenvalue_thresholds;
+  int gba_maximum_iteration_count = 1;
 
   std::string save_path;
   std::string bagname = "session0";

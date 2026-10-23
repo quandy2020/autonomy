@@ -194,6 +194,15 @@ bool AssignScalar(const std::string& path, const std::string& value,
   if (path == "voxel/imu_coef") {
     return ParseDouble(value, &config->voxel_imu_coef);
   }
+  if (path == "voxel/bias_gyro_random_walk") {
+    return ParseDouble(value, &config->voxel_bias_gyro_random_walk);
+  }
+  if (path == "voxel/bias_accel_random_walk") {
+    return ParseDouble(value, &config->voxel_bias_accel_random_walk);
+  }
+  if (path == "voxel/minimum_bundle_adjustment_points") {
+    return ParseInt(value, &config->voxel_minimum_bundle_adjustment_points);
+  }
   if (path == "voxel/enable_loop") {
     return ParseBool(value, &config->voxel_enable_loop);
   }
@@ -229,6 +238,15 @@ bool AssignScalar(const std::string& path, const std::string& value,
   }
   if (path == "voxel/gba_merge_size") {
     return ParseInt(value, &config->voxel_gba_merge_size);
+  }
+  if (path == "voxel/gba_voxel_size") {
+    return ParseDouble(value, &config->voxel_gba_voxel_size);
+  }
+  if (path == "voxel/gba_minimum_eigenvalue") {
+    return ParseDouble(value, &config->voxel_gba_minimum_eigenvalue);
+  }
+  if (path == "voxel/gba_maximum_iteration_count") {
+    return ParseInt(value, &config->voxel_gba_maximum_iteration_count);
   }
   if (path == "voxel/save_path") {
     config->voxel_save_path = value;
@@ -275,11 +293,18 @@ bool ValidateSlamSystemConfig(const SlamSystemConfig& config) {
   if (config.voxel_win_size < 1 || config.voxel_thread_num < 1 ||
       config.voxel_degrade_bound < 1 || !(config.voxel_down_size > 0.0) ||
       !(config.voxel_size > 0.0) || !(config.voxel_min_eigen_value > 0.0) ||
-      !(config.voxel_imu_coef > 0.0) || !(config.voxel_icp_eigval >= 0.0) ||
+      !(config.voxel_imu_coef > 0.0) ||
+      !(config.voxel_bias_gyro_random_walk >= 0.0) ||
+      !(config.voxel_bias_accel_random_walk >= 0.0) ||
+      config.voxel_minimum_bundle_adjustment_points < 1 ||
+      !(config.voxel_icp_eigval >= 0.0) ||
       !(config.voxel_jud_default >= 0.0) ||
       !(config.voxel_ratio_drift >= 0.0) || config.voxel_curr_halt < 1 ||
       config.voxel_prev_halt < 1 || config.voxel_gba_local_win < 2 ||
-      config.voxel_gba_merge_size < 1) {
+      config.voxel_gba_merge_size < 1 ||
+      !(config.voxel_gba_voxel_size > 0.0) ||
+      !(config.voxel_gba_minimum_eigenvalue > 0.0) ||
+      config.voxel_gba_maximum_iteration_count < 1) {
     return false;
   }
   for (std::size_t i = 0; i < config.components.size(); ++i) {
@@ -381,6 +406,12 @@ bool SaveSlamSystemConfig(const SlamSystemConfig& config,
   output << "  voxel_size: " << config.voxel_size << "\n";
   output << "  min_eigen_value: " << config.voxel_min_eigen_value << "\n";
   output << "  imu_coef: " << config.voxel_imu_coef << "\n";
+  output << "  bias_gyro_random_walk: "
+         << config.voxel_bias_gyro_random_walk << "\n";
+  output << "  bias_accel_random_walk: "
+         << config.voxel_bias_accel_random_walk << "\n";
+  output << "  minimum_bundle_adjustment_points: "
+         << config.voxel_minimum_bundle_adjustment_points << "\n";
   output << "  enable_loop: " << (config.voxel_enable_loop ? "true" : "false")
          << "\n";
   output << "  enable_gba: " << (config.voxel_enable_gba ? "true" : "false")
@@ -398,6 +429,11 @@ bool SaveSlamSystemConfig(const SlamSystemConfig& config,
   output << "  prev_halt: " << config.voxel_prev_halt << "\n";
   output << "  gba_local_win: " << config.voxel_gba_local_win << "\n";
   output << "  gba_merge_size: " << config.voxel_gba_merge_size << "\n";
+  output << "  gba_voxel_size: " << config.voxel_gba_voxel_size << "\n";
+  output << "  gba_minimum_eigenvalue: "
+         << config.voxel_gba_minimum_eigenvalue << "\n";
+  output << "  gba_maximum_iteration_count: "
+         << config.voxel_gba_maximum_iteration_count << "\n";
   output << "  save_path: \"" << config.voxel_save_path << "\"\n";
   output << "  bagname: \"" << config.voxel_bagname << "\"\n";
   output << "  previous_map: \"" << config.voxel_previous_map << "\"\n";

@@ -59,6 +59,9 @@ struct SlamSystemConfig {
   double voxel_size = 1.0;
   double voxel_min_eigen_value = 0.01;
   double voxel_imu_coef = 1e-4;
+  double voxel_bias_gyro_random_walk = 1e-4;
+  double voxel_bias_accel_random_walk = 1e-4;
+  int voxel_minimum_bundle_adjustment_points = 20;
   bool voxel_enable_loop = true;
   bool voxel_enable_gba = true;
   bool voxel_enable_local_ba = true;
@@ -71,6 +74,9 @@ struct SlamSystemConfig {
   int voxel_prev_halt = 30;
   int voxel_gba_local_win = 10;
   int voxel_gba_merge_size = 5;
+  double voxel_gba_voxel_size = 1.0;
+  double voxel_gba_minimum_eigenvalue = 0.01;
+  int voxel_gba_maximum_iteration_count = 1;
   std::string voxel_save_path;
   std::string voxel_bagname = "session0";
   std::string voxel_previous_map;

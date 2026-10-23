@@ -7,12 +7,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 include(CTest)
-option(ATLAS_BUILD_MESSAGE_ADAPTERS "Build AutoMsgs protocol conversions" ON)
-option(ATLAS_BUILD_APPLICATIONS "Build SLAM applications and message adapter" ON)
-
-if(ATLAS_BUILD_APPLICATIONS AND NOT ATLAS_BUILD_MESSAGE_ADAPTERS)
-  message(FATAL_ERROR "ATLAS_BUILD_APPLICATIONS requires ATLAS_BUILD_MESSAGE_ADAPTERS.")
-endif()
+option(ATLAS_BUILD_MESSAGE_ADAPTERS "Build optional AutoMsgs protocol conversions" OFF)
+option(ATLAS_BUILD_APPLICATIONS "Build ROS-free SLAM applications" ON)
 
 if(ATLAS_BUILD_MESSAGE_ADAPTERS)
   # Atlas keeps protobuf messages at the system boundary, while the SLAM core

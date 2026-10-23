@@ -32,12 +32,16 @@ namespace {
 vxslam::OdometryConfig MakeVoxelConfig(const SlamSystemConfig& config) {
   vxslam::OdometryConfig voxel;
   voxel.win_size = config.voxel_win_size;
-  voxel.thread_num = config.voxel_thread_num;
+  voxel.worker_thread_count = config.voxel_thread_num;
   voxel.degrade_bound = config.voxel_degrade_bound;
   voxel.down_size = config.voxel_down_size;
   voxel.voxel_size = config.voxel_size;
   voxel.min_eigen_value = config.voxel_min_eigen_value;
   voxel.imu_coef = config.voxel_imu_coef;
+  voxel.bias_gyro_random_walk = config.voxel_bias_gyro_random_walk;
+  voxel.bias_accel_random_walk = config.voxel_bias_accel_random_walk;
+  voxel.minimum_bundle_adjustment_points =
+      config.voxel_minimum_bundle_adjustment_points;
   voxel.enable_loop = config.voxel_enable_loop;
   voxel.enable_gba = config.voxel_enable_gba;
   voxel.enable_local_ba = config.voxel_enable_local_ba;
@@ -50,6 +54,10 @@ vxslam::OdometryConfig MakeVoxelConfig(const SlamSystemConfig& config) {
   voxel.prev_halt = config.voxel_prev_halt;
   voxel.gba_local_win = config.voxel_gba_local_win;
   voxel.gba_merge_size = config.voxel_gba_merge_size;
+  voxel.gba_voxel_size = config.voxel_gba_voxel_size;
+  voxel.gba_minimum_eigenvalue = config.voxel_gba_minimum_eigenvalue;
+  voxel.gba_maximum_iteration_count =
+      config.voxel_gba_maximum_iteration_count;
   voxel.save_path = config.voxel_save_path;
   voxel.bagname = config.voxel_bagname;
   voxel.previous_map = config.voxel_previous_map;

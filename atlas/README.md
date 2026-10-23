@@ -70,10 +70,11 @@ are still in use.
 
 ## Build
 
-The default standalone build uses the adjacent `../automsgs` and `../autocmake`
-checkouts when an installed AutoMsgs CMake package is not available. Eigen,
-glog, Protobuf, and a C++17 toolchain are required; GTSAM is optional. GTest is
-required only when `BUILD_TESTING` is enabled (the default).
+The default standalone build is the ROS-free `atlas_voxel` core and does not
+require AutoMsgs or Protobuf. Eigen, glog, and a C++17 toolchain are required;
+GTSAM is optional. GTest is required only when `BUILD_TESTING` is enabled (the
+default). The ROS-free runners are built by default; the optional AutoMsgs
+protocol adapter is opt-in.
 
 ```bash
 cmake -S . -B build
@@ -93,8 +94,8 @@ cmake --build build/core --target atlas_voxel -j
 
 | Option | Default | Responsibility |
 | --- | --- | --- |
-| `ATLAS_BUILD_MESSAGE_ADAPTERS` | `ON` | Build `atlas_automsgs` protocol conversions |
-| `ATLAS_BUILD_APPLICATIONS` | `ON` | Build runners and the application system; requires message adapters |
+| `ATLAS_BUILD_MESSAGE_ADAPTERS` | `OFF` | Build optional `atlas_automsgs` protocol conversions |
+| `ATLAS_BUILD_APPLICATIONS` | `ON` | Build ROS-free replay and SLAM runners |
 | `BUILD_TESTING` | `ON` | Find GTest and register test targets |
 
 GTSAM is discovered in both configurations. A core-only build exercises the

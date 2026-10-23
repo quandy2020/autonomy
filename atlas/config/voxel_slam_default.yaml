@@ -19,6 +19,9 @@ voxel:
   voxel_size: 1.0
   min_eigen_value: 0.01
   imu_coef: 0.0001
+  bias_gyro_random_walk: 0.0001
+  bias_accel_random_walk: 0.0001
+  minimum_bundle_adjustment_points: 20
   enable_loop: true
   enable_gba: true
   enable_local_ba: true
@@ -31,6 +34,9 @@ voxel:
   prev_halt: 30
   gba_local_win: 10
   gba_merge_size: 5
+  gba_voxel_size: 1.0
+  gba_minimum_eigenvalue: 0.01
+  gba_maximum_iteration_count: 1
   save_path: ""
   bagname: "session0"
   previous_map: ""

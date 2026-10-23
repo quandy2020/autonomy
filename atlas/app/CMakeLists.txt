@@ -17,7 +17,6 @@ add_library(voxel_slam_system
   slam_system_builder.cpp
   slam_system.cpp
   voxel_slam_system.cpp
-  voxel_slam_message_adapter.cpp
 )
 target_include_directories(voxel_slam_system
   PUBLIC
@@ -27,10 +26,27 @@ target_include_directories(voxel_slam_system
 target_link_libraries(voxel_slam_system
   PUBLIC
     Eigen3::Eigen
-    atlas_automsgs
-    ${ATLAS_AUTOMSGS_TARGET}
+    atlas_voxel
 )
 target_compile_features(voxel_slam_system PUBLIC cxx_std_17)
+
+if(ATLAS_BUILD_MESSAGE_ADAPTERS)
+  add_library(voxel_slam_message_adapter STATIC
+    voxel_slam_message_adapter.cpp
+  )
+  target_include_directories(voxel_slam_message_adapter
+    PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}
+      ${ATLAS_LIBRARY_ROOT}
+  )
+  target_link_libraries(voxel_slam_message_adapter
+    PUBLIC
+      voxel_slam_system
+      atlas_automsgs
+      ${ATLAS_AUTOMSGS_TARGET}
+  )
+  target_compile_features(voxel_slam_message_adapter PUBLIC cxx_std_17)
+endif()
 
 if(BUILD_TESTING)
   find_package(GTest REQUIRED)
@@ -45,6 +61,7 @@ if(BUILD_TESTING)
   voxel_slam_test(slam_system_config_test slam_system_config_test.cpp)
   voxel_slam_test(slam_system_builder_test slam_system_builder_test.cpp)
   voxel_slam_test(slam_system_test slam_system_test.cpp)
+  voxel_slam_test(voxel_slam_system_test voxel_slam_system_test.cpp)
   voxel_slam_test(factory_test ${ATLAS_LIBRARY_ROOT}/common/factory_test.cpp)
 endif()
 

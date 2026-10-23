@@ -27,6 +27,12 @@ TEST(SlamSystemConfig, RoundTripKeepsNestedFields) {
   config.gravity_magnitude = 9.81;
   config.max_accel_variance = 0.2;
   config.window_size = 3;
+  config.voxel_bias_gyro_random_walk = 2e-4;
+  config.voxel_bias_accel_random_walk = 3e-4;
+  config.voxel_minimum_bundle_adjustment_points = 24;
+  config.voxel_gba_voxel_size = 1.5;
+  config.voxel_gba_minimum_eigenvalue = 0.02;
+  config.voxel_gba_maximum_iteration_count = 4;
   config.trajectory_path = "/tmp/traj.txt";
   config.components = {{"front", "lidar_frontend"},
                        {"vision", "visual_frontend"}};
@@ -40,6 +46,12 @@ TEST(SlamSystemConfig, RoundTripKeepsNestedFields) {
   EXPECT_DOUBLE_EQ(loaded.gravity_magnitude, config.gravity_magnitude);
   EXPECT_DOUBLE_EQ(loaded.max_accel_variance, config.max_accel_variance);
   EXPECT_EQ(loaded.window_size, 3u);
+  EXPECT_DOUBLE_EQ(loaded.voxel_bias_gyro_random_walk, 2e-4);
+  EXPECT_DOUBLE_EQ(loaded.voxel_bias_accel_random_walk, 3e-4);
+  EXPECT_EQ(loaded.voxel_minimum_bundle_adjustment_points, 24);
+  EXPECT_DOUBLE_EQ(loaded.voxel_gba_voxel_size, 1.5);
+  EXPECT_DOUBLE_EQ(loaded.voxel_gba_minimum_eigenvalue, 0.02);
+  EXPECT_EQ(loaded.voxel_gba_maximum_iteration_count, 4);
   EXPECT_EQ(loaded.trajectory_path, config.trajectory_path);
   ASSERT_EQ(loaded.components.size(), 2u);
   EXPECT_EQ(loaded.components[1].name, "vision");
