@@ -62,6 +62,13 @@ if(NOT TARGET autonomy_opencv)
   target_link_libraries(autonomy_opencv INTERFACE ${OpenCV_LIBS})
 endif()
 
+# Embed the top-level Atlas project before collecting localization sources.
+# AutoMsgs stays at the app boundary; the ORB core itself is protobuf-free.
+set(ATLAS_BUILD_MESSAGE_ADAPTERS ON)
+set(ATLAS_BUILD_APPLICATIONS ON)
+set(ATLAS_BUILD_VISUAL_SLAM ON)
+add_subdirectory("${CMAKE_SOURCE_DIR}/atlas" "${CMAKE_BINARY_DIR}/atlas")
+
 # --- Argus (standalone library via add_subdirectory) -------------------------
 # Prefer embedding defaults unless the user already set cache values.
 if(NOT DEFINED CACHE{ARGUS_BUILD_INSTALL})
@@ -86,6 +93,7 @@ list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/test_[^/]+\\.cpp$")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/thirdparty/")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/ORB_SLAM3/")
 # Argus is built by add_subdirectory(argus) → Argus::argus.
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/argus/")
 
@@ -102,6 +110,7 @@ autocmake_library(autonomy_localization
     autonomy_proto
     autonomy_transform
     autonomy_opencv
+    atlas::visual_slam_messages
     $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
     $<TARGET_NAME_IF_EXISTS:FBow::fbow>
@@ -174,7 +183,6 @@ autocmake_binary(autonomy.localization
     glog::glog
     autonomy::cli11
 )
-add_subdirectory(atlas)
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(localization

@@ -49,9 +49,13 @@ struct LocalizationOptions {
 
     // --- Atlas (VO / VIO / LIO / LIVO, Ceres) ---
     std::string atlas_config_path;
+    std::string atlas_vocabulary_path;
+    std::string atlas_sensor_mode = "monocular";
     std::string atlas_imu_topic = "/imu";
     std::string atlas_lidar_topic = "/points";
     std::string atlas_image_topic = "/image";
+    std::string atlas_right_image_topic = "/camera/right/image";
+    std::string atlas_depth_image_topic = "/camera/depth/image";
 
     // --- Argus (FAST-LIVO2 ESIKF LIO / LIVO) ---
     std::string argus_config_path;

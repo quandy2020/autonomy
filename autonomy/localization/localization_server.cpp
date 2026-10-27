@@ -27,7 +27,7 @@
 #include "autonomy/localization/cartographer/node/node_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/argus_node.hpp"
-#include "autonomy/localization/atlas/system/atlas_node.hpp"
+#include "autonomy/localization/atlas_node.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/static_transform_publisher.hpp"
 
@@ -194,7 +194,7 @@ private:
 };
 
 // ---------------------------------------------------------------------------
-// Atlas (Ceres VO / VIO / LIO / LIVO)
+// Atlas (ORB visual and visual-inertial SLAM)
 // ---------------------------------------------------------------------------
 
 class LocalizationServer::AtlasBackend : public LocalizationServer::Backend {
@@ -203,16 +203,22 @@ public:
         : options_(std::move(options)) {}
 
     bool Start() override {
-        if (options_.atlas_config_path.empty()) {
-            AERROR << "Atlas requires --atlas_config.";
+        if (options_.atlas_config_path.empty() ||
+            options_.atlas_vocabulary_path.empty()) {
+            AERROR << "Atlas requires --atlas_config and --atlas_vocabulary.";
             return false;
         }
-        atlas::AtlasNode::Options node_opts;
-        node_opts.config_path = ResolveWorkspacePath(options_.atlas_config_path);
+        AtlasNode::Options node_opts;
+        node_opts.settings_path =
+            ResolveWorkspacePath(options_.atlas_config_path);
+        node_opts.vocabulary_path =
+            ResolveWorkspacePath(options_.atlas_vocabulary_path);
+        node_opts.sensor_mode = options_.atlas_sensor_mode;
         node_opts.imu_topic = options_.atlas_imu_topic;
-        node_opts.lidar_topic = options_.atlas_lidar_topic;
         node_opts.image_topic = options_.atlas_image_topic;
-        node_ = std::make_unique<atlas::AtlasNode>(std::move(node_opts));
+        node_opts.right_image_topic = options_.atlas_right_image_topic;
+        node_opts.depth_image_topic = options_.atlas_depth_image_topic;
+        node_ = std::make_unique<AtlasNode>(std::move(node_opts));
         if (!node_->Start()) {
             AERROR << "AtlasNode::Start failed.";
             node_.reset();
@@ -232,7 +238,7 @@ public:
 
 private:
     LocalizationOptions options_;
-    std::unique_ptr<atlas::AtlasNode> node_;
+    std::unique_ptr<AtlasNode> node_;
 };
 
 // ---------------------------------------------------------------------------

@@ -39,10 +39,14 @@ struct LocalizationCli {
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
     std::string atlas_config =
-        "autonomy/localization/conf/atlas/fusion_livo.yaml";
+        "atlas/config/orb_slam3/monocular/tum1.yaml";
+    std::string atlas_vocabulary = "atlas/config/orb_slam3/ORBvoc.txt.tar.gz";
+    std::string atlas_sensor = "monocular";
     std::string atlas_imu_topic = "/imu";
     std::string atlas_lidar_topic = "/points";
     std::string atlas_image_topic = "/image";
+    std::string atlas_right_image_topic = "/camera/right/image";
+    std::string atlas_depth_image_topic = "/camera/depth/image";
     std::string argus_config =
         "autonomy/localization/conf/argus/livo_esikf.yaml";
     std::string argus_imu_topic = "/imu";
@@ -66,15 +70,27 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--save_state_filename", cli.save_state_filename,
                    "Cartographer: serialize state to this file on shutdown.");
     app.add_option("--atlas_config", cli.atlas_config,
-                   "Atlas: sensor / mission YAML.")
+                   "Atlas: ORB-SLAM3 camera/settings YAML.")
+        ->capture_default_str();
+    app.add_option("--atlas_vocabulary", cli.atlas_vocabulary,
+                   "Atlas: uncompressed ORBvoc.txt path.")
+        ->capture_default_str();
+    app.add_option("--atlas_sensor", cli.atlas_sensor,
+                   "Atlas: mono|stereo|rgbd and optional _inertial.")
         ->capture_default_str();
     app.add_option("--atlas_imu_topic", cli.atlas_imu_topic, "Atlas: IMU topic.")
         ->capture_default_str();
     app.add_option("--atlas_lidar_topic", cli.atlas_lidar_topic,
-                   "Atlas: lidar PointCloud2 topic.")
+                   "Atlas: reserved lidar PointCloud2 topic.")
         ->capture_default_str();
     app.add_option("--atlas_image_topic", cli.atlas_image_topic,
-                   "Atlas: camera Image topic.")
+                   "Atlas: primary camera Image topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_right_image_topic", cli.atlas_right_image_topic,
+                   "Atlas: right camera Image topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_depth_image_topic", cli.atlas_depth_image_topic,
+                   "Atlas: registered depth Image topic.")
         ->capture_default_str();
     app.add_option("--argus_config", cli.argus_config,
                    "Argus: LIVO ESIKF YAML (livo_esikf.yaml).")
@@ -108,9 +124,13 @@ LocalizationOptions BuildOptions(const LocalizationCli& cli) {
     options.save_state_filename = cli.save_state_filename;
 
     options.atlas_config_path = cli.atlas_config;
+    options.atlas_vocabulary_path = cli.atlas_vocabulary;
+    options.atlas_sensor_mode = cli.atlas_sensor;
     options.atlas_imu_topic = cli.atlas_imu_topic;
     options.atlas_lidar_topic = cli.atlas_lidar_topic;
     options.atlas_image_topic = cli.atlas_image_topic;
+    options.atlas_right_image_topic = cli.atlas_right_image_topic;
+    options.atlas_depth_image_topic = cli.atlas_depth_image_topic;
 
     options.argus_config_path = cli.argus_config;
     options.argus_imu_topic = cli.argus_imu_topic;
