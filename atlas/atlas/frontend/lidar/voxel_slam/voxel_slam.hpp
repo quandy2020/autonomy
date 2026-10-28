@@ -15,6 +15,7 @@
 
 #include "backend/global_mapping/previous_map.hpp"
 #include "backend/loop_closure/lidar/triangle_descriptor/triangle_detector.hpp"
+#include "common/thread_pool.hpp"
 #include "frontend/lidar/imu/imu_ekf.hpp"
 #include "frontend/lidar/imu/imu_preintegration.hpp"
 #include "frontend/lidar/imu/imu_state.hpp"
@@ -81,6 +82,10 @@ class Odometry : public ::atlas::odometry::OdometryInterface {
   std::vector<ImuState> x_buf_;
   std::deque<ImuPreintegration*> imu_pres_;
   std::vector<PointVarListPtr> pvec_buf_;
+  std::unique_ptr<common::ThreadPool> local_mapping_thread_pool_;
+  // Retained until the next sliding-window marginalization. Octree nodes keep
+  // indices into this exact optimized factor collection.
+  std::unique_ptr<LidarFactor> optimized_local_factors_;
 
   MotionInitInput init_buf_;
   int motion_init_flag_ = 1;

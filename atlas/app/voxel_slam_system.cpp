@@ -36,6 +36,7 @@ vxslam::OdometryConfig MakeVoxelConfig(const SlamSystemConfig& config) {
   voxel.degrade_bound = config.voxel_degrade_bound;
   voxel.down_size = config.voxel_down_size;
   voxel.voxel_size = config.voxel_size;
+  voxel.point_notime = !config.voxel_points_have_timestamps;
   voxel.min_eigen_value = config.voxel_min_eigen_value;
   voxel.imu_coef = config.voxel_imu_coef;
   voxel.bias_gyro_random_walk = config.voxel_bias_gyro_random_walk;

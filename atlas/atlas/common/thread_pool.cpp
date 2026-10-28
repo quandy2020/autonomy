@@ -18,8 +18,16 @@
 
 #include <stdexcept>
 
+#include "common/task.hpp"
+
 namespace atlas {
 namespace common {
+
+void ThreadPoolInterface::Execute(Task* task) { task->Execute(); }
+
+void ThreadPoolInterface::SetThreadPool(Task* task) {
+  task->SetThreadPool(this);
+}
 
 ThreadPool::ThreadPool(std::size_t worker_count) {
   if (worker_count == 0) {
@@ -58,6 +66,46 @@ void ThreadPool::Schedule(std::function<void()> task) {
       throw std::logic_error("cannot schedule work after shutdown");
     }
     pending_tasks_.push(std::move(task));
+  }
+  task_available_condition_.notify_one();
+}
+
+std::weak_ptr<Task> ThreadPool::Schedule(std::unique_ptr<Task> task) {
+  if (!task) {
+    throw std::invalid_argument("scheduled task must not be null");
+  }
+  std::shared_ptr<Task> shared_task;
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    if (shutdown_requested_) {
+      throw std::logic_error("cannot schedule work after shutdown");
+    }
+    auto insertion = waiting_tasks_.emplace(task.get(), std::move(task));
+    if (!insertion.second) {
+      throw std::logic_error("task was scheduled more than once");
+    }
+    shared_task = insertion.first->second;
+  }
+  try {
+    SetThreadPool(shared_task.get());
+  } catch (...) {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    waiting_tasks_.erase(shared_task.get());
+    throw;
+  }
+  return shared_task;
+}
+
+void ThreadPool::NotifyDependenciesCompleted(Task* task) {
+  {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    auto waiting_task = waiting_tasks_.find(task);
+    if (waiting_task == waiting_tasks_.end()) {
+      throw std::logic_error("completed dependencies for an unknown task");
+    }
+    std::shared_ptr<Task> shared_task = std::move(waiting_task->second);
+    waiting_tasks_.erase(waiting_task);
+    pending_tasks_.push([this, shared_task] { Execute(shared_task.get()); });
   }
   task_available_condition_.notify_one();
 }

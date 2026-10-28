@@ -3,112 +3,128 @@
  */
 #include "map/voxel/map_ops.hpp"
 
-#include <thread>
+#include <future>
 
 namespace atlas {
 namespace vxslam {
 
-void MultiMarginalize(std::unordered_map<VoxelKey, SlidingOctree*>* feat_map,
-                      double jour, int win_count, std::vector<ImuState>* xs,
-                      LidarFactor* voxopt, std::vector<FrameWindow*>* sw,
-                      int thread_num) {
-  if (feat_map == nullptr || xs == nullptr || voxopt == nullptr ||
-      sw == nullptr) {
+void MarginalizeSlidingVoxelMap(
+    std::unordered_map<VoxelKey, SlidingOctree*>* feature_map,
+    double traveled_distance, int window_count, std::vector<ImuState>* states,
+    LidarFactor* factor_collection,
+    std::vector<FrameWindow*>* frame_window_pool,
+    common::ThreadPoolInterface* thread_pool, int worker_count) {
+  if (feature_map == nullptr || states == nullptr ||
+      factor_collection == nullptr || frame_window_pool == nullptr) {
     return;
   }
-  int thd_num = thread_num > 0 ? thread_num : 1;
-  const int g_size = static_cast<int>(feat_map->size());
-  if (g_size == 0) {
+  int partition_count = worker_count > 0 ? worker_count : 1;
+  const int voxel_count = static_cast<int>(feature_map->size());
+  if (voxel_count == 0) {
     return;
   }
-  if (g_size < thd_num) {
-    thd_num = 1;
+  if (voxel_count < partition_count || thread_pool == nullptr) {
+    partition_count = 1;
   }
-  std::vector<std::vector<SlidingOctree*>> octs(static_cast<size_t>(thd_num));
-  const double part = 1.0 * g_size / thd_num;
-  int cnt = 0;
-  for (auto& kv : *feat_map) {
-    kv.second->jour = static_cast<float>(jour);
-    octs[static_cast<size_t>(cnt)].push_back(kv.second);
-    if (static_cast<double>(octs[static_cast<size_t>(cnt)].size()) >= part &&
-        cnt < thd_num - 1) {
-      ++cnt;
+  std::vector<std::vector<SlidingOctree*>> partitions(
+      static_cast<size_t>(partition_count));
+  const double target_partition_size =
+      static_cast<double>(voxel_count) / partition_count;
+  int partition_index = 0;
+  for (auto& entry : *feature_map) {
+    entry.second->jour = static_cast<float>(traveled_distance);
+    partitions[static_cast<size_t>(partition_index)].push_back(entry.second);
+    if (static_cast<double>(
+            partitions[static_cast<size_t>(partition_index)].size()) >=
+            target_partition_size &&
+        partition_index < partition_count - 1) {
+      ++partition_index;
     }
   }
 
-  auto margi_func = [&](std::vector<SlidingOctree*>* oct) {
-    for (SlidingOctree* oc : *oct) {
-      oc->Marginalize(win_count, 1, *xs, *voxopt);
-    }
-  };
-
-  std::vector<std::thread> threads;
-  threads.reserve(static_cast<size_t>(thd_num - 1));
-  for (int i = 1; i < thd_num; ++i) {
-    threads.emplace_back(margi_func, &octs[static_cast<size_t>(i)]);
+  const auto marginalize_partition =
+      [&](const std::vector<SlidingOctree*>& partition) {
+        for (SlidingOctree* octree : partition) {
+          octree->Marginalize(window_count, 1, *states, *factor_collection);
+        }
+      };
+  std::vector<std::future<void>> task_results;
+  for (int index = 1; index < partition_count; ++index) {
+    task_results.push_back(thread_pool->Submit(
+        [&, index] { marginalize_partition(partitions[index]); }));
   }
-  margi_func(&octs[0]);
-  for (auto& th : threads) {
-    th.join();
+  marginalize_partition(partitions[0]);
+  for (std::future<void>& task_result : task_results) {
+    task_result.get();
   }
 
-  for (auto iter = feat_map->begin(); iter != feat_map->end();) {
-    if (iter->second->isexist) {
-      ++iter;
+  for (auto iterator = feature_map->begin(); iterator != feature_map->end();) {
+    if (iterator->second->isexist) {
+      ++iterator;
     } else {
-      iter->second->clear_slwd(*sw);
-      iter = feat_map->erase(iter);
+      iterator->second->clear_slwd(*frame_window_pool);
+      iterator = feature_map->erase(iterator);
     }
   }
 }
 
-void MultiRecut(std::unordered_map<VoxelKey, SlidingOctree*>* feat_map,
-                int win_count, std::vector<ImuState>* xs, LidarFactor* voxopt,
-                std::vector<std::vector<FrameWindow*>>* sws, int thread_num) {
-  if (feat_map == nullptr || xs == nullptr || voxopt == nullptr ||
-      sws == nullptr || sws->empty()) {
+void RecutSlidingVoxelMap(
+    std::unordered_map<VoxelKey, SlidingOctree*>* feature_map, int window_count,
+    std::vector<ImuState>* states, LidarFactor* factor_collection,
+    std::vector<std::vector<FrameWindow*>>* frame_window_pools,
+    common::ThreadPoolInterface* thread_pool, int worker_count) {
+  if (feature_map == nullptr || states == nullptr ||
+      factor_collection == nullptr || frame_window_pools == nullptr ||
+      frame_window_pools->empty()) {
     return;
   }
-  int thd_num = thread_num > 0 ? thread_num : 1;
-  if (static_cast<int>(sws->size()) < thd_num) {
-    sws->resize(static_cast<size_t>(thd_num));
+  int partition_count = worker_count > 0 ? worker_count : 1;
+  if (static_cast<int>(frame_window_pools->size()) < partition_count) {
+    frame_window_pools->resize(static_cast<size_t>(partition_count));
   }
-  const int g_size = static_cast<int>(feat_map->size());
-  if (g_size < thd_num) {
-    thd_num = 1;
+  const int voxel_count = static_cast<int>(feature_map->size());
+  if (voxel_count < partition_count || thread_pool == nullptr) {
+    partition_count = 1;
   }
-  std::vector<std::vector<SlidingOctree*>> octss(static_cast<size_t>(thd_num));
-  const double part = 1.0 * g_size / thd_num;
-  int cnt = 0;
-  for (auto& kv : *feat_map) {
-    octss[static_cast<size_t>(cnt)].push_back(kv.second);
-    if (static_cast<double>(octss[static_cast<size_t>(cnt)].size()) >= part &&
-        cnt < thd_num - 1) {
-      ++cnt;
+  std::vector<std::vector<SlidingOctree*>> partitions(
+      static_cast<size_t>(partition_count));
+  const double target_partition_size =
+      static_cast<double>(voxel_count) / partition_count;
+  int partition_index = 0;
+  for (auto& entry : *feature_map) {
+    partitions[static_cast<size_t>(partition_index)].push_back(entry.second);
+    if (static_cast<double>(
+            partitions[static_cast<size_t>(partition_index)].size()) >=
+            target_partition_size &&
+        partition_index < partition_count - 1) {
+      ++partition_index;
     }
   }
 
-  auto recut_func = [&](int idx) {
-    for (SlidingOctree* oc : octss[static_cast<size_t>(idx)]) {
-      oc->Recut(win_count, *xs, (*sws)[static_cast<size_t>(idx)]);
+  const auto recut_partition = [&](int index) {
+    for (SlidingOctree* octree : partitions[static_cast<size_t>(index)]) {
+      octree->Recut(window_count, *states,
+                    (*frame_window_pools)[static_cast<size_t>(index)]);
     }
   };
+  std::vector<std::future<void>> task_results;
+  for (int index = 1; index < partition_count; ++index) {
+    task_results.push_back(
+        thread_pool->Submit([&, index] { recut_partition(index); }));
+  }
+  recut_partition(0);
+  for (std::future<void>& task_result : task_results) {
+    task_result.get();
+  }
 
-  std::vector<std::thread> threads;
-  for (int i = 1; i < thd_num; ++i) {
-    threads.emplace_back(recut_func, i);
+  for (size_t index = 1; index < frame_window_pools->size(); ++index) {
+    (*frame_window_pools)[0].insert((*frame_window_pools)[0].end(),
+                                    (*frame_window_pools)[index].begin(),
+                                    (*frame_window_pools)[index].end());
+    (*frame_window_pools)[index].clear();
   }
-  recut_func(0);
-  for (auto& th : threads) {
-    th.join();
-  }
-
-  for (size_t i = 1; i < sws->size(); ++i) {
-    (*sws)[0].insert((*sws)[0].end(), (*sws)[i].begin(), (*sws)[i].end());
-    (*sws)[i].clear();
-  }
-  for (auto& kv : *feat_map) {
-    kv.second->CollectFactors(*voxopt);
+  for (auto& entry : *feature_map) {
+    entry.second->CollectFactors(*factor_collection);
   }
 }
 

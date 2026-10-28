@@ -17,6 +17,8 @@ voxel:
   degrade_bound: 50
   down_size: 0.5
   voxel_size: 1.0
+  # Set false only when input clouds lack per-point relative timestamps.
+  points_have_timestamps: true
   min_eigen_value: 0.01
   imu_coef: 0.0001
   bias_gyro_random_walk: 0.0001

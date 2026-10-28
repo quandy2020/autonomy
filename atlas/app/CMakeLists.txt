@@ -75,3 +75,8 @@ target_link_libraries(print_registry PRIVATE voxel_slam_system)
 if(BUILD_TESTING)
   add_test(NAME print_registry COMMAND print_registry)
 endif()
+
+if(ATLAS_BUILD_VISUAL_SLAM)
+  include(${CMAKE_CURRENT_LIST_DIR}/visual_slam.cmake)
+  include(${CMAKE_CURRENT_LIST_DIR}/visual_slam_adapter.cmake)
+endif()

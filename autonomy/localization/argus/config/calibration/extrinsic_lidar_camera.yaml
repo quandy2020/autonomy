@@ -1,4 +1,0 @@
-# LiDAR → camera extrinsic (row-major R, then t).
-# Identity default for synth / unit tests; replace per platform.
-Rcl: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-Pcl: [0.0, 0.0, 0.0]

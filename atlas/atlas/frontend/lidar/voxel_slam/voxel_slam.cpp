@@ -140,8 +140,7 @@ void Odometry::Initialize() {
   if (config_.win_size <= 0 || config_.worker_thread_count <= 0 ||
       config_.minimum_bundle_adjustment_points <= 0 ||
       config_.bias_gyro_random_walk < 0.0 ||
-      config_.bias_accel_random_walk < 0.0 ||
-      config_.gba_voxel_size <= 0.0 ||
+      config_.bias_accel_random_walk < 0.0 || config_.gba_voxel_size <= 0.0 ||
       config_.gba_minimum_eigenvalue <= 0.0 ||
       config_.gba_maximum_iteration_count <= 0) {
     initialized_ = false;
@@ -149,16 +148,18 @@ void Odometry::Initialize() {
     return;
   }
   ApplyConfigGlobals();
+  local_mapping_thread_pool_ = std::make_unique<common::ThreadPool>(
+      static_cast<std::size_t>(config_.worker_thread_count));
   extrin_.R = config_.extrinsic_R;
   extrin_.p = config_.extrinsic_t;
   imu_ekf_.lid_rot_to_imu = config_.extrinsic_R;
   imu_ekf_.lid_offset_to_imu = config_.extrinsic_t;
   imu_ekf_.cov_gyr = config_.cov_gyr;
   imu_ekf_.cov_acc = config_.cov_acc;
-  imu_ekf_.cov_bias_gyr = Eigen::Vector3d::Constant(
-      config_.bias_gyro_random_walk);
-  imu_ekf_.cov_bias_acc = Eigen::Vector3d::Constant(
-      config_.bias_accel_random_walk);
+  imu_ekf_.cov_bias_gyr =
+      Eigen::Vector3d::Constant(config_.bias_gyro_random_walk);
+  imu_ekf_.cov_bias_acc =
+      Eigen::Vector3d::Constant(config_.bias_accel_random_walk);
   imu_ekf_.point_notime = config_.point_notime ? 1 : 0;
   imu_ekf_.livox_imu_scale = config_.livox_imu_scale;
 
@@ -341,14 +342,15 @@ void Odometry::LocalBaIfReady() {
   if (!config_.enable_local_ba || win_count_ < config_.win_size) {
     return;
   }
-  LidarFactor voxhess(config_.win_size);
+  auto local_factors = std::make_unique<LidarFactor>(config_.win_size);
   {
     std::lock_guard<std::mutex> lock(map_mutex_);
-    MultiRecut(&feat_map_, win_count_, &x_buf_, &voxhess, &sws_,
-               config_.worker_thread_count);
+    RecutSlidingVoxelMap(&feat_map_, win_count_, &x_buf_, local_factors.get(),
+                         &sws_, local_mapping_thread_pool_.get(),
+                         config_.worker_thread_count);
     sw_pool_ = sws_[0];
   }
-  if (voxhess.plvec_voxels.empty()) {
+  if (local_factors->plvec_voxels.empty()) {
     return;
   }
   Eigen::MatrixXd hess;
@@ -356,15 +358,16 @@ void Odometry::LocalBaIfReady() {
   if (g_update_ == 2 || config_.enable_gravity_ba) {
     GravityLiBaOptimizer opt;
     std::vector<double> resis;
-    opt.DampingIter(x_buf_, voxhess, imu_pres_, resis, &hess, 5);
+    opt.DampingIter(x_buf_, *local_factors, imu_pres_, resis, &hess, 5);
     if (g_update_ == 2) {
       g_update_ = 0;
       LOG(INFO) << "g_update Gravity LI-BA g.norm=" << x_buf_[0].g.norm();
     }
   } else {
     LiBaOptimizer opt;
-    opt.DampingIter(x_buf_, voxhess, imu_pres_, &hess);
+    opt.DampingIter(x_buf_, *local_factors, imu_pres_, &hess);
   }
+  optimized_local_factors_ = std::move(local_factors);
   x_curr_ = x_buf_[static_cast<size_t>(config_.win_size - 1)];
   // ScanPose odom edge noise from Hessian (Voxel-SLAM bl->v6).
   if (hess.rows() >= DIM + 6 && hess.cols() >= DIM + 6) {
@@ -692,6 +695,7 @@ void Odometry::SystemReset() {
     delete kv.second;
   }
   feat_map_.clear();
+  optimized_local_factors_.reset();
   win_count_ = 0;
   degrade_cnt_ = 0;
   motion_init_flag_ = 1;
@@ -1038,13 +1042,14 @@ bool Odometry::TryMotionInit(::atlas::odometry::OdometryOutput* out) {
     SyncStateMirror();
     return true;
   }
-  LidarFactor voxhess(config_.win_size);
+  auto initialization_factors = std::make_unique<LidarFactor>(config_.win_size);
   Eigen::MatrixXd hess;
   std::unordered_map<VoxelKey, SlidingOctree*> slide;
-  const int ok =
-      MotionInit(&init_buf_, &hess, &voxhess, &x_buf_, &feat_map_, &slide,
-                 &pvec_buf_, config_.win_size, &sws_, &x_curr_, &imu_pres_);
+  const int ok = MotionInit(&init_buf_, &hess, initialization_factors.get(),
+                            &x_buf_, &feat_map_, &slide, &pvec_buf_,
+                            config_.win_size, &sws_, &x_curr_, &imu_pres_);
   if (ok) {
+    optimized_local_factors_ = std::move(initialization_factors);
     motion_init_flag_ = 0;
     system_ready_ = true;
     win_count_ = config_.win_size;
@@ -1155,9 +1160,14 @@ bool Odometry::Process(::atlas::odometry::OdometryOutput* out) {
     win_count_ = config_.win_size - 1;
     {
       std::lock_guard<std::mutex> lock(map_mutex_);
-      LidarFactor dummy(config_.win_size);
-      MultiMarginalize(&feat_map_, jour_, win_count_ + 1, &x_buf_, &dummy,
-                       &sw_pool_, config_.worker_thread_count);
+      if (!optimized_local_factors_) {
+        optimized_local_factors_ =
+            std::make_unique<LidarFactor>(config_.win_size);
+      }
+      MarginalizeSlidingVoxelMap(&feat_map_, jour_, win_count_ + 1, &x_buf_,
+                                 optimized_local_factors_.get(), &sw_pool_,
+                                 local_mapping_thread_pool_.get(),
+                                 config_.worker_thread_count);
     }
   }
 

@@ -1,7 +1,0 @@
-enable: true
-eigenvalue_threshold: 0.05
-condition_number_threshold: 100.0
-enable_anisotropic_inflation: true
-inflation_scale: 10.0
-# 使用位置块 3x3 FIM；若为 false 则用 6x6（含旋转）
-position_block_only: true

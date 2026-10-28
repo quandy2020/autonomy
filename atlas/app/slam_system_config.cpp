@@ -188,6 +188,9 @@ bool AssignScalar(const std::string& path, const std::string& value,
   if (path == "voxel/voxel_size") {
     return ParseDouble(value, &config->voxel_size);
   }
+  if (path == "voxel/points_have_timestamps") {
+    return ParseBool(value, &config->voxel_points_have_timestamps);
+  }
   if (path == "voxel/min_eigen_value") {
     return ParseDouble(value, &config->voxel_min_eigen_value);
   }
@@ -404,6 +407,9 @@ bool SaveSlamSystemConfig(const SlamSystemConfig& config,
   output << "  degrade_bound: " << config.voxel_degrade_bound << "\n";
   output << "  down_size: " << config.voxel_down_size << "\n";
   output << "  voxel_size: " << config.voxel_size << "\n";
+  output << "  points_have_timestamps: "
+         << (config.voxel_points_have_timestamps ? "true" : "false")
+         << "\n";
   output << "  min_eigen_value: " << config.voxel_min_eigen_value << "\n";
   output << "  imu_coef: " << config.voxel_imu_coef << "\n";
   output << "  bias_gyro_random_walk: "

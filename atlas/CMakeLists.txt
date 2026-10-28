@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
 option(ATLAS_BUILD_MESSAGE_ADAPTERS "Build optional AutoMsgs protocol conversions" OFF)
 option(ATLAS_BUILD_APPLICATIONS "Build ROS-free SLAM applications" ON)
+option(ATLAS_BUILD_VISUAL_SLAM "Build the ORB visual and visual-inertial SLAM pipeline" ON)
 
 if(ATLAS_BUILD_MESSAGE_ADAPTERS)
   # Atlas keeps protobuf messages at the system boundary, while the SLAM core

@@ -39,8 +39,9 @@ struct LocalizationCli {
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
     std::string atlas_config =
-        "atlas/config/orb_slam3/monocular/tum1.yaml";
-    std::string atlas_vocabulary = "atlas/config/orb_slam3/ORBvoc.txt.tar.gz";
+        "autonomy/localization/atlas/config/euroc_mono.yaml";
+    std::string atlas_vocabulary =
+        "autonomy/localization/atlas/config/orb_vocab.fbow";
     std::string atlas_sensor = "monocular";
     std::string atlas_imu_topic = "/imu";
     std::string atlas_lidar_topic = "/points";
@@ -73,7 +74,7 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
                    "Atlas: ORB-SLAM3 camera/settings YAML.")
         ->capture_default_str();
     app.add_option("--atlas_vocabulary", cli.atlas_vocabulary,
-                   "Atlas: uncompressed ORBvoc.txt path.")
+                   "Atlas: FBoW binary vocabulary path.")
         ->capture_default_str();
     app.add_option("--atlas_sensor", cli.atlas_sensor,
                    "Atlas: mono|stereo|rgbd and optional _inertial.")

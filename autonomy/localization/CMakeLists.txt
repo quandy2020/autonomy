@@ -62,27 +62,27 @@ if(NOT TARGET autonomy_opencv)
   target_link_libraries(autonomy_opencv INTERFACE ${OpenCV_LIBS})
 endif()
 
-# Embed the top-level Atlas project before collecting localization sources.
-# AutoMsgs stays at the app boundary; the ORB core itself is protobuf-free.
-set(ATLAS_BUILD_MESSAGE_ADAPTERS ON)
-set(ATLAS_BUILD_APPLICATIONS ON)
-set(ATLAS_BUILD_VISUAL_SLAM ON)
-add_subdirectory("${CMAKE_SOURCE_DIR}/atlas" "${CMAKE_BINARY_DIR}/atlas")
+# --- Argus (optional external checkout) --------------------------------------
+# Argus may be removed independently. Atlas must remain buildable without
+# restoring or changing that external component.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/argus/CMakeLists.txt")
+  if(NOT DEFINED CACHE{ARGUS_BUILD_INSTALL})
+    set(ARGUS_BUILD_INSTALL OFF CACHE BOOL
+      "Install/export Argus as a standalone CMake package")
+  endif()
+  if(NOT DEFINED CACHE{ARGUS_BUILD_APPS})
+    set(ARGUS_BUILD_APPS ${BUILD_TOOLS} CACHE BOOL
+      "Build Argus offline apps (offline_livo, …)")
+  endif()
+  if(NOT DEFINED CACHE{ARGUS_BUILD_TESTS})
+    set(ARGUS_BUILD_TESTS OFF CACHE BOOL "Build Argus unit tests")
+  endif()
+  add_subdirectory(argus)
+endif()
 
-# --- Argus (standalone library via add_subdirectory) -------------------------
-# Prefer embedding defaults unless the user already set cache values.
-if(NOT DEFINED CACHE{ARGUS_BUILD_INSTALL})
-  set(ARGUS_BUILD_INSTALL OFF CACHE BOOL
-    "Install/export Argus as a standalone CMake package")
-endif()
-if(NOT DEFINED CACHE{ARGUS_BUILD_APPS})
-  set(ARGUS_BUILD_APPS ${BUILD_TOOLS} CACHE BOOL
-    "Build Argus offline apps (offline_livo, …)")
-endif()
-if(NOT DEFINED CACHE{ARGUS_BUILD_TESTS})
-  set(ARGUS_BUILD_TESTS OFF CACHE BOOL "Build Argus unit tests")
-endif()
-add_subdirectory(argus)
+# Atlas owns its ORB-SLAM3, AutoMsgs adapter, and Autolink node targets.
+# Keep the entire subdirectory out of the parent source glob below.
+add_subdirectory(atlas)
 
 # --- sources (atlas / cartographer / localization_server; not argus/) --------
 file(GLOB_RECURSE AUTONOMY_LOCALIZATION_SRCS CONFIGURE_DEPENDS
@@ -92,10 +92,13 @@ list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "_test\\.cpp$")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/test_[^/]+\\.cpp$")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/(fake_|mock_)")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "test_helpers")
-list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/thirdparty/")
+list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/atlas/")
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/ORB_SLAM3/")
 # Argus is built by add_subdirectory(argus) → Argus::argus.
 list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/argus/")
+if(NOT TARGET Argus::argus)
+  list(FILTER AUTONOMY_LOCALIZATION_SRCS EXCLUDE REGEX "/argus_node\\.cpp$")
+endif()
 
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_localization
@@ -110,7 +113,6 @@ autocmake_library(autonomy_localization
     autonomy_proto
     autonomy_transform
     autonomy_opencv
-    atlas::visual_slam_messages
     $<TARGET_NAME_IF_EXISTS:Ipopt::Ipopt>
     $<TARGET_NAME_IF_EXISTS:OpenMP::OpenMP_CXX>
     $<TARGET_NAME_IF_EXISTS:FBow::fbow>
@@ -125,17 +127,21 @@ autocmake_library(autonomy_localization
     $<TARGET_NAME_IF_EXISTS:gRPC::grpc++_reflection>)
 add_library(autonomy::localization ALIAS autonomy_localization)
 
-# Argus is its own shared library (add_subdirectory). Keep DT_NEEDED even when
-# localization itself does not yet reference Argus symbols (GNU --as-needed).
-if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  target_link_libraries(autonomy_localization PUBLIC
-    "-Wl,--no-as-needed" Argus::argus "-Wl,--as-needed")
+target_link_libraries(autonomy_localization PRIVATE autonomy::localization_atlas)
+
+# Link Argus only when its separately managed checkout is available.
+if(TARGET Argus::argus)
+  target_compile_definitions(autonomy_localization PRIVATE AUTONOMY_HAS_ARGUS=1)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    target_link_libraries(autonomy_localization PUBLIC
+      "-Wl,--no-as-needed" Argus::argus "-Wl,--as-needed")
+  else()
+    target_link_libraries(autonomy_localization PUBLIC Argus::argus)
+  endif()
 else()
-  target_link_libraries(autonomy_localization PUBLIC Argus::argus)
+  target_compile_definitions(autonomy_localization PRIVATE AUTONOMY_HAS_ARGUS=0)
 endif()
 
-target_include_directories(autonomy_localization PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/atlas/port/thirdparty>)
 target_include_directories(autonomy_localization SYSTEM PUBLIC
   ${PCL_INCLUDE_DIRS}
   ${LUA_INCLUDE_DIR})
@@ -189,10 +195,10 @@ autocmake_install_share(localization
   CONF
   DAG_PATTERN "*.dag"
   LAUNCH_PATTERN "*.launch")
-# Argus LIVO YAML (+ calibration / robustness) next to atlas under conf/.
-# Use FILES_MATCHING so a dangling conf/argus symlink (if any) is not installed.
-install(DIRECTORY argus/config/
-  DESTINATION share/autonomy/localization/conf/argus
-  FILES_MATCHING
-    PATTERN "*"
-    PATTERN ".*" EXCLUDE)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/argus/config")
+  install(DIRECTORY argus/config/
+    DESTINATION share/autonomy/localization/conf/argus
+    FILES_MATCHING
+      PATTERN "*"
+      PATTERN ".*" EXCLUDE)
+endif()

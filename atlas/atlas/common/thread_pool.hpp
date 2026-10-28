@@ -31,11 +31,14 @@
 #include <queue>
 #include <thread>
 #include <type_traits>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
 namespace atlas {
 namespace common {
+
+class Task;
 
 /** @brief Interface used by modules that schedule independent work items. */
 class ThreadPoolInterface {
@@ -47,6 +50,9 @@ class ThreadPoolInterface {
    * @throws std::logic_error if the scheduler has shut down.
    */
   virtual void Schedule(std::function<void()> task) = 0;
+
+  /** Schedule a dependency-aware task and return a completion handle. */
+  virtual std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task) = 0;
 
   /**
    * @brief Submit a callable and return its future result.
@@ -62,6 +68,14 @@ class ThreadPoolInterface {
     Schedule([packaged_task] { (*packaged_task)(); });
     return task_result;
   }
+
+ protected:
+  void Execute(Task* task);
+  void SetThreadPool(Task* task);
+
+ private:
+  friend class Task;
+  virtual void NotifyDependenciesCompleted(Task* task) = 0;
 };
 
 /**
@@ -83,6 +97,7 @@ class ThreadPool final : public ThreadPoolInterface {
 
   /** @brief Schedule a task; throws when called after shutdown begins. */
   void Schedule(std::function<void()> task) override;
+  std::weak_ptr<Task> Schedule(std::unique_ptr<Task> task) override;
 
   /**
    * @brief Stop accepting work, drain queued tasks, and join all workers.
@@ -94,9 +109,11 @@ class ThreadPool final : public ThreadPoolInterface {
  private:
   /** @brief Wait for work, execute queued tasks, and exit after draining. */
   void WorkerLoop();
+  void NotifyDependenciesCompleted(Task* task) override;
 
   std::vector<std::thread> worker_threads_;
   std::queue<std::function<void()>> pending_tasks_;
+  std::unordered_map<Task*, std::shared_ptr<Task>> waiting_tasks_;
   std::mutex queue_mutex_;
   std::mutex shutdown_mutex_;
   std::condition_variable task_available_condition_;

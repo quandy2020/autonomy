@@ -18,16 +18,16 @@
 
 #include <utility>
 
-#include <glog/logging.h>
-
 #include "autolink/autolink.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/localization/cartographer/mapping/map_builder.hpp"
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
 #include "autonomy/localization/cartographer/node/node_options.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
+#if defined(AUTONOMY_HAS_ARGUS) && AUTONOMY_HAS_ARGUS
 #include "autonomy/localization/argus_node.hpp"
-#include "autonomy/localization/atlas_node.hpp"
+#endif
+#include "autonomy/localization/atlas/atlas/atlas_node.hpp"
 #include "autonomy/transform/buffer.hpp"
 #include "autonomy/transform/static_transform_publisher.hpp"
 
@@ -47,7 +47,7 @@ LocalizationBackend ParseLocalizationBackend(const std::string& name) {
         return LocalizationBackend::kArgus;
     }
     if (name != "cartographer" && name != "Cartographer" && !name.empty()) {
-        LOG(WARNING) << "Unknown localization backend '" << name
+        AWARN << "Unknown localization backend '" << name
                      << "', defaulting to cartographer.";
     }
     return LocalizationBackend::kCartographer;
@@ -208,7 +208,7 @@ public:
             AERROR << "Atlas requires --atlas_config and --atlas_vocabulary.";
             return false;
         }
-        AtlasNode::Options node_opts;
+        atlas::AtlasNode::Options node_opts;
         node_opts.settings_path =
             ResolveWorkspacePath(options_.atlas_config_path);
         node_opts.vocabulary_path =
@@ -218,7 +218,7 @@ public:
         node_opts.image_topic = options_.atlas_image_topic;
         node_opts.right_image_topic = options_.atlas_right_image_topic;
         node_opts.depth_image_topic = options_.atlas_depth_image_topic;
-        node_ = std::make_unique<AtlasNode>(std::move(node_opts));
+        node_ = std::make_unique<atlas::AtlasNode>(std::move(node_opts));
         if (!node_->Start()) {
             AERROR << "AtlasNode::Start failed.";
             node_.reset();
@@ -238,13 +238,14 @@ public:
 
 private:
     LocalizationOptions options_;
-    std::unique_ptr<AtlasNode> node_;
+    std::unique_ptr<atlas::AtlasNode> node_;
 };
 
 // ---------------------------------------------------------------------------
-// Argus (FAST-LIVO2 ESIKF LIO / LIVO)
+// Argus (optional external backend)
 // ---------------------------------------------------------------------------
 
+#if defined(AUTONOMY_HAS_ARGUS) && AUTONOMY_HAS_ARGUS
 class LocalizationServer::ArgusBackend : public LocalizationServer::Backend {
 public:
     explicit ArgusBackend(LocalizationOptions options)
@@ -282,6 +283,7 @@ private:
     LocalizationOptions options_;
     std::unique_ptr<ArgusNode> node_;
 };
+#endif
 
 // ---------------------------------------------------------------------------
 // LocalizationServer
@@ -293,7 +295,12 @@ std::unique_ptr<LocalizationServer::Backend> LocalizationServer::CreateBackend(
         case LocalizationBackend::kAtlas:
             return std::make_unique<AtlasBackend>(options);
         case LocalizationBackend::kArgus:
+#if defined(AUTONOMY_HAS_ARGUS) && AUTONOMY_HAS_ARGUS
             return std::make_unique<ArgusBackend>(options);
+#else
+            AERROR << "Argus backend is not available in this build.";
+            return nullptr;
+#endif
         case LocalizationBackend::kCartographer:
         default:
             return std::make_unique<CartographerBackend>(options);

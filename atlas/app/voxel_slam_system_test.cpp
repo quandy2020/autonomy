@@ -12,7 +12,8 @@ namespace {
 sensor::PointCloudXYZI MakeRoomScan() {
   sensor::PointCloudXYZI cloud;
   int point_index = 0;
-  constexpr int kSteps = 33;
+  constexpr int kSteps = 21;
+  constexpr int kSurfaceCount = 9;
   constexpr float kHalfExtent = 4.0f;
   constexpr float kWall = 5.0f;
   auto add = [&](float x, float y, float z) {
@@ -22,7 +23,7 @@ sensor::PointCloudXYZI MakeRoomScan() {
     point.z = z;
     point.intensity = 1.0f;
     point.curvature = 100.0f * static_cast<float>(point_index++) /
-                      static_cast<float>(6 * kSteps * kSteps - 1);
+                      static_cast<float>(kSurfaceCount * kSteps * kSteps - 1);
     cloud.push_back(point);
   };
   for (int i = 0; i < kSteps; ++i) {
@@ -35,6 +36,11 @@ sensor::PointCloudXYZI MakeRoomScan() {
       add(a, kWall, b);
       add(a, b, -kWall);
       add(a, b, kWall);
+      // Add non-axis-aligned structure so all rotational degrees of freedom
+      // are observable to the motion-initialization degeneracy check.
+      add(a, b, 0.35f * a + 0.20f * b);
+      add(a, 0.30f * a + 0.25f * b, b);
+      add(0.20f * a + 0.35f * b, a, b);
     }
   }
   return cloud;
@@ -48,6 +54,9 @@ SlamSystemConfig MakeVoxelTestConfig(const std::filesystem::path& directory) {
   config.voxel_thread_num = 1;
   config.voxel_down_size = 0.18;
   config.voxel_size = 1.0;
+  // The synthetic cloud is an instantaneous scan; curvature is not a
+  // per-point firing timestamp as it is for a real spinning LiDAR packet.
+  config.voxel_points_have_timestamps = false;
   config.voxel_enable_loop = false;
   config.voxel_enable_gba = false;
   config.voxel_enable_local_ba = true;
@@ -81,7 +90,24 @@ TEST(VoxelSlamSystem, InitializesAndProcessesSyntheticRoom) {
       system.AddImu(imu);
       imu_time += kImuStep;
     }
-    ASSERT_TRUE(system.AddScan(cloud, scan_time));
+    // Simulate constant-velocity sensor motion through the static room.  A
+    // sequence of identical poses is intentionally rejected by Voxel-SLAM's
+    // motion initializer as geometrically degenerate.
+    sensor::PointCloudXYZI moving_cloud = cloud;
+    const double yaw = 0.04 * scan_index;
+    const Eigen::Matrix3d world_from_sensor =
+        Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+    const Eigen::Vector3d sensor_position(0.15 * scan_index,
+                                          0.03 * scan_index, 0.0);
+    for (sensor::PointType& point : moving_cloud.points) {
+      const Eigen::Vector3d world_point(point.x, point.y, point.z);
+      const Eigen::Vector3d sensor_point =
+          world_from_sensor.transpose() * (world_point - sensor_position);
+      point.x = static_cast<float>(sensor_point.x());
+      point.y = static_cast<float>(sensor_point.y());
+      point.z = static_cast<float>(sensor_point.z());
+    }
+    ASSERT_TRUE(system.AddScan(moving_cloud, scan_time));
   }
 
   ASSERT_TRUE(system.initialized());

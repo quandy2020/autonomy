@@ -14,6 +14,7 @@ add_library(atlas_voxel STATIC
   optimization/voxel/gtsam_optimizer.cpp
   optimization/voxel/pose_graph.cpp
   # common concurrency
+  common/task.cpp
   common/thread_pool.cpp
   # sensor plumbing
   sensor/sensor_sync.cpp
@@ -93,6 +94,10 @@ if(ATLAS_BUILD_MESSAGE_ADAPTERS)
       ${ATLAS_AUTOMSGS_TARGET}
   )
   target_compile_features(atlas_automsgs PUBLIC cxx_std_17)
+endif()
+
+if(ATLAS_BUILD_VISUAL_SLAM)
+  include(${CMAKE_CURRENT_LIST_DIR}/visual_orb.cmake)
 endif()
 
 if(BUILD_TESTING)

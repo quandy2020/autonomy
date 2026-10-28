@@ -1,7 +1,0 @@
-# LiDAR → IMU extrinsic for Oxford Spires (DiffCal cam-lidar-imu.yaml).
-# Derived as T_IL = T_CI^{-1} * T_CL (same as offline_spires_livo).
-# Do NOT use TurtleBot autosim extrinsics with Spires — LIO will reverse/yaw-drift.
-ext_R: [-0.016638045748655877, -0.9998601056363497, 0.0017159809243349705,
-         0.9998552572581155, -0.016631813594098117, 0.0035843144224121486,
-        -0.003555273122162445, 0.0017753685358886646, 0.9999921040186213]
-ext_T: [-0.000651708683372087, -0.015510342560109074, 0.08463265780318904]

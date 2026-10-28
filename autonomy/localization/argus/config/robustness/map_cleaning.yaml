@@ -1,6 +1,0 @@
-# Wire via LivoOdometryConfig.map_cleaning (default enable: false).
-enable: false
-interval_sec: 10.0
-confidence_threshold: 0.3
-degeneracy_penalty: 0.5
-min_observation_count_to_keep: 3

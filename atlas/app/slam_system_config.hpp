@@ -59,6 +59,7 @@ struct SlamSystemConfig {
   double voxel_size = 1.0;
   double voxel_min_eigen_value = 0.01;
   double voxel_imu_coef = 1e-4;
+  bool voxel_points_have_timestamps = true;
   double voxel_bias_gyro_random_walk = 1e-4;
   double voxel_bias_accel_random_walk = 1e-4;
   int voxel_minimum_bundle_adjustment_points = 20;

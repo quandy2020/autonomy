@@ -1,5 +1,0 @@
-# LiDAR → IMU extrinsic (same convention as LivoOdometryConfig.ext_R / ext_T).
-# TurtleBot3 Burger (autosim URDF): imu_link z=0.068, laser_link z=0.172,
-# both at x=-0.032 in base_link — so lidar→imu is (0, 0, -0.104).
-ext_R: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]
-ext_T: [0.0, 0.0, -0.104]

@@ -31,6 +31,7 @@ TEST(SlamSystemConfig, RoundTripKeepsNestedFields) {
   config.voxel_bias_accel_random_walk = 3e-4;
   config.voxel_minimum_bundle_adjustment_points = 24;
   config.voxel_gba_voxel_size = 1.5;
+  config.voxel_points_have_timestamps = false;
   config.voxel_gba_minimum_eigenvalue = 0.02;
   config.voxel_gba_maximum_iteration_count = 4;
   config.trajectory_path = "/tmp/traj.txt";
@@ -50,6 +51,7 @@ TEST(SlamSystemConfig, RoundTripKeepsNestedFields) {
   EXPECT_DOUBLE_EQ(loaded.voxel_bias_accel_random_walk, 3e-4);
   EXPECT_EQ(loaded.voxel_minimum_bundle_adjustment_points, 24);
   EXPECT_DOUBLE_EQ(loaded.voxel_gba_voxel_size, 1.5);
+  EXPECT_FALSE(loaded.voxel_points_have_timestamps);
   EXPECT_DOUBLE_EQ(loaded.voxel_gba_minimum_eigenvalue, 0.02);
   EXPECT_EQ(loaded.voxel_gba_maximum_iteration_count, 4);
   EXPECT_EQ(loaded.trajectory_path, config.trajectory_path);

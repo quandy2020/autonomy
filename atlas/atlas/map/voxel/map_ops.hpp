@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "common/thread_pool.hpp"
 #include "frontend/lidar/imu/imu_state.hpp"
 #include "frontend/lidar/local_mapping/lidar_factor.hpp"
 #include "map/voxel/sliding_octree.hpp"
@@ -15,16 +16,20 @@
 namespace atlas {
 namespace vxslam {
 
-/** @brief Multi-thread marginalize oldest scan (Voxel-SLAM multi_margi). */
-void MultiMarginalize(std::unordered_map<VoxelKey, SlidingOctree*>* feat_map,
-                      double jour, int win_count, std::vector<ImuState>* xs,
-                      LidarFactor* voxopt, std::vector<FrameWindow*>* sw,
-                      int thread_num);
+/** @brief Marginalize the oldest scan using a reusable worker pool. */
+void MarginalizeSlidingVoxelMap(
+    std::unordered_map<VoxelKey, SlidingOctree*>* feature_map,
+    double traveled_distance, int window_count, std::vector<ImuState>* states,
+    LidarFactor* factor_collection,
+    std::vector<FrameWindow*>* frame_window_pool,
+    common::ThreadPoolInterface* thread_pool, int worker_count);
 
-/** @brief Multi-thread Recut + CollectFactors (Voxel-SLAM multi_recut). */
-void MultiRecut(std::unordered_map<VoxelKey, SlidingOctree*>* feat_map,
-                int win_count, std::vector<ImuState>* xs, LidarFactor* voxopt,
-                std::vector<std::vector<FrameWindow*>>* sws, int thread_num);
+/** @brief Recut the map and collect factors using a reusable worker pool. */
+void RecutSlidingVoxelMap(
+    std::unordered_map<VoxelKey, SlidingOctree*>* feature_map, int window_count,
+    std::vector<ImuState>* states, LidarFactor* factor_collection,
+    std::vector<std::vector<FrameWindow*>>* frame_window_pools,
+    common::ThreadPoolInterface* thread_pool, int worker_count);
 
 }  // namespace vxslam
 }  // namespace atlas
