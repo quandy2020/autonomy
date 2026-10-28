@@ -1,6 +1,6 @@
 #include "atlas/closure/pose_graph_optimizer.hpp"
 
-#include "atlas/optimization/optimizer.hpp"
+#include "atlas/common/optimization/optimizer.hpp"
 
 namespace autonomy::localization::atlas {
 

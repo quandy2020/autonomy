@@ -20,7 +20,7 @@
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 
 #include "atlas/map_builder.hpp"
-#include "atlas/visual_slam_message_adapter.hpp"
+#include "atlas/message_adapter.hpp"
 #include "autolink/autolink.hpp"
 
 namespace autonomy::localization::atlas {
@@ -79,7 +79,7 @@ private:
     Options options_;
     SensorMode sensor_mode_ = SensorMode::kMonocular;
     std::unique_ptr<MapBuilder> system_;
-    std::unique_ptr<VisualSlamMessageAdapter> messages_;
+    std::unique_ptr<MessageAdapter> messages_;
     std::shared_ptr<autolink::Node> node_;
     std::shared_ptr<autolink::Writer<::automsgs::msgs::nav_msgs::Odometry>>
         odometry_writer_;

@@ -24,8 +24,8 @@
 
 #include <Eigen/Core>
 #include <opencv2/core.hpp>
-#include <sophus/se3.hpp>
 #include "autolink/common/log.hpp"
+#include "autonomy/common/math/se3.hpp"
 
 namespace autonomy::localization::atlas {
 

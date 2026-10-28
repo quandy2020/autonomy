@@ -79,7 +79,7 @@ Eigen::Matrix<double, 2, 3> PinholeCamera::projectJac(
 bool PinholeCamera::ReconstructWithTwoViews(
     const std::vector<cv::KeyPoint>& vKeys1,
     const std::vector<cv::KeyPoint>& vKeys2, const std::vector<int>& vMatches12,
-    Sophus::SE3f& T21, std::vector<cv::Point3f>& vP3D,
+    autonomy::common::math::SE3f& T21, std::vector<cv::Point3f>& vP3D,
     std::vector<bool>& vbTriangulated) {
     if (!tvr) {
         Eigen::Matrix3f K = this->toK_();
@@ -110,7 +110,7 @@ bool PinholeCamera::epipolarConstrain(GeometricCamera* pCamera2,
                                       const Eigen::Vector3f& t12,
                                       const float sigmaLevel, const float unc) {
     // Compute Fundamental Matrix
-    Eigen::Matrix3f t12x = Sophus::SO3f::hat(t12);
+    Eigen::Matrix3f t12x = autonomy::common::math::SO3f::hat(t12);
     Eigen::Matrix3f K1 = this->toK_();
     Eigen::Matrix3f K2 = pCamera2->toK_();
     Eigen::Matrix3f F12 = K1.transpose().inverse() * t12x * R12 * K2.inverse();

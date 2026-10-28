@@ -27,10 +27,10 @@
 #include <Eigen/Geometry>
 #include <mutex>
 #include <opencv2/core.hpp>
-#include <sophus/se3.hpp>
 #include <utility>
 #include <vector>
 #include "autolink/common/log.hpp"
+#include "autonomy/common/math/se3.hpp"
 
 #include "atlas/common/io/serialization_utils.hpp"
 
@@ -102,8 +102,8 @@ class Calib
     friend class ::autonomy::localization::atlas::ArchiveAccess;
     template <class Archive>
     void serialize(Archive& ar, const unsigned int version) {
-        serializeSophusSE3(ar, mTcb, version);
-        serializeSophusSE3(ar, mTbc, version);
+        serializeSE3(ar, mTcb, version);
+        serializeSE3(ar, mTbc, version);
 
         ar& MakeArray(Cov.diagonal().data(), Cov.diagonal().size());
         ar& MakeArray(CovWalk.diagonal().data(), CovWalk.diagonal().size());
@@ -112,8 +112,8 @@ class Calib
     }
 
 public:
-    Calib(const Sophus::SE3<float>& Tbc, const float& ng, const float& na,
-          const float& ngw, const float& naw) {
+    Calib(const autonomy::common::math::SE3<float>& Tbc, const float& ng,
+          const float& na, const float& ngw, const float& naw) {
         Set(Tbc, ng, na, ngw, naw);
     }
 
@@ -124,13 +124,13 @@ public:
 
     // void Set(const cv::Mat &cvTbc, const float &ng, const float &na, const
     // float &ngw, const float &naw);
-    void Set(const Sophus::SE3<float>& sophTbc, const float& ng,
+    void Set(const autonomy::common::math::SE3<float>& sophTbc, const float& ng,
              const float& na, const float& ngw, const float& naw);
 
 public:
-    // Sophus/Eigen implementation
-    Sophus::SE3<float> mTcb;
-    Sophus::SE3<float> mTbc;
+    // common Lie-group math implementation
+    autonomy::common::math::SE3<float> mTcb;
+    autonomy::common::math::SE3<float> mTbc;
     Eigen::DiagonalMatrix<float, 6> Cov, CovWalk;
     bool mbIsSet;
 };

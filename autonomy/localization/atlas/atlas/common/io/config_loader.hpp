@@ -85,7 +85,7 @@ public:
                        vPinHoleDistorsion1_.data());
     }
 
-    Sophus::SE3f Tlr() {
+    autonomy::common::math::SE3f Tlr() {
         return Tlr_;
     }
     float bf() {
@@ -133,7 +133,7 @@ public:
     float imuFrequency() {
         return imuFrequency_;
     }
-    Sophus::SE3f Tbc() {
+    autonomy::common::math::SE3f Tbc() {
         return Tbc_;
     }
     bool insertKFsWhenLost() {
@@ -272,7 +272,7 @@ private:
     bool bNeedToRectify_;
     bool bNeedToResize1_, bNeedToResize2_;
 
-    Sophus::SE3f Tlr_;
+    autonomy::common::math::SE3f Tlr_;
     float thDepth_;
     float bf_, b_;
 
@@ -288,7 +288,7 @@ private:
     float noiseGyro_, noiseAcc_;
     float gyroWalk_, accWalk_;
     float imuFrequency_;
-    Sophus::SE3f Tbc_;
+    autonomy::common::math::SE3f Tbc_;
     bool insertKFsWhenLost_;
 
     /*

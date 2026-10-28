@@ -44,7 +44,7 @@ g2o::SE3Quat Converter::toSE3Quat(const cv::Mat& cvT) {
     return g2o::SE3Quat(R, t);
 }
 
-g2o::SE3Quat Converter::toSE3Quat(const Sophus::SE3f& T) {
+g2o::SE3Quat Converter::toSE3Quat(const autonomy::common::math::SE3f& T) {
     return g2o::SE3Quat(T.unit_quaternion().cast<double>(),
                         T.translation().cast<double>());
 }
@@ -274,7 +274,7 @@ std::vector<float> Converter::toEuler(const cv::Mat& R) {
     return v_euler;
 }
 
-Sophus::SE3<float> Converter::toSophus(const cv::Mat& T) {
+autonomy::common::math::SE3<float> Converter::toLieGroup(const cv::Mat& T) {
     Eigen::Matrix<double, 3, 3> eigMat =
         toMatrix3d(T.rowRange(0, 3).colRange(0, 3));
     Eigen::Quaternionf q(eigMat.cast<float>());
@@ -282,14 +282,13 @@ Sophus::SE3<float> Converter::toSophus(const cv::Mat& T) {
     Eigen::Matrix<float, 3, 1> t =
         toVector3d(T.rowRange(0, 3).col(3)).cast<float>();
 
-    return Sophus::SE3<float>(q, t);
+    return autonomy::common::math::SE3<float>(q, t);
 }
 
-Sophus::Sim3f Converter::toSophus(const g2o::Sim3& S) {
-    return Sophus::Sim3f(
-        Sophus::RxSO3d(static_cast<float>(S.scale()), S.rotation().matrix())
-            .cast<float>(),
-        S.translation().cast<float>());
+autonomy::common::math::Sim3f Converter::toLieGroup(const g2o::Sim3& S) {
+    return autonomy::common::math::Sim3f(S.rotation().matrix().cast<float>(),
+                                         S.translation().cast<float>(),
+                                         static_cast<float>(S.scale()));
 }
 
 }  // namespace autonomy::localization::atlas

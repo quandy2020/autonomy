@@ -417,7 +417,8 @@ int OrbMatcher::SearchByBoW(KeyFrame* pKF, Frame& F,
     return nmatches;
 }
 
-int OrbMatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3f& Scw,
+int OrbMatcher::SearchByProjection(KeyFrame* pKF,
+                                   autonomy::common::math::Sim3f& Scw,
                                    const std::vector<MapPoint*>& vpPoints,
                                    std::vector<MapPoint*>& vpMatched, int th,
                                    float ratioHamming) {
@@ -427,8 +428,8 @@ int OrbMatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3f& Scw,
     const float& cx = pKF->cx;
     const float& cy = pKF->cy;
 
-    Sophus::SE3f Tcw =
-        Sophus::SE3f(Scw.rotationMatrix(), Scw.translation() / Scw.scale());
+    autonomy::common::math::SE3f Tcw = autonomy::common::math::SE3f(
+        Scw.rotationMatrix(), Scw.translation() / Scw.scale());
     Eigen::Vector3f Ow = Tcw.inverse().translation();
 
     // Set of MapPoints already found in the KeyFrame
@@ -524,7 +525,8 @@ int OrbMatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3f& Scw,
     return nmatches;
 }
 
-int OrbMatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw,
+int OrbMatcher::SearchByProjection(KeyFrame* pKF,
+                                   autonomy::common::math::Sim3<float>& Scw,
                                    const std::vector<MapPoint*>& vpPoints,
                                    const std::vector<KeyFrame*>& vpPointsKFs,
                                    std::vector<MapPoint*>& vpMatched,
@@ -536,8 +538,8 @@ int OrbMatcher::SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw,
     const float& cx = pKF->cx;
     const float& cy = pKF->cy;
 
-    Sophus::SE3f Tcw =
-        Sophus::SE3f(Scw.rotationMatrix(), Scw.translation() / Scw.scale());
+    autonomy::common::math::SE3f Tcw = autonomy::common::math::SE3f(
+        Scw.rotationMatrix(), Scw.translation() / Scw.scale());
     Eigen::Vector3f Ow = Tcw.inverse().translation();
 
     // Set of MapPoints already found in the KeyFrame
@@ -886,15 +888,16 @@ int OrbMatcher::SearchForTriangulation(
     const FeatureVector& vFeatVec2 = pKF2->mFeatVec;
 
     // Compute epipole in second image
-    Sophus::SE3f T1w = pKF1->GetPose();
-    Sophus::SE3f T2w = pKF2->GetPose();
-    Sophus::SE3f Tw2 = pKF2->GetPoseInverse();  // for convenience
+    autonomy::common::math::SE3f T1w = pKF1->GetPose();
+    autonomy::common::math::SE3f T2w = pKF2->GetPose();
+    autonomy::common::math::SE3f Tw2 =
+        pKF2->GetPoseInverse();  // for convenience
     Eigen::Vector3f Cw = pKF1->GetCameraCenter();
     Eigen::Vector3f C2 = T2w * Cw;
 
     Eigen::Vector2f ep = pKF2->mpCamera->project(C2);
-    Sophus::SE3f T12;
-    Sophus::SE3f Tll, Tlr, Trl, Trr;
+    autonomy::common::math::SE3f T12;
+    autonomy::common::math::SE3f Tll, Tlr, Trl, Trr;
     Eigen::Matrix3f R12;  // for fastest computation
     Eigen::Vector3f t12;  // for fastest computation
 
@@ -905,8 +908,8 @@ int OrbMatcher::SearchForTriangulation(
         R12 = T12.rotationMatrix();
         t12 = T12.translation();
     } else {
-        Sophus::SE3f Tr1w = pKF1->GetRightPose();
-        Sophus::SE3f Twr2 = pKF2->GetRightPoseInverse();
+        autonomy::common::math::SE3f Tr1w = pKF1->GetRightPose();
+        autonomy::common::math::SE3f Twr2 = pKF2->GetRightPoseInverse();
         Tll = T1w * Tw2;
         Tlr = T1w * Twr2;
         Trl = Tr1w * Tw2;
@@ -1118,7 +1121,7 @@ int OrbMatcher::SearchForTriangulation(
 int OrbMatcher::Fuse(KeyFrame* pKF, const std::vector<MapPoint*>& vpMapPoints,
                      const float th, const bool bRight) {
     GeometricCamera* pCamera;
-    Sophus::SE3f Tcw;
+    autonomy::common::math::SE3f Tcw;
     Eigen::Vector3f Ow;
 
     if (bRight) {
@@ -1291,7 +1294,7 @@ int OrbMatcher::Fuse(KeyFrame* pKF, const std::vector<MapPoint*>& vpMapPoints,
     return nFused;
 }
 
-int OrbMatcher::Fuse(KeyFrame* pKF, Sophus::Sim3f& Scw,
+int OrbMatcher::Fuse(KeyFrame* pKF, autonomy::common::math::Sim3f& Scw,
                      const std::vector<MapPoint*>& vpPoints, float th,
                      std::vector<MapPoint*>& vpReplacePoint) {
     // Get Calibration Parameters for later projection
@@ -1301,8 +1304,8 @@ int OrbMatcher::Fuse(KeyFrame* pKF, Sophus::Sim3f& Scw,
     const float& cy = pKF->cy;
 
     // Decompose Scw
-    Sophus::SE3f Tcw =
-        Sophus::SE3f(Scw.rotationMatrix(), Scw.translation() / Scw.scale());
+    autonomy::common::math::SE3f Tcw = autonomy::common::math::SE3f(
+        Scw.rotationMatrix(), Scw.translation() / Scw.scale());
     Eigen::Vector3f Ow = Tcw.inverse().translation();
 
     // Set of MapPoints already found in the KeyFrame
@@ -1407,18 +1410,19 @@ int OrbMatcher::Fuse(KeyFrame* pKF, Sophus::Sim3f& Scw,
 
 int OrbMatcher::SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2,
                              std::vector<MapPoint*>& vpMatches12,
-                             const Sophus::Sim3f& S12, const float th) {
+                             const autonomy::common::math::Sim3f& S12,
+                             const float th) {
     const float& fx = pKF1->fx;
     const float& fy = pKF1->fy;
     const float& cx = pKF1->cx;
     const float& cy = pKF1->cy;
 
     // Camera 1 & 2 from world
-    Sophus::SE3f T1w = pKF1->GetPose();
-    Sophus::SE3f T2w = pKF2->GetPose();
+    autonomy::common::math::SE3f T1w = pKF1->GetPose();
+    autonomy::common::math::SE3f T2w = pKF2->GetPose();
 
     // Transformation between cameras
-    Sophus::Sim3f S21 = S12.inverse();
+    autonomy::common::math::Sim3f S21 = S12.inverse();
 
     const std::vector<MapPoint*> vpMapPoints1 = pKF1->GetMapPointMatches();
     const int N1 = vpMapPoints1.size();
@@ -1628,10 +1632,10 @@ int OrbMatcher::SearchByProjection(Frame& CurrentFrame, const Frame& LastFrame,
         rotHist[i].reserve(500);
     const float factor = 1.0f / HISTO_LENGTH;
 
-    const Sophus::SE3f Tcw = CurrentFrame.GetPose();
+    const autonomy::common::math::SE3f Tcw = CurrentFrame.GetPose();
     const Eigen::Vector3f twc = Tcw.inverse().translation();
 
-    const Sophus::SE3f Tlw = LastFrame.GetPose();
+    const autonomy::common::math::SE3f Tlw = LastFrame.GetPose();
     const Eigen::Vector3f tlc = Tlw * twc;
 
     const bool bForward = tlc(2) > CurrentFrame.mb && !bMono;
@@ -1856,7 +1860,7 @@ int OrbMatcher::SearchByProjection(Frame& CurrentFrame, KeyFrame* pKF,
                                    const float th, const int ORBdist) {
     int nmatches = 0;
 
-    const Sophus::SE3f Tcw = CurrentFrame.GetPose();
+    const autonomy::common::math::SE3f Tcw = CurrentFrame.GetPose();
     Eigen::Vector3f Ow = Tcw.inverse().translation();
 
     // Rotation Histogram (to check rotation consistency)

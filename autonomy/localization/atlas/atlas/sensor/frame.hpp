@@ -25,7 +25,7 @@
 #include <vector>
 #include "autolink/common/log.hpp"
 
-#include "sophus/geometry.hpp"
+#include "autonomy/common/math/se3.hpp"
 
 #include "atlas/feature/vocabulary.hpp"
 #include "atlas/sensor/imu_types.hpp"
@@ -37,7 +37,7 @@
 #include <opencv2/opencv.hpp>
 
 #include "Eigen/Core"
-#include "sophus/se3.hpp"
+#include "autonomy/common/math/se3.hpp"
 
 namespace autonomy::localization::atlas {
 #define FRAME_GRID_ROWS 48
@@ -91,7 +91,7 @@ public:
     void ComputeBoW();
 
     // Set the camera pose. (Imu pose is not modified!)
-    void SetPose(const Sophus::SE3<float>& Tcw);
+    void SetPose(const autonomy::common::math::SE3<float>& Tcw);
 
     // Set IMU velocity
     void SetVelocity(Eigen::Vector3f Vw);
@@ -105,10 +105,10 @@ public:
 
     Eigen::Matrix<float, 3, 1> GetImuPosition() const;
     Eigen::Matrix<float, 3, 3> GetImuRotation();
-    Sophus::SE3<float> GetImuPose();
+    autonomy::common::math::SE3<float> GetImuPose();
 
-    Sophus::SE3f GetRelativePoseTrl();
-    Sophus::SE3f GetRelativePoseTlr();
+    autonomy::common::math::SE3f GetRelativePoseTrl();
+    autonomy::common::math::SE3f GetRelativePoseTlr();
     Eigen::Matrix3f GetRelativePoseTlr_rotation();
     Eigen::Vector3f GetRelativePoseTlr_translation();
 
@@ -166,7 +166,7 @@ public:
         return mRwc;
     }
 
-    inline Sophus::SE3<float> GetPose() const {
+    inline autonomy::common::math::SE3<float> GetPose() const {
         // TODO: can the Frame pose be accsessed from several threads? should
         // this be protected somehow?
         return mTcw;
@@ -189,21 +189,21 @@ public:
     }
 
 private:
-    // Sophus/Eigen migration
-    Sophus::SE3<float> mTcw;
+    // common Lie-group math migration
+    autonomy::common::math::SE3<float> mTcw;
     Eigen::Matrix<float, 3, 3> mRwc;
     Eigen::Matrix<float, 3, 1> mOw;
     Eigen::Matrix<float, 3, 3> mRcw;
     Eigen::Matrix<float, 3, 1> mtcw;
     bool mbHasPose;
 
-    // Rcw_ not necessary as Sophus has a method for extracting the rotation
-    // matrix: Tcw_.rotationMatrix() tcw_ not necessary as Sophus has a method
-    // for extracting the translation vector: Tcw_.translation() Twc_ not
-    // necessary as Sophus has a method for easily computing the inverse pose:
-    // Tcw_.inverse()
+    // Rcw_ not necessary as common SE3 has a method for extracting the rotation
+    // matrix: Tcw_.rotationMatrix() tcw_ not necessary as common SE3 has a
+    // method for extracting the translation vector: Tcw_.translation() Twc_ not
+    // necessary as common SE3 has a method for easily computing the inverse
+    // pose: Tcw_.inverse()
 
-    Sophus::SE3<float> mTlr, mTrl;
+    autonomy::common::math::SE3<float> mTlr, mTrl;
     Eigen::Matrix<float, 3, 3> mRlr;
     Eigen::Vector3f mtlr;
 
@@ -376,7 +376,8 @@ public:
           OrbExtractor* extractorRight, Vocabulary* voc, cv::Mat& K,
           cv::Mat& distCoef, const float& bf, const float& thDepth,
           GeometricCamera* pCamera, GeometricCamera* pCamera2,
-          Sophus::SE3f& Tlr, Frame* pPrevF = static_cast<Frame*>(nullptr),
+          autonomy::common::math::SE3f& Tlr,
+          Frame* pPrevF = static_cast<Frame*>(nullptr),
           const IMU::Calib& ImuCalib = IMU::Calib());
 
     // Stereo fisheye
@@ -402,7 +403,7 @@ public:
               << " --- right-> " << right << std::endl;
     }
 
-    Sophus::SE3<double> T_test;
+    autonomy::common::math::SE3<double> T_test;
 };
 
 }  // namespace autonomy::localization::atlas

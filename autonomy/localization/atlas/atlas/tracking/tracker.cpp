@@ -24,11 +24,11 @@
 
 #include "atlas/common/math/converter.hpp"
 #include "atlas/common/math/geometric_tools.hpp"
+#include "atlas/common/optimization/g2o_types.hpp"
+#include "atlas/common/optimization/optimizer.hpp"
 #include "atlas/frame_drawer.hpp"
 #include "atlas/match/ml_pnp_solver.hpp"
 #include "atlas/match/orb_matcher.hpp"
-#include "atlas/optimization/g2o_types.hpp"
-#include "atlas/optimization/optimizer.hpp"
 #include "atlas/sensor/camera/kannala_brandt_camera.hpp"
 #include "atlas/sensor/camera/pinhole_camera.hpp"
 
@@ -628,7 +628,7 @@ void Tracker::newParameterLoader(ConfigLoader* settings) {
                                              nLevels, fIniThFAST, fMinThFAST);
 
     // IMU parameters
-    Sophus::SE3f Tbc = settings->Tbc();
+    autonomy::common::math::SE3f Tbc = settings->Tbc();
     mInsertKFsLost = settings->insertKFsWhenLost();
     mImuFreq = settings->imuFrequency();
     mImuPer = 0.001;  // 1.0 / static_cast<double>(mImuFreq);     //TODO: ESTO
@@ -1076,7 +1076,7 @@ bool Tracker::ParseCamParamFile(cv::FileStorage& fConfigLoader) {
                 mpCamera2 = new KannalaBrandtCamera(vCamCalib2);
                 mpCamera2 = mpAtlas->AddCamera(mpCamera2);
 
-                mTlr = Converter::toSophus(cvTlr);
+                mTlr = Converter::toLieGroup(cvTlr);
 
                 static_cast<KannalaBrandtCamera*>(mpCamera2)->mvLappingArea[0] =
                     rightLappingBegin;
@@ -1290,7 +1290,7 @@ bool Tracker::ParseIMUParamFile(cv::FileStorage& fConfigLoader) {
     AINFO << "Left camera to Imu Transform (Tbc): " << std::endl
           << cvTbc << std::endl;
     Eigen::Matrix<float, 4, 4, Eigen::RowMajor> eigTbc(cvTbc.ptr<float>(0));
-    Sophus::SE3f Tbc(eigTbc);
+    autonomy::common::math::SE3f Tbc(eigTbc);
 
     node = fConfigLoader["InsertKFsWhenLost"];
     mInsertKFsLost = true;
@@ -1405,10 +1405,9 @@ bool Tracker::GetStepByStep() {
     return bStepByStep;
 }
 
-Sophus::SE3f Tracker::GrabImageStereo(const cv::Mat& imRectLeft,
-                                      const cv::Mat& imRectRight,
-                                      const double& timestamp,
-                                      std::string filename) {
+autonomy::common::math::SE3f Tracker::GrabImageStereo(
+    const cv::Mat& imRectLeft, const cv::Mat& imRectRight,
+    const double& timestamp, std::string filename) {
     // AINFO << "GrabImageStereo" << endl;
 
     mImGray = imRectLeft;
@@ -1475,9 +1474,10 @@ Sophus::SE3f Tracker::GrabImageStereo(const cv::Mat& imRectLeft,
     return mCurrentFrame.GetPose();
 }
 
-Sophus::SE3f Tracker::GrabImageRGBD(const cv::Mat& imRGB, const cv::Mat& imD,
-                                    const double& timestamp,
-                                    std::string filename) {
+autonomy::common::math::SE3f Tracker::GrabImageRGBD(const cv::Mat& imRGB,
+                                                    const cv::Mat& imD,
+                                                    const double& timestamp,
+                                                    std::string filename) {
     mImGray = imRGB;
     cv::Mat imDepth = imD;
 
@@ -1517,9 +1517,8 @@ Sophus::SE3f Tracker::GrabImageRGBD(const cv::Mat& imRGB, const cv::Mat& imD,
     return mCurrentFrame.GetPose();
 }
 
-Sophus::SE3f Tracker::GrabImageMonocular(const cv::Mat& im,
-                                         const double& timestamp,
-                                         std::string filename) {
+autonomy::common::math::SE3f Tracker::GrabImageMonocular(
+    const cv::Mat& im, const double& timestamp, std::string filename) {
     mImGray = im;
     if (mImGray.channels() == 3) {
         if (mbRGB)
@@ -1990,7 +1989,7 @@ void Tracker::Track() {
                     bool bOKReloc = false;
                     std::vector<MapPoint*> vpMPsMM;
                     std::vector<bool> vbOutMM;
-                    Sophus::SE3f TcwMM;
+                    autonomy::common::math::SE3f TcwMM;
                     if (mbVelocity) {
                         bOKMM = TrackWithMotionModel();
                         vpMPsMM = mCurrentFrame.mvpMapPoints;
@@ -2129,7 +2128,8 @@ void Tracker::Track() {
         if (bOK || mState == RECENTLY_LOST) {
             // Update motion model
             if (mLastFrame.isSet() && mCurrentFrame.isSet()) {
-                Sophus::SE3f LastTwc = mLastFrame.GetPose().inverse();
+                autonomy::common::math::SE3f LastTwc =
+                    mLastFrame.GetPose().inverse();
                 mVelocity = mCurrentFrame.GetPose() * LastTwc;
                 mbVelocity = true;
             } else {
@@ -2229,8 +2229,9 @@ void Tracker::Track() {
         // Store frame pose information to retrieve the complete camera
         // trajectory afterwards.
         if (mCurrentFrame.isSet()) {
-            Sophus::SE3f Tcr_ = mCurrentFrame.GetPose() *
-                                mCurrentFrame.mpReferenceKF->GetPoseInverse();
+            autonomy::common::math::SE3f Tcr_ =
+                mCurrentFrame.GetPose() *
+                mCurrentFrame.mpReferenceKF->GetPoseInverse();
             mlRelativeFramePoses.push_back(Tcr_);
             mlpReferences.push_back(mCurrentFrame.mpReferenceKF);
             mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
@@ -2287,7 +2288,7 @@ void Tracker::StereoInitialization() {
             Vwb0.setZero();
             mCurrentFrame.SetImuPoseVelocity(Rwb0, twb0, Vwb0);
         } else
-            mCurrentFrame.SetPose(Sophus::SE3f());
+            mCurrentFrame.SetPose(autonomy::common::math::SE3f());
 
         // Create KeyFrame
         KeyFrame* pKFini =
@@ -2415,7 +2416,7 @@ void Tracker::MonocularInitialization() {
             return;
         }
 
-        Sophus::SE3f Tcw;
+        autonomy::common::math::SE3f Tcw;
         std::vector<bool>
             vbTriangulated;  // Triangulated Correspondences (mvIniMatches)
 
@@ -2430,7 +2431,7 @@ void Tracker::MonocularInitialization() {
             }
 
             // Set Frame Poses
-            mInitialFrame.SetPose(Sophus::SE3f());
+            mInitialFrame.SetPose(autonomy::common::math::SE3f());
             mCurrentFrame.SetPose(Tcw);
 
             CreateInitialMapMonocular();
@@ -2510,7 +2511,7 @@ void Tracker::CreateInitialMapMonocular() {
     }
 
     // Scale initial baseline
-    Sophus::SE3f Tc2w = pKFcur->GetPose();
+    autonomy::common::math::SE3f Tc2w = pKFcur->GetPose();
     Tc2w.translation() *= invMedianDepth;
     pKFcur->SetPose(Tc2w);
 
@@ -2551,7 +2552,7 @@ void Tracker::CreateInitialMapMonocular() {
     // Compute here initial velocity
     std::vector<KeyFrame*> vKFs = mpAtlas->GetAllKeyFrames();
 
-    Sophus::SE3f deltaT =
+    autonomy::common::math::SE3f deltaT =
         vKFs.back()->GetPose() * vKFs.front()->GetPoseInverse();
     mbVelocity = false;
     Eigen::Vector3f phi = deltaT.so3().log();
@@ -2688,7 +2689,7 @@ bool Tracker::TrackReferenceKeyFrame() {
 void Tracker::UpdateLastFrame() {
     // Update pose according to reference keyframe
     KeyFrame* pRef = mLastFrame.mpReferenceKF;
-    Sophus::SE3f Tlr = mlRelativeFramePoses.back();
+    autonomy::common::math::SE3f Tlr = mlRelativeFramePoses.back();
     mLastFrame.SetPose(Tlr * pRef->GetPose());
 
     if (mnLastKeyFrameId == mLastFrame.mnId || mSensor == System::MONOCULAR ||
@@ -3573,7 +3574,7 @@ bool Tracker::Relocalization() {
 
             // If a Camera Pose is computed, optimize
             if (bTcw) {
-                Sophus::SE3f Tcw(eigTcw);
+                autonomy::common::math::SE3f Tcw(eigTcw);
                 mCurrentFrame.SetPose(Tcw);
                 // Tcw.copyTo(mCurrentFrame.mTcw);
 

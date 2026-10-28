@@ -67,6 +67,8 @@ public:
     bool ShutdownAndSaveTumTrajectory(const std::string& path);
     /** @brief Stops the runtime and writes a EuRoC-format camera trajectory. */
     bool ShutdownAndSaveEurocTrajectory(const std::string& path);
+    /** @brief Stops the runtime and writes a KITTI-format camera trajectory. */
+    bool ShutdownAndSaveKittiTrajectory(const std::string& path);
 
 private:
     class Impl;

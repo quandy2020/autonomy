@@ -46,7 +46,7 @@ Eigen::Matrix3f RightJacobianSO3(const float& x, const float& y,
     const float d = sqrt(d2);
     Eigen::Vector3f v;
     v << x, y, z;
-    Eigen::Matrix3f W = Sophus::SO3f::hat(v);
+    Eigen::Matrix3f W = autonomy::common::math::SO3f::hat(v);
     if (d < eps) {
         return I;
     } else {
@@ -66,7 +66,7 @@ Eigen::Matrix3f InverseRightJacobianSO3(const float& x, const float& y,
     const float d = sqrt(d2);
     Eigen::Vector3f v;
     v << x, y, z;
-    Eigen::Matrix3f W = Sophus::SO3f::hat(v);
+    Eigen::Matrix3f W = autonomy::common::math::SO3f::hat(v);
 
     if (d < eps) {
         return I;
@@ -91,7 +91,7 @@ IntegratedRotation::IntegratedRotation(const Eigen::Vector3f& angVel,
 
     Eigen::Vector3f v;
     v << x, y, z;
-    Eigen::Matrix3f W = Sophus::SO3f::hat(v);
+    Eigen::Matrix3f W = autonomy::common::math::SO3f::hat(v);
     if (d < eps) {
         deltaR = Eigen::Matrix3f::Identity() + W;
         rightJ = Eigen::Matrix3f::Identity();
@@ -211,7 +211,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f& acceleration,
 
     // Compute velocity and position parts of matrices A and B (rely on
     // non-updated delta rotation)
-    Eigen::Matrix<float, 3, 3> Wacc = Sophus::SO3f::hat(acc);
+    Eigen::Matrix<float, 3, 3> Wacc = autonomy::common::math::SO3f::hat(acc);
 
     A.block<3, 3>(3, 0) = -dR * dt * Wacc;
     A.block<3, 3>(6, 0) = -0.5f * dR * dt * dt * Wacc;
@@ -291,7 +291,8 @@ Eigen::Matrix3f Preintegrated::GetDeltaRotation(const Bias& b_) {
     std::unique_lock<std::mutex> lock(mMutex);
     Eigen::Vector3f dbg;
     dbg << b_.bwx - b.bwx, b_.bwy - b.bwy, b_.bwz - b.bwz;
-    return NormalizeRotation(dR * Sophus::SO3f::exp(JRg * dbg).matrix());
+    return NormalizeRotation(
+        dR * autonomy::common::math::SO3f::exp(JRg * dbg).matrix());
 }
 
 Eigen::Vector3f Preintegrated::GetDeltaVelocity(const Bias& b_) {
@@ -312,7 +313,8 @@ Eigen::Vector3f Preintegrated::GetDeltaPosition(const Bias& b_) {
 
 Eigen::Matrix3f Preintegrated::GetUpdatedDeltaRotation() {
     std::unique_lock<std::mutex> lock(mMutex);
-    return NormalizeRotation(dR * Sophus::SO3f::exp(JRg * db.head(3)).matrix());
+    return NormalizeRotation(
+        dR * autonomy::common::math::SO3f::exp(JRg * db.head(3)).matrix());
 }
 
 Eigen::Vector3f Preintegrated::GetUpdatedDeltaVelocity() {
@@ -387,15 +389,16 @@ std::ostream& operator<<(std::ostream& out, const Bias& b) {
     return out;
 }
 
-void Calib::Set(const Sophus::SE3<float>& sophTbc, const float& ng,
-                const float& na, const float& ngw, const float& naw) {
+void Calib::Set(const autonomy::common::math::SE3<float>& sophTbc,
+                const float& ng, const float& na, const float& ngw,
+                const float& naw) {
     mbIsSet = true;
     const float ng2 = ng * ng;
     const float na2 = na * na;
     const float ngw2 = ngw * ngw;
     const float naw2 = naw * naw;
 
-    // Sophus/Eigen
+    // common Lie-group math
     mTbc = sophTbc;
     mTcb = mTbc.inverse();
     Cov.diagonal() << ng2, ng2, ng2, na2, na2, na2;
@@ -404,7 +407,7 @@ void Calib::Set(const Sophus::SE3<float>& sophTbc, const float& ng,
 
 Calib::Calib(const Calib& calib) {
     mbIsSet = calib.mbIsSet;
-    // Sophus/Eigen parameters
+    // common Lie-group math parameters
     mTbc = calib.mTbc;
     mTcb = calib.mTcb;
     Cov = calib.Cov;

@@ -26,7 +26,8 @@ void MapDrawer::newParameterLoader(ConfigLoader*) {}
 void MapDrawer::DrawMapPoints() {}
 void MapDrawer::DrawKeyFrames(bool, bool, bool, bool) {}
 
-void MapDrawer::SetCurrentCameraPose(const Sophus::SE3f& camera_from_world) {
+void MapDrawer::SetCurrentCameraPose(
+    const autonomy::common::math::SE3f& camera_from_world) {
     std::unique_lock<std::mutex> lock(mMutexCamera);
     mCameraPose = camera_from_world;
 }

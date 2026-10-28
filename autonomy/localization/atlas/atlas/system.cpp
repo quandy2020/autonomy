@@ -285,10 +285,9 @@ System::~System() {
     settings_ = nullptr;
 }
 
-Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight,
-                                 const double& timestamp,
-                                 const std::vector<IMU::Point>& vImuMeas,
-                                 std::string filename) {
+autonomy::common::math::SE3f System::TrackStereo(
+    const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
+    const std::vector<IMU::Point>& vImuMeas, std::string filename) {
     if (mSensor != STEREO && mSensor != IMU_STEREO) {
         AERROR << "ERROR: you called TrackStereo but input sensor was not set "
                   "to Stereo nor Stereo-Inertial."
@@ -352,8 +351,8 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight,
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
     // AINFO << "start GrabImageStereo" << std::endl;
-    Sophus::SE3f Tcw = mpTracker->GrabImageStereo(imLeftToFeed, imRightToFeed,
-                                                  timestamp, filename);
+    autonomy::common::math::SE3f Tcw = mpTracker->GrabImageStereo(
+        imLeftToFeed, imRightToFeed, timestamp, filename);
 
     // AINFO << "out grabber" << std::endl;
 
@@ -365,10 +364,9 @@ Sophus::SE3f System::TrackStereo(const cv::Mat& imLeft, const cv::Mat& imRight,
     return Tcw;
 }
 
-Sophus::SE3f System::TrackRGBD(const cv::Mat& im, const cv::Mat& depthmap,
-                               const double& timestamp,
-                               const std::vector<IMU::Point>& vImuMeas,
-                               std::string filename) {
+autonomy::common::math::SE3f System::TrackRGBD(
+    const cv::Mat& im, const cv::Mat& depthmap, const double& timestamp,
+    const std::vector<IMU::Point>& vImuMeas, std::string filename) {
     if (mSensor != RGBD && mSensor != IMU_RGBD) {
         AERROR << "ERROR: you called TrackRGBD but input sensor was not set to "
                   "RGBD."
@@ -424,7 +422,7 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat& im, const cv::Mat& depthmap,
         for (std::size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
-    Sophus::SE3f Tcw =
+    autonomy::common::math::SE3f Tcw =
         mpTracker->GrabImageRGBD(imToFeed, imDepthToFeed, timestamp, filename);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
@@ -434,13 +432,13 @@ Sophus::SE3f System::TrackRGBD(const cv::Mat& im, const cv::Mat& depthmap,
     return Tcw;
 }
 
-Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp,
-                                    const std::vector<IMU::Point>& vImuMeas,
-                                    std::string filename) {
+autonomy::common::math::SE3f System::TrackMonocular(
+    const cv::Mat& im, const double& timestamp,
+    const std::vector<IMU::Point>& vImuMeas, std::string filename) {
     {
         std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbShutDown)
-            return Sophus::SE3f();
+            return autonomy::common::math::SE3f();
     }
 
     if (mSensor != MONOCULAR && mSensor != IMU_MONOCULAR) {
@@ -497,7 +495,7 @@ Sophus::SE3f System::TrackMonocular(const cv::Mat& im, const double& timestamp,
         for (std::size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
             mpTracker->GrabImuData(vImuMeas[i_imu]);
 
-    Sophus::SE3f Tcw =
+    autonomy::common::math::SE3f Tcw =
         mpTracker->GrabImageMonocular(imToFeed, timestamp, filename);
 
     std::unique_lock<std::mutex> lock2(mMutexState);
@@ -595,7 +593,7 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
-    Sophus::SE3f Two = vpKFs[0]->GetPoseInverse();
+    autonomy::common::math::SE3f Two = vpKFs[0]->GetPoseInverse();
 
     std::ofstream f;
     f.open(filename.c_str());
@@ -612,7 +610,7 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
         mpTracker->mlpReferences.begin();
     std::list<double>::iterator lT = mpTracker->mlFrameTimes.begin();
     std::list<bool>::iterator lbL = mpTracker->mlbLost.begin();
-    for (std::list<Sophus::SE3f>::iterator
+    for (std::list<autonomy::common::math::SE3f>::iterator
              lit = mpTracker->mlRelativeFramePoses.begin(),
              lend = mpTracker->mlRelativeFramePoses.end();
          lit != lend; lit++, lRit++, lT++, lbL++) {
@@ -621,7 +619,7 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
 
         KeyFrame* pKF = *lRit;
 
-        Sophus::SE3f Trw;
+        autonomy::common::math::SE3f Trw;
 
         // If the reference keyframe was culled, traverse the spanning tree to
         // get a suitable keyframe.
@@ -632,8 +630,8 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
 
         Trw = Trw * pKF->GetPose() * Two;
 
-        Sophus::SE3f Tcw = (*lit) * Trw;
-        Sophus::SE3f Twc = Tcw.inverse();
+        autonomy::common::math::SE3f Tcw = (*lit) * Trw;
+        autonomy::common::math::SE3f Twc = Tcw.inverse();
 
         Eigen::Vector3f twc = Twc.translation();
         Eigen::Quaternionf q = Twc.unit_quaternion();
@@ -668,7 +666,7 @@ void System::SaveKeyFrameTrajectoryTUM(const std::string& filename) {
         if (pKF->isBad())
             continue;
 
-        Sophus::SE3f Twc = pKF->GetPoseInverse();
+        autonomy::common::math::SE3f Twc = pKF->GetPoseInverse();
         Eigen::Quaternionf q = Twc.unit_quaternion();
         Eigen::Vector3f t = Twc.translation();
         f << std::setprecision(6) << pKF->mTimeStamp << std::setprecision(7)
@@ -713,7 +711,7 @@ void System::SaveTrajectoryEuRoC(const std::string& filename) {
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
-    Sophus::SE3f
+    autonomy::common::math::SE3f
         Twb;  // Can be word to cam0 or world to b depending on IMU or not.
     if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
         mSensor == IMU_RGBD)
@@ -755,7 +753,7 @@ void System::SaveTrajectoryEuRoC(const std::string& filename) {
         KeyFrame* pKF = *lRit;
         // AINFO << "KF: " << pKF->mnId << endl;
 
-        Sophus::SE3f Trw;
+        autonomy::common::math::SE3f Trw;
 
         // If the reference keyframe was culled, traverse the spanning tree to
         // get a suitable keyframe.
@@ -785,7 +783,8 @@ void System::SaveTrajectoryEuRoC(const std::string& filename) {
 
         if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
             mSensor == IMU_RGBD) {
-            Sophus::SE3f Twb = (pKF->mImuCalib.mTbc * (*lit) * Trw).inverse();
+            autonomy::common::math::SE3f Twb =
+                (pKF->mImuCalib.mTbc * (*lit) * Trw).inverse();
             Eigen::Quaternionf q = Twb.unit_quaternion();
             Eigen::Vector3f twb = Twb.translation();
             f << std::setprecision(6) << 1e9 * (*lT) << " "
@@ -793,7 +792,7 @@ void System::SaveTrajectoryEuRoC(const std::string& filename) {
               << twb(2) << " " << q.x() << " " << q.y() << " " << q.z() << " "
               << q.w() << std::endl;
         } else {
-            Sophus::SE3f Twc = ((*lit) * Trw).inverse();
+            autonomy::common::math::SE3f Twc = ((*lit) * Trw).inverse();
             Eigen::Quaternionf q = Twc.unit_quaternion();
             Eigen::Vector3f twc = Twc.translation();
             f << std::setprecision(6) << 1e9 * (*lT) << " "
@@ -827,7 +826,7 @@ void System::SaveTrajectoryEuRoC(const std::string& filename, Map* pMap) {
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
-    Sophus::SE3f
+    autonomy::common::math::SE3f
         Twb;  // Can be word to cam0 or world to b dependingo on IMU or not.
     if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
         mSensor == IMU_RGBD)
@@ -869,7 +868,7 @@ void System::SaveTrajectoryEuRoC(const std::string& filename, Map* pMap) {
         KeyFrame* pKF = *lRit;
         // AINFO << "KF: " << pKF->mnId << endl;
 
-        Sophus::SE3f Trw;
+        autonomy::common::math::SE3f Trw;
 
         // If the reference keyframe was culled, traverse the spanning tree to
         // get a suitable keyframe.
@@ -899,7 +898,8 @@ void System::SaveTrajectoryEuRoC(const std::string& filename, Map* pMap) {
 
         if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
             mSensor == IMU_RGBD) {
-            Sophus::SE3f Twb = (pKF->mImuCalib.mTbc * (*lit) * Trw).inverse();
+            autonomy::common::math::SE3f Twb =
+                (pKF->mImuCalib.mTbc * (*lit) * Trw).inverse();
             Eigen::Quaternionf q = Twb.unit_quaternion();
             Eigen::Vector3f twb = Twb.translation();
             f << std::setprecision(6) << 1e9 * (*lT) << " "
@@ -907,7 +907,7 @@ void System::SaveTrajectoryEuRoC(const std::string& filename, Map* pMap) {
               << twb(2) << " " << q.x() << " " << q.y() << " " << q.z() << " "
               << q.w() << std::endl;
         } else {
-            Sophus::SE3f Twc = ((*lit) * Trw).inverse();
+            autonomy::common::math::SE3f Twc = ((*lit) * Trw).inverse();
             Eigen::Quaternionf q = Twc.unit_quaternion();
             Eigen::Vector3f twc = Twc.translation();
             f << std::setprecision(6) << 1e9 * (*lT) << " "
@@ -951,9 +951,10 @@ endl; return;
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
-    Sophus::SE3f Twb; // Can be word to cam0 or world to b dependingo on IMU or
-not. if (mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO || mSensor==IMU_RGBD) Twb
-= vpKFs[0]->GetImuPose_(); else Twb = vpKFs[0]->GetPoseInverse_();
+    autonomy::common::math::SE3f Twb; // Can be word to cam0 or world to b
+dependingo on IMU or not. if (mSensor==IMU_MONOCULAR || mSensor==IMU_STEREO ||
+mSensor==IMU_RGBD) Twb = vpKFs[0]->GetImuPose_(); else Twb =
+vpKFs[0]->GetPoseInverse_();
 
     ofstream f;
     f.open(filename.c_str());
@@ -983,7 +984,7 @@ mpTracker->mlFrameTimes.size() << endl;
     //AINFO << "size mpTracker->mlbLost: " << mpTracker->mlbLost.size() << endl;
 
 
-    for(list<Sophus::SE3f>::iterator
+    for(list<autonomy::common::math::SE3f>::iterator
 lit=mpTracker->mlRelativeFramePoses.begin(),
         lend=mpTracker->mlRelativeFramePoses.end();lit!=lend;lit++, lRit++,
 lT++, lbL++)
@@ -996,7 +997,7 @@ lT++, lbL++)
         KeyFrame* pKF = *lRit;
         //AINFO << "KF: " << pKF->mnId << endl;
 
-        Sophus::SE3f Trw;
+        autonomy::common::math::SE3f Trw;
 
         // If the reference keyframe was culled, traverse the spanning tree to
 get a suitable keyframe. if (!pKF) continue;
@@ -1028,8 +1029,8 @@ world reference
         if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
 mSensor==IMU_RGBD)
         {
-            Sophus::SE3f Tbw = pKF->mImuCalib.Tbc_ * (*lit) * Trw;
-            Sophus::SE3f Twb = Tbw.inverse();
+            autonomy::common::math::SE3f Tbw = pKF->mImuCalib.Tbc_ * (*lit) *
+Trw; autonomy::common::math::SE3f Twb = Tbw.inverse();
 
             Eigen::Vector3f twb = Twb.translation();
             Eigen::Quaternionf q = Twb.unit_quaternion();
@@ -1039,8 +1040,8 @@ twb(0) << " " << twb(1) << " " << twb(2) << " " << q.x() << " " << q.y() << " "
         }
         else
         {
-            Sophus::SE3f Tcw = (*lit) * Trw;
-            Sophus::SE3f Twc = Tcw.inverse();
+            autonomy::common::math::SE3f Tcw = (*lit) * Trw;
+            autonomy::common::math::SE3f Twc = Tcw.inverse();
 
             Eigen::Vector3f twc = Twc.translation();
             Eigen::Quaternionf q = Twc.unit_quaternion();
@@ -1155,7 +1156,7 @@ void System::SaveKeyFrameTrajectoryEuRoC(const std::string& filename) {
             continue;
         if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
             mSensor == IMU_RGBD) {
-            Sophus::SE3f Twb = pKF->GetImuPose();
+            autonomy::common::math::SE3f Twb = pKF->GetImuPose();
             Eigen::Quaternionf q = Twb.unit_quaternion();
             Eigen::Vector3f twb = Twb.translation();
             f << std::setprecision(6) << 1e9 * pKF->mTimeStamp << " "
@@ -1164,7 +1165,7 @@ void System::SaveKeyFrameTrajectoryEuRoC(const std::string& filename) {
               << q.w() << std::endl;
 
         } else {
-            Sophus::SE3f Twc = pKF->GetPoseInverse();
+            autonomy::common::math::SE3f Twc = pKF->GetPoseInverse();
             Eigen::Quaternionf q = Twc.unit_quaternion();
             Eigen::Vector3f t = Twc.translation();
             f << std::setprecision(6) << 1e9 * pKF->mTimeStamp << " "
@@ -1198,7 +1199,7 @@ void System::SaveKeyFrameTrajectoryEuRoC(const std::string& filename,
             continue;
         if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO ||
             mSensor == IMU_RGBD) {
-            Sophus::SE3f Twb = pKF->GetImuPose();
+            autonomy::common::math::SE3f Twb = pKF->GetImuPose();
             Eigen::Quaternionf q = Twb.unit_quaternion();
             Eigen::Vector3f twb = Twb.translation();
             f << std::setprecision(6) << 1e9 * pKF->mTimeStamp << " "
@@ -1207,7 +1208,7 @@ void System::SaveKeyFrameTrajectoryEuRoC(const std::string& filename,
               << q.w() << std::endl;
 
         } else {
-            Sophus::SE3f Twc = pKF->GetPoseInverse();
+            autonomy::common::math::SE3f Twc = pKF->GetPoseInverse();
             Eigen::Quaternionf q = Twc.unit_quaternion();
             Eigen::Vector3f t = Twc.translation();
             f << std::setprecision(6) << 1e9 * pKF->mTimeStamp << " "
@@ -1294,7 +1295,7 @@ void System::SaveTrajectoryKITTI(const std::string& filename) {
 
     // Transform all keyframes so that the first keyframe is at the origin.
     // After a loop closure the first keyframe might not be at the origin.
-    Sophus::SE3f Tow = vpKFs[0]->GetPoseInverse();
+    autonomy::common::math::SE3f Tow = vpKFs[0]->GetPoseInverse();
 
     std::ofstream f;
     f.open(filename.c_str());
@@ -1310,13 +1311,13 @@ void System::SaveTrajectoryKITTI(const std::string& filename) {
     std::list<::autonomy::localization::atlas::KeyFrame*>::iterator lRit =
         mpTracker->mlpReferences.begin();
     std::list<double>::iterator lT = mpTracker->mlFrameTimes.begin();
-    for (std::list<Sophus::SE3f>::iterator
+    for (std::list<autonomy::common::math::SE3f>::iterator
              lit = mpTracker->mlRelativeFramePoses.begin(),
              lend = mpTracker->mlRelativeFramePoses.end();
          lit != lend; lit++, lRit++, lT++) {
         ::autonomy::localization::atlas::KeyFrame* pKF = *lRit;
 
-        Sophus::SE3f Trw;
+        autonomy::common::math::SE3f Trw;
 
         if (!pKF)
             continue;
@@ -1328,8 +1329,8 @@ void System::SaveTrajectoryKITTI(const std::string& filename) {
 
         Trw = Trw * pKF->GetPose() * Tow;
 
-        Sophus::SE3f Tcw = (*lit) * Trw;
-        Sophus::SE3f Twc = Tcw.inverse();
+        autonomy::common::math::SE3f Tcw = (*lit) * Trw;
+        autonomy::common::math::SE3f Twc = Tcw.inverse();
         Eigen::Matrix3f Rwc = Twc.rotationMatrix();
         Eigen::Vector3f twc = Twc.translation();
 

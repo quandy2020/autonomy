@@ -3,14 +3,14 @@
 #include <string>
 #include <vector>
 
-#include <sophus/se3.hpp>
+#include "autonomy/common/math/se3.hpp"
 
 namespace autonomy::localization::atlas {
 
 /** @brief One timestamped world-from-camera trajectory pose. */
 struct TrajectorySample {
     double timestamp = 0.0;
-    Sophus::SE3f world_from_camera;
+    autonomy::common::math::SE3f world_from_camera;
 };
 
 /** @brief Writers for common visual-SLAM trajectory interchange formats. */

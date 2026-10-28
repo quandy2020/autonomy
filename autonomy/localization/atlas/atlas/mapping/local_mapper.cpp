@@ -23,8 +23,8 @@
 #include "atlas/closure/loop_closer.hpp"
 #include "atlas/common/math/converter.hpp"
 #include "atlas/common/math/geometric_tools.hpp"
+#include "atlas/common/optimization/optimizer.hpp"
 #include "atlas/match/orb_matcher.hpp"
-#include "atlas/optimization/optimizer.hpp"
 #include "autolink/common/log.hpp"
 
 #include <chrono>
@@ -447,7 +447,7 @@ void LocalMapper::CreateNewMapPoints() {
 
     OrbMatcher matcher(th, false);
 
-    Sophus::SE3<float> sophTcw1 = mpCurrentKeyFrame->GetPose();
+    autonomy::common::math::SE3<float> sophTcw1 = mpCurrentKeyFrame->GetPose();
     Eigen::Matrix<float, 3, 4> eigTcw1 = sophTcw1.matrix3x4();
     Eigen::Matrix<float, 3, 3> Rcw1 = eigTcw1.block<3, 3>(0, 0);
     Eigen::Matrix<float, 3, 3> Rwc1 = Rcw1.transpose();
@@ -501,7 +501,7 @@ void LocalMapper::CreateNewMapPoints() {
         matcher.SearchForTriangulation(mpCurrentKeyFrame, pKF2, vMatchedIndices,
                                        false, bCoarse);
 
-        Sophus::SE3<float> sophTcw2 = pKF2->GetPose();
+        autonomy::common::math::SE3<float> sophTcw2 = pKF2->GetPose();
         Eigen::Matrix<float, 3, 4> eigTcw2 = sophTcw2.matrix3x4();
         Eigen::Matrix<float, 3, 3> Rcw2 = eigTcw2.block<3, 3>(0, 0);
         Eigen::Matrix<float, 3, 3> Rwc2 = Rcw2.transpose();
@@ -1276,7 +1276,7 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
         const float cosg = gI.dot(dirG);
         const float ang = acos(cosg);
         Eigen::Vector3f vzg = v * ang / nv;
-        Rwg = Sophus::SO3f::exp(vzg).matrix();
+        Rwg = autonomy::common::math::SO3f::exp(vzg).matrix();
         mRwg = Rwg.cast<double>();
         mTinit = mpCurrentKeyFrame->mTimeStamp - mFirstTs;
     } else {
@@ -1307,8 +1307,8 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
         std::unique_lock<std::mutex> lock(
             mpAtlas->GetCurrentMap()->mMutexMapUpdate);
         if ((fabs(mScale - 1.f) > 0.00001) || !mbMonocular) {
-            Sophus::SE3f Twg(mRwg.cast<float>().transpose(),
-                             Eigen::Vector3f::Zero());
+            autonomy::common::math::SE3f Twg(mRwg.cast<float>().transpose(),
+                                             Eigen::Vector3f::Zero());
             mpAtlas->GetCurrentMap()->ApplyScaledRotation(Twg, mScale, true);
             mpTracker->UpdateFrameIMU(mScale, vpKF[0]->GetImuBias(),
                                       mpCurrentKeyFrame);
@@ -1365,7 +1365,7 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     while (!lpKFtoCheck.empty()) {
         KeyFrame* pKF = lpKFtoCheck.front();
         const std::set<KeyFrame*> sChilds = pKF->GetChilds();
-        Sophus::SE3f Twc = pKF->GetPoseInverse();
+        autonomy::common::math::SE3f Twc = pKF->GetPoseInverse();
         for (std::set<KeyFrame*>::const_iterator sit = sChilds.begin();
              sit != sChilds.end(); sit++) {
             KeyFrame* pChild = *sit;
@@ -1373,10 +1373,10 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
                 continue;
 
             if (pChild->mnBAGlobalForKF != GBAid) {
-                Sophus::SE3f Tchildc = pChild->GetPose() * Twc;
+                autonomy::common::math::SE3f Tchildc = pChild->GetPose() * Twc;
                 pChild->mTcwGBA = Tchildc * pKF->mTcwGBA;
 
-                Sophus::SO3f Rcor =
+                autonomy::common::math::SO3f Rcor =
                     pChild->mTcwGBA.so3().inverse() * pChild->GetPose().so3();
                 if (pChild->isVelocitySet()) {
                     pChild->mVwbGBA = Rcor * pChild->GetVelocity();
@@ -1493,14 +1493,14 @@ void LocalMapper::ScaleRefinement() {
         return;
     }
 
-    Sophus::SO3d so3wg(mRwg);
+    autonomy::common::math::SO3d so3wg(mRwg);
     // Before this line we are not changing the map
     std::unique_lock<std::mutex> lock(
         mpAtlas->GetCurrentMap()->mMutexMapUpdate);
     std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
     if ((fabs(mScale - 1.f) > 0.002) || !mbMonocular) {
-        Sophus::SE3f Tgw(mRwg.cast<float>().transpose(),
-                         Eigen::Vector3f::Zero());
+        autonomy::common::math::SE3f Tgw(mRwg.cast<float>().transpose(),
+                                         Eigen::Vector3f::Zero());
         mpAtlas->GetCurrentMap()->ApplyScaledRotation(Tgw, mScale, true);
         mpTracker->UpdateFrameIMU(mScale, mpCurrentKeyFrame->GetImuBias(),
                                   mpCurrentKeyFrame);

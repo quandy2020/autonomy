@@ -23,10 +23,10 @@
 #include "autolink/common/log.hpp"
 
 #include "atlas/common/math/converter.hpp"
+#include "atlas/common/optimization/g2o_types.hpp"
+#include "atlas/common/optimization/optimizer.hpp"
 #include "atlas/match/orb_matcher.hpp"
 #include "atlas/match/sim3_solver.hpp"
-#include "atlas/optimization/g2o_types.hpp"
-#include "atlas/optimization/optimizer.hpp"
 
 #include <exception>
 #include <mutex>
@@ -196,11 +196,11 @@ void LoopCloser::Run() {
                         AINFO << "IMU is not initilized, merge is aborted"
                               << std::endl;
                     } else {
-                        Sophus::SE3d mTmw =
+                        autonomy::common::math::SE3d mTmw =
                             mpMergeMatchedKF->GetPose().cast<double>();
                         g2o::Sim3 gSmw2(mTmw.unit_quaternion(),
                                         mTmw.translation(), 1.0);
-                        Sophus::SE3d mTcw =
+                        autonomy::common::math::SE3d mTcw =
                             mpCurrentKF->GetPose().cast<double>();
                         g2o::Sim3 gScw1(mTcw.unit_quaternion(),
                                         mTcw.translation(), 1.0);
@@ -313,7 +313,7 @@ void LoopCloser::Run() {
                     mg2oLoopScw =
                         mg2oLoopSlw;  //*mvg2oSim3LoopTcw[nCurrentIndex];
                     if (mpCurrentKF->GetMap()->IsInertial()) {
-                        Sophus::SE3d Twc =
+                        autonomy::common::math::SE3d Twc =
                             mpCurrentKF->GetPoseInverse().cast<double>();
                         g2o::Sim3 g2oTwc(Twc.unit_quaternion(),
                                          Twc.translation(), 1.0);
@@ -464,7 +464,7 @@ bool LoopCloser::NewDetectCommonRegions() {
     if (mnLoopNumCoincidences > 0) {
         bCheckSpatial = true;
         // Find from the last KF candidates
-        Sophus::SE3d mTcl =
+        autonomy::common::math::SE3d mTcl =
             (mpCurrentKF->GetPose() * mpLoopLastCurrentKF->GetPoseInverse())
                 .cast<double>();
         g2o::Sim3 gScl(mTcl.unit_quaternion(), mTcl.translation(), 1.0);
@@ -508,7 +508,7 @@ bool LoopCloser::NewDetectCommonRegions() {
     bool bMergeDetectedInKF = false;
     if (mnMergeNumCoincidences > 0) {
         // Find from the last KF candidates
-        Sophus::SE3d mTcl =
+        autonomy::common::math::SE3d mTcl =
             (mpCurrentKF->GetPose() * mpMergeLastCurrentKF->GetPoseInverse())
                 .cast<double>();
 
@@ -646,7 +646,8 @@ bool LoopCloser::DetectAndReffineSim3FromLastKF(
     if (nNumProjMatches >= nProjMatches) {
         // AINFO << "Sim3 reffine: There are " + std::to_string(nNumProjMatches)
         // + " initial matches ";
-        Sophus::SE3d mTwm = pMatchedKF->GetPoseInverse().cast<double>();
+        autonomy::common::math::SE3d mTwm =
+            pMatchedKF->GetPoseInverse().cast<double>();
         g2o::Sim3 gSwm(mTwm.unit_quaternion(), mTwm.translation(), 1.0);
         g2o::Sim3 gScm = gScw * gSwm;
         Eigen::Matrix<double, 7, 7> mHessian7x7;
@@ -864,7 +865,8 @@ bool LoopCloser::DetectCommonRegionsFromBoW(
                     pMostBoWMatchesKF->GetTranslation().cast<double>(), 1.0);
                 g2o::Sim3 gScw = gScm * gSmw;  // Similarity matrix of current
                                                // from the world position
-                Sophus::Sim3f mScw = Converter::toSophus(gScw);
+                autonomy::common::math::Sim3f mScw =
+                    Converter::toLieGroup(gScw);
 
                 std::vector<MapPoint*> vpMatchedMP;
                 vpMatchedMP.resize(mpCurrentKF->GetMapPointMatches().size(),
@@ -900,7 +902,8 @@ bool LoopCloser::DetectCommonRegionsFromBoW(
                         g2o::Sim3 gScw =
                             gScm * gSmw;  // Similarity matrix of current from
                                           // the world position
-                        Sophus::Sim3f mScw = Converter::toSophus(gScw);
+                        autonomy::common::math::Sim3f mScw =
+                            Converter::toLieGroup(gScw);
 
                         std::vector<MapPoint*> vpMatchedMP;
                         vpMatchedMP.resize(
@@ -951,7 +954,7 @@ bool LoopCloser::DetectCommonRegionsFromBoW(
                             int j = 0;
                             while (nNumKFs < 3 && j < vpCurrentCovKFs.size()) {
                                 KeyFrame* pKFj = vpCurrentCovKFs[j];
-                                Sophus::SE3d mTjc =
+                                autonomy::common::math::SE3d mTjc =
                                     (pKFj->GetPose() *
                                      mpCurrentKF->GetPoseInverse())
                                         .cast<double>();
@@ -966,9 +969,12 @@ bool LoopCloser::DetectCommonRegionsFromBoW(
                                     vpMatchedMPs_j);
 
                                 if (bValid) {
-                                    Sophus::SE3f Tc_w = mpCurrentKF->GetPose();
-                                    Sophus::SE3f Tw_cj = pKFj->GetPoseInverse();
-                                    Sophus::SE3f Tc_cj = Tc_w * Tw_cj;
+                                    autonomy::common::math::SE3f Tc_w =
+                                        mpCurrentKF->GetPose();
+                                    autonomy::common::math::SE3f Tw_cj =
+                                        pKFj->GetPoseInverse();
+                                    autonomy::common::math::SE3f Tc_cj =
+                                        Tc_w * Tw_cj;
                                     Eigen::Vector3f vector_dist =
                                         Tc_cj.translation();
                                     nNumKFs++;
@@ -1087,7 +1093,7 @@ int LoopCloser::FindMatchesByProjection(
         }
     }
 
-    Sophus::Sim3f mScw = Converter::toSophus(g2oScw);
+    autonomy::common::math::Sim3f mScw = Converter::toLieGroup(g2oScw);
     OrbMatcher matcher(0.9, true);
 
     vpMatchedMapPoints.resize(pCurrentKF->GetMapPointMatches().size(),
@@ -1133,16 +1139,17 @@ void LoopCloser::CorrectLoop() {
 
     KeyFrameAndPose CorrectedSim3, NonCorrectedSim3;
     CorrectedSim3[mpCurrentKF] = mg2oLoopScw;
-    Sophus::SE3f Twc = mpCurrentKF->GetPoseInverse();
-    Sophus::SE3f Tcw = mpCurrentKF->GetPose();
+    autonomy::common::math::SE3f Twc = mpCurrentKF->GetPoseInverse();
+    autonomy::common::math::SE3f Tcw = mpCurrentKF->GetPose();
     g2o::Sim3 g2oScw(Tcw.unit_quaternion().cast<double>(),
                      Tcw.translation().cast<double>(), 1.0);
     NonCorrectedSim3[mpCurrentKF] = g2oScw;
 
     // Update keyframe pose with corrected Sim3. First transform Sim3 to SE3
     // (scale translation)
-    Sophus::SE3d correctedTcw(mg2oLoopScw.rotation(),
-                              mg2oLoopScw.translation() / mg2oLoopScw.scale());
+    autonomy::common::math::SE3d correctedTcw(
+        mg2oLoopScw.rotation(),
+        mg2oLoopScw.translation() / mg2oLoopScw.scale());
     mpCurrentKF->SetPose(correctedTcw.cast<float>());
 
     Map* pLoopMap = mpCurrentKF->GetMap();
@@ -1174,8 +1181,8 @@ void LoopCloser::CorrectLoop() {
             KeyFrame* pKFi = *vit;
 
             if (pKFi != mpCurrentKF) {
-                Sophus::SE3f Tiw = pKFi->GetPose();
-                Sophus::SE3d Tic = (Tiw * Twc).cast<double>();
+                autonomy::common::math::SE3f Tiw = pKFi->GetPose();
+                autonomy::common::math::SE3d Tic = (Tiw * Twc).cast<double>();
                 g2o::Sim3 g2oSic(Tic.unit_quaternion(), Tic.translation(), 1.0);
                 g2o::Sim3 g2oCorrectedSiw = g2oSic * mg2oLoopScw;
                 // Pose corrected with the Sim3 of the loop closure
@@ -1183,7 +1190,7 @@ void LoopCloser::CorrectLoop() {
 
                 // Update keyframe pose with corrected Sim3. First transform
                 // Sim3 to SE3 (scale translation)
-                Sophus::SE3d correctedTiw(
+                autonomy::common::math::SE3d correctedTiw(
                     g2oCorrectedSiw.rotation(),
                     g2oCorrectedSiw.translation() / g2oCorrectedSiw.scale());
                 pKFi->SetPose(correctedTiw.cast<float>());
@@ -1208,7 +1215,7 @@ void LoopCloser::CorrectLoop() {
 
             // Update keyframe pose with corrected Sim3. First transform Sim3 to
             // SE3 (scale translation)
-            /*Sophus::SE3d
+            /*autonomy::common::math::SE3d
             correctedTiw(g2oCorrectedSiw.rotation(),g2oCorrectedSiw.translation()
             / g2oCorrectedSiw.scale());
             pKFi->SetPose(correctedTiw.cast<float>());*/
@@ -1541,7 +1548,8 @@ void LoopCloser::MergeLocal() {
     // std::to_string(spMapPointMerge.size()) << std::endl;
 
     //
-    Sophus::SE3d Twc = mpCurrentKF->GetPoseInverse().cast<double>();
+    autonomy::common::math::SE3d Twc =
+        mpCurrentKF->GetPoseInverse().cast<double>();
     g2o::Sim3 g2oNonCorrectedSwc(Twc.unit_quaternion(), Twc.translation(), 1.0);
     g2o::Sim3 g2oNonCorrectedScw = g2oNonCorrectedSwc.inverse();
     g2o::Sim3 g2oCorrectedScw = mg2oMergeScw;  // TODO Check the transformation
@@ -1566,12 +1574,12 @@ void LoopCloser::MergeLocal() {
         g2o::Sim3 g2oCorrectedSiw;
 
         if (pKFi != mpCurrentKF) {
-            Sophus::SE3d Tiw = (pKFi->GetPose()).cast<double>();
+            autonomy::common::math::SE3d Tiw = (pKFi->GetPose()).cast<double>();
             g2o::Sim3 g2oSiw(Tiw.unit_quaternion(), Tiw.translation(), 1.0);
             // Pose without correction
             vNonCorrectedSim3[pKFi] = g2oSiw;
 
-            Sophus::SE3d Tic = Tiw * Twc;
+            autonomy::common::math::SE3d Tic = Tiw * Twc;
             g2o::Sim3 g2oSic(Tic.unit_quaternion(), Tic.translation(), 1.0);
             g2oCorrectedSiw = g2oSic * mg2oMergeScw;
             vCorrectedSim3[pKFi] = g2oCorrectedSiw;
@@ -1584,8 +1592,8 @@ void LoopCloser::MergeLocal() {
         // (scale translation)
         double s = g2oCorrectedSiw.scale();
         pKFi->mfScale = s;
-        Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation(),
-                                  g2oCorrectedSiw.translation() / s);
+        autonomy::common::math::SE3d correctedTiw(
+            g2oCorrectedSiw.rotation(), g2oCorrectedSiw.translation() / s);
 
         pKFi->mTcwMerge = correctedTiw.cast<float>();
 
@@ -1807,12 +1815,13 @@ void LoopCloser::MergeLocal() {
 
                 g2o::Sim3 g2oCorrectedSiw;
 
-                Sophus::SE3d Tiw = (pKFi->GetPose()).cast<double>();
+                autonomy::common::math::SE3d Tiw =
+                    (pKFi->GetPose()).cast<double>();
                 g2o::Sim3 g2oSiw(Tiw.unit_quaternion(), Tiw.translation(), 1.0);
                 // Pose without correction
                 vNonCorrectedSim3[pKFi] = g2oSiw;
 
-                Sophus::SE3d Tic = Tiw * Twc;
+                autonomy::common::math::SE3d Tic = Tiw * Twc;
                 g2o::Sim3 g2oSim(Tic.unit_quaternion(), Tic.translation(), 1.0);
                 g2oCorrectedSiw = g2oSim * mg2oMergeScw;
                 vCorrectedSim3[pKFi] = g2oCorrectedSiw;
@@ -1823,8 +1832,9 @@ void LoopCloser::MergeLocal() {
 
                 pKFi->mfScale = s;
 
-                Sophus::SE3d correctedTiw(g2oCorrectedSiw.rotation(),
-                                          g2oCorrectedSiw.translation() / s);
+                autonomy::common::math::SE3d correctedTiw(
+                    g2oCorrectedSiw.rotation(),
+                    g2oCorrectedSiw.translation() / s);
 
                 pKFi->mTcwBefMerge = pKFi->GetPose();
                 pKFi->mTwcBefMerge = pKFi->GetPoseInverse();
@@ -1975,8 +1985,9 @@ void LoopCloser::MergeLocal2() {
 
     {
         float s_on = mSold_new.scale();
-        Sophus::SE3f T_on(mSold_new.rotation().cast<float>(),
-                          mSold_new.translation().cast<float>());
+        autonomy::common::math::SE3f T_on(
+            mSold_new.rotation().cast<float>(),
+            mSold_new.translation().cast<float>());
 
         std::unique_lock<std::mutex> lock(
             mpAtlas->GetCurrentMap()->mMutexMapUpdate);
@@ -2066,7 +2077,7 @@ void LoopCloser::MergeLocal2() {
         // Save non corrected poses (already merged maps)
         std::vector<KeyFrame*> vpKFs = pCurrentMap->GetAllKeyFrames();
         for (KeyFrame* pKFi : vpKFs) {
-            Sophus::SE3d Tiw = (pKFi->GetPose()).cast<double>();
+            autonomy::common::math::SE3d Tiw = (pKFi->GetPose()).cast<double>();
             g2o::Sim3 g2oSiw(Tiw.unit_quaternion(), Tiw.translation(), 1.0);
             NonCorrectedSim3[pKFi] = g2oSiw;
         }
@@ -2285,7 +2296,7 @@ void LoopCloser::SearchAndFuse(const KeyFrameAndPose& CorrectedPosesMap,
         Map* pMap = pKFi->GetMap();
 
         g2o::Sim3 g2oScw = mit->second;
-        Sophus::Sim3f Scw = Converter::toSophus(g2oScw);
+        autonomy::common::math::Sim3f Scw = Converter::toLieGroup(g2oScw);
 
         std::vector<MapPoint*> vpReplacePoints(vpMapPoints.size(),
                                                static_cast<MapPoint*>(nullptr));
@@ -2322,9 +2333,9 @@ void LoopCloser::SearchAndFuse(const std::vector<KeyFrame*>& vConectedKFs,
         int num_replaces = 0;
         KeyFrame* pKF = (*mit);
         Map* pMap = pKF->GetMap();
-        Sophus::SE3f Tcw = pKF->GetPose();
-        Sophus::Sim3f Scw(Tcw.unit_quaternion(), Tcw.translation());
-        Scw.setScale(1.f);
+        autonomy::common::math::SE3f Tcw = pKF->GetPose();
+        autonomy::common::math::Sim3f Scw(Tcw.unit_quaternion(),
+                                          Tcw.translation(), 1.0f);
         /*AINFO << "These should be zeros: " <<
             Scw.rotationMatrix() - Tcw.rotationMatrix() << std::endl <<
             Scw.translation() - Tcw.translation() << std::endl <<
@@ -2491,7 +2502,7 @@ void LoopCloser::RunGlobalBundleAdjustment(Map* pActiveMap,
                 // AINFO << "---Updating KF " << pKF->mnId << " with " <<
                 // sChilds.size() << " childs" << std::endl; AINFO << " KF
                 // mnBAGlobalForKF: " << pKF->mnBAGlobalForKF << std::endl;
-                Sophus::SE3f Twc = pKF->GetPoseInverse();
+                autonomy::common::math::SE3f Twc = pKF->GetPoseInverse();
                 // AINFO << "Twc: " << Twc << std::endl;
                 // AINFO << "GBA: Correct KeyFrames" << std::endl;
                 for (std::set<KeyFrame*>::const_iterator sit = sChilds.begin();
@@ -2505,15 +2516,17 @@ void LoopCloser::RunGlobalBundleAdjustment(Map* pActiveMap,
                         // pChild->mnBAGlobalForKF << "; LoopKF: " << nLoopKF <<
                         // std::endl; AINFO << " child id: " << pChild->mnId <<
                         // std::endl;
-                        Sophus::SE3f Tchildc = pChild->GetPose() * Twc;
+                        autonomy::common::math::SE3f Tchildc =
+                            pChild->GetPose() * Twc;
                         // AINFO << "Child pose: " << Tchildc << std::endl;
                         // AINFO << "pKF->mTcwGBA: " << pKF->mTcwGBA <<
                         // std::endl;
                         pChild->mTcwGBA =
                             Tchildc * pKF->mTcwGBA;  //*Tcorc*pKF->mTcwGBA;
 
-                        Sophus::SO3f Rcor = pChild->mTcwGBA.so3().inverse() *
-                                            pChild->GetPose().so3();
+                        autonomy::common::math::SO3f Rcor =
+                            pChild->mTcwGBA.so3().inverse() *
+                            pChild->GetPose().so3();
                         if (pChild->isVelocitySet()) {
                             pChild->mVwbGBA = Rcor * pChild->GetVelocity();
                         } else

@@ -112,8 +112,8 @@ public:
     void SetImuInitialized();
     bool isImuInitialized();
 
-    void ApplyScaledRotation(const Sophus::SE3f& T, const float s,
-                             const bool bScaledVel = false);
+    void ApplyScaledRotation(const autonomy::common::math::SE3f& T,
+                             const float s, const bool bScaledVel = false);
 
     void SetInertialSensor();
     bool IsInertial();

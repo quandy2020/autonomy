@@ -74,13 +74,17 @@ public:
 
     // Preprocess the input and call Track(). Extract features and performs
     // stereo matching.
-    Sophus::SE3f GrabImageStereo(const cv::Mat& imRectLeft,
-                                 const cv::Mat& imRectRight,
-                                 const double& timestamp, std::string filename);
-    Sophus::SE3f GrabImageRGBD(const cv::Mat& imRGB, const cv::Mat& imD,
-                               const double& timestamp, std::string filename);
-    Sophus::SE3f GrabImageMonocular(const cv::Mat& im, const double& timestamp,
-                                    std::string filename);
+    autonomy::common::math::SE3f GrabImageStereo(const cv::Mat& imRectLeft,
+                                                 const cv::Mat& imRectRight,
+                                                 const double& timestamp,
+                                                 std::string filename);
+    autonomy::common::math::SE3f GrabImageRGBD(const cv::Mat& imRGB,
+                                               const cv::Mat& imD,
+                                               const double& timestamp,
+                                               std::string filename);
+    autonomy::common::math::SE3f GrabImageMonocular(const cv::Mat& im,
+                                                    const double& timestamp,
+                                                    std::string filename);
 
     void GrabImuData(const IMU::Point& imuMeasurement);
 
@@ -163,7 +167,7 @@ public:
     // Lists used to recover the full camera trajectory at the end of the
     // execution. Basically we store the reference keyframe for each frame and
     // its relative transformation
-    std::list<Sophus::SE3f> mlRelativeFramePoses;
+    std::list<autonomy::common::math::SE3f> mlRelativeFramePoses;
     std::list<KeyFrame*> mlpReferences;
     std::list<double> mlFrameTimes;
     std::list<bool> mlbLost;
@@ -347,7 +351,7 @@ protected:
 
     // Motion Model
     bool mbVelocity{false};
-    Sophus::SE3f mVelocity;
+    autonomy::common::math::SE3f mVelocity;
 
     // Color order (true RGB, false BGR, ignored if grayscale)
     bool mbRGB;
@@ -370,7 +374,7 @@ protected:
 
     int initID, lastID;
 
-    Sophus::SE3f mTlr;
+    autonomy::common::math::SE3f mTlr;
 
     void newParameterLoader(ConfigLoader* settings);
 

@@ -26,7 +26,7 @@
 #include <opencv2/opencv.hpp>
 #include <unordered_set>
 
-#include <sophus/se3.hpp>
+#include "autonomy/common/math/se3.hpp"
 
 namespace autonomy::localization::atlas {
 
@@ -45,7 +45,8 @@ public:
     // motion
     bool Reconstruct(const std::vector<cv::KeyPoint>& vKeys1,
                      const std::vector<cv::KeyPoint>& vKeys2,
-                     const std::vector<int>& vMatches12, Sophus::SE3f& T21,
+                     const std::vector<int>& vMatches12,
+                     autonomy::common::math::SE3f& T21,
                      std::vector<cv::Point3f>& vP3D,
                      std::vector<bool>& vbTriangulated);
 
@@ -68,13 +69,13 @@ private:
                            std::vector<bool>& vbMatchesInliers, float sigma);
 
     bool ReconstructF(std::vector<bool>& vbMatchesInliers, Eigen::Matrix3f& F21,
-                      Eigen::Matrix3f& K, Sophus::SE3f& T21,
+                      Eigen::Matrix3f& K, autonomy::common::math::SE3f& T21,
                       std::vector<cv::Point3f>& vP3D,
                       std::vector<bool>& vbTriangulated, float minParallax,
                       int minTriangulated);
 
     bool ReconstructH(std::vector<bool>& vbMatchesInliers, Eigen::Matrix3f& H21,
-                      Eigen::Matrix3f& K, Sophus::SE3f& T21,
+                      Eigen::Matrix3f& K, autonomy::common::math::SE3f& T21,
                       std::vector<cv::Point3f>& vP3D,
                       std::vector<bool>& vbTriangulated, float minParallax,
                       int minTriangulated);

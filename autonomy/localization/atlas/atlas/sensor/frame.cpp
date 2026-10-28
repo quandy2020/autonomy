@@ -24,9 +24,9 @@
 #include "autolink/common/log.hpp"
 
 #include "atlas/common/math/converter.hpp"
+#include "atlas/common/optimization/g2o_types.hpp"
 #include "atlas/feature/orb_extractor.hpp"
 #include "atlas/match/orb_matcher.hpp"
-#include "atlas/optimization/g2o_types.hpp"
 #include "atlas/sensor/camera/geometric_camera.hpp"
 #include "atlas/sensor/keyframe.hpp"
 #include "atlas/sensor/map_point.hpp"
@@ -593,7 +593,7 @@ bool Frame::isSet() const {
     return mbIsSet;
 }
 
-void Frame::SetPose(const Sophus::SE3<float>& Tcw) {
+void Frame::SetPose(const autonomy::common::math::SE3<float>& Tcw) {
     mTcw = Tcw;
 
     UpdatePoseMatrices();
@@ -622,8 +622,8 @@ void Frame::SetImuPoseVelocity(const Eigen::Matrix3f& Rwb,
     mVw = Vwb;
     mbHasVelocity = true;
 
-    Sophus::SE3f Twb(Rwb, twb);
-    Sophus::SE3f Tbw = Twb.inverse();
+    autonomy::common::math::SE3f Twb(Rwb, twb);
+    autonomy::common::math::SE3f Tbw = Twb.inverse();
 
     mTcw = mImuCalib.mTcb * Tbw;
 
@@ -633,7 +633,7 @@ void Frame::SetImuPoseVelocity(const Eigen::Matrix3f& Rwb,
 }
 
 void Frame::UpdatePoseMatrices() {
-    Sophus::SE3<float> Twc = mTcw.inverse();
+    autonomy::common::math::SE3<float> Twc = mTcw.inverse();
     mRwc = Twc.rotationMatrix();
     mOw = Twc.translation();
     mRcw = mTcw.rotationMatrix();
@@ -648,15 +648,15 @@ Eigen::Matrix<float, 3, 3> Frame::GetImuRotation() {
     return mRwc * mImuCalib.mTcb.rotationMatrix();
 }
 
-Sophus::SE3<float> Frame::GetImuPose() {
+autonomy::common::math::SE3<float> Frame::GetImuPose() {
     return mTcw.inverse() * mImuCalib.mTcb;
 }
 
-Sophus::SE3f Frame::GetRelativePoseTrl() {
+autonomy::common::math::SE3f Frame::GetRelativePoseTrl() {
     return mTrl;
 }
 
-Sophus::SE3f Frame::GetRelativePoseTlr() {
+autonomy::common::math::SE3f Frame::GetRelativePoseTlr() {
     return mTlr;
 }
 
@@ -1176,7 +1176,8 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight,
              OrbExtractor* extractorRight, Vocabulary* voc, cv::Mat& K,
              cv::Mat& distCoef, const float& bf, const float& thDepth,
              GeometricCamera* pCamera, GeometricCamera* pCamera2,
-             Sophus::SE3f& Tlr, Frame* pPrevF, const IMU::Calib& ImuCalib)
+             autonomy::common::math::SE3f& Tlr, Frame* pPrevF,
+             const IMU::Calib& ImuCalib)
     : mpcpi(nullptr),
       mpORBvocabulary(voc),
       mpOrbExtractorLeft(extractorLeft),
@@ -1272,7 +1273,7 @@ Frame::Frame(const cv::Mat& imLeft, const cv::Mat& imRight,
 
     mb = mbf / fx;
 
-    // Sophus/Eigen
+    // common Lie-group math
     mTlr = Tlr;
     mTrl = mTlr.inverse();
     mRlr = mTlr.rotationMatrix();

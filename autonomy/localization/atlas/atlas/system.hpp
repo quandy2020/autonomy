@@ -87,7 +87,7 @@ public:
     // rectified. Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is
     // converted to grayscale. Returns the camera pose (empty if tracking
     // fails).
-    Sophus::SE3f TrackStereo(
+    autonomy::common::math::SE3f TrackStereo(
         const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
         const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>(),
         std::string filename = "");
@@ -96,7 +96,7 @@ public:
     // frame. Input image: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted
     // to grayscale. Input depthmap: Float (CV_32F). Returns the camera pose
     // (empty if tracking fails).
-    Sophus::SE3f TrackRGBD(
+    autonomy::common::math::SE3f TrackRGBD(
         const cv::Mat& im, const cv::Mat& depthmap, const double& timestamp,
         const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>(),
         std::string filename = "");
@@ -104,7 +104,7 @@ public:
     // Proccess the given monocular frame and optionally imu data
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to
     // grayscale. Returns the camera pose (empty if tracking fails).
-    Sophus::SE3f TrackMonocular(
+    autonomy::common::math::SE3f TrackMonocular(
         const cv::Mat& im, const double& timestamp,
         const std::vector<IMU::Point>& vImuMeas = std::vector<IMU::Point>(),
         std::string filename = "");

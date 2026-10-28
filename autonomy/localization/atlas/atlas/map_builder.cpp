@@ -60,8 +60,9 @@ bool ValidImage(const ImageFrame& image) {
            image.pixels.rows > 0 && image.pixels.cols > 0;
 }
 
-Pose3d ToWorldCamera(const Sophus::SE3f& camera_from_world) {
-    const Sophus::SE3f world_from_camera = camera_from_world.inverse();
+Pose3d ToWorldCamera(const autonomy::common::math::SE3f& camera_from_world) {
+    const autonomy::common::math::SE3f world_from_camera =
+        camera_from_world.inverse();
     Pose3d pose;
     pose.translation = world_from_camera.translation().cast<double>();
     pose.rotation =
@@ -96,7 +97,8 @@ public:
         return points;
     }
 
-    void UpdateResult(double time, const Sophus::SE3f& camera_from_world,
+    void UpdateResult(double time,
+                      const autonomy::common::math::SE3f& camera_from_world,
                       TrackingResult* output) {
         latest.time = time;
         latest.tracking_state = system ? system->GetTrackingState() : 0;
@@ -190,6 +192,16 @@ bool MapBuilder::ShutdownAndSaveEurocTrajectory(const std::string& path) {
     return saved.good() && saved.peek() != std::ifstream::traits_type::eof();
 }
 
+bool MapBuilder::ShutdownAndSaveKittiTrajectory(const std::string& path) {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    if (!impl_->system || path.empty())
+        return false;
+    impl_->system->Shutdown();
+    impl_->system->SaveTrajectoryKITTI(path);
+    std::ifstream saved(path);
+    return saved.good() && saved.peek() != std::ifstream::traits_type::eof();
+}
+
 bool MapBuilder::started() const {
     std::lock_guard<std::mutex> lock(impl_->mutex);
     return impl_->system != nullptr;
@@ -217,7 +229,7 @@ bool MapBuilder::TrackMonocular(const ImageFrame& image,
          impl_->config.sensor != SensorMode::kMonocularInertial)) {
         return false;
     }
-    const Sophus::SE3f pose = impl_->system->TrackMonocular(
+    const autonomy::common::math::SE3f pose = impl_->system->TrackMonocular(
         image.pixels, image.time, impl_->TakeImu(image.time));
     impl_->UpdateResult(image.time, pose, result);
     return true;
@@ -233,7 +245,7 @@ bool MapBuilder::TrackStereo(const ImageFrame& left, const ImageFrame& right,
         return false;
     }
     const double time = std::max(left.time, right.time);
-    const Sophus::SE3f pose = impl_->system->TrackStereo(
+    const autonomy::common::math::SE3f pose = impl_->system->TrackStereo(
         left.pixels, right.pixels, time, impl_->TakeImu(time));
     impl_->UpdateResult(time, pose, result);
     return true;
@@ -249,7 +261,7 @@ bool MapBuilder::TrackRgbd(const ImageFrame& color, const ImageFrame& depth,
         return false;
     }
     const double time = std::max(color.time, depth.time);
-    const Sophus::SE3f pose = impl_->system->TrackRGBD(
+    const autonomy::common::math::SE3f pose = impl_->system->TrackRGBD(
         color.pixels, depth.pixels, time, impl_->TakeImu(time));
     impl_->UpdateResult(time, pose, result);
     return true;

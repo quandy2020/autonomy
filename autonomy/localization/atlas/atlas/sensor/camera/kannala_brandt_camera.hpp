@@ -90,7 +90,7 @@ public:
     bool ReconstructWithTwoViews(const std::vector<cv::KeyPoint>& vKeys1,
                                  const std::vector<cv::KeyPoint>& vKeys2,
                                  const std::vector<int>& vMatches12,
-                                 Sophus::SE3f& T21,
+                                 autonomy::common::math::SE3f& T21,
                                  std::vector<cv::Point3f>& vP3D,
                                  std::vector<bool>& vbTriangulated);
 
@@ -111,9 +111,10 @@ public:
     std::vector<int> mvLappingArea;
 
     bool matchAndtriangulate(const cv::KeyPoint& kp1, const cv::KeyPoint& kp2,
-                             GeometricCamera* pOther, Sophus::SE3f& Tcw1,
-                             Sophus::SE3f& Tcw2, const float sigmaLevel1,
-                             const float sigmaLevel2,
+                             GeometricCamera* pOther,
+                             autonomy::common::math::SE3f& Tcw1,
+                             autonomy::common::math::SE3f& Tcw2,
+                             const float sigmaLevel1, const float sigmaLevel2,
                              Eigen::Vector3f& x3Dtriangulated);
 
     friend std::ostream& operator<<(std::ostream& os,

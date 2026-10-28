@@ -206,7 +206,7 @@ void KeyFrame::ComputeBoW() {
     }
 }
 
-void KeyFrame::SetPose(const Sophus::SE3f& Tcw) {
+void KeyFrame::SetPose(const autonomy::common::math::SE3f& Tcw) {
     std::unique_lock<std::mutex> lock(mMutexPose);
 
     mTcw = Tcw;
@@ -226,12 +226,12 @@ void KeyFrame::SetVelocity(const Eigen::Vector3f& Vw) {
     mbHasVelocity = true;
 }
 
-Sophus::SE3f KeyFrame::GetPose() {
+autonomy::common::math::SE3f KeyFrame::GetPose() {
     std::unique_lock<std::mutex> lock(mMutexPose);
     return mTcw;
 }
 
-Sophus::SE3f KeyFrame::GetPoseInverse() {
+autonomy::common::math::SE3f KeyFrame::GetPoseInverse() {
     std::unique_lock<std::mutex> lock(mMutexPose);
     return mTwc;
 }
@@ -251,7 +251,7 @@ Eigen::Matrix3f KeyFrame::GetImuRotation() {
     return (mTwc * mImuCalib.mTcb).rotationMatrix();
 }
 
-Sophus::SE3f KeyFrame::GetImuPose() {
+autonomy::common::math::SE3f KeyFrame::GetImuPose() {
     std::unique_lock<std::mutex> lock(mMutexPose);
     return mTwc * mImuCalib.mTcb;
 }
@@ -1147,23 +1147,23 @@ bool KeyFrame::ProjectPointUnDistort(MapPoint* pMP, cv::Point2f& kp, float& u,
     return true;
 }
 
-Sophus::SE3f KeyFrame::GetRelativePoseTrl() {
+autonomy::common::math::SE3f KeyFrame::GetRelativePoseTrl() {
     std::unique_lock<std::mutex> lock(mMutexPose);
     return mTrl;
 }
 
-Sophus::SE3f KeyFrame::GetRelativePoseTlr() {
+autonomy::common::math::SE3f KeyFrame::GetRelativePoseTlr() {
     std::unique_lock<std::mutex> lock(mMutexPose);
     return mTlr;
 }
 
-Sophus::SE3<float> KeyFrame::GetRightPose() {
+autonomy::common::math::SE3<float> KeyFrame::GetRightPose() {
     std::unique_lock<std::mutex> lock(mMutexPose);
 
     return mTrl * mTcw;
 }
 
-Sophus::SE3<float> KeyFrame::GetRightPoseInverse() {
+autonomy::common::math::SE3<float> KeyFrame::GetRightPoseInverse() {
     std::unique_lock<std::mutex> lock(mMutexPose);
 
     return mTwc * mTlr;

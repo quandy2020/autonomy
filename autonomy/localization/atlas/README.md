@@ -1,28 +1,38 @@
 # Autonomy Atlas visual SLAM
 
-This directory is the autonomy-localization-owned ORB-SLAM3 integration. It is
-self-contained and does not depend on the repository's top-level Voxel Atlas.
+Atlas is the autonomy-owned ORB-SLAM3 integration. It is self-contained and
+does not depend on the repository's Voxel-SLAM or Argus implementations.
 
-The estimator is organized by responsibility:
+The public C++ entry point is `atlas/map_builder.hpp`. The runtime supports
+monocular, stereo, RGB-D, monocular-inertial, stereo-inertial and
+RGB-D-inertial tracking. AutoMsgs conversion and Autolink integration live in
+`atlas/message_adapter.*` and `atlas/atlas_node.*`.
 
-- `atlas/sensor/`: frames, keyframes, map points, IMU data and camera models.
-- `atlas/feature/`: ORB extraction and the FBoW vocabulary adapter.
-- `atlas/match/`: ORB correspondence search plus PnP and Sim3 match validation.
-- `atlas/tracking/`, `atlas/mapping/`, `atlas/closure/`: the SLAM front end,
-  local mapping and loop-closing pipelines.
-- `atlas/map/` and `atlas/optimization/`: map ownership and g2o optimization.
-- `atlas/common/io/`: configuration and serialization support.
-- `atlas/common/math/`: shared geometry and conversion utilities.
-- `atlas/`: the ORB-SLAM3 runtime, drawers and headless viewer.
-- `atlas/visual_slam_message_adapter.*` and `atlas/atlas_node.*`: AutoMsgs and
-  Autolink integration.
-- `thirdparty/`: FBow headers plus the private g2o and Sophus sources.
-- `config/`: reference camera configurations and the binary FBoW vocabulary.
+## Documentation
 
-Link `autonomy::localization_atlas` and use `atlas/map_builder.hpp` for the
-public C++ API. It supports monocular, stereo, RGB-D, monocular-inertial,
-stereo-inertial and RGB-D-inertial tracking.
+Read the documents in numeric order:
 
-ORB-SLAM3 is GPLv3 software. Its license is preserved in `COPYING`; bundled
-third-party notices remain beside their respective sources and in
-`THIRD_PARTY.md`.
+1. [Overview](docs/01-overview.md)
+2. [Architecture](docs/02-architecture.md)
+3. [Build and CMake](docs/03-build-and-cmake.md)
+4. [Configuration](docs/04-configuration.md)
+5. [AutoMsgs integration](docs/05-automsgs-integration.md)
+6. [Testing and benchmarking](docs/06-testing-and-benchmarking.md)
+7. [Development guide](docs/07-development-guide.md)
+8. [Third-party software](docs/08-third-party.md)
+
+## Quick build
+
+Atlas is built as part of the `autonomy` package:
+
+```bash
+docker exec -w /workspace/autonomy SpaceHero \
+  colcon build --packages-up-to autonomy
+```
+
+The default build enables bounded OpenMP parallelism for stereo ORB
+extraction. See [Build and CMake](docs/03-build-and-cmake.md) for all options
+and standalone configuration.
+
+ORB-SLAM3-derived code is GPLv3. See [COPYING](COPYING) and
+[THIRD_PARTY.md](THIRD_PARTY.md).

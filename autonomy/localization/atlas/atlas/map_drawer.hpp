@@ -47,7 +47,7 @@ public:
     void DrawMapPoints();
     void DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph,
                        const bool bDrawInertialGraph, const bool bDrawOptLba);
-    void SetCurrentCameraPose(const Sophus::SE3f& Tcw);
+    void SetCurrentCameraPose(const autonomy::common::math::SE3f& Tcw);
     void SetReferenceKeyFrame(KeyFrame* pKF);
 
 private:
@@ -60,7 +60,7 @@ private:
     float mCameraSize;
     float mCameraLineWidth;
 
-    Sophus::SE3f mCameraPose;
+    autonomy::common::math::SE3f mCameraPose;
 
     std::mutex mMutexCamera;
 

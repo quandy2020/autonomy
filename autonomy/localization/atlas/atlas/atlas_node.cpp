@@ -92,11 +92,11 @@ bool AtlasNode::Start() {
         return false;
     }
 
-    VisualSlamMessageAdapter::Options message_options;
+    MessageAdapter::Options message_options;
     message_options.map_frame = options_.map_frame;
     message_options.camera_frame = options_.camera_frame;
-    messages_ = std::make_unique<VisualSlamMessageAdapter>(
-        system_.get(), std::move(message_options));
+    messages_ = std::make_unique<MessageAdapter>(system_.get(),
+                                                 std::move(message_options));
 
     node_ = autolink::CreateNode("atlas_visual_slam");
     if (!node_) {

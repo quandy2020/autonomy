@@ -124,7 +124,7 @@ class KeyFrame
         ar& mBowVec;
         ar& mFeatVec;
         // Pose relative to parent
-        serializeSophusSE3<Archive>(ar, mTcp, version);
+        serializeSE3<Archive>(ar, mTcp, version);
         // Scale
         ar& const_cast<int&>(mnScaleLevels);
         ar& const_cast<float&>(mfScaleFactor);
@@ -139,7 +139,7 @@ class KeyFrame
         ar& const_cast<int&>(mnMaxY);
         ar& MakeArray(mK_.data(), mK_.size());
         // Pose
-        serializeSophusSE3<Archive>(ar, mTcw, version);
+        serializeSE3<Archive>(ar, mTcw, version);
         // MapPointsId associated to keypoints
         ar& mvBackupMapPointsId;
         // Grid
@@ -170,7 +170,7 @@ class KeyFrame
         ar& mvRightToLeftMatch;
         ar& const_cast<int&>(NLeft);
         ar& const_cast<int&>(NRight);
-        serializeSophusSE3<Archive>(ar, mTlr, version);
+        serializeSE3<Archive>(ar, mTlr, version);
         serializeVectorKeyPoints<Archive>(ar, mvKeysRight, version);
         ar& mGridRight;
 
@@ -192,17 +192,17 @@ public:
     KeyFrame(Frame& F, Map* pMap, PlaceRecognizer* pKFDB);
 
     // Pose functions
-    void SetPose(const Sophus::SE3f& Tcw);
+    void SetPose(const autonomy::common::math::SE3f& Tcw);
     void SetVelocity(const Eigen::Vector3f& Vw_);
 
-    Sophus::SE3f GetPose();
+    autonomy::common::math::SE3f GetPose();
 
-    Sophus::SE3f GetPoseInverse();
+    autonomy::common::math::SE3f GetPoseInverse();
     Eigen::Vector3f GetCameraCenter();
 
     Eigen::Vector3f GetImuPosition();
     Eigen::Matrix3f GetImuRotation();
-    Sophus::SE3f GetImuPose();
+    autonomy::common::math::SE3f GetImuPose();
     Eigen::Matrix3f GetRotation();
     Eigen::Vector3f GetTranslation();
     Eigen::Vector3f GetVelocity();
@@ -348,17 +348,17 @@ public:
     bool mbCurrentPlaceRecognition;
 
     // Variables used by loop closing
-    Sophus::SE3f mTcwGBA;
-    Sophus::SE3f mTcwBefGBA;
+    autonomy::common::math::SE3f mTcwGBA;
+    autonomy::common::math::SE3f mTcwBefGBA;
     Eigen::Vector3f mVwbGBA;
     Eigen::Vector3f mVwbBefGBA;
     IMU::Bias mBiasGBA;
     long unsigned int mnBAGlobalForKF;
 
     // Variables used by merging
-    Sophus::SE3f mTcwMerge;
-    Sophus::SE3f mTcwBefMerge;
-    Sophus::SE3f mTwcBefMerge;
+    autonomy::common::math::SE3f mTcwMerge;
+    autonomy::common::math::SE3f mTcwBefMerge;
+    autonomy::common::math::SE3f mTwcBefMerge;
     Eigen::Vector3f mVwbMerge;
     Eigen::Vector3f mVwbBefMerge;
     IMU::Bias mBiasMerge;
@@ -388,7 +388,7 @@ public:
     FeatureVector mFeatVec;
 
     // Pose relative to parent (this is computed when bad flag is activated)
-    Sophus::SE3f mTcp;
+    autonomy::common::math::SE3f mTcp;
 
     // Scale
     const int mnScaleLevels;
@@ -427,9 +427,9 @@ public:
     // safe.
 protected:
     // sophus poses
-    Sophus::SE3<float> mTcw;
+    autonomy::common::math::SE3<float> mTcw;
     Eigen::Matrix3f mRcw;
-    Sophus::SE3<float> mTwc;
+    autonomy::common::math::SE3<float> mTwc;
     Eigen::Matrix3f mRwc;
 
     // IMU position
@@ -439,8 +439,8 @@ protected:
     bool mbHasVelocity;
 
     // Transformation matrix between cameras in stereo fisheye
-    Sophus::SE3<float> mTlr;
-    Sophus::SE3<float> mTrl;
+    autonomy::common::math::SE3<float> mTlr;
+    autonomy::common::math::SE3<float> mTrl;
 
     // Imu bias
     IMU::Bias mImuBias;
@@ -510,8 +510,8 @@ public:
     // Indexes of stereo observations correspondences
     std::vector<int> mvLeftToRightMatch, mvRightToLeftMatch;
 
-    Sophus::SE3f GetRelativePoseTrl();
-    Sophus::SE3f GetRelativePoseTlr();
+    autonomy::common::math::SE3f GetRelativePoseTrl();
+    autonomy::common::math::SE3f GetRelativePoseTlr();
 
     // KeyPoints in the right image (for stereo fisheye, coordinates are needed)
     const std::vector<cv::KeyPoint> mvKeysRight;
@@ -520,8 +520,8 @@ public:
 
     std::vector<std::vector<std::vector<std::size_t> > > mGridRight;
 
-    Sophus::SE3<float> GetRightPose();
-    Sophus::SE3<float> GetRightPoseInverse();
+    autonomy::common::math::SE3<float> GetRightPose();
+    autonomy::common::math::SE3<float> GetRightPoseInverse();
 
     Eigen::Vector3f GetRightCameraCenter();
     Eigen::Matrix<float, 3, 3> GetRightRotation();

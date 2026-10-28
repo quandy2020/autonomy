@@ -28,7 +28,7 @@
 #include <opencv2/features2d.hpp>
 #include <opencv2/imgproc.hpp>
 
-#include <sophus/se3.hpp>
+#include "autonomy/common/math/se3.hpp"
 
 #include <Eigen/Geometry>
 
@@ -70,7 +70,7 @@ public:
     virtual bool ReconstructWithTwoViews(
         const std::vector<cv::KeyPoint>& vKeys1,
         const std::vector<cv::KeyPoint>& vKeys2,
-        const std::vector<int>& vMatches12, Sophus::SE3f& T21,
+        const std::vector<int>& vMatches12, autonomy::common::math::SE3f& T21,
         std::vector<cv::Point3f>& vP3D, std::vector<bool>& vbTriangulated) = 0;
 
     virtual cv::Mat toK() = 0;
@@ -94,13 +94,11 @@ public:
         return mvParameters.size();
     }
 
-    virtual bool matchAndtriangulate(const cv::KeyPoint& kp1,
-                                     const cv::KeyPoint& kp2,
-                                     GeometricCamera* pOther,
-                                     Sophus::SE3f& Tcw1, Sophus::SE3f& Tcw2,
-                                     const float sigmaLevel1,
-                                     const float sigmaLevel2,
-                                     Eigen::Vector3f& x3Dtriangulated) = 0;
+    virtual bool matchAndtriangulate(
+        const cv::KeyPoint& kp1, const cv::KeyPoint& kp2,
+        GeometricCamera* pOther, autonomy::common::math::SE3f& Tcw1,
+        autonomy::common::math::SE3f& Tcw2, const float sigmaLevel1,
+        const float sigmaLevel2, Eigen::Vector3f& x3Dtriangulated) = 0;
 
     unsigned int GetId() {
         return mnId;

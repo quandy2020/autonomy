@@ -25,7 +25,7 @@
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
 #include <vector>
-#include "sophus/sim3.hpp"
+#include "atlas/common/math/sim3.hpp"
 
 #include "atlas/sensor/frame.hpp"
 #include "atlas/sensor/keyframe.hpp"
@@ -60,14 +60,16 @@ public:
 
     // Project MapPoints using a Similarity Transformation and search matches.
     // Used in loop detection (Loop Closing)
-    int SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw,
+    int SearchByProjection(KeyFrame* pKF,
+                           autonomy::common::math::Sim3<float>& Scw,
                            const std::vector<MapPoint*>& vpPoints,
                            std::vector<MapPoint*>& vpMatched, int th,
                            float ratioHamming = 1.0);
 
     // Project MapPoints using a Similarity Transformation and search matches.
     // Used in Place Recognition (Loop Closing and Merging)
-    int SearchByProjection(KeyFrame* pKF, Sophus::Sim3<float>& Scw,
+    int SearchByProjection(KeyFrame* pKF,
+                           autonomy::common::math::Sim3<float>& Scw,
                            const std::vector<MapPoint*>& vpPoints,
                            const std::vector<KeyFrame*>& vpPointsKFs,
                            std::vector<MapPoint*>& vpMatched,
@@ -101,7 +103,7 @@ public:
     // const float th);
     int SearchBySim3(KeyFrame* pKF1, KeyFrame* pKF2,
                      std::vector<MapPoint*>& vpMatches12,
-                     const Sophus::Sim3f& S12, const float th);
+                     const autonomy::common::math::Sim3f& S12, const float th);
 
     // Project MapPoints into KeyFrame and search for duplicated MapPoints.
     int Fuse(KeyFrame* pKF, const std::vector<MapPoint*>& vpMapPoints,
@@ -109,7 +111,7 @@ public:
 
     // Project MapPoints into KeyFrame using a given Sim3 and search for
     // duplicated MapPoints.
-    int Fuse(KeyFrame* pKF, Sophus::Sim3f& Scw,
+    int Fuse(KeyFrame* pKF, autonomy::common::math::Sim3f& Scw,
              const std::vector<MapPoint*>& vpPoints, float th,
              std::vector<MapPoint*>& vpReplacePoint);
 

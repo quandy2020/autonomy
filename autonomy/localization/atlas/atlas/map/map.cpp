@@ -244,22 +244,22 @@ bool Map::IsBad() {
     return mbBad;
 }
 
-void Map::ApplyScaledRotation(const Sophus::SE3f& T, const float s,
-                              const bool bScaledVel) {
+void Map::ApplyScaledRotation(const autonomy::common::math::SE3f& T,
+                              const float s, const bool bScaledVel) {
     std::unique_lock<std::mutex> lock(mMutexMap);
 
     // Body position (IMU) of first keyframe is fixed to (0,0,0)
-    Sophus::SE3f Tyw = T;
+    autonomy::common::math::SE3f Tyw = T;
     Eigen::Matrix3f Ryw = Tyw.rotationMatrix();
     Eigen::Vector3f tyw = Tyw.translation();
 
     for (std::set<KeyFrame*>::iterator sit = mspKeyFrames.begin();
          sit != mspKeyFrames.end(); sit++) {
         KeyFrame* pKF = *sit;
-        Sophus::SE3f Twc = pKF->GetPoseInverse();
+        autonomy::common::math::SE3f Twc = pKF->GetPoseInverse();
         Twc.translation() *= s;
-        Sophus::SE3f Tyc = Tyw * Twc;
-        Sophus::SE3f Tcy = Tyc.inverse();
+        autonomy::common::math::SE3f Tyc = Tyw * Twc;
+        autonomy::common::math::SE3f Tcy = Tyc.inverse();
         pKF->SetPose(Tcy);
         Eigen::Vector3f Vw = pKF->GetVelocity();
         if (!bScaledVel)

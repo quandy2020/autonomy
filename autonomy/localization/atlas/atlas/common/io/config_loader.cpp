@@ -366,7 +366,7 @@ void ConfigLoader::readCamera2(cv::FileStorage& fConfigLoader) {
     } else {
         cv::Mat cvTlr =
             readParameter<cv::Mat>(fConfigLoader, "Stereo.T_c1_c2", found);
-        Tlr_ = Converter::toSophus(cvTlr);
+        Tlr_ = Converter::toLieGroup(cvTlr);
 
         // TODO: also search for Trl and invert if necessary
 
@@ -463,7 +463,7 @@ void ConfigLoader::readIMU(cv::FileStorage& fConfigLoader) {
     imuFrequency_ = readParameter<float>(fConfigLoader, "IMU.Frequency", found);
 
     cv::Mat cvTbc = readParameter<cv::Mat>(fConfigLoader, "IMU.T_b_c1", found);
-    Tbc_ = Converter::toSophus(cvTbc);
+    Tbc_ = Converter::toLieGroup(cvTbc);
 
     readParameter<int>(fConfigLoader, "IMU.InsertKFsWhenLost", found, false);
     if (found) {
@@ -583,7 +583,8 @@ void ConfigLoader::precomputeRectificationMaps() {
     if (sensor_ == System::IMU_STEREO) {
         Eigen::Matrix3f eigenR_r1_u1;
         cv::cv2eigen(R_r1_u1, eigenR_r1_u1);
-        Sophus::SE3f T_r1_u1(eigenR_r1_u1, Eigen::Vector3f::Zero());
+        autonomy::common::math::SE3f T_r1_u1(eigenR_r1_u1,
+                                             Eigen::Vector3f::Zero());
         Tbc_ = Tbc_ * T_r1_u1.inverse();
     }
 }

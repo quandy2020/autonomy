@@ -25,7 +25,7 @@
 #include "atlas/common/io/binary_archive.hpp"
 
 #include <Eigen/Core>
-#include <sophus/se3.hpp>
+#include "autonomy/common/math/se3.hpp"
 
 #include <opencv2/core.hpp>
 #include <opencv2/features2d.hpp>
@@ -35,8 +35,8 @@
 namespace autonomy::localization::atlas {
 
 template <class Archive>
-void serializeSophusSE3(Archive& ar, Sophus::SE3f& T,
-                        const unsigned int version) {
+void serializeSE3(Archive& ar, autonomy::common::math::SE3f& T,
+                  const unsigned int version) {
     Eigen::Vector4f quat;
     Eigen::Vector3f transl;
 
@@ -51,7 +51,7 @@ void serializeSophusSE3(Archive& ar, Sophus::SE3f& T,
 
     if (Archive::is_loading::value) {
         Eigen::Quaternionf q(quat[0], quat[1], quat[2], quat[3]);
-        T = Sophus::SE3f(q, transl);
+        T = autonomy::common::math::SE3f(q, transl);
     }
 }
 

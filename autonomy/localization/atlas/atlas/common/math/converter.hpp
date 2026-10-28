@@ -25,11 +25,11 @@
 #include <opencv2/core.hpp>
 
 #include <Eigen/Dense>
-#include "g2o/types/types_seven_dof_expmap.h"
-#include "g2o/types/types_six_dof_expmap.h"
+#include "g2o/types/sba/types_six_dof_expmap.h"
+#include "g2o/types/sim3/types_seven_dof_expmap.h"
 
-#include "sophus/geometry.hpp"
-#include "sophus/sim3.hpp"
+#include "atlas/common/math/sim3.hpp"
+#include "autonomy/common/math/se3.hpp"
 
 namespace autonomy::localization::atlas {
 
@@ -40,7 +40,7 @@ public:
     static std::vector<cv::Mat> toDescriptorVector(const cv::Mat& Descriptors);
 
     static g2o::SE3Quat toSE3Quat(const cv::Mat& cvT);
-    static g2o::SE3Quat toSE3Quat(const Sophus::SE3f& T);
+    static g2o::SE3Quat toSE3Quat(const autonomy::common::math::SE3f& T);
     static g2o::SE3Quat toSE3Quat(const g2o::Sim3& gSim3);
 
     // TODO templetize these functions
@@ -73,9 +73,9 @@ public:
     static bool isRotationMatrix(const cv::Mat& R);
     static std::vector<float> toEuler(const cv::Mat& R);
 
-    // TODO: Sophus migration, to be deleted in the future
-    static Sophus::SE3<float> toSophus(const cv::Mat& T);
-    static Sophus::Sim3f toSophus(const g2o::Sim3& S);
+    // TODO: Lie-group migration, to be deleted in the future
+    static autonomy::common::math::SE3<float> toLieGroup(const cv::Mat& T);
+    static autonomy::common::math::Sim3f toLieGroup(const g2o::Sim3& S);
 };
 
 }  // namespace autonomy::localization::atlas
