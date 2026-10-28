@@ -6,7 +6,7 @@
 
 **Cartographer** 适合激光为主的 2D/3D 建图与纯定位，配置是 Lua，和经典 Cartographer 工作流接近。输出 TF、子图、可选 `/map`。
 
-**Atlas** 覆盖 VO/VIO/LIO/LIVO，传感器组合灵活，库内视觉前端按 ORB-SLAM3 思路演进。进程侧用 yaml 选 mission（如 `autosim_lio.yaml` 纯 LIO）。需要多相机或和 Atlas 回环/Ceres 后端对齐时优先考虑。
+**Atlas** 是移植并模块化整理的 ORB-SLAM3 视觉 SLAM，支持单目、双目、RGB-D 及对应惯性模式。需要视觉回环、稀疏地图或多种相机模式时优先考虑。
 
 **Argus** 是 FAST-LIVO2 风格的 ESIKF LIO/LIVO，激光+IMU 为主，相机可选。自带 Oxford Spires 等离线评估脚本，和 autosim 的 LIO 联调文档较完整。
 
@@ -17,20 +17,21 @@
 | 你的情况 | 建议 |
 |----------|------|
 | 室内 2D、只有激光（+ 可选 IMU） | Cartographer |
-| TurtleBot3 autosim 纯 LIO（无相机） | Atlas `autosim_lio.yaml` 或 Argus `livo_autosim.yaml` |
-| 多相机 / RGB-D / 异构传感器融合 | Atlas（注意 launch 默认 yaml 可能是 LIVO，别和纯 LIO 混用） |
+| TurtleBot3 autosim 纯 LIO（无相机） | Argus `livo_autosim.yaml` |
+| 单目 / 双目 / RGB-D（可选 IMU） | Atlas（模式、标定和话题必须一致） |
 | 离线数据集批量评测 LIO/LIVO | Argus + [Tools · 数据集](../18_Tools/08_datasets.md) |
 | 已有 `.pbstream`、只要 2D 定位 | Cartographer 纯定位 launch |
 
-Atlas 与 Argus 在「3D 激光 + IMU」上重叠：Atlas 更偏通用 SLAM 栈与 Atlas 生态；Argus 更偏 ESIKF LIVO 实现与 Spires 工具链。不确定时先在 autosim 上各跑一条，对比 TF 稳定性与 CPU。
+Atlas 与 Argus 的传感器定位不同：Atlas 是视觉/VIO，Argus 是激光惯性 LIO/LIVO。按实际传感器选择，不应把 Atlas 当作 LiDAR 后端。
 
 ## 数据流（共性）
 
 ```text
-传感器 → Cartographer / Atlas / Argus → map→odom→base_link
-                                      → 可选 OccupancyGrid / 点云图
-                                      → Planning / Map
+激光/IMU → Cartographer / Argus → TF、地图类输出 → Planning / Map
+相机/IMU → Atlas                → odometry、trajectory、map_points
 ```
+
+Atlas 当前不发布 TF 或占用栅格；需要导航 TF 时由明确的下游适配层负责。
 
 ## 参见
 

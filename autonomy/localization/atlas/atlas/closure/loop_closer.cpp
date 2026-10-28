@@ -33,6 +33,28 @@
 
 namespace autonomy::localization::atlas {
 
+namespace {
+
+class ScopedAtomicFlag final
+{
+public:
+    explicit ScopedAtomicFlag(std::atomic<bool>& flag) : flag_(flag) {
+        flag_.store(true, std::memory_order_release);
+    }
+
+    ~ScopedAtomicFlag() {
+        flag_.store(false, std::memory_order_release);
+    }
+
+    ScopedAtomicFlag(const ScopedAtomicFlag&) = delete;
+    ScopedAtomicFlag& operator=(const ScopedAtomicFlag&) = delete;
+
+private:
+    std::atomic<bool>& flag_;
+};
+
+}  // namespace
+
 LoopCloser::LoopCloser(Atlas* pAtlas, PlaceRecognizer* pDB, Vocabulary* pVoc,
                        const bool bFixScale, const bool bActiveLC)
     : mbResetRequested(false),
@@ -42,6 +64,7 @@ LoopCloser::LoopCloser(Atlas* pAtlas, PlaceRecognizer* pDB, Vocabulary* pVoc,
       mpAtlas(pAtlas),
       mpKeyFrameDB(pDB),
       mpVocabulary(pVoc),
+      mbProcessingKeyFrame(false),
       mpMatchedKF(nullptr),
       mLastLoopKFid(0),
       mbRunningGBA(false),
@@ -166,6 +189,7 @@ void LoopCloser::Run() {
         //----------------------------
 
         if (CheckNewKeyFrames()) {
+            ScopedAtomicFlag processing_key_frame(mbProcessingKeyFrame);
             if (mpLastCurrentKF) {
                 mpLastCurrentKF->mvpLoopCandKFs.clear();
                 mpLastCurrentKF->mvpMergeCandKFs.clear();
@@ -394,6 +418,7 @@ void LoopCloser::Run() {
         usleep(5000);
     }
 
+    mbProcessingKeyFrame.store(false, std::memory_order_release);
     SetFinish();
 }
 
@@ -2692,6 +2717,18 @@ void LoopCloser::RunGlobalBundleAdjustment(Map* pActiveMap,
         mbFinishedGBA = true;
         mbRunningGBA = false;
     }
+}
+
+bool LoopCloser::IsIdle() {
+    {
+        std::unique_lock<std::mutex> lock(mMutexLoopQueue);
+        if (!mlpLoopKeyFrameQueue.empty())
+            return false;
+    }
+    if (mbProcessingKeyFrame.load(std::memory_order_acquire))
+        return false;
+    std::unique_lock<std::mutex> lock(mMutexGBA, std::try_to_lock);
+    return lock.owns_lock() && !mbRunningGBA;
 }
 
 void LoopCloser::RequestFinish() {

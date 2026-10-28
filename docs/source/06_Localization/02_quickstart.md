@@ -35,9 +35,14 @@ autonomy.localization \
   --save_state_filename=data/maps/cartographer.pbstream
 ```
 
-### 2. Atlas（IMU + 点云 / 多传感器）
+### 2. Atlas（视觉 / VIO）
 
-autosim 纯 LIO 用 `autosim_lio.yaml`，不要误用默认 LIVO launch。命令与话题表见 [Atlas 指南](08_atlas/guide.md#autosim-纯-lio-最短路径)。
+```bash
+export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
+autolink launch start localization_atlas.launch
+```
+
+默认是单目模式；双目、RGB-D 或惯性模式必须同时修改模式、标定 YAML 和输入话题。详见 [Atlas 指南](08_atlas/guide.md)。
 
 ### 3. Argus（ESIKF LIO / LIVO）
 

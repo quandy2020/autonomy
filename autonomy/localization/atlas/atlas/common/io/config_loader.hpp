@@ -82,7 +82,7 @@ public:
     }
     cv::Mat camera2DistortionCoef() {
         return cv::Mat(vPinHoleDistorsion2_.size(), 1, CV_32F,
-                       vPinHoleDistorsion1_.data());
+                       vPinHoleDistorsion2_.data());
     }
 
     autonomy::common::math::SE3f Tlr() {

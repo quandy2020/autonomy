@@ -44,7 +44,6 @@ struct LocalizationCli {
         "autonomy/localization/atlas/config/orb_vocab.fbow";
     std::string atlas_sensor = "monocular";
     std::string atlas_imu_topic = "/imu";
-    std::string atlas_lidar_topic = "/points";
     std::string atlas_image_topic = "/image";
     std::string atlas_right_image_topic = "/camera/right/image";
     std::string atlas_depth_image_topic = "/camera/depth/image";
@@ -64,9 +63,10 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--load_frozen_state", cli.load_frozen_state,
                    "Cartographer: load saved state as frozen trajectories.")
         ->capture_default_str();
-    app.add_option("--start_trajectory_with_default_topics",
-                   cli.start_trajectory_with_default_topics,
-                   "Cartographer: start the first trajectory with default topics.")
+    app.add_option(
+           "--start_trajectory_with_default_topics",
+           cli.start_trajectory_with_default_topics,
+           "Cartographer: start the first trajectory with default topics.")
         ->capture_default_str();
     app.add_option("--save_state_filename", cli.save_state_filename,
                    "Cartographer: serialize state to this file on shutdown.");
@@ -79,10 +79,8 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--atlas_sensor", cli.atlas_sensor,
                    "Atlas: mono|stereo|rgbd and optional _inertial.")
         ->capture_default_str();
-    app.add_option("--atlas_imu_topic", cli.atlas_imu_topic, "Atlas: IMU topic.")
-        ->capture_default_str();
-    app.add_option("--atlas_lidar_topic", cli.atlas_lidar_topic,
-                   "Atlas: reserved lidar PointCloud2 topic.")
+    app.add_option("--atlas_imu_topic", cli.atlas_imu_topic,
+                   "Atlas: IMU topic.")
         ->capture_default_str();
     app.add_option("--atlas_image_topic", cli.atlas_image_topic,
                    "Atlas: primary camera Image topic.")
@@ -96,7 +94,8 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--argus_config", cli.argus_config,
                    "Argus: LIVO ESIKF YAML (livo_esikf.yaml).")
         ->capture_default_str();
-    app.add_option("--argus_imu_topic", cli.argus_imu_topic, "Argus: IMU topic.")
+    app.add_option("--argus_imu_topic", cli.argus_imu_topic,
+                   "Argus: IMU topic.")
         ->capture_default_str();
     app.add_option("--argus_lidar_topic", cli.argus_lidar_topic,
                    "Argus: lidar PointCloud2 topic.")
@@ -110,10 +109,10 @@ LocalizationOptions BuildOptions(const LocalizationCli& cli) {
     LocalizationOptions options;
     options.backend = ParseLocalizationBackend(cli.localization_mode);
 
-    options.configuration_directory = ResolveWorkspacePath(
-        common::FLAGS_configuration_directory.empty()
-            ? "autonomy/localization/conf/cartographer"
-            : common::FLAGS_configuration_directory);
+    options.configuration_directory =
+        ResolveWorkspacePath(common::FLAGS_configuration_directory.empty()
+                                 ? "autonomy/localization/conf/cartographer"
+                                 : common::FLAGS_configuration_directory);
     options.configuration_basename =
         common::FLAGS_configuration_basename.empty()
             ? "backpack_2d.lua"
@@ -128,7 +127,6 @@ LocalizationOptions BuildOptions(const LocalizationCli& cli) {
     options.atlas_vocabulary_path = cli.atlas_vocabulary;
     options.atlas_sensor_mode = cli.atlas_sensor;
     options.atlas_imu_topic = cli.atlas_imu_topic;
-    options.atlas_lidar_topic = cli.atlas_lidar_topic;
     options.atlas_image_topic = cli.atlas_image_topic;
     options.atlas_right_image_topic = cli.atlas_right_image_topic;
     options.atlas_depth_image_topic = cli.atlas_depth_image_topic;
@@ -158,18 +156,20 @@ int main(int argc, char** argv) {
 
     auto options = autonomy::localization::BuildOptions(cli);
     AINFO << "localization_main: backend="
-              << autonomy::localization::LocalizationBackendName(
-                     options.backend);
-    if (options.backend == autonomy::localization::LocalizationBackend::kAtlas) {
-        AINFO << "localization_main: atlas_config=" << options.atlas_config_path;
+          << autonomy::localization::LocalizationBackendName(options.backend);
+    if (options.backend ==
+        autonomy::localization::LocalizationBackend::kAtlas) {
+        AINFO << "localization_main: atlas_config="
+              << options.atlas_config_path;
     }
-    if (options.backend == autonomy::localization::LocalizationBackend::kArgus) {
-        AINFO << "localization_main: argus_config=" << options.argus_config_path;
+    if (options.backend ==
+        autonomy::localization::LocalizationBackend::kArgus) {
+        AINFO << "localization_main: argus_config="
+              << options.argus_config_path;
     }
 
-    auto server =
-        std::make_shared<autonomy::localization::LocalizationServer>(
-            std::move(options));
+    auto server = std::make_shared<autonomy::localization::LocalizationServer>(
+        std::move(options));
     if (!server->Start()) {
         AERROR << "LocalizationServer::Start failed.";
         autolink::Clear();

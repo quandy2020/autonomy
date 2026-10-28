@@ -28,9 +28,34 @@
 #include "autolink/common/log.hpp"
 
 #include <chrono>
+#include <cmath>
 #include <mutex>
 
 namespace autonomy::localization::atlas {
+namespace {
+
+bool IsFiniteRotation(const Eigen::Matrix3d& rotation) {
+    if (!rotation.allFinite())
+        return false;
+    const Eigen::Matrix3d orthogonality_error =
+        rotation.transpose() * rotation - Eigen::Matrix3d::Identity();
+    return orthogonality_error.norm() <= 1e-3 &&
+           std::abs(rotation.determinant() - 1.0) <= 1e-3;
+}
+
+bool IsValidInertialInitialization(double scale,
+                                   const Eigen::Matrix3d& world_gravity,
+                                   const Eigen::Vector3d& gyro_bias,
+                                   const Eigen::Vector3d& acc_bias,
+                                   bool already_initialized) {
+    const double maximum_scale = already_initialized ? 5.0 : 100.0;
+    return std::isfinite(scale) && scale >= 0.1 &&
+           scale <= maximum_scale && IsFiniteRotation(world_gravity) &&
+           gyro_bias.allFinite() && gyro_bias.norm() <= 1.0 &&
+           acc_bias.allFinite() && acc_bias.norm() <= 20.0;
+}
+
+}  // namespace
 
 LocalMapper::LocalMapper(System* pSys, Atlas* pAtlas, const float bMonocular,
                          bool bInertial, const std::string& _strSeqName)
@@ -253,25 +278,29 @@ void LocalMapper::Run() {
                         if (!mpCurrentKeyFrame->GetMap()->GetIniertialBA1()) {
                             if (mTinit > 5.0f) {
                                 AINFO << "start VIBA 1" << std::endl;
-                                mpCurrentKeyFrame->GetMap()->SetIniertialBA1();
-                                if (mbMonocular)
-                                    InitializeIMU(1.f, 1e5, true);
-                                else
-                                    InitializeIMU(1.f, 1e5, true);
-
-                                AINFO << "end VIBA 1" << std::endl;
+                                if (InitializeIMU(1.f, 1e5, true)) {
+                                    mpCurrentKeyFrame->GetMap()
+                                        ->SetIniertialBA1();
+                                    AINFO << "end VIBA 1" << std::endl;
+                                } else {
+                                    AWARN << "VIBA 1 failed validation; "
+                                             "leaving it pending for retry"
+                                          << std::endl;
+                                }
                             }
                         } else if (!mpCurrentKeyFrame->GetMap()
                                         ->GetIniertialBA2()) {
                             if (mTinit > 15.0f) {
                                 AINFO << "start VIBA 2" << std::endl;
-                                mpCurrentKeyFrame->GetMap()->SetIniertialBA2();
-                                if (mbMonocular)
-                                    InitializeIMU(0.f, 0.f, true);
-                                else
-                                    InitializeIMU(0.f, 0.f, true);
-
-                                AINFO << "end VIBA 2" << std::endl;
+                                if (InitializeIMU(0.f, 0.f, true)) {
+                                    mpCurrentKeyFrame->GetMap()
+                                        ->SetIniertialBA2();
+                                    AINFO << "end VIBA 2" << std::endl;
+                                } else {
+                                    AWARN << "VIBA 2 failed validation; "
+                                             "leaving it pending for retry"
+                                          << std::endl;
+                                }
                             }
                         }
 
@@ -311,6 +340,10 @@ void LocalMapper::Run() {
         } else if (Stop() && !mbBadImu) {
             // Safe area to stop
             while (isStopped() && !CheckFinish()) {
+                // A map reset may be requested while loop closing keeps local
+                // mapping stopped. The stopped state is a safe point, so drain
+                // reset requests here instead of making Tracker wait forever.
+                ResetIfRequested();
                 usleep(3000);
             }
             if (CheckFinish())
@@ -1181,6 +1214,10 @@ void LocalMapper::ResetIfRequested() {
         AINFO << "LM: Reset free the mutex" << std::endl;
 }
 
+bool LocalMapper::IsIdle() {
+    return KeyframesInQueue() == 0 && AcceptKeyFrames();
+}
+
 void LocalMapper::RequestFinish() {
     std::unique_lock<std::mutex> lock(mMutexFinish);
     mbFinishRequested = true;
@@ -1203,9 +1240,9 @@ bool LocalMapper::isFinished() {
     return mbFinished;
 }
 
-void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
+bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     if (mbResetRequested)
-        return;
+        return false;
 
     float minTime;
     int nMinKF;
@@ -1218,7 +1255,7 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     }
 
     if (mpAtlas->KeyFramesInMap() < nMinKF)
-        return;
+        return false;
 
     // Retrieve all keyframe in temporal order
     std::list<KeyFrame*> lpKF;
@@ -1231,11 +1268,11 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     std::vector<KeyFrame*> vpKF(lpKF.begin(), lpKF.end());
 
     if (vpKF.size() < nMinKF)
-        return;
+        return false;
 
     mFirstTs = vpKF.front()->mTimeStamp;
     if (mpCurrentKeyFrame->mTimeStamp - mFirstTs < minTime)
-        return;
+        return false;
 
     bInitializing = true;
 
@@ -1290,17 +1327,20 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     mInitTime = mpTracker->mLastFrame.mTimeStamp - vpKF.front()->mTimeStamp;
 
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale, mbg,
-                                    mba, mbMonocular, infoInertial, false,
-                                    false, priorG, priorA);
+    const bool already_initialized =
+        mpCurrentKeyFrame->GetMap()->isImuInitialized();
+    if (!Optimizer::InertialOptimization(
+            mpAtlas->GetCurrentMap(), mRwg, mScale, mbg, mba, mbMonocular,
+            infoInertial, false, false, priorG, priorA) ||
+        !IsValidInertialInitialization(mScale, mRwg, mbg, mba,
+                                       already_initialized)) {
+        AERROR << "Rejected invalid inertial initialization result"
+               << std::endl;
+        bInitializing = false;
+        return false;
+    }
 
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-
-    if (mScale < 1e-1) {
-        AINFO << "scale too small" << std::endl;
-        bInitializing = false;
-        return;
-    }
 
     // Before this line we are not changing the map
     {
@@ -1330,14 +1370,23 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     }
 
     std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
+    bool full_ba_succeeded = true;
     if (bFIBA) {
         if (priorA != 0.f)
-            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false,
-                                      mpCurrentKeyFrame->mnId, nullptr, true,
-                                      priorG, priorA);
+            full_ba_succeeded = Optimizer::FullInertialBA(
+                mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId,
+                nullptr, true, priorG, priorA);
         else
-            Optimizer::FullInertialBA(mpAtlas->GetCurrentMap(), 100, false,
-                                      mpCurrentKeyFrame->mnId, nullptr, false);
+            full_ba_succeeded = Optimizer::FullInertialBA(
+                mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId,
+                nullptr, false);
+    }
+    if (!full_ba_succeeded) {
+        AERROR << "Full inertial BA failed; skipping full-BA map propagation; "
+                  "validated pre-BA inertial refinement remains applied"
+               << std::endl;
+        bInitializing = false;
+        return false;
     }
 
     std::chrono::steady_clock::time_point t5 = std::chrono::steady_clock::now();
@@ -1450,7 +1499,7 @@ void LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
 
     mpCurrentKeyFrame->GetMap()->IncreaseChangeIndex();
 
-    return;
+    return true;
 }
 
 void LocalMapper::ScaleRefinement() {
@@ -1486,7 +1535,8 @@ void LocalMapper::ScaleRefinement() {
     Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale);
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
-    if (mScale < 1e-1)  // 1e-1
+    if (!std::isfinite(mScale) || mScale < 1e-1 || mScale > 5.0 ||
+        !IsFiniteRotation(mRwg))
     {
         AINFO << "scale too small" << std::endl;
         bInitializing = false;

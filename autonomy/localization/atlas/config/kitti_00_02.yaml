@@ -1,41 +1,21 @@
 %YAML:1.0
 
 File.version: "1.0"
-Camera.type: "PinHole"
+Camera.type: "Rectified"
 
 # KITTI odometry sequences 00-02, rectified grayscale camera pair P0/P1.
 Camera1.fx: 718.856
 Camera1.fy: 718.856
 Camera1.cx: 607.1928
 Camera1.cy: 185.2157
-Camera1.k1: 0.0
-Camera1.k2: 0.0
-Camera1.p1: 0.0
-Camera1.p2: 0.0
-
-Camera2.fx: 718.856
-Camera2.fy: 718.856
-Camera2.cx: 607.1928
-Camera2.cy: 185.2157
-Camera2.k1: 0.0
-Camera2.k2: 0.0
-Camera2.p1: 0.0
-Camera2.p2: 0.0
 
 Camera.width: 1241
 Camera.height: 376
 Camera.fps: 10
 Camera.RGB: 0
 
+Stereo.b: 0.5371657
 Stereo.ThDepth: 35.0
-Stereo.T_c1_c2: !!opencv-matrix
-  rows: 4
-  cols: 4
-  dt: f
-  data: [1.0, 0.0, 0.0, 0.5371657,
-         0.0, 1.0, 0.0, 0.0,
-         0.0, 0.0, 1.0, 0.0,
-         0.0, 0.0, 0.0, 1.0]
 
 ORBextractor.nFeatures: 2000
 ORBextractor.scaleFactor: 1.2

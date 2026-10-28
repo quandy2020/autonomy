@@ -175,22 +175,30 @@ add_library(
   autonomy::localization_atlas
   ALIAS autonomy_localization_atlas)
 
-if(ATLAS_BUILD_EXAMPLES)
+if(ATLAS_BUILD_EXAMPLES OR ATLAS_BUILD_TESTS)
   file(GLOB ATLAS_DATASET_READER_SOURCES CONFIGURE_DEPENDS
     "${ATLAS_ROOT}/examples/dataset_reader/*.cpp")
+  file(GLOB ATLAS_DATASET_READER_TEST_SOURCES CONFIGURE_DEPENDS
+    "${ATLAS_ROOT}/examples/dataset_reader/*_test.cpp")
+  list(REMOVE_ITEM ATLAS_DATASET_READER_SOURCES
+    ${ATLAS_DATASET_READER_TEST_SOURCES})
   add_library(atlas_dataset_readers STATIC
     ${ATLAS_DATASET_READER_SOURCES})
   atlas_configure_target(atlas_dataset_readers)
   target_include_directories(atlas_dataset_readers PUBLIC
     "${ATLAS_ROOT}")
   target_link_libraries(atlas_dataset_readers PUBLIC atlas_core)
+endif()
 
+if(ATLAS_BUILD_EXAMPLES)
   foreach(example IN ITEMS
       mono_euroc
       stereo_euroc
       rgbd_tum
+      rgbd_inertial_tartanair
       mono_inertial_euroc
       stereo_inertial_euroc
+      stereo_inertial_tum_vi
       stereo_kitti)
     atlas_binary(atlas_${example}
       SRCS "${ATLAS_ROOT}/examples/${example}.cpp"
@@ -202,6 +210,11 @@ if(ATLAS_BUILD_TESTS)
   atlas_enable_testing()
   atlas_test(atlas_unit_tests
     SRCS ${ATLAS_TEST_SOURCES})
+  if(ATLAS_DATASET_READER_TEST_SOURCES)
+    atlas_test(atlas_dataset_reader_tests
+      SRCS ${ATLAS_DATASET_READER_TEST_SOURCES}
+      LIBRARIES atlas_dataset_readers)
+  endif()
 endif()
 
 install(DIRECTORY "${ATLAS_ROOT}/config/"

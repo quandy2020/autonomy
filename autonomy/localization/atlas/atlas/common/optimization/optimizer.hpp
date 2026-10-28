@@ -57,12 +57,22 @@ public:
                                        bool* pbStopFlag = nullptr,
                                        const unsigned long nLoopKF = 0,
                                        const bool bRobust = true);
-    void static FullInertialBA(Map* pMap, int its, const bool bFixLocal = false,
+    bool static FullInertialBA(Map* pMap, int its,
+                               const bool bFixLocal = false,
                                const unsigned long nLoopKF = 0,
                                bool* pbStopFlag = nullptr, bool bInit = false,
                                float priorG = 1e2, float priorA = 1e6,
                                Eigen::VectorXd* vSingVal = nullptr,
                                bool* bHess = nullptr);
+
+    static bool IsRelativeGeometryUpdateReasonable(
+        const std::vector<Eigen::Vector3d>& current,
+        const std::vector<Eigen::Vector3d>& optimized,
+        double maximum_scale_ratio = 20.0);
+    static bool IsRelativeMagnitudeUpdateReasonable(
+        const std::vector<Eigen::Vector3d>& current,
+        const std::vector<Eigen::Vector3d>& optimized,
+        double maximum_magnitude_ratio = 20.0);
 
     void static LocalBundleAdjustment(KeyFrame* pKF, bool* pbStopFlag,
                                       Map* pMap, int& num_fixedKF,
@@ -127,7 +137,7 @@ public:
                                        const int& start, const int& end);
 
     // Inertial pose-graph
-    void static InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
+    bool static InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
                                      double& scale, Eigen::Vector3d& bg,
                                      Eigen::Vector3d& ba, bool bMono,
                                      Eigen::MatrixXd& covInertial,

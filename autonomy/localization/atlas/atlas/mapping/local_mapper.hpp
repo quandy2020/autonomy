@@ -72,6 +72,7 @@ public:
 
     void RequestFinish();
     bool isFinished();
+    bool IsIdle();
 
     int KeyframesInQueue() {
         std::unique_lock<std::mutex> lock(mMutexNewKFs);
@@ -179,7 +180,7 @@ protected:
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
 
-    void InitializeIMU(float priorG = 1e2, float priorA = 1e6,
+    bool InitializeIMU(float priorG = 1e2, float priorA = 1e6,
                        bool bFirst = false);
     void ScaleRefinement();
 

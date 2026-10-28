@@ -1,6 +1,6 @@
 # 6. AutoSim
 
-用 Autolink 仿真桥给 **Atlas/Argus** 等定位喂 IMU、点云、相机，而不是找 Gazebo。
+用 Autolink 仿真桥给定位后端提供 IMU、点云或相机数据，而不是找 Gazebo；Atlas 使用相机/可选 IMU，Argus 使用激光+IMU（可选相机）。
 
 `autosim`：fake / Habitat / Isaac 等后端，向栈发布 `/imu`、`/points`、相机与 TF 等。
 
@@ -23,7 +23,7 @@ CONFIG=src/autonomy/autosim/config/lightning.yaml \
 
 | 后端 | 配置提示 |
 |------|----------|
-| Atlas LIO | `atlas/config/autosim_lio.yaml` |
+| Atlas 视觉/VIO | 使用匹配仿真相机内参、分辨率、帧率和外参的自定义 YAML |
 | Argus | `localization_argus.launch`；话题对齐 `lio.yaml` |
 
 `lightning.yaml` 是 **AutoSim 场景名**，不是定位后端名称。

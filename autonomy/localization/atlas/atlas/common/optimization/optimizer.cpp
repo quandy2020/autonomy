@@ -22,6 +22,7 @@
 #include "atlas/common/optimization/optimizer.hpp"
 #include "autolink/common/log.hpp"
 
+#include <cmath>
 #include <complex>
 #include <cstddef>
 #include <memory>
@@ -71,7 +72,131 @@ Algorithm* CreateOptimizationAlgorithm() {
     return new Algorithm(std::move(block_solver));
 }
 
+bool IsFiniteRotation(const Eigen::Matrix3d& rotation) {
+    if (!rotation.allFinite())
+        return false;
+    const Eigen::Matrix3d orthogonality_error =
+        rotation.transpose() * rotation - Eigen::Matrix3d::Identity();
+    return orthogonality_error.norm() <= 1e-3 &&
+           std::abs(rotation.determinant() - 1.0) <= 1e-3;
+}
+
+bool IsNonIncreasingCost(double initial_cost, double optimized_cost) {
+    if (!std::isfinite(initial_cost) || !std::isfinite(optimized_cost))
+        return false;
+    const double tolerance =
+        std::max(1e-9, std::abs(initial_cost) * 1e-6);
+    return optimized_cost <= initial_cost + tolerance;
+}
+
 }  // namespace
+
+bool Optimizer::IsRelativeGeometryUpdateReasonable(
+    const std::vector<Eigen::Vector3d>& current,
+    const std::vector<Eigen::Vector3d>& optimized,
+    double maximum_scale_ratio) {
+    if (current.size() != optimized.size() ||
+        !std::isfinite(maximum_scale_ratio) || maximum_scale_ratio < 1.0) {
+        return false;
+    }
+    if (current.size() < 2) {
+        return true;
+    }
+
+    Eigen::Vector3d current_centroid = Eigen::Vector3d::Zero();
+    Eigen::Vector3d optimized_centroid = Eigen::Vector3d::Zero();
+    for (std::size_t index = 0; index < current.size(); ++index) {
+        if (!current[index].allFinite() || !optimized[index].allFinite()) {
+            return false;
+        }
+        current_centroid += current[index];
+        optimized_centroid += optimized[index];
+    }
+    current_centroid /= static_cast<double>(current.size());
+    optimized_centroid /= static_cast<double>(optimized.size());
+
+    double current_squared_extent = 0.0;
+    double optimized_squared_extent = 0.0;
+    for (std::size_t index = 0; index < current.size(); ++index) {
+        current_squared_extent +=
+            (current[index] - current_centroid).squaredNorm();
+        optimized_squared_extent +=
+            (optimized[index] - optimized_centroid).squaredNorm();
+    }
+    const double current_extent =
+        std::sqrt(current_squared_extent / static_cast<double>(current.size()));
+    const double optimized_extent = std::sqrt(
+        optimized_squared_extent / static_cast<double>(optimized.size()));
+    if (!std::isfinite(current_extent) || !std::isfinite(optimized_extent)) {
+        return false;
+    }
+
+    const double reference_extent = std::max(current_extent, optimized_extent);
+    const double degeneracy_tolerance =
+        std::max(1e-12, reference_extent * 1e-12);
+    if (reference_extent <= degeneracy_tolerance) {
+        return true;
+    }
+    if (current_extent <= degeneracy_tolerance ||
+        optimized_extent <= degeneracy_tolerance) {
+        return false;
+    }
+
+    const double scale_ratio =
+        std::max(current_extent, optimized_extent) /
+        std::min(current_extent, optimized_extent);
+    return std::isfinite(scale_ratio) && scale_ratio <= maximum_scale_ratio;
+}
+
+bool Optimizer::IsRelativeMagnitudeUpdateReasonable(
+    const std::vector<Eigen::Vector3d>& current,
+    const std::vector<Eigen::Vector3d>& optimized,
+    double maximum_magnitude_ratio) {
+    if (current.size() != optimized.size() ||
+        !std::isfinite(maximum_magnitude_ratio) ||
+        maximum_magnitude_ratio < 1.0) {
+        return false;
+    }
+    if (current.empty()) {
+        return true;
+    }
+
+    double current_squared_magnitude = 0.0;
+    double optimized_squared_magnitude = 0.0;
+    for (std::size_t index = 0; index < current.size(); ++index) {
+        if (!current[index].allFinite() || !optimized[index].allFinite()) {
+            return false;
+        }
+        current_squared_magnitude += current[index].squaredNorm();
+        optimized_squared_magnitude += optimized[index].squaredNorm();
+    }
+    const double current_magnitude = std::sqrt(
+        current_squared_magnitude / static_cast<double>(current.size()));
+    const double optimized_magnitude = std::sqrt(
+        optimized_squared_magnitude / static_cast<double>(optimized.size()));
+    if (!std::isfinite(current_magnitude) ||
+        !std::isfinite(optimized_magnitude)) {
+        return false;
+    }
+
+    const double reference_magnitude =
+        std::max(current_magnitude, optimized_magnitude);
+    const double degeneracy_tolerance =
+        std::max(1e-12, reference_magnitude * 1e-12);
+    if (reference_magnitude <= degeneracy_tolerance) {
+        return true;
+    }
+    if (current_magnitude <= degeneracy_tolerance ||
+        optimized_magnitude <= degeneracy_tolerance) {
+        return false;
+    }
+
+    const double magnitude_ratio =
+        std::max(current_magnitude, optimized_magnitude) /
+        std::min(current_magnitude, optimized_magnitude);
+    return std::isfinite(magnitude_ratio) &&
+           magnitude_ratio <= maximum_magnitude_ratio;
+}
 
 bool sortByVal(const std::pair<MapPoint*, int>& a,
                const std::pair<MapPoint*, int>& b) {
@@ -417,14 +542,22 @@ void Optimizer::BundleAdjustment(const std::vector<KeyFrame*>& vpKFs,
     }
 }
 
-void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
+bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
                                const long unsigned int nLoopId,
                                bool* pbStopFlag, bool bInit, float priorG,
                                float priorA, Eigen::VectorXd* vSingVal,
                                bool* bHess) {
+    if (pMap == nullptr) {
+        AERROR << "Full inertial BA rejected a null map" << std::endl;
+        return false;
+    }
     long unsigned int maxKFid = pMap->GetMaxKFid();
     const std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
     const std::vector<MapPoint*> vpMPs = pMap->GetAllMapPoints();
+    if (vpKFs.empty()) {
+        AERROR << "Full inertial BA rejected an empty map" << std::endl;
+        return false;
+    }
 
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
@@ -478,7 +611,7 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
     }
 
     if (bInit && pIncKF == nullptr)
-        return;
+        return false;
 
     if (bInit) {
         VertexGyroBias* VG = new VertexGyroBias(pIncKF);
@@ -493,7 +626,7 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
 
     if (bFixLocal) {
         if (nNonFixed < 3)
-            return;
+            return false;
     }
 
     // IMU links
@@ -770,10 +903,113 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
 
     if (pbStopFlag)
         if (*pbStopFlag)
-            return;
+            return false;
 
     optimizer.initializeOptimization();
-    optimizer.optimize(its);
+    optimizer.computeActiveErrors();
+    const double initial_cost = optimizer.activeRobustChi2();
+    const int completed_iterations = optimizer.optimize(its);
+    optimizer.computeActiveErrors();
+    const double optimized_cost = optimizer.activeRobustChi2();
+    if (completed_iterations <= 0 ||
+        !IsNonIncreasingCost(initial_cost, optimized_cost) ||
+        (pbStopFlag != nullptr && *pbStopFlag)) {
+        AERROR << "Full inertial BA failed validation: iterations="
+               << completed_iterations << ", initial_cost=" << initial_cost
+               << ", optimized_cost=" << optimized_cost << std::endl;
+        return false;
+    }
+
+    std::vector<Eigen::Vector3d> current_keyframe_centers;
+    std::vector<Eigen::Vector3d> optimized_keyframe_centers;
+    std::vector<Eigen::Vector3d> current_velocities;
+    std::vector<Eigen::Vector3d> optimized_velocities;
+    current_keyframe_centers.reserve(vpKFs.size());
+    optimized_keyframe_centers.reserve(vpKFs.size());
+    current_velocities.reserve(vpKFs.size());
+    optimized_velocities.reserve(vpKFs.size());
+    for (KeyFrame* keyframe : vpKFs) {
+        if (keyframe->mnId > maxKFid)
+            continue;
+        const auto* pose_vertex =
+            static_cast<const VertexPose*>(optimizer.vertex(keyframe->mnId));
+        if (pose_vertex == nullptr || pose_vertex->estimate().Rcw.empty() ||
+            pose_vertex->estimate().tcw.empty()) {
+            AERROR << "Full inertial BA produced a missing pose estimate"
+                   << std::endl;
+            return false;
+        }
+        for (std::size_t camera_index = 0;
+             camera_index < pose_vertex->estimate().Rcw.size();
+             ++camera_index) {
+            if (!IsFiniteRotation(pose_vertex->estimate().Rcw[camera_index]) ||
+                !pose_vertex->estimate().tcw[camera_index].allFinite()) {
+                AERROR << "Full inertial BA produced a non-finite pose"
+                       << std::endl;
+                return false;
+            }
+        }
+        current_keyframe_centers.push_back(
+            keyframe->GetPoseInverse().translation().cast<double>());
+        optimized_keyframe_centers.push_back(
+            -pose_vertex->estimate().Rcw[0].transpose() *
+            pose_vertex->estimate().tcw[0]);
+        if (!keyframe->bImu)
+            continue;
+        const auto* velocity_vertex = static_cast<const VertexVelocity*>(
+            optimizer.vertex(maxKFid + 3 * keyframe->mnId + 1));
+        const auto bias_base_id =
+            bInit ? 4 * maxKFid : maxKFid + 3 * keyframe->mnId;
+        const auto* gyro_bias_vertex = static_cast<const VertexGyroBias*>(
+            optimizer.vertex(bias_base_id + 2));
+        const auto* acc_bias_vertex = static_cast<const VertexAccBias*>(
+            optimizer.vertex(bias_base_id + 3));
+        if (velocity_vertex == nullptr || gyro_bias_vertex == nullptr ||
+            acc_bias_vertex == nullptr ||
+            !velocity_vertex->estimate().allFinite() ||
+            !gyro_bias_vertex->estimate().allFinite() ||
+            !acc_bias_vertex->estimate().allFinite()) {
+            AERROR << "Full inertial BA produced a non-finite inertial state"
+                   << std::endl;
+            return false;
+        }
+        current_velocities.push_back(keyframe->GetVelocity().cast<double>());
+        optimized_velocities.push_back(velocity_vertex->estimate());
+    }
+    std::vector<Eigen::Vector3d> current_map_points;
+    std::vector<Eigen::Vector3d> optimized_map_points;
+    current_map_points.reserve(vpMPs.size());
+    optimized_map_points.reserve(vpMPs.size());
+    for (std::size_t index = 0; index < vpMPs.size(); ++index) {
+        if (vbNotIncludedMP[index])
+            continue;
+        const auto* point_vertex = static_cast<const g2o::VertexPointXYZ*>(
+            optimizer.vertex(vpMPs[index]->mnId + iniMPid + 1));
+        if (point_vertex == nullptr || !point_vertex->estimate().allFinite()) {
+            AERROR << "Full inertial BA produced a non-finite map point"
+                   << std::endl;
+            return false;
+        }
+        current_map_points.push_back(
+            vpMPs[index]->GetWorldPos().cast<double>());
+        optimized_map_points.push_back(point_vertex->estimate());
+    }
+
+    constexpr double kMaximumRelativeStateScale = 20.0;
+    if (!IsRelativeGeometryUpdateReasonable(
+            current_keyframe_centers, optimized_keyframe_centers,
+            kMaximumRelativeStateScale) ||
+        !IsRelativeGeometryUpdateReasonable(
+            current_map_points, optimized_map_points,
+            kMaximumRelativeStateScale) ||
+        !IsRelativeMagnitudeUpdateReasonable(
+            current_velocities, optimized_velocities,
+            kMaximumRelativeStateScale)) {
+        AERROR << "Full inertial BA rejected a catastrophic relative state "
+                  "scale change"
+               << std::endl;
+        return false;
+    }
 
     // Recover optimized data
     // Keyframes
@@ -846,6 +1082,7 @@ void Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
     }
 
     pMap->IncreaseChangeIndex();
+    return true;
 }
 
 int Optimizer::PoseOptimization(Frame* pFrame) {
@@ -3181,16 +3418,20 @@ Eigen::MatrixXd Optimizer::Marginalize(const Eigen::MatrixXd& H,
     return res;
 }
 
-void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
+bool Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
                                      double& scale, Eigen::Vector3d& bg,
                                      Eigen::Vector3d& ba, bool bMono,
                                      Eigen::MatrixXd& covInertial,
                                      bool bFixedVel, bool bGauss, float priorG,
                                      float priorA) {
+    if (pMap == nullptr)
+        return false;
     ADEBUG << "inertial optimization";
     int its = 200;
     long unsigned int maxKFid = pMap->GetMaxKFid();
     const std::vector<KeyFrame*> vpKFs = pMap->GetAllKeyFrames();
+    if (vpKFs.empty())
+        return false;
 
     // Setup optimizer
     g2o::SparseOptimizer optimizer;
@@ -3323,22 +3564,56 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
 
     optimizer.setVerbose(false);
     optimizer.initializeOptimization();
-    optimizer.optimize(its);
-
-    scale = VS->estimate();
+    optimizer.computeActiveErrors();
+    const double initial_cost = optimizer.activeRobustChi2();
+    const int completed_iterations = optimizer.optimize(its);
+    optimizer.computeActiveErrors();
+    const double optimized_cost = optimizer.activeRobustChi2();
 
     // Recover optimized data
     // Biases
     VG = static_cast<VertexGyroBias*>(optimizer.vertex(maxKFid * 2 + 2));
     VA = static_cast<VertexAccBias*>(optimizer.vertex(maxKFid * 2 + 3));
+    const Eigen::Vector3d optimized_bg = VG->estimate();
+    const Eigen::Vector3d optimized_ba = VA->estimate();
+    const double optimized_scale = VS->estimate();
+    const Eigen::Matrix3d optimized_rwg = VGDir->estimate().Rwg;
+    if (completed_iterations <= 0 ||
+        !IsNonIncreasingCost(initial_cost, optimized_cost) ||
+        !std::isfinite(optimized_scale) || optimized_scale <= 0.0 ||
+        optimized_scale > 100.0 || !IsFiniteRotation(optimized_rwg) ||
+        !optimized_bg.allFinite() || optimized_bg.norm() > 1.0 ||
+        !optimized_ba.allFinite() || optimized_ba.norm() > 20.0) {
+        AERROR << "Inertial optimization failed validation: iterations="
+               << completed_iterations << ", initial_cost=" << initial_cost
+               << ", optimized_cost=" << optimized_cost
+               << ", scale=" << optimized_scale
+               << ", gyro_bias_norm=" << optimized_bg.norm()
+               << ", acc_bias_norm=" << optimized_ba.norm() << std::endl;
+        return false;
+    }
+    for (KeyFrame* keyframe : vpKFs) {
+        if (keyframe->mnId > maxKFid)
+            continue;
+        const auto* velocity_vertex = static_cast<const VertexVelocity*>(
+            optimizer.vertex(maxKFid + keyframe->mnId + 1));
+        if (velocity_vertex == nullptr ||
+            !velocity_vertex->estimate().allFinite() ||
+            velocity_vertex->estimate().norm() > 1e4) {
+            AERROR << "Inertial optimization produced an invalid velocity"
+                   << std::endl;
+            return false;
+        }
+    }
+
     Vector6d vb;
-    vb << VG->estimate(), VA->estimate();
-    bg << VG->estimate();
-    ba << VA->estimate();
-    scale = VS->estimate();
+    vb << optimized_bg, optimized_ba;
+    bg = optimized_bg;
+    ba = optimized_ba;
+    scale = optimized_scale;
+    Rwg = optimized_rwg;
 
     IMU::Bias b(vb[3], vb[4], vb[5], vb[0], vb[1], vb[2]);
-    Rwg = VGDir->estimate().Rwg;
 
     // Keyframes velocities and biases
     const int N = vpKFs.size();
@@ -3359,6 +3634,7 @@ void Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
         } else
             pKFi->SetNewBias(b);
     }
+    return true;
 }
 
 void Optimizer::InertialOptimization(Map* pMap, Eigen::Vector3d& bg,

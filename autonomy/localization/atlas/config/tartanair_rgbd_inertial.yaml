@@ -1,0 +1,68 @@
+%YAML:1.0
+
+# Atlas TartanAir V2 RGB-D+IMU interface configuration.
+# Synthetic validation only: these values exercise the offline adapter and
+# must not be presented as a real-sensor calibration or accuracy result.
+File.version: "1.0"
+
+# TartanAir V2 front camera: 640x640, 90 degree horizontal/vertical FOV.
+Camera.type: "PinHole"
+Camera1.fx: 320.0
+Camera1.fy: 320.0
+Camera1.cx: 320.0
+Camera1.cy: 320.0
+Camera.width: 640
+Camera.height: 640
+Camera.fps: 10
+Camera.RGB: 0
+
+# Official RGBA PNG stores the little-endian bytes of metric float32 depth;
+# the reader decodes it to CV_32FC1 metres before tracking. Non-positive,
+# non-finite, and synthetic sky/infinity depths above 80 m become invalid
+# zero-depth pixels so that they cannot seed numerically unstable map points.
+RGBD.DepthMapFactor: 1.0
+
+# RGB-D uses a virtual baseline only for Atlas close/far point classification;
+# metric depth continues to come directly from the depth map.
+Stereo.b: 0.10
+Stereo.ThDepth: 80.0
+
+# AirSim body uses NED axes: x forward, y right, z down. OpenCV optical axes
+# are x right, y down, z forward. The body-to-camera rotation is therefore
+# R_c_b=[0 1 0; 0 0 1; 1 0 0]. Atlas expects T_b_c1 (camera to body), so the
+# inverse rotation is stored below. Translation is zero because the synthetic
+# front camera and IMU are treated as co-located for interface validation.
+IMU.T_b_c1: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [0.0, 0.0, 1.0, 0.0,
+         1.0, 0.0, 0.0, 0.0,
+         0.0, 1.0, 0.0, 0.0,
+         0.0, 0.0, 0.0, 1.0]
+
+# Conservative synthetic defaults. Tune only against a documented noise model.
+IMU.NoiseGyro: 1.0e-04
+IMU.NoiseAcc: 1.0e-03
+IMU.GyroWalk: 1.0e-05
+IMU.AccWalk: 1.0e-04
+IMU.Frequency: 100.0
+IMU.InsertKFsWhenLost: 1
+
+ORBextractor.nFeatures: 1600
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500.0
+Viewer.imageViewScale: 1.0

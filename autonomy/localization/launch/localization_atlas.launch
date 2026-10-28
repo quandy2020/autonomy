@@ -1,29 +1,41 @@
 <!--
   Copyright 2026 The Openbot Authors
-
-  Atlas LIO / LIVO. Subscribes to /imu and /points.
-
-  Backend: autonomy.localization --localization_mode=atlas
-
-  Expects:
-    /imu      Imu
-    /points   PointCloud2
-    /tf + /tf_static
-
+  Atlas ORB visual / visual-inertial SLAM.
+  Backend: autonomy.localization with localization_mode=atlas
+  Default profile:
+    sensor mode    monocular
+    settings       autonomy/localization/atlas/config/euroc_mono.yaml
+    vocabulary     autonomy/localization/atlas/config/orb_vocab.fbow
+    primary image  /camera/rgb/image_raw
+  Supported sensor modes:
+    monocular, stereo, rgbd
+    monocular_inertial, stereo_inertial, rgbd_inertial
+  Configured inputs, consumed according to sensor mode:
+    /camera/rgb/image_raw    Image, primary camera
+    /camera/right/image_raw  Image, right camera
+    /camera/depth/image_raw  Image, registered depth
+    /imu                     Imu
   Publishes:
     /atlas/odometry          Odometry
     /atlas/trajectory        Path
-    /atlas/cloud_map         PointCloud2  xyz + height rgb
-    /atlas/cloud_registered  PointCloud2
-    /atlas/occupancy         OccupancyGrid
-    /atlas/loop_edges        MarkerArray
-    /tf                      map→odom, and odom→base_link when no wheel TF
+    /atlas/map_points        PointCloud2
+  Notes:
+    The settings YAML must match camera calibration, resolution and rate.
+    Change atlas_sensor and atlas_config together for another sensor mode.
+    Atlas does not consume lidar and does not publish TF or occupancy.
+    Keep process_name on one line for Autolink argument tokenization.
+  Run from /workspace/autonomy/src/autonomy:
+    Add build/autonomy/bin to PATH.
+    Set AUTOLINK_LAUNCH_PATH to autonomy/localization/launch.
+    autolink launch start localization_atlas.launch
+  Stop:
+    autolink launch stop localization_atlas.launch
 -->
 <autolink>
   <module>
     <name>localization_atlas</name>
     <type>binary</type>
-    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/conf/atlas/fusion_livo.yaml --atlas_imu_topic=/imu --atlas_lidar_topic=/points</process_name>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/atlas/config/euroc_mono.yaml --atlas_vocabulary=autonomy/localization/atlas/config/orb_vocab.fbow --atlas_sensor=monocular --atlas_image_topic=/camera/rgb/image_raw --atlas_right_image_topic=/camera/right/image_raw --atlas_depth_image_topic=/camera/depth/image_raw --atlas_imu_topic=/imu</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

@@ -31,6 +31,7 @@
 
 #include "atlas/closure/place_recognizer.hpp"
 
+#include <atomic>
 #include <future>
 #include <mutex>
 #include "g2o/types/sim3/types_seven_dof_expmap.h"
@@ -82,6 +83,7 @@ public:
     void RequestFinish();
     void WaitForGlobalBundleAdjustment();
 
+    bool IsIdle();
     bool isFinished();
 
     Viewer* mpViewer;
@@ -183,6 +185,7 @@ protected:
     std::list<KeyFrame*> mlpLoopKeyFrameQueue;
 
     std::mutex mMutexLoopQueue;
+    std::atomic<bool> mbProcessingKeyFrame;
 
     // Loop detector parameters
     float mnCovisibilityConsistencyTh;

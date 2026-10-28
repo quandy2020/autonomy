@@ -21,8 +21,10 @@
 
 #include "atlas/system.hpp"
 #include <openssl/md5.h>
+#include <chrono>
 #include <iomanip>
 #include <stdexcept>
+#include <thread>
 #include "atlas/common/io/binary_archive.hpp"
 #include "atlas/common/math/converter.hpp"
 #include "autolink/common/log.hpp"
@@ -31,6 +33,9 @@ namespace autonomy::localization::atlas {
 
 namespace {
 constexpr int kOpenCvThreadCount = 2;
+constexpr auto kShutdownDrainTimeout = std::chrono::seconds(30);
+constexpr auto kShutdownStablePeriod = std::chrono::milliseconds(200);
+constexpr auto kLoopCorrectionWaitTimeout = std::chrono::seconds(30);
 }  // namespace
 
 System::System(const std::string& strVocFile,
@@ -43,6 +48,7 @@ System::System(const std::string& strVocFile,
       mbResetActiveMap(false),
       mbActivateLocalizationMode(false),
       mbDeactivateLocalizationMode(false),
+      mbLocalizationModeActive(false),
       mbShutDown(false) {
     cv::setNumThreads(kOpenCvThreadCount);
     AINFO << "Atlas OpenCV thread count: " << cv::getNumThreads() << std::endl;
@@ -285,6 +291,33 @@ System::~System() {
     settings_ = nullptr;
 }
 
+void System::WaitForLocalMappingResume() {
+    if (!mpLocalMapper || mbLocalizationModeActive) {
+        return;
+    }
+
+    const auto local_mapping_is_paused = [this]() {
+        return mpLocalMapper->stopRequested() || mpLocalMapper->isStopped();
+    };
+    if (!local_mapping_is_paused())
+        return;
+
+    AINFO << "Waiting for loop correction to release local mapping"
+          << std::endl;
+    const auto deadline =
+        std::chrono::steady_clock::now() + kLoopCorrectionWaitTimeout;
+    while (local_mapping_is_paused() && !mpLocalMapper->isFinished() &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    if (local_mapping_is_paused()) {
+        AWARN << "Timed out waiting for loop correction; continuing tracking"
+              << std::endl;
+    } else {
+        AINFO << "Local mapping released; resuming tracking" << std::endl;
+    }
+}
+
 autonomy::common::math::SE3f System::TrackStereo(
     const cv::Mat& imLeft, const cv::Mat& imRight, const double& timestamp,
     const std::vector<IMU::Point>& vImuMeas, std::string filename) {
@@ -324,10 +357,12 @@ autonomy::common::math::SE3f System::TrackStereo(
             }
 
             mpTracker->InformOnlyTracking(true);
+            mbLocalizationModeActive = true;
             mbActivateLocalizationMode = false;
         }
         if (mbDeactivateLocalizationMode) {
             mpTracker->InformOnlyTracking(false);
+            mbLocalizationModeActive = false;
             mpLocalMapper->Release();
             mbDeactivateLocalizationMode = false;
         }
@@ -345,6 +380,8 @@ autonomy::common::math::SE3f System::TrackStereo(
             mbResetActiveMap = false;
         }
     }
+
+    WaitForLocalMappingResume();
 
     if (mSensor == System::IMU_STEREO)
         for (std::size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
@@ -396,10 +433,12 @@ autonomy::common::math::SE3f System::TrackRGBD(
             }
 
             mpTracker->InformOnlyTracking(true);
+            mbLocalizationModeActive = true;
             mbActivateLocalizationMode = false;
         }
         if (mbDeactivateLocalizationMode) {
             mpTracker->InformOnlyTracking(false);
+            mbLocalizationModeActive = false;
             mpLocalMapper->Release();
             mbDeactivateLocalizationMode = false;
         }
@@ -417,6 +456,8 @@ autonomy::common::math::SE3f System::TrackRGBD(
             mbResetActiveMap = false;
         }
     }
+
+    WaitForLocalMappingResume();
 
     if (mSensor == System::IMU_RGBD)
         for (std::size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
@@ -467,10 +508,12 @@ autonomy::common::math::SE3f System::TrackMonocular(
             }
 
             mpTracker->InformOnlyTracking(true);
+            mbLocalizationModeActive = true;
             mbActivateLocalizationMode = false;
         }
         if (mbDeactivateLocalizationMode) {
             mpTracker->InformOnlyTracking(false);
+            mbLocalizationModeActive = false;
             mpLocalMapper->Release();
             mbDeactivateLocalizationMode = false;
         }
@@ -490,6 +533,8 @@ autonomy::common::math::SE3f System::TrackMonocular(
             mbResetActiveMap = false;
         }
     }
+
+    WaitForLocalMappingResume();
 
     if (mSensor == System::IMU_MONOCULAR)
         for (std::size_t i_imu = 0; i_imu < vImuMeas.size(); i_imu++)
@@ -545,6 +590,34 @@ void System::Shutdown() {
     }
 
     AINFO << "Shutdown" << std::endl;
+
+    const auto drain_deadline =
+        std::chrono::steady_clock::now() + kShutdownDrainTimeout;
+    auto idle_since = std::chrono::steady_clock::time_point();
+    bool workers_drained = false;
+    while (std::chrono::steady_clock::now() < drain_deadline) {
+        const bool local_mapper_idle =
+            !mpLocalMapper || mpLocalMapper->IsIdle();
+        const bool loop_closer_idle = !mpLoopCloser || mpLoopCloser->IsIdle();
+        const auto now = std::chrono::steady_clock::now();
+        if (local_mapper_idle && loop_closer_idle) {
+            if (idle_since == std::chrono::steady_clock::time_point())
+                idle_since = now;
+            if (now - idle_since >= kShutdownStablePeriod) {
+                workers_drained = true;
+                break;
+            }
+        } else {
+            idle_since = std::chrono::steady_clock::time_point();
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    if (workers_drained) {
+        AINFO << "Atlas mapping and loop-closing workers drained" << std::endl;
+    } else {
+        AWARN << "Timed out waiting for Atlas workers; stopping pending work"
+              << std::endl;
+    }
 
     if (mpLocalMapper)
         mpLocalMapper->RequestFinish();

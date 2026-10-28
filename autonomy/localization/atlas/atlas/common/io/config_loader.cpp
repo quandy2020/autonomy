@@ -339,10 +339,10 @@ void ConfigLoader::readCamera2(cv::FileStorage& fConfigLoader) {
         float cx = readParameter<float>(fConfigLoader, "Camera2.cx", found);
         float cy = readParameter<float>(fConfigLoader, "Camera2.cy", found);
 
-        float k0 = readParameter<float>(fConfigLoader, "Camera1.k1", found);
-        float k1 = readParameter<float>(fConfigLoader, "Camera1.k2", found);
-        float k2 = readParameter<float>(fConfigLoader, "Camera1.k3", found);
-        float k3 = readParameter<float>(fConfigLoader, "Camera1.k4", found);
+        float k0 = readParameter<float>(fConfigLoader, "Camera2.k1", found);
+        float k1 = readParameter<float>(fConfigLoader, "Camera2.k2", found);
+        float k2 = readParameter<float>(fConfigLoader, "Camera2.k3", found);
+        float k3 = readParameter<float>(fConfigLoader, "Camera2.k4", found);
 
         vCalibration = {fx, fy, cx, cy, k0, k1, k2, k3};
 
@@ -614,8 +614,9 @@ std::ostream& operator<<(std::ostream& output, const ConfigLoader& settings) {
         output << " ]" << std::endl;
     }
 
-    if (settings.sensor_ == System::STEREO ||
-        settings.sensor_ == System::IMU_STEREO) {
+    if ((settings.sensor_ == System::STEREO ||
+         settings.sensor_ == System::IMU_STEREO) &&
+        settings.cameraType_ != ConfigLoader::Rectified) {
         output << "\t-Camera 2 parameters (";
         if (settings.cameraType_ == ConfigLoader::PinHole ||
             settings.cameraType_ == ConfigLoader::Rectified) {

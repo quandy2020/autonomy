@@ -5,13 +5,13 @@
 | 模式 | 入口 |
 |------|------|
 | `cartographer`（默认） | `RunCartographerNode()` |
-| `atlas` | Atlas VO/VIO/LIO/LIVO |
+| `atlas` | Atlas 单目/双目/RGB-D 视觉 SLAM 与 VIO |
 | `argus` | Argus LIO/LIVO（ESIKF） |
 
 ```text
 autonomy/localization/
 ├── localization_main.cpp / localization_server.*
-├── launch/  conf/{cartographer,atlas}/
+├── launch/  conf/cartographer/  atlas/config/
 ├── cartographer/  atlas/  argus/
 ```
 
@@ -32,7 +32,7 @@ localization (--localization_mode=cartographer)
 
 | 后端 | 配置 | 典型输入 | 输出 |
 |------|------|----------|------|
-| Atlas | `atlas/config/*.yaml` | 相机 / IMU / 点云 | `/atlas/odometry`、TF、`/atlas/occupancy` 等 |
+| Atlas | `atlas/config/*.yaml` | 相机（可选 IMU） | `/atlas/odometry`、`/atlas/trajectory`、`/atlas/map_points` |
 | Argus | `conf/argus/*.yaml` | IMU + 点云（+ 相机） | `/argus/odometry`、TF、点云图、占用栅格 |
 
 Atlas：[08_atlas/guide.md](08_atlas/guide.md)。Argus：[06_argus.md](06_argus.md)。

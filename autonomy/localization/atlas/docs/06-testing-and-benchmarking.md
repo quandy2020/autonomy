@@ -69,8 +69,9 @@ python3 examples/evaluate_kitti.py \
   /tmp/atlas_kitti_00_eval
 ```
 
-Evaluation uses rigid SE(3) alignment with fixed scale. It writes
-`metrics.json`, `aligned_trajectory.csv`, and
-`trajectory_and_ate.png`. The `kitti_00_02.yaml` calibration applies to
+Evaluation reports fixed-scale SE(3)-aligned ATE and official KITTI 100-800 m
+segment metrics: relative translation drift (t_rel, percent) and relative
+rotation drift (r_rel, degrees per 100 m). It writes `metrics.json`,
+`aligned_trajectory.csv`, and `trajectory_and_ate.png`. The `kitti_00_02.yaml` calibration applies to
 sequences 00-02. Use each sequence's `calib.txt` to prepare configurations
 for the other calibration groups.

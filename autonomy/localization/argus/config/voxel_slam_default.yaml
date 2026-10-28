@@ -1,0 +1,48 @@
+# Voxel-SLAM (LiDAR-inertial) default profile.
+# Replay: replay --config config/voxel_slam_default.yaml --dataset <dir> --output <dir>
+pipeline: voxel_slam
+trajectory_path: "trajectory.tum"
+
+initialization:
+  min_imu_samples: 20
+  gravity_magnitude: 9.81
+  max_accel_variance: 0.05
+
+local_mapping:
+  window_size: 10
+
+voxel:
+  win_size: 10
+  thread_num: 4
+  degrade_bound: 50
+  down_size: 0.5
+  voxel_size: 1.0
+  # Set false only when input clouds lack per-point relative timestamps.
+  points_have_timestamps: true
+  min_eigen_value: 0.01
+  imu_coef: 0.0001
+  bias_gyro_random_walk: 0.0001
+  bias_accel_random_walk: 0.0001
+  minimum_bundle_adjustment_points: 20
+  enable_loop: true
+  enable_gba: true
+  enable_local_ba: true
+  enable_gravity_ba: false
+  enable_triangle: true
+  icp_eigval: 0.01
+  jud_default: 0.45
+  ratio_drift: 0.05
+  curr_halt: 10
+  prev_halt: 30
+  gba_local_win: 10
+  gba_merge_size: 5
+  gba_voxel_size: 1.0
+  gba_minimum_eigenvalue: 0.01
+  gba_maximum_iteration_count: 1
+  save_path: ""
+  bagname: "session0"
+  previous_map: ""
+
+components:
+  - name: lidar_frontend
+    type: lidar_frontend

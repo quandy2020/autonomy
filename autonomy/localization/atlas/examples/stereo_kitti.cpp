@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstddef>
+#include <thread>
 #include <vector>
 
 #include <opencv2/imgcodecs.hpp>
@@ -30,7 +31,8 @@ int main(int argc, char** argv) {
 
     std::size_t valid_frames = 0;
     double total_tracking_seconds = 0.0;
-    for (const auto& sample : samples) {
+    for (std::size_t index = 0; index < samples.size(); ++index) {
+        const auto& sample = samples[index];
         atlas::ImageFrame left{
             sample.timestamp, "image_0",
             cv::imread(sample.left_path, cv::IMREAD_GRAYSCALE)};
@@ -51,9 +53,23 @@ int main(int argc, char** argv) {
         } else if (result.valid) {
             ++valid_frames;
         }
-        total_tracking_seconds += std::chrono::duration<double>(
-                                      std::chrono::steady_clock::now() - begin)
-                                      .count();
+        const double tracking_seconds =
+            std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                          begin)
+                .count();
+        total_tracking_seconds += tracking_seconds;
+
+        double frame_interval = 0.0;
+        if (index + 1 < samples.size()) {
+            frame_interval = samples[index + 1].timestamp - sample.timestamp;
+        } else if (index > 0) {
+            frame_interval = sample.timestamp - samples[index - 1].timestamp;
+        }
+        const double sleep_seconds = frame_interval - tracking_seconds;
+        if (sleep_seconds > 0.0) {
+            std::this_thread::sleep_for(
+                std::chrono::duration<double>(sleep_seconds));
+        }
     }
 
     const double mean_tracking_ms =

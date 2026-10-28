@@ -47,12 +47,11 @@ struct LocalizationOptions {
     bool start_trajectory_with_default_topics = true;
     std::string save_state_filename;
 
-    // --- Atlas (VO / VIO / LIO / LIVO, Ceres) ---
+    // --- Atlas (ORB visual / visual-inertial SLAM) ---
     std::string atlas_config_path;
     std::string atlas_vocabulary_path;
     std::string atlas_sensor_mode = "monocular";
     std::string atlas_imu_topic = "/imu";
-    std::string atlas_lidar_topic = "/points";
     std::string atlas_image_topic = "/image";
     std::string atlas_right_image_topic = "/camera/right/image";
     std::string atlas_depth_image_topic = "/camera/depth/image";
@@ -82,7 +81,8 @@ cartographer::node::CartographerNodeFlags CartographerFlagsFromOptions(
  *   // caller: autolink::WaitForShutdown()
  *   Shutdown() → finish trajectories / save map / tear down
  */
-class LocalizationServer {
+class LocalizationServer
+{
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(LocalizationServer)
 
@@ -98,11 +98,15 @@ public:
     /** Stop the active backend and persist state when configured. */
     void Shutdown();
 
-    [[nodiscard]] bool is_running() const { return running_; }
+    [[nodiscard]] bool is_running() const {
+        return running_;
+    }
     [[nodiscard]] LocalizationBackend active_backend() const {
         return options_.backend;
     }
-    [[nodiscard]] const LocalizationOptions& options() const { return options_; }
+    [[nodiscard]] const LocalizationOptions& options() const {
+        return options_;
+    }
 
 private:
     class Backend;

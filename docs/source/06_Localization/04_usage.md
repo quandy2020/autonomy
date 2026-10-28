@@ -1,7 +1,7 @@
 (localization-usage)=
 # 4. 使用指南
 
-三条后端共用 `autonomy.localization`，靠 `--localization_mode` 切换。Cartographer 用 Lua 目录；Atlas / Argus 用 yaml + 话题覆盖。
+三条后端共用 `autonomy.localization`，通过 `--localization_mode` 切换。Cartographer 使用 Lua 配置；Atlas 和 Argus 使用各自的 YAML 与话题参数。
 
 ## Cartographer
 
@@ -24,15 +24,27 @@ autonomy.localization \
 
 ## Atlas
 
-见 [08_atlas/guide.md](08_atlas/guide.md)。autosim 纯 LIO 示例：
+Atlas 是 ORB 视觉 SLAM / VIO 后端，只消费相机和可选 IMU，不消费 LiDAR。完整说明见 [08_atlas/guide.md](08_atlas/guide.md)。
 
 ```bash
-autonomy.localization \
-  --localization_mode=atlas \
-  --atlas_config=src/autonomy/autonomy/localization/atlas/config/autosim_lio.yaml \
-  --atlas_imu_topic=/imu \
-  --atlas_lidar_topic=/points
+cd /workspace/autonomy/src/autonomy
+export PATH=/workspace/autonomy/build/autonomy/bin:/usr/local/bin:/usr/bin:/bin
+export AUTOLINK_LAUNCH_PATH=/workspace/autonomy/src/autonomy/autonomy/localization/launch
+
+autolink launch start localization_atlas.launch
+autolink launch list
+autolink launch stop localization_atlas.launch
 ```
+
+launch 默认使用 `monocular`、`euroc_mono.yaml`、`orb_vocab.fbow` 和 `/camera/rgb/image_raw`。切换双目、RGB-D 或惯性模式时，必须同步修改 `atlas_sensor`、相机/IMU 标定 YAML 和对应输入话题。
+
+Atlas 当前只发布：
+
+- `/atlas/odometry`
+- `/atlas/trajectory`
+- `/atlas/map_points`
+
+它不发布 TF、占用栅格、registered cloud 或稠密 cloud map。
 
 ## Argus
 
@@ -40,37 +52,37 @@ autonomy.localization \
 
 ## 与导航栈
 
-```text
-Driver → Localization → TF (map→odom→base) → Planning
-                     → /map（可选）→ Map
-```
+不同后端的输出能力不同：
+
+| 后端 | 主要输出 |
+|------|----------|
+| Cartographer | TF、子图及可选占用栅格 |
+| Atlas | 视觉里程计、轨迹、稀疏地图点 |
+| Argus | LIO/LIVO 位姿、TF 和地图类输出 |
+
+Atlas 若要接入依赖 `map→odom→base_link` 的导航栈，需要显式的下游适配层，不能假定 Atlas 自己发布 TF。
 
 | 场景 | 后端 |
 |------|------|
 | 激光 2D 建图/定位 | Cartographer |
-| 激光 + IMU LIO/LIVO | Atlas 或 Argus |
-| 多相机 / RGB-D | Atlas（选对 yaml mission） |
-
-全栈 frame 名与 [Running](../04_Running/00_guide.md) 一致。
+| 3D 激光 + IMU | Argus 或 Cartographer 3D |
+| 单目 / 双目 / RGB-D（可选 IMU） | Atlas |
 
 ## 故障排查
 
 | 现象 | 排查 |
 |------|------|
-| Cartographer 无 `/map` | Lua `publish_occupancy_grid`；是否 `echoes_*` 而非错 topic |
-| Atlas / Argus 无输出 | `--*_topic`；yaml 外参；LIVO 是否缺图像 |
-| TF 断 | 谁在发 `map→odom`；仿真是否只发 `odom→base` |
-| 找 AMCL | 未合入；2D 激光用 Cartographer 纯定位或 SLAM |
+| Cartographer 无 `/map` | Lua `publish_occupancy_grid`；是否使用正确激光话题 |
+| Atlas 无输出 | `atlas_sensor`、图像/IMU 话题、标定、词表路径是否一致 |
+| Argus 无输出 | IMU/点云话题、外参与 LIVO 图像输入 |
+| 需要 TF 但链路中断 | 先确认所选后端是否发布 TF，再检查 frame 配置 |
+| 找 AMCL | 当前未合入；2D 激光使用 Cartographer 纯定位或 SLAM |
 
-(atlas-lio-resources)=
-## Atlas LIO 资源占用（参考）
+## 常用 flags
 
-`autosim_lio.yaml` + autosim，约 18 min，无 GPU，32 核主机：
-
-| 项 | 数值 |
-|----|------|
-| CPU | ~0.37 核 |
-| RSS / 峰值 | 1.15 / 1.27 GiB |
-| 线程 | 57 |
-
-采样命令见 [Atlas 指南](08_atlas/guide.md#资源占用参考)。
+| 后端 | flags |
+|------|-------|
+| 通用 | `--localization_mode` |
+| Cartographer | `--configuration_directory` / `--configuration_basename` / `--save_state_filename` |
+| Atlas | `--atlas_config` / `--atlas_vocabulary` / `--atlas_sensor` / `--atlas_image_topic` / `--atlas_right_image_topic` / `--atlas_depth_image_topic` / `--atlas_imu_topic` |
+| Argus | `--argus_config` / `--argus_imu_topic` / `--argus_lidar_topic` / `--argus_image_topic` |

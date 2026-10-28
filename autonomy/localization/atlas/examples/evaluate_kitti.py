@@ -3,6 +3,7 @@
 
 import argparse
 import csv
+import itertools
 import json
 import struct
 import zlib
@@ -39,6 +40,73 @@ def rigid_alignment(source: np.ndarray, target: np.ndarray):
         rotation = vt.T @ u.T
     translation = target_mean - rotation @ source_mean
     return rotation, translation
+
+
+def evaluate_kitti_segments(
+    ground_truth: np.ndarray,
+    estimate: np.ndarray,
+    lengths=(100.0, 200.0, 300.0, 400.0, 500.0, 600.0, 700.0, 800.0),
+):
+    """Return KITTI odometry segment drift metrics.
+
+    This follows the official development kit: segments start every 10 frames,
+    use ground-truth traveled distance, and report translation error divided by
+    segment length plus rotation error in radians divided by segment length.
+    """
+    xyz = ground_truth[:, :3, 3]
+    distances = np.zeros(len(ground_truth), dtype=float)
+    if len(ground_truth) > 1:
+        distances[1:] = np.cumsum(np.linalg.norm(np.diff(xyz, axis=0), axis=1))
+
+    translation_errors = []
+    rotation_errors = []
+    by_length = {}
+    for length in lengths:
+        length_translation_errors = []
+        length_rotation_errors = []
+        for first in range(0, len(ground_truth), 10):
+            last = int(
+                np.searchsorted(distances, distances[first] + length, side="right")
+            )
+            if last >= len(ground_truth):
+                continue
+
+            ground_truth_delta = np.linalg.inv(ground_truth[first]) @ ground_truth[last]
+            estimate_delta = np.linalg.inv(estimate[first]) @ estimate[last]
+            pose_error = np.linalg.inv(estimate_delta) @ ground_truth_delta
+
+            translation_error = float(np.linalg.norm(pose_error[:3, 3])) / length
+            cosine = float(
+                np.clip((np.trace(pose_error[:3, :3]) - 1.0) * 0.5, -1.0, 1.0)
+            )
+            rotation_error = float(np.arccos(cosine)) / length
+            length_translation_errors.append(translation_error)
+            length_rotation_errors.append(rotation_error)
+
+        if not length_translation_errors:
+            continue
+        translation_errors.extend(length_translation_errors)
+        rotation_errors.extend(length_rotation_errors)
+        by_length[str(int(length))] = {
+            "segments": len(length_translation_errors),
+            "translation_drift_percent": float(
+                100.0 * np.mean(length_translation_errors)
+            ),
+            "rotation_drift_deg_per_100m": float(
+                np.degrees(np.mean(length_rotation_errors)) * 100.0
+            ),
+        }
+
+    if not translation_errors:
+        raise ValueError("trajectory is too short for KITTI segment evaluation")
+    return {
+        "kitti_segment_count": len(translation_errors),
+        "kitti_translation_drift_percent": float(100.0 * np.mean(translation_errors)),
+        "kitti_rotation_drift_deg_per_100m": float(
+            np.degrees(np.mean(rotation_errors)) * 100.0
+        ),
+        "kitti_by_length_m": by_length,
+    }
 
 
 def draw_line(image, x0, y0, x1, y1, color):
@@ -79,7 +147,7 @@ def map_points(points, left, top, width, height):
 
 
 def draw_polyline(image, points, color):
-    for first, second in zip(points[:-1], points[1:]):
+    for first, second in itertools.pairwise(points):
         draw_line(image, *first, *second, color)
 
 
@@ -102,15 +170,13 @@ def write_png(path, image):
     path.write_bytes(png)
 
 
-def create_plot(path, gt_xyz, aligned_xyz, errors, rmse):
+def create_plot(path, gt_xyz, aligned_xyz, errors, rmse, axes=(0, 2)):
     image = np.full((600, 1200, 3), 255, dtype=np.uint8)
     for x in (40, 600, 1160):
         draw_line(image, x, 30, x, 560, (210, 210, 210))
     draw_line(image, 40, 560, 1160, 560, (210, 210, 210))
 
-    trajectories = np.concatenate(
-        [gt_xyz[:, (0, 2)], aligned_xyz[:, (0, 2)]], axis=0
-    )
+    trajectories = np.concatenate([gt_xyz[:, axes], aligned_xyz[:, axes]], axis=0)
     mapped = map_points(trajectories, 50, 40, 520, 500)
     draw_polyline(image, mapped[: len(gt_xyz)], (40, 170, 40))
     draw_polyline(image, mapped[len(gt_xyz) :], (220, 50, 50))
@@ -123,7 +189,7 @@ def create_plot(path, gt_xyz, aligned_xyz, errors, rmse):
         ]
     )
     draw_polyline(image, np.rint(error_points).astype(int), (40, 80, 220))
-    rmse_y = int(round(550 - rmse / maximum * 480))
+    rmse_y = round(550 - rmse / maximum * 480)
     draw_line(image, 630, rmse_y, 1150, rmse_y, (220, 50, 50))
     write_png(path, image)
 
@@ -137,17 +203,16 @@ def main() -> int:
 
     ground_truth = load_poses(args.ground_truth)
     estimate = load_poses(args.estimate)
-    count = min(len(ground_truth), len(estimate))
-    if count < 3:
-        raise ValueError("at least three associated poses are required")
     if len(ground_truth) != len(estimate):
-        print(
-            f"warning: pose counts differ; evaluating first {count} pairs "
-            f"(ground truth={len(ground_truth)}, estimate={len(estimate)})"
+        raise ValueError(
+            f"pose counts differ (ground truth={len(ground_truth)}, "
+            f"estimate={len(estimate)}); KITTI evaluation requires one estimate "
+            "for every ground-truth frame"
         )
 
-    ground_truth = ground_truth[:count]
-    estimate = estimate[:count]
+    count = len(ground_truth)
+    if count < 3:
+        raise ValueError("at least three associated poses are required")
     gt_xyz = ground_truth[:, :3, 3]
     estimated_xyz = estimate[:, :3, 3]
     rotation, translation = rigid_alignment(estimated_xyz, gt_xyz)
@@ -165,6 +230,7 @@ def main() -> int:
         "ate_min_m": float(np.min(errors)),
         "ate_max_m": float(np.max(errors)),
     }
+    stats.update(evaluate_kitti_segments(ground_truth, estimate))
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with (args.output_dir / "metrics.json").open("w", encoding="utf-8") as stream:
@@ -188,9 +254,7 @@ def main() -> int:
             ]
         )
         for index in range(count):
-            writer.writerow(
-                [index, *gt_xyz[index], *aligned_xyz[index], errors[index]]
-            )
+            writer.writerow([index, *gt_xyz[index], *aligned_xyz[index], errors[index]])
 
     create_plot(
         args.output_dir / "trajectory_and_ate.png",

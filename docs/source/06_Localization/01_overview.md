@@ -1,7 +1,7 @@
 (localization-overview)=
 # 1. 模块概览
 
-定位域估计机器人在地图中的位姿（建图可选），对下游主要是 **TF `map→odom→base_link`**，以及可选占用栅格 `/map`。输入来自激光、IMU、里程计；Atlas / Argus 的 LIVO 还吃相机。
+定位域估计机器人在地图中的位姿（建图可选）。Cartographer/Argus 可向导航栈提供 TF 与地图类输出；Atlas 当前提供视觉里程计、轨迹和稀疏地图点。输入按后端分别来自激光、IMU、里程计或相机。
 
 用一张职责表建立索引，细节跳到专题页，不在概览里展开命令序列。
 
@@ -10,7 +10,7 @@
 | 后端 | 传感器 | 典型场景 | 文档 |
 |------|--------|----------|------|
 | **Cartographer**（默认） | 激光 + IMU | 2D/3D 建图、纯定位 | [07](07_cartographer/guide.md) |
-| **Atlas** | 相机 / IMU / 激光 | VO · VIO · LIO · LIVO | [08](08_atlas/guide.md) |
+| **Atlas** | 相机（可选 IMU） | 单目 / 双目 / RGB-D 视觉 SLAM 与 VIO | [08](08_atlas/guide.md) |
 | **Argus** | 激光 + IMU（+ 相机） | ESIKF LIO / LIVO | [06](06_argus.md) |
 
 进程开关：`--localization_mode=cartographer|atlas|argus`。没有 AMCL 后端。选型见 [09](09_survey.md)。
@@ -29,7 +29,7 @@ scan / echoes + imu + tf
 ```text
 autonomy/localization/
 ├── localization_main.cpp / localization_server.*
-├── launch/  conf/{cartographer,atlas}/
+├── launch/  conf/cartographer/  atlas/config/
 ├── cartographer/  atlas/  argus/
 ```
 

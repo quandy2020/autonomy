@@ -5,7 +5,7 @@
 
   Prefer the explicit files when choosing a backend:
     localization_cartographer.launch  — lidar SLAM (Cartographer)
-    localization_atlas.launch         — Atlas LIO / LIVO
+    localization_atlas.launch         — Atlas ORB visual / VIO
     localization_argus.launch         — Argus LIO / LIVO (ESIKF)
 
   Run:

@@ -1,0 +1,125 @@
+#
+# Argus core library. Modules grow here; the app links this target instead of
+# compiling library sources directly.
+#
+
+find_package(Eigen3 REQUIRED)
+find_package(glog REQUIRED)
+find_package(Threads REQUIRED)
+find_package(GTSAM QUIET)
+
+add_library(argus_voxel STATIC
+  # optimization / pose graph
+  optimization/voxel/loop_factor.cpp
+  optimization/voxel/gtsam_optimizer.cpp
+  optimization/voxel/pose_graph.cpp
+  # common concurrency
+  common/task.cpp
+  common/thread_pool.cpp
+  # sensor plumbing
+  sensor/sensor_sync.cpp
+  # map
+  map/voxel/map_ops.cpp
+  map/voxel/keyframe_load.cpp
+  map/voxel/hierarchical_bundle_adjustment.cpp
+  map/voxel/serialization/voxel_map_serializer.cpp
+  # frontend
+  frontend/lidar/imu/imu_preintegration.cpp
+  frontend/lidar/imu/imu_ekf.cpp
+  frontend/lidar/initialization/initialization.cpp
+  frontend/lidar/initialization/initializer.cpp
+  frontend/lidar/odometry/point_cov.cpp
+  frontend/lidar/odometry/downsample.cpp
+  frontend/lidar/odometry/kdtree_odom.cpp
+  frontend/lidar/odometry/normal_icp.cpp
+  frontend/lidar/odometry/odometry.cpp
+  frontend/lidar/odometry/lidar_vendor.cpp
+  frontend/lidar/local_mapping/local_mapping.cpp
+  frontend/lidar/voxel_slam/voxel_slam.cpp
+  frontend/lidar/voxel_slam/session_persistence.cpp
+  # core component registry
+  common/component/component_factory.cpp
+  common/component/component_registry.cpp
+  common/component/plugin_loader.cpp
+  # backend
+  backend/loop_closure/lidar/loop_update.cpp
+  backend/loop_closure/lidar/triangle_descriptor/binary_extractor.cpp
+  backend/loop_closure/lidar/triangle_descriptor/triangle_detector.cpp
+  backend/loop_closure/lidar/triangle_descriptor/triangle_verify.cpp
+  backend/global_mapping/pgo_edges.cpp
+  backend/global_mapping/previous_map.cpp
+  backend/global_mapping/gtsam_pgo.cpp
+  backend/global_mapping/global_mapping.cpp
+)
+
+target_include_directories(argus_voxel
+  PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
+
+target_link_libraries(argus_voxel
+  PUBLIC
+    Eigen3::Eigen
+    glog::glog
+    Threads::Threads
+    ${CMAKE_DL_LIBS}
+)
+
+if(GTSAM_FOUND)
+  target_compile_definitions(argus_voxel PUBLIC ARGUS_HAS_GTSAM=1)
+  if(TARGET gtsam)
+    target_link_libraries(argus_voxel PUBLIC gtsam)
+  elseif(TARGET GTSAM::gtsam)
+    target_link_libraries(argus_voxel PUBLIC GTSAM::gtsam)
+  endif()
+endif()
+
+target_compile_features(argus_voxel PUBLIC cxx_std_17)
+
+# Protocol conversion stays outside the estimator library. Consumers that
+# exchange AutoMsgs messages link this boundary target; algorithms remain
+# independent of protobuf and ROS-style transport schemas.
+if(ARGUS_BUILD_MESSAGE_ADAPTERS)
+  add_library(argus_automsgs STATIC
+    sensor/imu_data.cpp
+    sensor/point_cloud_data.cpp
+  )
+  target_include_directories(argus_automsgs
+    PUBLIC
+      ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+  target_link_libraries(argus_automsgs
+    PUBLIC
+      argus_voxel
+      ${ARGUS_AUTOMSGS_TARGET}
+  )
+  target_compile_features(argus_automsgs PUBLIC cxx_std_17)
+endif()
+
+if(ARGUS_BUILD_VISUAL_SLAM)
+  include(${CMAKE_CURRENT_LIST_DIR}/visual_orb.cmake)
+endif()
+
+if(BUILD_TESTING)
+  find_package(GTest REQUIRED)
+  include(GoogleTest)
+
+  function(argus_voxel_test name source)
+    add_executable(${name} ${source})
+    target_link_libraries(${name} PRIVATE argus_voxel GTest::gtest_main)
+    gtest_discover_tests(${name})
+  endfunction()
+
+  argus_voxel_test(thread_pool_test common/thread_pool_test.cpp)
+
+  argus_voxel_test(imu_test frontend/lidar/imu/imu_test.cpp)
+  argus_voxel_test(imu_preintegration_test frontend/lidar/imu/imu_preintegration_test.cpp)
+  argus_voxel_test(point_cov_test frontend/lidar/odometry/point_cov_test.cpp)
+  argus_voxel_test(initialization_test frontend/lidar/initialization/initialization_test.cpp)
+  argus_voxel_test(li_ba_test frontend/lidar/local_mapping/li_ba_test.cpp)
+  argus_voxel_test(hierarchical_bundle_adjustment_test map/voxel/hierarchical_bundle_adjustment_test.cpp)
+  argus_voxel_test(pgo_edges_test backend/global_mapping/pgo_edges_test.cpp)
+  argus_voxel_test(voxel_map_serializer_test map/voxel/serialization/voxel_map_serializer_test.cpp)
+  argus_voxel_test(triangle_detector_test backend/loop_closure/lidar/triangle_descriptor/triangle_detector_test.cpp)
+  argus_voxel_test(triangle_search_loop_test backend/loop_closure/lidar/triangle_descriptor/triangle_search_loop_test.cpp)
+endif()

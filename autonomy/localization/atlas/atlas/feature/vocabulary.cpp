@@ -68,6 +68,7 @@ void Vocabulary::Transform(const cv::Mat& descriptors, BowVector* bow,
 
     fbow::BoWVector fbow_bow;
     fbow::BoWFeatVector fbow_features;
+    double l1_norm = 0.0;
     vocabulary_.transform(descriptors, kFeatureLevel, fbow_bow, fbow_features);
     for (const auto& [word_id, value] : fbow_bow) {
         if (!std::isfinite(value)) {
@@ -76,9 +77,20 @@ void Vocabulary::Transform(const cv::Mat& descriptors, BowVector* bow,
             features->clear();
             return;
         }
-        bow->emplace(static_cast<WordId>(word_id),
-                     static_cast<WordValue>(value));
+        const auto word_value = static_cast<WordValue>(value);
+        bow->emplace(static_cast<WordId>(word_id), word_value);
+        l1_norm += std::abs(word_value);
     }
+    if (!std::isfinite(l1_norm) || l1_norm <= 0.0) {
+        AERROR << "FBoW produced a word vector with an invalid L1 norm";
+        bow->clear();
+        features->clear();
+        return;
+    }
+    for (auto& entry : *bow) {
+        entry.second /= l1_norm;
+    }
+
     for (const auto& [node_id, indices] : fbow_features) {
         auto& output = (*features)[static_cast<NodeId>(node_id)];
         output.reserve(indices.size());

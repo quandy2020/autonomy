@@ -183,6 +183,7 @@ public:
 #endif
 
 private:
+    void WaitForLocalMappingResume();
     void SaveAtlas(int type);
     bool LoadAtlas(int type);
 
@@ -236,6 +237,7 @@ private:
     std::mutex mMutexMode;
     bool mbActivateLocalizationMode;
     bool mbDeactivateLocalizationMode;
+    bool mbLocalizationModeActive;
 
     // Shutdown flag
     bool mbShutDown;
