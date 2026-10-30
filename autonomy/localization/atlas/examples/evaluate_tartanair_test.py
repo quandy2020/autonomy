@@ -40,7 +40,7 @@ def write_tum(path: Path, rows):
     )
 
 
-def write_manifest(estimate: Path, segments):
+def write_manifest(estimate: Path, segments, optimized=None):
     with Path(str(estimate) + ".segments.csv").open(
         "w", encoding="utf-8", newline=""
     ) as stream:
@@ -54,12 +54,18 @@ def write_manifest(estimate: Path, segments):
                 "first_time_s",
                 "last_time_s",
                 "selected",
+                "replace_active",
                 "map_id",
                 "map_id_valid",
+                "coordinate_epoch",
+                "destructive_epoch",
                 "coordinate_frame_scope",
             ]
         )
-        for index, path, poses, map_id in segments:
+        for segment in segments:
+            index, path, poses, map_id = segment[:4]
+            coordinate_epoch = segment[4] if len(segment) > 4 else index
+            destructive_epoch = segment[5] if len(segment) > 5 else index
             writer.writerow(
                 [
                     "raw",
@@ -69,9 +75,33 @@ def write_manifest(estimate: Path, segments):
                     0,
                     0,
                     "false",
+                    "false",
                     map_id,
                     "true",
+                    coordinate_epoch,
+                    destructive_epoch,
                     "independent_atlas_map",
+                ]
+            )
+        if optimized is not None:
+            path, poses, map_id, coordinate_epoch, destructive_epoch, replace = (
+                optimized
+            )
+            writer.writerow(
+                [
+                    "optimized_active",
+                    -1,
+                    path,
+                    poses,
+                    0,
+                    0,
+                    "false",
+                    "true" if replace else "false",
+                    map_id,
+                    "true",
+                    coordinate_epoch,
+                    destructive_epoch,
+                    "active_map_only",
                 ]
             )
 
@@ -97,6 +127,69 @@ def evaluate(
 
 
 class SegmentedEvaluationTest(unittest.TestCase):
+    def test_replaces_active_raw_epochs_with_complete_optimized_trajectory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            times, poses = write_reference(root, 6)
+            estimate = root / "trajectory.tum"
+            first = Path(str(estimate) + ".segment-000.tum")
+            active_before_scale = Path(str(estimate) + ".segment-001.tum")
+            active_after_scale = Path(str(estimate) + ".segment-002.tum")
+            optimized = Path(str(estimate) + ".active.tum")
+            first_rows = [(time, time + 10.0, 0.0) for time in range(3)]
+            wrong_rows = [(3, 3.0, 0.0), (4, 7.0, 0.0)]
+            final_wrong_rows = [(5, 12.0, 0.0)]
+            optimized_rows = [
+                (time, time + 100.0, 0.0) for time in range(3, 6)
+            ]
+            write_tum(first, first_rows)
+            write_tum(active_before_scale, wrong_rows)
+            write_tum(active_after_scale, final_wrong_rows)
+            write_tum(optimized, optimized_rows)
+            write_tum(estimate, first_rows)
+            write_manifest(
+                estimate,
+                [
+                    (0, first, len(first_rows), 4),
+                    (1, active_before_scale, len(wrong_rows), 5, 1, 1),
+                    (2, active_after_scale, len(final_wrong_rows), 5, 2, 1),
+                ],
+                optimized=(optimized, len(optimized_rows), 5, 2, 1, True),
+            )
+
+            metrics = evaluate(poses, times, estimate, root / "evaluation")
+            self.assertEqual(metrics["segment_count"], 2)
+            self.assertEqual(metrics["estimated_poses"], 6)
+            self.assertEqual(metrics["matched_poses"], 6)
+            self.assertLess(metrics["ate_rmse_m"], 1.0e-9)
+            self.assertEqual(metrics["segments"][1]["source_kind"],
+                             "optimized_active")
+            self.assertEqual(metrics["segments"][1]["path"], str(optimized))
+
+    def test_incomplete_optimized_trajectory_does_not_replace_raw_epoch(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            times, poses = write_reference(root, 4)
+            estimate = root / "trajectory.tum"
+            raw = Path(str(estimate) + ".segment-000.tum")
+            optimized = Path(str(estimate) + ".active.tum")
+            raw_rows = [(0, 0.0, 0.0), (1, 1.0, 0.0),
+                        (2, 4.0, 0.0), (3, 9.0, 0.0)]
+            optimized_rows = [(0, 0.0, 0.0), (1, 1.0, 0.0)]
+            write_tum(raw, raw_rows)
+            write_tum(optimized, optimized_rows)
+            write_tum(estimate, raw_rows)
+            write_manifest(
+                estimate,
+                [(0, raw, len(raw_rows), 4)],
+                optimized=(optimized, len(optimized_rows), 4, 0, 0, False),
+            )
+
+            metrics = evaluate(poses, times, estimate, root / "evaluation")
+            self.assertEqual(metrics["segment_count"], 1)
+            self.assertEqual(metrics["segments"][0]["source_kind"], "raw")
+            self.assertGreater(metrics["ate_rmse_m"], 0.1)
+
     def test_aligns_maps_independently_and_weights_pose_errors(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

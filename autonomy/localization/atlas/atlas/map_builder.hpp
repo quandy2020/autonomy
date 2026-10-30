@@ -90,10 +90,23 @@ std::vector<map::TimedPose> SelectChangedMappingPoses(
 void RecordSentMappingPoses(const std::vector<map::TimedPose>& poses,
                             MappingPoseCache* last_sent_poses);
 
-/** Observes valid map ids and reports only a transition after initialization. */
+struct MapIdentitySnapshot {
+    bool valid = false;
+    std::uint64_t map_id = 0;
+    std::uint64_t coordinate_epoch = 0;
+    std::uint64_t destructive_epoch = 0;
+};
+
+/** True only for an in-flight non-destructive coordinate rebase. */
+bool CrossedScaledCoordinateEpoch(const MapIdentitySnapshot& before,
+                                  const MapIdentitySnapshot& after);
+
+/** Reports a valid map-id or destructive coordinate-epoch transition. */
 bool ObserveMappingMap(bool map_id_valid, std::uint64_t map_id,
+                       std::uint64_t destructive_epoch,
                        bool* observed_map_id_valid,
-                       std::uint64_t* observed_map_id);
+                       std::uint64_t* observed_map_id,
+                       std::uint64_t* observed_destructive_epoch);
 
 struct CulledMappingFrame {
     std::int64_t timestamp_key = 0;

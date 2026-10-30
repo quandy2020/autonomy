@@ -121,7 +121,7 @@ def read_estimate(path: Path):
 
 
 def read_segment_manifest(estimate: Path):
-    """Return raw Atlas-map segment records, or the conventional path."""
+    """Return independently evaluable Atlas coordinate-frame records."""
     manifest = Path(str(estimate) + ".segments.csv")
     if not manifest.is_file():
         return [
@@ -131,23 +131,41 @@ def read_segment_manifest(estimate: Path):
                 "declared_poses": None,
                 "map_id": None,
                 "map_id_valid": False,
+                "coordinate_epoch": None,
+                "destructive_epoch": None,
+                "source_kind": "conventional",
             }
         ]
 
-    records = []
+    raw_records = []
+    optimized_replacements = []
     with manifest.open("r", encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream)
         required = {"kind", "index", "path", "poses"}
         if reader.fieldnames is None or not required.issubset(reader.fieldnames):
             raise ValueError(f"{manifest}: invalid segment manifest header")
+        has_replace_active = "replace_active" in reader.fieldnames
+        has_coordinate_epoch = "coordinate_epoch" in reader.fieldnames
+        has_destructive_epoch = "destructive_epoch" in reader.fieldnames
         for row_number, row in enumerate(reader, 2):
-            if row["kind"] != "raw":
+            kind = row["kind"]
+            if kind not in {"raw", "optimized_active"}:
                 continue
             try:
                 index = int(row["index"])
                 declared_poses = int(row["poses"])
                 map_id_valid = row.get("map_id_valid", "false") == "true"
                 map_id = int(row.get("map_id", "0")) if map_id_valid else None
+                coordinate_epoch = (
+                    int(row["coordinate_epoch"])
+                    if has_coordinate_epoch and row["coordinate_epoch"]
+                    else None
+                )
+                destructive_epoch = (
+                    int(row["destructive_epoch"])
+                    if has_destructive_epoch and row["destructive_epoch"]
+                    else None
+                )
             except (TypeError, ValueError) as error:
                 raise ValueError(
                     f"{manifest}:{row_number}: invalid segment metadata"
@@ -155,19 +173,61 @@ def read_segment_manifest(estimate: Path):
             path = Path(row["path"])
             if not path.is_absolute():
                 path = manifest.parent / path
-            records.append(
-                {
-                    "index": index,
-                    "path": path,
-                    "declared_poses": declared_poses,
-                    "map_id": map_id,
-                    "map_id_valid": map_id_valid,
-                }
+            record = {
+                "index": index,
+                "path": path,
+                "declared_poses": declared_poses,
+                "map_id": map_id,
+                "map_id_valid": map_id_valid,
+                "coordinate_epoch": coordinate_epoch,
+                "destructive_epoch": destructive_epoch,
+                "source_kind": kind,
+            }
+            if kind == "raw":
+                raw_records.append(record)
+                continue
+            replace_active = (
+                row.get("replace_active", "false") == "true"
+                if has_replace_active
+                else row.get("selected", "false") == "true"
             )
-    records.sort(key=lambda record: record["index"])
-    indexes = [record["index"] for record in records]
-    if not records or len(set(indexes)) != len(indexes):
+            if replace_active:
+                optimized_replacements.append(record)
+
+    raw_records.sort(key=lambda record: record["index"])
+    indexes = [record["index"] for record in raw_records]
+    if not raw_records or len(set(indexes)) != len(indexes):
         raise ValueError(f"{manifest}: raw segment indexes must be unique")
+    if len(optimized_replacements) > 1:
+        raise ValueError(f"{manifest}: multiple active optimized replacements")
+    if not optimized_replacements:
+        return raw_records
+
+    optimized = optimized_replacements[0]
+    matching_indexes = []
+    for index, raw in enumerate(raw_records):
+        if raw["map_id_valid"] != optimized["map_id_valid"]:
+            continue
+        if raw["map_id_valid"] and raw["map_id"] != optimized["map_id"]:
+            continue
+        if optimized["destructive_epoch"] is not None:
+            if raw["destructive_epoch"] != optimized["destructive_epoch"]:
+                continue
+        matching_indexes.append(index)
+    if not matching_indexes:
+        raise ValueError(
+            f"{manifest}: active optimized trajectory has no matching raw epoch"
+        )
+    if optimized["destructive_epoch"] is None:
+        matching_indexes = [matching_indexes[-1]]
+
+    optimized["index"] = raw_records[matching_indexes[0]]["index"]
+    matching = set(matching_indexes)
+    records = [
+        raw for index, raw in enumerate(raw_records) if index not in matching
+    ]
+    records.append(optimized)
+    records.sort(key=lambda record: record["index"])
     return records
 
 
@@ -381,8 +441,11 @@ def main() -> int:
 
         details = {
             "segment_index": record["index"],
+            "source_kind": record["source_kind"],
             "map_id": record["map_id"],
             "map_id_valid": record["map_id_valid"],
+            "coordinate_epoch": record["coordinate_epoch"],
+            "destructive_epoch": record["destructive_epoch"],
             "path": str(record["path"]),
             "raw_estimated_poses": raw_count,
             "estimated_poses": len(estimate_times),

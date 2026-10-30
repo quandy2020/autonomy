@@ -143,32 +143,35 @@ TEST(MappingPipelineTest,
      WorkerPrioritizesExplicitRebuildAndFramesOverMaintenance) {
     using Work = internal::MappingWorkerWork;
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  true, true, true, true, true, true, true),
+                  true, true, true, true, true, true, true, true),
               Work::kReset);
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  false, false, true, true, true, true, true),
+                  false, false, true, true, true, true, true, true),
               Work::kForcedRebuild);
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  false, false, false, true, true, true, true),
-              Work::kFrame);
-    EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  false, false, false, false, true, true, true),
+                  false, false, false, true, true, true, true, true),
               Work::kFrameRemoval);
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  false, false, false, false, false, true, true),
+                  false, false, false, false, true, true, true, true),
+              Work::kFrame);
+    EXPECT_EQ(internal::SelectMappingWorkerWork(
+                  false, false, false, false, false, true, true, true),
+              Work::kFrameRemoval);
+    EXPECT_EQ(internal::SelectMappingWorkerWork(
+                  false, false, false, false, false, false, true, true),
               Work::kPoseUpdate);
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  false, false, false, false, false, false, true),
+                  false, false, false, false, false, false, false, true),
               Work::kFlush);
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  false, false, false, false, false, false, false),
+                  false, false, false, false, false, false, false, false),
               Work::kNone);
 }
 
 TEST(MappingPipelineTest, IdleSnapshotWinsOnlyWhenWaitTimedOut) {
     using Work = internal::MappingWorkerWork;
     EXPECT_EQ(internal::SelectMappingWorkerWork(
-                  true, false, false, false, false, false, false),
+                  true, false, false, false, false, false, false, false),
               Work::kIdleSnapshot);
 }
 

@@ -326,17 +326,50 @@ TEST(MapBuilderPoseSyncTest, DoesNotAdvanceStateUntilExplicitlyRecorded) {
     EXPECT_EQ(last_sent.size(), 1U);
 }
 
-TEST(MapBuilderPoseSyncTest, DetectsOnlyValidMapIdTransitions) {
+TEST(MapBuilderPoseSyncTest, DetectsMapOrDestructiveEpochTransitions) {
     bool valid = false;
     std::uint64_t map_id = 0;
-    EXPECT_FALSE(internal::ObserveMappingMap(true, 4U, &valid, &map_id));
+    std::uint64_t destructive_epoch = 0;
+    EXPECT_FALSE(internal::ObserveMappingMap(
+        true, 4U, 7U, &valid, &map_id, &destructive_epoch));
     EXPECT_TRUE(valid);
     EXPECT_EQ(map_id, 4U);
-    EXPECT_FALSE(internal::ObserveMappingMap(false, 5U, &valid, &map_id));
+    EXPECT_EQ(destructive_epoch, 7U);
+    EXPECT_FALSE(internal::ObserveMappingMap(
+        false, 5U, 8U, &valid, &map_id, &destructive_epoch));
     EXPECT_EQ(map_id, 4U);
-    EXPECT_FALSE(internal::ObserveMappingMap(true, 4U, &valid, &map_id));
-    EXPECT_TRUE(internal::ObserveMappingMap(true, 5U, &valid, &map_id));
+    EXPECT_EQ(destructive_epoch, 7U);
+    EXPECT_FALSE(internal::ObserveMappingMap(
+        true, 4U, 7U, &valid, &map_id, &destructive_epoch));
+    EXPECT_TRUE(internal::ObserveMappingMap(
+        true, 4U, 8U, &valid, &map_id, &destructive_epoch));
+    EXPECT_EQ(map_id, 4U);
+    EXPECT_EQ(destructive_epoch, 8U);
+    EXPECT_TRUE(internal::ObserveMappingMap(
+        true, 5U, 8U, &valid, &map_id, &destructive_epoch));
     EXPECT_EQ(map_id, 5U);
+}
+
+TEST(MapBuilderPoseSyncTest, RejectsOnlyAmbiguousScaledEpochBoundary) {
+    internal::MapIdentitySnapshot before{true, 4U, 7U, 2U};
+    internal::MapIdentitySnapshot after = before;
+    EXPECT_FALSE(internal::CrossedScaledCoordinateEpoch(before, after));
+
+    after.coordinate_epoch = 8U;
+    EXPECT_TRUE(internal::CrossedScaledCoordinateEpoch(before, after));
+
+    after.destructive_epoch = 3U;
+    EXPECT_FALSE(internal::CrossedScaledCoordinateEpoch(before, after));
+
+    after = before;
+    after.map_id = 5U;
+    after.coordinate_epoch = 8U;
+    EXPECT_FALSE(internal::CrossedScaledCoordinateEpoch(before, after));
+
+    after = before;
+    after.valid = false;
+    after.coordinate_epoch = 8U;
+    EXPECT_FALSE(internal::CrossedScaledCoordinateEpoch(before, after));
 }
 
 TEST(MapBuilderTest, RejectsMissingConfiguration) {

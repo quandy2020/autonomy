@@ -67,6 +67,7 @@ System::System(const std::string& strVocFile,
       mpViewer(static_cast<Viewer*>(nullptr)),
       mbReset(false),
       mbResetActiveMap(false),
+      mDestructiveEpoch(0),
       mbActivateLocalizationMode(false),
       mbDeactivateLocalizationMode(false),
       mbLocalizationModeActive(false),
@@ -394,10 +395,12 @@ autonomy::common::math::SE3f System::TrackStereo(
         std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbReset) {
             mpTracker->Reset();
+            ++mDestructiveEpoch;
             mbReset = false;
             mbResetActiveMap = false;
         } else if (mbResetActiveMap) {
             mpTracker->ResetActiveMap();
+            ++mDestructiveEpoch;
             mbResetActiveMap = false;
         }
     }
@@ -470,10 +473,12 @@ autonomy::common::math::SE3f System::TrackRGBD(
         std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbReset) {
             mpTracker->Reset();
+            ++mDestructiveEpoch;
             mbReset = false;
             mbResetActiveMap = false;
         } else if (mbResetActiveMap) {
             mpTracker->ResetActiveMap();
+            ++mDestructiveEpoch;
             mbResetActiveMap = false;
         }
     }
@@ -545,12 +550,14 @@ autonomy::common::math::SE3f System::TrackMonocular(
         std::unique_lock<std::mutex> lock(mMutexReset);
         if (mbReset) {
             mpTracker->Reset();
+            ++mDestructiveEpoch;
             mbReset = false;
             mbResetActiveMap = false;
         } else if (mbResetActiveMap) {
             AINFO << "SYSTEM-> Reseting active map in monocular case"
                   << std::endl;
             mpTracker->ResetActiveMap();
+            ++mDestructiveEpoch;
             mbResetActiveMap = false;
         }
     }
@@ -594,12 +601,26 @@ bool System::MapChanged() {
 }
 
 bool System::GetCurrentMapId(std::uint64_t* map_id) {
-    if (map_id == nullptr || mpAtlas == nullptr)
+    std::uint64_t coordinate_epoch = 0;
+    std::uint64_t destructive_epoch = 0;
+    return GetCurrentMapIdentity(map_id, &coordinate_epoch,
+                                 &destructive_epoch);
+}
+
+bool System::GetCurrentMapIdentity(std::uint64_t* map_id,
+                                   std::uint64_t* coordinate_epoch,
+                                   std::uint64_t* destructive_epoch) {
+    if (map_id == nullptr || coordinate_epoch == nullptr ||
+        destructive_epoch == nullptr || mpAtlas == nullptr) {
         return false;
+    }
+    std::unique_lock<std::mutex> lock(mMutexReset);
     Map* current_map = mpAtlas->GetCurrentMap();
     if (current_map == nullptr)
         return false;
     *map_id = static_cast<std::uint64_t>(current_map->GetId());
+    *coordinate_epoch = current_map->GetCoordinateEpoch();
+    *destructive_epoch = mDestructiveEpoch;
     return true;
 }
 
@@ -1659,7 +1680,9 @@ bool System::isFinished() {
 
 void System::ChangeDataset() {
     if (mpAtlas->GetCurrentMap()->KeyFramesInMap() < 12) {
+        std::unique_lock<std::mutex> lock(mMutexReset);
         mpTracker->ResetActiveMap();
+        ++mDestructiveEpoch;
     } else {
         mpTracker->CreateMapInAtlas();
     }

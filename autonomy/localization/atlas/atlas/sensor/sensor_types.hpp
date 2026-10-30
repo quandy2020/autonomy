@@ -105,6 +105,14 @@ struct TrackingResult {
     int tracking_state = 0;
     /** Whether pose_world_camera contains a usable finite pose. */
     bool valid = false;
+    /**
+     * Monotonic identity of the active map's coordinate representation. This
+     * advances when a reset clears the map or inertial initialization applies
+     * a global scaled rotation, even if Atlas retains the same map_id.
+     */
+    std::uint64_t coordinate_epoch = 0;
+    /** Advances only when Reset or ResetActiveMap destroys map contents. */
+    std::uint64_t destructive_epoch = 0;
 };
 
 /** @brief One optimized camera pose sampled at its source image timestamp. */

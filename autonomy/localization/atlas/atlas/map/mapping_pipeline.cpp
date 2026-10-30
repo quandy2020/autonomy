@@ -444,12 +444,14 @@ namespace internal {
 
 MappingWorkerWork SelectMappingWorkerWork(
     bool idle_snapshot, bool reset_requested, bool rebuild_requested,
-    bool have_queued_frames, bool have_frame_removals,
-    bool have_pose_updates, bool flush_pending) {
+    bool have_queued_frame_removals, bool have_queued_frames,
+    bool have_frame_removals, bool have_pose_updates, bool flush_pending) {
     if (reset_requested)
         return MappingWorkerWork::kReset;
     if (rebuild_requested)
         return MappingWorkerWork::kForcedRebuild;
+    if (have_queued_frame_removals)
+        return MappingWorkerWork::kFrameRemoval;
     if (have_queued_frames)
         return MappingWorkerWork::kFrame;
     if (have_frame_removals)
@@ -2059,11 +2061,16 @@ void MappingPipeline::WorkerLoop() {
                     PublishSnapshot(last_frame_time_, true);
                 return;
             }
+            const bool have_queued_frame_removals = std::any_of(
+                queue_.begin(), queue_.end(),
+                [this](const MappingFrame& queued) {
+                    return pending_frame_removals_.count(queued.frame_id) != 0U;
+                });
             const internal::MappingWorkerWork work =
                 internal::SelectMappingWorkerWork(
                     idle_snapshot, reset_requested_, rebuild_requested_,
-                    !queue_.empty(), !pending_frame_removals_.empty(),
-                    !pending_poses_.empty(),
+                    have_queued_frame_removals, !queue_.empty(),
+                    !pending_frame_removals_.empty(), !pending_poses_.empty(),
                     flush_completed_id_ < flush_request_id_);
             if (work == internal::MappingWorkerWork::kIdleSnapshot) {
                 // Map work is worker-owned, so snapshotting after releasing
@@ -2084,9 +2091,24 @@ void MappingPipeline::WorkerLoop() {
                 have_frame = true;
             } else if (work ==
                        internal::MappingWorkerWork::kFrameRemoval) {
-                frame_removals.assign(pending_frame_removals_.begin(),
-                                      pending_frame_removals_.end());
-                pending_frame_removals_.clear();
+                if (queue_.empty()) {
+                    frame_removals.assign(
+                        pending_frame_removals_.begin(),
+                        pending_frame_removals_.end());
+                    pending_frame_removals_.clear();
+                } else {
+                    std::unordered_set<std::uint64_t> queued_removal_ids;
+                    for (const MappingFrame& queued : queue_) {
+                        if (pending_frame_removals_.count(queued.frame_id) !=
+                            0U) {
+                            queued_removal_ids.insert(queued.frame_id);
+                        }
+                    }
+                    frame_removals.assign(queued_removal_ids.begin(),
+                                          queued_removal_ids.end());
+                    for (const std::uint64_t frame_id : frame_removals)
+                        pending_frame_removals_.erase(frame_id);
+                }
                 processing_frame_removals_.insert(frame_removals.begin(),
                                                    frame_removals.end());
                 const std::unordered_set<std::uint64_t> removal_set(

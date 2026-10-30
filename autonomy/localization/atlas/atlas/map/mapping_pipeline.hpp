@@ -43,8 +43,8 @@ enum class MappingWorkerWork {
 /** Selects work without mutating state; order is part of the scheduler API. */
 MappingWorkerWork SelectMappingWorkerWork(
     bool idle_snapshot, bool reset_requested, bool rebuild_requested,
-    bool have_queued_frames, bool have_frame_removals,
-    bool have_pose_updates, bool flush_pending);
+    bool have_queued_frame_removals, bool have_queued_frames,
+    bool have_frame_removals, bool have_pose_updates, bool flush_pending);
 
 }  // namespace internal
 

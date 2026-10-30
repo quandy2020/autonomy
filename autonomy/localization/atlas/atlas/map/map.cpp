@@ -230,6 +230,12 @@ void Map::clear() {
     mvpKeyFrameOrigins.clear();
     mbIMU_BA1 = false;
     mbIMU_BA2 = false;
+    coordinate_epoch_.fetch_add(1, std::memory_order_release);
+}
+
+std::uint64_t Map::GetCoordinateEpoch() {
+    std::unique_lock<std::mutex> lock(mMutexMap);
+    return coordinate_epoch_.load(std::memory_order_acquire);
 }
 
 bool Map::IsInUse() {
@@ -274,6 +280,7 @@ void Map::ApplyScaledRotation(const autonomy::common::math::SE3f& T,
         pMP->UpdateNormalAndDepth();
     }
     mnMapChange++;
+    coordinate_epoch_.fetch_add(1, std::memory_order_release);
 }
 
 void Map::SetInertialSensor() {

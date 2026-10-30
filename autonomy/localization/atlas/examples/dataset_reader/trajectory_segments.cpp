@@ -89,9 +89,15 @@ bool CopyFile(const std::string& source, const std::string& destination) {
 
 void TrajectorySegmentRecorder::Record(const TrackingResult& result) {
     if (result.map_id_valid) {
-        if (observed_map_id_valid_ && result.map_id != observed_map_id_)
+        if (observed_map_id_valid_ &&
+            (result.map_id != observed_map_id_ ||
+             result.coordinate_epoch != observed_coordinate_epoch_ ||
+             result.destructive_epoch != observed_destructive_epoch_)) {
             break_before_next_valid_ = true;
+        }
         observed_map_id_ = result.map_id;
+        observed_coordinate_epoch_ = result.coordinate_epoch;
+        observed_destructive_epoch_ = result.destructive_epoch;
         observed_map_id_valid_ = true;
     }
     if (!ValidPose(result))
@@ -102,22 +108,34 @@ void TrajectorySegmentRecorder::Record(const TrackingResult& result) {
         Segment segment;
         segment.map_id = observed_map_id_;
         segment.map_id_valid = observed_map_id_valid_;
+        segment.coordinate_epoch = observed_coordinate_epoch_;
+        segment.destructive_epoch = observed_destructive_epoch_;
         segments_.push_back(std::move(segment));
     } else if (result.map_id_valid &&
                segments_.back().map_id_valid &&
-               result.map_id != segments_.back().map_id) {
+               (result.map_id != segments_.back().map_id ||
+                result.coordinate_epoch !=
+                    segments_.back().coordinate_epoch ||
+                result.destructive_epoch !=
+                    segments_.back().destructive_epoch)) {
         Segment segment;
         segment.map_id = result.map_id;
         segment.map_id_valid = true;
+        segment.coordinate_epoch = result.coordinate_epoch;
+        segment.destructive_epoch = result.destructive_epoch;
         segments_.push_back(std::move(segment));
     }
     if (segments_.back().poses.empty()) {
         segments_.back().map_id = observed_map_id_;
         segments_.back().map_id_valid = observed_map_id_valid_;
+        segments_.back().coordinate_epoch = observed_coordinate_epoch_;
+        segments_.back().destructive_epoch = observed_destructive_epoch_;
     }
     if (result.map_id_valid && !segments_.back().map_id_valid) {
         segments_.back().map_id = result.map_id;
         segments_.back().map_id_valid = true;
+        segments_.back().coordinate_epoch = result.coordinate_epoch;
+        segments_.back().destructive_epoch = result.destructive_epoch;
     }
     Eigen::Quaterniond rotation = result.pose_world_camera.rotation;
     rotation.normalize();
@@ -155,10 +173,22 @@ bool TrajectorySegmentRecorder::SaveTum(
         }
     }
 
-    const TumFileSummary optimized =
-        SummarizeTumFile(active_optimized_path);
+    const TumFileSummary optimized = SummarizeTumFile(active_optimized_path);
+    const Segment& active_segment = segments_.back();
+    std::size_t active_raw_poses = 0;
+    for (const Segment& segment : segments_) {
+        if (segment.map_id_valid == active_segment.map_id_valid &&
+            (!segment.map_id_valid ||
+             (segment.map_id == active_segment.map_id &&
+              segment.destructive_epoch ==
+                  active_segment.destructive_epoch))) {
+            active_raw_poses += segment.poses.size();
+        }
+    }
+    const bool optimized_covers_active =
+        optimized.valid && optimized.poses >= active_raw_poses;
     const bool use_optimized =
-        optimized.valid &&
+        optimized_covers_active &&
         optimized.poses >= segments_[longest_index].poses.size();
     if (use_optimized) {
         if (!CopyFile(active_optimized_path, path))
@@ -172,7 +202,9 @@ bool TrajectorySegmentRecorder::SaveTum(
     if (!manifest)
         return false;
     manifest << "kind,index,path,poses,first_time_s,last_time_s,selected,"
-                "map_id,map_id_valid,coordinate_frame_scope\n";
+                "replace_active,"
+                "map_id,map_id_valid,coordinate_epoch,destructive_epoch,"
+                "coordinate_frame_scope\n";
     manifest << std::setprecision(17);
     for (std::size_t index = 0; index < segments_.size(); ++index) {
         const Segment& segment = segments_[index];
@@ -182,8 +214,11 @@ bool TrajectorySegmentRecorder::SaveTum(
                  << segment.poses.back().timestamp << ','
                  << (!use_optimized && index == longest_index ? "true"
                                                                : "false")
+                 << ",false"
                  << ',' << segment.map_id << ','
                  << (segment.map_id_valid ? "true" : "false")
+                 << ',' << segment.coordinate_epoch << ','
+                 << segment.destructive_epoch
                  << ",independent_atlas_map\n";
     }
     if (optimized.valid) {
@@ -191,8 +226,11 @@ bool TrajectorySegmentRecorder::SaveTum(
                  << optimized.poses << ',' << optimized.first_time << ','
                  << optimized.last_time << ','
                  << (use_optimized ? "true" : "false")
+                 << ',' << (optimized_covers_active ? "true" : "false")
                  << ',' << segments_.back().map_id << ','
                  << (segments_.back().map_id_valid ? "true" : "false")
+                 << ',' << segments_.back().coordinate_epoch << ','
+                 << segments_.back().destructive_epoch
                  << ",active_map_only\n";
     }
     return static_cast<bool>(manifest);

@@ -187,6 +187,10 @@ public:
     int GetTrackingState();
     /** Writes the stable identity of the current Atlas map. */
     bool GetCurrentMapId(std::uint64_t* map_id);
+    /** Writes one atomic map id plus coordinate and destructive epochs. */
+    bool GetCurrentMapIdentity(std::uint64_t* map_id,
+                               std::uint64_t* coordinate_epoch,
+                               std::uint64_t* destructive_epoch);
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
     /** Returns an annotated copy of the latest image with ORB matches. */
@@ -265,6 +269,7 @@ private:
     std::mutex mMutexReset;
     bool mbReset;
     bool mbResetActiveMap;
+    std::uint64_t mDestructiveEpoch;
 
     // Change mode flags
     std::mutex mMutexMode;

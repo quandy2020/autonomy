@@ -988,20 +988,32 @@ void RecordSentMappingPoses(const std::vector<map::TimedPose>& poses,
     }
 }
 
+bool CrossedScaledCoordinateEpoch(const MapIdentitySnapshot& before,
+                                  const MapIdentitySnapshot& after) {
+    return before.valid && after.valid && before.map_id == after.map_id &&
+           before.destructive_epoch == after.destructive_epoch &&
+           before.coordinate_epoch != after.coordinate_epoch;
+}
+
 bool ObserveMappingMap(bool map_id_valid, std::uint64_t map_id,
+                       std::uint64_t destructive_epoch,
                        bool* observed_map_id_valid,
-                       std::uint64_t* observed_map_id) {
+                       std::uint64_t* observed_map_id,
+                       std::uint64_t* observed_destructive_epoch) {
     if (!map_id_valid || observed_map_id_valid == nullptr ||
-        observed_map_id == nullptr) {
+        observed_map_id == nullptr || observed_destructive_epoch == nullptr) {
         return false;
     }
     if (!*observed_map_id_valid) {
         *observed_map_id_valid = true;
         *observed_map_id = map_id;
+        *observed_destructive_epoch = destructive_epoch;
         return false;
     }
-    const bool changed = *observed_map_id != map_id;
+    const bool changed = *observed_map_id != map_id ||
+                         *observed_destructive_epoch != destructive_epoch;
     *observed_map_id = map_id;
+    *observed_destructive_epoch = destructive_epoch;
     return changed;
 }
 
@@ -1117,6 +1129,7 @@ public:
         deferred_mapping_frame_removals.clear();
         mapping_map_id_valid = false;
         mapping_map_id = 0;
+        mapping_destructive_epoch = 0;
         monocular_reference = map::MappingFrame();
         have_monocular_reference = false;
         next_monocular_mapping_frame_id = 1;
@@ -1268,15 +1281,40 @@ public:
         return points;
     }
 
+    internal::MapIdentitySnapshot ReadMapIdentity() const {
+        internal::MapIdentitySnapshot identity;
+        identity.valid =
+            system != nullptr && system->GetCurrentMapIdentity(
+                                     &identity.map_id,
+                                     &identity.coordinate_epoch,
+                                     &identity.destructive_epoch);
+        return identity;
+    }
+
     void UpdateResult(double time,
                       const autonomy::common::math::SE3f& camera_from_world,
+                      const internal::MapIdentitySnapshot&
+                          identity_before_tracking,
                       TrackingResult* output) {
         latest.time = time;
-        latest.map_id_valid =
-            system != nullptr && system->GetCurrentMapId(&latest.map_id);
+        const internal::MapIdentitySnapshot identity_after_tracking =
+            ReadMapIdentity();
+        latest.map_id_valid = identity_after_tracking.valid;
+        latest.map_id = identity_after_tracking.map_id;
+        latest.coordinate_epoch = identity_after_tracking.coordinate_epoch;
+        latest.destructive_epoch = identity_after_tracking.destructive_epoch;
 
         latest.tracking_state = system ? system->GetTrackingState() : 0;
         latest.valid = latest.tracking_state == 2 || latest.tracking_state == 5;
+        const bool crossed_scaled_coordinate_epoch =
+            internal::CrossedScaledCoordinateEpoch(
+                identity_before_tracking, identity_after_tracking);
+        // LocalMapper can apply a global scaled rotation after the tracker
+        // computed Tcw but before identity sampling. The pose's coordinate
+        // epoch is then ambiguous; drop this one boundary sample and retain
+        // the new epoch so trajectory recorders split before the next frame.
+        if (crossed_scaled_coordinate_epoch)
+            latest.valid = false;
         SynchronizeMappingMap();
         if (latest.valid && camera_from_world.matrix().allFinite()) {
             latest.pose_world_camera = ToWorldCamera(camera_from_world);
@@ -1291,15 +1329,20 @@ public:
         if (!mapping ||
             !internal::ObserveMappingMap(
                 latest.map_id_valid, latest.map_id,
-                &mapping_map_id_valid, &mapping_map_id)) {
+                latest.destructive_epoch, &mapping_map_id_valid,
+                &mapping_map_id, &mapping_destructive_epoch)) {
             return;
         }
         const std::uint64_t new_map_id = mapping_map_id;
+        const std::uint64_t new_destructive_epoch =
+            mapping_destructive_epoch;
         AINFO << "Atlas dense mapping switched to map id " << new_map_id
+              << ", destructive epoch " << new_destructive_epoch
               << "; resetting independent map coordinates";
         ResetMappingState();
         mapping_map_id_valid = true;
         mapping_map_id = new_map_id;
+        mapping_destructive_epoch = new_destructive_epoch;
     }
 
     void QueueMappingFrame(map::MappingFrame frame) {
@@ -1589,6 +1632,7 @@ public:
         last_sent_mapping_poses.clear();
         mapping_map_id_valid = false;
         mapping_map_id = 0;
+        mapping_destructive_epoch = 0;
         stale_candidates_discarded = 0;
         capacity_candidates_discarded = 0;
         protected_keyframes_capacity_dropped = 0;
@@ -1619,6 +1663,7 @@ public:
     internal::MappingPoseCache last_sent_mapping_poses;
     bool mapping_map_id_valid = false;
     std::uint64_t mapping_map_id = 0;
+    std::uint64_t mapping_destructive_epoch = 0;
     std::uint64_t stale_candidates_discarded = 0;
     std::uint64_t capacity_candidates_discarded = 0;
     std::uint64_t protected_keyframes_capacity_dropped = 0;
@@ -1832,9 +1877,11 @@ bool MapBuilder::TrackMonocular(const ImageFrame& image,
          impl_->config.sensor != SensorMode::kMonocularInertial)) {
         return false;
     }
+    const internal::MapIdentitySnapshot identity_before_tracking =
+        impl_->ReadMapIdentity();
     const autonomy::common::math::SE3f pose = impl_->system->TrackMonocular(
         image.pixels, image.time, impl_->TakeImu(image.time));
-    impl_->UpdateResult(image.time, pose, result);
+    impl_->UpdateResult(image.time, pose, identity_before_tracking, result);
     const bool metric_scale_ready =
         impl_->config.sensor != SensorMode::kMonocularInertial ||
         impl_->system->isFinished();
@@ -1862,9 +1909,11 @@ bool MapBuilder::TrackStereo(const ImageFrame& left, const ImageFrame& right,
         return false;
     }
     const double time = std::max(left.time, right.time);
+    const internal::MapIdentitySnapshot identity_before_tracking =
+        impl_->ReadMapIdentity();
     const autonomy::common::math::SE3f pose = impl_->system->TrackStereo(
         left.pixels, right.pixels, time, impl_->TakeImu(time));
-    impl_->UpdateResult(time, pose, result);
+    impl_->UpdateResult(time, pose, identity_before_tracking, result);
     if (impl_->mapping && impl_->latest.valid) {
         map::MappingFrame frame;
         frame.timestamp = time;
@@ -1892,9 +1941,11 @@ bool MapBuilder::TrackRgbd(const ImageFrame& color, const ImageFrame& depth,
         return false;
     }
     const double time = std::max(color.time, depth.time);
+    const internal::MapIdentitySnapshot identity_before_tracking =
+        impl_->ReadMapIdentity();
     const autonomy::common::math::SE3f pose = impl_->system->TrackRGBD(
         color.pixels, depth.pixels, time, impl_->TakeImu(time));
-    impl_->UpdateResult(time, pose, result);
+    impl_->UpdateResult(time, pose, identity_before_tracking, result);
     if (impl_->mapping && impl_->latest.valid) {
         map::MappingFrame frame;
         frame.timestamp = time;

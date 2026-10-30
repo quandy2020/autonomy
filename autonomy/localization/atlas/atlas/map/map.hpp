@@ -25,6 +25,7 @@
 #include "atlas/sensor/keyframe.hpp"
 #include "atlas/sensor/map_point.hpp"
 
+#include <atomic>
 #include <cstdint>
 #include <mutex>
 #include <set>
@@ -104,6 +105,9 @@ public:
 
     void clear();
 
+    /** Returns the current coordinate-system revision of this map. */
+    std::uint64_t GetCoordinateEpoch();
+
     int GetMapChangeIndex();
     void IncreaseChangeIndex();
     int GetLastMapChange();
@@ -182,6 +186,7 @@ protected:
 
     int mnMapChange;
     int mnMapChangeNotified;
+    std::atomic<std::uint64_t> coordinate_epoch_{0};
 
     long unsigned int mnInitKFid;
     long unsigned int mnMaxKFid;

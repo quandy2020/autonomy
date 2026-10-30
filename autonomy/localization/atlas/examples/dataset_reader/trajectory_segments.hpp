@@ -11,7 +11,7 @@
 namespace autonomy::localization::atlas::examples {
 
 /**
- * Records valid tracking poses by stable Atlas map id. The selected
+ * Records valid tracking poses by Atlas map and coordinate epoch. The selected
  * conventional TUM output is one map segment only; all raw segments and
  * their coordinate-frame boundaries are retained in sidecars.
  */
@@ -37,6 +37,8 @@ private:
     struct Segment {
         std::uint64_t map_id = 0;
         bool map_id_valid = false;
+        std::uint64_t coordinate_epoch = 0;
+        std::uint64_t destructive_epoch = 0;
         std::vector<TrajectorySample> poses;
     };
 
@@ -45,6 +47,8 @@ private:
     bool break_before_next_valid_ = true;
     bool observed_map_id_valid_ = false;
     std::uint64_t observed_map_id_ = 0;
+    std::uint64_t observed_coordinate_epoch_ = 0;
+    std::uint64_t observed_destructive_epoch_ = 0;
 };
 
 }  // namespace autonomy::localization::atlas::examples
