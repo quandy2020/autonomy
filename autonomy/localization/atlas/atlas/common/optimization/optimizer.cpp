@@ -84,8 +84,7 @@ bool IsFiniteRotation(const Eigen::Matrix3d& rotation) {
 bool IsNonIncreasingCost(double initial_cost, double optimized_cost) {
     if (!std::isfinite(initial_cost) || !std::isfinite(optimized_cost))
         return false;
-    const double tolerance =
-        std::max(1e-9, std::abs(initial_cost) * 1e-6);
+    const double tolerance = std::max(1e-9, std::abs(initial_cost) * 1e-6);
     return optimized_cost <= initial_cost + tolerance;
 }
 
@@ -93,13 +92,12 @@ bool IsNonIncreasingCost(double initial_cost, double optimized_cost) {
 
 bool Optimizer::IsRelativeGeometryUpdateReasonable(
     const std::vector<Eigen::Vector3d>& current,
-    const std::vector<Eigen::Vector3d>& optimized,
-    double maximum_scale_ratio) {
+    const std::vector<Eigen::Vector3d>& optimized, double maximum_scale_ratio) {
     if (current.size() != optimized.size() ||
         !std::isfinite(maximum_scale_ratio) || maximum_scale_ratio < 1.0) {
         return false;
     }
-    if (current.size() < 2) {
+    if (current.empty()) {
         return true;
     }
 
@@ -111,6 +109,9 @@ bool Optimizer::IsRelativeGeometryUpdateReasonable(
         }
         current_centroid += current[index];
         optimized_centroid += optimized[index];
+    }
+    if (current.size() < 2) {
+        return true;
     }
     current_centroid /= static_cast<double>(current.size());
     optimized_centroid /= static_cast<double>(optimized.size());
@@ -142,9 +143,8 @@ bool Optimizer::IsRelativeGeometryUpdateReasonable(
         return false;
     }
 
-    const double scale_ratio =
-        std::max(current_extent, optimized_extent) /
-        std::min(current_extent, optimized_extent);
+    const double scale_ratio = std::max(current_extent, optimized_extent) /
+                               std::min(current_extent, optimized_extent);
     return std::isfinite(scale_ratio) && scale_ratio <= maximum_scale_ratio;
 }
 
@@ -996,15 +996,15 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
     }
 
     constexpr double kMaximumRelativeStateScale = 20.0;
-    if (!IsRelativeGeometryUpdateReasonable(
-            current_keyframe_centers, optimized_keyframe_centers,
-            kMaximumRelativeStateScale) ||
-        !IsRelativeGeometryUpdateReasonable(
-            current_map_points, optimized_map_points,
-            kMaximumRelativeStateScale) ||
-        !IsRelativeMagnitudeUpdateReasonable(
-            current_velocities, optimized_velocities,
-            kMaximumRelativeStateScale)) {
+    if (!IsRelativeGeometryUpdateReasonable(current_keyframe_centers,
+                                            optimized_keyframe_centers,
+                                            kMaximumRelativeStateScale) ||
+        !IsRelativeGeometryUpdateReasonable(current_map_points,
+                                            optimized_map_points,
+                                            kMaximumRelativeStateScale) ||
+        !IsRelativeMagnitudeUpdateReasonable(current_velocities,
+                                             optimized_velocities,
+                                             kMaximumRelativeStateScale)) {
         AERROR << "Full inertial BA rejected a catastrophic relative state "
                   "scale change"
                << std::endl;

@@ -14,6 +14,25 @@
 
 """Dataset readers for autonomy.tools.datasets."""
 
+from autonomy.tools.datasets.readers.euroc import EurocReader, TumViReader
+from autonomy.tools.datasets.readers.kitti import KittiReader
 from autonomy.tools.datasets.readers.spires import ImuSample, SpiresFrame, SpiresReader
+from autonomy.tools.datasets.readers.tum_rgbd import TumRgbdReader
+from autonomy.tools.datasets.readers.visual import (
+    ImageSample,
+    ImuSample as VisualImuSample,
+    VisualFrame,
+)
 
-__all__ = ["ImuSample", "SpiresFrame", "SpiresReader"]
+__all__ = [
+    "EurocReader",
+    "ImageSample",
+    "ImuSample",
+    "KittiReader",
+    "SpiresFrame",
+    "SpiresReader",
+    "TumRgbdReader",
+    "TumViReader",
+    "VisualFrame",
+    "VisualImuSample",
+]

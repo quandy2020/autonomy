@@ -1850,10 +1850,9 @@ void Tracker::Track() {
             MonocularInitialization();
         }
 
-        // mpFrameDrawer->Update(this);
-
         if (mState != OK)  // If rightly initialized, mState=OK
         {
+            mpFrameDrawer->Update(this);
             mLastFrame = Frame(mCurrentFrame);
             return;
         }

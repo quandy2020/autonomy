@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <memory>
 #include <string>
 
@@ -55,6 +56,21 @@ struct LocalizationOptions {
     std::string atlas_image_topic = "/image";
     std::string atlas_right_image_topic = "/camera/right/image";
     std::string atlas_depth_image_topic = "/camera/depth/image";
+    std::string atlas_feature_matches_topic = "/atlas/feature_matches";
+    std::string atlas_dense_map_points_topic = "/atlas/dense_map_points";
+    std::string atlas_occupancy_grid_topic = "/atlas/occupancy_grid";
+    std::size_t atlas_maximum_dense_map_points = 1500000;
+    std::string atlas_tf_topic = "/tf";
+    std::string atlas_tf_static_topic = "/tf_static";
+    std::string atlas_map_frame = "map";
+    std::string atlas_odom_frame = "odom";
+    std::string atlas_base_frame = "base_link";
+    std::string atlas_camera_frame = "camera_link";
+    bool atlas_publish_tf = true;
+    bool atlas_enable_dense_mapping = true;
+    std::string atlas_ground_truth_odometry_topic = "/gt/odometry";
+    double atlas_ground_truth_sync_tolerance_sec = 0.05;
+    double atlas_trajectory_publish_period_sec = 0.2;
 
     // --- Argus (FAST-LIVO2 ESIKF LIO / LIVO) ---
     std::string argus_config_path;

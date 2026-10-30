@@ -23,6 +23,41 @@ ORBextractor.nLevels: 8
 ORBextractor.iniThFAST: 20
 ORBextractor.minThFAST: 7
 
+# Dense stereo and 2D navigation-map profile. KITTI's camera is about 1.65 m
+# above the road; MinHeight/MaxHeight are therefore heights above ground.
+Atlas.Map.RangeMin: 1.0
+Atlas.Map.RangeMax: 20.0
+Atlas.Map.PixelStride: 2
+Atlas.Map.StereoMinimumDisparity: 0
+Atlas.Map.StereoNumberOfDisparities: 384
+Atlas.Map.StereoBlockSize: 5
+Atlas.Map.VoxelSize: 0.03
+Atlas.Map.MaximumPointsPerFrame: 150000
+Atlas.Map.MaximumVoxels: 3000000
+Atlas.Map.MaximumNavigationVoxels: 1500000
+Atlas.Map.NavigationRadius: 30.0
+Atlas.Map.NavigationRecenterDistance: 5.0
+Atlas.Map.QueueCapacity: 8
+Atlas.Map.MaximumCachedFrames: 400
+Atlas.Map.MaximumHistoryCacheBytes: 8589934592
+Atlas.Map.HistoryCacheDirectory: "/tmp"
+Atlas.Map.GridResolution: 0.10
+Atlas.Map.MaximumSnapshotCells: 2500000
+Atlas.Map.RobotRadius: 0.30
+Atlas.Map.InflationRadius: 0.60
+Atlas.Map.InflationCostScaling: 5.0
+Atlas.Map.SensorHeight: 1.65
+Atlas.Map.EstimateGroundPlane: 1
+Atlas.Map.GroundDistanceThreshold: 0.10
+Atlas.Map.MaximumGroundSlopeDegrees: 20.0
+Atlas.Map.GroundSensorHeightTolerance: 0.40
+Atlas.Map.MaximumGroundEstimationRange: 12.0
+Atlas.Map.MinimumGroundInliers: 40
+Atlas.Map.MinHeight: 0.10
+Atlas.Map.MaxHeight: 1.0
+Atlas.Map.NavigationMinHeight: -1.0
+Atlas.Map.NavigationMaxHeight: 1.0
+
 Viewer.KeyFrameSize: 0.6
 Viewer.KeyFrameLineWidth: 2.0
 Viewer.GraphLineWidth: 1.0

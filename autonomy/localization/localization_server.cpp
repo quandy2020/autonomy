@@ -48,7 +48,7 @@ LocalizationBackend ParseLocalizationBackend(const std::string& name) {
     }
     if (name != "cartographer" && name != "Cartographer" && !name.empty()) {
         AWARN << "Unknown localization backend '" << name
-                     << "', defaulting to cartographer.";
+              << "', defaulting to cartographer.";
     }
     return LocalizationBackend::kCartographer;
 }
@@ -96,7 +96,8 @@ cartographer::node::CartographerNodeFlags CartographerFlagsFromOptions(
 // Backend interface
 // ---------------------------------------------------------------------------
 
-class LocalizationServer::Backend {
+class LocalizationServer::Backend
+{
 public:
     virtual ~Backend() = default;
     virtual bool Start() = 0;
@@ -108,7 +109,8 @@ public:
 // ---------------------------------------------------------------------------
 
 class LocalizationServer::CartographerBackend
-    : public LocalizationServer::Backend {
+    : public LocalizationServer::Backend
+{
 public:
     explicit CartographerBackend(LocalizationOptions options)
         : options_(std::move(options)) {}
@@ -197,7 +199,8 @@ private:
 // Atlas (ORB visual and visual-inertial SLAM)
 // ---------------------------------------------------------------------------
 
-class LocalizationServer::AtlasBackend : public LocalizationServer::Backend {
+class LocalizationServer::AtlasBackend : public LocalizationServer::Backend
+{
 public:
     explicit AtlasBackend(LocalizationOptions options)
         : options_(std::move(options)) {}
@@ -218,6 +221,29 @@ public:
         node_opts.image_topic = options_.atlas_image_topic;
         node_opts.right_image_topic = options_.atlas_right_image_topic;
         node_opts.depth_image_topic = options_.atlas_depth_image_topic;
+        node_opts.feature_matches_topic =
+            options_.atlas_feature_matches_topic;
+        node_opts.dense_map_points_topic =
+            options_.atlas_dense_map_points_topic;
+        node_opts.occupancy_grid_topic =
+            options_.atlas_occupancy_grid_topic;
+        node_opts.maximum_dense_map_points =
+            options_.atlas_maximum_dense_map_points;
+        node_opts.tf_topic = options_.atlas_tf_topic;
+        node_opts.tf_static_topic = options_.atlas_tf_static_topic;
+        node_opts.map_frame = options_.atlas_map_frame;
+        node_opts.odom_frame = options_.atlas_odom_frame;
+        node_opts.base_frame = options_.atlas_base_frame;
+        node_opts.camera_frame = options_.atlas_camera_frame;
+        node_opts.publish_tf = options_.atlas_publish_tf;
+        node_opts.enable_dense_mapping =
+            options_.atlas_enable_dense_mapping;
+        node_opts.ground_truth_odometry_topic =
+            options_.atlas_ground_truth_odometry_topic;
+        node_opts.ground_truth_sync_tolerance_sec =
+            options_.atlas_ground_truth_sync_tolerance_sec;
+        node_opts.trajectory_publish_period_sec =
+            options_.atlas_trajectory_publish_period_sec;
         node_ = std::make_unique<atlas::AtlasNode>(std::move(node_opts));
         if (!node_->Start()) {
             AERROR << "AtlasNode::Start failed.";
@@ -246,7 +272,8 @@ private:
 // ---------------------------------------------------------------------------
 
 #if defined(AUTONOMY_HAS_ARGUS) && AUTONOMY_HAS_ARGUS
-class LocalizationServer::ArgusBackend : public LocalizationServer::Backend {
+class LocalizationServer::ArgusBackend : public LocalizationServer::Backend
+{
 public:
     explicit ArgusBackend(LocalizationOptions options)
         : options_(std::move(options)) {}
@@ -257,7 +284,8 @@ public:
             return false;
         }
         ArgusNode::Options node_opts;
-        node_opts.config_path = ResolveWorkspacePath(options_.argus_config_path);
+        node_opts.config_path =
+            ResolveWorkspacePath(options_.argus_config_path);
         node_opts.imu_topic = options_.argus_imu_topic;
         node_opts.lidar_topic = options_.argus_lidar_topic;
         node_opts.image_topic = options_.argus_image_topic;
@@ -310,7 +338,9 @@ std::unique_ptr<LocalizationServer::Backend> LocalizationServer::CreateBackend(
 LocalizationServer::LocalizationServer(LocalizationOptions options)
     : options_(std::move(options)) {}
 
-LocalizationServer::~LocalizationServer() { Shutdown(); }
+LocalizationServer::~LocalizationServer() {
+    Shutdown();
+}
 
 bool LocalizationServer::Start() {
     if (running_) {

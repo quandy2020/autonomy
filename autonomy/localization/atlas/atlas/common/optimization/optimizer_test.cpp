@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+
 #include <Eigen/Geometry>
 
 #include "atlas/map/map.hpp"
@@ -56,11 +58,20 @@ TEST(OptimizerTest, RelativeGeometryRejectsFiniteCatastrophicScaleChange) {
 TEST(OptimizerTest, RelativeMagnitudeRejectsFiniteVelocityExplosion) {
     const std::vector<Eigen::Vector3d> current = {
         Eigen::Vector3d(1.0, 0.0, 0.0), Eigen::Vector3d(0.0, 2.0, 0.0)};
-    const std::vector<Eigen::Vector3d> optimized = {
-        1000.0 * current[0], 1000.0 * current[1]};
+    const std::vector<Eigen::Vector3d> optimized = {1000.0 * current[0],
+                                                    1000.0 * current[1]};
 
     EXPECT_FALSE(
         Optimizer::IsRelativeMagnitudeUpdateReasonable(current, optimized));
+}
+
+TEST(OptimizerTest, RelativeGeometryRejectsNonFiniteSingleton) {
+    const std::vector<Eigen::Vector3d> current = {
+        Eigen::Vector3d(std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0)};
+    const std::vector<Eigen::Vector3d> optimized = {Eigen::Vector3d::Zero()};
+
+    EXPECT_FALSE(
+        Optimizer::IsRelativeGeometryUpdateReasonable(current, optimized));
 }
 
 }  // namespace

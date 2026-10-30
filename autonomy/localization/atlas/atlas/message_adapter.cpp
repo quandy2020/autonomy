@@ -117,6 +117,7 @@ bool DecodeImage(const ::automsgs::msgs::sensor_msgs::Image& message,
     ImageFrame result;
     result.time = static_cast<double>(data.timestamp_ns) * 1e-9;
     result.frame_id = data.frame_id;
+    result.encoding = data.encoding;
     result.pixels = view.clone();
     if (result.pixels.empty() || !std::isfinite(result.time))
         return false;
@@ -138,11 +139,48 @@ bool DecodeImage(const ::automsgs::msgs::sensor_msgs::Image& message,
     return true;
 }
 
-void FillPose(const TrackingResult& result,
+bool EncodeBgrImage(
+    const cv::Mat& image, double timestamp, const std::string& frame_id,
+    ::automsgs::msgs::sensor_msgs::Image* message, std::string* error) {
+    if (message == nullptr || image.empty() || image.type() != CV_8UC3 ||
+        image.cols <= 0 || image.rows <= 0) {
+        if (error != nullptr)
+            *error = "expected a non-empty CV_8UC3 image";
+        return false;
+    }
+
+    ImageData data;
+    if (!SecondsToNanoseconds(timestamp, &data.timestamp_ns)) {
+        if (error != nullptr)
+            *error = "invalid image timestamp";
+        return false;
+    }
+    data.frame_id = frame_id;
+    data.height = static_cast<std::uint32_t>(image.rows);
+    data.width = static_cast<std::uint32_t>(image.cols);
+    data.encoding = "bgr8";
+    data.is_bigendian = HostIsBigEndian();
+    const std::size_t row_bytes = static_cast<std::size_t>(image.cols) * 3U;
+    if (row_bytes > std::numeric_limits<std::uint32_t>::max() ||
+        static_cast<std::size_t>(image.rows) >
+            std::numeric_limits<std::size_t>::max() / row_bytes) {
+        if (error != nullptr)
+            *error = "image dimensions overflow the AutoMsgs layout";
+        return false;
+    }
+    data.step = static_cast<std::uint32_t>(row_bytes);
+    data.data.resize(static_cast<std::size_t>(image.rows) * row_bytes);
+    for (int row = 0; row < image.rows; ++row) {
+        std::memcpy(data.data.data() + static_cast<std::size_t>(row) * row_bytes,
+                    image.ptr<std::uint8_t>(row), row_bytes);
+    }
+    return ToProto(data, message, error);
+}
+
+void FillPose(const Pose3d& value,
               ::automsgs::msgs::geometry_msgs::Pose* pose) {
     if (pose == nullptr)
         return;
-    const Pose3d& value = result.pose_world_camera;
     pose->mutable_position()->set_x(value.translation.x());
     pose->mutable_position()->set_y(value.translation.y());
     pose->mutable_position()->set_z(value.translation.z());
@@ -150,6 +188,11 @@ void FillPose(const TrackingResult& result,
     pose->mutable_orientation()->set_y(value.rotation.y());
     pose->mutable_orientation()->set_z(value.rotation.z());
     pose->mutable_orientation()->set_w(value.rotation.w());
+}
+
+void FillPose(const TrackingResult& result,
+              ::automsgs::msgs::geometry_msgs::Pose* pose) {
+    FillPose(result.pose_world_camera, pose);
 }
 
 }  // namespace
@@ -186,8 +229,12 @@ bool MessageAdapter::TrackMonocular(
     const ::automsgs::msgs::sensor_msgs::Image& message) {
     ImageFrame image;
     TrackingResult result;
-    return DecodeImage(message, &image) && system_ != nullptr &&
-           system_->TrackMonocular(image, &result) && Record(result);
+    if (!DecodeImage(message, &image) || system_ == nullptr ||
+        !system_->TrackMonocular(image, &result)) {
+        return false;
+    }
+    Record(result);
+    return true;
 }
 
 bool MessageAdapter::TrackStereo(
@@ -196,9 +243,13 @@ bool MessageAdapter::TrackStereo(
     ImageFrame left;
     ImageFrame right;
     TrackingResult result;
-    return DecodeImage(left_message, &left) &&
-           DecodeImage(right_message, &right) && system_ != nullptr &&
-           system_->TrackStereo(left, right, &result) && Record(result);
+    if (!DecodeImage(left_message, &left) ||
+        !DecodeImage(right_message, &right) || system_ == nullptr ||
+        !system_->TrackStereo(left, right, &result)) {
+        return false;
+    }
+    Record(result);
+    return true;
 }
 
 bool MessageAdapter::TrackRgbd(
@@ -207,16 +258,20 @@ bool MessageAdapter::TrackRgbd(
     ImageFrame color;
     ImageFrame depth;
     TrackingResult result;
-    return DecodeImage(color_message, &color) &&
-           DecodeImage(depth_message, &depth) && system_ != nullptr &&
-           system_->TrackRgbd(color, depth, &result) && Record(result);
+    if (!DecodeImage(color_message, &color) ||
+        !DecodeImage(depth_message, &depth) || system_ == nullptr ||
+        !system_->TrackRgbd(color, depth, &result)) {
+        return false;
+    }
+    Record(result);
+    return true;
 }
 
 bool MessageAdapter::Record(const TrackingResult& result) {
-    if (!result.valid)
-        return false;
     std::lock_guard<std::mutex> lock(mutex_);
     latest_ = result;
+    if (!result.valid)
+        return false;
     auto* stamped = path_.add_poses();
     SetHeader(stamped->mutable_header(), result.time, options_.map_frame);
     FillPose(result, stamped->mutable_pose());
@@ -304,6 +359,232 @@ bool MessageAdapter::GetTrackedMap(
     if (!ToProto(cloud, message, &error)) {
         AERROR << "Atlas failed to encode its tracked map: " << error;
         return false;
+    }
+    return true;
+}
+
+bool MessageAdapter::GetDenseMap(
+    ::automsgs::msgs::sensor_msgs::PointCloud2* message) const {
+    if (message == nullptr || system_ == nullptr)
+        return false;
+    return GetDenseMap(system_->LatestMappingSnapshot(), message);
+}
+
+bool MessageAdapter::GetDenseMap(
+    const std::shared_ptr<const map::MapSnapshot>& snapshot,
+    ::automsgs::msgs::sensor_msgs::PointCloud2* message) const {
+    if (message == nullptr || !snapshot)
+        return false;
+
+    // The internal dense map remains complete for saving/reconstruction. The
+    // AutoMsgs navigation view is restricted to the configured ground-relative
+    // height band (default [-1, 1] m).
+    const auto& published = snapshot->navigation_map;
+    const auto& points = published.points;
+    if (points.empty())
+        return false;
+    const std::size_t output_size = std::min(
+        points.size(), std::max<std::size_t>(
+                           1, options_.maximum_dense_map_points));
+    constexpr std::uint32_t kPointStep = 4 * sizeof(float);
+    if (output_size >
+            std::numeric_limits<std::uint32_t>::max() / kPointStep ||
+        output_size > std::numeric_limits<std::size_t>::max() / kPointStep) {
+        return false;
+    }
+
+    PointCloudData cloud;
+    if (!SecondsToNanoseconds(published.timestamp,
+                              &cloud.timestamp_ns)) {
+        return false;
+    }
+    cloud.frame_id = options_.map_frame;
+    cloud.height = 1;
+    cloud.width = static_cast<std::uint32_t>(output_size);
+    cloud.fields = {
+        {"x", 0, PointFieldDataType::kFloat32, 1},
+        {"y", 4, PointFieldDataType::kFloat32, 1},
+        {"z", 8, PointFieldDataType::kFloat32, 1},
+        {"rgb", 12, PointFieldDataType::kFloat32, 1},
+    };
+    cloud.is_bigendian = HostIsBigEndian();
+    cloud.point_step = kPointStep;
+    cloud.row_step = kPointStep * cloud.width;
+    cloud.data.resize(output_size * kPointStep);
+    cloud.is_dense = true;
+    const std::size_t source_step = points.size() / output_size;
+    const std::size_t source_remainder = points.size() % output_size;
+    std::size_t source_index = 0;
+    std::size_t remainder_accumulator = 0;
+    for (std::size_t index = 0; index < output_size; ++index) {
+        const auto& point = points[source_index];
+        if (!point.position.allFinite())
+            cloud.is_dense = false;
+        std::uint8_t* output = cloud.data.data() + index * kPointStep;
+        std::memcpy(output, point.position.data(), 3 * sizeof(float));
+        const std::uint32_t packed_rgb =
+            (static_cast<std::uint32_t>(point.red) << 16U) |
+            (static_cast<std::uint32_t>(point.green) << 8U) |
+            static_cast<std::uint32_t>(point.blue);
+        std::memcpy(output + 3 * sizeof(float), &packed_rgb,
+                    sizeof(packed_rgb));
+        source_index += source_step;
+        remainder_accumulator += source_remainder;
+        if (remainder_accumulator >= output_size) {
+            ++source_index;
+            remainder_accumulator -= output_size;
+        }
+    }
+
+    std::string error;
+    if (!ToProto(cloud, message, &error)) {
+        AERROR << "Atlas failed to encode its dense map: " << error;
+        return false;
+    }
+    return true;
+}
+
+bool MessageAdapter::GetOccupancyGrid(
+    ::automsgs::msgs::map_msgs::OccupancyGrid* message) const {
+    if (message == nullptr || system_ == nullptr)
+        return false;
+    return GetOccupancyGrid(system_->LatestMappingSnapshot(), message);
+}
+
+bool MessageAdapter::GetOccupancyGrid(
+    const std::shared_ptr<const map::MapSnapshot>& snapshot,
+    ::automsgs::msgs::map_msgs::OccupancyGrid* message) const {
+    if (message == nullptr || !snapshot)
+        return false;
+    const auto& grid = snapshot->occupancy_grid;
+    Eigen::Quaterniond origin_rotation = grid.origin_rotation;
+    if (!std::isfinite(grid.timestamp) ||
+        !std::isfinite(grid.resolution) || grid.resolution <= 0.0 ||
+        !grid.origin_translation.allFinite() ||
+        !origin_rotation.coeffs().allFinite() ||
+        origin_rotation.norm() < 1e-12 ||
+        grid.width == 0 || grid.height == 0 ||
+        static_cast<std::size_t>(grid.width) >
+            std::numeric_limits<std::size_t>::max() /
+                static_cast<std::size_t>(grid.height) ||
+        static_cast<std::size_t>(grid.width) *
+                static_cast<std::size_t>(grid.height) !=
+            grid.data.size() ||
+        grid.data.size() >
+            static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        return false;
+    }
+    origin_rotation.normalize();
+    const Eigen::Vector3d origin_translation = grid.origin_translation;
+    if (!origin_translation.allFinite())
+        return false;
+
+    message->Clear();
+    SetHeader(message->mutable_header(), grid.timestamp, options_.map_frame);
+    auto* info = message->mutable_info();
+    if (!SetStamp(grid.timestamp, info->mutable_map_load_time()))
+        return false;
+    info->set_resolution(static_cast<float>(grid.resolution));
+    info->set_width(grid.width);
+    info->set_height(grid.height);
+    auto* origin = info->mutable_origin();
+    origin->mutable_position()->set_x(origin_translation.x());
+    origin->mutable_position()->set_y(origin_translation.y());
+    origin->mutable_position()->set_z(origin_translation.z());
+    origin->mutable_orientation()->set_x(origin_rotation.x());
+    origin->mutable_orientation()->set_y(origin_rotation.y());
+    origin->mutable_orientation()->set_z(origin_rotation.z());
+    origin->mutable_orientation()->set_w(origin_rotation.w());
+    message->mutable_data()->Reserve(static_cast<int>(grid.data.size()));
+    for (const std::int8_t value : grid.data)
+        message->add_data(static_cast<int>(value));
+    return true;
+}
+
+bool MessageAdapter::GetTrackingImage(
+    double timestamp, ::automsgs::msgs::sensor_msgs::Image* message) const {
+    if (message == nullptr || system_ == nullptr)
+        return false;
+    const cv::Mat image = system_->TrackingImage();
+    std::string error;
+    if (!EncodeBgrImage(image, timestamp, options_.camera_frame, message,
+                        &error)) {
+        AERROR << "Atlas failed to encode its tracking image: " << error;
+        return false;
+    }
+    return true;
+}
+
+bool MessageAdapter::GetFeatureMatchesImage(
+    double timestamp, ::automsgs::msgs::sensor_msgs::Image* message) const {
+    if (message == nullptr || system_ == nullptr)
+        return false;
+    const cv::Mat image = system_->FeatureMatchesImage();
+    if (image.empty())
+        return false;
+    std::string error;
+    if (!EncodeBgrImage(image, timestamp, options_.camera_frame, message,
+                        &error)) {
+        AERROR << "Atlas failed to encode its feature-match image: " << error;
+        return false;
+    }
+    return true;
+}
+
+bool MessageAdapter::GetOptimizedPath(
+    ::automsgs::msgs::nav_msgs::Path* message) const {
+    if (message == nullptr || system_ == nullptr)
+        return false;
+    const std::vector<TrajectoryPose> trajectory =
+        system_->OptimizedKeyFrameTrajectory();
+    if (trajectory.empty())
+        return false;
+
+    message->Clear();
+    SetHeader(message->mutable_header(), trajectory.back().time,
+              options_.map_frame);
+    for (const TrajectoryPose& sample : trajectory) {
+        auto* stamped = message->add_poses();
+        SetHeader(stamped->mutable_header(), sample.time, options_.map_frame);
+        FillPose(sample.pose_world_camera, stamped->mutable_pose());
+    }
+    return true;
+}
+
+bool MessageAdapter::GetLoopClosures(
+    ::automsgs::msgs::visualization_msgs::MarkerArray* message) const {
+    if (message == nullptr || system_ == nullptr)
+        return false;
+
+    TrackingResult result;
+    if (!system_->LatestResult(&result) || !result.valid)
+        return false;
+    const std::vector<LoopClosureEdge> edges = system_->LoopClosureEdges();
+
+    using Marker = ::automsgs::msgs::visualization_msgs::Marker;
+    message->Clear();
+    Marker* marker = message->add_markers();
+    SetHeader(marker->mutable_header(), result.time, options_.map_frame);
+    marker->set_ns("atlas_loop_closures");
+    marker->set_id(0);
+    marker->set_type(Marker::LINE_LIST);
+    marker->set_action(Marker::ADD);
+    marker->mutable_pose()->mutable_orientation()->set_w(1.0);
+    marker->mutable_scale()->set_x(0.04);
+    marker->mutable_color()->set_r(1.0f);
+    marker->mutable_color()->set_g(0.1f);
+    marker->mutable_color()->set_b(0.9f);
+    marker->mutable_color()->set_a(1.0f);
+    marker->set_frame_locked(true);
+    for (const LoopClosureEdge& edge : edges) {
+        auto* first = marker->add_points();
+        first->set_x(edge.first.x());
+        first->set_y(edge.first.y());
+        first->set_z(edge.first.z());
+        auto* second = marker->add_points();
+        second->set_x(edge.second.x());
+        second->set_y(edge.second.y());
+        second->set_z(edge.second.z());
     }
     return true;
 }

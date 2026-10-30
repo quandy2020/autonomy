@@ -1,0 +1,170 @@
+# Atlas visual SLAM: TF, primary image, sparse map, trajectory and odometry.
+CurrentView:
+  Distance: 15
+  FocalShapeFixedSize: true
+  FocalShapeSize: 0.05
+  Name: Current
+  NearClipDistance: 0.01
+  Pitch: 0.8
+  Target:
+    X: 0
+    Y: 0
+    Z: 0
+  Type: Orbit
+  Yaw: 0.8
+Displays:
+  - Channel: ""
+    Enabled: true
+    Name: TF
+    Type: TF
+  - Channel: ""
+    Enabled: true
+    Name: Grid
+    Properties:
+      alpha: 0.5
+      cell_count: 30
+      cell_size: 1.0
+      color: 160;160;160
+      line_style: Lines
+      line_width: 0.03
+      plane: XY
+      reference_frame: <Fixed Frame>
+    Type: Grid
+  - Channel: /atlas/map_points
+    Enabled: true
+    Name: AtlasMapPoints
+    Properties:
+      alpha: "1.0"
+      color: 80;200;255
+      color_transform: FlatColor
+      decay_time: "0"
+      decimate: "1"
+      max_points: "1000000"
+      point_world_size: "0.025"
+      style: Points
+      point_size: "2"
+    Type: PointCloud2
+  - Channel: /atlas/dense_map_points
+    Enabled: true
+    Name: AtlasDenseMap
+    Properties:
+      alpha: "1.0"
+      color_transform: RGB8
+      decay_time: "0"
+      decimate: "1"
+      max_points: "1000000"
+      point_world_size: "0.035"
+      style: Points
+      point_size: "2"
+    Type: PointCloud2
+  - Channel: /atlas/occupancy_grid
+    Enabled: true
+    Name: AtlasOccupancyGrid
+    Properties:
+      alpha: "0.7"
+      color_scheme: map
+      decimate: "2"
+      draw_behind: "false"
+      use_timestamp: "false"
+    Type: Map
+  - Channel: /atlas/trajectory
+    Enabled: true
+    Name: AtlasTrajectory
+    Properties:
+      alpha: "1.0"
+      color: 0;255;80
+      line_style: Billboards
+      line_width: "0.06"
+    Type: Path
+  - Channel: /atlas/optimized_trajectory
+    Enabled: true
+    Name: AtlasOptimizedTrajectory
+    Properties:
+      alpha: "1.0"
+      color: 0;180;255
+      line_style: Billboards
+      line_width: "0.06"
+    Type: Path
+  - Channel: /atlas/ground_truth_trajectory
+    Enabled: true
+    Name: AtlasGroundTruthTrajectory
+    Properties:
+      alpha: "1.0"
+      color: 255;80;80
+      line_style: Billboards
+      line_width: "0.06"
+    Type: Path
+  - Channel: /atlas/odometry
+    Enabled: true
+    Name: AtlasOdometry
+    Properties:
+      color: 255;140;0
+      keep: "1"
+      shape: Axes
+    Type: Odometry
+Global:
+  ActiveTool: Interact
+  BackgroundColor: 48;48;48
+  FixedFrame: map
+  FrameRate: 30
+  RenderBackend: Ogre
+  Transformer: autoviz/AutolinkTf
+  ViewController: Orbit
+ImagePanels:
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: /atlas/tracking_image
+    LabelScale: 1
+    ObjectName: ImageDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Atlas Feature Tracking
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: /atlas/feature_matches
+    LabelScale: 1
+    ObjectName: FeatureMatchesDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Atlas Previous/Current Matches
+Toolbar:
+  - Interact
+  - MoveCamera
+  - Select
+  - FocusCamera
+  - Measure
+Tools:
+  - Id: Interact
+    Properties:
+      client_id: autoviz
+Views: ~
+Window:
+  Height: 900
+  Width: 1400
+  X: 40
+  Y: 40
+  VisiblePanels:
+    - ViewportDock
+    - DisplaysDock
+    - TfTreeDock
+    - ImageDock
+    - FeatureMatchesDock
+    - ViewsDock

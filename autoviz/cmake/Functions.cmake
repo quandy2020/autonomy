@@ -370,6 +370,7 @@ function(autoviz_install_desktop_assets)
   install(FILES
       ${AUTOVIZ_ROOT}/config/default.autoviz
       ${AUTOVIZ_ROOT}/config/argus.autoviz
+      ${AUTOVIZ_ROOT}/config/atlas.autoviz
     DESTINATION share/autonomy/autoviz)
   install(DIRECTORY ${AUTOVIZ_ROOT}/resources/ogre_media
     DESTINATION share/autonomy/autoviz)

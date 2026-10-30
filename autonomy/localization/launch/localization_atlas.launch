@@ -15,14 +15,21 @@
     /camera/right/image_raw  Image, right camera
     /camera/depth/image_raw  Image, registered depth
     /imu                     Imu
+    /tf                      TFMessage, odom -> base_link
+    /tf_static               TFMessage, base_link -> camera_link
   Publishes:
     /atlas/odometry          Odometry
     /atlas/trajectory        Path
     /atlas/map_points        PointCloud2
+    /atlas/dense_map_points  PointCloud2 (bounded for Autolink SHM)
+    /atlas/occupancy_grid    OccupancyGrid
+    /tf                      TFMessage, map -> odom
   Notes:
     The settings YAML must match camera calibration, resolution and rate.
     Change atlas_sensor and atlas_config together for another sensor mode.
-    Atlas does not consume lidar and does not publish TF or occupancy.
+    Atlas does not consume lidar.
+    Atlas publishes map -> odom on /tf by default.
+    External TF must provide odom -> base_link and base_link -> camera_link.
     Keep process_name on one line for Autolink argument tokenization.
   Run from /workspace/autonomy/src/autonomy:
     Add build/autonomy/bin to PATH.
@@ -35,7 +42,7 @@
   <module>
     <name>localization_atlas</name>
     <type>binary</type>
-    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/atlas/config/euroc_mono.yaml --atlas_vocabulary=autonomy/localization/atlas/config/orb_vocab.fbow --atlas_sensor=monocular --atlas_image_topic=/camera/rgb/image_raw --atlas_right_image_topic=/camera/right/image_raw --atlas_depth_image_topic=/camera/depth/image_raw --atlas_imu_topic=/imu</process_name>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/atlas/config/euroc_mono.yaml --atlas_vocabulary=autonomy/localization/atlas/config/orb_vocab.fbow --atlas_sensor=monocular --atlas_image_topic=/camera/rgb/image_raw --atlas_right_image_topic=/camera/right/image_raw --atlas_depth_image_topic=/camera/depth/image_raw --atlas_imu_topic=/imu --atlas_maximum_dense_map_points=1500000</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

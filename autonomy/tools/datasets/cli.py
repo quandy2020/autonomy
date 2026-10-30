@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+from typing import Any
 
 from autonomy.tools.datasets.publisher import (
     DatasetPublisher,
@@ -27,6 +28,11 @@ from autonomy.tools.datasets.publisher import (
 )
 from autonomy.tools.datasets.readers.spires import SpiresReader
 from autonomy.tools.datasets.tum import resolve_spires_gt
+from autonomy.tools.datasets.visual_publisher import (
+    VisualDatasetPublisher,
+    VisualPublishChannels,
+    VisualPublishFrames,
+)
 
 
 class DatasetsCli:
@@ -36,8 +42,8 @@ class DatasetsCli:
         parser = argparse.ArgumentParser(
             prog="python -m autonomy.tools.datasets",
             description=(
-                "Load datasets and publish /imu /points [/camera] [/gt/odometry] "
-                "over autolink for Argus (localization_argus)."
+                "Load LiDAR or visual SLAM datasets and publish AutoMsgs "
+                "sensor streams over Autolink."
             ),
         )
         sub = parser.add_subparsers(dest="command", required=True)
@@ -47,7 +53,7 @@ class DatasetsCli:
 
         pub = sub.add_parser(
             "publish",
-            help="Publish sensor streams on autolink (Argus subscribe)",
+            help="Publish sensor streams for Argus or Atlas",
         )
         self._add_common_reader_args(pub)
         pub.add_argument(
@@ -56,12 +62,12 @@ class DatasetsCli:
             default=1.0,
             help="Playback rate vs dataset time (0 = as fast as possible)",
         )
-        pub.add_argument("--start", type=int, default=0, help="First lidar frame index")
+        pub.add_argument("--start", type=int, default=0, help="First frame index")
         pub.add_argument(
             "--max-frames",
             type=int,
             default=None,
-            help="Max lidar frames to publish",
+            help="Maximum frames to publish",
         )
         pub.add_argument(
             "--loop",
@@ -78,11 +84,35 @@ class DatasetsCli:
         pub.add_argument(
             "--image-topic",
             default="/camera/rgb/image_raw",
-            help="Must match --argus_image_topic (localization_argus.launch)",
+            help="Primary image topic",
+        )
+        pub.add_argument(
+            "--right-image-topic",
+            default="/camera/right/image_raw",
+            help="Atlas right image topic",
+        )
+        pub.add_argument(
+            "--depth-image-topic",
+            default="/camera/depth/image_raw",
+            help="Atlas depth image topic",
         )
         pub.add_argument("--imu-frame", default="imu_link")
         pub.add_argument("--lidar-frame", default="lidar_link")
         pub.add_argument("--camera-frame", default="camera_link")
+        pub.add_argument("--right-camera-frame", default="camera_right")
+        pub.add_argument("--depth-camera-frame", default="camera_depth")
+        pub.add_argument(
+            "--startup-delay",
+            type=float,
+            default=1.0,
+            help="Seconds to wait for Autolink discovery before visual replay",
+        )
+        pub.add_argument(
+            "--shutdown-delay",
+            type=float,
+            default=0.5,
+            help="Seconds to drain visual messages before publisher shutdown",
+        )
         pub.add_argument(
             "--node-name",
             default="dataset_publisher",
@@ -99,7 +129,7 @@ class DatasetsCli:
             dest="publish_gt",
             action="store_true",
             default=True,
-            help="Publish ground truth when a TUM file is found (default)",
+            help="Publish ground truth when the dataset provides it (default)",
         )
         gt.add_argument(
             "--no-gt",
@@ -111,12 +141,15 @@ class DatasetsCli:
             "--gt-file",
             type=Path,
             default=None,
-            help="TUM GT path (default: processed/vilens-slam/gt.tum or trajectory/gt-tum.txt)",
+            help=(
+                "Ground-truth file override (TUM for Spires, KITTI 3x4 poses "
+                "for KITTI odometry)"
+            ),
         )
         pub.add_argument(
             "--gt-topic",
             default="/gt/odometry",
-            help="GT Odometry topic (synced to lidar time)",
+            help="GT Odometry topic (synced to sensor time)",
         )
         pub.add_argument(
             "--gt-path-topic",
@@ -126,8 +159,11 @@ class DatasetsCli:
         pub.add_argument("--gt-frame", default="map", help="GT header.frame_id")
         pub.add_argument(
             "--gt-child-frame",
-            default="gt_link",
-            help="GT Odometry child_frame_id",
+            default=None,
+            help=(
+                "GT Odometry child_frame_id (default: gt_link for Spires, "
+                "camera frame for visual datasets)"
+            ),
         )
         pub.add_argument(
             "--gt-max-dt",
@@ -165,9 +201,9 @@ class DatasetsCli:
     def _add_common_reader_args(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(
             "--dataset",
-            choices=("spires",),
+            choices=("spires", "euroc", "tum-rgbd", "tum-vi", "kitti"),
             default="spires",
-            help="Dataset layout (default: oxford spires)",
+            help="Dataset layout",
         )
         parser.add_argument(
             "--path",
@@ -187,31 +223,111 @@ class DatasetsCli:
             help="Max |t_img - t_lidar| for association (sec)",
         )
         parser.add_argument(
+            "--max-pair-dt",
+            type=float,
+            default=0.02,
+            help="Maximum RGB-depth timestamp difference in seconds",
+        )
+        parser.add_argument(
+            "--atlas-sensor",
+            choices=(
+                "auto",
+                "monocular",
+                "stereo",
+                "monocular_inertial",
+                "stereo_inertial",
+                "rgbd",
+            ),
+            default="auto",
+            help="Atlas sensor mode; auto selects the dataset default",
+        )
+        parser.add_argument(
+            "--association-file",
+            type=Path,
+            default=None,
+            help="Optional TUM RGB-D association file",
+        )
+        parser.add_argument(
             "--prefer-undistorted",
             action="store_true",
             help="Prefer processed/vilens-slam/undist-clouds when present",
         )
 
-    def _open_reader(self, args: argparse.Namespace, *, load_images: bool) -> SpiresReader:
-        if args.dataset != "spires":
-            raise SystemExit(f"unsupported dataset: {args.dataset}")
-        return SpiresReader(
-            args.path,
-            camera=args.camera,
-            max_image_dt_sec=args.max_image_dt,
-            prefer_undistorted=args.prefer_undistorted,
-            load_images=load_images,
-        )
+    def _open_reader(self, args: argparse.Namespace, *, load_images: bool) -> Any:
+        if args.dataset == "spires":
+            return SpiresReader(
+                args.path,
+                camera=args.camera,
+                max_image_dt_sec=args.max_image_dt,
+                prefer_undistorted=args.prefer_undistorted,
+                load_images=load_images,
+            )
+
+        requested = args.atlas_sensor
+        if args.dataset == "euroc":
+            from autonomy.tools.datasets.readers.euroc import EurocReader
+
+            sensor_mode = "monocular" if requested == "auto" else requested
+            allowed = {
+                "monocular",
+                "stereo",
+                "monocular_inertial",
+                "stereo_inertial",
+            }
+            if sensor_mode not in allowed:
+                raise SystemExit(f"EuRoC does not support {sensor_mode}")
+            return EurocReader(
+                args.path,
+                sensor_mode=sensor_mode,
+                load_images=load_images,
+            )
+        if args.dataset == "tum-vi":
+            from autonomy.tools.datasets.readers.euroc import TumViReader
+
+            sensor_mode = "stereo_inertial" if requested == "auto" else requested
+            if sensor_mode != "stereo_inertial":
+                raise SystemExit("TUM-VI requires stereo_inertial")
+            return TumViReader(
+                args.path,
+                load_images=load_images,
+            )
+        if args.dataset == "tum-rgbd":
+            from autonomy.tools.datasets.readers.tum_rgbd import TumRgbdReader
+
+            sensor_mode = "rgbd" if requested == "auto" else requested
+            if sensor_mode != "rgbd":
+                raise SystemExit("TUM RGB-D requires rgbd")
+            return TumRgbdReader(
+                args.path,
+                association_file=args.association_file,
+                load_images=load_images,
+                max_pair_dt_ns=round(args.max_pair_dt * 1e9),
+            )
+        if args.dataset == "kitti":
+            from autonomy.tools.datasets.readers.kitti import KittiReader
+
+            sensor_mode = "stereo" if requested == "auto" else requested
+            if sensor_mode != "stereo":
+                raise SystemExit("KITTI odometry requires stereo")
+            return KittiReader(
+                args.path,
+                load_images=load_images,
+                ground_truth_path=getattr(args, "gt_file", None),
+            )
+        raise SystemExit(f"unsupported dataset: {args.dataset}")
 
     def _cmd_info(self, args: argparse.Namespace) -> int:
         reader = self._open_reader(args, load_images=True)
         info = reader.info()
-        gt = resolve_spires_gt(reader.seq_root, getattr(args, "gt_file", None))
-        info["gt_file"] = str(gt) if gt is not None else ""
+        if args.dataset == "spires":
+            gt = resolve_spires_gt(reader.seq_root, getattr(args, "gt_file", None))
+            info["gt_file"] = str(gt) if gt is not None else ""
         print(json.dumps(info, indent=2, sort_keys=True))
         return 0
 
     def _cmd_publish(self, args: argparse.Namespace) -> int:
+        if args.dataset != "spires":
+            return self._cmd_publish_visual(args)
         publish_image = not args.no_image
         reader = self._open_reader(args, load_images=publish_image)
         info = reader.info()
@@ -267,7 +383,7 @@ class DatasetsCli:
                 lidar=args.lidar_frame,
                 camera=args.camera_frame,
                 gt=args.gt_frame,
-                gt_child=args.gt_child_frame,
+                gt_child=args.gt_child_frame or "gt_link",
             ),
             rate=args.rate,
             publish_image=publish_image,
@@ -291,6 +407,87 @@ class DatasetsCli:
             publisher.shutdown()
             return 130
         print(f"[datasets] done frames={n}", flush=True)
+        return 0
+
+    def _cmd_publish_visual(self, args: argparse.Namespace) -> int:
+        if args.no_image:
+            raise SystemExit("--no-image is only valid for Spires")
+        if args.loop:
+            raise SystemExit("--loop is not supported for visual datasets")
+        reader = self._open_reader(args, load_images=True)
+        info = reader.info()
+        publish_ground_truth = bool(args.publish_gt) and bool(
+            getattr(reader, "ground_truth", [])
+        )
+        print(
+            f"[datasets] {args.dataset} sensor={reader.sensor_mode} "
+            f"frames={len(reader)} imu={len(reader.imu)} "
+            f"duration={float(info.get('duration_sec', 0.0)):.1f}s",
+            flush=True,
+        )
+
+        topics = args.image_topic
+        if reader.sensor_mode in ("stereo", "stereo_inertial"):
+            topics += f" {args.right_image_topic}"
+        elif reader.sensor_mode == "rgbd":
+            topics += f" {args.depth_image_topic}"
+        if reader.sensor_mode in ("monocular_inertial", "stereo_inertial"):
+            topics += f" {args.imu_topic}"
+        if publish_ground_truth:
+            topics += f" {args.gt_topic}"
+        elif args.publish_gt:
+            topics += " (no GT file)"
+        print(f"[datasets] publish → {topics} rate={args.rate}", flush=True)
+
+        progress_every = 10
+
+        def on_progress(published: int, total: int, timestamp: float) -> None:
+            if args.quiet:
+                return
+            if (
+                published == 1
+                or published == total
+                or published % progress_every == 0
+            ):
+                print(
+                    f"[datasets] frame {published}/{total} t={timestamp:.9f}",
+                    flush=True,
+                )
+
+        publisher = VisualDatasetPublisher(
+            reader,
+            channels=VisualPublishChannels(
+                primary=args.image_topic,
+                right=args.right_image_topic,
+                depth=args.depth_image_topic,
+                imu=args.imu_topic,
+                ground_truth=args.gt_topic,
+            ),
+            frames=VisualPublishFrames(
+                primary=args.camera_frame,
+                right=args.right_camera_frame,
+                depth=args.depth_camera_frame,
+                imu=args.imu_frame,
+                ground_truth=args.gt_frame,
+                ground_truth_child=args.gt_child_frame or args.camera_frame,
+            ),
+            rate=args.rate,
+            startup_delay=args.startup_delay,
+            shutdown_delay=args.shutdown_delay,
+            publish_ground_truth=publish_ground_truth,
+            node_name=args.node_name,
+            on_progress=on_progress,
+        )
+        try:
+            published = publisher.run(
+                start=args.start,
+                max_frames=args.max_frames,
+            )
+        except KeyboardInterrupt:
+            print("\n[datasets] interrupted", flush=True)
+            publisher.shutdown()
+            return 130
+        print(f"[datasets] done frames={published}", flush=True)
         return 0
 
 

@@ -20,10 +20,16 @@ int main(int argc, char** argv) {
 
     std::vector<atlas::examples::EurocImageSample> samples;
     std::vector<atlas::ImuSample> imu_samples;
+    std::size_t skipped_missing_samples = 0;
     if (!atlas::examples::EurocReader::LoadImages(argv[3], argv[4], false,
-                                                  &samples)) {
+                                                  &samples,
+                                                  &skipped_missing_samples)) {
         AERROR << "failed to load EuRoC monocular images" << std::endl;
         return 1;
+    }
+    if (skipped_missing_samples > 0) {
+        AWARN << "skipped " << skipped_missing_samples
+              << " EuRoC samples with missing images" << std::endl;
     }
     if (!atlas::examples::EurocReader::LoadImu(argv[5], &imu_samples)) {
         AERROR << "failed to load EuRoC IMU data" << std::endl;
@@ -50,6 +56,7 @@ int main(int argc, char** argv) {
     }
 
     std::size_t valid_frames = 0;
+    std::size_t unreadable_frames = 0;
     for (std::size_t index = 0; index < samples.size(); ++index) {
         const auto& sample = samples[index];
         if (index > 0) {
@@ -63,22 +70,21 @@ int main(int argc, char** argv) {
                 ++imu_index;
             }
         }
-
+        const auto tracking_start = std::chrono::steady_clock::now();
         atlas::ImageFrame image{
             sample.timestamp, "cam0",
             cv::imread(sample.left_path, cv::IMREAD_GRAYSCALE)};
         if (image.pixels.empty()) {
-            AERROR << "failed to load monocular image at timestamp "
-                   << sample.timestamp << std::endl;
-            return 1;
-        }
-
-        const auto tracking_start = std::chrono::steady_clock::now();
-        atlas::TrackingResult result;
-        if (!builder.TrackMonocular(image, &result)) {
-            AWARN << "monocular-inertial frame rejected" << std::endl;
-        } else if (result.valid) {
-            ++valid_frames;
+            ++unreadable_frames;
+            AWARN_EVERY(100) << "skipping unreadable monocular image at "
+                             << sample.timestamp;
+        } else {
+            atlas::TrackingResult result;
+            if (!builder.TrackMonocular(image, &result)) {
+                AWARN << "monocular-inertial frame rejected" << std::endl;
+            } else if (result.valid) {
+                ++valid_frames;
+            }
         }
         const std::chrono::duration<double> tracking_duration =
             std::chrono::steady_clock::now() - tracking_start;
@@ -95,8 +101,17 @@ int main(int argc, char** argv) {
         }
     }
 
+    if (valid_frames == 0) {
+        AERROR << "Atlas EuRoC monocular-inertial produced no valid frames"
+               << std::endl;
+        builder.Stop();
+        return 1;
+    }
+
     AINFO << "Atlas EuRoC monocular-inertial valid frames: " << valid_frames
-          << "/" << samples.size() << std::endl;
+          << "/" << samples.size() << ", missing: "
+          << skipped_missing_samples << ", unreadable: "
+          << unreadable_frames << std::endl;
     if (argc == 7) {
         if (!builder.ShutdownAndSaveEurocTrajectory(argv[6])) {
             AERROR << "failed to save EuRoC trajectory: " << argv[6]

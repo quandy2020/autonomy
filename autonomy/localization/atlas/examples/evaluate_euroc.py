@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Evaluate an Atlas EuRoC trajectory with fixed-scale SE(3) alignment."""
+"""Evaluate an Atlas EuRoC trajectory with explicit SE(3) or Sim(3) alignment.
+
+Metric sensor modes default to fixed-scale SE(3). Pure monocular evaluation
+must explicitly request Sim(3), so scale fitting can never happen silently.
+"""
 
 import argparse
 import csv
@@ -204,6 +208,46 @@ def interpolate_ground_truth(
     )
 
 
+def similarity_alignment(source: np.ndarray, target: np.ndarray):
+    """Return scale, rotation and translation mapping source onto target.
+
+    This is the orientation-preserving Umeyama solution. A positive scale is
+    required because a reflected or collapsed monocular trajectory is not a
+    valid similarity alignment.
+    """
+    source = np.asarray(source, dtype=float)
+    target = np.asarray(target, dtype=float)
+    if (
+        source.ndim != 2
+        or source.shape[1:] != (3,)
+        or source.shape != target.shape
+        or len(source) < 3
+        or not np.all(np.isfinite(source))
+        or not np.all(np.isfinite(target))
+    ):
+        raise ValueError("similarity alignment requires matching finite Nx3 arrays")
+
+    source_center = source.mean(axis=0)
+    target_center = target.mean(axis=0)
+    source_zero = source - source_center
+    target_zero = target - target_center
+    source_variance = float(np.mean(np.sum(source_zero * source_zero, axis=1)))
+    if not math.isfinite(source_variance) or source_variance <= 1.0e-15:
+        raise ValueError("similarity alignment source trajectory is degenerate")
+
+    covariance = target_zero.T @ source_zero / len(source)
+    left, singular_values, right_transpose = np.linalg.svd(covariance)
+    signs = np.ones(3, dtype=float)
+    if np.linalg.det(left) * np.linalg.det(right_transpose) < 0.0:
+        signs[-1] = -1.0
+    rotation = left @ np.diag(signs) @ right_transpose
+    scale = float(np.dot(singular_values, signs) / source_variance)
+    if not math.isfinite(scale) or scale <= 0.0:
+        raise ValueError("similarity alignment produced a non-positive scale")
+    translation = target_center - scale * (rotation @ source_center)
+    return scale, rotation, translation
+
+
 def write_aligned_trajectory(
     path: Path,
     matched_times: np.ndarray,
@@ -265,12 +309,25 @@ def main() -> int:
         default=20.0,
         help="maximum gap from an estimate to each interpolation endpoint",
     )
+    parser.add_argument(
+        "--alignment",
+        choices=("se3", "sim3"),
+        default="se3",
+        help="trajectory alignment (default: se3; use sim3 for pure monocular)",
+    )
+    parser.add_argument(
+        "--report-fixed-scale",
+        action="store_true",
+        help="with sim3, also include fixed-scale SE(3) ATE in metrics.json",
+    )
     args = parser.parse_args()
 
     if not math.isfinite(args.max_interval_ms) or args.max_interval_ms <= 0.0:
         parser.error("--max-interval-ms must be finite and positive")
     if args.estimate_frame == "camera" and args.calibration_yaml is None:
         parser.error("--calibration-yaml is required for --estimate-frame camera")
+    if args.report_fixed_scale and args.alignment != "sim3":
+        parser.error("--report-fixed-scale requires --alignment sim3")
 
     (
         raw_estimated_poses,
@@ -306,20 +363,51 @@ def main() -> int:
         )
 
     matched_estimate = estimate_positions[estimate_indices]
-    alignment_rotation, alignment_translation = rigid_alignment(
-        matched_estimate, reference
+    if args.alignment == "sim3":
+        alignment_scale, alignment_rotation, alignment_translation = (
+            similarity_alignment(matched_estimate, reference)
+        )
+    else:
+        alignment_scale = 1.0
+        alignment_rotation, alignment_translation = rigid_alignment(
+            matched_estimate, reference
+        )
+    aligned = (
+        alignment_scale * (alignment_rotation @ matched_estimate.T).T
+        + alignment_translation
     )
-    aligned = (alignment_rotation @ matched_estimate.T).T + alignment_translation
     errors = np.linalg.norm(aligned - reference, axis=1)
     duration_seconds = float(int(matched_times[-1]) - int(matched_times[0])) * 1.0e-9
 
+    fixed_scale_metrics = None
+    if args.report_fixed_scale:
+        fixed_rotation, fixed_translation = rigid_alignment(
+            matched_estimate, reference
+        )
+        fixed_aligned = (
+            (fixed_rotation @ matched_estimate.T).T + fixed_translation
+        )
+        fixed_errors = np.linalg.norm(fixed_aligned - reference, axis=1)
+        fixed_scale_metrics = {
+            "alignment": "SE3",
+            "alignment_rotation": fixed_rotation.tolist(),
+            "alignment_translation_m": fixed_translation.tolist(),
+            "ate_rmse_m": float(np.sqrt(np.mean(fixed_errors**2))),
+            "ate_mean_m": float(np.mean(fixed_errors)),
+            "ate_median_m": float(np.median(fixed_errors)),
+            "ate_std_m": float(np.std(fixed_errors)),
+            "ate_min_m": float(np.min(fixed_errors)),
+            "ate_max_m": float(np.max(fixed_errors)),
+        }
+
     metrics = {
-        "alignment": "SE3",
+        "alignment": args.alignment.upper(),
+        "alignment_scale": alignment_scale,
         "alignment_rotation": alignment_rotation.tolist(),
         "alignment_translation_m": alignment_translation.tolist(),
         "association": "linear_interpolation",
         "maximum_interval_ms": float(args.max_interval_ms),
-        "scale_fixed": True,
+        "scale_fixed": args.alignment == "se3",
         "estimate_frame": args.estimate_frame,
         "calibration_yaml": (
             str(args.calibration_yaml) if args.calibration_yaml is not None else None
@@ -343,6 +431,8 @@ def main() -> int:
         "ate_min_m": float(np.min(errors)),
         "ate_max_m": float(np.max(errors)),
     }
+    if fixed_scale_metrics is not None:
+        metrics["fixed_scale_se3"] = fixed_scale_metrics
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     with (args.output_dir / "metrics.json").open("w", encoding="utf-8") as stream:

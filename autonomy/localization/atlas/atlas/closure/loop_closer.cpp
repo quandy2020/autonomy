@@ -2462,11 +2462,15 @@ void LoopCloser::RunGlobalBundleAdjustment(Map* pActiveMap,
 
     const bool bImuInit = pActiveMap->isImuInitialized();
 
+    bool optimization_succeeded = true;
     if (!bImuInit)
         Optimizer::GlobalBundleAdjustemnt(pActiveMap, 10, &mbStopGBA, nLoopKF,
                                           false);
     else
-        Optimizer::FullInertialBA(pActiveMap, 7, false, nLoopKF, &mbStopGBA);
+        optimization_succeeded = Optimizer::FullInertialBA(pActiveMap, 7, false,
+                                                           nLoopKF, &mbStopGBA);
+    if (!optimization_succeeded && !mbStopGBA)
+        AERROR << "Global inertial bundle adjustment rejected its result";
 
 #ifdef REGISTER_TIMES
     std::chrono::steady_clock::time_point time_EndGBA =
@@ -2478,7 +2482,7 @@ void LoopCloser::RunGlobalBundleAdjustment(Map* pActiveMap,
             .count();
     vdGBA_ms.push_back(timeGBA);
 
-    if (mbStopGBA) {
+    if (mbStopGBA || !optimization_succeeded) {
         nFGBA_abort += 1;
     }
 #endif
@@ -2499,7 +2503,7 @@ void LoopCloser::RunGlobalBundleAdjustment(Map* pActiveMap,
         if (!bImuInit && pActiveMap->isImuInitialized())
             return;
 
-        if (!mbStopGBA) {
+        if (optimization_succeeded && !mbStopGBA) {
             AINFO << "Global Bundle Adjustment finished";
             AINFO << "Updating map ...";
 

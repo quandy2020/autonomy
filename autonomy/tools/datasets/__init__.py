@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Dataset loaders that publish sensor streams over autolink for Argus."""
+"""Dataset loaders that publish sensor streams over Autolink."""
 
 from __future__ import annotations
 
-__all__ = ["DatasetPublisher", "SpiresReader"]
+__all__ = ["DatasetPublisher", "SpiresReader", "VisualDatasetPublisher"]
 
 
 def __getattr__(name: str):
@@ -28,4 +28,8 @@ def __getattr__(name: str):
         from autonomy.tools.datasets.readers.spires import SpiresReader
 
         return SpiresReader
+    if name == "VisualDatasetPublisher":
+        from autonomy.tools.datasets.visual_publisher import VisualDatasetPublisher
+
+        return VisualDatasetPublisher
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

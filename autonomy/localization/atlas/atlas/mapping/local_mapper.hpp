@@ -31,6 +31,7 @@
 
 #include <fstream>
 #include <mutex>
+#include <vector>
 
 namespace autonomy::localization::atlas {
 
@@ -55,6 +56,8 @@ public:
 
     void InsertKeyFrame(KeyFrame* pKF);
     void EmptyQueue();
+    /** Returns timestamps for the current and queued keyframes. */
+    std::vector<double> GetPendingKeyFrameTimestamps();
 
     // Thread Synch
     void RequestStop();

@@ -1,5 +1,6 @@
 #include <chrono>
 #include <cstddef>
+#include <string>
 #include <thread>
 
 #include <opencv2/imgcodecs.hpp>
@@ -7,6 +8,7 @@
 #include "atlas/common/logging.hpp"
 #include "atlas/map_builder.hpp"
 #include "examples/dataset_reader/tartanair_reader.hpp"
+#include "examples/dataset_reader/trajectory_segments.hpp"
 
 int main(int argc, char** argv) {
     namespace atlas = autonomy::localization::atlas;
@@ -46,6 +48,7 @@ int main(int argc, char** argv) {
 
     std::size_t accepted_frames = 0;
     std::size_t valid_poses = 0;
+    atlas::examples::TrajectorySegmentRecorder trajectory;
     for (std::size_t index = 0; index < sequence.frames.size(); ++index) {
         const auto& sample = sequence.frames[index];
         if (index > 0) {
@@ -82,9 +85,11 @@ int main(int argc, char** argv) {
                   << std::endl;
         } else {
             ++accepted_frames;
-            if (result.valid)
+            if (result.valid) {
                 ++valid_poses;
+            }
         }
+        trajectory.Record(result);
         const std::chrono::duration<double> tracking_duration =
             std::chrono::steady_clock::now() - tracking_start;
         double frame_interval = 0.0;
@@ -104,10 +109,19 @@ int main(int argc, char** argv) {
 
     AINFO << "Atlas TartanAir RGB-D+IMU summary: samples="
           << sequence.frames.size() << ", accepted=" << accepted_frames
-          << ", valid_poses=" << valid_poses << std::endl;
+          << ", valid_poses=" << valid_poses
+          << ", trajectory_segments=" << trajectory.segment_count()
+          << std::endl;
     if (argc == 5) {
-        if (!builder.ShutdownAndSaveTumTrajectory(argv[4])) {
-            AERROR << "failed to save TartanAir TUM trajectory: " << argv[4]
+        const std::string output_path = argv[4];
+        const std::string optimized_path =
+            output_path + ".active_optimized.tum";
+        const bool optimized_saved =
+            builder.ShutdownAndSaveTumTrajectory(optimized_path);
+        if (!trajectory.SaveTum(output_path,
+                                optimized_saved ? optimized_path : "")) {
+            AERROR << "failed to save segmented TartanAir TUM trajectory: "
+                   << output_path
                    << std::endl;
             return 1;
         }

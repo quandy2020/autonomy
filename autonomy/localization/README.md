@@ -7,7 +7,7 @@
 | 后端 | 当前状态 | 当前提供的启动方式 |
 |------|----------|--------------------|
 | Cartographer | 可用 | `localization.launch`、`localization_cartographer.launch`，均为 AutoSim 2D |
-| Atlas | 可用；视觉 SLAM | `localization_atlas.launch`，默认单目 |
+| Atlas | 可用；视觉 SLAM | `localization_atlas*.launch`，覆盖 EuRoC、TUM RGB-D/TUM-VI、KITTI |
 | Argus | 不可用 | 源码目录已不存在，`localization_argus.launch` 当前会启动失败 |
 
 Atlas 已完全定位为以相机为核心的视觉 SLAM 方案。单目、双目和 RGB-D 模式只消费图像；惯性模式是在视觉 SLAM 上增加 IMU 约束形成 VIO。Atlas 不包含 LiDAR、LIO 或 LIVO 数据链路。
@@ -31,6 +31,9 @@ autonomy/localization/
     ├── localization.launch
     ├── localization_cartographer.launch
     ├── localization_atlas.launch
+    ├── localization_atlas_euroc_*.launch
+    ├── localization_atlas_tum_*.launch
+    ├── localization_atlas_kitti_stereo.launch
     └── localization_argus.launch   # 失效占位，当前不可运行
 ```
 
@@ -215,43 +218,75 @@ autonomy.localization \
 
 ## Atlas 输出
 
-Atlas 只发布以下三个话题：
+Atlas 发布以下四个话题：
 
 | 话题 | AutoMsgs 类型 | frame | 发布时机 |
 |------|---------------|-------|----------|
-| `/atlas/odometry` | `nav_msgs/Odometry` | `map` → `camera` | 每个有效跟踪帧 |
+| `/atlas/odometry` | `nav_msgs/Odometry` | `map` → `camera_link` | 每个有效跟踪帧 |
 | `/atlas/trajectory` | `nav_msgs/Path` | `map` | 约每秒更新 |
 | `/atlas/map_points` | `sensor_msgs/PointCloud2` | `map` | 约每秒更新且地图点非空时 |
+| `/tf` | `tf2_msgs/TFMessage` | `map` → `odom` | 输入 TF 可解析时，每个有效跟踪帧 |
 
-当前 Atlas：
+TF 由三个来源组成：
 
-- 不消费 LiDAR。
-- 不发布 TF。
-- 不发布 occupancy grid。
-- 不发布 registered cloud、稠密 cloud map 或 loop markers。
+```text
+map
+└── odom                 # Atlas 动态发布
+    └── base_link        # 底盘里程计动态发布
+        └── camera_link  # 平台标定通过 /tf_static 发布
+```
 
-下游如果依赖 `map→odom→base_link`，需要单独实现明确的 TF 适配层，不能假定 Atlas 已经发布 TF。
+Atlas 在图像时间戳查询 `T_odom_base` 和 `T_base_camera`，并计算：
+
+```text
+T_map_odom = T_map_camera × inverse(T_odom_base × T_base_camera)
+```
+
+因此：
+
+- Atlas 只发布 `map → odom`，不会同时发布 `map → camera_link`，避免相机出现多父节点。
+- 外部必须提供动态 `odom → base_link` 和静态 `base_link → camera_link`；frame 名可通过 `--atlas_*_frame` 修改。
+- 任一输入 TF 缺失或在图像时间戳不可用时，Atlas 节流告警并跳过该帧 TF；`/atlas/odometry`、轨迹和地图点不受影响。
+- Atlas 不消费 LiDAR，不发布 occupancy grid、registered cloud、稠密 cloud map 或 loop markers。
+
+TF 参数：
+
+| 参数 | 默认值 | 作用 |
+|------|--------|------|
+| `--atlas_publish_tf` | `true` | 是否计算并发布 `map → odom` |
+| `--atlas_tf_topic` | `/tf` | 动态 TF 输入/输出话题 |
+| `--atlas_tf_static_topic` | `/tf_static` | 静态外参输入话题 |
+| `--atlas_map_frame` | `map` | Atlas 全局地图 frame |
+| `--atlas_odom_frame` | `odom` | 底盘里程计 frame |
+| `--atlas_base_frame` | `base_link` | 机器人底盘 frame |
+| `--atlas_camera_frame` | `camera_link` | Atlas 跟踪的主相机 frame |
 
 ## 使用 Autoviz 查看 Atlas
 
-当前仓库没有 `atlas.autoviz` 预设，`argus.autoviz` 也不适用于 Atlas。启动空白 Autoviz：
+使用 Atlas 专用预设：
 
 ```bash
 docker exec -it SpaceHero /bin/bash
 cd /workspace/autonomy
 
-./build/autonomy/bin/autoviz
+./build/autonomy/bin/autoviz \
+  --config src/autonomy/autoviz/config/atlas.autoviz
 ```
 
-在界面中设置：
+预设以 `map` 为 Fixed Frame，并订阅：
 
-1. Global → Fixed Frame：`map`
-2. 添加 Odometry：`/atlas/odometry`
-3. 添加 Path：`/atlas/trajectory`
-4. 添加 PointCloud2：`/atlas/map_points`
-5. Image 面板选择实际主图像话题，例如 `/camera/rgb/image_raw`
+- 主图 `/camera/rgb/image_raw`
+- 里程计 `/atlas/odometry`
+- 轨迹 `/atlas/trajectory`
+- 稀疏地图点 `/atlas/map_points`
+- 动态 TF `/tf`（Atlas 发布 `map → odom`）
 
-Atlas 的三个输出本身都使用 `map` frame，因此显示它们不依赖 Atlas 发布 TF。RobotModel 或其他传感器 frame 是否能显示，取决于系统中是否有其他节点提供相应 TF。
+Atlas 预设启用 TF Display 和 TfTree 面板。底盘里程计必须提供 `odom → base_link`，平台标定必须提供 `base_link → camera_link`。可分别检查动态和静态 TF：
+
+```bash
+autolink channel echo --once /tf
+autolink channel echo --once /tf_static
+```
 
 若 Autoviz 没有数据，先检查：
 
@@ -261,16 +296,127 @@ autolink --wait 3 channel list -v
 
 只有输入图像存在且 Atlas 获得有效跟踪后，才会出现有效里程计、轨迹和地图点。
 
-## 离线数据集回放
+## 数据集回放
 
-### 回放边界
+### AutoMsgs 实时回放
 
-`localization_atlas.launch` 消费 Autolink 实时话题。当前 `autonomy.tools.datasets` 只支持 Oxford Spires 的 LiDAR/IMU 格式，不是 Atlas 的 EuRoC/TUM 图像发布器，因此不能用它直接驱动 Atlas launch。
+`autonomy.tools.datasets` 可将 EuRoC、TUM RGB-D、TUM-VI 和 KITTI 目录发布为 Atlas 使用的 AutoMsgs 话题。按 Atlas → publisher → Autoviz 的顺序使用三个终端。
 
-下述 runner 直接从磁盘读取图像和 IMU，并调用 Atlas 核心库：
+Atlas profile：
+
+| 数据/模式 | launch |
+|-----------|--------|
+| EuRoC 单目 | `localization_atlas.launch` |
+| EuRoC 双目 | `localization_atlas_euroc_stereo.launch` |
+| EuRoC 单目惯性 | `localization_atlas_euroc_mono_inertial.launch` |
+| EuRoC 双目惯性 | `localization_atlas_euroc_stereo_inertial.launch` |
+| TUM RGB-D Freiburg1 | `localization_atlas_tum_rgbd.launch` |
+| TUM-VI 双目惯性 | `localization_atlas_tum_vi_stereo_inertial.launch`；数据完整后使用 |
+| KITTI odometry 00–02 | `localization_atlas_kitti_stereo.launch` |
+
+终端 A，以 EuRoC 双目惯性为例：
+
+```bash
+cd /workspace/autonomy/src/autonomy
+export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
+
+autolink launch start localization_atlas_euroc_stereo_inertial.launch
+```
+
+看到 `AtlasNode started` 后，在终端 B 设置工具环境：
+
+```bash
+cd /workspace/autonomy/src/autonomy
+export LD_LIBRARY_PATH="/workspace/autonomy/install/autonomy/lib:/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}"
+export PYTHONPATH="/workspace/autonomy/src/autonomy:/workspace/autonomy/build/autonomy/python:/workspace/autonomy/install/autonomy/python:/workspace/autonomy/install/autonomy/lib/python:${PYTHONPATH:-}"
+```
+
+可先运行 `info` 验证目录，不会发布话题：
+
+```bash
+/usr/bin/python3 -m autonomy.tools.datasets info \
+  --dataset euroc \
+  --path /data/slam/EuRoC/data/MH_01_easy \
+  --atlas-sensor stereo_inertial
+```
+
+按终端 A 启动的 profile 选择下列一条发布命令：
+
+```bash
+# EuRoC 单目：localization_atlas.launch
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset euroc \
+  --path /data/slam/EuRoC/data/MH_01_easy \
+  --atlas-sensor monocular \
+  --rate 1.0
+
+# EuRoC 双目：localization_atlas_euroc_stereo.launch
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset euroc \
+  --path /data/slam/EuRoC/data/MH_01_easy \
+  --atlas-sensor stereo \
+  --rate 1.0
+
+# EuRoC 单目惯性：localization_atlas_euroc_mono_inertial.launch
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset euroc \
+  --path /data/slam/EuRoC/data/MH_01_easy \
+  --atlas-sensor monocular_inertial \
+  --rate 1.0
+
+# EuRoC 双目惯性：localization_atlas_euroc_stereo_inertial.launch
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset euroc \
+  --path /data/slam/EuRoC/data/MH_01_easy \
+  --atlas-sensor stereo_inertial \
+  --rate 1.0
+
+# TUM RGB-D：localization_atlas_tum_rgbd.launch
+mkdir -p /tmp/atlas_tum_rgbd
+tar -xzf /data/slam/TUM/rgbd_dataset_freiburg1_desk.tgz \
+  -C /tmp/atlas_tum_rgbd
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset tum-rgbd \
+  --path /tmp/atlas_tum_rgbd/rgbd_dataset_freiburg1_desk \
+  --atlas-sensor rgbd \
+  --rate 1.0
+
+# TUM-VI 双目惯性：localization_atlas_tum_vi_stereo_inertial.launch
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset tum-vi \
+  --path /data/slam/TUM-VI/dataset-room1_512_16 \
+  --atlas-sensor stereo_inertial \
+  --rate 1.0
+
+# KITTI odometry 00 双目：localization_atlas_kitti_stereo.launch
+/usr/bin/python3 -m autonomy.tools.datasets publish \
+  --dataset kitti \
+  --path /data/slam/kitti/odometry/sequences/00 \
+  --atlas-sensor stereo \
+  --rate 1.0
+```
+
+当前机器上的 TUM-VI 下载分片不完整；实际运行前需准备包含完整 `mav0/` 的序列目录。TUM RGB-D 压缩包位于只读 `/data`，所以示例解压到 `/tmp`。
+
+终端 C 启动 Autoviz：
+
+```bash
+cd /workspace/autonomy
+./build/autonomy/bin/autoviz \
+  --config src/autonomy/autoviz/config/atlas.autoviz
+```
+
+发布器默认话题与所有 Atlas profile 一致：主图 `/camera/rgb/image_raw`、右图 `/camera/right/image_raw`、深度 `/camera/depth/image_raw`、IMU `/imu`。快速冒烟测试可在发布命令末尾追加 `--start 0 --max-frames 100`。
+
+`--start` 和 `--max-frames` 按主图帧计数。实时 Atlas 建议使用 `--rate 1.0`；视觉数据不支持 `--loop`，重新播放前需重启 Atlas。完整参数见 [datasets 工具文档](../../docs/source/18_Tools/08_datasets.md)。
+
+### 离线 runner 边界
+
+Atlas 的 C++ runner 仍用于不经过 Autolink 的离线评测。它们直接从磁盘读取图像和 IMU，并调用 Atlas 核心库：
 
 - 不创建 Autolink node，也不发布 `/atlas/odometry`、`/atlas/trajectory` 或 `/atlas/map_points`。
-- 不能直接用 Autoviz 做实时话题显示；若要走 `localization_atlas.launch` 和 Autoviz，仍需另行实现发布对应 AutoMsgs 话题的数据集播放器。
+- 不能直接用 Autoviz 做实时话题显示；需要可视化时使用上一节的 `autonomy.tools.datasets`。
 - 不提供 `--rate` 参数。双目、惯性、TUM RGB-D 和 KITTI runner 会按数据时间间隔节流；`atlas_mono_euroc` 不节流，会尽快处理完整序列。
 - 轨迹文件是 runner 停止时保存的离线结果，不等同于 `/atlas/trajectory` 话题。
 
@@ -379,16 +525,19 @@ awk -F, '!/^#/ {print $1}' \
 `tum_rgbd.yaml` 使用 Freiburg1 标定，不能直接用于 Freiburg2/3。以 `freiburg1_desk` 为例，先解压：
 
 ```bash
+mkdir -p /tmp/atlas_tum_rgbd
 tar -xzf /data/slam/TUM/rgbd_dataset_freiburg1_desk.tgz \
-  -C /data/slam/TUM
+  -C /tmp/atlas_tum_rgbd
 ```
+
+`/data` 当前是只读挂载，因此示例解压到容器 `/tmp`。也可在宿主机解压后重新挂载。
 
 TUM 的 RGB 和深度时间戳不同。使用 Atlas 自带脚本生成一对一最近时间戳 association：
 
 ```bash
 python3 autonomy/localization/atlas/examples/associate_tum_rgbd.py \
-  /data/slam/TUM/rgbd_dataset_freiburg1_desk/rgb.txt \
-  /data/slam/TUM/rgbd_dataset_freiburg1_desk/depth.txt \
+  /tmp/atlas_tum_rgbd/rgbd_dataset_freiburg1_desk/rgb.txt \
+  /tmp/atlas_tum_rgbd/rgbd_dataset_freiburg1_desk/depth.txt \
   --output /tmp/fr1_desk.associations.txt
 ```
 
@@ -398,7 +547,7 @@ python3 autonomy/localization/atlas/examples/associate_tum_rgbd.py \
 /workspace/autonomy/build/autonomy/bin/atlas_rgbd_tum \
   autonomy/localization/atlas/config/orb_vocab.fbow \
   autonomy/localization/atlas/config/tum_rgbd.yaml \
-  /data/slam/TUM/rgbd_dataset_freiburg1_desk \
+  /tmp/atlas_tum_rgbd/rgbd_dataset_freiburg1_desk \
   /tmp/fr1_desk.associations.txt \
   /tmp/atlas_freiburg1_desk.txt
 ```
@@ -447,9 +596,11 @@ TartanAir V2 当前的 RGB 和 IMU 数据不构成可用的 RGB-D 惯性序列�
 | 进程正常但没有输出 | 输入图像话题是否存在；图像格式、尺寸和标定是否匹配 |
 | 双目/RGB-D 没有输出 | 两路时间戳是否满足 10 ms / 30 ms 同步容差 |
 | VIO 不稳定 | IMU 时间、单位、频率、噪声及相机—IMU 外参 |
+| tools 正常发布但 Atlas 静默 | publisher 的 `--atlas-sensor` 是否与 launch profile 一致；是否在 Atlas 启动前就已播放 |
 | 只有 odometry，没有轨迹或地图点 | 轨迹/地图约每秒发布；地图初始化前可能没有地图点 |
 | Autoviz 看不到输出 | Fixed Frame 是否为 `map`，Display 是否选择正确 `/atlas/*` 话题 |
-| 导航栈没有 TF | 符合当前设计；Atlas 不发布 TF，需要单独适配 |
+| 看不到 Atlas TF | 确认已获得有效跟踪、`--atlas_publish_tf=true`，且图像时刻可查询 `odom → base_link → camera_link` |
+| TF 出现多父节点 | Atlas 只应发布 `map → odom`；底盘发布 `odom → base_link`，静态标定发布 `base_link → camera_link` |
 
 ## Cartographer
 

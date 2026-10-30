@@ -23,8 +23,11 @@
 #include "atlas/tracking/tracker.hpp"
 
 #include <opencv2/core.hpp>
+#include <opencv2/imgproc.hpp>
 
+#include <algorithm>
 #include <mutex>
+#include <string>
 
 namespace autonomy::localization::atlas {
 
@@ -58,6 +61,8 @@ cv::Mat FrameDrawer::DrawFrame(float imageScale) {
 
     cv::Scalar standardColor(0, 255, 0);
     cv::Scalar odometryColor(255, 0, 0);
+    cv::Scalar detectionColor(0, 215, 255);
+    cv::Scalar trackColor(255, 255, 0);
 
     // Copy variables within scoped mutex
     {
@@ -77,6 +82,7 @@ cv::Mat FrameDrawer::DrawFrame(float imageScale) {
             vCurrentKeys = mvCurrentKeys;
             vbVO = mvbVO;
             vbMap = mvbMap;
+            vTracks = mvTracks;
 
             currentFrame = mCurrentFrame;
             vpLocalMap = mvpLocalMap;
@@ -103,6 +109,14 @@ cv::Mat FrameDrawer::DrawFrame(float imageScale) {
 
     if (im.channels() < 3)  // this should be always true
         cvtColor(im, im, cv::COLOR_GRAY2BGR);
+
+    // Detected ORB features are yellow. Matched points are overdrawn below.
+    for (const cv::KeyPoint& keypoint : vCurrentKeys) {
+        cv::Point2f point = keypoint.pt;
+        if (imageScale != 1.f)
+            point /= imageScale;
+        cv::circle(im, point, 1, detectionColor, -1);
+    }
 
     // Draw
     if (state == Tracker::NOT_INITIALIZED) {
@@ -173,12 +187,91 @@ cv::Mat FrameDrawer::DrawFrame(float imageScale) {
                 }
             }
         }
+        // Draw temporal matches last so green/blue point boxes cannot hide the
+        // short cyan motion segments between adjacent KITTI frames.
+        for (const auto& track : vTracks) {
+            cv::Point2f previous = track.first;
+            cv::Point2f current = track.second;
+            if (imageScale != 1.f) {
+                previous /= imageScale;
+                current /= imageScale;
+            }
+            cv::line(im, previous, current, trackColor, 2, cv::LINE_AA);
+            cv::circle(im, previous, 2, trackColor, -1, cv::LINE_AA);
+            cv::circle(im, current, 2, trackColor, -1, cv::LINE_AA);
+        }
     }
 
     cv::Mat imWithInfo;
     DrawTextInfo(im, state, imWithInfo);
 
     return imWithInfo;
+}
+
+cv::Mat FrameDrawer::DrawFeatureMatches(float imageScale) {
+    cv::Mat previous;
+    cv::Mat current;
+    std::vector<std::pair<cv::Point2f, cv::Point2f> > tracks;
+    {
+        std::unique_lock<std::mutex> lock(mMutex);
+        if (!mbHasPreviousFrame || !mbHasCurrentFrame)
+            return cv::Mat();
+        mPreviousIm.copyTo(previous);
+        mIm.copyTo(current);
+        tracks = mvTracks;
+    }
+
+    if (previous.empty() || current.empty() || imageScale <= 0.f)
+        return cv::Mat();
+    if (previous.channels() == 1)
+        cv::cvtColor(previous, previous, cv::COLOR_GRAY2BGR);
+    else if (previous.channels() == 4)
+        cv::cvtColor(previous, previous, cv::COLOR_BGRA2BGR);
+    if (current.channels() == 1)
+        cv::cvtColor(current, current, cv::COLOR_GRAY2BGR);
+    else if (current.channels() == 4)
+        cv::cvtColor(current, current, cv::COLOR_BGRA2BGR);
+    if (previous.type() != CV_8UC3 || current.type() != CV_8UC3 ||
+        previous.size() != current.size()) {
+        return cv::Mat();
+    }
+
+    if (imageScale != 1.f) {
+        const cv::Size scaled(
+            std::max(1, static_cast<int>(current.cols / imageScale)),
+            std::max(1, static_cast<int>(current.rows / imageScale)));
+        cv::resize(previous, previous, scaled);
+        cv::resize(current, current, scaled);
+    }
+
+    cv::Mat matches;
+    cv::hconcat(previous, current, matches);
+    const cv::Scalar match_color(255, 255, 0);  // Cyan in BGR.
+    for (const auto& track : tracks) {
+        cv::Point2f from = track.first;
+        cv::Point2f to = track.second;
+        if (imageScale != 1.f) {
+            from /= imageScale;
+            to /= imageScale;
+        }
+        to.x += static_cast<float>(previous.cols);
+        cv::line(matches, from, to, match_color, 1, cv::LINE_AA);
+        cv::circle(matches, from, 3, match_color, -1, cv::LINE_AA);
+        cv::circle(matches, to, 3, match_color, -1, cv::LINE_AA);
+    }
+
+    cv::putText(matches, "Previous", cv::Point(10, 24),
+                cv::FONT_HERSHEY_SIMPLEX, 0.65, cv::Scalar(0, 255, 255), 2,
+                cv::LINE_AA);
+    cv::putText(matches, "Current",
+                cv::Point(previous.cols + 10, 24),
+                cv::FONT_HERSHEY_SIMPLEX, 0.65, cv::Scalar(0, 255, 255), 2,
+                cv::LINE_AA);
+    cv::putText(matches, "Matches: " + std::to_string(tracks.size()),
+                cv::Point(10, matches.rows - 10),
+                cv::FONT_HERSHEY_SIMPLEX, 0.65, match_color, 2,
+                cv::LINE_AA);
+    return matches;
 }
 
 cv::Mat FrameDrawer::DrawRightFrame(float imageScale) {
@@ -327,7 +420,15 @@ void FrameDrawer::DrawTextInfo(cv::Mat& im, int nState, cv::Mat& imText) {
 
 void FrameDrawer::Update(Tracker* pTracker) {
     std::unique_lock<std::mutex> lock(mMutex);
+    if (mbHasCurrentFrame) {
+        mIm.copyTo(mPreviousIm);
+        mbHasPreviousFrame = !mPreviousIm.empty();
+    } else {
+        mPreviousIm.release();
+        mbHasPreviousFrame = false;
+    }
     pTracker->mImGray.copyTo(mIm);
+    mbHasCurrentFrame = !mIm.empty();
     mvCurrentKeys = pTracker->mCurrentFrame.mvKeys;
     mThDepth = pTracker->mCurrentFrame.mThDepth;
     mvCurrentDepth = pTracker->mCurrentFrame.mvDepth;
@@ -347,7 +448,9 @@ void FrameDrawer::Update(Tracker* pTracker) {
     // Variables for the new visualization
     mCurrentFrame = pTracker->mCurrentFrame;
     mmProjectPoints = mCurrentFrame.mmProjectPoints;
+    const auto previous_matches = mmMatchedInImage;
     mmMatchedInImage.clear();
+    mvTracks.clear();
 
     mvpLocalMap = pTracker->GetLocalMapMPS();
     mvMatchedKeys.clear();
@@ -363,7 +466,14 @@ void FrameDrawer::Update(Tracker* pTracker) {
         mvIniKeys = pTracker->mInitialFrame.mvKeys;
         mvIniMatches = pTracker->mvIniMatches;
     } else if (pTracker->mLastProcessedState == Tracker::OK) {
-        for (int i = 0; i < N; i++) {
+        const int map_point_count =
+            static_cast<int>(pTracker->mCurrentFrame.mvpMapPoints.size());
+        const int outlier_count =
+            static_cast<int>(pTracker->mCurrentFrame.mvbOutlier.size());
+        const int safe_count =
+            std::min(N, std::min(map_point_count, outlier_count));
+        const int left_count = static_cast<int>(mvCurrentKeys.size());
+        for (int i = 0; i < safe_count; i++) {
             MapPoint* pMP = pTracker->mCurrentFrame.mvpMapPoints[i];
             if (pMP) {
                 if (!pTracker->mCurrentFrame.mvbOutlier[i]) {
@@ -372,10 +482,21 @@ void FrameDrawer::Update(Tracker* pTracker) {
                     else
                         mvbVO[i] = true;
 
-                    mmMatchedInImage[pMP->mnId] = mvCurrentKeys[i].pt;
+                    // The published tracking image is the left/primary image.
+                    // Keep right-camera matches in the state flags without
+                    // indexing the left keypoint vector.
+                    if (i < left_count) {
+                        const cv::Point2f current = mvCurrentKeys[i].pt;
+                        mmMatchedInImage[pMP->mnId] = current;
+                        const auto previous = previous_matches.find(pMP->mnId);
+                        if (previous != previous_matches.end()) {
+                            mvTracks.emplace_back(previous->second, current);
+                        }
+                    }
                 } else {
                     mvpOutlierMPs.push_back(pMP);
-                    mvOutlierKeys.push_back(mvCurrentKeys[i]);
+                    if (i < left_count)
+                        mvOutlierKeys.push_back(mvCurrentKeys[i]);
                 }
             }
         }

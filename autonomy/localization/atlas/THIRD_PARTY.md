@@ -16,3 +16,8 @@ vendored in the Atlas source tree.
 
 Atlas additionally links OpenCV (Apache-2.0), Eigen (MPL2), Boost, OpenSSL,
 AutoMsgs and Autolink as provided by the autonomy build environment.
+
+The modular dense-cloud and occupancy-grid pipeline in `atlas/map` is an
+independent implementation informed by RTAB-Map's local-grid cache, incremental
+global-map assembly and pose-change rebuild architecture. RTAB-Map is licensed
+under the BSD 3-Clause License; no RTAB-Map source code is vendored here.

@@ -104,6 +104,10 @@ file(GLOB_RECURSE ATLAS_ALL_SOURCES CONFIGURE_DEPENDS
   "${ATLAS_ROOT}/atlas/*.cpp")
 file(GLOB_RECURSE ATLAS_TEST_SOURCES CONFIGURE_DEPENDS
   "${ATLAS_ROOT}/atlas/*_test.cpp")
+set(ATLAS_NODE_TEST_SOURCE
+  "${ATLAS_ROOT}/atlas/atlas_node_test.cpp")
+list(REMOVE_ITEM ATLAS_TEST_SOURCES
+  ${ATLAS_NODE_TEST_SOURCE})
 
 set(ATLAS_AUTOMSGS_BRIDGE_SOURCES
   "${ATLAS_ROOT}/atlas/sensor/image_data.cpp"
@@ -116,6 +120,7 @@ set(ATLAS_NODE_SOURCES
 set(ATLAS_CORE_SOURCES ${ATLAS_ALL_SOURCES})
 list(REMOVE_ITEM ATLAS_CORE_SOURCES
   ${ATLAS_TEST_SOURCES}
+  ${ATLAS_NODE_TEST_SOURCE}
   ${ATLAS_AUTOMSGS_BRIDGE_SOURCES}
   ${ATLAS_NODE_SOURCES})
 
@@ -168,6 +173,7 @@ target_include_directories(autonomy_localization_atlas PUBLIC
   "$<BUILD_INTERFACE:${ATLAS_ROOT}>")
 target_link_libraries(autonomy_localization_atlas PUBLIC
   atlas_automsgs_bridge
+  autonomy_transform
   ${ATLAS_AUTOMSGS_TARGET}
   ${ATLAS_AUTOLINK_TARGET})
 
@@ -210,10 +216,36 @@ if(ATLAS_BUILD_TESTS)
   atlas_enable_testing()
   atlas_test(atlas_unit_tests
     SRCS ${ATLAS_TEST_SOURCES})
+  atlas_test(atlas_node_tests
+    SRCS ${ATLAS_NODE_TEST_SOURCE}
+    LIBRARIES autonomy_localization_atlas)
   if(ATLAS_DATASET_READER_TEST_SOURCES)
     atlas_test(atlas_dataset_reader_tests
       SRCS ${ATLAS_DATASET_READER_TEST_SOURCES}
       LIBRARIES atlas_dataset_readers)
+  endif()
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    add_test(
+      NAME atlas_evaluate_euroc_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/evaluate_euroc_test.py")
+    add_test(
+      NAME atlas_evaluate_tartanair_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/evaluate_tartanair_test.py")
+    add_test(
+      NAME atlas_evaluate_tum_rgbd_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/evaluate_tum_rgbd_test.py")
+    add_test(
+      NAME atlas_prepare_tum_rgbd_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/prepare_tum_rgbd_test.py")
+    add_test(
+      NAME atlas_run_all_benchmarks_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/run_all_benchmarks_test.py")
   endif()
 endif()
 

@@ -16,10 +16,9 @@
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
-
 from automsgs.msgs.geometry_msgs.pose_stamped_pb2 import PoseStamped
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
 from automsgs.msgs.nav_msgs.path_pb2 import Path
@@ -33,15 +32,21 @@ class Messages:
     """Stateless helpers: NumPy arrays ↔ sensor_msgs protobufs."""
 
     @staticmethod
-    def set_header(header: object, stamp: Tuple[int, int], frame_id: str) -> None:
+    def set_header(header: object, stamp: tuple[int, int], frame_id: str) -> None:
         header.stamp.sec = int(stamp[0])
         header.stamp.nanosec = int(stamp[1])
         header.frame_id = frame_id
 
     @staticmethod
-    def stamp_from_seconds(t: float) -> Tuple[int, int]:
+    def stamp_from_nanoseconds(timestamp_ns: int) -> tuple[int, int]:
+        """Split an integer nanosecond timestamp without losing precision."""
+        sec, nanosec = divmod(int(timestamp_ns), 1_000_000_000)
+        return sec, nanosec
+
+    @staticmethod
+    def stamp_from_seconds(t: float) -> tuple[int, int]:
         sec = int(t)
-        nanosec = int(round((float(t) - sec) * 1e9))
+        nanosec = round((float(t) - sec) * 1e9)
         if nanosec >= 1_000_000_000:
             sec += 1
             nanosec -= 1_000_000_000
@@ -52,7 +57,7 @@ class Messages:
 
     @staticmethod
     def diagonal_covariance(values: Sequence[float], size: int = 9) -> list:
-        dim = int(round(float(size) ** 0.5))
+        dim = round(float(size) ** 0.5)
         cov = [0.0] * int(size)
         for index, value in enumerate(values):
             if index >= dim:
@@ -63,11 +68,11 @@ class Messages:
     @classmethod
     def encode_inertial(
         cls,
-        stamp: Tuple[int, int],
+        stamp: tuple[int, int],
         frame_id: str,
-        orientation: Tuple[float, float, float, float],
-        angular_velocity: Tuple[float, float, float],
-        linear_acceleration: Tuple[float, float, float],
+        orientation: tuple[float, float, float, float],
+        angular_velocity: tuple[float, float, float],
+        linear_acceleration: tuple[float, float, float],
         gyro_variance: float = 0.0,
         accel_variance: float = 0.0,
     ) -> Imu:
@@ -98,7 +103,7 @@ class Messages:
     def encode_point_cloud2(
         cls,
         points: np.ndarray,
-        stamp: Tuple[int, int],
+        stamp: tuple[int, int],
         frame_id: str,
         *,
         intensity: np.ndarray | None = None,
@@ -156,7 +161,7 @@ class Messages:
     def encode_image(
         cls,
         image: np.ndarray,
-        stamp: Tuple[int, int],
+        stamp: tuple[int, int],
         frame_id: str,
         encoding: str = "rgb8",
     ) -> Image:
@@ -187,11 +192,11 @@ class Messages:
     @classmethod
     def encode_odometry(
         cls,
-        stamp: Tuple[int, int],
+        stamp: tuple[int, int],
         frame_id: str,
         child_frame_id: str,
-        xyz: Tuple[float, float, float],
-        quat_xyzw: Tuple[float, float, float, float],
+        xyz: tuple[float, float, float],
+        quat_xyzw: tuple[float, float, float, float],
     ) -> Odometry:
         # Odometry.pose is PoseWithCovariance{ PoseStamped pose; covariance }
         # → pose.pose.pose.{position,orientation}
@@ -214,10 +219,10 @@ class Messages:
     @classmethod
     def encode_pose_stamped(
         cls,
-        stamp: Tuple[int, int],
+        stamp: tuple[int, int],
         frame_id: str,
-        xyz: Tuple[float, float, float],
-        quat_xyzw: Tuple[float, float, float, float],
+        xyz: tuple[float, float, float],
+        quat_xyzw: tuple[float, float, float, float],
     ) -> PoseStamped:
         message = PoseStamped()
         cls.set_header(message.header, stamp, frame_id)
@@ -233,9 +238,9 @@ class Messages:
     @classmethod
     def encode_path(
         cls,
-        stamp: Tuple[int, int],
+        stamp: tuple[int, int],
         frame_id: str,
-        poses: Sequence[Tuple[Tuple[float, float, float], Tuple[float, float, float, float]]],
+        poses: Sequence[tuple[tuple[float, float, float], tuple[float, float, float, float]]],
         *,
         stride: int = 1,
     ) -> Path:

@@ -1,0 +1,10 @@
+<!-- Atlas EuRoC stereo-inertial profile. -->
+<autolink>
+  <module>
+    <name>localization_atlas_euroc_stereo_inertial</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/atlas/config/euroc_stereo_inertial.yaml --atlas_vocabulary=autonomy/localization/atlas/config/orb_vocab.fbow --atlas_sensor=stereo_inertial --atlas_image_topic=/camera/rgb/image_raw --atlas_right_image_topic=/camera/right/image_raw --atlas_depth_image_topic=/camera/depth/image_raw --atlas_imu_topic=/imu</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

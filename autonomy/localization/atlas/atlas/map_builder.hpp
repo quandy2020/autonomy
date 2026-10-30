@@ -6,13 +6,110 @@
 
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
+#include <deque>
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "atlas/sensor/sensor_types.hpp"
 
 namespace autonomy::localization::atlas {
+
+namespace internal {
+
+using MappingPoseCache =
+    std::unordered_map<std::uint64_t, Eigen::Isometry3d>;
+
+struct MappingCandidateEvictionResult {
+    std::size_t unprotected_candidates = 0;
+    bool saturated = false;
+};
+
+struct MappingCandidateSlotResult {
+    MappingCandidateEvictionResult eviction;
+    bool have_slot = false;
+    bool incoming_is_keyframe = false;
+};
+
+struct MappingCandidateBufferResult {
+    MappingCandidateEvictionResult eviction;
+    bool soft_capacity_exceeded = false;
+};
+
+std::unordered_set<std::int64_t> UnsubmittedMappingKeyframeKeys(
+    const std::vector<TrajectoryPose>& trajectory,
+    const std::unordered_map<std::int64_t, std::uint64_t>&
+        submitted_frame_ids);
+
+void ProtectPendingMappingKeyframes(
+    const std::vector<double>& pending_timestamps,
+    const std::unordered_map<std::int64_t, std::uint64_t>&
+        submitted_frame_ids,
+    std::unordered_set<std::int64_t>* protected_keys);
+
+std::size_t DiscardStaleMappingCandidates(
+    double oldest_useful_time,
+    const std::unordered_set<std::int64_t>& protected_keys,
+    std::deque<map::MappingFrame>* pending_frames);
+
+MappingCandidateSlotResult PrepareMappingCandidateSlot(
+    std::size_t maximum_pending, double incoming_timestamp,
+    const std::unordered_set<std::int64_t>& protected_keys,
+    std::deque<map::MappingFrame>* pending_frames);
+
+/**
+ * Buffers one candidate without blocking the tracking thread. The configured
+ * capacity is a soft limit only while every resident candidate is protected;
+ * the next keyframe snapshot reclassifies speculative overflow candidates.
+ */
+MappingCandidateBufferResult BufferMappingCandidateWithSoftCapacity(
+    std::size_t maximum_pending,
+    const std::unordered_set<std::int64_t>& protected_keys,
+    map::MappingFrame frame,
+    std::deque<map::MappingFrame>* pending_frames);
+
+MappingCandidateEvictionResult EnforceMappingCandidateCapacity(
+    std::size_t maximum_pending,
+    const std::unordered_set<std::int64_t>& protected_keys,
+    std::deque<map::MappingFrame>* pending_frames);
+
+/** Selects cumulative Local-BA pose changes without advancing state. */
+std::vector<map::TimedPose> SelectChangedMappingPoses(
+    const std::vector<TrajectoryPose>& trajectory,
+    const std::unordered_map<std::int64_t, std::uint64_t>&
+        submitted_frame_ids,
+    const MappingPoseCache& last_sent_poses,
+    double translation_threshold, double rotation_threshold_radians,
+    bool force);
+
+/** Advances pose-sync state only after MappingPipeline accepted the batch. */
+void RecordSentMappingPoses(const std::vector<map::TimedPose>& poses,
+                            MappingPoseCache* last_sent_poses);
+
+/** Observes valid map ids and reports only a transition after initialization. */
+bool ObserveMappingMap(bool map_id_valid, std::uint64_t map_id,
+                       bool* observed_map_id_valid,
+                       std::uint64_t* observed_map_id);
+
+struct CulledMappingFrame {
+    std::int64_t timestamp_key = 0;
+    std::uint64_t frame_id = 0;
+};
+
+/** Selects frames absent from both committed and tentative KF snapshots. */
+std::vector<CulledMappingFrame> SelectCulledMappingFrames(
+    const std::vector<TrajectoryPose>& committed_trajectory,
+    const std::vector<double>& pending_timestamps,
+    const std::unordered_map<std::int64_t, std::uint64_t>&
+        submitted_frame_ids,
+    std::size_t missing_refresh_threshold,
+    std::unordered_map<std::int64_t, std::size_t>* missing_refresh_counts);
+
+}  // namespace internal
 
 /**
  * @brief High-level owner and façade for an ORB-SLAM3 tracking session.
@@ -55,6 +152,16 @@ public:
     bool LatestResult(TrackingResult* result) const;
     /** @return Current non-null tracked map points in world coordinates. */
     std::vector<Eigen::Vector3f> TrackedMapPoints() const;
+    /** @return Annotated latest camera image with detected/matched features. */
+    cv::Mat TrackingImage() const;
+    /** @return Previous/current images joined by temporal feature matches. */
+    cv::Mat FeatureMatchesImage() const;
+    /** @return Current optimized keyframe trajectory. */
+    std::vector<TrajectoryPose> OptimizedKeyFrameTrajectory() const;
+    /** @return Unique loop-closure constraints in world coordinates. */
+    std::vector<LoopClosureEdge> LoopClosureEdges() const;
+    /** @return Latest immutable dense-cloud and occupancy-grid snapshot. */
+    std::shared_ptr<const map::MapSnapshot> LatestMappingSnapshot() const;
 
     /** @brief Stops map growth while retaining localization. */
     void ActivateLocalizationMode();

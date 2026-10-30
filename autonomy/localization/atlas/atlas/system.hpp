@@ -25,7 +25,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <cstdint>
 #include <memory>
+#include <mutex>
 #include <opencv2/core.hpp>
 #include <string>
 #include "autolink/common/log.hpp"
@@ -40,6 +42,7 @@
 #include "atlas/map_drawer.hpp"
 #include "atlas/mapping/local_mapper.hpp"
 #include "atlas/sensor/imu_types.hpp"
+#include "atlas/sensor/sensor_types.hpp"
 #include "atlas/tracking/tracker.hpp"
 #include "atlas/viewer.hpp"
 
@@ -53,6 +56,24 @@ class Tracker;
 class LocalMapper;
 class LoopCloser;
 class ConfigLoader;
+
+namespace internal {
+
+/** Tracks the last observed map identity and loop/BA revision. */
+class MapChangeObserver final
+{
+public:
+    /** Returns true once for every identity or revision transition. */
+    bool Observe(std::uint64_t map_id, int revision);
+
+private:
+    std::mutex mutex_;
+    std::uint64_t map_id_ = 0;
+    int revision_ = 0;
+    bool initialized_ = false;
+};
+
+}  // namespace internal
 
 class System
 {
@@ -164,8 +185,20 @@ public:
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
     int GetTrackingState();
+    /** Writes the stable identity of the current Atlas map. */
+    bool GetCurrentMapId(std::uint64_t* map_id);
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
+    /** Returns an annotated copy of the latest image with ORB matches. */
+    cv::Mat DrawCurrentFrame();
+    /** Returns adjacent frames with shared MapPoint correspondences. */
+    cv::Mat DrawFeatureMatches();
+    /** Returns current keyframe poses after pose-graph/BA corrections. */
+    std::vector<TrajectoryPose> GetOptimizedKeyFrameTrajectory();
+    /** Returns only current/queued local-mapper keyframe timestamps. */
+    std::vector<double> GetPendingMappingKeyFrameTimestamps();
+    /** Returns unique loop-closure edges in world coordinates. */
+    std::vector<LoopClosureEdge> GetLoopClosureEdges();
 
     // For debugging
     double GetTimeFromIMUInit();
@@ -247,6 +280,9 @@ private:
     std::vector<MapPoint*> mTrackedMapPoints;
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
+
+    // Per-System cursor for loop-closure/global-BA change notifications.
+    internal::MapChangeObserver map_change_observer_;
 
     //
     std::string mStrLoadAtlasFromFile;

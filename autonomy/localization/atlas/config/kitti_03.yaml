@@ -1,0 +1,69 @@
+%YAML:1.0
+
+File.version: "1.0"
+Camera.type: "Rectified"
+
+# KITTI odometry sequence 03, rectified grayscale camera pair P0/P1.
+Camera1.fx: 721.5377
+Camera1.fy: 721.5377
+Camera1.cx: 609.5593
+Camera1.cy: 172.8540
+
+Camera.width: 1242
+Camera.height: 375
+Camera.fps: 10
+Camera.RGB: 0
+
+Stereo.b: 0.53715065
+Stereo.ThDepth: 35.0
+
+ORBextractor.nFeatures: 2000
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 7
+
+Atlas.Map.RangeMin: 1.0
+Atlas.Map.RangeMax: 20.0
+Atlas.Map.PixelStride: 2
+Atlas.Map.StereoMinimumDisparity: 0
+Atlas.Map.StereoNumberOfDisparities: 384
+Atlas.Map.StereoBlockSize: 5
+Atlas.Map.VoxelSize: 0.03
+Atlas.Map.MaximumPointsPerFrame: 150000
+Atlas.Map.MaximumVoxels: 3000000
+Atlas.Map.MaximumNavigationVoxels: 1500000
+Atlas.Map.NavigationRadius: 30.0
+Atlas.Map.NavigationRecenterDistance: 5.0
+Atlas.Map.QueueCapacity: 8
+Atlas.Map.MaximumCachedFrames: 400
+Atlas.Map.MaximumHistoryCacheBytes: 8589934592
+Atlas.Map.HistoryCacheDirectory: "/tmp"
+Atlas.Map.GridResolution: 0.10
+Atlas.Map.MaximumSnapshotCells: 2500000
+Atlas.Map.RobotRadius: 0.30
+Atlas.Map.InflationRadius: 0.60
+Atlas.Map.InflationCostScaling: 5.0
+Atlas.Map.SensorHeight: 1.65
+Atlas.Map.EstimateGroundPlane: 1
+Atlas.Map.GroundDistanceThreshold: 0.10
+Atlas.Map.MaximumGroundSlopeDegrees: 20.0
+Atlas.Map.GroundSensorHeightTolerance: 0.40
+Atlas.Map.MaximumGroundEstimationRange: 12.0
+Atlas.Map.MinimumGroundInliers: 40
+Atlas.Map.MinHeight: 0.10
+Atlas.Map.MaxHeight: 1.0
+Atlas.Map.NavigationMinHeight: -1.0
+Atlas.Map.NavigationMaxHeight: 1.0
+
+Viewer.KeyFrameSize: 0.6
+Viewer.KeyFrameLineWidth: 2.0
+Viewer.GraphLineWidth: 1.0
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.7
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -100.0
+Viewer.ViewpointZ: -0.1
+Viewer.ViewpointF: 2000.0
+Viewer.imageViewScale: 1.0

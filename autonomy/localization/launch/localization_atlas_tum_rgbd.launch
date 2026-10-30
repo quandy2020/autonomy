@@ -1,0 +1,10 @@
+<!-- Atlas TUM RGB-D Freiburg1 profile. -->
+<autolink>
+  <module>
+    <name>localization_atlas_tum_rgbd</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/atlas/config/tum_rgbd.yaml --atlas_vocabulary=autonomy/localization/atlas/config/orb_vocab.fbow --atlas_sensor=rgbd --atlas_image_topic=/camera/rgb/image_raw --atlas_right_image_topic=/camera/right/image_raw --atlas_depth_image_topic=/camera/depth/image_raw --atlas_imu_topic=/imu</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

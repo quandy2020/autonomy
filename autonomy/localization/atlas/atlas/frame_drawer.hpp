@@ -48,6 +48,8 @@ public:
 
     // Draw last processed frame.
     cv::Mat DrawFrame(float imageScale = 1.f);
+    // Draw previous and current frames with shared MapPoint correspondences.
+    cv::Mat DrawFeatureMatches(float imageScale = 1.f);
     cv::Mat DrawRightFrame(float imageScale = 1.f);
 
     bool both;
@@ -56,7 +58,9 @@ protected:
     void DrawTextInfo(cv::Mat& im, int nState, cv::Mat& imText);
 
     // Info of the frame to be drawn
-    cv::Mat mIm, mImRight;
+    cv::Mat mIm, mImRight, mPreviousIm;
+    bool mbHasCurrentFrame = false;
+    bool mbHasPreviousFrame = false;
     int N;
     std::vector<cv::KeyPoint> mvCurrentKeys, mvCurrentKeysRight;
     std::vector<bool> mvbMap, mvbVO;

@@ -49,10 +49,10 @@ bool IsValidInertialInitialization(double scale,
                                    const Eigen::Vector3d& acc_bias,
                                    bool already_initialized) {
     const double maximum_scale = already_initialized ? 5.0 : 100.0;
-    return std::isfinite(scale) && scale >= 0.1 &&
-           scale <= maximum_scale && IsFiniteRotation(world_gravity) &&
-           gyro_bias.allFinite() && gyro_bias.norm() <= 1.0 &&
-           acc_bias.allFinite() && acc_bias.norm() <= 20.0;
+    return std::isfinite(scale) && scale >= 0.1 && scale <= maximum_scale &&
+           IsFiniteRotation(world_gravity) && gyro_bias.allFinite() &&
+           gyro_bias.norm() <= 1.0 && acc_bias.allFinite() &&
+           acc_bias.norm() <= 20.0;
 }
 
 }  // namespace
@@ -67,6 +67,7 @@ LocalMapper::LocalMapper(System* pSys, Atlas* pAtlas, const float bMonocular,
       mbFinishRequested(false),
       mbFinished(true),
       mpAtlas(pAtlas),
+      mpCurrentKeyFrame(nullptr),
       bInitializing(false),
       mbAbortBA(false),
       mbStopped(false),
@@ -368,6 +369,20 @@ void LocalMapper::InsertKeyFrame(KeyFrame* pKF) {
     std::unique_lock<std::mutex> lock(mMutexNewKFs);
     mlNewKeyFrames.push_back(pKF);
     mbAbortBA = true;
+}
+
+std::vector<double> LocalMapper::GetPendingKeyFrameTimestamps() {
+    std::vector<double> timestamps;
+    std::scoped_lock lock(mMutexReset, mMutexNewKFs);
+    timestamps.reserve(mlNewKeyFrames.size() + 1U);
+    const auto append_timestamp = [&timestamps](KeyFrame* keyframe) {
+        if (keyframe != nullptr && std::isfinite(keyframe->mTimeStamp))
+            timestamps.push_back(keyframe->mTimeStamp);
+    };
+    append_timestamp(mpCurrentKeyFrame);
+    for (KeyFrame* keyframe : mlNewKeyFrames)
+        append_timestamp(keyframe);
+    return timestamps;
 }
 
 bool LocalMapper::CheckNewKeyFrames() {
@@ -1171,12 +1186,13 @@ void LocalMapper::RequestResetActiveMap(Map* pMap) {
 void LocalMapper::ResetIfRequested() {
     bool executed_reset = false;
     {
-        std::unique_lock<std::mutex> lock(mMutexReset);
+        std::scoped_lock lock(mMutexReset, mMutexNewKFs);
         if (mbResetRequested) {
             executed_reset = true;
 
             AINFO << "LM: Reseting Atlas in Local Mapping..." << std::endl;
             mlNewKeyFrames.clear();
+            mpCurrentKeyFrame = nullptr;
             mlpRecentAddedMapPoints.clear();
             mbResetRequested = false;
             mbResetRequestedActiveMap = false;
@@ -1197,6 +1213,7 @@ void LocalMapper::ResetIfRequested() {
             AINFO << "LM: Reseting current map in Local Mapping..."
                   << std::endl;
             mlNewKeyFrames.clear();
+            mpCurrentKeyFrame = nullptr;
             mlpRecentAddedMapPoints.clear();
 
             // Inertial parameters
@@ -1329,9 +1346,9 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
     const bool already_initialized =
         mpCurrentKeyFrame->GetMap()->isImuInitialized();
-    if (!Optimizer::InertialOptimization(
-            mpAtlas->GetCurrentMap(), mRwg, mScale, mbg, mba, mbMonocular,
-            infoInertial, false, false, priorG, priorA) ||
+    if (!Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale,
+                                         mbg, mba, mbMonocular, infoInertial,
+                                         false, false, priorG, priorA) ||
         !IsValidInertialInitialization(mScale, mRwg, mbg, mba,
                                        already_initialized)) {
         AERROR << "Rejected invalid inertial initialization result"
@@ -1536,8 +1553,7 @@ void LocalMapper::ScaleRefinement() {
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
     if (!std::isfinite(mScale) || mScale < 1e-1 || mScale > 5.0 ||
-        !IsFiniteRotation(mRwg))
-    {
+        !IsFiniteRotation(mRwg)) {
         AINFO << "scale too small" << std::endl;
         bInitializing = false;
         return;

@@ -57,8 +57,7 @@ public:
                                        bool* pbStopFlag = nullptr,
                                        const unsigned long nLoopKF = 0,
                                        const bool bRobust = true);
-    bool static FullInertialBA(Map* pMap, int its,
-                               const bool bFixLocal = false,
+    bool static FullInertialBA(Map* pMap, int its, const bool bFixLocal = false,
                                const unsigned long nLoopKF = 0,
                                bool* pbStopFlag = nullptr, bool bInit = false,
                                float priorG = 1e2, float priorA = 1e6,

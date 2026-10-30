@@ -21,10 +21,14 @@
 
 #include "atlas/system.hpp"
 #include <openssl/md5.h>
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <iomanip>
+#include <set>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 #include "atlas/common/io/binary_archive.hpp"
 #include "atlas/common/math/converter.hpp"
 #include "autolink/common/log.hpp"
@@ -37,6 +41,23 @@ constexpr auto kShutdownDrainTimeout = std::chrono::seconds(30);
 constexpr auto kShutdownStablePeriod = std::chrono::milliseconds(200);
 constexpr auto kLoopCorrectionWaitTimeout = std::chrono::seconds(30);
 }  // namespace
+
+bool internal::MapChangeObserver::Observe(std::uint64_t map_id, int revision) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!initialized_) {
+        initialized_ = true;
+        map_id_ = map_id;
+        revision_ = revision;
+        // Preserve the previous API behavior for a loaded map that already
+        // contains a loop or global-BA revision on the first observation.
+        return revision > 0;
+    }
+
+    const bool changed = map_id != map_id_ || revision != revision_;
+    map_id_ = map_id;
+    revision_ = revision;
+    return changed;
+}
 
 System::System(const std::string& strVocFile,
                const std::string& strConfigLoaderFile, const eSensor sensor,
@@ -562,13 +583,24 @@ void System::DeactivateLocalizationMode() {
 }
 
 bool System::MapChanged() {
-    static int n = 0;
-    int curn = mpAtlas->GetLastBigChangeIdx();
-    if (n < curn) {
-        n = curn;
-        return true;
-    } else
+    if (mpAtlas == nullptr)
         return false;
+    Map* current_map = mpAtlas->GetCurrentMap();
+    if (current_map == nullptr)
+        return false;
+    return map_change_observer_.Observe(
+        static_cast<std::uint64_t>(current_map->GetId()),
+        current_map->GetLastBigChangeIdx());
+}
+
+bool System::GetCurrentMapId(std::uint64_t* map_id) {
+    if (map_id == nullptr || mpAtlas == nullptr)
+        return false;
+    Map* current_map = mpAtlas->GetCurrentMap();
+    if (current_map == nullptr)
+        return false;
+    *map_id = static_cast<std::uint64_t>(current_map->GetId());
+    return true;
 }
 
 void System::Reset() {
@@ -662,6 +694,10 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
     }
 
     std::vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
+    if (vpKFs.empty()) {
+        AWARN << "Cannot save an empty Atlas trajectory." << std::endl;
+        return;
+    }
     std::sort(vpKFs.begin(), vpKFs.end(), KeyFrame::lId);
 
     // Transform all keyframes so that the first keyframe is at the origin.
@@ -1494,6 +1530,107 @@ std::vector<MapPoint*> System::GetTrackedMapPoints() {
 std::vector<cv::KeyPoint> System::GetTrackedKeyPointsUn() {
     std::unique_lock<std::mutex> lock(mMutexState);
     return mTrackedKeyPointsUn;
+}
+
+cv::Mat System::DrawCurrentFrame() {
+    if (mpFrameDrawer == nullptr)
+        return cv::Mat();
+    return mpFrameDrawer->DrawFrame();
+}
+
+cv::Mat System::DrawFeatureMatches() {
+    if (mpFrameDrawer == nullptr)
+        return cv::Mat();
+    return mpFrameDrawer->DrawFeatureMatches();
+}
+
+std::vector<TrajectoryPose> System::GetOptimizedKeyFrameTrajectory() {
+    std::vector<TrajectoryPose> trajectory;
+    if (mpAtlas == nullptr)
+        return trajectory;
+
+    Map* map = mpAtlas->GetCurrentMap();
+    if (map == nullptr)
+        return trajectory;
+    std::unique_lock<std::mutex> map_lock(map->mMutexMapUpdate);
+    std::vector<KeyFrame*> keyframes = map->GetAllKeyFrames();
+    std::sort(keyframes.begin(), keyframes.end(),
+              [](const KeyFrame* lhs, const KeyFrame* rhs) {
+                  if (lhs == nullptr)
+                      return false;
+                  if (rhs == nullptr)
+                      return true;
+                  if (lhs->mTimeStamp != rhs->mTimeStamp)
+                      return lhs->mTimeStamp < rhs->mTimeStamp;
+                  return lhs->mnId < rhs->mnId;
+              });
+    trajectory.reserve(keyframes.size());
+    for (KeyFrame* keyframe : keyframes) {
+        if (keyframe == nullptr || keyframe->isBad() ||
+            !std::isfinite(keyframe->mTimeStamp)) {
+            continue;
+        }
+        const autonomy::common::math::SE3f world_from_camera =
+            keyframe->GetPoseInverse();
+        if (!world_from_camera.matrix().allFinite())
+            continue;
+        Eigen::Quaternionf rotation(world_from_camera.rotationMatrix());
+        if (!rotation.coeffs().allFinite() || rotation.norm() < 1e-6f)
+            continue;
+        rotation.normalize();
+
+        TrajectoryPose sample;
+        sample.time = keyframe->mTimeStamp;
+        sample.pose_world_camera.translation =
+            world_from_camera.translation().cast<double>();
+        sample.pose_world_camera.rotation = rotation.cast<double>();
+        trajectory.push_back(std::move(sample));
+    }
+    return trajectory;
+}
+
+std::vector<double> System::GetPendingMappingKeyFrameTimestamps() {
+    if (mpLocalMapper == nullptr)
+        return {};
+    return mpLocalMapper->GetPendingKeyFrameTimestamps();
+}
+
+std::vector<LoopClosureEdge> System::GetLoopClosureEdges() {
+    std::vector<LoopClosureEdge> edges;
+    if (mpAtlas == nullptr)
+        return edges;
+
+    Map* map = mpAtlas->GetCurrentMap();
+    if (map == nullptr)
+        return edges;
+    std::unique_lock<std::mutex> map_lock(map->mMutexMapUpdate);
+    const std::vector<KeyFrame*> keyframes = map->GetAllKeyFrames();
+    std::set<std::pair<unsigned long, unsigned long>> seen;
+    for (KeyFrame* keyframe : keyframes) {
+        if (keyframe == nullptr || keyframe->isBad())
+            continue;
+        for (KeyFrame* connected : keyframe->GetLoopEdges()) {
+            if (connected == nullptr || connected == keyframe ||
+                connected->isBad()) {
+                continue;
+            }
+            const unsigned long first_id =
+                std::min(keyframe->mnId, connected->mnId);
+            const unsigned long second_id =
+                std::max(keyframe->mnId, connected->mnId);
+            if (!seen.emplace(first_id, second_id).second)
+                continue;
+            const Eigen::Vector3f first = keyframe->GetCameraCenter();
+            const Eigen::Vector3f second = connected->GetCameraCenter();
+            if (!first.allFinite() || !second.allFinite())
+                continue;
+            LoopClosureEdge edge;
+            edge.first = first.cast<double>();
+            edge.second = second.cast<double>();
+            edges.push_back(std::move(edge));
+        }
+    }
+    return edges;
 }
 
 double System::GetTimeFromIMUInit() {
