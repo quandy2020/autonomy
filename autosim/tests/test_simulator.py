@@ -126,7 +126,7 @@ def test_husky_camera_offset_is_above_agent():
     x, y, z = simulator.camera_local_offset()
     assert abs(x) < 1e-9
     assert abs(y - 0.6) < 1e-9
-    assert abs(z) < 1e-9
+    assert abs(z + 0.20) < 1e-9
     assert not simulator.should_instance_urdf()
 
 
@@ -213,7 +213,7 @@ def test_turtlebot_camera_offset_uses_urdf_height():
     x, y, z = simulator.camera_local_offset()
     assert abs(x) < 1e-6
     assert abs(y - 0.21) < 1e-6
-    assert abs(z) < 1e-6
+    assert abs(z + 0.03) < 1e-6
 
 
 def test_rgb_to_uint8_handles_float_and_rgba():

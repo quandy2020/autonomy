@@ -14,8 +14,8 @@
 #include <QFormLayout>
 #include <QFrame>
 #include <QGroupBox>
-#include <QHash>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QLabel>
 #include <QLineEdit>
 #include <QLinearGradient>
@@ -27,12 +27,13 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSizePolicy>
-#include <QStyledItemDelegate>
 #include <QStyleOptionViewItem>
+#include <QStyledItemDelegate>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
 
+#include "autoviz/common/widget/layout/collapsible_panel.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -42,17 +43,10 @@ void PolishSettingsFields(QWidget* root);
 
 namespace {
 
-const glass::ShellTokens& S() {
-  static const glass::ShellTokens tokens = glass::Shell();
-  return tokens;
-}
-
-QString Hx(const QColor& c) { return glass::Hex(c); }
-QString Ra(const QColor& c) { return glass::Rgba(c); }
-
 class ContinuousNameColumnDelegate : public QStyledItemDelegate {
  public:
-  explicit ContinuousNameColumnDelegate(int name_column, QObject* parent = nullptr)
+  explicit ContinuousNameColumnDelegate(int name_column,
+                                        QObject* parent = nullptr)
       : QStyledItemDelegate(parent), name_column_(name_column) {}
 
   void paint(QPainter* painter, const QStyleOptionViewItem& option,
@@ -64,7 +58,8 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
 
     if (index.column() == name_column_ && (selected || hovered)) {
       QRect row = opt.rect;
-      if (const auto* view = qobject_cast<const QAbstractItemView*>(opt.widget)) {
+      if (const auto* view =
+              qobject_cast<const QAbstractItemView*>(opt.widget)) {
         row = QRect(2, opt.rect.y(), view->viewport()->width() - 4,
                     opt.rect.height());
       }
@@ -116,7 +111,8 @@ class SettingsPolishFilter : public QObject {
     if (event != nullptr && event->type() == QEvent::ChildAdded) {
       auto* child_event = static_cast<QChildEvent*>(event);
       if (auto* child = qobject_cast<QWidget*>(child_event->child())) {
-        QTimer::singleShot(0, child, [child]() { PolishSettingsFields(child); });
+        QTimer::singleShot(0, child,
+                           [child]() { PolishSettingsFields(child); });
       }
     }
     return QObject::eventFilter(watched, event);
@@ -130,8 +126,9 @@ QString SettingsWidgetBackgroundStyle() {
 }
 
 QString PanelShellStyle(const QString& object_name) {
-  const QString id =
-      object_name.isEmpty() ? QStringLiteral("AutovizPanelContent") : object_name;
+  const QString id = object_name.isEmpty()
+                         ? QStringLiteral("AutovizPanelContent")
+                         : object_name;
   QHash<QString, QString> tokens = style::tokens();
   tokens.insert(QStringLiteral("{{name}}"), id);
   return style::sheet(QStringLiteral("chrome/panel"), tokens);
@@ -161,9 +158,7 @@ QString PanelFrostedFooterStyle() {
   return style::sheet(QStringLiteral("chrome/footer"));
 }
 
-QString PanelFooterStyle() {
-  return PanelFrostedFooterStyle();
-}
+QString PanelFooterStyle() { return PanelFrostedFooterStyle(); }
 
 QString PanelFrostedTreeStyle() {
   return style::sheet(QStringLiteral("chrome/tree"));
@@ -197,16 +192,15 @@ QString PanelStatusLabelErrorStyle() {
   return style::type(style::Role::Danger, 12, 700);
 }
 
-QString PanelHintLabelStyle() {
-  return style::type(style::Role::Muted, 11);
-}
+QString PanelHintLabelStyle() { return style::type(style::Role::Muted, 11); }
 
 QString PanelFilterLineEditStyle() {
   return style::sheet(QStringLiteral("widget/fields"), style::tokens());
 }
 
 QString PanelIconClearButtonStyle() {
-  return style::sheet(QStringLiteral("widget/icon_clear_button"), style::tokens());
+  return style::sheet(QStringLiteral("widget/icon_clear_button"),
+                      style::tokens());
 }
 
 QString PanelCompactButtonStyle() {
@@ -217,9 +211,7 @@ QString PanelHelpBrowserStyle() {
   return style::sheet(QStringLiteral("chrome/help_browser"), style::tokens());
 }
 
-QString PanelTreeWidgetStyle() {
-  return PanelFrostedTreeStyle();
-}
+QString PanelTreeWidgetStyle() { return PanelFrostedTreeStyle(); }
 
 QString PanelSplitterStyle() {
   return style::sheet(QStringLiteral("chrome/layout"), style::tokens());
@@ -230,11 +222,13 @@ QString DockTitleBarStyle() {
 }
 
 QString DockTitleLabelStyle() {
-  return style::sheet(QStringLiteral("chrome/dock_title_label"), style::tokens());
+  return style::sheet(QStringLiteral("chrome/dock_title_label"),
+                      style::tokens());
 }
 
 QString MainWindowStatusBarStyle() {
-  return style::sheet(QStringLiteral("chrome/window_status_bar"), style::tokens());
+  return style::sheet(QStringLiteral("chrome/window_status_bar"),
+                      style::tokens());
 }
 
 QString PropertyInspectorTitleStyle() {
@@ -288,7 +282,8 @@ bool ShouldSkipSettingsPolish(const QWidget* field) {
     return true;
   }
   // Custom instrument cards (Teleop / Image speed chips).
-  for (QWidget* p = field->parentWidget(); p != nullptr; p = p->parentWidget()) {
+  for (QWidget* p = field->parentWidget(); p != nullptr;
+       p = p->parentWidget()) {
     const QString name = p->objectName();
     if (name == QLatin1String("TeleopSettingsSpeedCard") ||
         name == QLatin1String("TeleopSpeedCard") ||
@@ -310,8 +305,7 @@ void StyleCompactSettingsField(QWidget* field) {
   QHash<QString, QString> tokens = style::tokens();
   tokens.insert(QStringLiteral("{{h}}"), QString::number(kH));
 
-  const QString fields =
-      style::sheet(QStringLiteral("widget/fields"), tokens);
+  const QString fields = style::sheet(QStringLiteral("widget/fields"), tokens);
 
   if (auto* spin = qobject_cast<QAbstractSpinBox*>(field)) {
     spin->setButtonSymbols(QAbstractSpinBox::NoButtons);
@@ -385,10 +379,9 @@ void ApplyCompactVBox(QVBoxLayout* layout) {
   if (layout == nullptr) {
     return;
   }
-  layout->setContentsMargins(PanelSettingsLayout::kOuterMargin,
-                             PanelSettingsLayout::kOuterMargin,
-                             PanelSettingsLayout::kOuterMargin,
-                             PanelSettingsLayout::kOuterMargin);
+  layout->setContentsMargins(
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
   layout->setSpacing(PanelSettingsLayout::kOuterSpacing);
   layout->setAlignment(Qt::AlignTop);
 }
@@ -397,10 +390,9 @@ void ApplyPanelToolbarLayout(QHBoxLayout* layout) {
   if (layout == nullptr) {
     return;
   }
-  layout->setContentsMargins(PanelChromeLayout::kToolbarMarginH,
-                             PanelChromeLayout::kToolbarMarginV,
-                             PanelChromeLayout::kToolbarMarginH,
-                             PanelChromeLayout::kToolbarMarginV);
+  layout->setContentsMargins(
+      PanelChromeLayout::kToolbarMarginH, PanelChromeLayout::kToolbarMarginV,
+      PanelChromeLayout::kToolbarMarginH, PanelChromeLayout::kToolbarMarginV);
   layout->setSpacing(PanelChromeLayout::kToolbarSpacing);
 }
 
@@ -408,7 +400,8 @@ void StylePanelStatusLabel(QLabel* label, bool is_error) {
   if (label == nullptr) {
     return;
   }
-  label->setStyleSheet(is_error ? PanelStatusLabelErrorStyle() : PanelStatusLabelStyle());
+  label->setStyleSheet(is_error ? PanelStatusLabelErrorStyle()
+                                : PanelStatusLabelStyle());
 }
 
 void StyleHintLabel(QLabel* label) {
@@ -520,8 +513,9 @@ void PaintPanelFrostedCard(QPainter& painter, const QRect& rect, qreal radius) {
   wash.setColorAt(1.0, QColor(241, 245, 249, 40));
   painter.fillPath(card, wash);
 
-  QLinearGradient sheen(outer.topLeft(),
-                        QPointF(outer.left(), outer.top() + outer.height() * 0.35));
+  QLinearGradient sheen(
+      outer.topLeft(),
+      QPointF(outer.left(), outer.top() + outer.height() * 0.35));
   sheen.setColorAt(0.0, QColor(255, 255, 255, 140));
   sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
   painter.fillPath(card, sheen);
@@ -606,10 +600,12 @@ QPushButton* MakePrimaryActionButton(const QString& text, QWidget* parent) {
   return button;
 }
 
-QPushButton* MakeDestructiveFlatActionButton(const QString& text, QWidget* parent) {
+QPushButton* MakeDestructiveFlatActionButton(const QString& text,
+                                             QWidget* parent) {
   auto* button = new QPushButton(text, parent);
   button->setCursor(Qt::PointingHandCursor);
-  button->setStyleSheet(style::sheet(QStringLiteral("widget/destructive_button")));
+  button->setStyleSheet(
+      style::sheet(QStringLiteral("widget/destructive_button")));
   return button;
 }
 
@@ -621,57 +617,24 @@ void UpdateColorButton(QPushButton* button, const QColor& color) {
   button->setMaximumWidth(96);
   if (!color.isValid()) {
     button->setText(QObject::tr("Pick"));
-    button->setStyleSheet(style::sheet(QStringLiteral("widget/color_button_empty")));
+    button->setStyleSheet(
+        style::sheet(QStringLiteral("widget/color_button_empty")));
     return;
   }
   button->setText(color.name(QColor::HexRgb));
   QHash<QString, QString> tokens;
   tokens.insert(QStringLiteral("{{color}}"), color.name(QColor::HexRgb));
-  button->setStyleSheet(style::sheet(QStringLiteral("widget/color_button"), tokens));
+  button->setStyleSheet(
+      style::sheet(QStringLiteral("widget/color_button"), tokens));
 }
 
-QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title, QWidget* body,
-                                bool expanded) {
-  auto* section = new QFrame(parent);
-  section->setObjectName(QStringLiteral("AutovizCollapsibleSection"));
-  section->setAttribute(Qt::WA_StyledBackground, true);
-  section->setStyleSheet(style::sheet(QStringLiteral("widget/groups"), style::tokens()));
-
-  auto* layout = new QVBoxLayout(section);
-  const auto apply_margins = [layout](bool on) {
-    layout->setContentsMargins(8, on ? 4 : 2, 8, on ? 6 : 2);
-  };
-  apply_margins(expanded);
-  layout->setSpacing(2);
-
-  auto* header = new QPushButton(section);
-  header->setCheckable(true);
-  header->setChecked(expanded);
-  header->setFlat(true);
-  header->setCursor(Qt::PointingHandCursor);
-  header->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  header->setMinimumHeight(22);
-  header->setStyleSheet(style::sheet(QStringLiteral("widget/groups"), style::tokens()));
-
-  const auto sync_header = [header, title](bool on) {
-    header->setText(QStringLiteral("%1  %2")
-                        .arg(on ? QStringLiteral("▾") : QStringLiteral("▸"), title));
-  };
-  sync_header(expanded);
-
-  body->setVisible(expanded);
-  if (body->parentWidget() != section) {
-    body->setParent(section);
-  }
-  layout->addWidget(header);
-  layout->addWidget(body);
-
-  QObject::connect(header, &QPushButton::toggled, section,
-                   [body, apply_margins, sync_header](bool on) {
-                     sync_header(on);
-                     body->setVisible(on);
-                     apply_margins(on);
-                   });
+QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title,
+                                QWidget* body, bool expanded) {
+  auto* section = new widget::CollapsiblePanel(parent);
+  section->SetAnimationEnabled(false);
+  section->SetTitle(title);
+  section->SetContentWidget(body);
+  section->SetExpanded(expanded);
   return section;
 }
 

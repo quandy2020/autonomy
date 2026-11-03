@@ -72,11 +72,18 @@ option(BUILD_DOCS        "Build Sphinx documentation"               OFF)
 option(BUILD_TEST        "Build unit tests"                         OFF)
 option(BUILD_TOOLS       "Build tools"                              ON)
 option(BUILD_AUTOVIZ     "Build autoviz"                            ON)
+option(AUTOVIZ_BUILD_WIDGET_TESTS
+  "Build only the Autoviz widget QtTest suite"                      OFF)
 
 # --- project defaults --------------------------------------------------------
 # autocmake_test() keys off BUILD_TESTING; keep it in sync with BUILD_TEST.
 if(DEFINED BUILD_TEST AND NOT BUILD_TEST)
   set(BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
+endif()
+# Widget tests are intentionally independent from the umbrella test switch so
+# they do not activate unrelated domain suites.
+if(AUTOVIZ_BUILD_WIDGET_TESTS)
+  enable_testing()
 endif()
 
 # Default to Release when the user did not pass -DCMAKE_BUILD_TYPE=.

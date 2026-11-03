@@ -4,15 +4,9 @@
 
 #include "autoviz/ui/raw/panel.hpp"
 
-#include <automsgs/msgs/DynamicFactory.hh>
-
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
-
-#include <algorithm>
-#include <cstring>
-#include <unordered_set>
-#include <vector>
+#include <google/protobuf/util/json_util.h>
 
 #include <QAbstractItemView>
 #include <QApplication>
@@ -34,21 +28,27 @@
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
-
-#include <google/protobuf/util/json_util.h>
+#include <algorithm>
+#include <automsgs/msgs/DynamicFactory.hh>
+#include <cstring>
+#include <unordered_set>
+#include <vector>
 
 #include "autolink/common/types.hpp"
-#include "autoviz/common/protobuf_json_compat.hpp"
-#include "autoviz/commsgs/message_type_utils.hpp"
-#include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/interaction/channel_stats_registry.hpp"
+#include "autoviz/common/protobuf_json_compat.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/data/empty_state.hpp"
+#include "autoviz/common/widget/display/status_badge.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/plot/field/message_path_navigation.hpp"
-#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
-#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/raw/message_tree.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -83,7 +83,8 @@ google::protobuf::Message* ParseMessageWithGeneratedPool(
   if (pool == nullptr) {
     return nullptr;
   }
-  const google::protobuf::Descriptor* desc = pool->FindMessageTypeByName(normalized);
+  const google::protobuf::Descriptor* desc =
+      pool->FindMessageTypeByName(normalized);
   if (desc == nullptr) {
     desc = pool->FindMessageTypeByName(StripPackagePrefix(normalized));
   }
@@ -156,7 +157,8 @@ QString ShortSchemaName(const std::string& message_type) {
 
 bool EndsWith(const std::string& value, const std::string& suffix) {
   return value.size() >= suffix.size() &&
-         value.compare(value.size() - suffix.size(), suffix.size(), suffix) == 0;
+         value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
+             0;
 }
 
 /** Hide service transport + Autolink Action protocol channels (matches CLI). */
@@ -206,9 +208,8 @@ std::vector<integration::ChannelInfo> PubSubChannels(
 
 QLabel* MakeFieldCaption(const QString& text, QWidget* parent) {
   auto* label = new QLabel(text, parent);
-  label->setStyleSheet(style::type(
-      style::Role::PanelMuted, 10, 700, false,
-      QStringLiteral("letter-spacing: 0.04em;")));
+  label->setStyleSheet(style::type(style::Role::PanelMuted, 10, 700, false,
+                                   QStringLiteral("letter-spacing: 0.04em;")));
   return label;
 }
 
@@ -276,53 +277,50 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
   diff_button_->setText(tr("Diff"));
   diff_button_->setCheckable(true);
   diff_button_->setChecked(true);
-  diff_button_->setToolTip(tr("Highlight fields that changed vs previous frame"));
+  diff_button_->setToolTip(
+      tr("Highlight fields that changed vs previous frame"));
   diff_button_->setCursor(Qt::PointingHandCursor);
   diff_button_->setStyleSheet(
       style::sheet(QStringLiteral("widget/light_toolbar"), style::Tone::Frost));
   channel_row->addWidget(diff_button_);
 
-  status_label_ = new QLabel(toolbar);
-  status_label_->setObjectName(QStringLiteral("AutovizCyanStatusChip"));
-  status_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-  status_label_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/badges"), style::Tone::Frost));
+  status_label_ = new widget::StatusBadge(toolbar);
+  status_label_->SetStatus(widget::StatusBadge::Status::kNeutral);
+  status_label_->SetTone(style::Tone::Frost);
+  status_label_->setAccessibleDescription(tr("Raw message status"));
   channel_row->addWidget(status_label_);
   toolbar_layout->addLayout(channel_row);
 
   auto* schema_row = new QHBoxLayout();
   schema_row->setSpacing(8);
-  schema_badge_ = new QLabel(tr("SCHEMA"), toolbar);
-  schema_badge_->setObjectName(QStringLiteral("AutovizAccentBadge"));
-  schema_badge_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/badges"), style::Tone::Frost));
+  schema_badge_ = new widget::StatusBadge(
+      tr("SCHEMA"), widget::StatusBadge::Status::kInformation, toolbar);
+  schema_badge_->SetTone(style::Tone::Frost);
+  schema_badge_->setAccessibleName(tr("Message schema"));
   schema_row->addWidget(schema_badge_, 0, Qt::AlignVCenter);
 
   schema_label_ = new QLabel(toolbar);
   schema_label_->setWordWrap(true);
   schema_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  schema_label_->setStyleSheet(
-      style::type(style::Role::PanelBody, 12));
+  schema_label_->setStyleSheet(style::type(style::Role::PanelBody, 12));
   schema_row->addWidget(schema_label_, 1);
   toolbar_layout->addLayout(schema_row);
 
   auto* path_row = new QHBoxLayout();
   path_row->setSpacing(8);
   path_row->addWidget(MakeFieldCaption(tr("PATH"), toolbar));
-  message_path_edit_ = new QLineEdit(toolbar);
-  message_path_edit_->setObjectName(QStringLiteral("AutovizCyanLineEdit"));
+  auto* message_path_box = new widget::SearchBox(toolbar);
+  message_path_box->SetTone(style::Tone::Frost);
+  message_path_edit_ = message_path_box;
+  message_path_edit_->setAccessibleName(tr("Filter message fields by path"));
   message_path_edit_->setPlaceholderText(
       tr("Optional message path, e.g. pose.pose.position.x"));
-  message_path_edit_->setClearButtonEnabled(true);
-  message_path_edit_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/fields"), style::Tone::Frost));
   path_row->addWidget(message_path_edit_, 1);
   toolbar_layout->addLayout(path_row);
 
   auto* drag_hint = new QLabel(
       tr("Drop a channel here, or drag numeric fields to Plot."), toolbar);
-  drag_hint->setStyleSheet(
-      style::type(style::Role::PanelMuted, 11));
+  drag_hint->setStyleSheet(style::type(style::Role::PanelMuted, 11));
   toolbar_layout->addWidget(drag_hint);
   layout->addWidget(toolbar);
 
@@ -343,11 +341,15 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
   message_tree_->setIndentation(18);
   message_tree_->setSelectionMode(QAbstractItemView::SingleSelection);
   message_tree_->setToolTip(
-      tr("Drag a numeric field to Plot. Right-click to copy path / value / JSON."));
+      tr("Drag a numeric field to Plot. Right-click to copy path / value / "
+         "JSON."));
   message_tree_->header()->setStretchLastSection(true);
-  message_tree_->header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-  message_tree_->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
-  message_tree_->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+  message_tree_->header()->setSectionResizeMode(0,
+                                                QHeaderView::ResizeToContents);
+  message_tree_->header()->setSectionResizeMode(1,
+                                                QHeaderView::ResizeToContents);
+  message_tree_->header()->setDefaultAlignment(Qt::AlignLeft |
+                                               Qt::AlignVCenter);
   QFont mono = message_tree_->font();
   mono.setFamily(QStringLiteral("Monospace"));
   mono.setPointSizeF(std::max(10.0, mono.pointSizeF() - 0.5));
@@ -356,24 +358,11 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
       style::sheet(QStringLiteral("raw_messages"), style::Tone::Frost));
   tree_card_layout->addWidget(message_tree_, 1);
 
-  empty_hint_ = new QFrame(tree_card);
-  empty_hint_->setObjectName(QStringLiteral("RawMessagesEmpty"));
-  auto* empty_layout = new QVBoxLayout(empty_hint_);
-  empty_layout->setContentsMargins(24, 40, 24, 40);
-  empty_layout->setAlignment(Qt::AlignCenter);
-  auto* empty_title = new QLabel(tr("Select a channel"), empty_hint_);
-  empty_title->setAlignment(Qt::AlignCenter);
-  empty_title->setStyleSheet(
-      style::type(style::Role::PanelBody, 15, 600));
-  empty_layout->addWidget(empty_title);
-  auto* empty_body = new QLabel(
-      tr("Choose a pub/sub channel above, or drag one from the Channels panel."),
-      empty_hint_);
-  empty_body->setAlignment(Qt::AlignCenter);
-  empty_body->setWordWrap(true);
-  empty_body->setStyleSheet(
-      style::type(style::Role::PanelMuted, 12));
-  empty_layout->addWidget(empty_body);
+  empty_hint_ = new widget::EmptyState(tree_card);
+  empty_hint_->SetTone(style::Tone::Frost);
+  empty_hint_->SetTitle(tr("Select a channel"));
+  empty_hint_->SetDescription(tr(
+      "Choose a pub/sub channel above, or drag one from the Channels panel."));
   empty_hint_->hide();
   tree_card_layout->addWidget(empty_hint_, 1);
   layout->addWidget(tree_card, 1);
@@ -384,12 +373,12 @@ RawMessagesPanel::RawMessagesPanel(common::VisualizationManager* manager,
   footer_layout->setContentsMargins(12, 6, 12, 6);
   auto* footer_label = new QLabel(
       tr("Double-click a row to expand or collapse its subtree"), footer);
-  footer_label->setStyleSheet(
-      style::type(style::Role::PanelMuted, 11));
+  footer_label->setStyleSheet(style::type(style::Role::PanelMuted, 11));
   footer_layout->addWidget(footer_label);
   layout->addWidget(footer);
 
-  connect(message_tree_, &raw_messages::RawMessageTreeWidget::addToPlotRequested, this,
+  connect(message_tree_,
+          &raw_messages::RawMessageTreeWidget::addToPlotRequested, this,
           &RawMessagesPanel::addToPlotRequested);
   connect(message_tree_,
           &raw_messages::RawMessageTreeWidget::copyMessageJsonRequested, this,
@@ -431,7 +420,19 @@ void RawMessagesPanel::updateStatusChip(const QString& text) {
   if (status_label_ == nullptr) {
     return;
   }
-  status_label_->setText(text);
+  widget::StatusBadge::Status status =
+      widget::StatusBadge::Status::kInformation;
+  if (text == tr("Idle")) {
+    status = widget::StatusBadge::Status::kNeutral;
+  } else if (text.startsWith(tr("Live"))) {
+    status = widget::StatusBadge::Status::kSuccess;
+  } else if (text.startsWith(tr("Frozen")) || text.startsWith(tr("Waiting"))) {
+    status = widget::StatusBadge::Status::kWarning;
+  } else if (text == tr("Error") || text == tr("Parse error")) {
+    status = widget::StatusBadge::Status::kError;
+  }
+  status_label_->SetStatus(status);
+  status_label_->SetText(text);
 }
 
 void RawMessagesPanel::refreshStatusChip() {
@@ -483,7 +484,8 @@ common::RawMessagesPersistConfig RawMessagesPanel::config() const {
   return out;
 }
 
-void RawMessagesPanel::setConfig(const common::RawMessagesPersistConfig& config) {
+void RawMessagesPanel::setConfig(
+    const common::RawMessagesPersistConfig& config) {
   freeze_ = config.freeze;
   diff_highlight_ = config.diff_highlight;
   if (freeze_button_ != nullptr) {
@@ -516,7 +518,8 @@ QString RawMessagesPanel::resolvedMessagePath() const {
 
 bool RawMessagesPanel::acceptChannelDrop(const QMimeData* mime) const {
   plot::PlotSeriesDragPayload payload;
-  if (!plot::ReadPlotSeriesDragPayload(mime, &payload) || payload.channel.isEmpty()) {
+  if (!plot::ReadPlotSeriesDragPayload(mime, &payload) ||
+      payload.channel.isEmpty()) {
     return false;
   }
   const std::string channel = payload.channel.toStdString();
@@ -570,13 +573,14 @@ bool RawMessagesPanel::channelsStructureChanged() {
     return changed;
   }
 
-  const std::vector<integration::ChannelInfo> channels = PubSubChannels(manager_);
+  const std::vector<integration::ChannelInfo> channels =
+      PubSubChannels(manager_);
   QStringList current;
   current.reserve(static_cast<int>(channels.size()));
   for (const integration::ChannelInfo& channel : channels) {
-    current.push_back(QStringLiteral("%1|%2")
-                          .arg(QString::fromStdString(channel.channel_name),
-                               QString::fromStdString(channel.message_type)));
+    current.push_back(QStringLiteral("%1|%2").arg(
+        QString::fromStdString(channel.channel_name),
+        QString::fromStdString(channel.message_type)));
   }
   current.sort(Qt::CaseInsensitive);
   if (current == cached_channel_keys_) {
@@ -594,9 +598,8 @@ void RawMessagesPanel::rebuildChannelCombo() {
 
   for (const integration::ChannelInfo& info : PubSubChannels(manager_)) {
     const QString channel = QString::fromStdString(info.channel_name);
-    const QString label =
-        QStringLiteral("%1  [%2]")
-            .arg(channel, ShortSchemaName(info.message_type));
+    const QString label = QStringLiteral("%1  [%2]")
+                              .arg(channel, ShortSchemaName(info.message_type));
     channel_combo_->addItem(label, channel);
   }
 
@@ -631,18 +634,18 @@ void RawMessagesPanel::updateSchemaHeader() {
     message_tree_->setVisible(has_channel);
   }
   if (!has_channel) {
-    schema_label_->setText(tr("Select a channel to inspect the latest message."));
-    schema_label_->setStyleSheet(
-        style::type(style::Role::PanelMuted, 12));
+    schema_label_->setText(
+        tr("Select a channel to inspect the latest message."));
+    schema_label_->setStyleSheet(style::type(style::Role::PanelMuted, 12));
     updateStatusChip(tr("Idle"));
     return;
   }
 
   const QString channel = QString::fromStdString(active_channel_);
-  const QString schema = ShortSchemaName(messageTypeForChannel(active_channel_));
+  const QString schema =
+      ShortSchemaName(messageTypeForChannel(active_channel_));
   schema_label_->setText(QStringLiteral("%1  ·  %2").arg(channel, schema));
-  schema_label_->setStyleSheet(
-      style::type(style::Role::PanelBody, 12, 600));
+  schema_label_->setStyleSheet(style::type(style::Role::PanelBody, 12, 600));
 }
 
 void RawMessagesPanel::showSchemaPlaceholder() {
@@ -655,8 +658,8 @@ void RawMessagesPanel::showSchemaPlaceholder() {
   const std::string message_type = messageTypeForChannel(active_channel_);
   if (message_type.empty()) {
     message_tree_->clear();
-    auto* item = new QTreeWidgetItem(message_tree_,
-                                     {tr("Waiting for messages…"), QString(), QString()});
+    auto* item = new QTreeWidgetItem(
+        message_tree_, {tr("Waiting for messages…"), QString(), QString()});
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     item->setForeground(0, QColor(kTextMuted));
     updateStatusChip(tr("Waiting"));
@@ -732,7 +735,8 @@ void RawMessagesPanel::onCopyMessageJsonRequested() {
   SetAlwaysPrintPrimitiveFields(&options);
   options.add_whitespace = true;
   std::string json;
-  if (!google::protobuf::util::MessageToJsonString(*message, &json, options).ok()) {
+  if (!google::protobuf::util::MessageToJsonString(*message, &json, options)
+           .ok()) {
     return;
   }
   if (QClipboard* clipboard = QApplication::clipboard()) {
@@ -800,17 +804,15 @@ void RawMessagesPanel::resubscribe() {
   }
 
   const std::string channel = active_channel_;
-  subscription_id_ =
-      integration::ChannelReaderRegistry::instance().subscribe(
-          channel, [this](const std::string& payload) {
-            payload_queue_.push(payload);
-          });
+  subscription_id_ = integration::ChannelReaderRegistry::instance().subscribe(
+      channel,
+      [this](const std::string& payload) { payload_queue_.push(payload); });
   if (subscription_id_ == 0 && message_tree_ != nullptr) {
     message_tree_->clear();
     auto* item = new QTreeWidgetItem(
         message_tree_,
-        {tr("Failed to subscribe to %1").arg(QString::fromStdString(channel)), QString(),
-         tr("Autolink may not be ready yet.")});
+        {tr("Failed to subscribe to %1").arg(QString::fromStdString(channel)),
+         QString(), tr("Autolink may not be ready yet.")});
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
     item->setForeground(0, QColor(kTextMuted));
     refreshStatusChip();
@@ -830,8 +832,8 @@ void RawMessagesPanel::renderMessage(const google::protobuf::Message& message) {
   const QString path_filter = resolvedMessagePath();
 
   const bool structure_changed =
-      message_tree_seeded_ &&
-      (root_label != last_tree_root_label_ || path_filter != last_tree_path_filter_);
+      message_tree_seeded_ && (root_label != last_tree_root_label_ ||
+                               path_filter != last_tree_path_filter_);
   const bool apply_initial_expand = !message_tree_seeded_;
 
   if (!structure_changed &&
@@ -887,8 +889,7 @@ std::string RawMessagesPanel::messageTypeForChannel(
   if (channel.empty()) {
     return {};
   }
-  return plot::MessageTypeForChannel(
-      manager_, QString::fromStdString(channel));
+  return plot::MessageTypeForChannel(manager_, QString::fromStdString(channel));
 }
 
 }  // namespace autoviz

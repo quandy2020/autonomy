@@ -62,7 +62,9 @@ public:
                                bool* pbStopFlag = nullptr, bool bInit = false,
                                float priorG = 1e2, float priorA = 1e6,
                                Eigen::VectorXd* vSingVal = nullptr,
-                               bool* bHess = nullptr);
+                               bool* bHess = nullptr,
+                               double maximum_gyro_bias_norm = 1.0,
+                               double maximum_acc_bias_norm = 20.0);
 
     static bool IsRelativeGeometryUpdateReasonable(
         const std::vector<Eigen::Vector3d>& current,
@@ -142,7 +144,9 @@ public:
                                      Eigen::MatrixXd& covInertial,
                                      bool bFixedVel = false,
                                      bool bGauss = false, float priorG = 1e2,
-                                     float priorA = 1e6);
+                                     float priorA = 1e6,
+                                     double maximum_gyro_bias_norm = 1.0,
+                                     double maximum_acc_bias_norm = 20.0);
     void static InertialOptimization(Map* pMap, Eigen::Vector3d& bg,
                                      Eigen::Vector3d& ba, float priorG = 1e2,
                                      float priorA = 1e6);

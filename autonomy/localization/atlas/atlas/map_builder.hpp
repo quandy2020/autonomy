@@ -95,6 +95,7 @@ struct MapIdentitySnapshot {
     std::uint64_t map_id = 0;
     std::uint64_t coordinate_epoch = 0;
     std::uint64_t destructive_epoch = 0;
+    bool coordinate_frame_ready = false;
 };
 
 /** True only for an in-flight non-destructive coordinate rebase. */
@@ -161,8 +162,14 @@ public:
     bool TrackRgbd(const ImageFrame& color, const ImageFrame& depth,
                    TrackingResult* result = nullptr);
 
-    /** @brief Copies the most recent tracking result into @p result. */
+    /**
+     * @brief Copies the most recent tracking result into @p result.
+     * @return Whether the copied pose is valid. Identity/epoch fields are
+     * copied even for the invalid boundary sample of a coordinate rebase.
+     */
     bool LatestResult(TrackingResult* result) const;
+    /** @return Whether the active coordinate frame is ready for evaluation. */
+    bool CoordinateFrameReady() const;
     /** @return Current non-null tracked map points in world coordinates. */
     std::vector<Eigen::Vector3f> TrackedMapPoints() const;
     /** @return Annotated latest camera image with detected/matched features. */

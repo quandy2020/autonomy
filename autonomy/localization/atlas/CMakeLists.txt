@@ -235,6 +235,14 @@ if(ATLAS_BUILD_TESTS)
       COMMAND ${Python3_EXECUTABLE}
         "${ATLAS_ROOT}/examples/evaluate_tartanair_test.py")
     add_test(
+      NAME atlas_evaluate_autosim_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/evaluate_autosim_test.py")
+    add_test(
+      NAME atlas_record_autosim_trajectories_test
+      COMMAND ${Python3_EXECUTABLE}
+        "${ATLAS_ROOT}/examples/record_autosim_trajectories_test.py")
+    add_test(
       NAME atlas_evaluate_tum_rgbd_test
       COMMAND ${Python3_EXECUTABLE}
         "${ATLAS_ROOT}/examples/evaluate_tum_rgbd_test.py")
@@ -248,6 +256,11 @@ if(ATLAS_BUILD_TESTS)
         "${ATLAS_ROOT}/examples/run_all_benchmarks_test.py")
   endif()
 endif()
+
+install(PROGRAMS
+  "${ATLAS_ROOT}/examples/evaluate_autosim.py"
+  "${ATLAS_ROOT}/examples/record_autosim_trajectories.py"
+  DESTINATION share/autonomy/localization/atlas/examples)
 
 install(DIRECTORY "${ATLAS_ROOT}/config/"
   DESTINATION share/autonomy/localization/conf/atlas

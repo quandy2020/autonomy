@@ -1287,7 +1287,8 @@ public:
             system != nullptr && system->GetCurrentMapIdentity(
                                      &identity.map_id,
                                      &identity.coordinate_epoch,
-                                     &identity.destructive_epoch);
+                                     &identity.destructive_epoch,
+                                     &identity.coordinate_frame_ready);
         return identity;
     }
 
@@ -1303,6 +1304,9 @@ public:
         latest.map_id = identity_after_tracking.map_id;
         latest.coordinate_epoch = identity_after_tracking.coordinate_epoch;
         latest.destructive_epoch = identity_after_tracking.destructive_epoch;
+        latest.coordinate_frame_ready =
+            identity_after_tracking.valid &&
+            identity_after_tracking.coordinate_frame_ready;
 
         latest.tracking_state = system ? system->GetTrackingState() : 0;
         latest.valid = latest.tracking_state == 2 || latest.tracking_state == 5;
@@ -1967,6 +1971,12 @@ bool MapBuilder::LatestResult(TrackingResult* result) const {
     std::lock_guard<std::mutex> lock(impl_->mutex);
     *result = impl_->latest;
     return result->valid;
+}
+
+bool MapBuilder::CoordinateFrameReady() const {
+    std::lock_guard<std::mutex> lock(impl_->mutex);
+    return impl_->system != nullptr &&
+           impl_->system->CoordinateFrameReady();
 }
 
 std::vector<Eigen::Vector3f> MapBuilder::TrackedMapPoints() const {

@@ -1,0 +1,58 @@
+// Copyright 2026 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.visualization_msgs;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/std_msgs/color_rgba.proto";
+import "automsgs/msgs/geometry_msgs/pose.proto";
+
+// 3D pictogram / icon glyph (or short string) rendered at a pose.
+message Pictogram {
+  // Lifecycle and animation actions.
+  enum Action {
+    ADD = 0;        // Create or update.
+    DELETE = 1;     // Remove.
+    ROTATE_Z = 2;   // Continuous rotation about Z.
+    ROTATE_Y = 3;   // Continuous rotation about Y.
+    ROTATE_X = 4;   // Continuous rotation about X.
+    JUMP = 5;       // Continuous jump / bounce animation.
+    JUMP_ONCE = 6;  // Single jump then settle.
+  }
+
+  // How @c character is interpreted.
+  enum Mode {
+    PICTOGRAM_MODE = 0;  // Font-awesome / pictogram glyph id.
+    STRING_MODE = 1;     // Literal UTF-8 string.
+  }
+
+  // Frame of @c pose.
+  automsgs.msgs.std_msgs.Header header = 1;
+  // Pose of the pictogram in @c header.frame_id.
+  automsgs.msgs.geometry_msgs.Pose pose = 2;
+  Action action = 3;
+  Mode mode = 4;
+  // Glyph id or string content (see @c mode).
+  string character = 5;
+  // Visual size in meters (approximate glyph height).
+  double size = 6;
+  // Time-to-live in seconds (0 → keep until deleted).
+  double ttl = 7;
+  // Animation speed (units depend on @c action).
+  double speed = 8;
+  // Glyph / text color.
+  automsgs.msgs.std_msgs.ColorRGBA color = 9;
+}

@@ -17,6 +17,7 @@
 #include "autoviz/plugins/view_controllers/orbit/orbit_view_controller.hpp"
 #include "autoviz/plugins/view_controllers/ortho/fixed_orientation_ortho_view_controller.hpp"
 #include "autoviz/plugins/view_controllers/xy_orbit/xy_orbit_view_controller.hpp"
+#include "autoviz/plugins/view_controllers/tablet/tablet_view_controller.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 
 namespace autoviz {
@@ -52,6 +53,7 @@ void ViewControllerRegistry::registerBuiltinTypes() {
   using display::view_controllers::FrameViewController;
   using display::view_controllers::OrbitViewController;
   using display::view_controllers::ThirdPersonFollowerViewController;
+  using display::view_controllers::TabletViewController;
   using display::view_controllers::XYOrbitViewController;
 
   // RViz2 default_plugins view controllers (display/view_controllers/*).
@@ -63,6 +65,8 @@ void ViewControllerRegistry::registerBuiltinTypes() {
   registerBuiltin(FPSViewController::kTypeName, &FPSViewController::apply);
   registerBuiltin(ThirdPersonFollowerViewController::kTypeName,
                   &ThirdPersonFollowerViewController::apply);
+  registerBuiltin(TabletViewController::kTypeName,
+                  &TabletViewController::apply);
 
   // RViz FrameViewController → FPS backend (not listed separately in Views).
   appliers_[FrameViewController::kTypeName] = &FrameViewController::apply;

@@ -26,9 +26,14 @@
 #include "atlas/closure/place_recognizer.hpp"
 #include "atlas/common/io/config_loader.hpp"
 #include "atlas/map/atlas.hpp"
+#include "atlas/mapping/local_mapping_idle_monitor.hpp"
+#include "atlas/mapping/mapping_telemetry.hpp"
 #include "atlas/sensor/keyframe.hpp"
 #include "atlas/tracking/tracker.hpp"
 
+#include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <fstream>
 #include <mutex>
 #include <vector>
@@ -76,6 +81,21 @@ public:
     void RequestFinish();
     bool isFinished();
     bool IsIdle();
+
+    internal::LocalMappingIdleWaitResult WaitUntilIdle(
+        std::chrono::milliseconds timeout);
+    bool MappingTelemetryEnabled() const {
+        return mapping_telemetry_.enabled();
+    }
+
+    // Call only after the local-mapping worker has joined.
+    const internal::MappingTelemetryStats& GetMappingTelemetryStats() const {
+        return mapping_telemetry_.stats();
+    }
+
+    std::uint64_t GetLbaCompletionGeneration() const {
+        return lba_completion_generation_.load(std::memory_order_relaxed);
+    }
 
     int KeyframesInQueue() {
         std::unique_lock<std::mutex> lock(mMutexNewKFs);
@@ -144,6 +164,10 @@ protected:
     void KeyFrameCulling();
 
     System* mpSystem;
+    // The local-mapping thread owns every counter except pending_queue_peak,
+    // which InsertKeyFrame updates while holding mMutexNewKFs.
+    internal::MappingTelemetry mapping_telemetry_;
+    std::atomic<std::uint64_t> lba_completion_generation_{0};
 
     bool mbMonocular;
     bool mbInertial;
@@ -182,18 +206,21 @@ protected:
 
     bool mbAcceptKeyFrames;
     std::mutex mMutexAccept;
+    internal::LocalMappingIdleMonitor idle_monitor_;
 
     bool InitializeIMU(float priorG = 1e2, float priorA = 1e6,
                        bool bFirst = false);
     void ScaleRefinement();
 
-    bool bInitializing;
+    std::atomic<bool> bInitializing;
 
     Eigen::MatrixXd infoInertial;
     int mNumLM;
     int mNumKFCulling;
 
     float mTinit;
+    /** Earliest mTinit at which a failed VIBA may be retried. */
+    float mNextVibaRetryTinit;
 
     int countRefinement;
 

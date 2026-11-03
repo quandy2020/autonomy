@@ -163,17 +163,20 @@ public:
     int nObs;
 
     // Variables used by the tracking
-    float mTrackProjX;
-    float mTrackProjY;
-    float mTrackDepth;
-    float mTrackDepthR;
-    float mTrackProjXR;
-    float mTrackProjYR;
-    bool mbTrackInView, mbTrackInViewR;
-    int mnTrackScaleLevel, mnTrackScaleLevelR;
-    float mTrackViewCos, mTrackViewCosR;
-    long unsigned int mnTrackReferenceForFrame;
-    long unsigned int mnLastFrameSeen;
+    float mTrackProjX = 0.0F;
+    float mTrackProjY = 0.0F;
+    float mTrackDepth = 0.0F;
+    float mTrackDepthR = 0.0F;
+    float mTrackProjXR = 0.0F;
+    float mTrackProjYR = 0.0F;
+    bool mbTrackInView = false;
+    bool mbTrackInViewR = false;
+    int mnTrackScaleLevel = 0;
+    int mnTrackScaleLevelR = 0;
+    float mTrackViewCos = 0.0F;
+    float mTrackViewCosR = 0.0F;
+    long unsigned int mnTrackReferenceForFrame = 0;
+    long unsigned int mnLastFrameSeen = 0;
 
     // Variables used by local mapping
     long unsigned int mnBALocalForKF;

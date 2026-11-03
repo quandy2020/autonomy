@@ -166,7 +166,7 @@ bool Buffer::canTransform(const std::string& target_frame,
         }
         {
             const int sleep_time_ms = 3;
-            LOG(WARNING) << "BufferCore::canTransform failed: " << *err;
+            VLOG(2) << "BufferCore::canTransform failed: " << *err;
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(sleep_time_ms));
         }
@@ -216,7 +216,7 @@ bool Buffer::canTransform(const std::string& target_frame,
         }
         {
             const int sleep_time_ms = 3;
-            LOG(WARNING) << "BufferCore::canTransform failed: " << *err;
+            VLOG(2) << "BufferCore::canTransform failed: " << *err;
             std::this_thread::sleep_for(
                 std::chrono::milliseconds(sleep_time_ms));
         }

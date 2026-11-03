@@ -29,7 +29,6 @@ class QComboBox;
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
-class QFrame;
 class QLabel;
 class QLineEdit;
 class QMimeData;
@@ -50,6 +49,11 @@ class RawMessageTreeWidget;
 namespace common {
 class VisualizationManager;
 }
+
+namespace widget {
+class EmptyState;
+class StatusBadge;
+}  // namespace widget
 
 /**
  * @class RawMessagesPanel
@@ -324,16 +328,16 @@ class RawMessagesPanel : public QWidget {
   QToolButton* diff_button_ = nullptr;
 
   /** Compact schema / encoding badge. */
-  QLabel* schema_badge_ = nullptr;
+  widget::StatusBadge* schema_badge_ = nullptr;
 
   /** Human-readable message type label. */
   QLabel* schema_label_ = nullptr;
 
   /** Status chip (rate, waiting, error). */
-  QLabel* status_label_ = nullptr;
+  widget::StatusBadge* status_label_ = nullptr;
 
   /** Empty-state hint when no channel is selected. */
-  QFrame* empty_hint_ = nullptr;
+  widget::EmptyState* empty_hint_ = nullptr;
 
   /** Collapsible protobuf field tree. */
   raw_messages::RawMessageTreeWidget* message_tree_ = nullptr;

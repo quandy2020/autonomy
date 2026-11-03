@@ -1,0 +1,10 @@
+<!-- Atlas RGB-D + IMU profile for autosim/config/atlas.yaml. -->
+<autolink>
+  <module>
+    <name>localization_atlas_autosim</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=atlas --atlas_config=autonomy/localization/atlas/config/autosim_rgbd_inertial.yaml --atlas_vocabulary=autonomy/localization/atlas/config/orb_vocab.fbow --atlas_sensor=rgbd_inertial --atlas_image_topic=/camera/rgb/image_raw --atlas_depth_image_topic=/camera/depth/image_raw --atlas_imu_topic=/imu --atlas_ground_truth_odometry_topic=/gt/odometry --atlas_ground_truth_sync_tolerance_sec=0.05 --atlas_map_frame=map --atlas_odom_frame=odom --atlas_base_frame=base_link --atlas_camera_frame=camera_optical_frame --atlas_tf_topic=/tf --atlas_tf_static_topic=/tf_static --atlas_publish_tf=true --atlas_enable_dense_mapping=true --atlas_dense_map_points_topic=/atlas/dense_map_points --atlas_occupancy_grid_topic=/atlas/occupancy_grid --atlas_maximum_dense_map_points=1500000 --atlas_trajectory_publish_period_sec=0.1</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

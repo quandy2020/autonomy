@@ -65,7 +65,7 @@ struct SystemConfig {
     /** Maximum keyframes submitted by one optimized-trajectory refresh. */
     std::size_t maximum_mapping_keyframes_per_refresh = 4;
     /** Bounds image memory while local mapping creates a keyframe. */
-    std::size_t maximum_pending_mapping_frames = 45;
+    std::size_t maximum_pending_mapping_frames = 90;
 };
 
 /** @brief One decoded image and its timestamp in seconds. */
@@ -113,6 +113,12 @@ struct TrackingResult {
     std::uint64_t coordinate_epoch = 0;
     /** Advances only when Reset or ResetActiveMap destroys map contents. */
     std::uint64_t destructive_epoch = 0;
+    /**
+     * True once this map's coordinates are suitable for metric consumers.
+     * Non-inertial sensors are ready immediately; inertial sensors become
+     * ready after the active map finishes its first IMU initialization.
+     */
+    bool coordinate_frame_ready = false;
 };
 
 /** @brief One optimized camera pose sampled at its source image timestamp. */

@@ -41,7 +41,7 @@ habitat:
       enabled: true
       channel: /tf
       static_channel: /tf_static
-      # LIO VizBridge 发 map→odom；autosim 只发 odom→base_link。
+      # LIO VizBridge 发 map→odom；autosim 发 odom→base_footprint 和固定关节。
       publish_map_odom: false
     clock:
       enabled: true
@@ -130,7 +130,7 @@ habitat:
       enabled: true
       channel: /odom
       frame: odom
-      child_frame: base_link
+      child_frame: base_footprint
       noise: 0.0
       # Wheel-odom trajectory for Autoviz Path (compare with LIO trajectory).
       # Republished every /odom tick; path_min_distance only thins samples.

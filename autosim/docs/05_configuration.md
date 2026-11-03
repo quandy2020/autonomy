@@ -52,6 +52,9 @@ habitat:
 | `robot.profile` | `turtlebot3_burger` / `husky`（填 URDF、USD、轮距） |
 | `robot.control_hz` | 控制与积分频率 |
 | `robot.tf.publish_map_odom` | 可被 `mode` 覆盖 |
+| `robot.truth.enabled` | 同时启用真值 PoseStamped 与可选 Odometry 输出 |
+| `robot.truth.channel` | 兼容真值位姿通道，默认 `/gt/pose` |
+| `robot.truth.odometry_channel` | 可选真值里程计通道；非空时发布 `map -> base_link` Odometry，Atlas 使用 `/gt/odometry` |
 | `sensors.*.rate_hz` | 发布频率门控 |
 | `sensors.*.noise` | 高斯 σ；odom 为积分噪声 |
 | `map.enabled` | 是否构建真值地图 |
@@ -77,3 +80,15 @@ YAML 显式字段优先于档案默认值。
 
 `Config.load` 抛 `ValueError`（空通道、重复通道、非法 backend 等）。  
 先对照本表与目标 YAML，再查 `autosim/runtime/settings.py` 中 `validate_*`。
+
+真值双路输出示例：
+
+```yaml
+robot:
+  truth:
+    enabled: true
+    channel: /gt/pose
+    odometry_channel: /gt/odometry
+```
+
+将 `odometry_channel` 省略或设为空字符串可只保留原有 PoseStamped；这不会改变旧配置行为。

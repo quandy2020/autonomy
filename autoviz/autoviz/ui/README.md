@@ -30,6 +30,8 @@ collaborators. Collaborators are friends of each other and hold their own state.
 | `channels/` | Channels panel |
 | `channel_graph/` | Channel graph |
 | `image/` `map/` `plot/` `publish/` `service/` `teleop/` | Feature panels |
+| `object_fit/` | Object-fit operator panel |
+| `panel/operator_tools_panel` | Aggregated Operator Tools dock (`OperatorToolsDock`) tabs |
 
 ## Naming
 

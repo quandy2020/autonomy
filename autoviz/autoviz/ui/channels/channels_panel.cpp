@@ -4,12 +4,6 @@
 
 #include "autoviz/ui/channels/channels_panel.hpp"
 
-#include <algorithm>
-#include <functional>
-#include <map>
-#include <utility>
-#include <vector>
-
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
@@ -29,17 +23,25 @@
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <functional>
+#include <map>
+#include <utility>
+#include <vector>
 
-#include "autoviz/commsgs/message_type_utils.hpp"
-#include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/plugins/displays/image/image_utils.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/interaction/channel_stats_registry.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/data/empty_state.hpp"
+#include "autoviz/common/widget/display/status_badge.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/commsgs/message_type_utils.hpp"
+#include "autoviz/plugins/displays/image/image_utils.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"
-#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/plot/field/plot_field_extractor.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -107,16 +109,20 @@ bool ItemMatchesFilter(QTreeWidgetItem* item, const QString& needle) {
   if (item == nullptr || needle.isEmpty()) {
     return true;
   }
-  const QString channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
+  const QString channel =
+      item->data(kColumnName, plot::kTopicChannelRole).toString();
   const QString schema = item->data(kColumnName, kRoleMessageType).toString();
-  const QString field_path = item->data(kColumnName, plot::kTopicFieldPathRole).toString();
-  const QString haystack = QStringLiteral("%1 %2 %3 %4")
-                               .arg(item->text(kColumnName), channel, schema, field_path);
+  const QString field_path =
+      item->data(kColumnName, plot::kTopicFieldPathRole).toString();
+  const QString haystack =
+      QStringLiteral("%1 %2 %3 %4")
+          .arg(item->text(kColumnName), channel, schema, field_path);
   return haystack.contains(needle, Qt::CaseInsensitive);
 }
 
-void ApplyFilterRecursive(QTreeWidgetItem* item, const QString& needle,
-                          const std::function<bool(QTreeWidgetItem*)>& type_ok) {
+void ApplyFilterRecursive(
+    QTreeWidgetItem* item, const QString& needle,
+    const std::function<bool(QTreeWidgetItem*)>& type_ok) {
   if (item == nullptr) {
     return;
   }
@@ -129,9 +135,8 @@ void ApplyFilterRecursive(QTreeWidgetItem* item, const QString& needle,
   }
   const bool self_match = ItemMatchesFilter(item, needle);
   const bool type_match = type_ok(item);
-  const bool hide =
-      (!needle.isEmpty() && !self_match && !child_visible) ||
-      (!type_match && !child_visible);
+  const bool hide = (!needle.isEmpty() && !self_match && !child_visible) ||
+                    (!type_match && !child_visible);
   item->setHidden(hide);
 }
 
@@ -155,9 +160,8 @@ QWidget* MakeTypeFilterChips(QWidget* parent, int checked_index,
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(0);
   container->setFixedHeight(24);
-  container->setStyleSheet(
-      style::sheet(QStringLiteral("plot/segmented_toggle_inline"),
-                   style::Tone::Frost));
+  container->setStyleSheet(style::sheet(
+      QStringLiteral("plot/segmented_toggle_inline"), style::Tone::Frost));
 
   const QStringList labels = {QObject::tr("All"), QObject::tr("Numeric"),
                               QObject::tr("Image"), QObject::tr("Geo"),
@@ -171,9 +175,8 @@ QWidget* MakeTypeFilterChips(QWidget* parent, int checked_index,
     button->setFlat(true);
     button->setProperty("channelsTypeFilterIndex", i);
     layout->addWidget(button, 1);
-    QObject::connect(button, &QPushButton::clicked, container, [on_changed, i]() {
-      on_changed(i);
-    });
+    QObject::connect(button, &QPushButton::clicked, container,
+                     [on_changed, i]() { on_changed(i); });
   }
   return container;
 }
@@ -192,8 +195,10 @@ class ChannelsTreeWidget : public QTreeWidget {
           continue;
         }
         plot::PlotSeriesDragPayload payload;
-        payload.channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
-        payload.field_path = item->data(kColumnName, plot::kTopicFieldPathRole).toString();
+        payload.channel =
+            item->data(kColumnName, plot::kTopicChannelRole).toString();
+        payload.field_path =
+            item->data(kColumnName, plot::kTopicFieldPathRole).toString();
         if (!payload.channel.isEmpty()) {
           payloads.push_back(payload);
         }
@@ -201,8 +206,10 @@ class ChannelsTreeWidget : public QTreeWidget {
     } else if (QTreeWidgetItem* item = currentItem()) {
       if (IsDraggableItem(item)) {
         plot::PlotSeriesDragPayload payload;
-        payload.channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
-        payload.field_path = item->data(kColumnName, plot::kTopicFieldPathRole).toString();
+        payload.channel =
+            item->data(kColumnName, plot::kTopicChannelRole).toString();
+        payload.field_path =
+            item->data(kColumnName, plot::kTopicFieldPathRole).toString();
         if (!payload.channel.isEmpty()) {
           payloads.push_back(payload);
         }
@@ -219,7 +226,8 @@ class ChannelsTreeWidget : public QTreeWidget {
 
 }  // namespace
 
-ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* parent)
+ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager,
+                             QWidget* parent)
     : manager_(manager), QWidget(parent) {
   ApplyPanelShell(this);
   setObjectName(QStringLiteral("ChannelsPanelContent"));
@@ -243,12 +251,10 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
   filter_icon->setFixedWidth(16);
   filter_row->addWidget(filter_icon);
 
-  filter_edit_ = new QLineEdit(toolbar);
-  filter_edit_->setObjectName(QStringLiteral("AutovizCyanLineEdit"));
+  filter_edit_ = new widget::SearchBox(toolbar);
+  filter_edit_->SetTone(style::Tone::Frost);
   filter_edit_->setPlaceholderText(tr("Search channels…"));
-  filter_edit_->setClearButtonEnabled(true);
-  filter_edit_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/fields"), style::Tone::Frost));
+  filter_edit_->setAccessibleName(tr("Search channels"));
   filter_row->addWidget(filter_edit_, 1);
 
   auto* expand_button = new QToolButton(toolbar);
@@ -282,20 +288,16 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
       style::sheet(QStringLiteral("widget/light_toolbar"), style::Tone::Frost));
   filter_row->addWidget(probe_button_);
 
-  status_label_ = new QLabel(toolbar);
-  status_label_->setObjectName(QStringLiteral("AutovizCyanStatusChip"));
-  status_label_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-  status_label_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/badges"), style::Tone::Frost));
+  status_label_ = new widget::StatusBadge(toolbar);
+  status_label_->SetTone(style::Tone::Frost);
   filter_row->addWidget(status_label_);
   toolbar_layout->addLayout(filter_row);
 
   auto* chips_row = new QHBoxLayout();
   chips_row->setSpacing(8);
-  type_filter_chips_ = MakeTypeFilterChips(
-      toolbar, static_cast<int>(TypeFilter::kAll), [this](int index) {
-        setTypeFilterIndex(index);
-      });
+  type_filter_chips_ =
+      MakeTypeFilterChips(toolbar, static_cast<int>(TypeFilter::kAll),
+                          [this](int index) { setTypeFilterIndex(index); });
   chips_row->addWidget(type_filter_chips_, 1);
   toolbar_layout->addLayout(chips_row);
 
@@ -321,10 +323,14 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
       {tr("Channel"), tr("Schema"), tr("Hz"), tr("Count"), tr("Value")});
   tree_->header()->setStretchLastSection(false);
   tree_->header()->setSectionResizeMode(kColumnName, QHeaderView::Stretch);
-  tree_->header()->setSectionResizeMode(kColumnSchema, QHeaderView::ResizeToContents);
-  tree_->header()->setSectionResizeMode(kColumnHz, QHeaderView::ResizeToContents);
-  tree_->header()->setSectionResizeMode(kColumnCount, QHeaderView::ResizeToContents);
-  tree_->header()->setSectionResizeMode(kColumnValue, QHeaderView::ResizeToContents);
+  tree_->header()->setSectionResizeMode(kColumnSchema,
+                                        QHeaderView::ResizeToContents);
+  tree_->header()->setSectionResizeMode(kColumnHz,
+                                        QHeaderView::ResizeToContents);
+  tree_->header()->setSectionResizeMode(kColumnCount,
+                                        QHeaderView::ResizeToContents);
+  tree_->header()->setSectionResizeMode(kColumnValue,
+                                        QHeaderView::ResizeToContents);
   tree_->header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
   tree_->setRootIsDecorated(true);
   tree_->setUniformRowHeights(true);
@@ -340,13 +346,11 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
       style::sheet(QStringLiteral("channels"), style::Tone::Frost));
   tree_card_layout->addWidget(tree_, 1);
 
-  empty_hint_ = new QLabel(
-      tr("No channels yet.\nPublish or connect a node to populate this list."),
-      tree_card);
-  empty_hint_->setAlignment(Qt::AlignCenter);
-  empty_hint_->setWordWrap(true);
-  empty_hint_->setStyleSheet(
-      style::sheet(QStringLiteral("channels"), style::Tone::Frost));
+  empty_hint_ = new widget::EmptyState(tree_card);
+  empty_hint_->SetTone(style::Tone::Frost);
+  empty_hint_->SetTitle(tr("No channels yet"));
+  empty_hint_->SetDescription(
+      tr("Publish or connect a node to populate this list."));
   empty_hint_->hide();
   tree_card_layout->addWidget(empty_hint_, 1);
   layout->addWidget(tree_card, 1);
@@ -355,8 +359,8 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
   footer->setObjectName(QStringLiteral("ChannelsFooter"));
   auto* footer_layout = new QHBoxLayout(footer);
   footer_layout->setContentsMargins(12, 6, 12, 6);
-  auto* footer_label = new QLabel(
-      tr("Expand a channel to browse message fields"), footer);
+  auto* footer_label =
+      new QLabel(tr("Expand a channel to browse message fields"), footer);
   footer_label->setStyleSheet(style::type(style::Role::PanelMuted, 11));
   footer_layout->addWidget(footer_label);
   layout->addWidget(footer);
@@ -365,7 +369,8 @@ ChannelsPanel::ChannelsPanel(common::VisualizationManager* manager, QWidget* par
     applyFilter();
     syncStatsProbes();
   });
-  connect(tree_, &QTreeWidget::itemExpanded, this, &ChannelsPanel::onItemExpanded);
+  connect(tree_, &QTreeWidget::itemExpanded, this,
+          &ChannelsPanel::onItemExpanded);
   connect(tree_, &QTreeWidget::customContextMenuRequested, this,
           &ChannelsPanel::onCustomContextMenu);
   connect(tree_, &QTreeWidget::itemDoubleClicked, this,
@@ -422,14 +427,14 @@ void ChannelsPanel::updateStatusChip() {
   const int count = cached_channel_keys_.size();
   const int probing = static_cast<int>(probe_subscriptions_.size());
   if (probe_enabled_ && probing > 0) {
-    status_label_->setText(count == 1
-                               ? tr("1 channel · probing %1").arg(probing)
-                               : tr("%1 channels · probing %2")
-                                     .arg(count)
-                                     .arg(probing));
+    status_label_->SetText(
+        count == 1 ? tr("1 channel · probing %1").arg(probing)
+                   : tr("%1 channels · probing %2").arg(count).arg(probing));
+    status_label_->SetStatus(widget::StatusBadge::Status::kInformation);
   } else {
-    status_label_->setText(count == 1 ? tr("1 channel")
+    status_label_->SetText(count == 1 ? tr("1 channel")
                                       : tr("%1 channels").arg(count));
+    status_label_->SetStatus(widget::StatusBadge::Status::kNeutral);
   }
   if (empty_hint_ != nullptr && tree_ != nullptr) {
     const bool empty = count == 0;
@@ -454,8 +459,8 @@ void ChannelsPanel::refreshStats() {
 
 common::ChannelsBrowserPersistConfig ChannelsPanel::config() const {
   common::ChannelsBrowserPersistConfig out;
-  out.filter_text =
-      filter_edit_ != nullptr ? filter_edit_->text().toStdString() : std::string();
+  out.filter_text = filter_edit_ != nullptr ? filter_edit_->text().toStdString()
+                                            : std::string();
   out.type_filter = static_cast<int>(type_filter_);
   out.probe_enabled = probe_enabled_;
   for (const QString& channel : expandedChannels()) {
@@ -464,7 +469,8 @@ common::ChannelsBrowserPersistConfig ChannelsPanel::config() const {
   return out;
 }
 
-void ChannelsPanel::setConfig(const common::ChannelsBrowserPersistConfig& config) {
+void ChannelsPanel::setConfig(
+    const common::ChannelsBrowserPersistConfig& config) {
   type_filter_ = static_cast<TypeFilter>(std::clamp(config.type_filter, 0, 4));
   probe_enabled_ = config.probe_enabled;
   if (probe_button_ != nullptr) {
@@ -501,9 +507,9 @@ bool ChannelsPanel::channelsStructureChanged() const {
   QStringList current;
   current.reserve(static_cast<int>(manager_->channels().size()));
   for (const integration::ChannelInfo& channel : manager_->channels()) {
-    current.push_back(QStringLiteral("%1|%2")
-                          .arg(QString::fromStdString(channel.channel_name),
-                               QString::fromStdString(channel.message_type)));
+    current.push_back(QStringLiteral("%1|%2").arg(
+        QString::fromStdString(channel.channel_name),
+        QString::fromStdString(channel.message_type)));
   }
   current.sort(Qt::CaseInsensitive);
   return current != cached_channel_keys_;
@@ -538,7 +544,8 @@ void ChannelsPanel::rebuildTree() {
     for (const QString& segment : segments) {
       built_path += QLatin1Char('/') + segment;
       const auto found = path_nodes.find(built_path);
-      QTreeWidgetItem* node = found == path_nodes.end() ? nullptr : found->second;
+      QTreeWidgetItem* node =
+          found == path_nodes.end() ? nullptr : found->second;
       if (node == nullptr) {
         node = parent == nullptr ? new QTreeWidgetItem(tree_)
                                  : new QTreeWidgetItem(parent);
@@ -597,7 +604,8 @@ void ChannelsPanel::updateChannelStatsColumns() {
     if (item == nullptr) {
       return;
     }
-    const QString channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
+    const QString channel =
+        item->data(kColumnName, plot::kTopicChannelRole).toString();
     const QString field_path =
         item->data(kColumnName, plot::kTopicFieldPathRole).toString();
     const bool is_channel_leaf =
@@ -613,8 +621,8 @@ void ChannelsPanel::updateChannelStatsColumns() {
       const bool live = stats.frequency_hz > 0.0;
       item->setText(kColumnHz, FormatFrequency(stats.frequency_hz));
       item->setText(kColumnCount, stats.message_count > 0
-                                     ? QString::number(stats.message_count)
-                                     : QStringLiteral("—"));
+                                      ? QString::number(stats.message_count)
+                                      : QStringLiteral("—"));
       item->setText(kColumnValue, QStringLiteral("—"));
       item->setForeground(kColumnHz, QColor(live ? kAccent : kTextMuted));
       item->setForeground(kColumnCount,
@@ -631,7 +639,8 @@ void ChannelsPanel::updateChannelStatsColumns() {
       } else {
         item->setToolTip(kColumnHz, QString());
       }
-    } else if (is_numeric_field && !channel.isEmpty() && !field_path.isEmpty()) {
+    } else if (is_numeric_field && !channel.isEmpty() &&
+               !field_path.isEmpty()) {
       item->setText(kColumnHz, QString());
       item->setText(kColumnCount, QString());
       const std::string channel_key = channel.toStdString();
@@ -643,9 +652,8 @@ void ChannelsPanel::updateChannelStatsColumns() {
         if (value.has_value()) {
           item->setText(kColumnValue, FormatLastValue(*value));
           item->setForeground(kColumnValue, QColor(kAccent));
-          item->setToolTip(
-              kColumnValue,
-              plot::CombinedPlotValuePath(channel, field_path));
+          item->setToolTip(kColumnValue,
+                           plot::CombinedPlotValuePath(channel, field_path));
         } else {
           item->setText(kColumnValue, QStringLiteral("—"));
           item->setForeground(kColumnValue, QColor(kTextMuted));
@@ -708,17 +716,21 @@ void ChannelsPanel::applyFilter() {
 }
 
 void ChannelsPanel::onItemExpanded(QTreeWidgetItem* item) {
-  if (item == nullptr || item->data(kColumnName, kRoleFieldsPopulated).toBool()) {
+  if (item == nullptr ||
+      item->data(kColumnName, kRoleFieldsPopulated).toBool()) {
     return;
   }
-  const QString channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
-  const QString message_type = item->data(kColumnName, kRoleMessageType).toString();
+  const QString channel =
+      item->data(kColumnName, plot::kTopicChannelRole).toString();
+  const QString message_type =
+      item->data(kColumnName, kRoleMessageType).toString();
   if (channel.isEmpty() || message_type.isEmpty()) {
     return;
   }
   // Numeric leaves for Plot + repeated arrays for Table.
   plot::PopulateMessageFieldTree(item, message_type.toStdString(), QString());
-  plot::PopulateTableArrayFieldTree(item, message_type.toStdString(), QString());
+  plot::PopulateTableArrayFieldTree(item, message_type.toStdString(),
+                                    QString());
   std::function<void(QTreeWidgetItem*)> set_channel;
   set_channel = [&](QTreeWidgetItem* node) {
     if (node == nullptr) {
@@ -730,8 +742,8 @@ void ChannelsPanel::onItemExpanded(QTreeWidgetItem* item) {
       node->setForeground(kColumnName, QColor(kTextMuted));
       const QString field =
           node->data(kColumnName, plot::kTopicFieldPathRole).toString();
-      node->setToolTip(
-          kColumnName, plot::CombinedPlotValuePath(channel, field));
+      node->setToolTip(kColumnName,
+                       plot::CombinedPlotValuePath(channel, field));
     }
     for (int i = 0; i < node->childCount(); ++i) {
       set_channel(node->child(i));
@@ -750,7 +762,8 @@ void ChannelsPanel::onCustomContextMenu(const QPoint& pos) {
   if (item == nullptr) {
     return;
   }
-  const QString channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
+  const QString channel =
+      item->data(kColumnName, plot::kTopicChannelRole).toString();
   const QString field_path =
       item->data(kColumnName, plot::kTopicFieldPathRole).toString();
   if (channel.isEmpty()) {
@@ -765,9 +778,8 @@ void ChannelsPanel::onCustomContextMenu(const QPoint& pos) {
       !field_path.isEmpty();
 
   QMenu menu(this);
-  QAction* copy_action =
-      menu.addAction(field_path.isEmpty() ? tr("Copy channel path")
-                                          : tr("Copy field path"));
+  QAction* copy_action = menu.addAction(
+      field_path.isEmpty() ? tr("Copy channel path") : tr("Copy field path"));
   QAction* open_raw_action = nullptr;
   if (is_channel || !channel.isEmpty()) {
     open_raw_action = menu.addAction(tr("Open in Raw Messages"));
@@ -834,7 +846,8 @@ void ChannelsPanel::onItemDoubleClicked(QTreeWidgetItem* item, int /*column*/) {
   if (item == nullptr) {
     return;
   }
-  const QString channel = item->data(kColumnName, plot::kTopicChannelRole).toString();
+  const QString channel =
+      item->data(kColumnName, plot::kTopicChannelRole).toString();
   if (channel.isEmpty()) {
     return;
   }
@@ -1017,7 +1030,8 @@ void ChannelsPanel::syncStatsProbes() {
   }
 
   // Drop probes that are no longer needed.
-  for (auto it = probe_subscriptions_.begin(); it != probe_subscriptions_.end();) {
+  for (auto it = probe_subscriptions_.begin();
+       it != probe_subscriptions_.end();) {
     if (wanted_map.find(it->first) == wanted_map.end()) {
       integration::ChannelReaderRegistry::instance().unsubscribe(it->second);
       {

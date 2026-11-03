@@ -349,6 +349,13 @@ class FramePanels {
   PanelDockWidget* createTfTreePanelDock(const QString& object_name = QString());
 
   /**
+   * @brief Creates the aggregated operator tools panel dock.
+   * @param object_name Optional fixed @c objectName; empty → unique name.
+   * @return New dock hosting @ref OperatorToolsPanel.
+   */
+  PanelDockWidget* createOperatorToolsPanelDock(const QString& object_name = QString());
+
+  /**
    * @brief Clones @p source into a new dock of the same panel type.
    *
    * Used by Split right / Split down.

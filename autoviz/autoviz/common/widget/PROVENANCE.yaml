@@ -1,0 +1,44 @@
+schema_version: 1
+library: autoviz-widget
+policy:
+  core_license: Apache-2.0
+  global_stylesheet_allowed: false
+  gpl_source_allowed_in_core: false
+  lgpl_static_link_allowed: false
+sources:
+  - project: Fluent-Qt
+    path: /home/quandy/workspace/github/Ui/Fluent-Qt
+    revision: ff9436c1
+    license: MIT
+    usage: capability_inventory
+    copied_files: []
+  - project: ElaWidgetTools
+    path: /home/quandy/workspace/github/Ui/ElaWidgetTools
+    revision: aae58f5
+    license: MIT
+    usage: capability_inventory
+    copied_files: []
+  - project: qt-material-widgets
+    path: /home/quandy/workspace/github/Ui/qt-material-widgets
+    revision: a6bb62c
+    license: BSD-3-Clause
+    usage: capability_inventory
+    copied_files: []
+  - project: Qt-Advanced-Docking-System
+    path: /home/quandy/workspace/github/Ui/Qt-Advanced-Docking-System
+    revision: edba03d
+    license: LGPL-2.1
+    usage: optional_dynamic_backend_only
+    copied_files: []
+  - project: QFluentKit
+    path: /home/quandy/workspace/github/Ui/QFluentKit
+    revision: 8503e72
+    license: GPL-3.0
+    usage: clean_room_behavior_reference_only
+    copied_files: []
+  - project: Qt-Fluent-Widgets
+    path: /home/quandy/workspace/github/Ui/Qt-Fluent-Widgets
+    revision: 87bc26b
+    license: GPL-3.0
+    usage: clean_room_behavior_reference_only
+    copied_files: []

@@ -23,7 +23,7 @@ AutoSim 是 Autonomy 的**仿真桥**：统一差速动力学、传感采样与 
 |------|------|
 | 差速 + 里程计 | `Robot` 积分；可选噪声 |
 | 2D/3D 激光、相机、IMU | 按配置频率发布 |
-| TF / 时钟 | `map→odom→base_link`（nav）或仅 `odom→base_link`（slam） |
+| TF / 时钟 | 动态 `map→odom→base_footprint`；固定 `base_footprint→base_link→传感器` |
 | 真值地图 | OccupancyGrid + 可选点云 |
 | 键盘遥控 | `teleop` → `/cmd_vel` |
 | Scenario 动态体 | 共享 Traffic：障碍与行人（Fake / Habitat / Isaac） |

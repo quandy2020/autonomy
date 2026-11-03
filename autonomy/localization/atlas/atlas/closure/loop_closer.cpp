@@ -55,6 +55,19 @@ private:
 
 }  // namespace
 
+namespace internal {
+
+g2o::Sim3 ComposeRefinedWorldSim3(
+    const g2o::Sim3& current_from_matched,
+    const autonomy::common::math::SE3d& matched_from_world) {
+    const g2o::Sim3 matched_from_world_sim3(
+        matched_from_world.unit_quaternion(), matched_from_world.translation(),
+        1.0);
+    return current_from_matched * matched_from_world_sim3;
+}
+
+}  // namespace internal
+
 LoopCloser::LoopCloser(Atlas* pAtlas, PlaceRecognizer* pDB, Vocabulary* pVoc,
                        const bool bFixScale, const bool bActiveLC)
     : mbResetRequested(false),
@@ -671,17 +684,16 @@ bool LoopCloser::DetectAndReffineSim3FromLastKF(
     if (nNumProjMatches >= nProjMatches) {
         // AINFO << "Sim3 reffine: There are " + std::to_string(nNumProjMatches)
         // + " initial matches ";
-        autonomy::common::math::SE3d mTwm =
-            pMatchedKF->GetPoseInverse().cast<double>();
+        const autonomy::common::math::SE3d mTmw =
+            pMatchedKF->GetPose().cast<double>();
+        const autonomy::common::math::SE3d mTwm = mTmw.inverse();
         g2o::Sim3 gSwm(mTwm.unit_quaternion(), mTwm.translation(), 1.0);
         g2o::Sim3 gScm = gScw * gSwm;
         Eigen::Matrix<double, 7, 7> mHessian7x7;
 
-        bool bFixedScale =
-            mbFixScale;  // TODO CHECK; Solo para el monocular inertial
-        if (mpTracker->mSensor == System::IMU_MONOCULAR &&
-            !pCurrentKF->GetMap()->GetIniertialBA2())
-            bFixedScale = false;
+        const bool bFixedScale = internal::ShouldFixSim3Scale(
+            mbFixScale, mpTracker->mSensor == System::IMU_MONOCULAR,
+            pCurrentKF->GetMap()->GetIniertialBA2());
         int numOptMatches =
             Optimizer::OptimizeSim3(mpCurrentKF, pMatchedKF, vpMatchedMPs, gScm,
                                     10, bFixedScale, mHessian7x7, true);
@@ -690,7 +702,8 @@ bool LoopCloser::DetectAndReffineSim3FromLastKF(
         // + " matches after of the optimization ";
 
         if (numOptMatches > nProjOptMatches) {
-            g2o::Sim3 gScw_estimation(gScw.rotation(), gScw.translation(), 1.0);
+            const g2o::Sim3 gScw_estimation =
+                internal::ComposeRefinedWorldSim3(gScm, mTmw);
 
             std::vector<MapPoint*> vpMatchedMP;
             vpMatchedMP.resize(mpCurrentKF->GetMapPointMatches().size(),
@@ -822,10 +835,9 @@ bool LoopCloser::DetectCommonRegionsFromBoW(
         if (numBoWMatches >= nBoWMatches)  // TODO pick a good threshold
         {
             // Geometric validation
-            bool bFixedScale = mbFixScale;
-            if (mpTracker->mSensor == System::IMU_MONOCULAR &&
-                !mpCurrentKF->GetMap()->GetIniertialBA2())
-                bFixedScale = false;
+            const bool bFixedScale = internal::ShouldFixSim3Scale(
+                mbFixScale, mpTracker->mSensor == System::IMU_MONOCULAR,
+                mpCurrentKF->GetMap()->GetIniertialBA2());
 
             Sim3Solver solver =
                 Sim3Solver(mpCurrentKF, pMostBoWMatchesKF, vpMatchedPoints,
@@ -910,13 +922,8 @@ bool LoopCloser::DetectCommonRegionsFromBoW(
                     // Optimize Sim3 transformation with every matches
                     Eigen::Matrix<double, 7, 7> mHessian7x7;
 
-                    bool bFixedScale = mbFixScale;
-                    if (mpTracker->mSensor == System::IMU_MONOCULAR &&
-                        !mpCurrentKF->GetMap()->GetIniertialBA2())
-                        bFixedScale = false;
-
                     int numOptMatches = Optimizer::OptimizeSim3(
-                        mpCurrentKF, pKFi, vpMatchedMP, gScm, 10, mbFixScale,
+                        mpCurrentKF, pKFi, vpMatchedMP, gScm, 10, bFixedScale,
                         mHessian7x7, true);
 
                     if (numOptMatches >= nSim3Inliers) {
@@ -1073,7 +1080,7 @@ bool LoopCloser::DetectCommonRegionsFromLastKF(
 }
 
 int LoopCloser::FindMatchesByProjection(
-    KeyFrame* pCurrentKF, KeyFrame* pMatchedKFw, g2o::Sim3& g2oScw,
+    KeyFrame* pCurrentKF, KeyFrame* pMatchedKFw, const g2o::Sim3& g2oScw,
     std::set<MapPoint*>& spMatchedMPinOrigin,
     std::vector<MapPoint*>& vpMapPoints,
     std::vector<MapPoint*>& vpMatchedMapPoints) {

@@ -15,8 +15,8 @@
 
 #pragma once
 
+#include <QString>
 #include <QWidget>
-
 #include <cstdint>
 #include <string>
 
@@ -26,7 +26,6 @@
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
-class QLabel;
 class QLineEdit;
 class QPoint;
 class QTableWidget;
@@ -38,6 +37,10 @@ namespace common {
 class VisualizationManager;
 }
 class PanelDockWidget;
+
+namespace widget {
+class StatusBadge;
+}
 
 namespace table_panel {
 
@@ -105,10 +108,11 @@ class TablePanel : public QWidget {
 
   QLineEdit* path_edit_ = nullptr;
   QLineEdit* row_filter_edit_ = nullptr;
-  QLabel* status_label_ = nullptr;
+  widget::StatusBadge* status_label_ = nullptr;
   QTableWidget* table_ = nullptr;
   QTimer* tick_timer_ = nullptr;
   QToolButton* expand_button_ = nullptr;
+  QString unfiltered_row_status_;
 
   integration::MessageQueue payload_queue_;
   std::uint64_t subscription_id_ = 0;

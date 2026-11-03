@@ -1,0 +1,99 @@
+%YAML:1.0
+
+# Atlas calibration and mapping profile for autosim/config/atlas.yaml.
+# RGB and depth are registered 640x480 pinhole images. Depth is float32 metres.
+File.version: "1.0"
+
+Camera.type: "PinHole"
+Camera1.fx: 320.0
+Camera1.fy: 320.0
+Camera1.cx: 320.0
+Camera1.cy: 240.0
+Camera1.k1: 0.0
+Camera1.k2: 0.0
+Camera1.p1: 0.0
+Camera1.p2: 0.0
+Camera1.k3: 0.0
+Camera.width: 640
+Camera.height: 480
+Camera.fps: 15
+Camera.RGB: 1
+
+# RGB-D receives metric CV_32FC1. The virtual baseline is used only for
+# close/far point classification; depth itself comes from the depth image.
+RGBD.DepthMapFactor: 1.0
+Stereo.b: 0.10
+Stereo.ThDepth: 80.0
+
+# Camera optical frame -> IMU frame. TurtleBot URDF mounts camera_link at
+# (0.03, 0, 0.20) m and imu_link at (-0.032, 0, 0.068) m in base_link.
+# Optical axes are x-right, y-down, z-forward; IMU axes are REP-103.
+IMU.T_b_c1: !!opencv-matrix
+  rows: 4
+  cols: 4
+  dt: f
+  data: [ 0.0,  0.0,  1.0, 0.062,
+         -1.0,  0.0,  0.0, 0.000,
+          0.0, -1.0,  0.0, 0.132,
+          0.0,  0.0,  0.0, 1.000]
+
+# Autosim publishes per-sample sigma 0.01 rad/s and 0.05 m/s^2 at 200 Hz.
+# Noise density is per-sample sigma divided by sqrt(frequency).
+IMU.NoiseGyro: 7.0710678e-04
+IMU.NoiseAcc: 3.5355339e-03
+IMU.GyroWalk: 1.0e-05
+IMU.AccWalk: 1.0e-04
+IMU.Frequency: 200.0
+IMU.InsertKFsWhenLost: 1
+
+ORBextractor.nFeatures: 1600
+ORBextractor.scaleFactor: 1.2
+ORBextractor.nLevels: 8
+ORBextractor.iniThFAST: 15
+ORBextractor.minThFAST: 7
+
+# Indoor navigation mapping. Published dense points are ground-relative and
+# restricted to [-1, 1] m; occupancy obstacles use the 0.10..1.0 m band.
+Atlas.Map.RangeMin: 0.15
+Atlas.Map.RangeMax: 8.0
+Atlas.Map.PixelStride: 2
+Atlas.Map.MaximumPointsPerFrame: 150000
+Atlas.Map.VoxelSize: 0.05
+Atlas.Map.MaximumVoxels: 3000000
+Atlas.Map.MaximumNavigationVoxels: 1500000
+Atlas.Map.NavigationRadius: 20.0
+Atlas.Map.NavigationRecenterDistance: 3.0
+Atlas.Map.GridResolution: 0.05
+Atlas.Map.SensorHeight: 0.21
+Atlas.Map.EstimateGroundPlane: 1
+Atlas.Map.GroundDistanceThreshold: 0.06
+Atlas.Map.GroundCandidateHeightMargin: 0.15
+Atlas.Map.GroundSensorHeightTolerance: 0.25
+Atlas.Map.MaximumGroundEstimationRange: 6.0
+Atlas.Map.MaximumGroundSlopeDegrees: 15.0
+Atlas.Map.MinHeight: 0.10
+Atlas.Map.MaxHeight: 1.0
+Atlas.Map.NavigationMinHeight: -1.0
+Atlas.Map.NavigationMaxHeight: 1.0
+Atlas.Map.RobotRadius: 0.12
+Atlas.Map.InflationRadius: 0.30
+Atlas.Map.InflationCostScaling: 5.0
+Atlas.Map.MinimumTranslation: 0.05
+Atlas.Map.MinimumRotationDegrees: 2.0
+Atlas.Map.QueueCapacity: 8
+Atlas.Map.SnapshotPeriod: 1.0
+Atlas.Map.MaximumCachedFrames: 400
+Atlas.Map.MaximumHistoryCacheBytes: 2147483648
+Atlas.Map.HistoryCacheDirectory: "/tmp"
+
+Viewer.KeyFrameSize: 0.05
+Viewer.KeyFrameLineWidth: 1.0
+Viewer.GraphLineWidth: 0.9
+Viewer.PointSize: 2.0
+Viewer.CameraSize: 0.08
+Viewer.CameraLineWidth: 3.0
+Viewer.ViewpointX: 0.0
+Viewer.ViewpointY: -0.7
+Viewer.ViewpointZ: -1.8
+Viewer.ViewpointF: 500.0
+Viewer.imageViewScale: 1.0

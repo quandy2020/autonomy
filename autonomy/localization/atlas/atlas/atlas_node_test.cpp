@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <string>
 
@@ -70,6 +71,64 @@ protected:
         node->running_ = false;
         node->tf_buffer_ = nullptr;
     }
+
+    static bool AlignGroundTruth(
+        AtlasNode* node,
+        const ::automsgs::msgs::nav_msgs::Odometry& atlas_odometry,
+        Eigen::Isometry3d* ground_truth_world_from_camera) {
+        return node->AlignGroundTruthToAtlas(
+            atlas_odometry, ground_truth_world_from_camera);
+    }
+
+    static void ObserveCoordinateFrame(AtlasNode* node,
+                                       const TrackingResult& result) {
+        node->ObserveGroundTruthCoordinateFrame(result);
+    }
+};
+
+class AtlasNodeTimestampTest : public ::testing::Test
+{
+protected:
+    static bool Accept(AtlasNode* node, double timestamp) {
+        return node->AcceptTrackingTimestamp(timestamp);
+    }
+};
+
+class MessageAdapterEpochTest : public ::testing::Test
+{
+protected:
+    static bool Record(MessageAdapter* adapter,
+                       const TrackingResult& result) {
+        return adapter->Record(result);
+    }
+};
+
+class AtlasNodeCoordinateFrameTest : public ::testing::Test
+{
+protected:
+    static void Observe(AtlasNode* node, const TrackingResult& result) {
+        node->ObserveGroundTruthCoordinateFrame(result);
+    }
+
+    static bool Align(
+        AtlasNode* node,
+        const ::automsgs::msgs::nav_msgs::Odometry& atlas_odometry,
+        Eigen::Isometry3d* ground_truth_world_from_camera) {
+        return node->AlignGroundTruthToAtlas(
+            atlas_odometry, ground_truth_world_from_camera);
+    }
+
+    static void AddGroundTruthPathPose(AtlasNode* node) {
+        node->ground_truth_path_.add_poses();
+    }
+
+    static int GroundTruthPathSize(const AtlasNode& node) {
+        return node.ground_truth_path_.poses_size();
+    }
+
+    static bool HasGroundTruthAlignment(const AtlasNode& node) {
+        return node.have_ground_truth_alignment_;
+    }
 };
 
 TEST(AtlasNodeOptionsTest, PublishesMapToOdomTfByDefault) {
@@ -82,6 +141,17 @@ TEST(AtlasNodeOptionsTest, PublishesMapToOdomTfByDefault) {
     EXPECT_EQ(options.base_frame, "base_link");
     EXPECT_EQ(options.camera_frame, "camera_link");
     EXPECT_EQ(options.maximum_dense_map_points, 1500000U);
+}
+
+TEST_F(AtlasNodeTimestampTest, RejectsNonMonotonicSensorDelivery) {
+    AtlasNode node(AtlasNode::Options{});
+    EXPECT_TRUE(Accept(&node, 10.0));
+    EXPECT_FALSE(Accept(&node, 10.0));
+    EXPECT_FALSE(Accept(&node, 9.9));
+    EXPECT_TRUE(Accept(&node, 10.1));
+    EXPECT_FALSE(Accept(
+        &node, std::numeric_limits<double>::quiet_NaN()));
+    EXPECT_FALSE(Accept(&node, -1.0));
 }
 
 TEST(MessageAdapterOptionsTest, UsesCameraLinkByDefault) {
@@ -107,6 +177,7 @@ TEST(MessageAdapterMapSnapshotTest, EncodesOneCallerPinnedGeneration) {
     snapshot->occupancy_grid.resolution = 0.1;
     snapshot->occupancy_grid.width = 2;
     snapshot->occupancy_grid.height = 1;
+    snapshot->occupancy_grid.origin_translation = Eigen::Vector3d(1.0, 2.0, 0.21);
     snapshot->occupancy_grid.data = {0, 100};
 
     MessageAdapter adapter(nullptr);
@@ -125,6 +196,9 @@ TEST(MessageAdapterMapSnapshotTest, EncodesOneCallerPinnedGeneration) {
     EXPECT_EQ(cloud.width(), 1U);
     EXPECT_EQ(grid.info().width(), 2U);
     EXPECT_EQ(grid.info().height(), 1U);
+    EXPECT_NEAR(grid.info().origin().position().x(), 1.0, 1e-12);
+    EXPECT_NEAR(grid.info().origin().position().y(), 2.0, 1e-12);
+    EXPECT_NEAR(grid.info().origin().position().z(), 0.0, 1e-12);
     EXPECT_EQ(grid.data_size(), 2);
 }
 
@@ -135,6 +209,106 @@ TEST(MessageAdapterMapSnapshotTest, RejectsMissingCallerSnapshot) {
     ::automsgs::msgs::map_msgs::OccupancyGrid grid;
     EXPECT_FALSE(adapter.GetDenseMap(snapshot, &cloud));
     EXPECT_FALSE(adapter.GetOccupancyGrid(snapshot, &grid));
+}
+
+TEST_F(MessageAdapterEpochTest, ClearsPathAtInvalidCoordinateEpochBoundary) {
+    MessageAdapter adapter(nullptr);
+    TrackingResult result;
+    result.time = 1.0;
+    result.valid = true;
+    result.map_id_valid = true;
+    result.map_id = 7;
+    result.coordinate_epoch = 2;
+    result.destructive_epoch = 3;
+    result.coordinate_frame_ready = false;
+    ASSERT_TRUE(Record(&adapter, result));
+
+    ::automsgs::msgs::nav_msgs::Path path;
+    ASSERT_TRUE(adapter.GetPath(&path));
+    ASSERT_EQ(path.poses_size(), 1);
+
+    result.time = 2.0;
+    result.valid = false;
+    result.coordinate_epoch = 3;
+    result.coordinate_frame_ready = true;
+    EXPECT_FALSE(Record(&adapter, result));
+    EXPECT_FALSE(adapter.GetPath(&path));
+
+    result.time = 3.0;
+    result.valid = true;
+    ASSERT_TRUE(Record(&adapter, result));
+    ASSERT_TRUE(adapter.GetPath(&path));
+    ASSERT_EQ(path.poses_size(), 1);
+    EXPECT_EQ(path.poses(0).header().stamp().sec(), 3);
+}
+
+TEST_F(MessageAdapterEpochTest, ClearsPathForDestructiveEpochAndMapChanges) {
+    MessageAdapter adapter(nullptr);
+    TrackingResult result;
+    result.valid = true;
+    result.map_id_valid = true;
+    result.map_id = 4;
+    result.coordinate_epoch = 1;
+    result.destructive_epoch = 8;
+    ASSERT_TRUE(Record(&adapter, result));
+
+    result.valid = false;
+    ++result.destructive_epoch;
+    EXPECT_FALSE(Record(&adapter, result));
+    ::automsgs::msgs::nav_msgs::Path path;
+    EXPECT_FALSE(adapter.GetPath(&path));
+
+    result.valid = true;
+    ASSERT_TRUE(Record(&adapter, result));
+    ++result.map_id;
+    result.valid = false;
+    EXPECT_FALSE(Record(&adapter, result));
+    EXPECT_FALSE(adapter.GetPath(&path));
+}
+
+TEST_F(AtlasNodeTfTest, MapToOdomKeepsChassisUprightWithImuWorld) {
+    AtlasNode::Options options;
+    options.camera_frame = "camera_optical_frame";
+    const AtlasNode node{options};
+
+    Eigen::Matrix3d R_imu_optical;
+    R_imu_optical << 0.0, 0.0, 1.0, -1.0, 0.0, 0.0, 0.0, -1.0, 0.0;
+    Eigen::Isometry3d imu_from_optical = Eigen::Isometry3d::Identity();
+    imu_from_optical.linear() = R_imu_optical;
+    imu_from_optical.translation() = Eigen::Vector3d(0.062, 0.0, 0.132);
+
+    Eigen::Isometry3d odom_from_imu = Eigen::Isometry3d::Identity();
+    odom_from_imu.translation() = Eigen::Vector3d(-0.032, 0.0, 0.068);
+    const Eigen::Isometry3d odom_from_optical =
+        odom_from_imu * imu_from_optical;
+    const Eigen::Quaterniond optical_rotation(imu_from_optical.linear());
+    const Eigen::Quaterniond odom_optical_rotation(odom_from_optical.linear());
+
+    ::automsgs::msgs::nav_msgs::Odometry odometry;
+    odometry.mutable_header()->set_frame_id("map");
+    odometry.mutable_header()->mutable_stamp()->set_sec(10);
+    odometry.set_child_frame_id("camera_optical_frame");
+    SetPose(imu_from_optical.translation(), optical_rotation,
+            odometry.mutable_pose()->mutable_pose()->mutable_pose());
+
+    ::automsgs::msgs::geometry_msgs::TransformStamped odom_from_camera;
+    odom_from_camera.mutable_header()->set_frame_id("odom");
+    *odom_from_camera.mutable_header()->mutable_stamp() =
+        odometry.header().stamp();
+    odom_from_camera.set_child_frame_id("camera_optical_frame");
+    SetTransform(odom_from_optical.translation(), odom_optical_rotation,
+                 odom_from_camera.mutable_transform());
+
+    ::automsgs::msgs::geometry_msgs::TransformStamped map_from_odom;
+    ASSERT_TRUE(
+        ComputeMapToOdom(node, odometry, odom_from_camera, &map_from_odom));
+    EXPECT_NEAR(map_from_odom.transform().translation().x(), 0.032, 1e-9);
+    EXPECT_NEAR(map_from_odom.transform().translation().y(), 0.0, 1e-9);
+    EXPECT_NEAR(map_from_odom.transform().translation().z(), -0.068, 1e-9);
+    EXPECT_NEAR(map_from_odom.transform().rotation().x(), 0.0, 1e-9);
+    EXPECT_NEAR(map_from_odom.transform().rotation().y(), 0.0, 1e-9);
+    EXPECT_NEAR(map_from_odom.transform().rotation().z(), 0.0, 1e-9);
+    EXPECT_NEAR(std::abs(map_from_odom.transform().rotation().w()), 1.0, 1e-9);
 }
 
 TEST_F(AtlasNodeTfTest, ComputesMapToOdomWithOdometryStamp) {
@@ -171,6 +345,93 @@ TEST_F(AtlasNodeTfTest, ComputesMapToOdomWithOdometryStamp) {
     EXPECT_NEAR(map_from_odom.transform().rotation().y(), 0.0, 1e-12);
     EXPECT_NEAR(map_from_odom.transform().rotation().z(), 0.0, 1e-12);
     EXPECT_NEAR(std::abs(map_from_odom.transform().rotation().w()), 1.0, 1e-12);
+}
+
+TEST_F(AtlasNodeTfTest, AnchorsGroundTruthInAtlasWorldOnce) {
+    AtlasNode::Options options;
+    options.camera_frame = "camera_optical_frame";
+    AtlasNode node{options};
+    TrackingResult coordinate_frame;
+    coordinate_frame.map_id_valid = true;
+    coordinate_frame.map_id = 1;
+    coordinate_frame.coordinate_frame_ready = true;
+    ObserveCoordinateFrame(&node, coordinate_frame);
+
+    ::automsgs::msgs::nav_msgs::Odometry atlas_odometry;
+    atlas_odometry.mutable_header()->set_frame_id("map");
+    atlas_odometry.set_child_frame_id("camera_optical_frame");
+    const Eigen::Quaterniond atlas_rotation(
+        Eigen::AngleAxisd(0.3, Eigen::Vector3d::UnitZ()));
+    SetPose(Eigen::Vector3d(1.0, 2.0, 0.5), atlas_rotation,
+            atlas_odometry.mutable_pose()->mutable_pose()->mutable_pose());
+
+    Eigen::Isometry3d ground_truth_first = Eigen::Isometry3d::Identity();
+    ground_truth_first.translation() = Eigen::Vector3d(10.0, -4.0, 0.8);
+    ground_truth_first.linear() =
+        Eigen::AngleAxisd(-0.7, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+    ASSERT_TRUE(AlignGroundTruth(
+        &node, atlas_odometry, &ground_truth_first));
+    EXPECT_TRUE(ground_truth_first.translation().isApprox(
+        Eigen::Vector3d(1.0, 2.0, 0.5), 1e-12));
+    EXPECT_TRUE(ground_truth_first.linear().isApprox(
+        atlas_rotation.toRotationMatrix(), 1e-12));
+
+    Eigen::Isometry3d ground_truth_second = Eigen::Isometry3d::Identity();
+    ground_truth_second.translation() = Eigen::Vector3d(10.0, -3.0, 0.8);
+    ground_truth_second.linear() =
+        Eigen::AngleAxisd(-0.7, Eigen::Vector3d::UnitZ()).toRotationMatrix();
+    ASSERT_TRUE(AlignGroundTruth(
+        &node, atlas_odometry, &ground_truth_second));
+
+    const Eigen::Vector3d expected_translation =
+        Eigen::Vector3d(1.0, 2.0, 0.5) +
+        atlas_rotation *
+            (Eigen::AngleAxisd(0.7, Eigen::Vector3d::UnitZ()) *
+             Eigen::Vector3d(0.0, 1.0, 0.0));
+    EXPECT_TRUE(ground_truth_second.translation().isApprox(
+        expected_translation, 1e-12));
+    EXPECT_TRUE(ground_truth_second.linear().isApprox(
+        atlas_rotation.toRotationMatrix(), 1e-12));
+}
+
+TEST_F(AtlasNodeCoordinateFrameTest,
+       GatesGroundTruthUntilReadyAndClearsAnchorOnEpochChange) {
+    AtlasNode::Options options;
+    options.camera_frame = "camera_optical_frame";
+    AtlasNode node{options};
+
+    ::automsgs::msgs::nav_msgs::Odometry atlas_odometry;
+    atlas_odometry.mutable_header()->set_frame_id("map");
+    atlas_odometry.set_child_frame_id("camera_optical_frame");
+    atlas_odometry.mutable_pose()
+        ->mutable_pose()
+        ->mutable_pose()
+        ->mutable_orientation()
+        ->set_w(1.0);
+    Eigen::Isometry3d ground_truth = Eigen::Isometry3d::Identity();
+
+    TrackingResult result;
+    result.map_id_valid = true;
+    result.map_id = 9;
+    result.coordinate_epoch = 1;
+    result.destructive_epoch = 2;
+    result.coordinate_frame_ready = false;
+    Observe(&node, result);
+    EXPECT_FALSE(Align(&node, atlas_odometry, &ground_truth));
+    EXPECT_FALSE(HasGroundTruthAlignment(node));
+
+    result.coordinate_frame_ready = true;
+    Observe(&node, result);
+    ASSERT_TRUE(Align(&node, atlas_odometry, &ground_truth));
+    EXPECT_TRUE(HasGroundTruthAlignment(node));
+    AddGroundTruthPathPose(&node);
+    ASSERT_EQ(GroundTruthPathSize(node), 1);
+
+    result.valid = false;
+    ++result.coordinate_epoch;
+    Observe(&node, result);
+    EXPECT_EQ(GroundTruthPathSize(node), 0);
+    EXPECT_FALSE(HasGroundTruthAlignment(node));
 }
 
 TEST_F(AtlasNodeTfTest, FiltersMapParentAndBuildsOdomCameraChain) {

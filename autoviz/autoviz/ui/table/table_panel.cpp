@@ -4,10 +4,6 @@
 
 #include "autoviz/ui/table/table_panel.hpp"
 
-#include <algorithm>
-
-#include <automsgs/msgs/DynamicFactory.hh>
-
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/message.h>
 
@@ -29,18 +25,22 @@
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <automsgs/msgs/DynamicFactory.hh>
 
-#include "autoviz/common/protobuf_qt_string.hpp"
-#include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
+#include "autoviz/common/protobuf_qt_string.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/display/status_badge.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/plot/field/message_path_navigation.hpp"
-#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
+#include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -149,8 +149,8 @@ QString FormatScalar(const google::protobuf::Message& message,
     case google::protobuf::FieldDescriptor::CPPTYPE_STRING: {
       const std::string value = reflection->GetString(message, field);
       if (value.size() > 80) {
-        return QStringLiteral("%1…")
-            .arg(QString::fromStdString(value.substr(0, 77)));
+        return QStringLiteral("%1…").arg(
+            QString::fromStdString(value.substr(0, 77)));
       }
       return QString::fromStdString(value);
     }
@@ -174,11 +174,11 @@ QString FormatRepeatedScalar(const google::protobuf::Message& message,
   const google::protobuf::Reflection* reflection = message.GetReflection();
   switch (field->cpp_type()) {
     case google::protobuf::FieldDescriptor::CPPTYPE_DOUBLE:
-      return QString::number(reflection->GetRepeatedDouble(message, field, index),
-                             'g', 8);
+      return QString::number(
+          reflection->GetRepeatedDouble(message, field, index), 'g', 8);
     case google::protobuf::FieldDescriptor::CPPTYPE_FLOAT:
-      return QString::number(reflection->GetRepeatedFloat(message, field, index),
-                             'g', 6);
+      return QString::number(
+          reflection->GetRepeatedFloat(message, field, index), 'g', 6);
     case google::protobuf::FieldDescriptor::CPPTYPE_INT32:
       return QString::number(
           reflection->GetRepeatedInt32(message, field, index));
@@ -232,9 +232,7 @@ bool AcceptsTableMime(const QMimeData* mime) {
 }  // namespace
 
 TablePanel::TablePanel(common::VisualizationManager* manager, QWidget* parent)
-    : manager_(manager),
-      config_(DefaultTablePanelConfig()),
-      QWidget(parent) {
+    : manager_(manager), config_(DefaultTablePanelConfig()), QWidget(parent) {
   ApplyPanelShell(this);
   setObjectName(QStringLiteral("TablePanelContent"));
   setAcceptDrops(true);
@@ -261,19 +259,17 @@ TablePanel::TablePanel(common::VisualizationManager* manager, QWidget* parent)
       style::sheet(QStringLiteral("widget/fields"), style::Tone::Frost));
   toolbar_layout->addWidget(path_edit_, 1);
 
-  row_filter_edit_ = new QLineEdit(toolbar);
-  row_filter_edit_->setObjectName(QStringLiteral("AutovizCyanLineEdit"));
+  auto* row_filter_box = new widget::SearchBox(toolbar);
+  row_filter_box->SetTone(style::Tone::Frost);
+  row_filter_edit_ = row_filter_box;
+  row_filter_edit_->setAccessibleName(tr("Filter table rows"));
   row_filter_edit_->setPlaceholderText(tr("Filter rows"));
-  row_filter_edit_->setClearButtonEnabled(true);
-  row_filter_edit_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/fields"), style::Tone::Frost));
   toolbar_layout->addWidget(row_filter_edit_);
 
-  status_label_ = new QLabel(toolbar);
-  status_label_->setObjectName(QStringLiteral("AutovizCyanStatusChip"));
-  status_label_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/badges"), style::Tone::Frost));
-  toolbar_layout->addWidget(status_label_);
+  status_label_ = new widget::StatusBadge(toolbar);
+  status_label_->SetTone(style::Tone::Frost);
+  status_label_->setMaximumWidth(240);
+  toolbar_layout->addWidget(status_label_, 0, Qt::AlignVCenter);
   layout->addWidget(toolbar);
 
   table_ = new QTableWidget(this);
@@ -344,9 +340,8 @@ void TablePanel::setSource(const QString& channel, const QString& field_path) {
   config_.field_path = NormalizeArrayFieldPath(field_path);
   if (config_.title.trimmed().isEmpty() ||
       config_.title == QLatin1String("Table")) {
-    config_.title = config_.channel.isEmpty()
-                        ? QStringLiteral("Table")
-                        : config_.channel;
+    config_.title =
+        config_.channel.isEmpty() ? QStringLiteral("Table") : config_.channel;
   }
   const QString combined =
       plot::CombinedPlotValuePath(config_.channel, config_.field_path);
@@ -447,7 +442,8 @@ void TablePanel::onTick() {
 
 void TablePanel::unsubscribe() {
   if (subscription_id_ != 0) {
-    integration::ChannelReaderRegistry::instance().unsubscribe(subscription_id_);
+    integration::ChannelReaderRegistry::instance().unsubscribe(
+        subscription_id_);
     subscription_id_ = 0;
   }
   active_channel_.clear();
@@ -457,6 +453,7 @@ void TablePanel::unsubscribe() {
 void TablePanel::resubscribe() {
   unsubscribe();
   payload_queue_ = integration::MessageQueue{};
+  unfiltered_row_status_.clear();
   if (config_.channel.isEmpty() || config_.field_path.isEmpty()) {
     clearTable(tr("Set a channel and array field path"));
     return;
@@ -465,12 +462,19 @@ void TablePanel::resubscribe() {
   active_message_type_ = messageTypeForChannel(config_.channel);
   if (active_message_type_.empty()) {
     clearTable(tr("Unknown channel schema"));
+    status_label_->SetStatus(widget::StatusBadge::Status::kError);
     return;
   }
   subscription_id_ = integration::ChannelReaderRegistry::instance().subscribe(
-      active_channel_, [this](const std::string& payload) {
-        payload_queue_.push(payload);
-      });
+      active_channel_,
+      [this](const std::string& payload) { payload_queue_.push(payload); });
+  if (subscription_id_ == 0) {
+    clearTable(tr("Failed to subscribe to %1").arg(config_.channel));
+    status_label_->SetStatus(widget::StatusBadge::Status::kError);
+    return;
+  }
+
+  status_label_->SetStatus(widget::StatusBadge::Status::kInformation);
   updateStatus(tr("Waiting for %1…")
                    .arg(plot::CombinedPlotValuePath(config_.channel,
                                                     config_.field_path)));
@@ -481,17 +485,19 @@ std::string TablePanel::messageTypeForChannel(const QString& channel) const {
 }
 
 void TablePanel::clearTable(const QString& status_hint) {
+  unfiltered_row_status_.clear();
   if (table_ != nullptr) {
     table_->clear();
     table_->setRowCount(0);
     table_->setColumnCount(0);
   }
+  status_label_->SetStatus(widget::StatusBadge::Status::kNeutral);
   updateStatus(status_hint);
 }
 
 void TablePanel::updateStatus(const QString& text) {
   if (status_label_ != nullptr) {
-    status_label_->setText(text);
+    status_label_->SetText(text);
   }
 }
 
@@ -528,10 +534,15 @@ void TablePanel::applyRowFilter() {
       ++shown;
     }
   }
-  if (rows <= 0 || filter.isEmpty()) {
+  if (rows <= 0 || unfiltered_row_status_.isEmpty()) {
     return;
   }
-  updateStatus(tr("%1 / %2 rows").arg(shown).arg(rows));
+  status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
+  if (filter.isEmpty()) {
+    updateStatus(unfiltered_row_status_);
+  } else {
+    updateStatus(tr("%1 / %2 rows").arg(shown).arg(rows));
+  }
 }
 
 void TablePanel::onTableContextMenu(const QPoint& pos) {
@@ -611,15 +622,18 @@ void TablePanel::renderPayload(const std::string& payload) {
   google::protobuf::Message* message =
       ParsePayload(active_message_type_, payload, &holder);
   if (message == nullptr) {
+    status_label_->SetStatus(widget::StatusBadge::Status::kError);
+    unfiltered_row_status_.clear();
     updateStatus(tr("Parse failed"));
     return;
   }
 
   plot::ResolvedRepeatedField repeated;
-  if (!plot::ResolveRepeatedFieldPath(*message, config_.field_path.toStdString(),
-                                      &repeated) ||
+  if (!plot::ResolveRepeatedFieldPath(
+          *message, config_.field_path.toStdString(), &repeated) ||
       repeated.container == nullptr || repeated.repeated_field == nullptr) {
     clearTable(tr("Path is not a repeated field: %1").arg(config_.field_path));
+    status_label_->SetStatus(widget::StatusBadge::Status::kError);
     return;
   }
 
@@ -645,7 +659,8 @@ void TablePanel::renderPayload(const std::string& payload) {
         if (child == nullptr || child->is_repeated()) {
           continue;
         }
-        // One-level flatten: scalars + enums + strings; nested messages as debug.
+        // One-level flatten: scalars + enums + strings; nested messages as
+        // debug.
         headers.push_back(ProtobufToQString(child->name()));
         columns.push_back(child);
       }
@@ -672,21 +687,25 @@ void TablePanel::renderPayload(const std::string& payload) {
       const int row = table_->rowCount();
       table_->insertRow(row);
       if (columns.isEmpty()) {
-        table_->setItem(
-            row, 0,
-            new QTableWidgetItem(QString::fromStdString(element.ShortDebugString())));
+        table_->setItem(row, 0,
+                        new QTableWidgetItem(QString::fromStdString(
+                            element.ShortDebugString())));
       } else {
         for (int c = 0; c < columns.size(); ++c) {
-          table_->setItem(row, c,
-                          new QTableWidgetItem(FormatScalar(element, columns.at(c))));
+          table_->setItem(
+              row, c,
+              new QTableWidgetItem(FormatScalar(element, columns.at(c))));
         }
       }
       ++rows;
     }
-    updateStatus(rows == 1 ? tr("1 row")
-                           : tr("%1 rows%2")
-                                 .arg(rows)
-                                 .arg(count > kMaxRows ? tr(" (capped)") : QString()));
+    unfiltered_row_status_ =
+        rows == 1 ? tr("1 row")
+                  : tr("%1 rows%2")
+                        .arg(rows)
+                        .arg(count > kMaxRows ? tr(" (capped)") : QString());
+    status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
+    updateStatus(unfiltered_row_status_);
   } else {
     table_->setColumnCount(1);
     table_->setHorizontalHeaderLabels({ProtobufToQString(field->name())});
@@ -698,13 +717,18 @@ void TablePanel::renderPayload(const std::string& payload) {
       }
       const int row = table_->rowCount();
       table_->insertRow(row);
-      table_->setItem(
-          row, 0,
-          new QTableWidgetItem(
-              FormatRepeatedScalar(*repeated.container, field, i)));
+      table_->setItem(row, 0,
+                      new QTableWidgetItem(
+                          FormatRepeatedScalar(*repeated.container, field, i)));
       ++rows;
     }
-    updateStatus(rows == 1 ? tr("1 row") : tr("%1 rows").arg(rows));
+    unfiltered_row_status_ =
+        rows == 1 ? tr("1 row")
+                  : tr("%1 rows%2")
+                        .arg(rows)
+                        .arg(count > kMaxRows ? tr(" (capped)") : QString());
+    status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
+    updateStatus(unfiltered_row_status_);
   }
 
   table_->setSortingEnabled(sorting);

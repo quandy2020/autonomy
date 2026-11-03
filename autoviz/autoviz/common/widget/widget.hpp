@@ -1,0 +1,45 @@
+/******************************************************************************
+ * Copyright 2026 The Openbot Authors (duyongquan)
+ *****************************************************************************/
+
+#pragma once
+
+// Convenience umbrella for galleries and small applications. Production code
+// should include only the component headers it uses.
+
+#include "autoviz/common/widget/data/data_grid.hpp"
+#include "autoviz/common/widget/data/empty_state.hpp"
+#include "autoviz/common/widget/data/filter_bar.hpp"
+#include "autoviz/common/widget/data/loading_overlay.hpp"
+#include "autoviz/common/widget/data/log_view.hpp"
+#include "autoviz/common/widget/data/pagination.hpp"
+#include "autoviz/common/widget/data/property_editor.hpp"
+#include "autoviz/common/widget/data/timeline_scrubber.hpp"
+#include "autoviz/common/widget/display/sparkline.hpp"
+#include "autoviz/common/widget/display/status_badge.hpp"
+#include "autoviz/common/widget/docking/dock_manager.hpp"
+#include "autoviz/common/widget/feedback/info_bar.hpp"
+#include "autoviz/common/widget/feedback/progress_ring.hpp"
+#include "autoviz/common/widget/feedback/skeleton.hpp"
+#include "autoviz/common/widget/feedback/toast.hpp"
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
+#include "autoviz/common/widget/input/auto_suggest_box.hpp"
+#include "autoviz/common/widget/input/button.hpp"
+#include "autoviz/common/widget/input/number_field.hpp"
+#include "autoviz/common/widget/input/password_box.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/common/widget/input/segmented_control.hpp"
+#include "autoviz/common/widget/input/toggle_switch.hpp"
+#include "autoviz/common/widget/input/vector3_editor.hpp"
+#include "autoviz/common/widget/layout/collapsible_panel.hpp"
+#include "autoviz/common/widget/layout/flow_layout.hpp"
+#include "autoviz/common/widget/layout/separator.hpp"
+#include "autoviz/common/widget/layout/surface.hpp"
+#include "autoviz/common/widget/navigation/breadcrumb.hpp"
+#include "autoviz/common/widget/navigation/command_palette.hpp"
+#include "autoviz/common/widget/navigation/navigation_rail.hpp"
+#include "autoviz/common/widget/navigation/step_indicator.hpp"
+#include "autoviz/common/widget/overlay/drawer.hpp"
+#include "autoviz/common/widget/overlay/popover.hpp"
+#include "autoviz/common/widget/overlay/teaching_tip.hpp"

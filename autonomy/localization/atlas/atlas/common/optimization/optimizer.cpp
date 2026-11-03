@@ -68,8 +68,11 @@ template <typename BlockSolver, template <typename> class LinearSolver,
 Algorithm* CreateOptimizationAlgorithm() {
     auto linear_solver =
         std::make_unique<LinearSolver<typename BlockSolver::PoseMatrixType>>();
+    linear_solver->setWriteDebug(false);
     auto block_solver = std::make_unique<BlockSolver>(std::move(linear_solver));
-    return new Algorithm(std::move(block_solver));
+    Algorithm* algorithm = new Algorithm(std::move(block_solver));
+    algorithm->setWriteDebug(false);
+    return algorithm;
 }
 
 bool IsFiniteRotation(const Eigen::Matrix3d& rotation) {
@@ -184,6 +187,18 @@ bool Optimizer::IsRelativeMagnitudeUpdateReasonable(
     const double degeneracy_tolerance =
         std::max(1e-12, reference_magnitude * 1e-12);
     if (reference_magnitude <= degeneracy_tolerance) {
+        return true;
+    }
+    // Parked IMU-RGBD init has visual velocities ~0. A ratio against any
+    // optimized residual (cm/s) looks like a 1e12 "scale explosion". Accept
+    // when both stay small in absolute terms; still reject true explosions.
+    constexpr double kAbsoluteMagnitudeFloor = 0.1;
+    if (current_magnitude <= kAbsoluteMagnitudeFloor &&
+        optimized_magnitude <= kAbsoluteMagnitudeFloor * maximum_magnitude_ratio) {
+        return true;
+    }
+    if (optimized_magnitude <= kAbsoluteMagnitudeFloor &&
+        current_magnitude <= kAbsoluteMagnitudeFloor * maximum_magnitude_ratio) {
         return true;
     }
     if (current_magnitude <= degeneracy_tolerance ||
@@ -546,9 +561,19 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
                                const long unsigned int nLoopId,
                                bool* pbStopFlag, bool bInit, float priorG,
                                float priorA, Eigen::VectorXd* vSingVal,
-                               bool* bHess) {
+                               bool* bHess,
+                               double maximum_gyro_bias_norm,
+                               double maximum_acc_bias_norm) {
     if (pMap == nullptr) {
         AERROR << "Full inertial BA rejected a null map" << std::endl;
+        return false;
+    }
+    if (!std::isfinite(maximum_gyro_bias_norm) ||
+        maximum_gyro_bias_norm <= 0.0 ||
+        !std::isfinite(maximum_acc_bias_norm) ||
+        maximum_acc_bias_norm <= 0.0) {
+        AERROR << "Full inertial BA rejected invalid bias limits"
+               << std::endl;
         return false;
     }
     long unsigned int maxKFid = pMap->GetMaxKFid();
@@ -574,6 +599,7 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
     int nNonFixed = 0;
 
     // Set KeyFrame vertices
+    const long unsigned int init_kf_id = pMap->GetInitKFid();
     KeyFrame* pIncKF = nullptr;
     for (std::size_t i = 0; i < vpKFs.size(); i++) {
         KeyFrame* pKFi = vpKFs[i];
@@ -588,8 +614,10 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
                      (pKFi->mnBAFixedForKF >= (maxKFid - 1));
             if (!bFixed)
                 nNonFixed++;
-            VP->setFixed(bFixed);
         }
+        // Anchor the global visual-inertial graph while leaving the initial
+        // velocity and biases free to be refined.
+        VP->setFixed(bFixed || (!bFixLocal && pKFi->mnId == init_kf_id));
         optimizer.addVertex(VP);
 
         if (pKFi->bImu) {
@@ -630,11 +658,12 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
     }
 
     // IMU links
+    int missing_inertial_prev = 0;
     for (std::size_t i = 0; i < vpKFs.size(); i++) {
         KeyFrame* pKFi = vpKFs[i];
 
         if (!pKFi->mPrevKF) {
-            AINFO << "NOT INERTIAL LINK TO PREVIOUS FRAME!";
+            ++missing_inertial_prev;
             continue;
         }
 
@@ -642,8 +671,6 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
             if (pKFi->isBad() || pKFi->mPrevKF->mnId > maxKFid)
                 continue;
             if (pKFi->bImu && pKFi->mPrevKF->bImu) {
-                pKFi->mpImuPreintegrated->SetNewBias(
-                    pKFi->mPrevKF->GetImuBias());
                 g2o::HyperGraph::Vertex* VP1 =
                     optimizer.vertex(pKFi->mPrevKF->mnId);
                 g2o::HyperGraph::Vertex* VV1 =
@@ -729,10 +756,14 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
                     ear->computeError();
                     optimizer.addEdge(ear);
                 }
-            } else
-                AINFO << pKFi->mnId << " or " << pKFi->mPrevKF->mnId
-                      << " no imu" << std::endl;
+            } else {
+                ++missing_inertial_prev;
+            }
         }
+    }
+    if (missing_inertial_prev > 0) {
+        AWARN << "ATLAS_INERTIAL_BA event=missing_prev_kf n="
+              << missing_inertial_prev << " keyframes=" << vpKFs.size();
     }
 
     if (bInit) {
@@ -974,6 +1005,20 @@ bool Optimizer::FullInertialBA(Map* pMap, int its, const bool bFixLocal,
             return false;
         }
         current_velocities.push_back(keyframe->GetVelocity().cast<double>());
+        if (gyro_bias_vertex->estimate().norm() >
+                maximum_gyro_bias_norm ||
+            acc_bias_vertex->estimate().norm() >
+                maximum_acc_bias_norm) {
+            AERROR << "Full inertial BA rejected excessive bias"
+                   << " gyro_bias_norm="
+                   << gyro_bias_vertex->estimate().norm()
+                   << " maximum_gyro_bias_norm="
+                   << maximum_gyro_bias_norm << " acc_bias_norm="
+                   << acc_bias_vertex->estimate().norm()
+                   << " maximum_acc_bias_norm="
+                   << maximum_acc_bias_norm << std::endl;
+            return false;
+        }
         optimized_velocities.push_back(velocity_vertex->estimate());
     }
     std::vector<Eigen::Vector3d> current_map_points;
@@ -2937,11 +2982,12 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap,
     std::vector<EdgeGyroRW*> vegr(N, nullptr);
     std::vector<EdgeAccRW*> vear(N, nullptr);
 
+    int missing_inertial_prev = 0;
     for (int i = 0; i < N; i++) {
         KeyFrame* pKFi = vpOptimizableKFs[i];
 
         if (!pKFi->mPrevKF) {
-            AINFO << "NOT INERTIAL LINK TO PREVIOUS FRAME!!!!" << std::endl;
+            ++missing_inertial_prev;
             continue;
         }
         if (pKFi->bImu && pKFi->mPrevKF->bImu && pKFi->mpImuPreintegrated) {
@@ -3019,8 +3065,13 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap,
             vear[i]->setInformation(InfoA);
 
             optimizer.addEdge(vear[i]);
-        } else
-            AINFO << "ERROR building inertial edge" << std::endl;
+        } else {
+            ++missing_inertial_prev;
+        }
+    }
+    if (missing_inertial_prev > 0) {
+        AWARN << "ATLAS_LOCAL_INERTIAL_BA event=missing_prev_kf n="
+              << missing_inertial_prev << " keyframes=" << N;
     }
 
     // Set MapPoint vertices
@@ -3266,7 +3317,8 @@ void Optimizer::LocalInertialBA(KeyFrame* pKF, bool* pbStopFlag, Map* pMap,
     // TODO: Some convergence problems have been detected here
     if ((2 * err < err_end || isnan(err) || isnan(err_end)) && !bLarge)  // bGN)
     {
-        AINFO << "FAIL LOCAL-INERTIAL BA!!!!" << std::endl;
+        AWARN << "ATLAS_LOCAL_INERTIAL_BA event=fail err=" << err
+              << " err_end=" << err_end;
         return;
     }
 
@@ -3423,7 +3475,9 @@ bool Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
                                      Eigen::Vector3d& ba, bool bMono,
                                      Eigen::MatrixXd& covInertial,
                                      bool bFixedVel, bool bGauss, float priorG,
-                                     float priorA) {
+                                     float priorA,
+                                     double maximum_gyro_bias_norm,
+                                     double maximum_acc_bias_norm) {
     if (pMap == nullptr)
         return false;
     ADEBUG << "inertial optimization";
@@ -3519,10 +3573,11 @@ bool Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
         if (pKFi->mPrevKF && pKFi->mnId <= maxKFid) {
             if (pKFi->isBad() || pKFi->mPrevKF->mnId > maxKFid)
                 continue;
-            if (!pKFi->mpImuPreintegrated)
+            if (!pKFi->mpImuPreintegrated) {
                 AINFO << "Not preintegrated measurement" << std::endl;
+                continue;
+            }
 
-            pKFi->mpImuPreintegrated->SetNewBias(pKFi->mPrevKF->GetImuBias());
             g2o::HyperGraph::Vertex* VP1 =
                 optimizer.vertex(pKFi->mPrevKF->mnId);
             g2o::HyperGraph::Vertex* VV1 =
@@ -3578,18 +3633,26 @@ bool Optimizer::InertialOptimization(Map* pMap, Eigen::Matrix3d& Rwg,
     const Eigen::Vector3d optimized_ba = VA->estimate();
     const double optimized_scale = VS->estimate();
     const Eigen::Matrix3d optimized_rwg = VGDir->estimate().Rwg;
-    if (completed_iterations <= 0 ||
+    if (!std::isfinite(maximum_gyro_bias_norm) ||
+        maximum_gyro_bias_norm <= 0.0 ||
+        !std::isfinite(maximum_acc_bias_norm) ||
+        maximum_acc_bias_norm <= 0.0 || completed_iterations <= 0 ||
         !IsNonIncreasingCost(initial_cost, optimized_cost) ||
         !std::isfinite(optimized_scale) || optimized_scale <= 0.0 ||
         optimized_scale > 100.0 || !IsFiniteRotation(optimized_rwg) ||
-        !optimized_bg.allFinite() || optimized_bg.norm() > 1.0 ||
-        !optimized_ba.allFinite() || optimized_ba.norm() > 20.0) {
+        !optimized_bg.allFinite() ||
+        optimized_bg.norm() > maximum_gyro_bias_norm ||
+        !optimized_ba.allFinite() ||
+        optimized_ba.norm() > maximum_acc_bias_norm) {
         AERROR << "Inertial optimization failed validation: iterations="
                << completed_iterations << ", initial_cost=" << initial_cost
                << ", optimized_cost=" << optimized_cost
                << ", scale=" << optimized_scale
                << ", gyro_bias_norm=" << optimized_bg.norm()
-               << ", acc_bias_norm=" << optimized_ba.norm() << std::endl;
+               << ", maximum_gyro_bias_norm=" << maximum_gyro_bias_norm
+               << ", acc_bias_norm=" << optimized_ba.norm()
+               << ", maximum_acc_bias_norm=" << maximum_acc_bias_norm
+               << std::endl;
         return false;
     }
     for (KeyFrame* keyframe : vpKFs) {

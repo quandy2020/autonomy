@@ -34,6 +34,7 @@
 #include <QWheelEvent>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
 #include "autoviz/common/interaction/playback_controller.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
@@ -567,11 +568,10 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   timeline_block->addWidget(density_bar_);
   timeline_block->addLayout(range_row);
 
-  filter_edit_ = new QLineEdit(this);
+  filter_edit_ = new widget::SearchBox(this);
+  filter_edit_->setAccessibleName(tr("Filter playback channels"));
   filter_edit_->setPlaceholderText(tr("Filter channels…"));
-  filter_edit_->setClearButtonEnabled(true);
   filter_edit_->setMaximumWidth(220);
-  StyleFilterLineEdit(filter_edit_);
 
   select_all_button_ =
       MakeTransportButton(this, tr("All"), tr("Enable all channels"));

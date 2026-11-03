@@ -28,6 +28,7 @@
 #include "atlas/mapping/local_mapper.hpp"
 #include "atlas/sensor/keyframe.hpp"
 #include "atlas/tracking/tracker.hpp"
+#include "autonomy/common/math/se3.hpp"
 
 #include "atlas/closure/place_recognizer.hpp"
 
@@ -42,6 +43,19 @@ class Tracker;
 class LocalMapper;
 class PlaceRecognizer;
 class Map;
+
+namespace internal {
+
+constexpr bool ShouldFixSim3Scale(bool configured_fix_scale,
+                                  bool is_imu_monocular, bool ba2_initialized) {
+    return configured_fix_scale && (!is_imu_monocular || ba2_initialized);
+}
+
+g2o::Sim3 ComposeRefinedWorldSim3(
+    const g2o::Sim3& current_from_matched,
+    const autonomy::common::math::SE3d& matched_from_world);
+
+}  // namespace internal
 
 class LoopCloser
 {
@@ -142,7 +156,7 @@ protected:
                                        std::vector<MapPoint*>& vpMPs,
                                        std::vector<MapPoint*>& vpMatchedMPs);
     int FindMatchesByProjection(KeyFrame* pCurrentKF, KeyFrame* pMatchedKFw,
-                                g2o::Sim3& g2oScw,
+                                const g2o::Sim3& g2oScw,
                                 std::set<MapPoint*>& spMatchedMPinOrigin,
                                 std::vector<MapPoint*>& vpMapPoints,
                                 std::vector<MapPoint*>& vpMatchedMapPoints);

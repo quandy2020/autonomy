@@ -97,6 +97,7 @@
 #include "autoviz/ui/inspector/selection_panel.hpp"
 #include "autoviz/ui/inspector/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree/panel.hpp"
+#include "autoviz/ui/panel/operator_tools_panel.hpp"
 #include "autoviz/ui/publish/publish_panel.hpp"
 #include "autoviz/ui/map/map_panel.hpp"
 #include "autoviz/ui/channel_graph/channel_graph_panel.hpp"
@@ -373,6 +374,7 @@ bool FramePanels::panelTypeSupportsMultiInstance(
          panel_type_id == QLatin1String("ImageDock") ||
          panel_type_id == QLatin1String("TeleopDock") ||
          panel_type_id == QLatin1String("TfTreeDock") ||
+         panel_type_id == QLatin1String("OperatorToolsDock") ||
          panel_type_id == QLatin1String("PublishDock") ||
          panel_type_id == QLatin1String("MapDock") ||
          panel_type_id == QLatin1String("ChannelGraphDock") ||
@@ -2042,6 +2044,22 @@ PanelDockWidget* FramePanels::createTfTreePanelDock(const QString& object_name) 
   return dock;
 }
 
+PanelDockWidget* FramePanels::createOperatorToolsPanelDock(
+    const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("OperatorToolsDock"))
+                            : object_name;
+  auto* dock = new PanelDockWidget(frame_->tr("Operator Tools"), frame_);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("OperatorToolsDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelOperatorTools")));
+  auto* panel = new OperatorToolsPanel(frame_->manager_.get(), dock);
+  dock->setContentWidget(panel);
+  frame_->layout_->configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
 void FramePanels::updatePublishDockTitle(
     PanelDockWidget* dock, publish_panel::PublishPanel* panel) {
   if (dock == nullptr || panel == nullptr) {
@@ -2423,6 +2441,9 @@ PanelDockWidget* FramePanels::duplicatePanelDock(
   }
   if (type == QLatin1String("TfTreeDock")) {
     return createTfTreePanelDock();
+  }
+  if (type == QLatin1String("OperatorToolsDock")) {
+    return createOperatorToolsPanelDock();
   }
   if (type == QLatin1String("PublishDock")) {
     PanelDockWidget* dock = createPublishPanelDock();

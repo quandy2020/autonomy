@@ -182,7 +182,7 @@ habitat:
       enabled: true
       channel: /odom
       frame: odom
-      child_frame: base_link
+      child_frame: base_footprint
       noise: 0.0
 
   map:

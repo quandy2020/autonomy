@@ -20,6 +20,7 @@
  */
 
 #include "atlas/system.hpp"
+#include "atlas/trajectory_export_policy.hpp"
 #include <openssl/md5.h>
 #include <algorithm>
 #include <chrono>
@@ -31,6 +32,7 @@
 #include <utility>
 #include "atlas/common/io/binary_archive.hpp"
 #include "atlas/common/math/converter.hpp"
+#include "atlas/mapping/mapping_telemetry.hpp"
 #include "autolink/common/log.hpp"
 
 namespace autonomy::localization::atlas {
@@ -40,6 +42,35 @@ constexpr int kOpenCvThreadCount = 2;
 constexpr auto kShutdownDrainTimeout = std::chrono::seconds(30);
 constexpr auto kShutdownStablePeriod = std::chrono::milliseconds(200);
 constexpr auto kLoopCorrectionWaitTimeout = std::chrono::seconds(30);
+constexpr auto kVisualInitialMappingTimeout = std::chrono::seconds(3);
+
+void WaitForVisualInitialMapping(LocalMapper* local_mapper,
+                                 const char* sensor_name) {
+    const auto wait_started = std::chrono::steady_clock::now();
+    const internal::LocalMappingIdleWaitResult wait_result =
+        local_mapper->WaitUntilIdle(kVisualInitialMappingTimeout);
+    const auto elapsed_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - wait_started)
+            .count();
+
+    switch (wait_result) {
+        case internal::LocalMappingIdleWaitResult::kIdle:
+            AINFO << sensor_name << " initial mapping reached idle after "
+                  << elapsed_ms << " ms" << std::endl;
+            return;
+        case internal::LocalMappingIdleWaitResult::kInterrupted:
+            AWARN << sensor_name
+                  << " initial mapping wait was interrupted after "
+                  << elapsed_ms << " ms; continuing tracking" << std::endl;
+            return;
+        case internal::LocalMappingIdleWaitResult::kTimedOut:
+            AWARN << "Timed out waiting for " << sensor_name
+                  << " initial mapping after " << elapsed_ms
+                  << " ms; continuing tracking" << std::endl;
+            return;
+    }
+}
 }  // namespace
 
 bool internal::MapChangeObserver::Observe(std::uint64_t map_id, int revision) {
@@ -492,6 +523,12 @@ autonomy::common::math::SE3f System::TrackRGBD(
     autonomy::common::math::SE3f Tcw =
         mpTracker->GrabImageRGBD(imToFeed, imDepthToFeed, timestamp, filename);
 
+    if (internal::ShouldUseVisualInitialMappingBarrier(
+            false, mSensor == System::IMU_RGBD) &&
+        mpTracker->ConsumeVisualInitialMappingBarrier()) {
+        WaitForVisualInitialMapping(mpLocalMapper, "IMU-RGBD");
+    }
+
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
@@ -571,6 +608,12 @@ autonomy::common::math::SE3f System::TrackMonocular(
     autonomy::common::math::SE3f Tcw =
         mpTracker->GrabImageMonocular(imToFeed, timestamp, filename);
 
+    if (internal::ShouldUseVisualInitialMappingBarrier(
+            mSensor == System::MONOCULAR, false) &&
+        mpTracker->ConsumeVisualInitialMappingBarrier()) {
+        WaitForVisualInitialMapping(mpLocalMapper, "monocular");
+    }
+
     std::unique_lock<std::mutex> lock2(mMutexState);
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
@@ -610,18 +653,48 @@ bool System::GetCurrentMapId(std::uint64_t* map_id) {
 bool System::GetCurrentMapIdentity(std::uint64_t* map_id,
                                    std::uint64_t* coordinate_epoch,
                                    std::uint64_t* destructive_epoch) {
+    bool coordinate_frame_ready = false;
+    return GetCurrentMapIdentity(map_id, coordinate_epoch,
+                                 destructive_epoch,
+                                 &coordinate_frame_ready);
+}
+
+bool System::GetCurrentMapIdentity(std::uint64_t* map_id,
+                                   std::uint64_t* coordinate_epoch,
+                                   std::uint64_t* destructive_epoch,
+                                   bool* coordinate_frame_ready) {
     if (map_id == nullptr || coordinate_epoch == nullptr ||
-        destructive_epoch == nullptr || mpAtlas == nullptr) {
+        destructive_epoch == nullptr || coordinate_frame_ready == nullptr ||
+        mpAtlas == nullptr) {
         return false;
     }
     std::unique_lock<std::mutex> lock(mMutexReset);
     Map* current_map = mpAtlas->GetCurrentMap();
     if (current_map == nullptr)
         return false;
+    bool imu_initialized = false;
+    if (!current_map->GetCoordinateState(coordinate_epoch,
+                                         &imu_initialized)) {
+        return false;
+    }
     *map_id = static_cast<std::uint64_t>(current_map->GetId());
-    *coordinate_epoch = current_map->GetCoordinateEpoch();
     *destructive_epoch = mDestructiveEpoch;
+    *coordinate_frame_ready =
+        (mSensor != IMU_MONOCULAR && mSensor != IMU_STEREO &&
+         mSensor != IMU_RGBD) ||
+        imu_initialized;
     return true;
+}
+
+bool System::CoordinateFrameReady() {
+    std::uint64_t map_id = 0;
+    std::uint64_t coordinate_epoch = 0;
+    std::uint64_t destructive_epoch = 0;
+    bool coordinate_frame_ready = false;
+    return GetCurrentMapIdentity(
+               &map_id, &coordinate_epoch, &destructive_epoch,
+               &coordinate_frame_ready) &&
+           coordinate_frame_ready;
 }
 
 void System::Reset() {
@@ -687,6 +760,16 @@ void System::Shutdown() {
     if (mpLoopCloser)
         mpLoopCloser->WaitForGlobalBundleAdjustment();
 
+    if (mpLocalMapper && mpTracker &&
+        mpLocalMapper->MappingTelemetryEnabled()) {
+        internal::MappingTelemetryStats telemetry =
+            mpLocalMapper->GetMappingTelemetryStats();
+        telemetry.MergeKeyFrameAdmissionStatsFrom(
+            mpTracker->GetMappingTelemetryStats());
+        AINFO << internal::FormatMappingTelemetrySummary(telemetry)
+              << std::endl;
+    }
+
     if (!mStrSaveAtlasToFile.empty()) {
         AINFO << "Atlas saving to file " + mStrSaveAtlasToFile;
         SaveAtlas(FileType::BINARY_FILE);
@@ -714,7 +797,12 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
         return;
     }
 
-    std::vector<KeyFrame*> vpKFs = mpAtlas->GetAllKeyFrames();
+    const std::vector<Map*> trajectory_maps = mpAtlas->GetAllMaps();
+    Map* const trajectory_map =
+        internal::SelectLargestTrajectoryMap(trajectory_maps);
+    std::vector<KeyFrame*> vpKFs = trajectory_map
+                                       ? trajectory_map->GetAllKeyFrames()
+                                       : std::vector<KeyFrame*>();
     if (vpKFs.empty()) {
         AWARN << "Cannot save an empty Atlas trajectory." << std::endl;
         return;
@@ -748,14 +836,21 @@ void System::SaveTrajectoryTUM(const std::string& filename) {
             continue;
 
         KeyFrame* pKF = *lRit;
+        if (!pKF)
+            continue;
 
         autonomy::common::math::SE3f Trw;
 
         // If the reference keyframe was culled, traverse the spanning tree to
         // get a suitable keyframe.
-        while (pKF->isBad()) {
+        while (pKF && pKF->isBad()) {
             Trw = Trw * pKF->mTcp;
             pKF = pKF->GetParent();
+        }
+
+        if (!pKF || !internal::ShouldExportTrajectoryReferenceFromMap(
+                        pKF->GetMap(), trajectory_map)) {
+            continue;
         }
 
         Trw = Trw * pKF->GetPose() * Two;
@@ -817,18 +912,13 @@ void System::SaveTrajectoryEuRoC(const std::string& filename) {
     }*/
 
     std::vector<Map*> vpMaps = mpAtlas->GetAllMaps();
-    int numMaxKFs = 0;
-    Map* pBiggerMap = nullptr;
+    Map* const pBiggerMap = internal::SelectLargestTrajectoryMap(vpMaps);
     AINFO << "There are " << std::to_string(vpMaps.size())
           << " maps in the atlas" << std::endl;
     for (Map* pMap : vpMaps) {
         AINFO << "  Map " << std::to_string(pMap->GetId()) << " has "
               << std::to_string(pMap->GetAllKeyFrames().size()) << " KFs"
               << std::endl;
-        if (pMap->GetAllKeyFrames().size() > numMaxKFs) {
-            numMaxKFs = pMap->GetAllKeyFrames().size();
-            pBiggerMap = pMap;
-        }
     }
 
     if (pBiggerMap == nullptr) {
@@ -899,7 +989,8 @@ void System::SaveTrajectoryEuRoC(const std::string& filename) {
             // AINFO << "--Parent KF: " << pKF->mnId << endl;
         }
 
-        if (!pKF || pKF->GetMap() != pBiggerMap) {
+        if (!pKF || !internal::ShouldExportTrajectoryReferenceFromMap(
+                        pKF->GetMap(), pBiggerMap)) {
             // AINFO << "--Parent KF is from another map" << endl;
             continue;
         }

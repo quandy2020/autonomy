@@ -1,0 +1,9 @@
+syntax = "proto3";
+package automsgs.msgs.people_msgs;
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/people_msgs/position_measurement.proto";
+message PositionMeasurementArray {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated PositionMeasurement people = 2;
+  repeated float cooccurrence = 3;
+}

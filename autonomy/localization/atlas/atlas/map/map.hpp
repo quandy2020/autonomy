@@ -107,6 +107,9 @@ public:
 
     /** Returns the current coordinate-system revision of this map. */
     std::uint64_t GetCoordinateEpoch();
+    /** Atomically reads the coordinate revision and IMU-ready state. */
+    bool GetCoordinateState(std::uint64_t* coordinate_epoch,
+                            bool* imu_initialized);
 
     int GetMapChangeIndex();
     void IncreaseChangeIndex();

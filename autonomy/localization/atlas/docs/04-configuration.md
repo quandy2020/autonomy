@@ -29,6 +29,11 @@ Pinhole 用于针孔模型，Kannala-Brandt 用于鱼眼模型。
 4. ORB 特征数量和金字塔层数会直接影响 CPU、内存和弱纹理场景表现。
 5. 修改配置后至少运行一条普通序列和一条困难序列。
 
+`IMU.InitKeyFrameMinInterval` 控制 IMU 初始化完成前相邻关键帧的最小时间
+间隔，单位为秒。缺省值为 `0.25`，配置值必须是有限且大于零的实数。该值
+在 Tracker 启动时缓存，逐帧关键帧判定不会重复读取配置；仅在确有更高关键帧
+频率需求的数据集上覆盖它。
+
 安装时 YAML 与 FBow 文件会复制到
 `share/autonomy/localization/conf/atlas`。
 

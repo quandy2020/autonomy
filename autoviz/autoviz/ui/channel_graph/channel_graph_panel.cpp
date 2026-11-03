@@ -35,6 +35,7 @@
 #include "autolink/proto/role_attributes.pb.h"
 #include "autolink/service_discovery/topology_manager.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/interaction/channel_stats_registry.hpp"
 #include "autoviz/common/interaction/topology_graph_builder.hpp"
@@ -695,20 +696,16 @@ void ChannelGraphPanel::setupUi() {
   neighborhood_button_->setChecked(true);
   row->addWidget(neighborhood_button_);
 
-  filter_edit_ = new QLineEdit(graph_tools_);
-  filter_edit_->setObjectName(QStringLiteral("AutovizCompactFilter"));
+  auto* filter_box = new widget::SearchBox(graph_tools_);
+  filter_box->SetTone(style::Tone::Frost);
+  filter_box->SetSearchBoxSize(widget::SearchBox::Size::kCompact);
+  filter_edit_ = filter_box;
+  filter_edit_->setAccessibleName(tr("Filter topology graph"));
   filter_edit_->setPlaceholderText(tr("Filter"));
   filter_edit_->setToolTip(
       tr("Comma-separated terms. Prefix with - to exclude "
          "(e.g. sensing,-/tf,-parameter)."));
-  filter_edit_->setClearButtonEnabled(true);
   filter_edit_->setFixedWidth(140);
-  filter_edit_->setFixedHeight(22);
-  filter_edit_->setStyleSheet(QStringLiteral(
-      "QLineEdit { background: transparent; border: none;"
-      " border-bottom: 1px solid palette(mid); padding: 0 4px;"
-      " font-size: 12px; }"
-      "QLineEdit:focus { border-bottom: 1px solid palette(highlight); }"));
   row->addWidget(filter_edit_);
 
   graph_view_ = new ChannelGraphView(this);

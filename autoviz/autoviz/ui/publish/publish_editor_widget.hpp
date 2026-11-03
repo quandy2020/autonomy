@@ -47,6 +47,10 @@ namespace common {
 class VisualizationManager;
 }
 
+namespace widget {
+class StatusBadge;
+}  // namespace widget
+
 namespace publish_panel {
 
 class PublishFieldTreeWidget;
@@ -511,7 +515,7 @@ class PublishEditorWidget : public QWidget {
   QSplitter* payload_splitter_ = nullptr;         /**< Request vs result split. */
   QGroupBox* request_group_ = nullptr;            /**< Message payload group. */
   QGroupBox* result_group_ = nullptr;             /**< Last-result group. */
-  QLabel* result_status_label_ = nullptr;         /**< Success / error status. */
+  widget::StatusBadge* result_status_label_ = nullptr; /**< Success/error status. */
   QPlainTextEdit* message_edit_ = nullptr;        /**< JSON editor tab. */
   PublishFieldTreeWidget* field_tree_ = nullptr;  /**< Fields editor tab. */
   QPlainTextEdit* metadata_edit_ = nullptr;       /**< Read-only metadata tab. */

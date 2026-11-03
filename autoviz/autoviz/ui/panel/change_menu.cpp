@@ -10,6 +10,7 @@
 #include <QListWidget>
 #include <QVBoxLayout>
 
+#include "autoviz/common/widget/input/search_box.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/panel/catalog.hpp"
 #include "autoviz/ui/theme/style.hpp"
@@ -30,9 +31,9 @@ ChangePanelMenuWidget::ChangePanelMenuWidget(QWidget* parent) : QWidget(parent) 
   layout->setContentsMargins(8, 8, 8, 8);
   layout->setSpacing(6);
 
-  search_ = new QLineEdit(this);
+  search_ = new widget::SearchBox(this);
+  search_->setAccessibleName(tr("Search panels"));
   search_->setPlaceholderText(tr("Search panels"));
-  search_->setClearButtonEnabled(true);
   layout->addWidget(search_);
 
   list_ = new QListWidget(this);

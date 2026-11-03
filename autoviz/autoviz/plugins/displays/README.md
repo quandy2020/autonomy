@@ -18,10 +18,10 @@ at this root.
 `accel/`, `axes/`, `camera/`, `camera_info/`, `depth_cloud/`, `effort/`,
 `grid/`, `grid_cells/`, `image/`, `interactive_markers/`, `laser_scan/`,
 `map/`, `marker/`, `marker_array/`, `odometry/`, `path/`, `point/`,
-`pointcloud/`, `polygon/`, `pose/`, `pose_array/`, `pose_covariance/`,
-`fluid_pressure/`, `range/`, `relative_humidity/`, `robot_model/`,
-`screw/` (shared by `twist/` · `accel/`), `temperature/`, `tf/`, `twist/`,
-`wrench/`
+`pointcloud/`, `polygon/`, `pose/` (Pose + TargetVisualizer + TFTrajectory),
+`pose_array/`, `pose_covariance/`, `fluid_pressure/`, `range/`,
+`relative_humidity/`, `robot_model/`, `screw/` (shared by `twist/` · `accel/`),
+`temperature/`, `tf/`, `twist/`, `wrench/`
 
 ## Autoviz-only
 
@@ -30,6 +30,18 @@ at this root.
 | `imu/` | Imu |
 | `grid_map/` | GridMap |
 | `scalar_sensor/` | Illuminance |
+| `overlay/` | OverlayText, String, Plotter2D, PieChart, LinearGauge, OverlayImage, OverlayCamera, OverlayMenu |
+| `gps/` | OverlayGps (NavSatFix + Google Static Map HUD) |
+| `recognition/` | BoundingBox*, SegmentArray, TorusArray, PolygonArray, HumanSkeletonArray, SimpleOccupancyGridArray, Normal |
+| `diagnostics/` | OverlayDiagnostic, Diagnostics |
+| `footstep/` | Footstep |
+| `people/` | PeoplePositionMeasurementArray |
+| `audio/` | AmbientSound |
+| `pictogram/` | Pictogram, PictogramArray |
+| `util/` | VideoCapture, ScenePublisher |
+
+Shared helpers for the Autoviz-only overlays / recognition displays also live in
+`common/` (`overlay_object`, `color_category`, `display_tf_utils`).
 
 ## Shared helpers
 
@@ -38,7 +50,8 @@ RViz-aligned `TFWrapper` / `TFFrameTransformer` / `TransformerGuard` over
 Autoviz `transform::Buffer` (no ROS).
 
 `common/` — `transform_utils`, `proto_payload_utils`, `obj_mesh`,
-`ogre_*_draw`, `urdf_model`, `scalar_sensor_utils`, etc.
+`ogre_*_draw`, `urdf_model`, `scalar_sensor_utils`, `overlay_object`,
+`color_category`, `display_tf_utils`, etc.
 
 `../robot/` (under `plugins/robot/`, not under `displays/`) — RViz-aligned
 `robot::Robot` / `RobotLink` / `RobotJoint` / `LinkUpdater` / `TFLinkUpdater`
@@ -54,6 +67,7 @@ Use modular paths (no root-level compatibility shims):
 
 ```cpp
 #include "autoviz/plugins/displays/pointcloud/point_cloud2_display.hpp"
+#include "autoviz/plugins/displays/overlay/overlay_text_display.hpp"
 ```
 
 Registration lives in `autoviz/common/display_registry.cpp`.

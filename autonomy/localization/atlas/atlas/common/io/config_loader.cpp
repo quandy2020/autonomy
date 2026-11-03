@@ -30,6 +30,7 @@
 #include <opencv2/core/eigen.hpp>
 #include <opencv2/core/persistence.hpp>
 
+#include <cmath>
 #include <iostream>
 
 namespace autonomy::localization::atlas {
@@ -462,6 +463,20 @@ void ConfigLoader::readIMU(cv::FileStorage& fConfigLoader) {
     accWalk_ = readParameter<float>(fConfigLoader, "IMU.AccWalk", found);
     imuFrequency_ = readParameter<float>(fConfigLoader, "IMU.Frequency", found);
 
+    const cv::FileNode init_keyframe_interval_node =
+        fConfigLoader["IMU.InitKeyFrameMinInterval"];
+    if (!init_keyframe_interval_node.empty()) {
+        imuInitKeyFrameMinInterval_ = readParameter<float>(
+            fConfigLoader, "IMU.InitKeyFrameMinInterval", found);
+        if (!std::isfinite(imuInitKeyFrameMinInterval_) ||
+            imuInitKeyFrameMinInterval_ <= 0.0F) {
+            AERROR << "IMU.InitKeyFrameMinInterval must be finite and greater "
+                      "than zero, aborting..."
+                   << std::endl;
+            exit(-1);
+        }
+    }
+
     cv::Mat cvTbc = readParameter<cv::Mat>(fConfigLoader, "IMU.T_b_c1", found);
     Tbc_ = Converter::toLieGroup(cvTbc);
 
@@ -700,6 +715,9 @@ std::ostream& operator<<(std::ostream& output, const ConfigLoader& settings) {
         output << "\t-Gyro walk: " << settings.gyroWalk_ << std::endl;
         output << "\t-Accelerometer walk: " << settings.accWalk_ << std::endl;
         output << "\t-IMU frequency: " << settings.imuFrequency_ << std::endl;
+        output << "\t-IMU initialization keyframe minimum interval: "
+               << settings.imuInitKeyFrameMinInterval_ << " seconds"
+               << std::endl;
     }
 
     if (settings.sensor_ == System::RGBD ||

@@ -1,0 +1,13 @@
+syntax = "proto3";
+package automsgs.msgs.people_msgs;
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/geometry_msgs/point.proto";
+message PositionMeasurement {
+  automsgs.msgs.std_msgs.Header header = 1;
+  string name = 2;
+  string object_id = 3;
+  automsgs.msgs.geometry_msgs.Point pos = 4;
+  double reliability = 5;
+  repeated double covariance = 6; // 9
+  int32 initialization = 7;
+}

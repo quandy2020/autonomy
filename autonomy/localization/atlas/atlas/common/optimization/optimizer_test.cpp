@@ -65,6 +65,27 @@ TEST(OptimizerTest, RelativeMagnitudeRejectsFiniteVelocityExplosion) {
         Optimizer::IsRelativeMagnitudeUpdateReasonable(current, optimized));
 }
 
+TEST(OptimizerTest, RelativeMagnitudeAcceptsNearZeroStationaryVelocities) {
+    const std::vector<Eigen::Vector3d> current = {
+        Eigen::Vector3d(1.0e-13, 0.0, 0.0),
+        Eigen::Vector3d(0.0, -2.0e-13, 0.0)};
+    const std::vector<Eigen::Vector3d> optimized = {
+        Eigen::Vector3d(0.04, -0.01, 0.0), Eigen::Vector3d(-0.02, 0.03, 0.01)};
+
+    EXPECT_TRUE(
+        Optimizer::IsRelativeMagnitudeUpdateReasonable(current, optimized));
+}
+
+TEST(OptimizerTest, RelativeMagnitudeRejectsVelocityExplosionFromRest) {
+    const std::vector<Eigen::Vector3d> current = {
+        Eigen::Vector3d(1.0e-13, 0.0, 0.0), Eigen::Vector3d::Zero()};
+    const std::vector<Eigen::Vector3d> optimized = {
+        Eigen::Vector3d(50.0, 0.0, 0.0), Eigen::Vector3d(0.0, 40.0, 0.0)};
+
+    EXPECT_FALSE(
+        Optimizer::IsRelativeMagnitudeUpdateReasonable(current, optimized));
+}
+
 TEST(OptimizerTest, RelativeGeometryRejectsNonFiniteSingleton) {
     const std::vector<Eigen::Vector3d> current = {
         Eigen::Vector3d(std::numeric_limits<double>::quiet_NaN(), 0.0, 0.0)};

@@ -18,6 +18,7 @@
 #include <QStyleHints>
 #include <QtGlobal>
 
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
 #include "autoviz/ui/theme/proxy.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
@@ -262,6 +263,7 @@ void ApplyAppTheme(QApplication& app) {
                                         : theme.secondary_text);
   app.setStyle(proxy);
   app.setPalette(BuildPaletteFromShell(theme));
+  widget::InvalidateThemeTokens();
   // Do not install the global theme.qss on QApplication. Under Qt 6.2 +
   // WA_NativeWindow Ogre + live Autolink, QCss::Selector::pseudoElement /
   // getOpaqueChildren SEGV during the first paints after RenderSystem ready.

@@ -230,6 +230,14 @@ def replace_yaml_scalar(text: str, key: str, value: str) -> str:
     return pattern.sub(f"{key}: {value}", text)
 
 
+def format_yaml_real(value: float) -> str:
+    """Format an OpenCV YAML scalar without changing its numeric type."""
+    formatted = f"{value:.12g}"
+    if not any(marker in formatted for marker in (".", "e", "E")):
+        formatted += ".0"
+    return formatted
+
+
 def write_kitti_config(base_config: Path, sequence_root: Path, output: Path) -> None:
     fx, fy, cx, cy, baseline = read_kitti_calibration(
         sequence_root / "calib.txt"
@@ -294,7 +302,7 @@ def write_tum_rgbd_config(
     family = tum_rgbd_family(sequence)
     text = base_config.read_text(encoding="utf-8")
     for key, value in TUM_RGBD_CALIBRATIONS[family].items():
-        text = replace_yaml_scalar(text, key, f"{value:.12g}")
+        text = replace_yaml_scalar(text, key, format_yaml_real(value))
     generated_comment = (
         f"# Generated for {sequence} using the official {family} calibration.\n"
     )
@@ -328,6 +336,21 @@ def write_tum_rgbd_associations(
 
 
 def metrics_coverage(metrics: dict[str, Any]) -> float | None:
+    support_aware_keys = (
+        "tracking_output_coverage_percent",
+        "association_coverage_percent",
+    )
+    if any(key in metrics for key in support_aware_keys):
+        values = []
+        for key in support_aware_keys:
+            value = metrics.get(key)
+            if not isinstance(value, (int, float)) or not math.isfinite(
+                float(value)
+            ):
+                return None
+            values.append(float(value))
+        return min(values)
+
     for key in (
         "ate_ground_truth_coverage_percent",
         "ground_truth_coverage_percent",

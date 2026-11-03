@@ -9,12 +9,14 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstdint>
 #include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 
+#include <Eigen/Geometry>
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
@@ -99,6 +101,8 @@ public:
 
 private:
     friend class AtlasNodeTfTest;
+    friend class AtlasNodeCoordinateFrameTest;
+    friend class AtlasNodeTimestampTest;
 
     using Image = ::automsgs::msgs::sensor_msgs::Image;
     using Imu = ::automsgs::msgs::sensor_msgs::Imu;
@@ -113,12 +117,17 @@ private:
     void OnGroundTruthOdometry(const std::shared_ptr<Odometry>& message);
     void OnTfMessage(const std::shared_ptr<TfMessage>& message, bool is_static);
     void TryTrackSynchronized(bool depth);
+    bool AcceptTrackingTimestamp(double timestamp);
     void Publish(double timestamp);
     void RequestMapPublish(double timestamp);
     void MapPublishLoop();
     void PublishMaps(double timestamp);
-    void PublishGroundTruth(double timestamp, bool publish_path);
-    void PublishTransform(const Odometry& odometry);
+    void ObserveGroundTruthCoordinateFrame(const TrackingResult& result);
+    void PublishGroundTruth(double timestamp, bool publish_path,
+                            const Odometry& atlas_odometry);
+    bool AlignGroundTruthToAtlas(const Odometry& atlas_odometry,
+                                 Eigen::Isometry3d* world_from_camera);
+    bool PublishTransform(const Odometry& odometry);
     bool ComputeMapToOdom(const Odometry& odometry,
                           const TransformStamped& odom_from_camera,
                           TransformStamped* map_from_odom) const;
@@ -169,13 +178,37 @@ private:
     std::mutex ground_truth_mutex_;
     std::deque<std::shared_ptr<Odometry>> ground_truth_queue_;
     ::automsgs::msgs::nav_msgs::Path ground_truth_path_;
+    Eigen::Isometry3d atlas_from_ground_truth_world_ =
+        Eigen::Isometry3d::Identity();
+    bool have_ground_truth_alignment_ = false;
+    bool have_ground_truth_coordinate_frame_ = false;
+    bool ground_truth_coordinate_frame_ready_ = false;
+    std::uint64_t ground_truth_map_id_ = 0;
+    std::uint64_t ground_truth_coordinate_epoch_ = 0;
+    std::uint64_t ground_truth_destructive_epoch_ = 0;
     std::atomic<bool> running_{false};
     bool map_publish_stop_requested_ = false;
     bool map_publish_requested_ = false;
     double requested_map_timestamp_ = -1.0;
+    double last_tracking_input_time_ = -1.0;
     double last_tracking_image_publish_time_ = -1.0;
     double last_trajectory_publish_time_ = -1.0;
     double last_map_publish_time_ = -1.0;
+    double last_status_log_time_ = -1.0;
+    std::uint64_t publish_count_ = 0;
+    std::uint64_t tf_ok_count_ = 0;
+    std::uint64_t tf_wait_count_ = 0;
+    bool last_tf_ok_ = false;
+    int last_logged_tracking_state_ = -999;
+    bool last_logged_valid_ = false;
+    bool last_logged_imu_ready_ = false;
+    bool last_logged_have_odometry_ = false;
+    bool last_logged_tf_ok_ = false;
+    bool have_logged_pose_ = false;
+    std::uint64_t last_logged_map_id_ = 0;
+    std::uint64_t last_logged_epoch_ = 0;
+    Eigen::Vector3d last_logged_pose_ = Eigen::Vector3d::Zero();
+    std::atomic<bool> ingested_camera_tf_{false};
 };
 
 }  // namespace autonomy::localization::atlas

@@ -59,6 +59,17 @@
 #include <Eigen/Sparse>
 
 namespace autonomy::localization::atlas {
+namespace internal {
+
+constexpr bool ShouldContinueRansacIterations(
+    int total_iterations, int maximum_iterations, int batch_iterations,
+    int requested_batch_iterations) {
+    return total_iterations < maximum_iterations &&
+           batch_iterations < requested_batch_iterations;
+}
+
+}  // namespace internal
+
 class MLPnPsolver
 {
 public:

@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/input/search_box.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
@@ -296,13 +297,13 @@ void TfTreePanel::setupUi() {
 
   row->addWidget(MakeToolbarSeparator(toolbar));
 
-  filter_edit_ = new QLineEdit(toolbar);
-  filter_edit_->setObjectName(QStringLiteral("AutovizCompactFilter"));
+  auto* filter_box = new widget::SearchBox(toolbar);
+  filter_box->SetTone(style::Tone::Frost);
+  filter_box->SetSearchBoxSize(widget::SearchBox::Size::kSmall);
+  filter_edit_ = filter_box;
+  filter_edit_->setAccessibleName(tr("Filter transform frames"));
   filter_edit_->setPlaceholderText(tr("Filter…"));
-  filter_edit_->setClearButtonEnabled(true);
   filter_edit_->setMinimumWidth(120);
-  filter_edit_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/fields"), style::Tone::Frost));
   row->addWidget(filter_edit_, 1);
 
   row->addWidget(MakeToolbarSeparator(toolbar));

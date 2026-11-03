@@ -191,6 +191,13 @@ public:
     bool GetCurrentMapIdentity(std::uint64_t* map_id,
                                std::uint64_t* coordinate_epoch,
                                std::uint64_t* destructive_epoch);
+    /** Writes the map identity and coordinate readiness from one map sample. */
+    bool GetCurrentMapIdentity(std::uint64_t* map_id,
+                               std::uint64_t* coordinate_epoch,
+                               std::uint64_t* destructive_epoch,
+                               bool* coordinate_frame_ready);
+    /** Returns whether the current map coordinate frame is metric and stable. */
+    bool CoordinateFrameReady();
     std::vector<MapPoint*> GetTrackedMapPoints();
     std::vector<cv::KeyPoint> GetTrackedKeyPointsUn();
     /** Returns an annotated copy of the latest image with ORB matches. */

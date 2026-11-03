@@ -350,15 +350,6 @@ QWidget {
   color: #1E293B;
   border-radius: 10px;
 }
-QLineEdit {
-  background: rgba(255,255,255,0.88);
-  color: #1E293B;
-  border: 1px solid rgba(203,213,225,0.90);
-  border-radius: 6px;
-  padding: 5px 8px;
-  selection-background-color: #CCFBF1;
-  selection-color: #0D9488;
-}
 QListWidget {
   background: transparent;
   color: #1E293B;
@@ -513,10 +504,6 @@ QComboBox QAbstractItemView {
 
 /* @section channel_graph.view */
 QGraphicsView { background: #e0f2fe; border: none; }
-/* @end */
-
-/* @section channels.empty_hint */
-color: {{panel-muted}}; font-size: 13px; padding: 32px 24px;
 /* @end */
 
 /* @section channels.panel */
@@ -920,7 +907,7 @@ QFrame#RawMessagesToolbar {
   background: {{panel-surface}};
   border-bottom: 1px solid {{panel-border}};
 }
-QFrame#RawMessagesTreeCard, QFrame#RawMessagesEmpty {
+QFrame#RawMessagesTreeCard {
   background: {{panel-surface}};
   border: none;
 }

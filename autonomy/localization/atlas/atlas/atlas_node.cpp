@@ -94,6 +94,27 @@ bool IsInertial(VisualSensorMode mode) {
            mode == VisualSensorMode::kRgbdInertial;
 }
 
+const char* TrackingStateName(int state) {
+    switch (state) {
+        case -1:
+            return "SYSTEM_NOT_READY";
+        case 0:
+            return "NO_IMAGES_YET";
+        case 1:
+            return "NOT_INITIALIZED";
+        case 2:
+            return "OK";
+        case 3:
+            return "RECENTLY_LOST";
+        case 4:
+            return "LOST";
+        case 5:
+            return "OK_KLT";
+        default:
+            return "UNKNOWN";
+    }
+}
+
 double Timestamp(const ::automsgs::msgs::sensor_msgs::Image& message) {
     if (!message.has_header() || !message.header().has_stamp())
         return -1.0;
@@ -350,13 +371,27 @@ bool AtlasNode::Start() {
         return false;
     }
 
+    last_tracking_input_time_ = -1.0;
     last_tracking_image_publish_time_ = -1.0;
     last_trajectory_publish_time_ = -1.0;
     last_map_publish_time_ = -1.0;
+    last_status_log_time_ = -1.0;
+    publish_count_ = 0;
+    tf_ok_count_ = 0;
+    tf_wait_count_ = 0;
+    last_tf_ok_ = false;
+    ingested_camera_tf_ = false;
     {
         std::lock_guard<std::mutex> lock(ground_truth_mutex_);
         ground_truth_queue_.clear();
         ground_truth_path_.Clear();
+        atlas_from_ground_truth_world_.setIdentity();
+        have_ground_truth_alignment_ = false;
+        have_ground_truth_coordinate_frame_ = false;
+        ground_truth_coordinate_frame_ready_ = false;
+        ground_truth_map_id_ = 0;
+        ground_truth_coordinate_epoch_ = 0;
+        ground_truth_destructive_epoch_ = 0;
     }
     {
         std::lock_guard<std::mutex> lock(map_publish_mutex_);
@@ -465,14 +500,28 @@ void AtlasNode::Shutdown() {
     tracking_image_writer_.reset();
     feature_matches_writer_.reset();
     loop_closures_writer_.reset();
+    last_tracking_input_time_ = -1.0;
     last_tracking_image_publish_time_ = -1.0;
     last_trajectory_publish_time_ = -1.0;
     last_map_publish_time_ = -1.0;
+    last_status_log_time_ = -1.0;
+    publish_count_ = 0;
+    tf_ok_count_ = 0;
+    tf_wait_count_ = 0;
+    last_tf_ok_ = false;
+    ingested_camera_tf_ = false;
     requested_map_timestamp_ = -1.0;
     {
         std::lock_guard<std::mutex> lock(ground_truth_mutex_);
         ground_truth_queue_.clear();
         ground_truth_path_.Clear();
+        atlas_from_ground_truth_world_.setIdentity();
+        have_ground_truth_alignment_ = false;
+        have_ground_truth_coordinate_frame_ = false;
+        ground_truth_coordinate_frame_ready_ = false;
+        ground_truth_map_id_ = 0;
+        ground_truth_coordinate_epoch_ = 0;
+        ground_truth_destructive_epoch_ = 0;
     }
     {
         std::lock_guard<std::mutex> tf_lock(tf_mutex_);
@@ -535,7 +584,24 @@ void AtlasNode::OnTfMessage(const std::shared_ptr<TfMessage>& message,
             tf_buffer_, transform,
             is_static ? "atlas_tf_static_input" : "atlas_tf_input",
             edge_is_static);
+        if (!ingested_camera_tf_ &&
+            transform.child_frame_id() == options_.camera_frame) {
+            ingested_camera_tf_ = true;
+            AINFO << "AtlasNode ingested camera TF " << parent << " -> "
+                  << transform.child_frame_id()
+                  << (edge_is_static ? " (static)" : " (dynamic)");
+        }
     }
+}
+
+bool AtlasNode::AcceptTrackingTimestamp(double timestamp) {
+    if (!std::isfinite(timestamp) || timestamp < 0.0 ||
+        (last_tracking_input_time_ >= 0.0 &&
+         timestamp <= last_tracking_input_time_)) {
+        return false;
+    }
+    last_tracking_input_time_ = timestamp;
+    return true;
 }
 
 void AtlasNode::OnPrimaryImage(const std::shared_ptr<Image>& message) {
@@ -543,8 +609,11 @@ void AtlasNode::OnPrimaryImage(const std::shared_ptr<Image>& message) {
     if (!running_ || !message || !messages_)
         return;
     if (IsMonocular(sensor_mode_)) {
+        const double timestamp = Timestamp(*message);
+        if (!AcceptTrackingTimestamp(timestamp))
+            return;
         if (messages_->TrackMonocular(*message))
-            Publish(Timestamp(*message));
+            Publish(timestamp);
         return;
     }
     {
@@ -616,10 +685,14 @@ void AtlasNode::TryTrackSynchronized(bool depth) {
     }
     if (!primary || !secondary || !messages_)
         return;
+    const double timestamp =
+        std::max(Timestamp(*primary), Timestamp(*secondary));
+    if (!AcceptTrackingTimestamp(timestamp))
+        return;
     const bool tracked = depth ? messages_->TrackRgbd(*primary, *secondary)
                                : messages_->TrackStereo(*primary, *secondary);
     if (tracked)
-        Publish(std::max(Timestamp(*primary), Timestamp(*secondary)));
+        Publish(timestamp);
 }
 
 bool AtlasNode::ComputeMapToOdom(const Odometry& odometry,
@@ -658,24 +731,36 @@ bool AtlasNode::ComputeMapToOdom(const Odometry& odometry,
     return true;
 }
 
-void AtlasNode::PublishTransform(const Odometry& odometry) {
+bool AtlasNode::PublishTransform(const Odometry& odometry) {
     if (!tf_writer_)
-        return;
+        return false;
     try {
         TransformStamped map_from_odom;
         {
             std::lock_guard<std::mutex> tf_lock(tf_mutex_);
             if (!tf_buffer_)
-                return;
-            const TransformStamped odom_from_camera =
-                tf_buffer_->lookupTransform(options_.odom_frame,
-                                            options_.camera_frame,
-                                            odometry.header().stamp(), 0.0f);
+                return false;
+            TransformStamped odom_from_camera;
+            try {
+                // timeout=0: do not block the tracking thread or hold tf_mutex
+                // while BufferCore retries. Missing frames are retried on the
+                // next publish once /tf_static arrives.
+                odom_from_camera = tf_buffer_->lookupTransform(
+                    options_.odom_frame, options_.camera_frame,
+                    odometry.header().stamp(), 0.0f);
+            } catch (const std::exception&) {
+                odom_from_camera = tf_buffer_->lookupTransform(
+                    options_.odom_frame, options_.camera_frame,
+                    ::automsgs::msgs::builtin_interfaces::ZeroTime(), 0.0f);
+            }
             if (!ComputeMapToOdom(odometry, odom_from_camera, &map_from_odom)) {
-                AWARN_EVERY(100)
+                ++tf_wait_count_;
+                last_tf_ok_ = false;
+                AWARN_EVERY(15)
                     << "AtlasNode skipped invalid or stale TF composition "
-                    << options_.map_frame << " -> " << options_.odom_frame;
-                return;
+                    << options_.map_frame << " -> " << options_.odom_frame
+                    << " waits=" << tf_wait_count_;
+                return false;
             }
             ::autonomy::transform::ApplyTransformStampedToBuffer(
                 tf_buffer_, map_from_odom, "atlas_tf_output", false);
@@ -683,16 +768,76 @@ void AtlasNode::PublishTransform(const Odometry& odometry) {
         TfMessage message;
         *message.add_transforms() = map_from_odom;
         tf_writer_->Write(message);
+        ++tf_ok_count_;
+        if (!last_tf_ok_) {
+            AINFO << "AtlasNode publishing " << options_.map_frame << " -> "
+                  << options_.odom_frame << " via " << options_.camera_frame;
+        }
+        last_tf_ok_ = true;
+        return true;
     } catch (const std::exception& error) {
-        AWARN_EVERY(100) << "AtlasNode waiting for TF " << options_.odom_frame
-                         << " -> " << options_.base_frame << " -> "
-                         << options_.camera_frame << " (or direct "
-                         << options_.odom_frame << " -> "
-                         << options_.camera_frame << "): " << error.what();
+        ++tf_wait_count_;
+        last_tf_ok_ = false;
+        AWARN_EVERY(15) << "AtlasNode waiting for TF " << options_.odom_frame
+                        << " -> " << options_.base_frame << " -> "
+                        << options_.camera_frame << " (or direct "
+                        << options_.odom_frame << " -> "
+                        << options_.camera_frame << ") waits=" << tf_wait_count_
+                        << ": " << error.what();
+        return false;
     }
 }
 
-void AtlasNode::PublishGroundTruth(double timestamp, bool publish_path) {
+bool AtlasNode::AlignGroundTruthToAtlas(
+    const Odometry& atlas_odometry,
+    Eigen::Isometry3d* ground_truth_world_from_camera) {
+    if (ground_truth_world_from_camera == nullptr ||
+        !ground_truth_coordinate_frame_ready_ ||
+        atlas_odometry.header().frame_id() != options_.map_frame ||
+        atlas_odometry.child_frame_id() != options_.camera_frame) {
+        return false;
+    }
+    if (!have_ground_truth_alignment_) {
+        Eigen::Isometry3d atlas_from_camera;
+        if (!PoseToIsometry(atlas_odometry.pose().pose().pose(),
+                            &atlas_from_camera)) {
+            return false;
+        }
+        atlas_from_ground_truth_world_ =
+            atlas_from_camera * ground_truth_world_from_camera->inverse();
+        if (!atlas_from_ground_truth_world_.matrix().allFinite())
+            return false;
+        have_ground_truth_alignment_ = true;
+    }
+    *ground_truth_world_from_camera =
+        atlas_from_ground_truth_world_ * *ground_truth_world_from_camera;
+    return ground_truth_world_from_camera->matrix().allFinite();
+}
+
+void AtlasNode::ObserveGroundTruthCoordinateFrame(
+    const TrackingResult& result) {
+    if (!result.map_id_valid)
+        return;
+    std::lock_guard<std::mutex> lock(ground_truth_mutex_);
+    const bool coordinate_frame_changed =
+        have_ground_truth_coordinate_frame_ &&
+        (ground_truth_map_id_ != result.map_id ||
+         ground_truth_coordinate_epoch_ != result.coordinate_epoch ||
+         ground_truth_destructive_epoch_ != result.destructive_epoch);
+    if (coordinate_frame_changed) {
+        ground_truth_path_.Clear();
+        atlas_from_ground_truth_world_.setIdentity();
+        have_ground_truth_alignment_ = false;
+    }
+    have_ground_truth_coordinate_frame_ = true;
+    ground_truth_coordinate_frame_ready_ = result.coordinate_frame_ready;
+    ground_truth_map_id_ = result.map_id;
+    ground_truth_coordinate_epoch_ = result.coordinate_epoch;
+    ground_truth_destructive_epoch_ = result.destructive_epoch;
+}
+
+void AtlasNode::PublishGroundTruth(double timestamp, bool publish_path,
+                                   const Odometry& atlas_odometry) {
     if (!ground_truth_trajectory_writer_ ||
         options_.ground_truth_sync_tolerance_sec < 0.0) {
         return;
@@ -743,22 +888,24 @@ void AtlasNode::PublishGroundTruth(double timestamp, bool publish_path) {
                     child_from_camera.header().stamp()) ||
                 !TransformToIsometry(child_from_camera.transform(),
                                      &child_from_camera_pose)) {
-                AWARN_EVERY(100)
+                AWARN_EVERY(15)
                     << "AtlasNode rejected stale ground-truth transform "
                     << child_frame << " -> " << options_.camera_frame;
                 return;
             }
             world_from_camera = world_from_camera * child_from_camera_pose;
         } catch (const std::exception& error) {
-            AWARN_EVERY(100)
+            AWARN_EVERY(15)
                 << "AtlasNode waiting for ground-truth transform "
                 << child_frame << " -> " << options_.camera_frame << ": "
                 << error.what();
             return;
         }
     }
+    if (!AlignGroundTruthToAtlas(atlas_odometry, &world_from_camera))
+        return;
 
-    const std::string& frame = nearest->header().frame_id();
+    const std::string& frame = options_.map_frame;
     if (ground_truth_path_.header().frame_id() != frame) {
         ground_truth_path_.Clear();
         ground_truth_path_.mutable_header()->set_frame_id(frame);
@@ -789,12 +936,59 @@ void AtlasNode::PublishGroundTruth(double timestamp, bool publish_path) {
 void AtlasNode::Publish(double timestamp) {
     if (!running_ || !std::isfinite(timestamp) || !messages_)
         return;
+    TrackingResult tracking_result;
+    if (system_)
+        system_->LatestResult(&tracking_result);
+    ObserveGroundTruthCoordinateFrame(tracking_result);
     Odometry odometry;
     const bool have_odometry = messages_->GetOdometry(&odometry);
+    ++publish_count_;
     if (have_odometry) {
         if (odometry_writer_)
             odometry_writer_->Write(odometry);
         PublishTransform(odometry);
+    }
+    const Eigen::Vector3d pose = tracking_result.pose_world_camera.translation;
+    const double pose_delta =
+        have_logged_pose_ ? (pose - last_logged_pose_).norm() : 0.0;
+    const bool state_changed =
+        tracking_result.tracking_state != last_logged_tracking_state_ ||
+        tracking_result.valid != last_logged_valid_ ||
+        tracking_result.coordinate_frame_ready != last_logged_imu_ready_ ||
+        tracking_result.map_id != last_logged_map_id_ ||
+        tracking_result.coordinate_epoch != last_logged_epoch_ ||
+        have_odometry != last_logged_have_odometry_ ||
+        last_tf_ok_ != last_logged_tf_ok_;
+    const bool pose_moved =
+        tracking_result.valid && (!have_logged_pose_ || pose_delta >= 0.25);
+    const bool keep_alive = last_status_log_time_ < 0.0 ||
+                            timestamp - last_status_log_time_ >= 10.0;
+    if (state_changed || pose_moved || keep_alive) {
+        AINFO << "ATLAS_STATUS"
+              << " tracking="
+              << TrackingStateName(tracking_result.tracking_state)
+              << " valid=" << tracking_result.valid
+              << " imu_frame_ready=" << tracking_result.coordinate_frame_ready
+              << " map_id=" << tracking_result.map_id
+              << " epoch=" << tracking_result.coordinate_epoch
+              << " odom=" << have_odometry << " tf_ok=" << last_tf_ok_
+              << " camera_tf=" << ingested_camera_tf_.load()
+              << " dpose=" << pose_delta
+              << " keepalive=" << (keep_alive && !state_changed && !pose_moved)
+              << " pose=[" << pose.x() << "," << pose.y() << "," << pose.z()
+              << "]";
+        last_status_log_time_ = timestamp;
+        last_logged_tracking_state_ = tracking_result.tracking_state;
+        last_logged_valid_ = tracking_result.valid;
+        last_logged_imu_ready_ = tracking_result.coordinate_frame_ready;
+        last_logged_have_odometry_ = have_odometry;
+        last_logged_tf_ok_ = last_tf_ok_;
+        last_logged_map_id_ = tracking_result.map_id;
+        last_logged_epoch_ = tracking_result.coordinate_epoch;
+        if (tracking_result.valid) {
+            last_logged_pose_ = pose;
+            have_logged_pose_ = true;
+        }
     }
     const bool tracking_image_due =
         options_.tracking_image_publish_period_sec <= 0.0 ||
@@ -827,7 +1021,7 @@ void AtlasNode::Publish(double timestamp) {
         timestamp - last_trajectory_publish_time_ >=
             options_.trajectory_publish_period_sec;
     if (have_odometry)
-        PublishGroundTruth(timestamp, trajectory_due);
+        PublishGroundTruth(timestamp, trajectory_due, odometry);
     if (trajectory_due) {
         ::automsgs::msgs::nav_msgs::Path path;
         if (trajectory_writer_ && messages_->GetPath(&path)) {

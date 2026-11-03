@@ -24,6 +24,7 @@
 #include "autolink/autolink.hpp"
 #include "autolink/common/log.hpp"
 #include "autonomy/common/cli_options.hpp"
+#include "autonomy/localization/atlas/atlas/instance_lock.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/localization_server.hpp"
 
@@ -238,13 +239,28 @@ int main(int argc, char** argv) {
     autonomy::localization::BindLocalizationOptions(app, cli);
     autonomy::common::ParseOrExit(app, argc, argv);
 
+    auto options = autonomy::localization::BuildOptions(cli);
     if (!autolink::Init(argv[0])) {
         AERROR << "autolink::Init failed.";
         return EXIT_FAILURE;
     }
     autonomy::localization::RegisterAutolinkShutdownHandlers();
 
-    auto options = autonomy::localization::BuildOptions(cli);
+    autonomy::localization::atlas::InstanceLock atlas_instance_lock;
+    if (options.backend ==
+        autonomy::localization::LocalizationBackend::kAtlas) {
+        std::string error_message;
+        if (!atlas_instance_lock.TryAcquire(
+                autonomy::localization::atlas::ResolveInstanceLockPath(),
+                options.atlas_config_path, &error_message)) {
+            AERROR << "Atlas startup rejected: " << error_message
+                   << ". Stop it first: autolink launch stop "
+                      "localization_atlas_autosim.launch";
+            autolink::Clear();
+            return 75;
+        }
+    }
+
     AINFO << "localization_main: backend="
           << autonomy::localization::LocalizationBackendName(options.backend);
     if (options.backend ==

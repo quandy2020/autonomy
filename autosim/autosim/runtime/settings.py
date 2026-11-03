@@ -68,6 +68,7 @@ class Config:
     def channel_map(self) -> Dict[str, str]:
         """Logical bridge keys → channel names."""
         robot = self.data["habitat"]["robot"]
+        truth = robot["truth"]
         sensors = self.data["habitat"]["sensors"]
         mapping = self.data["habitat"].get("map") or {}
         ply = mapping.get("ply") or {}
@@ -84,12 +85,17 @@ class Config:
             "camera_info": sensors["camera"]["info_channel"],
             "imu": sensors["imu"]["channel"],
             "odom": sensors["odom"]["channel"],
-            "gt_pose": robot["truth"]["channel"],
+            "gt_pose": truth["channel"],
             "map_grid": grid.get("channel", "/map"),
             "tf": tf_cfg.get("channel", "/tf"),
             "tf_static": tf_cfg.get("static_channel", "/tf_static"),
             "clock": clock_cfg.get("channel", "/clock"),
         }
+        ground_truth_odometry_channel = str(
+            truth.get("odometry_channel") or ""
+        ).strip()
+        if ground_truth_odometry_channel:
+            channels["gt_odom"] = ground_truth_odometry_channel
         joint_cfg = sensors.get("joint_states") or {}
         if isinstance(joint_cfg, Mapping) and joint_cfg.get("enabled", False):
             channels["joint_states"] = str(
@@ -185,7 +191,11 @@ class Config:
             return
         robot = habitat.get("robot")
         if isinstance(robot, dict) and "truth" not in robot:
-            robot["truth"] = {"enabled": False, "channel": "/gt/pose"}
+            robot["truth"] = {
+                "enabled": False,
+                "channel": "/gt/pose",
+                "odometry_channel": "",
+            }
         sensors = habitat.get("sensors")
         if not isinstance(sensors, dict):
             return
@@ -238,7 +248,7 @@ class Config:
                 "enabled": False,
                 "channel": "/odom",
                 "frame": "odom",
-                "child_frame": "base_link",
+                "child_frame": "base_footprint",
                 "noise": 0.0,
             },
         }
@@ -472,6 +482,11 @@ class Config:
             raise ValueError("empty channel name: habitat.robot.cmd_vel")
         if not isinstance(truth.get("channel"), str) or not truth["channel"].strip():
             raise ValueError("empty channel name: habitat.robot.truth.channel")
+        odometry_channel = truth.get("odometry_channel", "")
+        if not isinstance(odometry_channel, str):
+            raise ValueError(
+                "habitat.robot.truth.odometry_channel must be a string"
+            )
         cls.validate_urdf(robot_resolved.get("urdf", ""))
         cls.require_nonneg(robot.get("max_linear", 0.0), "habitat.robot.max_linear")
         cls.require_nonneg(robot.get("max_angular", 0.0), "habitat.robot.max_angular")
@@ -517,6 +532,8 @@ class Config:
             sensors["odom"]["channel"],
             truth["channel"],
         ]
+        if odometry_channel.strip():
+            names.append(odometry_channel.strip())
         camera_cfg = sensors.get("camera") or {}
         depth_points_channel = str(camera_cfg.get("depth_points_channel") or "").strip()
         if depth_points_channel:

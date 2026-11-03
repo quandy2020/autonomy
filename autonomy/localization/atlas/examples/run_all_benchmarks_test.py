@@ -14,6 +14,7 @@ from run_all_benchmarks import (
     build_argument_parser,
     discover_tum_rgbd_sequences,
     execute_job,
+    format_yaml_real,
     inventory_tum_rgbd,
     make_jobs,
     read_kitti_calibration,
@@ -120,6 +121,50 @@ class MetricsTest(unittest.TestCase):
         self.assertEqual(coverage, 61.0)
         self.assertEqual(len(violations), 1)
 
+    def test_ground_truth_support_fraction_does_not_fail_coverage_gate(self):
+        violations, _, coverage, _, _ = assess_metrics(
+            {
+                "ate_rmse_m": 0.02,
+                "tracking_output_coverage_percent": 100.0,
+                "gt_support_fraction_percent": 24.0,
+                "association_coverage_percent": 100.0,
+                "coverage_percent": 24.0,
+            },
+            Thresholds(0.25, 90.0),
+        )
+        self.assertEqual(coverage, 100.0)
+        self.assertEqual(violations, [])
+
+    def test_missing_tracking_output_cannot_be_hidden_by_association(self):
+        violations, _, coverage, _, _ = assess_metrics(
+            {
+                "ate_rmse_m": 0.02,
+                "tracking_output_coverage_percent": 80.0,
+                "gt_support_fraction_percent": 24.0,
+                "association_coverage_percent": 100.0,
+                "coverage_percent": 100.0,
+            },
+            Thresholds(0.25, 90.0),
+        )
+        self.assertEqual(coverage, 80.0)
+        self.assertEqual(len(violations), 1)
+        self.assertIn("coverage 80.000%", violations[0])
+
+    def test_missing_association_cannot_be_hidden_by_tracking_output(self):
+        violations, _, coverage, _, _ = assess_metrics(
+            {
+                "ate_rmse_m": 0.02,
+                "tracking_output_coverage_percent": 100.0,
+                "gt_support_fraction_percent": 100.0,
+                "association_coverage_percent": 75.0,
+                "coverage_percent": 100.0,
+            },
+            Thresholds(0.25, 90.0),
+        )
+        self.assertEqual(coverage, 75.0)
+        self.assertEqual(len(violations), 1)
+        self.assertIn("coverage 75.000%", violations[0])
+
 
 class TumInventoryTest(unittest.TestCase):
     def test_inventory_does_not_extract_archives(self):
@@ -178,6 +223,13 @@ class TumRgbdConfigurationTest(unittest.TestCase):
             encoding="utf-8",
         )
 
+    def test_formats_integral_floats_as_opencv_yaml_reals(self):
+        self.assertEqual(format_yaml_real(5000.0), "5000.0")
+        self.assertEqual(format_yaml_real(5208.0), "5208.0")
+        self.assertEqual(format_yaml_real(0.0), "0.0")
+        self.assertEqual(format_yaml_real(0.07732), "0.07732")
+        self.assertEqual(format_yaml_real(1.0e-20), "1e-20")
+
     def test_generates_official_freiburg_calibrations(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -191,7 +243,12 @@ class TumRgbdConfigurationTest(unittest.TestCase):
                 text = output.read_text(encoding="utf-8")
                 self.assertTrue(text.startswith("%YAML:1.0\n"))
                 for key, value in expected.items():
-                    self.assertIn(f"{key}: {value:.12g}\n", text)
+                    self.assertIn(f"{key}: {format_yaml_real(value)}\n", text)
+                self.assertRegex(
+                    text,
+                    r"(?m)^RGBD\.DepthMapFactor: "
+                    r"[-+]?(?:\d+\.\d*|\.\d+)(?:[eE][-+]?\d+)?$",
+                )
 
     def test_writes_deterministic_one_to_one_associations(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -47,6 +47,9 @@ IMU.NoiseAcc: 1.0e-03
 IMU.GyroWalk: 1.0e-05
 IMU.AccWalk: 1.0e-04
 IMU.Frequency: 100.0
+# TartanAir images arrive at 10 Hz; allow one initialization keyframe per
+# image while preserving the conservative 0.25 s default for other datasets.
+IMU.InitKeyFrameMinInterval: 0.10
 IMU.InsertKFsWhenLost: 1
 
 ORBextractor.nFeatures: 1600

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -91,6 +92,8 @@ public:
         ::automsgs::msgs::visualization_msgs::MarkerArray* message) const;
 
 private:
+    friend class MessageAdapterEpochTest;
+
     bool Record(const TrackingResult& result);
 
     MapBuilder* system_ = nullptr;
@@ -98,6 +101,10 @@ private:
     mutable std::mutex mutex_;
     ::automsgs::msgs::nav_msgs::Path path_;
     TrackingResult latest_;
+    bool have_path_coordinate_frame_ = false;
+    std::uint64_t path_map_id_ = 0;
+    std::uint64_t path_coordinate_epoch_ = 0;
+    std::uint64_t path_destructive_epoch_ = 0;
 };
 
 }  // namespace autonomy::localization::atlas

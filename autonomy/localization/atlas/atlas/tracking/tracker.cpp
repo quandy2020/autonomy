@@ -31,13 +31,60 @@
 #include "atlas/match/orb_matcher.hpp"
 #include "atlas/sensor/camera/kannala_brandt_camera.hpp"
 #include "atlas/sensor/camera/pinhole_camera.hpp"
+#include "atlas/tracking/keyframe_admission_policy.hpp"
+#include "atlas/tracking/local_map_tracking_transaction.hpp"
+#include "atlas/tracking/recovery_policy.hpp"
+#include "atlas/tracking/rgbd_map_reanchor_matcher.hpp"
 
-#include <iostream>
-
+#include <algorithm>
+#include <array>
 #include <chrono>
+#include <cmath>
+#include <iostream>
+#include <limits>
 #include <mutex>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace autonomy::localization::atlas {
+namespace {
+
+const char* TrackingStateName(int state) {
+    switch (state) {
+        case Tracker::SYSTEM_NOT_READY:
+            return "SYSTEM_NOT_READY";
+        case Tracker::NO_IMAGES_YET:
+            return "NO_IMAGES_YET";
+        case Tracker::NOT_INITIALIZED:
+            return "NOT_INITIALIZED";
+        case Tracker::OK:
+            return "OK";
+        case Tracker::RECENTLY_LOST:
+            return "RECENTLY_LOST";
+        case Tracker::LOST:
+            return "LOST";
+        case Tracker::OK_KLT:
+            return "OK_KLT";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+}  // namespace
+
+void Tracker::LogVisualSlamEvent(const char* event) {
+    const Eigen::Vector3f t = mCurrentFrame.isSet()
+                                  ? mCurrentFrame.GetCameraCenter()
+                                  : Eigen::Vector3f::Zero();
+    AINFO << "ATLAS_TRACK event=" << event
+          << " state=" << TrackingStateName(mState)
+          << " inliers=" << mnMatchesInliers
+          << " frame=" << mCurrentFrame.mnId << " last_kf="
+          << (mpLastKeyFrame ? static_cast<int>(mpLastKeyFrame->mnId) : -1)
+          << " kfs=" << (mpAtlas ? mpAtlas->KeyFramesInMap() : 0) << " pose=["
+          << t.x() << "," << t.y() << "," << t.z() << "]";
+}
 
 Tracker::Tracker(System* pSys, Vocabulary* pVoc, FrameDrawer* pFrameDrawer,
                  MapDrawer* pMapDrawer, Atlas* pAtlas, PlaceRecognizer* pKFDB,
@@ -48,6 +95,7 @@ Tracker::Tracker(System* pSys, Vocabulary* pVoc, FrameDrawer* pFrameDrawer,
       mTrackedFr(0),
       mbStep(false),
       mbOnlyTracking(false),
+      imu_rgbd_visual_recovery_active_(false),
       mbMapUpdated(false),
       mbVO(false),
       mpVocabulary(pVoc),
@@ -630,6 +678,7 @@ void Tracker::newParameterLoader(ConfigLoader* settings) {
     autonomy::common::math::SE3f Tbc = settings->Tbc();
     mInsertKFsLost = settings->insertKFsWhenLost();
     mImuFreq = settings->imuFrequency();
+    mImuInitKeyFrameMinInterval = settings->imuInitKeyFrameMinInterval();
     mImuPer = 0.001;  // 1.0 / static_cast<double>(mImuFreq);     //TODO: ESTO
                       // ESTA BIEN?
     float Ng = settings->noiseGyro();
@@ -1313,6 +1362,25 @@ bool Tracker::ParseIMUParamFile(cv::FileStorage& fConfigLoader) {
         b_miss_params = true;
     }
 
+    node = fConfigLoader["IMU.InitKeyFrameMinInterval"];
+    if (!node.empty()) {
+        if (node.isReal()) {
+            const double interval_seconds = node.real();
+            if (std::isfinite(interval_seconds) && interval_seconds > 0.0) {
+                mImuInitKeyFrameMinInterval = interval_seconds;
+            } else {
+                AERROR << "*IMU.InitKeyFrameMinInterval must be finite and "
+                          "greater than zero*"
+                       << std::endl;
+                b_miss_params = true;
+            }
+        } else {
+            AERROR << "*IMU.InitKeyFrameMinInterval must be a real number*"
+                   << std::endl;
+            b_miss_params = true;
+        }
+    }
+
     node = fConfigLoader["IMU.NoiseGyro"];
     if (!node.empty() && node.isReal()) {
         Ng = node.real();
@@ -1612,11 +1680,39 @@ void Tracker::PreintegrateIMU() {
             usleep(500);
     }
 
-    const int n = mvImuFromLastFrame.size() - 1;
-    if (n == 0) {
-        AINFO << "Empty IMU measurements vector!!!\n";
+    // size()<2 used to underflow (n=-1) or early-return without setIntegrated(),
+    // which left mpImuPreintegratedFrame null and crashed tracking / UpdateFrameIMU.
+    if (mvImuFromLastFrame.size() < 2) {
+        AWARN << "Insufficient IMU measurements for preintegration: size="
+              << mvImuFromLastFrame.size();
+        IMU::Preintegrated* pImuPreintegratedFromLastFrame =
+            new IMU::Preintegrated(mLastFrame.mImuBias, mCurrentFrame.mImuCalib);
+        if (!mvImuFromLastFrame.empty()) {
+            const float tstep = static_cast<float>(
+                mCurrentFrame.mTimeStamp -
+                mCurrentFrame.mpPrevFrame->mTimeStamp);
+            if (std::isfinite(tstep) && tstep > 0.f) {
+                if (!mpImuPreintegratedFromLastKF) {
+                    AINFO << "mpImuPreintegratedFromLastKF does not exist"
+                          << std::endl;
+                } else {
+                    mpImuPreintegratedFromLastKF->IntegrateNewMeasurement(
+                        mvImuFromLastFrame.front().a,
+                        mvImuFromLastFrame.front().w, tstep);
+                }
+                pImuPreintegratedFromLastFrame->IntegrateNewMeasurement(
+                    mvImuFromLastFrame.front().a, mvImuFromLastFrame.front().w,
+                    tstep);
+            }
+        }
+        mCurrentFrame.mpImuPreintegratedFrame = pImuPreintegratedFromLastFrame;
+        mCurrentFrame.mpImuPreintegrated = mpImuPreintegratedFromLastKF;
+        mCurrentFrame.mpLastKeyFrame = mpLastKeyFrame;
+        mCurrentFrame.setIntegrated();
         return;
     }
+
+    const int n = static_cast<int>(mvImuFromLastFrame.size()) - 1;
 
     IMU::Preintegrated* pImuPreintegratedFromLastFrame =
         new IMU::Preintegrated(mLastFrame.mImuBias, mCurrentFrame.mImuCalib);
@@ -1687,6 +1783,10 @@ bool Tracker::PredictStateIMU() {
     }
 
     if (mbMapUpdated && mpLastKeyFrame) {
+        if (!mpImuPreintegratedFromLastKF) {
+            AINFO << "not IMU prediction!!" << std::endl;
+            return false;
+        }
         const Eigen::Vector3f twb1 = mpLastKeyFrame->GetImuPosition();
         const Eigen::Matrix3f Rwb1 = mpLastKeyFrame->GetImuRotation();
         const Eigen::Vector3f Vwb1 = mpLastKeyFrame->GetVelocity();
@@ -1711,6 +1811,10 @@ bool Tracker::PredictStateIMU() {
         mCurrentFrame.mPredBias = mCurrentFrame.mImuBias;
         return true;
     } else if (!mbMapUpdated) {
+        if (!mCurrentFrame.mpImuPreintegratedFrame) {
+            AINFO << "not IMU prediction!!" << std::endl;
+            return false;
+        }
         const Eigen::Vector3f twb1 = mLastFrame.GetImuPosition();
         const Eigen::Matrix3f Rwb1 = mLastFrame.GetImuRotation();
         const Eigen::Vector3f Vwb1 = mLastFrame.GetVelocity();
@@ -1744,6 +1848,667 @@ void Tracker::ResetFrameIMU() {
     // TODO To implement...
 }
 
+void Tracker::SoftRecoverAfterTimestampJump() {
+    const double delta_seconds =
+        mCurrentFrame.mTimeStamp - mLastFrame.mTimeStamp;
+    AWARN << "Timestamp jump soft recover: delta_sec=" << delta_seconds
+          << " last=" << mLastFrame.mTimeStamp
+          << " current=" << mCurrentFrame.mTimeStamp
+          << "; keeping active map and falling back to visual recovery";
+    mbVelocity = false;
+    mState = RECENTLY_LOST;
+    mTimeStampLost = mLastFrame.mTimeStamp;
+    imu_rgbd_visual_recovery_active_ = (mSensor == System::IMU_RGBD);
+    // Keep mpImuPreintegratedFromLastKF and the IMU queue so PreintegrateIMU
+    // can still bridge the stall when samples kept arriving during Wait*.
+}
+
+RgbdTemporalPoseEstimator::FrameView Tracker::CurrentRgbdTemporalFrameView(
+    Map* current_map) const {
+    RgbdTemporalPoseEstimator::FrameView view;
+    if (!current_map) {
+        return view;
+    }
+    view.descriptors = &mCurrentFrame.mDescriptors;
+    view.keypoints = &mCurrentFrame.mvKeysUn;
+    view.depths = &mCurrentFrame.mvDepth;
+    view.intrinsics = mCurrentFrame.mK_;
+    view.minimum_x = Frame::mnMinX;
+    view.maximum_x = Frame::mnMaxX;
+    view.minimum_y = Frame::mnMinY;
+    view.maximum_y = Frame::mnMaxY;
+    view.timestamp = mCurrentFrame.mTimeStamp;
+    view.frame_id = static_cast<std::uint64_t>(mCurrentFrame.mnId);
+    view.map_id = static_cast<std::uint64_t>(current_map->GetId());
+    view.coordinate_epoch = current_map->GetCoordinateEpoch();
+    view.map_change_index = current_map->GetMapChangeIndex();
+    return view;
+}
+
+void Tracker::LogRgbdTemporalMapPointShadow(
+    const RgbdTemporalPoseEstimator::Result& result, Map* current_map) const {
+    if (!current_map || result.pnp_inlier_pairs.empty()) {
+        return;
+    }
+
+    const RgbdTemporalPoseEstimator::Diagnostics& diagnostics =
+        result.diagnostics;
+    const std::uint64_t map_id =
+        static_cast<std::uint64_t>(current_map->GetId());
+    const std::uint64_t coordinate_epoch = current_map->GetCoordinateEpoch();
+    const int map_revision = current_map->GetMapChangeIndex();
+    const bool identity_valid =
+        mLastFrame.isSet() &&
+        diagnostics.reference_frame_id ==
+            static_cast<std::uint64_t>(mLastFrame.mnId) &&
+        diagnostics.current_frame_id ==
+            static_cast<std::uint64_t>(mCurrentFrame.mnId) &&
+        diagnostics.reference_map_id == map_id &&
+        diagnostics.current_map_id == map_id &&
+        diagnostics.reference_coordinate_epoch == coordinate_epoch &&
+        diagnostics.current_coordinate_epoch == coordinate_epoch &&
+        diagnostics.reference_map_revision == map_revision &&
+        diagnostics.current_map_revision == map_revision;
+
+    std::size_t source_nonnull = 0;
+    std::size_t replaced = 0;
+    std::size_t bad = 0;
+    std::size_t wrong_map = 0;
+    std::size_t zero_observations = 0;
+    std::size_t duplicate = 0;
+    std::size_t unique_transferable = 0;
+    std::unordered_set<std::uint64_t> transferable_ids;
+    transferable_ids.reserve(result.pnp_inlier_pairs.size());
+    constexpr int kGridColumns = 4;
+    constexpr int kGridRows = 4;
+    std::array<bool, kGridColumns * kGridRows> occupied_cells{};
+
+    if (identity_valid) {
+        for (const RgbdTemporalPoseEstimator::PnpInlierPair& pair :
+             result.pnp_inlier_pairs) {
+            if (pair.reference_original_index < 0 || pair.current_index < 0 ||
+                static_cast<std::size_t>(pair.reference_original_index) >=
+                    mLastFrame.mvpMapPoints.size() ||
+                static_cast<std::size_t>(pair.current_index) >=
+                    mCurrentFrame.mvKeysUn.size()) {
+                continue;
+            }
+            MapPoint* map_point =
+                mLastFrame.mvpMapPoints[pair.reference_original_index];
+            if (!map_point) {
+                continue;
+            }
+            ++source_nonnull;
+            MapPoint* replacement = map_point->GetReplaced();
+            if (replacement) {
+                ++replaced;
+                map_point = replacement;
+            }
+            if (map_point->isBad()) {
+                ++bad;
+                continue;
+            }
+            if (map_point->GetMap() != current_map) {
+                ++wrong_map;
+                continue;
+            }
+            if (map_point->Observations() <= 0) {
+                ++zero_observations;
+                continue;
+            }
+            if (!transferable_ids.insert(map_point->mnId).second) {
+                ++duplicate;
+                continue;
+            }
+            ++unique_transferable;
+
+            const cv::Point2f& point =
+                mCurrentFrame.mvKeysUn[pair.current_index].pt;
+            const float width = Frame::mnMaxX - Frame::mnMinX;
+            const float height = Frame::mnMaxY - Frame::mnMinY;
+            if (!std::isfinite(point.x) || !std::isfinite(point.y) ||
+                width <= 0.0F || height <= 0.0F || point.x < Frame::mnMinX ||
+                point.x > Frame::mnMaxX || point.y < Frame::mnMinY ||
+                point.y > Frame::mnMaxY) {
+                continue;
+            }
+            const int column =
+                std::clamp(static_cast<int>((point.x - Frame::mnMinX) / width *
+                                            kGridColumns),
+                           0, kGridColumns - 1);
+            const int row =
+                std::clamp(static_cast<int>((point.y - Frame::mnMinY) / height *
+                                            kGridRows),
+                           0, kGridRows - 1);
+            occupied_cells[row * kGridColumns + column] = true;
+        }
+    }
+
+    const int seed_grid = static_cast<int>(
+        std::count(occupied_cells.begin(), occupied_cells.end(), true));
+    AINFO << "ATLAS_RGBD_TEMPORAL_PNP_MP_SHADOW"
+          << " pairs=" << result.pnp_inlier_pairs.size()
+          << " source_nonnull=" << source_nonnull << " replaced=" << replaced
+          << " bad=" << bad << " wrong_map=" << wrong_map
+          << " zero_obs=" << zero_observations << " duplicate=" << duplicate
+          << " unique_transferable=" << unique_transferable
+          << " seed_grid=" << seed_grid
+          << " identity_valid=" << (identity_valid ? 1 : 0) << std::endl;
+}
+
+// TODO: Enable System::RGBD only after its no-vote recovery path can seed a
+// local keyframe window. The current recovery seeding policy is intentionally
+// specific to IMU_RGBD.
+bool Tracker::TryRgbdTemporalPose(
+    Map* current_map, RgbdTemporalPoseEstimator::Quality* quality,
+    RgbdTemporalPoseEstimator::Result* accepted_result,
+    internal::LocalMapTrackingTransaction* transaction) {
+    if (mSensor != System::IMU_RGBD || !current_map || !accepted_result ||
+        !transaction) {
+        return false;
+    }
+    if (current_map != mpAtlas->GetCurrentMap()) {
+        rgbd_temporal_odometry_state_.Reset();
+        rgbd_temporal_pose_estimator_.Reset();
+        return false;
+    }
+    const RgbdTemporalPoseEstimator::FrameView frame_view =
+        CurrentRgbdTemporalFrameView(current_map);
+    if (!rgbd_temporal_odometry_state_.active) {
+        if (!mLastFrame.isSet()) {
+            return false;
+        }
+        const double start_timestamp =
+            mState == RECENTLY_LOST ? mTimeStampLost : frame_view.timestamp;
+        rgbd_temporal_odometry_state_.Start(
+            start_timestamp, mLastFrame.mTimeStamp, frame_view.map_id,
+            frame_view.coordinate_epoch, frame_view.map_change_index);
+    }
+    if (!rgbd_temporal_odometry_state_.CanEstimate(
+            frame_view.timestamp, frame_view.map_id,
+            frame_view.coordinate_epoch, frame_view.map_change_index)) {
+        rgbd_temporal_odometry_state_.Reset();
+        rgbd_temporal_pose_estimator_.Reset();
+        return false;
+    }
+    const RgbdTemporalPoseEstimator::Result result =
+        rgbd_temporal_pose_estimator_.Estimate(frame_view);
+    const RgbdTemporalPoseEstimator::Diagnostics& diagnostics =
+        result.diagnostics;
+    AINFO << "ATLAS_RGBD_TEMPORAL_PNP_ATTEMPT"
+          << " success=" << (result.success ? 1 : 0) << " stage="
+          << RgbdTemporalPoseEstimator::StageName(diagnostics.stage)
+          << " rejection="
+          << RgbdTemporalPoseEstimator::RejectionReasonName(
+                 diagnostics.rejection)
+          << " reference_available="
+          << (diagnostics.reference_available ? 1 : 0)
+          << " ref_features=" << diagnostics.reference_feature_count
+          << " current_features=" << diagnostics.current_feature_count
+          << " mutual_matches=" << diagnostics.mutual_match_count
+          << " guided_matches=" << diagnostics.guided_match_count
+          << " final_matches=" << diagnostics.final_match_count
+          << " pnp_inliers=" << diagnostics.pnp_inlier_count
+          << " accepted_inliers=" << diagnostics.inlier_count
+          << " rigid_depth_pairs=" << diagnostics.rigid_depth_pair_count
+          << " rigid_inliers=" << diagnostics.rigid_inlier_count
+          << " rigid_five_cm_inliers="
+          << diagnostics.rigid_five_centimeter_inlier_count
+          << " rigid_inlier_ratio=" << diagnostics.rigid_inlier_ratio
+          << " rigid_rmse_m=" << diagnostics.rigid_rmse_meters
+          << " rigid_median_m=" << diagnostics.rigid_xyz_median_meters
+          << " grid_cells=" << diagnostics.covered_grid_cells
+          << " depth_checked=" << diagnostics.depth_check_count
+          << " depth_consistent=" << diagnostics.depth_consistent_count
+          << " xyz_checked=" << diagnostics.xyz_check_count
+          << " xyz_consistent=" << diagnostics.xyz_consistent_count
+          << " xyz_rmse_m=" << diagnostics.xyz_rmse_meters
+          << " used_rigid_pose="
+          << (diagnostics.used_rigid_pose ? 1 : 0)
+          << " used_pose_guided_matching="
+          << (diagnostics.used_pose_guided_matching ? 1 : 0)
+          << " reprojection_rmse_px=" << diagnostics.reprojection_rmse_pixels
+          << " pose_condition=" << diagnostics.pose_condition_number
+          << " rigid_retry_attempted="
+          << (diagnostics.rigid_retry.attempted ? 1 : 0)
+          << " rigid_retry_stage="
+          << RgbdTemporalPoseEstimator::StageName(
+                 diagnostics.rigid_retry.stage)
+          << " rigid_retry_rejection="
+          << RgbdTemporalPoseEstimator::RejectionReasonName(
+                 diagnostics.rigid_retry.rejection)
+          << " rigid_retry_guided_matches="
+          << diagnostics.rigid_retry.guided_match_count
+          << " rigid_retry_final_matches="
+          << diagnostics.rigid_retry.final_match_count
+          << " rigid_retry_depth_pairs="
+          << diagnostics.rigid_retry.rigid_depth_pair_count
+          << " rigid_retry_inliers="
+          << diagnostics.rigid_retry.rigid_inlier_count
+          << " rigid_retry_five_cm_inliers="
+          << diagnostics.rigid_retry.rigid_five_centimeter_inlier_count
+          << " rigid_retry_inlier_ratio="
+          << diagnostics.rigid_retry.rigid_inlier_ratio
+          << " rigid_retry_rmse_m="
+          << diagnostics.rigid_retry.rigid_rmse_meters
+          << " rigid_retry_median_m="
+          << diagnostics.rigid_retry.rigid_xyz_median_meters
+          << " rigid_retry_grid_cells="
+          << diagnostics.rigid_retry.covered_grid_cells
+          << " rigid_retry_depth_checked="
+          << diagnostics.rigid_retry.depth_check_count
+          << " rigid_retry_depth_consistent="
+          << diagnostics.rigid_retry.depth_consistent_count
+          << " rigid_retry_xyz_checked="
+          << diagnostics.rigid_retry.xyz_check_count
+          << " rigid_retry_xyz_consistent="
+          << diagnostics.rigid_retry.xyz_consistent_count
+          << " rigid_retry_xyz_rmse_m="
+          << diagnostics.rigid_retry.xyz_rmse_meters
+          << " rigid_retry_reprojection_rmse_px="
+          << diagnostics.rigid_retry.reprojection_rmse_pixels
+          << " rigid_retry_pose_condition="
+          << diagnostics.rigid_retry.pose_condition_number
+          << " ref_map_id=" << diagnostics.reference_map_id
+          << " current_map_id=" << diagnostics.current_map_id
+          << " ref_epoch=" << diagnostics.reference_coordinate_epoch
+          << " current_epoch=" << diagnostics.current_coordinate_epoch
+          << " ref_revision=" << diagnostics.reference_map_revision
+          << " current_revision=" << diagnostics.current_map_revision
+          << " frame_id=" << mCurrentFrame.mnId << std::endl;
+    LogRgbdTemporalMapPointShadow(result, current_map);
+    if (!result.success) {
+        return false;
+    }
+    const bool low_coverage =
+        result.quality ==
+        RgbdTemporalPoseEstimator::Quality::kLowCoverageFallback;
+    if (!rgbd_temporal_odometry_state_.CanAccept(low_coverage) ||
+        diagnostics.reference_frame_id !=
+            static_cast<std::uint64_t>(mLastFrame.mnId)) {
+        return false;
+    }
+    if (quality) {
+        *quality = result.quality;
+    }
+    *accepted_result = result;
+    transaction->Reserve(
+        mvpLocalMapPoints.size() + mCurrentFrame.mvpMapPoints.size(),
+        mvpLocalKeyFrames.size());
+    const auto prepare_retry_point = [&](MapPoint* map_point) {
+        transaction->Capture(map_point);
+        if (!map_point) {
+            return;
+        }
+        if (map_point->mnLastFrameSeen == mCurrentFrame.mnId) {
+            map_point->mnLastFrameSeen = mLastFrame.mnId;
+        }
+        if (map_point->mnTrackReferenceForFrame == mCurrentFrame.mnId) {
+            map_point->mnTrackReferenceForFrame = mLastFrame.mnId;
+        }
+        map_point->mbTrackInView = false;
+        map_point->mbTrackInViewR = false;
+    };
+    for (MapPoint* map_point : mvpLocalMapPoints) {
+        prepare_retry_point(map_point);
+    }
+    for (MapPoint* map_point : mCurrentFrame.mvpMapPoints) {
+        prepare_retry_point(map_point);
+    }
+    for (KeyFrame* keyframe : mvpLocalKeyFrames) {
+        transaction->Capture(keyframe);
+        if (keyframe &&
+            keyframe->mnTrackReferenceForFrame == mCurrentFrame.mnId) {
+            keyframe->mnTrackReferenceForFrame = mLastFrame.mnId;
+        }
+    }
+
+    mCurrentFrame.SetPose(result.camera_from_world);
+    mCurrentFrame.mvpMapPoints.assign(mCurrentFrame.N, nullptr);
+    mCurrentFrame.mvbOutlier.assign(mCurrentFrame.N, false);
+    mCurrentFrame.mmProjectPoints.clear();
+    mCurrentFrame.mmMatchedInImage.clear();
+    return true;
+}
+
+bool Tracker::AdvanceRgbdTemporalOdometryReference(
+    Map* current_map, RgbdTemporalPoseEstimator::Quality quality) {
+    if (!current_map || !mCurrentFrame.isSet() ||
+        !rgbd_temporal_odometry_state_.active) {
+        return false;
+    }
+    if (current_map != mpAtlas->GetCurrentMap()) {
+        rgbd_temporal_odometry_state_.Reset();
+        rgbd_temporal_pose_estimator_.Reset();
+        return false;
+    }
+    const RgbdTemporalPoseEstimator::FrameView view =
+        CurrentRgbdTemporalFrameView(current_map);
+    if (!rgbd_temporal_odometry_state_.CanEstimate(view.timestamp, view.map_id,
+                                                   view.coordinate_epoch,
+                                                   view.map_change_index) ||
+        !rgbd_temporal_pose_estimator_.UpdateReference(
+            view, mCurrentFrame.GetPose())) {
+        rgbd_temporal_odometry_state_.Reset();
+        rgbd_temporal_pose_estimator_.Reset();
+        return false;
+    }
+    rgbd_temporal_odometry_state_.Advance(
+        view.timestamp,
+        quality == RgbdTemporalPoseEstimator::Quality::kLowCoverageFallback);
+    return true;
+}
+
+bool Tracker::RebaseRgbdTemporalReferenceAfterMapUpdate(
+    Map* current_map, int previous_map_revision, int current_map_revision) {
+    if (mSensor != System::IMU_RGBD) {
+        return false;
+    }
+    if (!rgbd_temporal_pose_estimator_.HasReference()) {
+        rgbd_temporal_odometry_state_.Reset();
+        return false;
+    }
+
+    const auto reject_rebase = [&](const char* reason) {
+        AINFO << "ATLAS_RGBD_TEMPORAL_REFERENCE_REBASE"
+              << " success=0"
+              << " reason=" << reason
+              << " previous_revision=" << previous_map_revision
+              << " current_revision=" << current_map_revision
+              << " frame_id=" << mLastFrame.mnId << std::endl;
+        rgbd_temporal_odometry_state_.Reset();
+        rgbd_temporal_pose_estimator_.Reset();
+        return false;
+    };
+
+    if (!current_map || current_map != mpAtlas->GetCurrentMap() ||
+        current_map_revision <= previous_map_revision) {
+        return reject_rebase("invalid_map_transition");
+    }
+    if (!mLastFrame.isSet() || mlRelativeFramePoses.empty() ||
+        mlpReferences.empty() || mlbLost.empty() || mlbLost.back()) {
+        return reject_rebase("invalid_last_frame");
+    }
+    KeyFrame* const reference_keyframe = mLastFrame.mpReferenceKF;
+    if (!reference_keyframe || reference_keyframe != mlpReferences.back() ||
+        reference_keyframe->isBad() ||
+        reference_keyframe->GetMap() != current_map) {
+        return reject_rebase("invalid_reference_keyframe");
+    }
+
+    const std::uint64_t map_id =
+        static_cast<std::uint64_t>(current_map->GetId());
+    const std::uint64_t coordinate_epoch = current_map->GetCoordinateEpoch();
+    internal::BoundedRgbdTemporalOdometryState rebased_state =
+        rgbd_temporal_odometry_state_;
+    if (rebased_state.active &&
+        !rebased_state.RebaseMapRevision(map_id, coordinate_epoch,
+                                         previous_map_revision,
+                                         current_map_revision)) {
+        return reject_rebase("odometry_state_identity_mismatch");
+    }
+
+    const autonomy::common::math::SE3f corrected_camera_from_world =
+        mlRelativeFramePoses.back() * reference_keyframe->GetPose();
+    if (!rgbd_temporal_pose_estimator_.RebaseReferencePose(
+            static_cast<std::uint64_t>(mLastFrame.mnId), map_id,
+            coordinate_epoch, previous_map_revision, current_map_revision,
+            corrected_camera_from_world)) {
+        return reject_rebase("reference_identity_mismatch");
+    }
+
+    mLastFrame.SetPose(corrected_camera_from_world);
+    rgbd_temporal_odometry_state_ = rebased_state;
+    ADEBUG << "ATLAS_RGBD_TEMPORAL_REFERENCE_REBASE"
+          << " success=1"
+          << " reason=none"
+          << " map_id=" << map_id << " coordinate_epoch=" << coordinate_epoch
+          << " previous_revision=" << previous_map_revision
+          << " current_revision=" << current_map_revision
+          << " state_active=" << (rgbd_temporal_odometry_state_.active ? 1 : 0)
+          << " frame_id=" << mLastFrame.mnId << std::endl;
+    return true;
+}
+
+bool Tracker::ValidateAndCommitRgbdTemporalPose(
+    Map* expected_map,
+    const RgbdTemporalPoseEstimator::Result& accepted_result,
+    internal::LocalMapTrackingTransaction* transaction,
+    int* validation_inliers) {
+    if (!transaction) {
+        return false;
+    }
+    Map* const current_map = mpAtlas->GetCurrentMap();
+    if (!current_map || current_map != expected_map) {
+        transaction->Restore();
+        rgbd_temporal_odometry_state_.Reset();
+        rgbd_temporal_pose_estimator_.Reset();
+        return false;
+    }
+    const bool imu_initialized = current_map->isImuInitialized();
+    const int required_inliers =
+        internal::RequiredRgbdTemporalReanchorInliers(imu_initialized);
+    const autonomy::common::math::SE3f provisional_pose =
+        mCurrentFrame.GetPose();
+    const std::vector<MapPoint*> frame_points = mCurrentFrame.mvpMapPoints;
+    const std::vector<MapPoint*> last_frame_points = mLastFrame.mvpMapPoints;
+    const std::vector<bool> frame_outliers = mCurrentFrame.mvbOutlier;
+    const auto project_points = mCurrentFrame.mmProjectPoints;
+    const auto matched_points = mCurrentFrame.mmMatchedInImage;
+    KeyFrame* const tracker_reference = mpReferenceKF;
+    KeyFrame* const frame_reference = mCurrentFrame.mpReferenceKF;
+    const std::vector<MapPoint*> local_points = mvpLocalMapPoints;
+    const std::vector<KeyFrame*> local_keyframes = mvpLocalKeyFrames;
+    const std::vector<MapPoint*> atlas_points =
+        current_map->GetReferenceMapPoints();
+    const int previous_inliers = mnMatchesInliers;
+    const int previous_mapper_inliers = mpLocalMapper->mnMatchesInliers;
+    const int previous_tracked_frames = mTrackedFr;
+    const auto restore_frame_and_tracker = [&]() {
+        mvpLocalMapPoints = local_points;
+        mvpLocalKeyFrames = local_keyframes;
+        mpReferenceKF = tracker_reference;
+        mCurrentFrame.mpReferenceKF = frame_reference;
+        mCurrentFrame.mvpMapPoints = frame_points;
+        mLastFrame.mvpMapPoints = last_frame_points;
+        mCurrentFrame.mvbOutlier = frame_outliers;
+        mCurrentFrame.mmProjectPoints = project_points;
+        mCurrentFrame.mmMatchedInImage = matched_points;
+        mCurrentFrame.SetPose(provisional_pose);
+        mnMatchesInliers = previous_inliers;
+        mpLocalMapper->mnMatchesInliers = previous_mapper_inliers;
+        mTrackedFr = previous_tracked_frames;
+        current_map->SetReferenceMapPoints(atlas_points);
+    };
+
+    const RgbdTemporalPoseEstimator::Diagnostics& diagnostics =
+        accepted_result.diagnostics;
+    const internal::RgbdTemporalSeedIdentity seed_identity = {
+        diagnostics.reference_frame_id,
+        diagnostics.current_frame_id,
+        diagnostics.reference_map_id,
+        diagnostics.current_map_id,
+        diagnostics.reference_coordinate_epoch,
+        diagnostics.current_coordinate_epoch,
+        diagnostics.reference_map_revision,
+        diagnostics.current_map_revision,
+    };
+    const internal::RgbdTemporalSeedContext seed_context = {
+        mLastFrame.isSet(),
+        static_cast<std::uint64_t>(mLastFrame.mnId),
+        static_cast<std::uint64_t>(mCurrentFrame.mnId),
+        static_cast<std::uint64_t>(current_map->GetId()),
+        current_map->GetCoordinateEpoch(),
+        current_map->GetMapChangeIndex(),
+    };
+    if (!internal::HasMatchingRgbdTemporalSeedIdentity(seed_identity,
+                                                       seed_context)) {
+        AINFO << "ATLAS_RGBD_TEMPORAL_PNP_MP_SEED"
+              << " identity_valid=0"
+              << " pairs=" << accepted_result.pnp_inlier_pairs.size()
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+        transaction->Restore();
+        restore_frame_and_tracker();
+        return false;
+    }
+
+    constexpr int kMaximumReplacementHops = 16;
+    constexpr int kSeedGridColumns = 4;
+    constexpr int kSeedGridRows = 4;
+    std::unordered_set<std::uint64_t> seeded_map_point_ids;
+    std::unordered_set<int> seeded_feature_indices;
+    seeded_map_point_ids.reserve(accepted_result.pnp_inlier_pairs.size());
+    seeded_feature_indices.reserve(accepted_result.pnp_inlier_pairs.size());
+    std::array<bool, kSeedGridColumns * kSeedGridRows> occupied_seed_cells{};
+    std::size_t out_of_bounds = 0;
+    std::size_t source_null = 0;
+    std::size_t replacement_hops = 0;
+    std::size_t invalid_replacement_chain = 0;
+    std::size_t bad = 0;
+    std::size_t wrong_map = 0;
+    std::size_t zero_observations = 0;
+    std::size_t duplicate_map_point = 0;
+    std::size_t duplicate_current_index = 0;
+    std::size_t occupied_current_slot = 0;
+    std::size_t seeded = 0;
+    for (const RgbdTemporalPoseEstimator::PnpInlierPair& pair :
+         accepted_result.pnp_inlier_pairs) {
+        if (pair.reference_original_index < 0 || pair.current_index < 0 ||
+            static_cast<std::size_t>(pair.reference_original_index) >=
+                mLastFrame.mvpMapPoints.size() ||
+            static_cast<std::size_t>(pair.current_index) >=
+                mCurrentFrame.mvpMapPoints.size() ||
+            static_cast<std::size_t>(pair.current_index) >=
+                mCurrentFrame.mvbOutlier.size() ||
+            static_cast<std::size_t>(pair.current_index) >=
+                mCurrentFrame.mvKeysUn.size()) {
+            ++out_of_bounds;
+            continue;
+        }
+
+        MapPoint* map_point =
+            mLastFrame.mvpMapPoints[pair.reference_original_index];
+        if (!map_point) {
+            ++source_null;
+            continue;
+        }
+
+        std::array<MapPoint*, kMaximumReplacementHops + 1>
+            replacement_chain{};
+        int replacement_chain_size = 1;
+        replacement_chain[0] = map_point;
+        bool replacement_chain_valid = true;
+        while (MapPoint* replacement = map_point->GetReplaced()) {
+            if (replacement_chain_size >=
+                    static_cast<int>(replacement_chain.size()) ||
+                std::find(replacement_chain.begin(),
+                          replacement_chain.begin() + replacement_chain_size,
+                          replacement) !=
+                    replacement_chain.begin() + replacement_chain_size) {
+                replacement_chain_valid = false;
+                break;
+            }
+            replacement_chain[replacement_chain_size++] = replacement;
+            map_point = replacement;
+            ++replacement_hops;
+        }
+        if (!replacement_chain_valid) {
+            ++invalid_replacement_chain;
+            continue;
+        }
+        if (map_point->isBad()) {
+            ++bad;
+            continue;
+        }
+        if (map_point->GetMap() != current_map) {
+            ++wrong_map;
+            continue;
+        }
+        if (map_point->Observations() <= 0) {
+            ++zero_observations;
+            continue;
+        }
+        if (seeded_feature_indices.count(pair.current_index) != 0U) {
+            ++duplicate_current_index;
+            continue;
+        }
+        if (mCurrentFrame.mvpMapPoints[pair.current_index]) {
+            ++occupied_current_slot;
+            continue;
+        }
+        if (seeded_map_point_ids.count(map_point->mnId) != 0U) {
+            ++duplicate_map_point;
+            continue;
+        }
+
+        transaction->Capture(map_point);
+        seeded_feature_indices.insert(pair.current_index);
+        seeded_map_point_ids.insert(map_point->mnId);
+        mCurrentFrame.mvpMapPoints[pair.current_index] = map_point;
+        mCurrentFrame.mvbOutlier[pair.current_index] = false;
+        ++seeded;
+
+        const cv::Point2f& point =
+            mCurrentFrame.mvKeysUn[pair.current_index].pt;
+        const float width = Frame::mnMaxX - Frame::mnMinX;
+        const float height = Frame::mnMaxY - Frame::mnMinY;
+        if (std::isfinite(point.x) && std::isfinite(point.y) && width > 0.0F &&
+            height > 0.0F && point.x >= Frame::mnMinX &&
+            point.x <= Frame::mnMaxX && point.y >= Frame::mnMinY &&
+            point.y <= Frame::mnMaxY) {
+            const int column = std::clamp(
+                static_cast<int>((point.x - Frame::mnMinX) / width *
+                                 kSeedGridColumns),
+                0, kSeedGridColumns - 1);
+            const int row = std::clamp(
+                static_cast<int>((point.y - Frame::mnMinY) / height *
+                                 kSeedGridRows),
+                0, kSeedGridRows - 1);
+            occupied_seed_cells[row * kSeedGridColumns + column] = true;
+        }
+    }
+    const int seed_grid = static_cast<int>(std::count(
+        occupied_seed_cells.begin(), occupied_seed_cells.end(), true));
+    AINFO << "ATLAS_RGBD_TEMPORAL_PNP_MP_SEED"
+          << " identity_valid=1"
+          << " pairs=" << accepted_result.pnp_inlier_pairs.size()
+          << " seeded=" << seeded << " seed_grid=" << seed_grid
+          << " out_of_bounds=" << out_of_bounds
+          << " source_null=" << source_null
+          << " replacement_hops=" << replacement_hops
+          << " invalid_replacement_chain=" << invalid_replacement_chain
+          << " bad=" << bad << " wrong_map=" << wrong_map
+          << " zero_obs=" << zero_observations
+          << " duplicate_map_point=" << duplicate_map_point
+          << " duplicate_current_index=" << duplicate_current_index
+          << " occupied_current_slot=" << occupied_current_slot
+          << " frame_id=" << mCurrentFrame.mnId << std::endl;
+
+    int committed_inliers = 0;
+    const bool committed =
+        TrackLocalMap(true, internal::LocalMapCommitMode::kTransactional,
+                      &committed_inliers, required_inliers, transaction);
+    if (validation_inliers) {
+        *validation_inliers = committed_inliers;
+    }
+    if (!committed || !internal::HasEnoughRgbdTemporalReanchorInliers(
+                          imu_initialized, committed_inliers)) {
+        transaction->Restore();
+        restore_frame_and_tracker();
+        return false;
+    }
+    transaction->Commit();
+    return true;
+}
+
+void Tracker::UpdateRgbdTemporalReference(Map* current_map) {
+    if (mSensor != System::IMU_RGBD || !current_map || !mCurrentFrame.isSet()) {
+        return;
+    }
+    rgbd_temporal_pose_estimator_.UpdateReference(
+        CurrentRgbdTemporalFrameView(current_map), mCurrentFrame.GetPose());
+}
+
 void Tracker::Track() {
     if (bStepByStep) {
         AINFO << "Tracker: Waiting to the next step" << std::endl;
@@ -1773,11 +2538,16 @@ void Tracker::Track() {
             mlQueueImuData.clear();
             CreateMapInAtlas();
             return;
-        } else if (mCurrentFrame.mTimeStamp > mLastFrame.mTimeStamp + 1.0) {
-            // AINFO << mCurrentFrame.mTimeStamp << ", " <<
-            // mLastFrame.mTimeStamp << endl; AINFO << "id last: " <<
-            // mLastFrame.mnId << "    id curr: " << mCurrentFrame.mnId << endl;
-            if (mpAtlas->isInertial()) {
+        } else if (mpAtlas->isInertial()) {
+            const auto jump_action = internal::ClassifyInertialTimestampJump(
+                mCurrentFrame.mTimeStamp, mLastFrame.mTimeStamp);
+            if (jump_action ==
+                internal::InertialTimestampJumpAction::kSoftRecover) {
+                // Loop correction blocks Track* long enough that the next
+                // synced frame often jumps >1s. Soft-recover keeps the map.
+                SoftRecoverAfterTimestampJump();
+            } else if (jump_action ==
+                       internal::InertialTimestampJumpAction::kHardReset) {
                 if (mpAtlas->isImuInitialized()) {
                     AINFO << "Timestamp jump detected. State set to LOST. "
                              "Reseting IMU integration..."
@@ -1808,6 +2578,7 @@ void Tracker::Track() {
     }
 
     mLastProcessedState = mState;
+    bool mark_current_frame_lost = false;
 
     if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO ||
          mSensor == System::IMU_RGBD) &&
@@ -1840,6 +2611,8 @@ void Tracker::Track() {
     if (nCurMapChangeIndex > nMapChangeIndex) {
         pCurrentMap->SetLastMapChange(nCurMapChangeIndex);
         mbMapUpdated = true;
+        RebaseRgbdTemporalReferenceAfterMapUpdate(pCurrentMap, nMapChangeIndex,
+                                                  nCurMapChangeIndex);
     }
 
     if (mState == NOT_INITIALIZED) {
@@ -1863,6 +2636,28 @@ void Tracker::Track() {
     } else {
         // System is initialized. Track Frame.
         bool bOK = false;
+        const bool use_imu_rgbd_visual_recovery =
+            internal::ShouldUseImuRgbdVisualRecovery(
+                mSensor == System::IMU_RGBD, !mbOnlyTracking,
+                imu_rgbd_visual_recovery_active_, mState == RECENTLY_LOST,
+                pCurrentMap->isImuInitialized(),
+                pCurrentMap->GetIniertialBA2());
+        if (mState == OK && !use_imu_rgbd_visual_recovery) {
+            imu_rgbd_visual_recovery_active_ = false;
+        }
+        bool is_imu_rgbd_visual_recovery_frame = false;
+        bool imu_rgbd_visual_recovery_timed_out = false;
+        bool failed_imu_rgbd_visual_recovery = false;
+        bool attempted_local_map = false;
+        bool used_imu_pose_seed = false;
+        bool used_rgbd_temporal_pose_seed = false;
+        bool temporal_pose_is_provisional = false;
+        int temporal_validation_inliers = 0;
+        RgbdTemporalPoseEstimator::Quality temporal_pose_quality =
+            RgbdTemporalPoseEstimator::Quality::kRejected;
+        RgbdTemporalPoseEstimator::Result temporal_pose_result;
+        internal::LocalMapTrackingTransaction temporal_transaction;
+        autonomy::common::math::SE3f provisional_temporal_pose;
 
 #ifdef REGISTER_TIMES
         std::chrono::steady_clock::time_point time_StartPosePred =
@@ -1887,16 +2682,22 @@ void Tracker::Track() {
                 } else {
                     ADEBUG << "TRACK: Track with motion model";
                     bOK = TrackWithMotionModel();
-                    if (!bOK)
+                    if (!bOK) {
                         bOK = TrackReferenceKeyFrame();
+                    }
                 }
 
                 if (!bOK) {
-                    if (mCurrentFrame.mnId <=
-                            (mnLastRelocFrameId + mnFramesToResetIMU) &&
-                        (mSensor == System::IMU_MONOCULAR ||
-                         mSensor == System::IMU_STEREO ||
-                         mSensor == System::IMU_RGBD)) {
+                    if (use_imu_rgbd_visual_recovery) {
+                        imu_rgbd_visual_recovery_active_ = true;
+                        mState = RECENTLY_LOST;
+                        mTimeStampLost = mCurrentFrame.mTimeStamp;
+                        is_imu_rgbd_visual_recovery_frame = true;
+                    } else if (mCurrentFrame.mnId <=
+                                   (mnLastRelocFrameId + mnFramesToResetIMU) &&
+                               (mSensor == System::IMU_MONOCULAR ||
+                                mSensor == System::IMU_STEREO ||
+                                mSensor == System::IMU_RGBD)) {
                         mState = LOST;
                     } else if (pCurrentMap->KeyFramesInMap() > 10) {
                         // AINFO << "KF in map: " <<
@@ -1915,17 +2716,38 @@ void Tracker::Track() {
                     if ((mSensor == System::IMU_MONOCULAR ||
                          mSensor == System::IMU_STEREO ||
                          mSensor == System::IMU_RGBD)) {
-                        if (pCurrentMap->isImuInitialized())
-                            PredictStateIMU();
-                        else
-                            bOK = false;
-
-                        if (mCurrentFrame.mTimeStamp - mTimeStampLost >
-                            time_recently_lost) {
-                            mState = LOST;
-                            AINFO << "Track Lost...";
+                        if (use_imu_rgbd_visual_recovery) {
+                            imu_rgbd_visual_recovery_active_ = true;
+                            is_imu_rgbd_visual_recovery_frame = true;
+                            bOK =
+                                TrackImuRgbdVisualRecoveryReferenceKeyFrames();
+                            if (internal::
+                                    ShouldUseImuPoseSeedAfterReferenceFailure(
+                                        mSensor == System::IMU_RGBD,
+                                        imu_rgbd_visual_recovery_active_, bOK,
+                                        pCurrentMap->isImuInitialized())) {
+                                // Recovery success still requires visual
+                                // validation by TrackLocalMap below.
+                                used_imu_pose_seed = PredictStateIMU();
+                                bOK = used_imu_pose_seed;
+                            }
+                        } else if (pCurrentMap->isImuInitialized()) {
+                            const bool imu_prediction_succeeded =
+                                PredictStateIMU();
+                            if (internal::ShouldUseImuPredictionResult(
+                                    mSensor == System::IMU_RGBD)) {
+                                bOK = imu_prediction_succeeded;
+                            }
+                        } else {
                             bOK = false;
                         }
+
+                        imu_rgbd_visual_recovery_timed_out =
+                            internal::HasRecentlyLostTimedOut(
+                                mCurrentFrame.mTimeStamp - mTimeStampLost,
+                                mSensor == System::IMU_RGBD,
+                                imu_rgbd_visual_recovery_active_,
+                                time_recently_lost);
                     } else {
                         // Relocalization
                         bOK = Relocalization();
@@ -1936,12 +2758,13 @@ void Tracker::Track() {
                         if (mCurrentFrame.mTimeStamp - mTimeStampLost > 3.0f &&
                             !bOK) {
                             mState = LOST;
-                            AINFO << "Track Lost...";
+                            LogVisualSlamEvent("lost");
                             bOK = false;
                         }
                     }
                 } else if (mState == LOST) {
                     AINFO << "A new map is started...";
+                    imu_rgbd_visual_recovery_active_ = false;
 
                     if (pCurrentMap->KeyFramesInMap() < 10) {
                         mpSystem->ResetActiveMap();
@@ -2019,6 +2842,20 @@ void Tracker::Track() {
             }
         }
 
+        if (!mbOnlyTracking && !bOK &&
+            TryRgbdTemporalPose(pCurrentMap, &temporal_pose_quality,
+                                &temporal_pose_result,
+                                &temporal_transaction)) {
+            bOK = true;
+            used_rgbd_temporal_pose_seed = true;
+            provisional_temporal_pose = mCurrentFrame.GetPose();
+            temporal_pose_is_provisional = true;
+            if (mSensor == System::IMU_RGBD) {
+                imu_rgbd_visual_recovery_active_ = true;
+                is_imu_rgbd_visual_recovery_frame = true;
+            }
+        }
+
         if (!mCurrentFrame.mpReferenceKF)
             mCurrentFrame.mpReferenceKF = mpReferenceKF;
 
@@ -2041,27 +2878,137 @@ void Tracker::Track() {
         // Track the local map.
         if (!mbOnlyTracking) {
             if (bOK) {
-                bOK = TrackLocalMap();
+                attempted_local_map = true;
+                const bool force_visual_pose_optimization =
+                    used_rgbd_temporal_pose_seed ||
+                    internal::ShouldForceVisualRecoveryPoseOptimization(
+                        is_imu_rgbd_visual_recovery_frame,
+                        pCurrentMap->isImuInitialized());
+                bOK = used_rgbd_temporal_pose_seed
+                          ? ValidateAndCommitRgbdTemporalPose(
+                                pCurrentMap, temporal_pose_result,
+                                &temporal_transaction,
+                                &temporal_validation_inliers)
+                          : TrackLocalMap(force_visual_pose_optimization);
+                temporal_pose_is_provisional &= !bOK;
             }
-            if (!bOK)
-                AINFO << "Fail to track local map!" << std::endl;
+            if (!bOK && !used_rgbd_temporal_pose_seed &&
+                TryRgbdTemporalPose(pCurrentMap, &temporal_pose_quality,
+                                    &temporal_pose_result,
+                                    &temporal_transaction)) {
+                attempted_local_map = true;
+                used_rgbd_temporal_pose_seed = true;
+                provisional_temporal_pose = mCurrentFrame.GetPose();
+                temporal_pose_is_provisional = true;
+                if (mSensor == System::IMU_RGBD) {
+                    imu_rgbd_visual_recovery_active_ = true;
+                    is_imu_rgbd_visual_recovery_frame = true;
+                }
+                bOK = ValidateAndCommitRgbdTemporalPose(
+                    pCurrentMap, temporal_pose_result, &temporal_transaction,
+                    &temporal_validation_inliers);
+                temporal_pose_is_provisional &= !bOK;
+            }
+            if (!bOK && used_rgbd_temporal_pose_seed) {
+                AINFO << "ATLAS_RGBD_TEMPORAL_PNP_TLM_REJECT"
+                      << " final_local_inliers=" << temporal_validation_inliers
+                      << " frame_id=" << mCurrentFrame.mnId << std::endl;
+                // Do not let a rejected seed become the next visual reference
+                // or leak partially validated map associations.
+                mCurrentFrame.mvpMapPoints.assign(mCurrentFrame.N, nullptr);
+                mCurrentFrame.mvbOutlier.assign(mCurrentFrame.N, false);
+                mCurrentFrame.mmProjectPoints.clear();
+                mCurrentFrame.mmMatchedInImage.clear();
+                mCurrentFrame.SetPose(provisional_temporal_pose);
+                temporal_pose_is_provisional =
+                    AdvanceRgbdTemporalOdometryReference(pCurrentMap,
+                                                         temporal_pose_quality);
+                if (!temporal_pose_is_provisional && mLastFrame.isSet()) {
+                    mCurrentFrame.SetPose(mLastFrame.GetPose());
+                }
+            }
+            if (!bOK) {
+                if (internal::CanHoldLastImuRgbdPose(
+                        mSensor == System::IMU_RGBD, mLastFrame.isSet()) &&
+                    HoldLastImuRgbdPose()) {
+                    bOK = true;
+                    imu_rgbd_visual_recovery_active_ = false;
+                    used_rgbd_temporal_pose_seed = false;
+                    temporal_pose_is_provisional = false;
+                    ++consecutive_pose_holds_;
+                    if (consecutive_pose_holds_ == 1 ||
+                        consecutive_pose_holds_ % 30 == 0) {
+                        AWARN << "ATLAS_TRACK event=hold_pose n="
+                              << consecutive_pose_holds_
+                              << " inliers=" << mnMatchesInliers
+                              << " frame=" << mCurrentFrame.mnId;
+                    }
+                } else {
+                    ++consecutive_local_map_fails_;
+                    if (consecutive_local_map_fails_ == 1 ||
+                        consecutive_local_map_fails_ % 30 == 0) {
+                        AWARN << "ATLAS_TRACK event=local_map_fail n="
+                              << consecutive_local_map_fails_
+                              << " inliers=" << mnMatchesInliers
+                              << " frame=" << mCurrentFrame.mnId;
+                    }
+                }
+            } else if (consecutive_local_map_fails_ > 0 ||
+                       consecutive_pose_holds_ > 0) {
+                if (consecutive_local_map_fails_ > 0) {
+                    AINFO << "ATLAS_TRACK event=local_map_recovered after_fails="
+                          << consecutive_local_map_fails_
+                          << " inliers=" << mnMatchesInliers
+                          << " frame=" << mCurrentFrame.mnId;
+                }
+                consecutive_local_map_fails_ = 0;
+                consecutive_pose_holds_ = 0;
+            }
         } else {
             // mbVO true means that there are few matches to MapPoints in the
             // map. We cannot retrieve a local map and therefore we do not
             // perform TrackLocalMap(). Once the system relocalizes the camera
             // we will use the local map again.
-            if (bOK && !mbVO)
+            if (bOK && !mbVO) {
+                attempted_local_map = true;
                 bOK = TrackLocalMap();
+            }
         }
 
-        if (bOK)
+        if (internal::ShouldDeclareImuRgbdVisualRecoveryLost(
+                imu_rgbd_visual_recovery_timed_out, bOK) &&
+            !(internal::CanHoldLastImuRgbdPose(mSensor == System::IMU_RGBD,
+                                               mLastFrame.isSet()) &&
+              HoldLastImuRgbdPose())) {
+            imu_rgbd_visual_recovery_active_ = false;
+            rgbd_temporal_odometry_state_.Reset();
+            mState = LOST;
+            LogVisualSlamEvent("lost");
+        } else if (internal::ShouldDeclareImuRgbdVisualRecoveryLost(
+                       imu_rgbd_visual_recovery_timed_out, bOK)) {
+            bOK = true;
+            imu_rgbd_visual_recovery_active_ = false;
+            rgbd_temporal_odometry_state_.Reset();
             mState = OK;
-        else if (mState == OK) {
+            LogVisualSlamEvent("hold_pose_timeout");
+        }
+
+        if (bOK) {
+            imu_rgbd_visual_recovery_active_ = false;
+            rgbd_temporal_odometry_state_.Reset();
+            mState = OK;
+        } else if (mState == OK) {
             if (mSensor == System::IMU_MONOCULAR ||
                 mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) {
                 AINFO << "Track lost for less than one second...";
-                if (!pCurrentMap->isImuInitialized() ||
-                    !pCurrentMap->GetIniertialBA2()) {
+                if (use_imu_rgbd_visual_recovery) {
+                    imu_rgbd_visual_recovery_active_ = true;
+                    is_imu_rgbd_visual_recovery_frame = true;
+                    AINFO << "IMU RGB-D visual recovery before BA2. Keeping "
+                             "the active map."
+                          << std::endl;
+                } else if (!pCurrentMap->isImuInitialized() ||
+                           !pCurrentMap->GetIniertialBA2()) {
                     AINFO << "IMU is not or recently initialized. Reseting "
                              "active map..."
                           << std::endl;
@@ -2069,13 +3016,24 @@ void Tracker::Track() {
                 }
 
                 mState = RECENTLY_LOST;
-            } else
+            } else {
                 mState = RECENTLY_LOST;  // visual to lost
+            }
 
             /*if(mCurrentFrame.mnId>mnLastRelocFrameId+mMaxFrames)
             {*/
             mTimeStampLost = mCurrentFrame.mTimeStamp;
             //}
+        }
+
+        failed_imu_rgbd_visual_recovery =
+            is_imu_rgbd_visual_recovery_frame && !bOK;
+        if (failed_imu_rgbd_visual_recovery) {
+            mark_current_frame_lost = true;
+            mbVelocity = false;
+            if (!mCurrentFrame.isSet() && mLastFrame.isSet()) {
+                mCurrentFrame.SetPose(mLastFrame.GetPose());
+            }
         }
 
         // Save frame if recent relocalization, since they are used for IMU
@@ -2092,8 +3050,10 @@ void Tracker::Track() {
             pF->mpPrevFrame = new Frame(mLastFrame);
 
             // Load preintegration
-            pF->mpImuPreintegratedFrame =
-                new IMU::Preintegrated(mCurrentFrame.mpImuPreintegratedFrame);
+            if (mCurrentFrame.mpImuPreintegratedFrame) {
+                pF->mpImuPreintegratedFrame = new IMU::Preintegrated(
+                    mCurrentFrame.mpImuPreintegratedFrame);
+            }
         }
 
         if (pCurrentMap->isImuInitialized()) {
@@ -2125,7 +3085,9 @@ void Tracker::Track() {
 
         if (bOK || mState == RECENTLY_LOST) {
             // Update motion model
-            if (mLastFrame.isSet() && mCurrentFrame.isSet()) {
+            if (is_imu_rgbd_visual_recovery_frame) {
+                mbVelocity = false;
+            } else if (mLastFrame.isSet() && mCurrentFrame.isSet()) {
                 autonomy::common::math::SE3f LastTwc =
                     mLastFrame.GetPose().inverse();
                 mVelocity = mCurrentFrame.GetPose() * LastTwc;
@@ -2162,7 +3124,17 @@ void Tracker::Track() {
             std::chrono::steady_clock::time_point time_StartNewKF =
                 std::chrono::steady_clock::now();
 #endif
-            bool bNeedKF = NeedNewKeyFrame();
+            const bool evaluate_failed_recovery_key_frame =
+                internal::ShouldEvaluateNewKeyFrameAfterFailedImuRgbdRecovery(
+                    mSensor == System::IMU_RGBD,
+                    imu_rgbd_visual_recovery_active_,
+                    failed_imu_rgbd_visual_recovery,
+                    pCurrentMap->isImuInitialized(), attempted_local_map,
+                    mCurrentFrame.isSet(), mInsertKFsLost, used_imu_pose_seed);
+            bool bNeedKF = !temporal_pose_is_provisional &&
+                           (!failed_imu_rgbd_visual_recovery ||
+                            evaluate_failed_recovery_key_frame) &&
+                           NeedNewKeyFrame();
 
             // Check if we need to insert a new keyframe
             // if(bNeedKF && bOK)
@@ -2199,22 +3171,30 @@ void Tracker::Track() {
 
         // Reset if the camera get lost soon after initialization
         if (mState == LOST) {
-            if (pCurrentMap->KeyFramesInMap() <= 10) {
+            imu_rgbd_visual_recovery_active_ = false;
+            if (internal::ShouldKeepActiveMapAfterLost(
+                    mSensor == System::IMU_RGBD,
+                    pCurrentMap->isImuInitialized(), mLastFrame.isSet()) &&
+                HoldLastImuRgbdPose()) {
+                mState = OK;
+                mark_current_frame_lost = false;
+                AWARN << "ATLAS_TRACK event=keep_map after_lost"
+                      << " kfs=" << pCurrentMap->KeyFramesInMap()
+                      << " frame=" << mCurrentFrame.mnId;
+            } else if (pCurrentMap->KeyFramesInMap() <= 10) {
                 mpSystem->ResetActiveMap();
                 return;
+            } else if ((mSensor == System::IMU_MONOCULAR ||
+                        mSensor == System::IMU_STEREO ||
+                        mSensor == System::IMU_RGBD) &&
+                       !pCurrentMap->isImuInitialized()) {
+                AINFO << "Track lost before IMU initialisation, reseting...";
+                mpSystem->ResetActiveMap();
+                return;
+            } else {
+                CreateMapInAtlas();
+                return;
             }
-            if (mSensor == System::IMU_MONOCULAR ||
-                mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD)
-                if (!pCurrentMap->isImuInitialized()) {
-                    AINFO
-                        << "Track lost before IMU initialisation, reseting...";
-                    mpSystem->ResetActiveMap();
-                    return;
-                }
-
-            CreateMapInAtlas();
-
-            return;
         }
 
         if (!mCurrentFrame.mpReferenceKF)
@@ -2223,24 +3203,35 @@ void Tracker::Track() {
         mLastFrame = Frame(mCurrentFrame);
     }
 
+    if (mState == OK && !mark_current_frame_lost &&
+        pCurrentMap == mpAtlas->GetCurrentMap()) {
+        UpdateRgbdTemporalReference(pCurrentMap);
+    }
+
     if (mState == OK || mState == RECENTLY_LOST) {
+        const internal::TrajectoryRecordDecision record_decision =
+            internal::MakeTrajectoryRecordDecision(mCurrentFrame.mTimeStamp,
+                                                   mCurrentFrame.isSet(),
+                                                   mark_current_frame_lost);
         // Store frame pose information to retrieve the complete camera
         // trajectory afterwards.
-        if (mCurrentFrame.isSet()) {
+        if (!record_decision.reuse_previous_pose) {
             autonomy::common::math::SE3f Tcr_ =
                 mCurrentFrame.GetPose() *
                 mCurrentFrame.mpReferenceKF->GetPoseInverse();
             mlRelativeFramePoses.push_back(Tcr_);
             mlpReferences.push_back(mCurrentFrame.mpReferenceKF);
-            mlFrameTimes.push_back(mCurrentFrame.mTimeStamp);
-            mlbLost.push_back(mState == LOST);
         } else {
-            // This can happen if tracking is lost
+            // This can happen if tracking is lost. The previous pose is kept
+            // only to preserve parallel-list alignment; record_decision.lost
+            // prevents it from being exported as a valid repeated estimate.
             mlRelativeFramePoses.push_back(mlRelativeFramePoses.back());
             mlpReferences.push_back(mlpReferences.back());
-            mlFrameTimes.push_back(mlFrameTimes.back());
-            mlbLost.push_back(mState == LOST);
         }
+        // Every accepted input frame owns its input timestamp, even when its
+        // pose storage falls back to the previous relative pose.
+        mlFrameTimes.push_back(record_decision.timestamp);
+        mlbLost.push_back(record_decision.lost);
     }
 
 #ifdef REGISTER_LOOP
@@ -2251,6 +3242,23 @@ void Tracker::Track() {
         }
     }
 #endif
+
+    const bool inliers_drop =
+        last_logged_inliers_ >= 40 && mnMatchesInliers < 20;
+    const bool inliers_recover =
+        last_logged_inliers_ >= 0 && last_logged_inliers_ < 20 &&
+        mnMatchesInliers >= 40;
+    if (mState != last_logged_state_) {
+        LogVisualSlamEvent("state");
+        last_logged_state_ = mState;
+        last_logged_inliers_ = mnMatchesInliers;
+    } else if (inliers_drop) {
+        LogVisualSlamEvent("inliers_drop");
+        last_logged_inliers_ = mnMatchesInliers;
+    } else if (inliers_recover) {
+        LogVisualSlamEvent("inliers_recover");
+        last_logged_inliers_ = mnMatchesInliers;
+    }
 }
 
 void Tracker::StereoInitialization() {
@@ -2262,9 +3270,13 @@ void Tracker::StereoInitialization() {
                 return;
             }
 
-            if (!mFastInit && (mCurrentFrame.mpImuPreintegratedFrame->avgA -
-                               mLastFrame.mpImuPreintegratedFrame->avgA)
-                                      .norm() < 0.5) {
+            // IMU-RGBD can seed a metric map from depth while the platform is
+            // parked (AutoSim at spawn). The Δacc gate is for IMU-stereo /
+            // fastInit-off cases where IMU excitation is the only scale cue.
+            if (mSensor != System::IMU_RGBD && !mFastInit &&
+                (mCurrentFrame.mpImuPreintegratedFrame->avgA -
+                 mLastFrame.mpImuPreintegratedFrame->avgA)
+                        .norm() < 0.5) {
                 AINFO << "not enough acceleration" << std::endl;
                 return;
             }
@@ -2277,14 +3289,20 @@ void Tracker::StereoInitialization() {
             mCurrentFrame.mpImuPreintegrated = mpImuPreintegratedFromLastKF;
         }
 
-        // Set Frame pose to the origin (In case of inertial SLAM to imu)
-        if (mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) {
+        // Metric RGB-D: world = IMU (REP-103 Z-up). Camera-at-identity makes
+        // map XY the optical image plane, so Autoviz RobotModel/TF sit on
+        // their side relative to the grid and URDF. Stereo-inertial keeps the
+        // historical camera-origin seed used by EuRoC / TUM-VI eval.
+        if (mSensor == System::IMU_RGBD) {
+            mCurrentFrame.SetImuPoseVelocity(Eigen::Matrix3f::Identity(),
+                                             Eigen::Vector3f::Zero(),
+                                             Eigen::Vector3f::Zero());
+        } else if (mSensor == System::IMU_STEREO) {
             Eigen::Matrix3f Rwb0 =
                 mCurrentFrame.mImuCalib.mTcb.rotationMatrix();
             Eigen::Vector3f twb0 = mCurrentFrame.mImuCalib.mTcb.translation();
-            Eigen::Vector3f Vwb0;
-            Vwb0.setZero();
-            mCurrentFrame.SetImuPoseVelocity(Rwb0, twb0, Vwb0);
+            mCurrentFrame.SetImuPoseVelocity(Rwb0, twb0,
+                                             Eigen::Vector3f::Zero());
         } else
             mCurrentFrame.SetPose(autonomy::common::math::SE3f());
 
@@ -2348,6 +3366,8 @@ void Tracker::StereoInitialization() {
         // AINFO << "Active map: " << mpAtlas->GetCurrentMap()->GetId() << endl;
 
         mpLocalMapper->InsertKeyFrame(pKFini);
+        if (mSensor == System::IMU_RGBD)
+            visual_initial_mapping_barrier_.MarkPending();
 
         mLastFrame = Frame(mCurrentFrame);
         mnLastKeyFrameId = mCurrentFrame.mnId;
@@ -2534,6 +3554,8 @@ void Tracker::CreateInitialMapMonocular() {
 
     mpLocalMapper->InsertKeyFrame(pKFini);
     mpLocalMapper->InsertKeyFrame(pKFcur);
+    if (mSensor == System::MONOCULAR)
+        visual_initial_mapping_barrier_.MarkPending();
     mpLocalMapper->mFirstTs = pKFcur->mTimeStamp;
 
     mCurrentFrame.SetPose(pKFcur->GetPose());
@@ -2573,6 +3595,9 @@ void Tracker::CreateInitialMapMonocular() {
 }
 
 void Tracker::CreateMapInAtlas() {
+    rgbd_temporal_pose_estimator_.Reset();
+    rgbd_temporal_odometry_state_.Reset();
+    imu_rgbd_visual_recovery_active_ = false;
     mnLastInitFrameId = mCurrentFrame.mnId;
     mpAtlas->CreateNewMap();
     if (mSensor == System::IMU_STEREO || mSensor == System::IMU_MONOCULAR ||
@@ -2626,6 +3651,27 @@ void Tracker::CheckReplacedInLastFrame() {
             }
         }
     }
+}
+
+bool Tracker::HoldLastImuRgbdPose() {
+    if (!internal::CanHoldLastImuRgbdPose(mSensor == System::IMU_RGBD,
+                                          mLastFrame.isSet())) {
+        return false;
+    }
+    mCurrentFrame.SetImuPoseVelocity(mLastFrame.GetImuRotation(),
+                                     mLastFrame.GetImuPosition(),
+                                     mLastFrame.GetVelocity());
+    mCurrentFrame.mImuBias = mLastFrame.mImuBias;
+    mCurrentFrame.mPredBias = mLastFrame.mPredBias;
+    mnMatchesInliers = 0;
+    mbVelocity = false;
+    if (mpReferenceKF) {
+        mCurrentFrame.mpReferenceKF = mpReferenceKF;
+    } else if (mLastFrame.mpReferenceKF) {
+        mCurrentFrame.mpReferenceKF = mLastFrame.mpReferenceKF;
+        mpReferenceKF = mLastFrame.mpReferenceKF;
+    }
+    return mCurrentFrame.isSet();
 }
 
 bool Tracker::TrackReferenceKeyFrame() {
@@ -2682,6 +3728,53 @@ bool Tracker::TrackReferenceKeyFrame() {
         return true;
     else
         return nmatchesMap >= 10;
+}
+
+bool Tracker::TrackImuRgbdVisualRecoveryReferenceKeyFrames() {
+    KeyFrame* const original_reference_keyframe = mpReferenceKF;
+    KeyFrame* const original_frame_reference_keyframe =
+        mCurrentFrame.mpReferenceKF;
+
+    std::vector<KeyFrame*> candidates;
+    candidates.reserve(internal::kImuRgbdRecoveryReferenceCandidateLimit);
+    const auto append_candidate = [&candidates](KeyFrame* candidate) {
+        const bool candidate_valid = candidate && !candidate->isBad();
+        bool already_present = false;
+        for (KeyFrame* existing : candidates) {
+            if (existing == candidate) {
+                already_present = true;
+                break;
+            }
+        }
+        if (internal::ShouldAppendImuRgbdRecoveryReferenceCandidate(
+                candidate_valid, already_present,
+                static_cast<int>(candidates.size()))) {
+            candidates.push_back(candidate);
+        }
+    };
+
+    append_candidate(mpReferenceKF);
+    append_candidate(mpLastKeyFrame);
+    if (mpLastKeyFrame && !mpLastKeyFrame->isBad()) {
+        const std::vector<KeyFrame*> covisible_keyframes =
+            mpLastKeyFrame->GetBestCovisibilityKeyFrames(
+                internal::kImuRgbdRecoveryCovisibilityCandidateLimit);
+        for (KeyFrame* candidate : covisible_keyframes) {
+            append_candidate(candidate);
+        }
+    }
+
+    for (KeyFrame* candidate : candidates) {
+        mpReferenceKF = candidate;
+        mCurrentFrame.mpReferenceKF = candidate;
+        if (TrackReferenceKeyFrame()) {
+            return true;
+        }
+    }
+
+    mpReferenceKF = original_reference_keyframe;
+    mCurrentFrame.mpReferenceKF = original_frame_reference_keyframe;
+    return false;
 }
 
 void Tracker::UpdateLastFrame() {
@@ -2761,8 +3854,16 @@ bool Tracker::TrackWithMotionModel() {
     if (mpAtlas->isImuInitialized() &&
         (mCurrentFrame.mnId > mnLastRelocFrameId + mnFramesToResetIMU)) {
         // Predict state with IMU if it is initialized and it doesnt need reset
-        PredictStateIMU();
-        return true;
+        const bool imu_prediction_succeeded = PredictStateIMU();
+        if (mSensor == System::IMU_RGBD) {
+            if (!imu_prediction_succeeded && mLastFrame.isSet()) {
+                mCurrentFrame.SetPose(mLastFrame.GetPose());
+            }
+        } else {
+            return internal::ShouldUseImuPredictionResult(false)
+                       ? imu_prediction_succeeded
+                       : true;
+        }
     } else {
         mCurrentFrame.SetPose(mVelocity * mLastFrame.GetPose());
     }
@@ -2783,7 +3884,9 @@ bool Tracker::TrackWithMotionModel() {
         mCurrentFrame, mLastFrame, th,
         mSensor == System::MONOCULAR || mSensor == System::IMU_MONOCULAR);
 
-    // If few matches, uses a wider window search
+    // Twenty matches is the search-quality threshold: below it, retry the
+    // projection with a wider window before deciding whether the pose can be
+    // optimized.
     if (nmatches < 20) {
         AINFO << "Not enough matches, wider window search!!";
         std::fill(mCurrentFrame.mvpMapPoints.begin(),
@@ -2796,7 +3899,9 @@ bool Tracker::TrackWithMotionModel() {
         AINFO << "Matches with wider search: " + std::to_string(nmatches);
     }
 
-    if (nmatches < 20) {
+    // Fifteen matches is only the minimum pose seed. Pose optimization and the
+    // existing map-inlier checks below still validate the tracking result.
+    if (!internal::HasEnoughMotionModelPoseSeedMatches(nmatches)) {
         AINFO << "Not enough matches!!";
         if (mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO ||
             mSensor == System::IMU_RGBD)
@@ -2841,14 +3946,544 @@ bool Tracker::TrackWithMotionModel() {
         return nmatchesMap >= 10;
 }
 
-bool Tracker::TrackLocalMap() {
+bool Tracker::TrackLocalMap(
+    bool force_visual_pose_optimization,
+    internal::LocalMapCommitMode commit_mode, int* validation_inliers,
+    int required_minimum_inliers,
+    internal::LocalMapTrackingTransaction* transaction) {
+    const bool transactional =
+        commit_mode == internal::LocalMapCommitMode::kTransactional;
+    if (transactional && !transaction) {
+        return false;
+    }
+    const auto count_frame_associations = [&]() {
+        return static_cast<int>(std::count_if(
+            mCurrentFrame.mvpMapPoints.begin(),
+            mCurrentFrame.mvpMapPoints.end(),
+            [](const MapPoint* map_point) { return map_point != nullptr; }));
+    };
+    std::vector<MapPoint*> deferred_visible_points;
     // We have an estimation of the camera pose and some map points tracked in
     // the frame. We retrieve the local map and try to find matches to points in
     // the local map.
-    mTrackedFr++;
+    if (!transactional) {
+        ++mTrackedFr;
+    }
 
-    UpdateLocalMap();
-    SearchLocalPoints();
+    const int associations_before_local_map = count_frame_associations();
+    UpdateLocalMap(!transactional, transaction);
+    const std::size_t local_keyframe_count = mvpLocalKeyFrames.size();
+    const std::size_t local_map_point_count = mvpLocalMapPoints.size();
+    bool geometry_reanchor_activated = false;
+    Map* geometry_reanchor_expected_map = nullptr;
+    unsigned long geometry_reanchor_expected_map_id = 0;
+    std::uint64_t geometry_reanchor_expected_coordinate_epoch = 0;
+    int geometry_reanchor_expected_map_revision = 0;
+    if (internal::ShouldUseStrictRgbdTemporalLocalMapProjection(
+            transactional, mSensor == System::IMU_RGBD,
+            imu_rgbd_visual_recovery_active_)) {
+        const RgbdMapReanchorMatcher::FrameView frame_view = {
+            &mCurrentFrame.mDescriptors,
+            &mCurrentFrame.mvKeysUn,
+            &mCurrentFrame.mvDepth,
+            mCurrentFrame.mK_,
+            mCurrentFrame.N,
+            Frame::mnMinX,
+            Frame::mnMaxX,
+            Frame::mnMinY,
+            Frame::mnMaxY,
+        };
+        Map* const expected_map = mpAtlas->GetCurrentMap();
+        const unsigned long expected_map_id =
+            expected_map ? expected_map->GetId() : 0;
+        const std::uint64_t expected_coordinate_epoch =
+            expected_map ? expected_map->GetCoordinateEpoch() : 0;
+        const int expected_map_revision =
+            expected_map ? expected_map->GetMapChangeIndex() : 0;
+        std::unordered_set<MapPoint*> local_map_point_set;
+        local_map_point_set.reserve(mvpLocalMapPoints.size());
+        for (MapPoint* const map_point : mvpLocalMapPoints) {
+            if (map_point) {
+                local_map_point_set.insert(map_point);
+            }
+        }
+
+        struct DescriptorSourceKeyFrame {
+            double squared_camera_distance = 0.0;
+            std::uint64_t keyframe_id = 0;
+            KeyFrame* keyframe = nullptr;
+        };
+        std::vector<DescriptorSourceKeyFrame> descriptor_source_keyframes;
+        descriptor_source_keyframes.reserve(mvpLocalKeyFrames.size());
+        const Eigen::Vector3f current_camera_center =
+            mCurrentFrame.GetPose().inverse().translation();
+        if (expected_map && current_camera_center.allFinite()) {
+            for (KeyFrame* const keyframe : mvpLocalKeyFrames) {
+                if (!keyframe || keyframe->isBad() ||
+                    keyframe->GetMap() != expected_map) {
+                    continue;
+                }
+                const Eigen::Vector3f camera_center =
+                    keyframe->GetCameraCenter();
+                const double squared_camera_distance =
+                    (camera_center - current_camera_center)
+                        .cast<double>()
+                        .squaredNorm();
+                if (!camera_center.allFinite() ||
+                    !std::isfinite(squared_camera_distance)) {
+                    continue;
+                }
+                descriptor_source_keyframes.push_back(
+                    {squared_camera_distance,
+                     static_cast<std::uint64_t>(keyframe->mnId), keyframe});
+            }
+        }
+        std::sort(descriptor_source_keyframes.begin(),
+                  descriptor_source_keyframes.end(),
+                  [](const DescriptorSourceKeyFrame& left,
+                     const DescriptorSourceKeyFrame& right) {
+                      return std::tie(left.squared_camera_distance,
+                                      left.keyframe_id) <
+                             std::tie(right.squared_camera_distance,
+                                      right.keyframe_id);
+                  });
+        if (descriptor_source_keyframes.size() >
+            internal::kRgbdMapReanchorDescriptorKeyFrameLimit) {
+            descriptor_source_keyframes.resize(
+                internal::kRgbdMapReanchorDescriptorKeyFrameLimit);
+        }
+
+        std::unordered_map<MapPoint*, cv::Mat>
+            observation_descriptor_banks;
+        observation_descriptor_banks.reserve(local_map_point_set.size());
+        for (const DescriptorSourceKeyFrame& source :
+             descriptor_source_keyframes) {
+            const std::vector<MapPoint*> matches =
+                source.keyframe->GetMapPointMatches();
+            const int descriptor_count = std::min(
+                static_cast<int>(matches.size()),
+                source.keyframe->mDescriptors.rows);
+            for (int feature_index = 0; feature_index < descriptor_count;
+                 ++feature_index) {
+                MapPoint* const map_point = matches[feature_index];
+                if (!map_point ||
+                    local_map_point_set.count(map_point) == 0U) {
+                    continue;
+                }
+                cv::Mat& descriptor_bank =
+                    observation_descriptor_banks[map_point];
+                const cv::Mat descriptor =
+                    source.keyframe->mDescriptors.row(feature_index);
+                internal::AppendUniqueRgbdMapReanchorDescriptor(
+                    descriptor, &descriptor_bank);
+            }
+        }
+
+        std::vector<RgbdMapReanchorMatcher::MapPointView> map_point_views;
+        map_point_views.reserve(mvpLocalMapPoints.size());
+        for (std::size_t map_point_index = 0;
+             map_point_index < mvpLocalMapPoints.size(); ++map_point_index) {
+            MapPoint* const map_point = mvpLocalMapPoints[map_point_index];
+            RgbdMapReanchorMatcher::MapPointView map_point_view;
+            map_point_view.map_point = map_point;
+            map_point_view.source_index = map_point_index;
+            if (map_point) {
+                map_point_view.map_point_id = map_point->mnId;
+                map_point_view.valid_for_expected_map =
+                    !map_point->isBad() && !map_point->GetReplaced() &&
+                    map_point->GetMap() == expected_map &&
+                    map_point->Observations() > 0;
+                if (map_point_view.valid_for_expected_map) {
+                    map_point_view.world_point = map_point->GetWorldPos();
+                    const auto descriptors =
+                        observation_descriptor_banks.find(map_point);
+                    if (descriptors != observation_descriptor_banks.end() &&
+                        !descriptors->second.empty()) {
+                        map_point_view.descriptor_bank = descriptors->second;
+                        map_point_view.observation_descriptor_rows =
+                            descriptors->second.rows;
+                    } else {
+                        map_point_view.descriptor_bank =
+                            map_point->GetDescriptor();
+                    }
+                }
+            }
+            map_point_views.push_back(map_point_view);
+        }
+        const RgbdMapReanchorMatcher matcher;
+        const RgbdMapReanchorMatcher::Result shadow_result = matcher.Match(
+            frame_view, map_point_views, mCurrentFrame.GetPose());
+        const RgbdMapReanchorMatcher::Diagnostics& provisional =
+            shadow_result.diagnostics;
+        const RgbdMapReanchorMatcher::Diagnostics& refined =
+            shadow_result.refined_diagnostics;
+        const auto& provisional_thresholds =
+            provisional.descriptor_threshold_support;
+        const auto& refined_thresholds =
+            refined.descriptor_threshold_support;
+        const auto& provisional_geometry =
+            provisional.geometry_threshold_support;
+        const auto& refined_geometry =
+            refined.geometry_threshold_support;
+        AINFO << "ATLAS_RGBD_MAP_REANCHOR_SHADOW"
+              << " input_valid=" << (provisional.input_valid ? 1 : 0)
+              << " valid_unique_map_points="
+              << provisional.valid_unique_map_points
+              << " descriptor_source_keyframes="
+              << descriptor_source_keyframes.size()
+              << " descriptor_rows=" << provisional.descriptor_rows
+              << " multi_descriptor_map_points="
+              << provisional.multi_descriptor_map_points
+              << " projected_map_points="
+              << provisional.projected_map_points
+              << " candidates_after_geometry="
+              << provisional.candidates_after_geometry
+              << " candidates_after_descriptor="
+              << provisional.candidates_after_descriptor
+              << " mutual_matches=" << provisional.mutual_matches
+              << " assigned_matches=" << provisional.assigned_matches
+              << " observation_descriptor_matches="
+              << provisional.observation_descriptor_matches
+              << " provisional_geometry_mutual_5cm="
+              << provisional_geometry[0].mutual_matches
+              << " provisional_geometry_assigned_5cm="
+              << provisional_geometry[0].assigned_matches
+              << " provisional_geometry_grid_5cm="
+              << provisional_geometry[0].occupied_grid_cells
+              << " provisional_geometry_mutual_10cm="
+              << provisional_geometry[1].mutual_matches
+              << " provisional_geometry_assigned_10cm="
+              << provisional_geometry[1].assigned_matches
+              << " provisional_geometry_grid_10cm="
+              << provisional_geometry[1].occupied_grid_cells
+              << " provisional_geometry_mutual_dynamic="
+              << provisional_geometry[2].mutual_matches
+              << " provisional_geometry_assigned_dynamic="
+              << provisional_geometry[2].assigned_matches
+              << " provisional_geometry_grid_dynamic="
+              << provisional_geometry[2].occupied_grid_cells
+              << " provisional_mutual_d50="
+              << provisional_thresholds[0].mutual_matches
+              << " provisional_assigned_d50="
+              << provisional_thresholds[0].assigned_matches
+              << " provisional_grid_d50="
+              << provisional_thresholds[0].occupied_grid_cells
+              << " provisional_mutual_d60="
+              << provisional_thresholds[1].mutual_matches
+              << " provisional_assigned_d60="
+              << provisional_thresholds[1].assigned_matches
+              << " provisional_grid_d60="
+              << provisional_thresholds[1].occupied_grid_cells
+              << " provisional_mutual_d70="
+              << provisional_thresholds[2].mutual_matches
+              << " provisional_assigned_d70="
+              << provisional_thresholds[2].assigned_matches
+              << " provisional_grid_d70="
+              << provisional_thresholds[2].occupied_grid_cells
+              << " provisional_mutual_d80="
+              << provisional_thresholds[3].mutual_matches
+              << " provisional_assigned_d80="
+              << provisional_thresholds[3].assigned_matches
+              << " provisional_grid_d80="
+              << provisional_thresholds[3].occupied_grid_cells
+              << " provisional_mutual_d100="
+              << provisional_thresholds[4].mutual_matches
+              << " provisional_assigned_d100="
+              << provisional_thresholds[4].assigned_matches
+              << " provisional_grid_d100="
+              << provisional_thresholds[4].occupied_grid_cells
+              << " grid_cells=" << provisional.occupied_grid_cells
+              << " provisional_reprojection_rmse_px="
+              << provisional.reprojection_rmse_pixels
+              << " provisional_xyz_rmse_m="
+              << provisional.xyz_rmse_meters
+              << " pnp_attempted="
+              << (shadow_result.pnp_attempted ? 1 : 0)
+              << " pnp_succeeded="
+              << (shadow_result.pnp_succeeded ? 1 : 0)
+              << " pnp_inliers=" << shadow_result.pnp_inliers
+              << " refined_candidates_after_geometry="
+              << refined.candidates_after_geometry
+              << " refined_candidates_after_descriptor="
+              << refined.candidates_after_descriptor
+              << " refined_mutual_matches=" << refined.mutual_matches
+              << " refined_assigned_matches=" << refined.assigned_matches
+              << " refined_observation_descriptor_matches="
+              << refined.observation_descriptor_matches
+              << " refined_geometry_mutual_5cm="
+              << refined_geometry[0].mutual_matches
+              << " refined_geometry_assigned_5cm="
+              << refined_geometry[0].assigned_matches
+              << " refined_geometry_grid_5cm="
+              << refined_geometry[0].occupied_grid_cells
+              << " refined_geometry_mutual_10cm="
+              << refined_geometry[1].mutual_matches
+              << " refined_geometry_assigned_10cm="
+              << refined_geometry[1].assigned_matches
+              << " refined_geometry_grid_10cm="
+              << refined_geometry[1].occupied_grid_cells
+              << " refined_geometry_mutual_dynamic="
+              << refined_geometry[2].mutual_matches
+              << " refined_geometry_assigned_dynamic="
+              << refined_geometry[2].assigned_matches
+              << " refined_geometry_grid_dynamic="
+              << refined_geometry[2].occupied_grid_cells
+              << " refined_mutual_d50="
+              << refined_thresholds[0].mutual_matches
+              << " refined_assigned_d50="
+              << refined_thresholds[0].assigned_matches
+              << " refined_grid_d50="
+              << refined_thresholds[0].occupied_grid_cells
+              << " refined_mutual_d60="
+              << refined_thresholds[1].mutual_matches
+              << " refined_assigned_d60="
+              << refined_thresholds[1].assigned_matches
+              << " refined_grid_d60="
+              << refined_thresholds[1].occupied_grid_cells
+              << " refined_mutual_d70="
+              << refined_thresholds[2].mutual_matches
+              << " refined_assigned_d70="
+              << refined_thresholds[2].assigned_matches
+              << " refined_grid_d70="
+              << refined_thresholds[2].occupied_grid_cells
+              << " refined_mutual_d80="
+              << refined_thresholds[3].mutual_matches
+              << " refined_assigned_d80="
+              << refined_thresholds[3].assigned_matches
+              << " refined_grid_d80="
+              << refined_thresholds[3].occupied_grid_cells
+              << " refined_mutual_d100="
+              << refined_thresholds[4].mutual_matches
+              << " refined_assigned_d100="
+              << refined_thresholds[4].assigned_matches
+              << " refined_grid_d100="
+              << refined_thresholds[4].occupied_grid_cells
+              << " refined_grid_cells=" << refined.occupied_grid_cells
+              << " refined_reprojection_rmse_px="
+              << refined.reprojection_rmse_pixels
+              << " refined_xyz_rmse_m=" << refined.xyz_rmse_meters
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+
+        const RgbdMapReanchorMatcher::GeometryThresholdSupport&
+            five_centimeter_support = provisional_geometry[0];
+        const bool geometry_reanchor_eligible =
+            internal::ShouldActivateRgbdGeometryReanchor(
+                provisional.input_valid,
+                five_centimeter_support.assigned_matches,
+                five_centimeter_support.occupied_grid_cells);
+        const std::vector<MapPoint*>& geometry_associations =
+            shadow_result.geometry_five_centimeter_associations;
+        bool geometry_identity_valid =
+            geometry_reanchor_eligible && expected_map &&
+            expected_map == mpAtlas->GetCurrentMap() &&
+            expected_map->GetId() == expected_map_id &&
+            expected_map->GetCoordinateEpoch() ==
+                expected_coordinate_epoch &&
+            expected_map->GetMapChangeIndex() == expected_map_revision &&
+            geometry_associations.size() ==
+                static_cast<std::size_t>(mCurrentFrame.N);
+        std::unordered_set<MapPoint*> geometry_map_points;
+        std::unordered_set<std::uint64_t> geometry_map_point_ids;
+        geometry_map_points.reserve(
+            five_centimeter_support.assigned_matches);
+        geometry_map_point_ids.reserve(
+            five_centimeter_support.assigned_matches);
+        int geometry_seeded_associations = 0;
+        if (geometry_identity_valid) {
+            for (MapPoint* const map_point : geometry_associations) {
+                if (!map_point) {
+                    continue;
+                }
+                if (map_point->isBad() || map_point->GetReplaced() ||
+                    map_point->GetMap() != expected_map ||
+                    map_point->Observations() <= 0 ||
+                    local_map_point_set.count(map_point) == 0U ||
+                    !geometry_map_points.insert(map_point).second ||
+                    !geometry_map_point_ids.insert(map_point->mnId).second) {
+                    geometry_identity_valid = false;
+                    break;
+                }
+                ++geometry_seeded_associations;
+            }
+            geometry_identity_valid =
+                geometry_identity_valid &&
+                geometry_seeded_associations ==
+                    five_centimeter_support.assigned_matches;
+            geometry_identity_valid =
+                geometry_identity_valid &&
+                expected_map == mpAtlas->GetCurrentMap() &&
+                expected_map->GetId() == expected_map_id &&
+                expected_map->GetCoordinateEpoch() ==
+                    expected_coordinate_epoch &&
+                expected_map->GetMapChangeIndex() == expected_map_revision;
+        }
+        if (geometry_identity_valid) {
+            mCurrentFrame.mvpMapPoints = geometry_associations;
+            mCurrentFrame.mvbOutlier.assign(mCurrentFrame.N, false);
+            mCurrentFrame.mmProjectPoints.clear();
+            mCurrentFrame.mmMatchedInImage.clear();
+            geometry_reanchor_activated = true;
+            geometry_reanchor_expected_map = expected_map;
+            geometry_reanchor_expected_map_id = expected_map_id;
+            geometry_reanchor_expected_coordinate_epoch =
+                expected_coordinate_epoch;
+            geometry_reanchor_expected_map_revision =
+                expected_map_revision;
+        }
+        AINFO << "ATLAS_RGBD_GEOMETRY_REANCHOR_SEED"
+              << " eligible=" << (geometry_reanchor_eligible ? 1 : 0)
+              << " identity_valid=" << (geometry_identity_valid ? 1 : 0)
+              << " activated=" << (geometry_reanchor_activated ? 1 : 0)
+              << " assigned_5cm="
+              << five_centimeter_support.assigned_matches
+              << " grid_5cm="
+              << five_centimeter_support.occupied_grid_cells
+              << " seeded=" << geometry_seeded_associations
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+    }
+    const int associations_before_search = count_frame_associations();
+    SearchLocalPoints(!transactional,
+                      transactional ? &deferred_visible_points : nullptr,
+                      transaction);
+    const int associations_after_search = count_frame_associations();
+
+    int geometry_valid_associations = 0;
+    int geometry_depth_checked = 0;
+    int geometry_reprojection_consistent = 0;
+    int geometry_xyz_consistent = 0;
+    int geometry_joint_consistent = 0;
+    double geometry_squared_reprojection_error = 0.0;
+    double geometry_squared_xyz_error = 0.0;
+    std::array<bool, 16> geometry_occupied_grid_cells{};
+    if (internal::ShouldUseStrictRgbdTemporalLocalMapProjection(
+            transactional, mSensor == System::IMU_RGBD,
+            imu_rgbd_visual_recovery_active_)) {
+        Map* const current_map = mpAtlas->GetCurrentMap();
+        const autonomy::common::math::SE3f camera_from_world =
+            mCurrentFrame.GetPose();
+        const double fx = static_cast<double>(mCurrentFrame.mK_(0, 0));
+        const double fy = static_cast<double>(mCurrentFrame.mK_(1, 1));
+        const double cx = static_cast<double>(mCurrentFrame.mK_(0, 2));
+        const double cy = static_cast<double>(mCurrentFrame.mK_(1, 2));
+        const double image_width =
+            static_cast<double>(Frame::mnMaxX - Frame::mnMinX);
+        const double image_height =
+            static_cast<double>(Frame::mnMaxY - Frame::mnMinY);
+        const bool intrinsics_valid =
+            std::isfinite(fx) && std::isfinite(fy) &&
+            std::isfinite(cx) && std::isfinite(cy) && fx > 0.0 && fy > 0.0;
+        for (int index = 0; index < mCurrentFrame.N; ++index) {
+            MapPoint* const map_point = mCurrentFrame.mvpMapPoints[index];
+            if (!map_point || !current_map || map_point->isBad() ||
+                map_point->GetMap() != current_map ||
+                map_point->Observations() <= 0 || !intrinsics_valid ||
+                static_cast<std::size_t>(index) >=
+                    mCurrentFrame.mvKeysUn.size() ||
+                static_cast<std::size_t>(index) >=
+                    mCurrentFrame.mvDepth.size()) {
+                continue;
+            }
+            ++geometry_valid_associations;
+
+            const double measured_depth =
+                static_cast<double>(mCurrentFrame.mvDepth[index]);
+            const cv::Point2f& observed_pixel =
+                mCurrentFrame.mvKeysUn[index].pt;
+            const Eigen::Vector3f world_point = map_point->GetWorldPos();
+            const Eigen::Vector3f predicted_point =
+                camera_from_world * world_point;
+            if (!world_point.allFinite() || !predicted_point.allFinite() ||
+                !std::isfinite(measured_depth) || measured_depth <= 0.0 ||
+                predicted_point.z() <= 0.0F ||
+                !std::isfinite(observed_pixel.x) ||
+                !std::isfinite(observed_pixel.y)) {
+                continue;
+            }
+
+            const Eigen::Vector3d measured_point(
+                (static_cast<double>(observed_pixel.x) - cx) *
+                    measured_depth / fx,
+                (static_cast<double>(observed_pixel.y) - cy) *
+                    measured_depth / fy,
+                measured_depth);
+            const Eigen::Vector3d predicted_point_double =
+                predicted_point.cast<double>();
+            const double projected_x =
+                fx * predicted_point_double.x() /
+                    predicted_point_double.z() +
+                cx;
+            const double projected_y =
+                fy * predicted_point_double.y() /
+                    predicted_point_double.z() +
+                cy;
+            const double reprojection_error = std::hypot(
+                projected_x - static_cast<double>(observed_pixel.x),
+                projected_y - static_cast<double>(observed_pixel.y));
+            const double xyz_error =
+                (predicted_point_double - measured_point).norm();
+            if (!std::isfinite(reprojection_error) ||
+                !std::isfinite(xyz_error)) {
+                continue;
+            }
+            ++geometry_depth_checked;
+            geometry_squared_reprojection_error +=
+                reprojection_error * reprojection_error;
+            geometry_squared_xyz_error += xyz_error * xyz_error;
+            const bool reprojection_consistent =
+                internal::IsRgbdTemporalMapReprojectionConsistent(
+                    reprojection_error);
+            const bool xyz_consistent =
+                internal::IsRgbdTemporalMapXyzConsistent(
+                    static_cast<double>(predicted_point.z()), measured_depth,
+                    xyz_error);
+            geometry_reprojection_consistent +=
+                reprojection_consistent ? 1 : 0;
+            geometry_xyz_consistent += xyz_consistent ? 1 : 0;
+            if (!reprojection_consistent || !xyz_consistent) {
+                continue;
+            }
+            ++geometry_joint_consistent;
+            if (image_width > 0.0 && image_height > 0.0 &&
+                observed_pixel.x >= Frame::mnMinX &&
+                observed_pixel.x <= Frame::mnMaxX &&
+                observed_pixel.y >= Frame::mnMinY &&
+                observed_pixel.y <= Frame::mnMaxY) {
+                const int column = std::clamp(
+                    static_cast<int>((observed_pixel.x - Frame::mnMinX) /
+                                     image_width * 4.0),
+                    0, 3);
+                const int row = std::clamp(
+                    static_cast<int>((observed_pixel.y - Frame::mnMinY) /
+                                     image_height * 4.0),
+                    0, 3);
+                geometry_occupied_grid_cells[row * 4 + column] = true;
+            }
+        }
+        const double reprojection_rmse =
+            geometry_depth_checked > 0
+                ? std::sqrt(geometry_squared_reprojection_error /
+                            geometry_depth_checked)
+                : std::numeric_limits<double>::infinity();
+        const double xyz_rmse =
+            geometry_depth_checked > 0
+                ? std::sqrt(geometry_squared_xyz_error /
+                            geometry_depth_checked)
+                : std::numeric_limits<double>::infinity();
+        const int joint_grid_cells = static_cast<int>(std::count(
+            geometry_occupied_grid_cells.begin(),
+            geometry_occupied_grid_cells.end(), true));
+        AINFO << "ATLAS_RGBD_TEMPORAL_TLM_GEOMETRY"
+              << " valid_associations=" << geometry_valid_associations
+              << " depth_checked=" << geometry_depth_checked
+              << " reprojection_consistent="
+              << geometry_reprojection_consistent
+              << " xyz_consistent=" << geometry_xyz_consistent
+              << " joint_consistent=" << geometry_joint_consistent
+              << " joint_grid_cells=" << joint_grid_cells
+              << " reprojection_rmse_px=" << reprojection_rmse
+              << " xyz_rmse_m=" << xyz_rmse
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+    }
 
     // TOO check outliers before PO
     int aux1 = 0, aux2 = 0;
@@ -2858,9 +4493,12 @@ bool Tracker::TrackLocalMap() {
             if (mCurrentFrame.mvbOutlier[i])
                 aux2++;
         }
+    const int associations_before_optimization = aux1;
+    const int outliers_before_optimization = aux2;
 
     int inliers;
-    if (!mpAtlas->isImuInitialized())
+    if (internal::ShouldUseVisualPoseOptimization(
+            mpAtlas->isImuInitialized(), force_visual_pose_optimization))
         Optimizer::PoseOptimization(&mCurrentFrame);
     else {
         if (mCurrentFrame.mnId <= mnLastRelocFrameId + mnFramesToResetIMU) {
@@ -2890,19 +4528,123 @@ bool Tracker::TrackLocalMap() {
             if (mCurrentFrame.mvbOutlier[i])
                 aux2++;
         }
+    const int associations_after_optimization = aux1;
+    const int outliers_after_optimization = aux2;
 
-    mnMatchesInliers = 0;
+    if (geometry_reanchor_activated) {
+        Map* const current_map = mpAtlas->GetCurrentMap();
+        const bool identity_stable =
+            current_map && current_map == geometry_reanchor_expected_map &&
+            current_map->GetId() == geometry_reanchor_expected_map_id &&
+            current_map->GetCoordinateEpoch() ==
+                geometry_reanchor_expected_coordinate_epoch &&
+            current_map->GetMapChangeIndex() ==
+                geometry_reanchor_expected_map_revision;
+        std::vector<RgbdMapReanchorMatcher::AssociationView>
+            association_views;
+        association_views.reserve(associations_after_optimization);
+        for (int index = 0; index < mCurrentFrame.N; ++index) {
+            MapPoint* const map_point = mCurrentFrame.mvpMapPoints[index];
+            if (!map_point) {
+                continue;
+            }
+            RgbdMapReanchorMatcher::AssociationView association;
+            association.feature_index = index;
+            association.map_point = map_point;
+            association.map_point_id = map_point->mnId;
+            association.optimizer_outlier =
+                static_cast<std::size_t>(index) >=
+                    mCurrentFrame.mvbOutlier.size() ||
+                mCurrentFrame.mvbOutlier[index];
+            association.valid_for_expected_map =
+                identity_stable && !map_point->isBad() &&
+                !map_point->GetReplaced() &&
+                map_point->GetMap() == geometry_reanchor_expected_map &&
+                map_point->Observations() > 0;
+            if (association.valid_for_expected_map) {
+                association.world_point = map_point->GetWorldPos();
+            }
+            association_views.push_back(association);
+        }
+        const RgbdMapReanchorMatcher::FrameView optimized_frame_view = {
+            &mCurrentFrame.mDescriptors,
+            &mCurrentFrame.mvKeysUn,
+            &mCurrentFrame.mvDepth,
+            mCurrentFrame.mK_,
+            mCurrentFrame.N,
+            Frame::mnMinX,
+            Frame::mnMaxX,
+            Frame::mnMinY,
+            Frame::mnMaxY,
+        };
+        const RgbdMapReanchorMatcher matcher;
+        const RgbdMapReanchorMatcher::AssociationValidation validation =
+            matcher.ValidateFiveCentimeterAssociations(
+                optimized_frame_view, association_views,
+                mCurrentFrame.GetPose());
+        Map* const map_after_validation = mpAtlas->GetCurrentMap();
+        const bool identity_stable_after_validation =
+            identity_stable && map_after_validation &&
+            map_after_validation == geometry_reanchor_expected_map &&
+            map_after_validation->GetId() ==
+                geometry_reanchor_expected_map_id &&
+            map_after_validation->GetCoordinateEpoch() ==
+                geometry_reanchor_expected_coordinate_epoch &&
+            map_after_validation->GetMapChangeIndex() ==
+                geometry_reanchor_expected_map_revision;
+        const bool post_optimization_valid =
+            internal::PassesRgbdGeometryReanchorPostOptimization(
+                identity_stable_after_validation, validation.input_valid,
+                validation.consistent_associations,
+                validation.occupied_grid_cells);
+        AINFO << "ATLAS_RGBD_GEOMETRY_REANCHOR_POST_OPT"
+              << " identity_stable_before=" << (identity_stable ? 1 : 0)
+              << " identity_stable_after="
+              << (identity_stable_after_validation ? 1 : 0)
+              << " input_valid=" << (validation.input_valid ? 1 : 0)
+              << " input_associations="
+              << validation.input_associations
+              << " valid_unique="
+              << validation.valid_unique_associations
+              << " consistent_5cm="
+              << validation.consistent_associations
+              << " grid_5cm=" << validation.occupied_grid_cells
+              << " accepted=" << (post_optimization_valid ? 1 : 0)
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+        if (!post_optimization_valid) {
+            if (validation_inliers) {
+                *validation_inliers = validation.consistent_associations;
+            }
+            return false;
+        }
+
+        std::vector<MapPoint*> strictly_validated_associations(
+            mCurrentFrame.N, nullptr);
+        for (int feature_index : validation.accepted_feature_indices) {
+            if (feature_index >= 0 && feature_index < mCurrentFrame.N) {
+                strictly_validated_associations[feature_index] =
+                    mCurrentFrame.mvpMapPoints[feature_index];
+            }
+        }
+        mCurrentFrame.mvpMapPoints =
+            std::move(strictly_validated_associations);
+        mCurrentFrame.mvbOutlier.assign(mCurrentFrame.N, false);
+    }
+
+    int matches_inliers = 0;
 
     // Update MapPoints Statistics
     for (int i = 0; i < mCurrentFrame.N; i++) {
         if (mCurrentFrame.mvpMapPoints[i]) {
             if (!mCurrentFrame.mvbOutlier[i]) {
-                mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
+                if (!transactional) {
+                    mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
+                }
                 if (!mbOnlyTracking) {
                     if (mCurrentFrame.mvpMapPoints[i]->Observations() > 0)
-                        mnMatchesInliers++;
+                        ++matches_inliers;
                 } else
-                    mnMatchesInliers++;
+                    ++matches_inliers;
             } else if (mSensor == System::STEREO)
                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(nullptr);
         }
@@ -2910,30 +4652,91 @@ bool Tracker::TrackLocalMap() {
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
-    mpLocalMapper->mnMatchesInliers = mnMatchesInliers;
-    if (mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames &&
-        mnMatchesInliers < 50)
+    if (validation_inliers) {
+        *validation_inliers = matches_inliers;
+    }
+    if (transactional) {
+        AINFO << "ATLAS_RGBD_TEMPORAL_TLM"
+              << " local_keyframes=" << local_keyframe_count
+              << " local_map_points=" << local_map_point_count
+              << " associations_before_local_map="
+              << associations_before_local_map
+              << " associations_before_search=" << associations_before_search
+              << " associations_after_search=" << associations_after_search
+              << " associations_before_optimization="
+              << associations_before_optimization
+              << " outliers_before_optimization="
+              << outliers_before_optimization
+              << " associations_after_optimization="
+              << associations_after_optimization
+              << " outliers_after_optimization="
+              << outliers_after_optimization
+              << " final_local_inliers=" << matches_inliers
+              << " required_inliers=" << required_minimum_inliers
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+    }
+    if (required_minimum_inliers > 0 &&
+        matches_inliers < required_minimum_inliers) {
+        return false;
+    }
+    if (!transactional) {
+        mnMatchesInliers = matches_inliers;
+        mpLocalMapper->mnMatchesInliers = matches_inliers;
+    }
+    const auto commit_transactional_tracking = [&]() {
+        if (!transactional) {
+            return;
+        }
+        ++mTrackedFr;
+        for (MapPoint* point : deferred_visible_points) {
+            point->IncreaseVisible();
+        }
+        for (int index = 0; index < mCurrentFrame.N; ++index) {
+            if (mCurrentFrame.mvpMapPoints[index] &&
+                !mCurrentFrame.mvbOutlier[index]) {
+                mCurrentFrame.mvpMapPoints[index]->IncreaseFound();
+            }
+        }
+        mnMatchesInliers = matches_inliers;
+        mpLocalMapper->mnMatchesInliers = matches_inliers;
+        mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
+    };
+    const bool recently_relocalized =
+        mCurrentFrame.mnId < mnLastRelocFrameId + mMaxFrames;
+    if (internal::FailsRecentRelocalizationInlierThreshold(
+            recently_relocalized, matches_inliers,
+            force_visual_pose_optimization))
         return false;
 
-    if ((mnMatchesInliers > 10) && (mState == RECENTLY_LOST))
+    if ((mState == RECENTLY_LOST) &&
+        internal::HasEnoughRecentlyLostInliers(matches_inliers,
+                                               mSensor == System::IMU_RGBD)) {
+        commit_transactional_tracking();
         return true;
+    }
 
     if (mSensor == System::IMU_MONOCULAR) {
-        if ((mnMatchesInliers < 15 && mpAtlas->isImuInitialized()) ||
-            (mnMatchesInliers < 50 && !mpAtlas->isImuInitialized())) {
+        if ((matches_inliers < 15 && mpAtlas->isImuInitialized()) ||
+            (matches_inliers < 50 && !mpAtlas->isImuInitialized())) {
             return false;
-        } else
+        } else {
+            commit_transactional_tracking();
             return true;
+        }
     } else if (mSensor == System::IMU_STEREO || mSensor == System::IMU_RGBD) {
-        if (mnMatchesInliers < 15) {
+        if (matches_inliers < 15) {
             return false;
-        } else
+        } else {
+            commit_transactional_tracking();
             return true;
+        }
     } else {
-        if (mnMatchesInliers < 30)
+        if (matches_inliers < 30)
             return false;
-        else
+        else {
+            commit_transactional_tracking();
             return true;
+        }
     }
 }
 
@@ -2941,16 +4744,8 @@ bool Tracker::NeedNewKeyFrame() {
     if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO ||
          mSensor == System::IMU_RGBD) &&
         !mpAtlas->GetCurrentMap()->isImuInitialized()) {
-        if (mSensor == System::IMU_MONOCULAR &&
-            (mCurrentFrame.mTimeStamp - mpLastKeyFrame->mTimeStamp) >= 0.25)
-            return true;
-        else if ((mSensor == System::IMU_STEREO ||
-                  mSensor == System::IMU_RGBD) &&
-                 (mCurrentFrame.mTimeStamp - mpLastKeyFrame->mTimeStamp) >=
-                     0.25)
-            return true;
-        else
-            return false;
+        return mCurrentFrame.mTimeStamp - mpLastKeyFrame->mTimeStamp >=
+               mImuInitKeyFrameMinInterval;
     }
 
     if (mbOnlyTracking)
@@ -3001,6 +4796,8 @@ bool Tracker::NeedNewKeyFrame() {
                     nNonTrackedClose++;
             }
         }
+        mapping_telemetry_.RecordClosePointThresholds(
+            nTrackedClose<100, nNonTrackedClose> 70);
         // Debug counters are intentionally omitted from the normal log path.
     }
 
@@ -3041,11 +4838,14 @@ bool Tracker::NeedNewKeyFrame() {
     const bool c1b =
         ((mCurrentFrame.mnId >= mnLastKeyFrameId + mMinFrames) &&
          bLocalMapperIdle);  // mpLocalMapper->KeyframesInQueue() < 2);
-    // Condition 1c: tracking is weak
-    const bool c1c =
+    // Condition 1c: tracking is weak or close-point creation is needed.
+    const bool supports_noninertial_emergency =
         mSensor != System::MONOCULAR && mSensor != System::IMU_MONOCULAR &&
-        mSensor != System::IMU_STEREO && mSensor != System::IMU_RGBD &&
-        (mnMatchesInliers < nRefMatches * 0.25 || bNeedToInsertClose);
+        mSensor != System::IMU_STEREO && mSensor != System::IMU_RGBD;
+    const bool weak_tracking_emergency =
+        supports_noninertial_emergency && mnMatchesInliers < nRefMatches * 0.25;
+    const bool c1c = supports_noninertial_emergency &&
+                     (weak_tracking_emergency || bNeedToInsertClose);
     // Condition 2: Few tracked points compared to reference keyframe. Lots of
     // visual odometry compared to map matches.
     const bool c2 = (((mnMatchesInliers < nRefMatches * thRefRatio ||
@@ -3080,26 +4880,74 @@ bool Tracker::NeedNewKeyFrame() {
     else
         c4 = false;
 
-    if (((c1a || c1b || c1c) && c2) || c3 || c4) {
-        // If the mapping accepts keyframes, insert keyframe.
-        // Otherwise send a signal to interrupt BA
-        if (bLocalMapperIdle || mpLocalMapper->IsInitializing()) {
-            return true;
-        } else {
-            mpLocalMapper->InterruptBA();
-            if (mSensor != System::MONOCULAR &&
-                mSensor != System::IMU_MONOCULAR) {
-                if (mpLocalMapper->KeyframesInQueue() < 3)
-                    return true;
-                else
-                    return false;
-            } else {
-                // AINFO << "NeedNewKeyFrame: localmap is busy" << std::endl;
-                return false;
-            }
-        }
-    } else
+    internal::KeyFrameAdmissionSignals admission_signals;
+    admission_signals.c1a_max_frames_elapsed = c1a;
+    admission_signals.c1b_min_frames_and_idle = c1b;
+    admission_signals.c1c_noninertial_weak_or_close = c1c;
+    admission_signals.c2_tracking_or_close_need = c2;
+    admission_signals.c3_inertial_time_elapsed = c3;
+    admission_signals.c4_imu_monocular_recovery = c4;
+    admission_signals.need_close_point_insertion = bNeedToInsertClose;
+    if (!internal::IsKeyFrameRequested(admission_signals)) {
         return false;
+    }
+
+    const bool local_mapper_initializing =
+        !bLocalMapperIdle && mpLocalMapper->IsInitializing();
+    const bool local_mapper_busy =
+        !bLocalMapperIdle && !local_mapper_initializing;
+    admission_signals.local_mapper_idle = bLocalMapperIdle;
+    admission_signals.local_mapper_initializing = local_mapper_initializing;
+    admission_signals.supports_busy_admission =
+        mSensor != System::MONOCULAR && mSensor != System::IMU_MONOCULAR;
+    if (local_mapper_busy) {
+        admission_signals.queued_keyframes = mpLocalMapper->KeyframesInQueue();
+    }
+
+    const internal::KeyFrameAdmissionDecision admission =
+        internal::DecideKeyFrameAdmission(admission_signals);
+
+    const bool busy_emergency_request =
+        local_mapper_busy && admission_signals.supports_busy_admission && c2 &&
+        (weak_tracking_emergency || bNeedToInsertClose);
+
+    if (mapping_telemetry_.enabled() && busy_emergency_request) {
+        internal::BusyKeyFrameReason reason =
+            internal::BusyKeyFrameReason::kWeakAndClose;
+        if (weak_tracking_emergency && !bNeedToInsertClose) {
+            reason = internal::BusyKeyFrameReason::kWeakOnly;
+        } else if (!weak_tracking_emergency && bNeedToInsertClose) {
+            reason = internal::BusyKeyFrameReason::kCloseOnly;
+        }
+        const bool admitted =
+            admission ==
+            internal::KeyFrameAdmissionDecision::kInterruptBaAndInsert;
+        const bool queue_limit_deferred =
+            !admitted && admission_signals.queued_keyframes >=
+                             internal::kBusyKeyFrameQueueLimit;
+        const std::uint64_t frame_gap =
+            mCurrentFrame.mnId >= mnLastKeyFrameId
+                ? static_cast<std::uint64_t>(mCurrentFrame.mnId -
+                                             mnLastKeyFrameId)
+                : 0;
+        mapping_telemetry_.RecordBusyKeyFrameRequest(
+            reason, admitted, queue_limit_deferred, frame_gap,
+            mpLocalMapper->GetLbaCompletionGeneration());
+    }
+
+    if (admission ==
+        internal::KeyFrameAdmissionDecision::kInsertWithoutInterrupt) {
+        return true;
+    }
+    if (admission !=
+        internal::KeyFrameAdmissionDecision::kInterruptBaAndInsert) {
+        return false;
+    }
+
+    // Interrupt only after policy admits the emergency keyframe. Routine
+    // cadence must let the current LBA finish.
+    mpLocalMapper->InterruptBA();
+    return true;
 }
 
 void Tracker::CreateNewKeyFrame() {
@@ -3227,9 +5075,12 @@ void Tracker::CreateNewKeyFrame() {
 
     mnLastKeyFrameId = mCurrentFrame.mnId;
     mpLastKeyFrame = pKF;
+    LogVisualSlamEvent("keyframe");
 }
 
-void Tracker::SearchLocalPoints() {
+void Tracker::SearchLocalPoints(
+    bool commit_statistics, std::vector<MapPoint*>* deferred_visible_points,
+    internal::LocalMapTrackingTransaction* transaction) {
     // Do not search map points already matched
     for (std::vector<MapPoint*>::iterator
              vit = mCurrentFrame.mvpMapPoints.begin(),
@@ -3240,7 +5091,14 @@ void Tracker::SearchLocalPoints() {
             if (pMP->isBad()) {
                 *vit = static_cast<MapPoint*>(nullptr);
             } else {
-                pMP->IncreaseVisible();
+                if (transaction) {
+                    transaction->Capture(pMP);
+                }
+                if (commit_statistics) {
+                    pMP->IncreaseVisible();
+                } else if (deferred_visible_points) {
+                    deferred_visible_points->push_back(pMP);
+                }
                 pMP->mnLastFrameSeen = mCurrentFrame.mnId;
                 pMP->mbTrackInView = false;
                 pMP->mbTrackInViewR = false;
@@ -3260,9 +5118,16 @@ void Tracker::SearchLocalPoints() {
             continue;
         if (pMP->isBad())
             continue;
+        if (transaction) {
+            transaction->Capture(pMP);
+        }
         // Project (this fills MapPoint variables for matching)
         if (mCurrentFrame.isInFrustum(pMP, 0.5)) {
-            pMP->IncreaseVisible();
+            if (commit_statistics) {
+                pMP->IncreaseVisible();
+            } else if (deferred_visible_points) {
+                deferred_visible_points->push_back(pMP);
+            }
             nToMatch++;
         }
         if (pMP->mbTrackInView) {
@@ -3271,6 +5136,8 @@ void Tracker::SearchLocalPoints() {
         }
     }
 
+    int projection_matches = 0;
+    int projection_search_radius = 0;
     if (nToMatch > 0) {
         OrbMatcher matcher(0.8);
         int th = 1;
@@ -3296,22 +5163,49 @@ void Tracker::SearchLocalPoints() {
             mState == RECENTLY_LOST)  // Lost for less than 1 second
             th = 15;                  // 15
 
-        int matches = matcher.SearchByProjection(
+        if (internal::ShouldUseStrictRgbdTemporalLocalMapProjection(
+                transaction != nullptr, mSensor == System::IMU_RGBD,
+                imu_rgbd_visual_recovery_active_)) {
+            th = internal::kRgbdTemporalLocalMapProjectionRadius;
+        }
+
+        projection_search_radius = th;
+        projection_matches = matcher.SearchByProjection(
             mCurrentFrame, mvpLocalMapPoints, th, mpLocalMapper->mbFarPoints,
             mpLocalMapper->mThFarPoints);
     }
+    if (transaction) {
+        const int associations_after_projection = static_cast<int>(
+            std::count_if(mCurrentFrame.mvpMapPoints.begin(),
+                          mCurrentFrame.mvpMapPoints.end(),
+                          [](const MapPoint* map_point) {
+                              return map_point != nullptr;
+                          }));
+        AINFO << "ATLAS_RGBD_TEMPORAL_TLM_SEARCH"
+              << " frustum_candidates=" << nToMatch
+              << " projection_matches=" << projection_matches
+              << " search_radius=" << projection_search_radius
+              << " associations_after_projection="
+              << associations_after_projection
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+    }
 }
 
-void Tracker::UpdateLocalMap() {
+void Tracker::UpdateLocalMap(
+    bool publish_reference_points,
+    internal::LocalMapTrackingTransaction* transaction) {
     // This is for visualization
-    mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
+    if (publish_reference_points) {
+        mpAtlas->SetReferenceMapPoints(mvpLocalMapPoints);
+    }
 
     // Update
-    UpdateLocalKeyFrames();
-    UpdateLocalPoints();
+    UpdateLocalKeyFrames(transaction);
+    UpdateLocalPoints(transaction);
 }
 
-void Tracker::UpdateLocalPoints() {
+void Tracker::UpdateLocalPoints(
+    internal::LocalMapTrackingTransaction* transaction) {
     mvpLocalMapPoints.clear();
 
     int count_pts = 0;
@@ -3334,18 +5228,103 @@ void Tracker::UpdateLocalPoints() {
             if (!pMP->isBad()) {
                 count_pts++;
                 mvpLocalMapPoints.push_back(pMP);
+                if (transaction) {
+                    transaction->Capture(pMP);
+                }
                 pMP->mnTrackReferenceForFrame = mCurrentFrame.mnId;
             }
         }
     }
 }
 
-void Tracker::UpdateLocalKeyFrames() {
+void Tracker::UpdateLocalKeyFrames(
+    internal::LocalMapTrackingTransaction* transaction) {
     // Each map point vote for the keyframes in which it has been observed
     std::map<KeyFrame*, int> keyframeCounter;
-    if (!mpAtlas->isImuInitialized() ||
-        (mCurrentFrame.mnId < mnLastRelocFrameId + 2)) {
-        for (int i = 0; i < mCurrentFrame.N; i++) {
+    Map* const current_map = mpAtlas->GetCurrentMap();
+    const bool recently_relocalized =
+        mCurrentFrame.mnId < mnLastRelocFrameId + 2;
+    bool current_frame_has_visual_votes = false;
+    if (mSensor == System::IMU_RGBD && imu_rgbd_visual_recovery_active_) {
+        for (MapPoint* map_point : mCurrentFrame.mvpMapPoints) {
+            if (map_point && !map_point->isBad() &&
+                map_point->Observations() > 0) {
+                current_frame_has_visual_votes = true;
+                break;
+            }
+        }
+    }
+    const bool merge_recovery_votes =
+        internal::ShouldMergeRgbdRecoveryLocalKeyFrameVotes(
+            transaction != nullptr, mSensor == System::IMU_RGBD,
+            imu_rgbd_visual_recovery_active_,
+            current_frame_has_visual_votes);
+    std::unordered_set<MapPoint*> voted_recovery_map_points;
+    if (merge_recovery_votes) {
+        voted_recovery_map_points.reserve(mCurrentFrame.mvpMapPoints.size() +
+                                          mLastFrame.mvpMapPoints.size());
+        constexpr int kMaximumRecoveryReplacementHops = 16;
+        const auto add_recovery_frame_votes = [&](Frame* frame) {
+            for (MapPoint*& frame_map_point : frame->mvpMapPoints) {
+                if (!frame_map_point) {
+                    continue;
+                }
+                MapPoint* resolved_map_point = frame_map_point;
+                std::array<MapPoint*, kMaximumRecoveryReplacementHops + 1>
+                    replacement_chain{};
+                int replacement_chain_size = 1;
+                replacement_chain[0] = resolved_map_point;
+                bool replacement_chain_valid = true;
+                while (MapPoint* replacement =
+                           resolved_map_point->GetReplaced()) {
+                    if (replacement_chain_size >=
+                            static_cast<int>(replacement_chain.size()) ||
+                        std::find(
+                            replacement_chain.begin(),
+                            replacement_chain.begin() +
+                                replacement_chain_size,
+                            replacement) !=
+                            replacement_chain.begin() +
+                                replacement_chain_size) {
+                        replacement_chain_valid = false;
+                        break;
+                    }
+                    replacement_chain[replacement_chain_size++] = replacement;
+                    resolved_map_point = replacement;
+                }
+                if (!replacement_chain_valid) {
+                    continue;
+                }
+                if (resolved_map_point->isBad() ||
+                    resolved_map_point->GetMap() != current_map ||
+                    resolved_map_point->Observations() <= 0) {
+                    continue;
+                }
+                frame_map_point = resolved_map_point;
+                if (!voted_recovery_map_points.insert(resolved_map_point)
+                         .second) {
+                    continue;
+                }
+                const std::map<KeyFrame*, std::tuple<int, int>> observations =
+                    resolved_map_point->GetObservations();
+                for (const auto& [keyframe, observation] : observations) {
+                    static_cast<void>(observation);
+                    if (!keyframe || keyframe->isBad() ||
+                        keyframe->GetMap() != current_map) {
+                        continue;
+                    }
+                    ++keyframeCounter[keyframe];
+                }
+            }
+        };
+        add_recovery_frame_votes(&mCurrentFrame);
+        add_recovery_frame_votes(&mLastFrame);
+    } else if (internal::ShouldUseCurrentFrameForLocalKeyFrameVoting(
+                   mpAtlas->isImuInitialized(), recently_relocalized,
+                   mSensor == System::IMU_RGBD,
+                   imu_rgbd_visual_recovery_active_,
+                   current_frame_has_visual_votes)) {
+        for (int i = 0; i < mCurrentFrame.N; ++i) {
             MapPoint* pMP = mCurrentFrame.mvpMapPoints[i];
             if (pMP) {
                 if (!pMP->isBad()) {
@@ -3355,20 +5334,22 @@ void Tracker::UpdateLocalKeyFrames() {
                                   std::tuple<int, int>>::const_iterator
                              it = observations.begin(),
                              itend = observations.end();
-                         it != itend; it++)
-                        keyframeCounter[it->first]++;
+                         it != itend; ++it) {
+                        ++keyframeCounter[it->first];
+                    }
                 } else {
                     mCurrentFrame.mvpMapPoints[i] = nullptr;
                 }
             }
         }
     } else {
-        for (int i = 0; i < mLastFrame.N; i++) {
-            // Using lastframe since current frame has not matches yet
+        for (int i = 0; i < mLastFrame.N; ++i) {
+            // Using lastframe since current frame has not matches yet.
             if (mLastFrame.mvpMapPoints[i]) {
                 MapPoint* pMP = mLastFrame.mvpMapPoints[i];
-                if (!pMP)
+                if (!pMP) {
                     continue;
+                }
                 if (!pMP->isBad()) {
                     const std::map<KeyFrame*, std::tuple<int, int>>
                         observations = pMP->GetObservations();
@@ -3376,52 +5357,122 @@ void Tracker::UpdateLocalKeyFrames() {
                                   std::tuple<int, int>>::const_iterator
                              it = observations.begin(),
                              itend = observations.end();
-                         it != itend; it++)
-                        keyframeCounter[it->first]++;
+                         it != itend; ++it) {
+                        ++keyframeCounter[it->first];
+                    }
                 } else {
-                    // MODIFICATION
                     mLastFrame.mvpMapPoints[i] = nullptr;
                 }
             }
         }
     }
 
+    if (transaction) {
+        AINFO << "ATLAS_RGBD_TEMPORAL_TLM_VOTES"
+              << " merged=" << (merge_recovery_votes ? 1 : 0)
+              << " unique_map_points=" << voted_recovery_map_points.size()
+              << " voting_keyframes=" << keyframeCounter.size()
+              << " frame_id=" << mCurrentFrame.mnId << std::endl;
+    }
+
     int max = 0;
     KeyFrame* pKFmax = static_cast<KeyFrame*>(nullptr);
+    // This cap only bounds recovery seeds and graph/temporal expansion. Every
+    // valid keyframe with a visual vote remains in the local map.
+    constexpr std::size_t kMaximumLocalKeyFrameCount = 80;
+    const auto mark_local_keyframe = [&](KeyFrame* keyframe) {
+        if (transaction) {
+            transaction->Capture(keyframe);
+        }
+        keyframe->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+    };
 
     mvpLocalKeyFrames.clear();
     mvpLocalKeyFrames.reserve(3 * keyframeCounter.size());
 
-    // All keyframes that observe a map point are included in the local map.
-    // Also check which keyframe shares most points
+    // Find the keyframe with the most votes before adding all voting keyframes.
     for (std::map<KeyFrame*, int>::const_iterator it = keyframeCounter.begin(),
                                                   itEnd = keyframeCounter.end();
-         it != itEnd; it++) {
+         it != itEnd; ++it) {
         KeyFrame* pKF = it->first;
-
         if (pKF->isBad())
             continue;
-
         if (it->second > max) {
             max = it->second;
             pKFmax = pKF;
         }
+    }
 
+    if (pKFmax) {
+        mvpLocalKeyFrames.push_back(pKFmax);
+        mark_local_keyframe(pKFmax);
+    }
+    // Add the remaining voting keyframes without sorting the hot path.
+    for (std::map<KeyFrame*, int>::const_iterator it = keyframeCounter.begin(),
+                                                  itEnd = keyframeCounter.end();
+         it != itEnd; ++it) {
+        KeyFrame* pKF = it->first;
+        if (pKF->isBad() || pKF == pKFmax)
+            continue;
         mvpLocalKeyFrames.push_back(pKF);
-        pKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+        mark_local_keyframe(pKF);
+    }
+
+    KeyFrame* recovery_reference_seed = nullptr;
+    const bool seed_recovery_local_keyframes =
+        internal::ShouldSeedImuRgbdRecoveryLocalKeyFrames(
+            mSensor == System::IMU_RGBD, imu_rgbd_visual_recovery_active_,
+            current_frame_has_visual_votes);
+    if (seed_recovery_local_keyframes) {
+        int recovery_seed_count = 0;
+        const auto append_recovery_seed = [&](KeyFrame* candidate) {
+            const bool candidate_valid = candidate && !candidate->isBad();
+            if (!candidate_valid || candidate->GetMap() != current_map ||
+                mvpLocalKeyFrames.size() >= kMaximumLocalKeyFrameCount) {
+                return;
+            }
+
+            bool already_present = false;
+            for (KeyFrame* local_keyframe : mvpLocalKeyFrames) {
+                if (local_keyframe == candidate) {
+                    already_present = true;
+                    break;
+                }
+            }
+            if (!internal::ShouldAppendImuRgbdRecoveryReferenceCandidate(
+                    candidate_valid, already_present, recovery_seed_count)) {
+                return;
+            }
+
+            mvpLocalKeyFrames.push_back(candidate);
+            mark_local_keyframe(candidate);
+            if (!recovery_reference_seed) {
+                recovery_reference_seed = candidate;
+            }
+            ++recovery_seed_count;
+        };
+
+        append_recovery_seed(mpReferenceKF);
+        append_recovery_seed(mpLastKeyFrame);
+        if (mpLastKeyFrame && !mpLastKeyFrame->isBad() &&
+            mpLastKeyFrame->GetMap() == current_map) {
+            const std::vector<KeyFrame*> covisible_keyframes =
+                mpLastKeyFrame->GetBestCovisibilityKeyFrames(
+                    internal::kImuRgbdRecoveryCovisibilityCandidateLimit);
+            for (KeyFrame* covisible_keyframe : covisible_keyframes) {
+                append_recovery_seed(covisible_keyframe);
+            }
+        }
     }
 
     // Include also some not-already-included keyframes that are neighbors to
     // already-included keyframes
-    for (std::vector<KeyFrame*>::const_iterator
-             itKF = mvpLocalKeyFrames.begin(),
-             itEndKF = mvpLocalKeyFrames.end();
-         itKF != itEndKF; itKF++) {
-        // Limit the number of keyframes
-        if (mvpLocalKeyFrames.size() > 80)  // 80
-            break;
-
-        KeyFrame* pKF = *itKF;
+    const std::size_t local_keyframe_count_to_expand = mvpLocalKeyFrames.size();
+    for (std::size_t keyframe_index = 0;
+         keyframe_index < local_keyframe_count_to_expand &&
+         mvpLocalKeyFrames.size() < kMaximumLocalKeyFrameCount;
+         ++keyframe_index) {
+        KeyFrame* pKF = mvpLocalKeyFrames[keyframe_index];
 
         const std::vector<KeyFrame*> vNeighs =
             pKF->GetBestCovisibilityKeyFrames(10);
@@ -3432,9 +5483,10 @@ void Tracker::UpdateLocalKeyFrames() {
              itNeighKF != itEndNeighKF; itNeighKF++) {
             KeyFrame* pNeighKF = *itNeighKF;
             if (!pNeighKF->isBad()) {
-                if (pNeighKF->mnTrackReferenceForFrame != mCurrentFrame.mnId) {
+                if (pNeighKF->mnTrackReferenceForFrame != mCurrentFrame.mnId &&
+                    mvpLocalKeyFrames.size() < kMaximumLocalKeyFrameCount) {
                     mvpLocalKeyFrames.push_back(pNeighKF);
-                    pNeighKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+                    mark_local_keyframe(pNeighKF);
                     break;
                 }
             }
@@ -3446,44 +5498,55 @@ void Tracker::UpdateLocalKeyFrames() {
              sit != send; sit++) {
             KeyFrame* pChildKF = *sit;
             if (!pChildKF->isBad()) {
-                if (pChildKF->mnTrackReferenceForFrame != mCurrentFrame.mnId) {
+                if (pChildKF->mnTrackReferenceForFrame != mCurrentFrame.mnId &&
+                    mvpLocalKeyFrames.size() < kMaximumLocalKeyFrameCount) {
                     mvpLocalKeyFrames.push_back(pChildKF);
-                    pChildKF->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+                    mark_local_keyframe(pChildKF);
                     break;
                 }
             }
         }
 
         KeyFrame* pParent = pKF->GetParent();
-        if (pParent) {
-            if (pParent->mnTrackReferenceForFrame != mCurrentFrame.mnId) {
+        if (pParent && !pParent->isBad()) {
+            if (pParent->mnTrackReferenceForFrame != mCurrentFrame.mnId &&
+                mvpLocalKeyFrames.size() < kMaximumLocalKeyFrameCount) {
                 mvpLocalKeyFrames.push_back(pParent);
-                pParent->mnTrackReferenceForFrame = mCurrentFrame.mnId;
+                mark_local_keyframe(pParent);
                 break;
             }
         }
     }
 
-    // Add 10 last temporal KFs (mainly for IMU)
+    // Add recent temporal KFs (mainly for IMU).
     if ((mSensor == System::IMU_MONOCULAR || mSensor == System::IMU_STEREO ||
          mSensor == System::IMU_RGBD) &&
-        mvpLocalKeyFrames.size() < 80) {
-        KeyFrame* tempKeyFrame = mCurrentFrame.mpLastKeyFrame;
+        mvpLocalKeyFrames.size() < kMaximumLocalKeyFrameCount) {
+        KeyFrame* temporal_keyframe = mCurrentFrame.mpLastKeyFrame;
 
-        const int Nd = 20;
-        for (int i = 0; i < Nd; i++) {
-            if (!tempKeyFrame)
+        constexpr int kTemporalKeyFrameLimit = 20;
+        for (int i = 0; i < kTemporalKeyFrameLimit; ++i) {
+            if (!temporal_keyframe ||
+                mvpLocalKeyFrames.size() >= kMaximumLocalKeyFrameCount) {
                 break;
-            if (tempKeyFrame->mnTrackReferenceForFrame != mCurrentFrame.mnId) {
-                mvpLocalKeyFrames.push_back(tempKeyFrame);
-                tempKeyFrame->mnTrackReferenceForFrame = mCurrentFrame.mnId;
-                tempKeyFrame = tempKeyFrame->mPrevKF;
             }
+            KeyFrame* candidate = temporal_keyframe;
+            temporal_keyframe = temporal_keyframe->mPrevKF;
+            if (candidate->isBad() || candidate->GetMap() != current_map ||
+                candidate->mnTrackReferenceForFrame == mCurrentFrame.mnId) {
+                continue;
+            }
+            mvpLocalKeyFrames.push_back(candidate);
+            mark_local_keyframe(candidate);
         }
     }
 
     if (pKFmax) {
         mpReferenceKF = pKFmax;
+        mCurrentFrame.mpReferenceKF = mpReferenceKF;
+    } else if (recovery_reference_seed &&
+               (!mpReferenceKF || mpReferenceKF->isBad())) {
+        mpReferenceKF = recovery_reference_seed;
         mCurrentFrame.mpReferenceKF = mpReferenceKF;
     }
 }
@@ -3656,6 +5719,9 @@ bool Tracker::Relocalization() {
 
 void Tracker::Reset(bool bLocMap) {
     AINFO << "System Reseting";
+    rgbd_temporal_pose_estimator_.Reset();
+    rgbd_temporal_odometry_state_.Reset();
+    imu_rgbd_visual_recovery_active_ = false;
 
     if (mpViewer) {
         mpViewer->RequestStop();
@@ -3714,6 +5780,9 @@ void Tracker::Reset(bool bLocMap) {
 
 void Tracker::ResetActiveMap(bool bLocMap) {
     AINFO << "Active map Reseting";
+    rgbd_temporal_pose_estimator_.Reset();
+    rgbd_temporal_odometry_state_.Reset();
+    imu_rgbd_visual_recovery_active_ = false;
     if (mpViewer) {
         mpViewer->RequestStop();
         while (!mpViewer->isStopped())
@@ -3801,6 +5870,9 @@ std::vector<MapPoint*> Tracker::GetLocalMapMPS() {
 }
 
 void Tracker::ChangeCalibration(const std::string& strSettingPath) {
+    rgbd_temporal_pose_estimator_.Reset();
+    rgbd_temporal_odometry_state_.Reset();
+    imu_rgbd_visual_recovery_active_ = false;
     cv::FileStorage fConfigLoader(strSettingPath, cv::FileStorage::READ);
     float fx = fConfigLoader["Camera.fx"];
     float fy = fConfigLoader["Camera.fy"];
@@ -3839,6 +5911,11 @@ void Tracker::ChangeCalibration(const std::string& strSettingPath) {
 
 void Tracker::InformOnlyTracking(const bool& flag) {
     mbOnlyTracking = flag;
+    if (flag) {
+        rgbd_temporal_pose_estimator_.Reset();
+        rgbd_temporal_odometry_state_.Reset();
+        imu_rgbd_visual_recovery_active_ = false;
+    }
 }
 
 void Tracker::UpdateFrameIMU(const float s, const IMU::Bias& b,
@@ -3872,8 +5949,16 @@ void Tracker::UpdateFrameIMU(const float s, const IMU::Bias& b,
     mLastFrame.SetNewBias(mLastBias);
     mCurrentFrame.SetNewBias(mLastBias);
 
-    while (!mCurrentFrame.imuIsPreintegrated()) {
+    // PreintegrateIMU always marks integration now; keep a bounded wait so a
+    // racing frame cannot hang the local-mapping / loop-closing thread forever.
+    for (int spin = 0; spin < 2000 && !mCurrentFrame.imuIsPreintegrated();
+         ++spin) {
         usleep(500);
+    }
+    if (!mCurrentFrame.imuIsPreintegrated()) {
+        AWARN << "UpdateFrameIMU: current frame never finished IMU "
+                 "preintegration; forcing integrated flag";
+        mCurrentFrame.setIntegrated();
     }
 
     if (mLastFrame.mnId == mLastFrame.mpLastKeyFrame->mnFrameId) {
@@ -3928,6 +6013,9 @@ void Tracker::UpdateFrameIMU(const float s, const IMU::Bias& b,
 }
 
 void Tracker::NewDataset() {
+    rgbd_temporal_pose_estimator_.Reset();
+    rgbd_temporal_odometry_state_.Reset();
+    imu_rgbd_visual_recovery_active_ = false;
     mnNumDataset++;
 }
 

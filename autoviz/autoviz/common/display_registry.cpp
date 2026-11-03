@@ -22,6 +22,7 @@
 #include "autoviz/plugins/displays/camera/camera_display.hpp"
 #include "autoviz/plugins/displays/camera_info/camera_info_display.hpp"
 #include "autoviz/plugins/displays/depth_cloud/depth_cloud_display.hpp"
+#include "autoviz/plugins/displays/gps/overlay_gps_display.hpp"
 #include "autoviz/plugins/displays/grid/grid_display.hpp"
 #include "autoviz/plugins/displays/image/image_display.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_display.hpp"
@@ -45,6 +46,34 @@
 #include "autoviz/plugins/displays/tf/tf_display.hpp"
 #include "autoviz/plugins/displays/twist/twist_stamped_display.hpp"
 #include "autoviz/plugins/displays/wrench/wrench_display.hpp"
+#include "autoviz/plugins/displays/audio/ambient_sound_display.hpp"
+#include "autoviz/plugins/displays/diagnostics/diagnostics_display.hpp"
+#include "autoviz/plugins/displays/diagnostics/overlay_diagnostic_display.hpp"
+#include "autoviz/plugins/displays/footstep/footstep_display.hpp"
+#include "autoviz/plugins/displays/overlay/linear_gauge_display.hpp"
+#include "autoviz/plugins/displays/overlay/overlay_camera_display.hpp"
+#include "autoviz/plugins/displays/overlay/overlay_image_display.hpp"
+#include "autoviz/plugins/displays/overlay/overlay_menu_display.hpp"
+#include "autoviz/plugins/displays/overlay/overlay_text_display.hpp"
+#include "autoviz/plugins/displays/overlay/pie_chart_display.hpp"
+#include "autoviz/plugins/displays/overlay/plotter_2d_display.hpp"
+#include "autoviz/plugins/displays/overlay/string_display.hpp"
+#include "autoviz/plugins/displays/people/people_position_measurement_array_display.hpp"
+#include "autoviz/plugins/displays/pictogram/pictogram_array_display.hpp"
+#include "autoviz/plugins/displays/pictogram/pictogram_display.hpp"
+#include "autoviz/plugins/displays/pose/target_visualizer_display.hpp"
+#include "autoviz/plugins/displays/pose/tf_trajectory_display.hpp"
+#include "autoviz/plugins/displays/recognition/bounding_box_array_display.hpp"
+#include "autoviz/plugins/displays/recognition/recognition_bounding_box_array_display.hpp"
+#include "autoviz/plugins/displays/recognition/bounding_box_display.hpp"
+#include "autoviz/plugins/displays/recognition/human_skeleton_array_display.hpp"
+#include "autoviz/plugins/displays/recognition/normal_display.hpp"
+#include "autoviz/plugins/displays/recognition/polygon_array_display.hpp"
+#include "autoviz/plugins/displays/recognition/segment_array_display.hpp"
+#include "autoviz/plugins/displays/recognition/simple_occupancy_grid_array_display.hpp"
+#include "autoviz/plugins/displays/recognition/torus_array_display.hpp"
+#include "autoviz/plugins/displays/util/rviz_scene_publisher.hpp"
+#include "autoviz/plugins/displays/util/video_capture_display.hpp"
 
 namespace autoviz {
 namespace common {
@@ -429,6 +458,137 @@ void DisplayRegistry::registerBuiltinTypes() {
       [] {
         return MakeDefault("RelativeHumidity", "RelativeHumidity", "");
       });
+
+  auto reg_viz_channel =
+      [this](const char* type, const char* name, auto creator) {
+        registerType(
+            type,
+            [creator](const DisplayConfig& config) {
+              return FinalizeDisplay(creator(config.channel), config);
+            },
+            [type, name] { return MakeDefault(type, name, ""); });
+      };
+
+  reg_viz_channel("OverlayGps", "Overlay GPS", [](std::string ch) {
+    return std::make_unique<display::OverlayGpsDisplay>(std::move(ch));
+  });
+  reg_viz_channel("OverlayText", "OverlayText", [](std::string ch) {
+    return std::make_unique<display::OverlayTextDisplay>(std::move(ch));
+  });
+  reg_viz_channel("OverlayString", "Overlay String", [](std::string ch) {
+    return std::make_unique<display::OverlayStringDisplay>(std::move(ch));
+  });
+  reg_viz_channel("Plotter2D", "Plotter2D", [](std::string ch) {
+    return std::make_unique<display::Plotter2DDisplay>(std::move(ch));
+  });
+  reg_viz_channel("PieChart", "PieChart", [](std::string ch) {
+    return std::make_unique<display::PieChartDisplay>(std::move(ch));
+  });
+  reg_viz_channel("LinearGauge", "LinearGauge", [](std::string ch) {
+    return std::make_unique<display::LinearGaugeDisplay>(std::move(ch));
+  });
+  reg_viz_channel("OverlayImage", "OverlayImage", [](std::string ch) {
+    return std::make_unique<display::OverlayImageDisplay>(std::move(ch));
+  });
+  reg_viz_channel("OverlayCamera", "OverlayCamera", [](std::string ch) {
+    return std::make_unique<display::OverlayCameraDisplay>(std::move(ch));
+  });
+  reg_viz_channel("OverlayMenu", "OverlayMenu", [](std::string ch) {
+    return std::make_unique<display::OverlayMenuDisplay>(std::move(ch));
+  });
+  reg_viz_channel("OverlayDiagnostic", "OverlayDiagnostic",
+                  [](std::string ch) {
+                    return std::make_unique<display::OverlayDiagnosticDisplay>(
+                        std::move(ch));
+                  });
+  reg_viz_channel("OverlayDiagnostics", "Overlay Diagnostics", [](std::string ch) {
+    return std::make_unique<display::OverlayDiagnosticsDisplay>(std::move(ch));
+  });
+  reg_viz_channel("BoundingBox3DArray", "BoundingBox3DArray",
+                  [](std::string ch) {
+                    return std::make_unique<display::BoundingBox3DArrayDisplay>(
+                        std::move(ch));
+                  });
+  reg_viz_channel(
+      "RecognitionBoundingBoxArray", "RecognitionBoundingBoxArray",
+      [](std::string ch) {
+        return std::make_unique<display::RecognitionBoundingBoxArrayDisplay>(
+            std::move(ch));
+      });
+  reg_viz_channel("BoundingBox", "BoundingBox", [](std::string ch) {
+    return std::make_unique<display::BoundingBoxDisplay>(std::move(ch));
+  });
+  reg_viz_channel("SegmentArray", "SegmentArray", [](std::string ch) {
+    return std::make_unique<display::SegmentArrayDisplay>(std::move(ch));
+  });
+  reg_viz_channel("TorusArray", "TorusArray", [](std::string ch) {
+    return std::make_unique<display::TorusArrayDisplay>(std::move(ch));
+  });
+  reg_viz_channel("PolygonArray", "PolygonArray", [](std::string ch) {
+    return std::make_unique<display::PolygonArrayDisplay>(std::move(ch));
+  });
+  reg_viz_channel("HumanSkeletonArray", "HumanSkeletonArray",
+                  [](std::string ch) {
+                    return std::make_unique<display::HumanSkeletonArrayDisplay>(
+                        std::move(ch));
+                  });
+  reg_viz_channel(
+      "SimpleOccupancyGridArray", "SimpleOccupancyGridArray",
+      [](std::string ch) {
+        return std::make_unique<display::SimpleOccupancyGridArrayDisplay>(
+            std::move(ch));
+      });
+  reg_viz_channel("Normal", "Normal", [](std::string ch) {
+    return std::make_unique<display::NormalDisplay>(std::move(ch));
+  });
+  reg_viz_channel("TargetVisualizer", "TargetVisualizer",
+                  [](std::string ch) {
+                    return std::make_unique<display::TargetVisualizerDisplay>(
+                        std::move(ch));
+                  });
+  reg_viz_channel("Footstep", "Footstep", [](std::string ch) {
+    return std::make_unique<display::FootstepDisplay>(std::move(ch));
+  });
+  reg_viz_channel(
+      "PeoplePositionMeasurementArray",
+      "PeoplePositionMeasurementArray", [](std::string ch) {
+        return std::make_unique<
+            display::PeoplePositionMeasurementArrayDisplay>(std::move(ch));
+      });
+  reg_viz_channel("AmbientSound", "AmbientSound", [](std::string ch) {
+    return std::make_unique<display::AmbientSoundDisplay>(std::move(ch));
+  });
+  reg_viz_channel("Pictogram", "Pictogram", [](std::string ch) {
+    return std::make_unique<display::PictogramDisplay>(std::move(ch));
+  });
+  reg_viz_channel("PictogramArray", "PictogramArray",
+                  [](std::string ch) {
+                    return std::make_unique<display::PictogramArrayDisplay>(
+                        std::move(ch));
+                  });
+
+  registerType(
+      "TFTrajectory",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(
+            std::make_unique<display::TFTrajectoryDisplay>(), config);
+      },
+      [] { return MakeDefault("TFTrajectory", "TFTrajectory", ""); });
+  registerType(
+      "VideoCapture",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(
+            std::make_unique<display::VideoCaptureDisplay>(), config);
+      },
+      [] { return MakeDefault("VideoCapture", "VideoCapture", ""); });
+  registerType(
+      "ScenePublisher",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(
+            std::make_unique<display::ScenePublisherDisplay>(config.channel),
+            config);
+      },
+      [] { return MakeDefault("ScenePublisher", "ScenePublisher", ""); });
 }
 
 std::vector<std::string> DisplayRegistry::supportedTypes() const {

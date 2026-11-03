@@ -18,6 +18,7 @@ EXCLUDES = [
 # qt.bzl stubs empty output when a header has no meta-object classes.
 MOC_GLOBS = [
     "autoviz/ui/**/*.hpp",
+    "autoviz/common/widget/**/*.hpp",
     "autoviz/plugins/tools/**/*.hpp",
     "autoviz/common/visualization_manager.hpp",
     "autoviz/common/display_*.hpp",

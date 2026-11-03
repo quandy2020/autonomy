@@ -269,6 +269,24 @@ bool MessageAdapter::TrackRgbd(
 
 bool MessageAdapter::Record(const TrackingResult& result) {
     std::lock_guard<std::mutex> lock(mutex_);
+    if (result.map_id_valid) {
+        const bool coordinate_frame_changed =
+            have_path_coordinate_frame_ &&
+            (path_map_id_ != result.map_id ||
+             path_coordinate_epoch_ != result.coordinate_epoch ||
+             path_destructive_epoch_ != result.destructive_epoch);
+        const bool first_identified_frame_after_unidentified_path =
+            !have_path_coordinate_frame_ && !path_.poses().empty();
+        if (coordinate_frame_changed ||
+            first_identified_frame_after_unidentified_path) {
+            path_.Clear();
+            path_.mutable_header()->set_frame_id(options_.map_frame);
+        }
+        have_path_coordinate_frame_ = true;
+        path_map_id_ = result.map_id;
+        path_coordinate_epoch_ = result.coordinate_epoch;
+        path_destructive_epoch_ = result.destructive_epoch;
+    }
     latest_ = result;
     if (!result.valid)
         return false;
@@ -490,7 +508,9 @@ bool MessageAdapter::GetOccupancyGrid(
     auto* origin = info->mutable_origin();
     origin->mutable_position()->set_x(origin_translation.x());
     origin->mutable_position()->set_y(origin_translation.y());
-    origin->mutable_position()->set_z(origin_translation.z());
+    // Occupancy is a 2D floor map in map XY. Keep origin height at 0 so
+    // Autoviz does not lift the grid to IMU/camera height.
+    origin->mutable_position()->set_z(0.0);
     origin->mutable_orientation()->set_x(origin_rotation.x());
     origin->mutable_orientation()->set_y(origin_rotation.y());
     origin->mutable_orientation()->set_z(origin_rotation.z());

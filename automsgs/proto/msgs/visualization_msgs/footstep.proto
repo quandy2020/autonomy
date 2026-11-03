@@ -1,0 +1,41 @@
+// Copyright 2026 The Openbot Authors (duyongquan)
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package automsgs.msgs.visualization_msgs;
+
+import "automsgs/msgs/geometry_msgs/pose.proto";
+import "automsgs/msgs/geometry_msgs/vector3.proto";
+
+// Single planned / executed footstep for biped visualization.
+message Footstep {
+  // Which foot this step belongs to.
+  enum Leg {
+    RIGHT = 0;
+    LEFT = 1;
+  }
+
+  // Foot pose (sole frame) in the parent FootstepArray frame.
+  automsgs.msgs.geometry_msgs.Pose pose = 1;
+  Leg leg = 2;
+  // Nominal duration of this step (seconds).
+  float duration = 3;
+  // Logical group / phase id for multi-step sequences.
+  uint32 footstep_group = 4;
+  // Foot box extents (length, width, height) in meters.
+  automsgs.msgs.geometry_msgs.Vector3 dimensions = 5;
+  // Peak swing height above the ground plane (meters).
+  float swing_height = 6;
+}

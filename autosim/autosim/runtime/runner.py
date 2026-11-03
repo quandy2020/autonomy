@@ -52,6 +52,7 @@ from autosim.robot.description import load_robot_description
 from autosim.robot.policy import PolicyDriver
 from autosim.robot.profiles import apply_profile
 from autosim.robot.urdf import UrdfModel
+from autosim.runtime.instance_lock import InstanceLock, InstanceLockError
 from autosim.runtime.paths import project_root
 from autosim.runtime.settings import Config
 from autosim.runtime.worker import SensorWorker
@@ -75,7 +76,9 @@ from automsgs.msgs.std_msgs.string_pb2 import String
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
 from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
 
-TF_STATIC_REPUBLISH_SEC = 1.0
+# Autolink /tf_static is volatile. Atlas subscribes after AutoSim starts and
+# needs the optical chain before the first map→odom publish.
+TF_STATIC_REPUBLISH_SEC = 0.05
 ROBOT_DESCRIPTION_REPUBLISH_SEC = 1.0
 
 
@@ -189,15 +192,15 @@ class Runner:
         self.clock_cfg = self.robot_cfg.get("clock") or {"enabled": False}
         self.footprint = self.robot_cfg.get("footprint") or {"enabled": False}
         self.tf_static_elapsed = TF_STATIC_REPUBLISH_SEC
-        # slam: Cartographer owns map→odom and /map; autosim publishes odom→base_link.
-        # nav:  identity map→odom→base_link (+ URDF mounts); may publish GT /map.
+        # slam: the localization backend owns map→odom and /map; autosim
+        # publishes odom→the URDF root plus fixed robot joints.
+        # nav: autosim also publishes drift-corrected map→odom and an optional
+        # ground-truth map.
         mode = str(habitat.get("mode", "nav")).strip().lower()
         self.mode = mode if mode in ("slam", "nav") else "nav"
         self.odom = dict(self.odom)
-        self.odom["child_frame"] = "base_link"
-        if isinstance(self.footprint, dict) and self.footprint.get("enabled", False):
+        if isinstance(self.footprint, dict):
             self.footprint = dict(self.footprint)
-            self.footprint["frame"] = "base_link"
         if self.mode == "slam":
             self.tf_cfg["publish_map_odom"] = False
             self.map_publish = False
@@ -387,6 +390,10 @@ class Runner:
             types["joint_states"] = JointState
         if self.robot_cfg["truth"]["enabled"]:
             types["gt_pose"] = PoseStamped
+            if str(
+                self.robot_cfg["truth"].get("odometry_channel") or ""
+            ).strip():
+                types["gt_odom"] = Odometry
         if self.footprint.get("enabled", False):
             types["footprint"] = PolygonStamped
         if self.map_cfg.get("enabled", False) and self.map_publish:
@@ -617,8 +624,8 @@ class Runner:
         else:
             x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
             # SLAM: keep wheel odom glued to GT so Habitat laser rays (cast at GT)
-            # match odom→base_link TF used by Cartographer / Autoviz. Noisy odom
-            # with GT-cast scans is what makes /scan look rotated on the map.
+            # match odom→the URDF root TF used by localization / Autoviz.
+            # Noisy odom with GT-cast scans rotates /scan on the map.
             if self.mode == "slam":
                 self.robot.odometry_x = float(x)
                 self.robot.odometry_y = float(y)
@@ -1209,12 +1216,14 @@ class Runner:
         self.bridge.publish("robot_description", Messages.encode_string(xml))
 
     def odom_child_frame(self) -> str:
-        """Dynamic child frame used by both ``/odom`` and ``/tf``.
-
-        Both ``slam`` and ``nav`` use ``base_link`` so the tree is
-        ``(map→)odom→base_link`` without inserting ``base_footprint``.
-        """
-        return self.body_frame()
+        """Return the URDF root used by both ``/odom`` and dynamic TF."""
+        fallback = str(self.odom.get("child_frame") or "base_link")
+        if self.simulator is None:
+            return fallback
+        urdf = getattr(self.simulator, "urdf", None)
+        if urdf is None:
+            return fallback
+        return str(urdf.odom_child_frame(fallback))
 
     def body_frame(self) -> str:
         """Robot body frame that owns sensor mounts."""
@@ -1637,8 +1646,9 @@ class Runner:
 
         - ``nav``: ``map→odom`` corrects wheel drift so ``map→base`` = GT (laser
           rays are cast from GT; identity ``map→odom`` misplaces ``/scan`` on the
-          GT map). ``odom→base_link`` stays wheel odometry.
-        - ``slam``: only ``odom→base_link`` (+ URDF); Cartographer owns ``map→odom``.
+          GT map). ``odom→base_footprint`` stays wheel odometry.
+        - ``slam``: only ``odom→base_footprint`` (+ URDF); the localization
+          backend owns ``map→odom``.
         """
         if not self.tf_cfg.get("enabled", False):
             return
@@ -1646,11 +1656,9 @@ class Runner:
         odom_frame = self.odom["frame"]
         odom_child = self.odom_child_frame()
         body_frame = self.body_frame()
-        # Must match /odom (wheel pose), not ground truth — Cartographer looks up
-        # odom→base from TF while integrating /odom; GT vs wheel mismatch makes
-        # map→odom jump, especially during pure rotation.
+        # Must match /odom (wheel pose), not ground truth. The fixed URDF joint
+        # from base_footprint to base_link carries ground clearance.
         ox, oy, oyaw = self.robot.odometry_pose()
-        base_z = float(self.robot_cfg.get("base_link_height", 0.0))
         publish_map_odom = bool(self.tf_cfg.get("publish_map_odom", True))
         # Drift-corrected map→odom so Autoviz LaserScan (GT rays) lands on GT map.
         mx, my, myaw = self.robot.map_to_odom(
@@ -1660,7 +1668,9 @@ class Runner:
             stamp, map_frame, odom_frame, (mx, my, 0.0), myaw
         )
         dynamic = [
-            Messages.encode_transform(stamp, odom_frame, odom_child, (ox, oy, base_z), oyaw),
+            Messages.encode_transform(
+                stamp, odom_frame, odom_child, (ox, oy, 0.0), oyaw
+            ),
         ]
         if publish_map_odom:
             dynamic.insert(0, map_odom)
@@ -1692,23 +1702,6 @@ class Runner:
                         child,
                         xyz,
                         rpy=rpy,
-                    )
-                )
-            # odom→base_link skips URDF base_footprint→base_link; publish the
-            # inverse so footprint / Autoviz still see base_footprint.
-            if (
-                odom_child == "base_link"
-                and "base_link" in urdf.parents
-                and urdf.parents["base_link"][0] == "base_footprint"
-            ):
-                fx, fy, fz = urdf.parents["base_link"][1]
-                mounts.append(
-                    Messages.encode_transform(
-                        stamp,
-                        "base_link",
-                        "base_footprint",
-                        (-float(fx), -float(fy), -float(fz)),
-                        0.0,
                     )
                 )
             if capability(self.simulator, "fallback_camera_tf"):
@@ -1743,11 +1736,10 @@ class Runner:
                     camera.yaw,
                 )
             )
-        # One TFMessage, one stamp: every link is a single rigid snapshot.
-        # Publishing URDF joints only at 1 Hz on /tf made child lookups
-        # interpolate to an older common time, so the tree fanned apart
-        # during yaw (ghost axes) and lagged cmd_vel.
-        self.bridge.publish("tf", Messages.encode_tf_message(dynamic + mounts))
+        # Dynamic and fixed edges must never have duplicate publishers. Static
+        # transforms are periodically repeated because Autolink writers are
+        # volatile rather than latched.
+        self.bridge.publish("tf", Messages.encode_tf_message(dynamic))
         if self.tf_static_elapsed >= TF_STATIC_REPUBLISH_SEC:
             self.bridge.publish(
                 "tf_static", Messages.encode_tf_message(mounts)
@@ -1761,7 +1753,12 @@ class Runner:
         self.bridge.publish("clock", Messages.encode_clock(stamp))
 
     def publish_truth(self, stamp: Tuple[int, int]) -> None:
-        """Publish ground-truth pose when ``robot.truth.enabled``.
+        """Publish ground-truth pose and optional odometry.
+
+        ``gt_pose`` remains the compact backwards-compatible stream. When
+        ``robot.truth.odometry_channel`` is non-empty, ``gt_odom`` carries the
+        same pose and timestamp as a ``map`` to ``base_link`` odometry sample
+        so localization systems can consume truth without a message adapter.
 
         Args:
             stamp: Message timestamp.
@@ -1773,6 +1770,25 @@ class Runner:
             "gt_pose",
             Messages.encode_pose_stamped(tx, ty, tyaw, stamp, self.robot_cfg["map_frame"]),
         )
+        if "gt_odom" not in self.bridge.writers:
+            return
+        linear, angular = self.robot.velocity()
+        ground_truth_odometry = Messages.encode_odometry(
+            tx,
+            ty,
+            tyaw,
+            linear,
+            angular,
+            stamp,
+            self.robot_cfg["map_frame"],
+            "base_link",
+        )
+        # Ground truth describes base_link directly; its height is normally
+        # supplied by the fixed base_footprint -> base_link URDF joint.
+        ground_truth_odometry.pose.pose.pose.position.z = float(
+            self.robot_cfg.get("base_link_height", 0.0)
+        )
+        self.bridge.publish("gt_odom", ground_truth_odometry)
 
     @staticmethod
     def main(argv: Optional[list[str]] = None) -> None:
@@ -1788,4 +1804,9 @@ class Runner:
             default=project_root() / "config" / "default.yaml",
         )
         args = parser.parse_args(argv)
-        Runner(Config.load(args.config)).run()
+        settings = Config.load(args.config)
+        try:
+            with InstanceLock.from_environment(args.config):
+                Runner(settings).run()
+        except InstanceLockError as error:
+            parser.error(str(error))

@@ -74,27 +74,48 @@ def read_expected_timestamps(path: Path) -> list[float]:
     return sorted(timestamps)
 
 
-def associate_poses(
-    reference: Sequence[TimedPose],
-    estimate: Sequence[TimedPose],
+def supported_timestamp_indices(
+    reference_times: Sequence[float],
+    timestamps: Sequence[float],
+    maximum_difference: float,
+) -> set[int]:
+    """Return input indices with nearby ground truth, without consuming it."""
+    supported = set()
+    for timestamp_index, timestamp in enumerate(timestamps):
+        index = bisect.bisect_left(reference_times, timestamp)
+        candidates = []
+        if index < len(reference_times):
+            candidates.append(reference_times[index])
+        if index > 0:
+            candidates.append(reference_times[index - 1])
+        nearest_difference = min(
+            (abs(value - timestamp) for value in candidates), default=math.inf
+        )
+        if nearest_difference <= maximum_difference:
+            supported.add(timestamp_index)
+    return supported
+
+
+def associate_timestamps(
+    reference_times: Sequence[float],
+    estimate_times: Sequence[float],
     maximum_difference: float,
 ) -> list[tuple[int, int]]:
     """Return deterministic one-to-one nearest timestamp associations."""
     if not math.isfinite(maximum_difference) or maximum_difference <= 0.0:
         raise ValueError("maximum_difference must be finite and positive")
-    reference_times = [pose.timestamp for pose in reference]
     candidates = []
-    for estimate_index, pose in enumerate(estimate):
+    for estimate_index, timestamp in enumerate(estimate_times):
         begin = bisect.bisect_left(
-            reference_times, pose.timestamp - maximum_difference
+            reference_times, timestamp - maximum_difference
         )
         end = bisect.bisect_right(
-            reference_times, pose.timestamp + maximum_difference
+            reference_times, timestamp + maximum_difference
         )
         for reference_index in range(begin, end):
             candidates.append(
                 (
-                    abs(reference_times[reference_index] - pose.timestamp),
+                    abs(reference_times[reference_index] - timestamp),
                     reference_index,
                     estimate_index,
                 )
@@ -109,8 +130,20 @@ def associate_poses(
         used_reference.add(reference_index)
         used_estimate.add(estimate_index)
         matches.append((reference_index, estimate_index))
-    matches.sort(key=lambda pair: estimate[pair[1]].timestamp)
+    matches.sort(key=lambda pair: estimate_times[pair[1]])
     return matches
+
+
+def associate_poses(
+    reference: Sequence[TimedPose],
+    estimate: Sequence[TimedPose],
+    maximum_difference: float,
+) -> list[tuple[int, int]]:
+    return associate_timestamps(
+        [pose.timestamp for pose in reference],
+        [pose.timestamp for pose in estimate],
+        maximum_difference,
+    )
 
 
 def write_aligned_trajectory(
@@ -176,11 +209,40 @@ def evaluate(
     errors = np.linalg.norm(aligned_xyz - reference_xyz, axis=1)
     matched_timestamps = [estimate[index].timestamp for _, index in matches]
 
-    if expected_timestamps_path is None:
-        expected_pose_count = len(estimate)
-    else:
-        expected_pose_count = len(read_expected_timestamps(expected_timestamps_path))
-    coverage = 100.0 * len(matches) / expected_pose_count
+    expected_timestamps = (
+        [pose.timestamp for pose in estimate]
+        if expected_timestamps_path is None
+        else read_expected_timestamps(expected_timestamps_path)
+    )
+    expected_pose_count = len(expected_timestamps)
+    estimate_timestamps = [pose.timestamp for pose in estimate]
+    tracked_expected_matches = associate_timestamps(
+        expected_timestamps, estimate_timestamps, maximum_difference
+    )
+    supported_expected_indices = supported_timestamp_indices(
+        [pose.timestamp for pose in ground_truth],
+        expected_timestamps,
+        maximum_difference,
+    )
+    matched_estimate_indices = {estimate_index for _, estimate_index in matches}
+    associated_supported_pose_count = sum(
+        expected_index in supported_expected_indices
+        and estimate_index in matched_estimate_indices
+        for expected_index, estimate_index in tracked_expected_matches
+    )
+    supported_expected_pose_count = len(supported_expected_indices)
+    tracking_output_coverage = min(
+        100.0, 100.0 * len(tracked_expected_matches) / expected_pose_count
+    )
+    ground_truth_support_fraction = (
+        100.0 * supported_expected_pose_count / expected_pose_count
+    )
+    association_coverage = (
+        100.0 * associated_supported_pose_count / supported_expected_pose_count
+        if supported_expected_pose_count > 0
+        else 0.0
+    )
+    coverage = min(tracking_output_coverage, association_coverage)
     estimate_coverage = 100.0 * len(matches) / len(estimate)
     stats: dict[str, float | int | bool | str] = {
         "alignment": "SE3",
@@ -193,7 +255,13 @@ def evaluate(
         "duplicate_estimated_timestamps": duplicate_estimate,
         "expected_poses": expected_pose_count,
         "associated_poses": len(matches),
-        "coverage_percent": float(min(100.0, coverage)),
+        "ground_truth_supported_expected_poses": supported_expected_pose_count,
+        "tracked_expected_poses": len(tracked_expected_matches),
+        "associated_supported_expected_poses": associated_supported_pose_count,
+        "tracking_output_coverage_percent": float(tracking_output_coverage),
+        "gt_support_fraction_percent": float(ground_truth_support_fraction),
+        "association_coverage_percent": float(association_coverage),
+        "coverage_percent": float(coverage),
         "estimate_coverage_percent": float(min(100.0, estimate_coverage)),
         "ate_rmse_m": float(np.sqrt(np.mean(errors**2))),
         "ate_mean_m": float(np.mean(errors)),

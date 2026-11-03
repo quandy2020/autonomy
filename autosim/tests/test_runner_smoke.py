@@ -144,7 +144,8 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     assert "/footprint" in runner.node.writers
     assert len(runner.node.writers["/tf"].msgs) >= 1
     odom_msg = runner.node.writers["/odom"].msgs[0]
-    assert odom_msg.child_frame_id == "base_link"
+    assert odom_msg.child_frame_id == "base_footprint"
+    assert odom_msg.pose.pose.pose.position.z == 0.0
     footprint = runner.node.writers["/footprint"].msgs[0]
     assert footprint.header.frame_id == "base_link"
     assert len(footprint.polygon.points) == 4
@@ -160,10 +161,10 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
         for item in message.transforms
     }
     assert ("map", "odom") in tf_edges
-    assert ("odom", "base_link") in tf_edges
-    assert ("odom", "base_footprint") not in tf_edges
-    assert ("base_link", "base_footprint") in tf_edges
-    assert ("base_link", "base_scan") in tf_edges or ("base_link", "laser_link") in tf_edges
+    assert ("odom", "base_footprint") in tf_edges
+    assert tf_edges[("odom", "base_footprint")][2] == 0.0
+    assert ("base_footprint", "base_link") not in tf_edges
+    assert ("base_link", "base_scan") not in tf_edges
     latest_tf = runner.node.writers["/tf"].msgs[-1]
     stamps = {
         (item.header.stamp.sec, item.header.stamp.nanosec)
@@ -174,8 +175,7 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
         (item.header.frame_id, item.child_frame_id)
         for item in latest_tf.transforms
     }
-    assert ("map", "odom") in latest_edges
-    assert ("odom", "base_link") in latest_edges
+    assert latest_edges == {("map", "odom"), ("odom", "base_footprint")}
     static_tf = runner.node.writers["/tf_static"].msgs[0]
     edges = {
         (item.header.frame_id, item.child_frame_id): (
@@ -185,15 +185,16 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
         )
         for item in static_tf.transforms
     }
-    # map→odom is dynamic (odom drift correction); must not be latched on /tf_static.
+    # Dynamic and static channels must be disjoint.
+    assert not set(tf_edges).intersection(edges)
     assert ("map", "odom") not in edges
-    assert ("base_link", "base_footprint") in edges
+    assert ("base_footprint", "base_link") in edges
     assert ("base_link", "base_scan") in edges
     assert ("base_scan", "laser_link") in edges
     assert ("base_link", "imu_link") in edges
     assert ("base_link", "front_left_wheel_link") in edges
     assert ("base_link", "front_right_wheel_link") in edges
-    assert abs(edges[("base_link", "base_footprint")][2] + 0.165) < 1e-6
+    assert abs(edges[("base_footprint", "base_link")][2] - 0.1651) < 1e-6
     assert abs(edges[("base_link", "base_scan")][0] - 0.15) < 1e-6
     assert abs(edges[("base_link", "base_scan")][2] - 0.3) < 1e-6
     assert abs(edges[("base_link", "imu_link")][0] - 0.1) < 1e-6
@@ -265,6 +266,54 @@ def test_runner_camera_rgb_depth_share_stamp(monkeypatch):
             info.header.stamp.sec,
             info.header.stamp.nanosec,
         )
+
+
+def test_runner_publishes_ground_truth_pose_and_odometry(monkeypatch):
+    """Atlas-compatible GT odometry must preserve the PoseStamped stream."""
+    import autosim.runtime.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
+    settings.data["habitat"]["mode"] = "slam"
+    settings.data["habitat"]["map"]["enabled"] = False
+    robot = settings.data["habitat"]["robot"]
+    robot["truth"]["enabled"] = True
+    robot["truth"]["channel"] = "/gt/pose"
+    robot["truth"]["odometry_channel"] = "/gt/odometry"
+    robot["tf"]["enabled"] = False
+    robot["clock"]["enabled"] = False
+    robot["footprint"]["enabled"] = False
+    sensors = settings.data["habitat"]["sensors"]
+    sensors["lidar_2d"]["enabled"] = False
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = False
+    sensors["imu"]["enabled"] = False
+    sensors["odom"]["enabled"] = False
+
+    link = FakeLink()
+    runner = Runner(settings, max_steps=3, link=link, simulator=FakeSimulator())
+    runner.robot.set_twist(0.2, 0.3, 0.0)
+    runner.run()
+
+    pose_messages = runner.node.writers["/gt/pose"].msgs
+    odometry_messages = runner.node.writers["/gt/odometry"].msgs
+    assert len(pose_messages) == len(odometry_messages) == 3
+    for pose, odometry in zip(pose_messages, odometry_messages):
+        assert (pose.header.stamp.sec, pose.header.stamp.nanosec) == (
+            odometry.header.stamp.sec,
+            odometry.header.stamp.nanosec,
+        )
+        assert odometry.header.frame_id == "map"
+        assert odometry.child_frame_id == "base_link"
+        assert odometry.pose.pose.header.frame_id == "map"
+        assert odometry.pose.pose.pose.position.x == pose.pose.position.x
+        assert odometry.pose.pose.pose.position.y == pose.pose.position.y
+        assert odometry.pose.pose.pose.position.z == robot["base_link_height"]
+        assert odometry.pose.pose.pose.orientation.z == pose.pose.orientation.z
+        assert odometry.pose.pose.pose.orientation.w == pose.pose.orientation.w
 
 
 def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
@@ -365,8 +414,7 @@ def test_runner_slam_skips_map_and_map_odom(monkeypatch):
         for item in message.transforms
     }
     assert ("map", "odom") not in tf_edges
-    assert ("odom", "base_link") in tf_edges
-    assert ("odom", "base_footprint") not in tf_edges
+    assert tf_edges == {("odom", "base_footprint")}
 
 
 

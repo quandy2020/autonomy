@@ -24,15 +24,20 @@
 #include "atlas/common/math/converter.hpp"
 #include "atlas/common/math/geometric_tools.hpp"
 #include "atlas/common/optimization/optimizer.hpp"
+#include "atlas/mapping/inertial_initialization.hpp"
 #include "atlas/match/orb_matcher.hpp"
 #include "autolink/common/log.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <mutex>
 
 namespace autonomy::localization::atlas {
 namespace {
+
+constexpr double kMaximumInertialGyroBiasRadiansPerSecond = 0.1;
+constexpr double kMaximumInertialAccelerationBiasMetersPerSecondSquared = 1.0;
 
 bool IsFiniteRotation(const Eigen::Matrix3d& rotation) {
     if (!rotation.allFinite())
@@ -51,8 +56,11 @@ bool IsValidInertialInitialization(double scale,
     const double maximum_scale = already_initialized ? 5.0 : 100.0;
     return std::isfinite(scale) && scale >= 0.1 && scale <= maximum_scale &&
            IsFiniteRotation(world_gravity) && gyro_bias.allFinite() &&
-           gyro_bias.norm() <= 1.0 && acc_bias.allFinite() &&
-           acc_bias.norm() <= 20.0;
+           gyro_bias.norm() <=
+               kMaximumInertialGyroBiasRadiansPerSecond &&
+           acc_bias.allFinite() &&
+           acc_bias.norm() <=
+               kMaximumInertialAccelerationBiasMetersPerSecondSquared;
 }
 
 }  // namespace
@@ -86,6 +94,7 @@ LocalMapper::LocalMapper(System* pSys, Atlas* pAtlas, const float bMonocular,
     mbBadImu = false;
 
     mTinit = 0.f;
+    mNextVibaRetryTinit = 0.f;
 
     mNumLM = 0;
     mNumKFCulling = 0;
@@ -153,10 +162,13 @@ void LocalMapper::Run() {
 
             mbAbortBA = false;
 
-            if (!CheckNewKeyFrames()) {
+            const bool pending_for_neighbor_search = CheckNewKeyFrames();
+            if (!pending_for_neighbor_search) {
                 // Find more matches in neighbor keyframes and fuse point
                 // duplications
                 SearchInNeighbors();
+            } else {
+                mapping_telemetry_.RecordNeighborsSkippedPending();
             }
 
 #ifdef REGISTER_TIMES
@@ -177,8 +189,10 @@ void LocalMapper::Run() {
             int num_MPs_BA = 0;
             int num_edges_BA = 0;
 
-            if (!CheckNewKeyFrames() && !stopRequested()) {
+            const bool pending_for_lba = CheckNewKeyFrames();
+            if (!pending_for_lba && !stopRequested()) {
                 if (mpAtlas->KeyFramesInMap() > 2) {
+                    mapping_telemetry_.RecordLbaStarted();
                     if (mbInertial &&
                         mpCurrentKeyFrame->GetMap()->isImuInitialized()) {
                         float dist =
@@ -195,13 +209,26 @@ void LocalMapper::Run() {
                                       mpCurrentKeyFrame->mPrevKF->mTimeStamp;
                         if (!mpCurrentKeyFrame->GetMap()->GetIniertialBA2()) {
                             if ((mTinit < 10.f) && (dist < 0.02)) {
-                                AINFO << "Not enough motion for initializing. "
-                                         "Reseting..."
-                                      << std::endl;
-                                std::unique_lock<std::mutex> lock(mMutexReset);
-                                mbResetRequestedActiveMap = true;
-                                mpMapToReset = mpCurrentKeyFrame->GetMap();
-                                mbBadImu = true;
+                                // Monocular IMU init is scale-free; a parked
+                                // start is unobservable and must be reset.
+                                // RGB-D/stereo already have metric scale, so
+                                // destroying the map leaves AutoSim sitting
+                                // still with no map and no way to re-init.
+                                if (mbMonocular) {
+                                    AINFO << "Not enough motion for initializing. "
+                                             "Reseting..."
+                                          << std::endl;
+                                    std::unique_lock<std::mutex> lock(
+                                        mMutexReset);
+                                    mbResetRequestedActiveMap = true;
+                                    mpMapToReset = mpCurrentKeyFrame->GetMap();
+                                    mbBadImu = true;
+                                } else {
+                                    AINFO_EVERY(20)
+                                        << "Not enough motion for IMU "
+                                           "refinement; keeping metric map"
+                                        << std::endl;
+                                }
                             }
                         }
 
@@ -221,6 +248,21 @@ void LocalMapper::Run() {
                             mpCurrentKeyFrame->GetMap(), num_FixedKF_BA,
                             num_OptKF_BA, num_MPs_BA, num_edges_BA);
                         b_doneLBA = true;
+                    }
+                }
+                if (b_doneLBA) {
+                    // This approximate telemetry snapshots mbAbortBA when
+                    // Optimizer returns; it does not identify which abort
+                    // request set the flag.
+                    if (mbAbortBA) {
+                        mapping_telemetry_.RecordLbaReturnedWithAbortFlag();
+                    } else {
+                        mapping_telemetry_.RecordLbaCompleted(num_OptKF_BA,
+                                                              num_edges_BA);
+                        if (mapping_telemetry_.enabled()) {
+                            lba_completion_generation_.fetch_add(
+                                1, std::memory_order_relaxed);
+                        }
                     }
                 }
 #ifdef REGISTER_TIMES
@@ -277,13 +319,16 @@ void LocalMapper::Run() {
                                           // is called
                     {
                         if (!mpCurrentKeyFrame->GetMap()->GetIniertialBA1()) {
-                            if (mTinit > 5.0f) {
+                            if (mTinit > 5.0f &&
+                                mTinit >= mNextVibaRetryTinit) {
                                 AINFO << "start VIBA 1" << std::endl;
                                 if (InitializeIMU(1.f, 1e5, true)) {
                                     mpCurrentKeyFrame->GetMap()
                                         ->SetIniertialBA1();
+                                    mNextVibaRetryTinit = 0.f;
                                     AINFO << "end VIBA 1" << std::endl;
                                 } else {
+                                    mNextVibaRetryTinit = mTinit + 2.0f;
                                     AWARN << "VIBA 1 failed validation; "
                                              "leaving it pending for retry"
                                           << std::endl;
@@ -291,13 +336,18 @@ void LocalMapper::Run() {
                             }
                         } else if (!mpCurrentKeyFrame->GetMap()
                                         ->GetIniertialBA2()) {
-                            if (mTinit > 15.0f) {
+                            if (mTinit > 15.0f &&
+                                mTinit >= mNextVibaRetryTinit) {
                                 AINFO << "start VIBA 2" << std::endl;
                                 if (InitializeIMU(0.f, 0.f, true)) {
                                     mpCurrentKeyFrame->GetMap()
                                         ->SetIniertialBA2();
+                                    mNextVibaRetryTinit = 0.f;
                                     AINFO << "end VIBA 2" << std::endl;
                                 } else {
+                                    // Avoid Cholesky/retry storms that stall
+                                    // tracking into timestamp jumps.
+                                    mNextVibaRetryTinit = mTinit + 2.0f;
                                     AWARN << "VIBA 2 failed validation; "
                                              "leaving it pending for retry"
                                           << std::endl;
@@ -318,6 +368,8 @@ void LocalMapper::Run() {
                         }
                     }
                 }
+            } else if (pending_for_lba) {
+                mapping_telemetry_.RecordLbaSkippedPending();
             }
 
 #ifdef REGISTER_TIMES
@@ -367,7 +419,9 @@ void LocalMapper::Run() {
 
 void LocalMapper::InsertKeyFrame(KeyFrame* pKF) {
     std::unique_lock<std::mutex> lock(mMutexNewKFs);
+    idle_monitor_.SetQueueEmpty(false);
     mlNewKeyFrames.push_back(pKF);
+    mapping_telemetry_.ObservePendingQueueDepth(mlNewKeyFrames.size());
     mbAbortBA = true;
 }
 
@@ -395,6 +449,7 @@ void LocalMapper::ProcessNewKeyFrame() {
         std::unique_lock<std::mutex> lock(mMutexNewKFs);
         mpCurrentKeyFrame = mlNewKeyFrames.front();
         mlNewKeyFrames.pop_front();
+        idle_monitor_.SetQueueEmpty(mlNewKeyFrames.empty());
     }
 
     // Compute Bags of Words structures
@@ -426,6 +481,7 @@ void LocalMapper::ProcessNewKeyFrame() {
 
     // Insert Keyframe in Map
     mpAtlas->AddKeyFrame(mpCurrentKeyFrame);
+    mapping_telemetry_.RecordProcessedKeyFrame();
 }
 
 void LocalMapper::EmptyQueue() {
@@ -919,10 +975,13 @@ void LocalMapper::SearchInNeighbors() {
 }
 
 void LocalMapper::RequestStop() {
-    std::unique_lock<std::mutex> lock(mMutexStop);
-    mbStopRequested = true;
-    std::unique_lock<std::mutex> lock2(mMutexNewKFs);
-    mbAbortBA = true;
+    {
+        std::unique_lock<std::mutex> lock(mMutexStop);
+        mbStopRequested = true;
+        std::unique_lock<std::mutex> lock2(mMutexNewKFs);
+        mbAbortBA = true;
+    }
+    idle_monitor_.Interrupt();
 }
 
 bool LocalMapper::Stop() {
@@ -947,8 +1006,7 @@ bool LocalMapper::stopRequested() {
 }
 
 void LocalMapper::Release() {
-    std::unique_lock<std::mutex> lock(mMutexStop);
-    std::unique_lock<std::mutex> lock2(mMutexFinish);
+    std::scoped_lock lock(mMutexStop, mMutexFinish, mMutexNewKFs);
     if (mbFinished)
         return;
     mbStopped = false;
@@ -958,6 +1016,8 @@ void LocalMapper::Release() {
          lit != lend; lit++)
         delete *lit;
     mlNewKeyFrames.clear();
+    idle_monitor_.SetQueueEmpty(true);
+    idle_monitor_.Resume();
 
     AINFO << "Local Mapping RELEASE" << std::endl;
 }
@@ -968,8 +1028,21 @@ bool LocalMapper::AcceptKeyFrames() {
 }
 
 void LocalMapper::SetAcceptKeyFrames(bool flag) {
-    std::unique_lock<std::mutex> lock(mMutexAccept);
-    mbAcceptKeyFrames = flag;
+    // Keep the mirror conservative across the two state updates: publish busy
+    // before the worker becomes busy, and idle after it becomes idle.
+    if (!flag)
+        idle_monitor_.SetAccepting(false);
+    {
+        std::unique_lock<std::mutex> lock(mMutexAccept);
+        mbAcceptKeyFrames = flag;
+    }
+    if (flag)
+        idle_monitor_.SetAccepting(true);
+}
+
+internal::LocalMappingIdleWaitResult LocalMapper::WaitUntilIdle(
+    std::chrono::milliseconds timeout) {
+    return idle_monitor_.WaitUntilIdle(timeout);
 }
 
 bool LocalMapper::SetNotStop(bool flag) {
@@ -1150,6 +1223,7 @@ void LocalMapper::RequestReset() {
         AINFO << "LM: Map reset recieved" << std::endl;
         mbResetRequested = true;
     }
+    idle_monitor_.Interrupt();
     AINFO << "LM: Map reset, waiting..." << std::endl;
 
     while (1) {
@@ -1170,6 +1244,7 @@ void LocalMapper::RequestResetActiveMap(Map* pMap) {
         mbResetRequestedActiveMap = true;
         mpMapToReset = pMap;
     }
+    idle_monitor_.Interrupt();
     AINFO << "LM: Active map reset, waiting..." << std::endl;
 
     while (1) {
@@ -1192,6 +1267,7 @@ void LocalMapper::ResetIfRequested() {
 
             AINFO << "LM: Reseting Atlas in Local Mapping..." << std::endl;
             mlNewKeyFrames.clear();
+            idle_monitor_.SetQueueEmpty(true);
             mpCurrentKeyFrame = nullptr;
             mlpRecentAddedMapPoints.clear();
             mbResetRequested = false;
@@ -1199,6 +1275,7 @@ void LocalMapper::ResetIfRequested() {
 
             // Inertial parameters
             mTinit = 0.f;
+            mNextVibaRetryTinit = 0.f;
             mbNotBA2 = true;
             mbNotBA1 = true;
             mbBadImu = false;
@@ -1213,11 +1290,13 @@ void LocalMapper::ResetIfRequested() {
             AINFO << "LM: Reseting current map in Local Mapping..."
                   << std::endl;
             mlNewKeyFrames.clear();
+            idle_monitor_.SetQueueEmpty(true);
             mpCurrentKeyFrame = nullptr;
             mlpRecentAddedMapPoints.clear();
 
             // Inertial parameters
             mTinit = 0.f;
+            mNextVibaRetryTinit = 0.f;
             mbNotBA2 = true;
             mbNotBA1 = true;
             mbBadImu = false;
@@ -1227,17 +1306,22 @@ void LocalMapper::ResetIfRequested() {
             AINFO << "LM: End reseting Local Mapping..." << std::endl;
         }
     }
-    if (executed_reset)
+    if (executed_reset) {
+        idle_monitor_.Resume();
         AINFO << "LM: Reset free the mutex" << std::endl;
+    }
 }
 
 bool LocalMapper::IsIdle() {
-    return KeyframesInQueue() == 0 && AcceptKeyFrames();
+    return idle_monitor_.IsIdle();
 }
 
 void LocalMapper::RequestFinish() {
-    std::unique_lock<std::mutex> lock(mMutexFinish);
-    mbFinishRequested = true;
+    {
+        std::unique_lock<std::mutex> lock(mMutexFinish);
+        mbFinishRequested = true;
+    }
+    idle_monitor_.Interrupt();
 }
 
 bool LocalMapper::CheckFinish() {
@@ -1246,10 +1330,12 @@ bool LocalMapper::CheckFinish() {
 }
 
 void LocalMapper::SetFinish() {
-    std::unique_lock<std::mutex> lock(mMutexFinish);
-    mbFinished = true;
-    std::unique_lock<std::mutex> lock2(mMutexStop);
-    mbStopped = true;
+    {
+        std::scoped_lock lock(mMutexFinish, mMutexStop);
+        mbFinished = true;
+        mbStopped = true;
+    }
+    idle_monitor_.Interrupt();
 }
 
 bool LocalMapper::isFinished() {
@@ -1258,8 +1344,18 @@ bool LocalMapper::isFinished() {
 }
 
 bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
-    if (mbResetRequested)
+    KeyFrame* const initialization_keyframe = mpCurrentKeyFrame;
+    Map* const target_map =
+        initialization_keyframe ? initialization_keyframe->GetMap() : nullptr;
+    if (!target_map)
         return false;
+    {
+        std::unique_lock<std::mutex> reset_lock(mMutexReset);
+        if (mbResetRequested ||
+            (mbResetRequestedActiveMap && mpMapToReset == target_map)) {
+            return false;
+        }
+    }
 
     float minTime;
     int nMinKF;
@@ -1271,12 +1367,12 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
         nMinKF = 10;
     }
 
-    if (mpAtlas->KeyFramesInMap() < nMinKF)
+    if (target_map->KeyFramesInMap() < nMinKF)
         return false;
 
     // Retrieve all keyframe in temporal order
     std::list<KeyFrame*> lpKF;
-    KeyFrame* pKF = mpCurrentKeyFrame;
+    KeyFrame* pKF = initialization_keyframe;
     while (pKF->mPrevKF) {
         lpKF.push_front(pKF);
         pKF = pKF->mPrevKF;
@@ -1291,7 +1387,10 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     if (mpCurrentKeyFrame->mTimeStamp - mFirstTs < minTime)
         return false;
 
-    bInitializing = true;
+    bInitializing.store(true, std::memory_order_release);
+
+    std::unique_lock<std::mutex> initialization_lock(
+        target_map->mMutexMapUpdate);
 
     while (CheckNewKeyFrames()) {
         ProcessNewKeyFrame();
@@ -1299,39 +1398,104 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
         lpKF.push_back(mpCurrentKeyFrame);
     }
 
+    if (!mpCurrentKeyFrame || mpCurrentKeyFrame->GetMap() != target_map) {
+        bInitializing.store(false, std::memory_order_release);
+        AERROR << "IMU initialization target map changed" << std::endl;
+        return false;
+    }
+
     const int N = vpKF.size();
     IMU::Bias b(0, 0, 0, 0, 0, 0);
+    const bool already_initialized = target_map->isImuInitialized();
+    const int snapshot_map_revision = target_map->GetMapChangeIndex();
+    const std::uint64_t snapshot_coordinate_epoch =
+        target_map->GetCoordinateEpoch();
+    const unsigned long optimization_keyframe_id =
+        mpCurrentKeyFrame->mnId;
+    AINFO << "ATLAS_IMU_INITIALIZATION_SNAPSHOT"
+          << " map_id=" << target_map->GetId()
+          << " coordinate_epoch=" << snapshot_coordinate_epoch
+          << " map_revision=" << snapshot_map_revision
+          << " already_initialized=" << (already_initialized ? 1 : 0)
+          << " keyframes=" << N
+          << " first_kf_id=" << vpKF.front()->mnId
+          << " last_kf_id=" << optimization_keyframe_id
+          << " queued_keyframes=" << KeyframesInQueue() << std::endl;
 
     // Compute and KF velocities mRwg estimation
-    if (!mpCurrentKeyFrame->GetMap()->isImuInitialized()) {
-        Eigen::Matrix3f Rwg;
-        Eigen::Vector3f dirG;
-        dirG.setZero();
-        for (std::vector<KeyFrame*>::iterator itKF = vpKF.begin();
-             itKF != vpKF.end(); itKF++) {
-            if (!(*itKF)->mpImuPreintegrated)
-                continue;
-            if (!(*itKF)->mPrevKF)
-                continue;
-
-            dirG -= (*itKF)->mPrevKF->GetImuRotation() *
-                    (*itKF)->mpImuPreintegrated->GetUpdatedDeltaVelocity();
-            Eigen::Vector3f _vel = ((*itKF)->GetImuPosition() -
-                                    (*itKF)->mPrevKF->GetImuPosition()) /
-                                   (*itKF)->mpImuPreintegrated->dT;
-            (*itKF)->SetVelocity(_vel);
-            (*itKF)->mPrevKF->SetVelocity(_vel);
+    if (!already_initialized) {
+        Eigen::VectorXd keyframe_timestamps(N);
+        internal::PositionMatrix keyframe_positions(N, 3);
+        for (int index = 0; index < N; ++index) {
+            keyframe_timestamps[index] = vpKF[index]->mTimeStamp;
+            keyframe_positions.row(index) =
+                vpKF[index]->GetImuPosition().cast<double>().transpose();
         }
 
-        dirG = dirG / dirG.norm();
-        Eigen::Vector3f gI(0.0f, 0.0f, -1.0f);
-        Eigen::Vector3f v = gI.cross(dirG);
-        const float nv = v.norm();
-        const float cosg = gI.dot(dirG);
-        const float ang = acos(cosg);
-        Eigen::Vector3f vzg = v * ang / nv;
-        Rwg = autonomy::common::math::SO3f::exp(vzg).matrix();
-        mRwg = Rwg.cast<double>();
+        Eigen::Vector3d raw_gravity_impulse = Eigen::Vector3d::Zero();
+        double integrated_time_seconds = 0.0;
+        for (KeyFrame* keyframe : vpKF) {
+            if (keyframe->mpImuPreintegrated == nullptr ||
+                keyframe->mPrevKF == nullptr) {
+                continue;
+            }
+            const double delta_time = keyframe->mpImuPreintegrated->dT;
+            if (!std::isfinite(delta_time) || delta_time <= 0.0)
+                continue;
+
+            raw_gravity_impulse -=
+                (keyframe->mPrevKF->GetImuRotation() *
+                 keyframe->mpImuPreintegrated->GetUpdatedDeltaVelocity())
+                    .cast<double>();
+            integrated_time_seconds += delta_time;
+            const Eigen::Vector3f velocity =
+                (keyframe->GetImuPosition() -
+                 keyframe->mPrevKF->GetImuPosition()) /
+                static_cast<float>(delta_time);
+            keyframe->SetVelocity(velocity);
+            keyframe->mPrevKF->SetVelocity(velocity);
+        }
+
+        Eigen::Vector3d gravity_direction;
+        if (mbMonocular) {
+            if (!raw_gravity_impulse.allFinite() ||
+                raw_gravity_impulse.norm() <= 1.0e-9) {
+                bInitializing.store(false, std::memory_order_release);
+                return false;
+            }
+            gravity_direction = raw_gravity_impulse.normalized();
+        } else {
+            internal::MetricGravitySeedDiagnostics diagnostics;
+            const bool valid_metric_seed =
+                internal::EstimateMetricGravityDirection(
+                    keyframe_timestamps, keyframe_positions,
+                    raw_gravity_impulse, integrated_time_seconds,
+                    &gravity_direction, &diagnostics);
+            AINFO << "ATLAS_IMU_GRAVITY_SEED"
+                  << " valid=" << (valid_metric_seed ? 1 : 0)
+                  << " integrated_time="
+                  << diagnostics.integrated_time_seconds
+                  << " visual_delta_velocity_norm="
+                  << diagnostics.visual_delta_velocity_norm
+                  << " raw_impulse_norm="
+                  << diagnostics.raw_impulse_norm
+                  << " corrected_impulse_norm="
+                  << diagnostics.corrected_impulse_norm
+                  << " maximum_fit_residual_m="
+                  << diagnostics.maximum_fit_residual_meters
+                  << " minimum_reciprocal_condition="
+                  << diagnostics.minimum_reciprocal_condition << std::endl;
+            if (!valid_metric_seed) {
+                bInitializing.store(false, std::memory_order_release);
+                return false;
+            }
+        }
+
+        const Eigen::Vector3f inertial_gravity_direction(0.0f, 0.0f, -1.0f);
+        const Eigen::Quaternionf gravity_alignment =
+            Eigen::Quaternionf::FromTwoVectors(
+                inertial_gravity_direction, gravity_direction.cast<float>());
+        mRwg = gravity_alignment.toRotationMatrix().cast<double>();
         mTinit = mpCurrentKeyFrame->mTimeStamp - mFirstTs;
     } else {
         mRwg = Eigen::Matrix3d::Identity();
@@ -1344,65 +1508,93 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     mInitTime = mpTracker->mLastFrame.mTimeStamp - vpKF.front()->mTimeStamp;
 
     std::chrono::steady_clock::time_point t0 = std::chrono::steady_clock::now();
-    const bool already_initialized =
-        mpCurrentKeyFrame->GetMap()->isImuInitialized();
-    if (!Optimizer::InertialOptimization(mpAtlas->GetCurrentMap(), mRwg, mScale,
-                                         mbg, mba, mbMonocular, infoInertial,
-                                         false, false, priorG, priorA) ||
+    if (!Optimizer::InertialOptimization(target_map, mRwg, mScale, mbg, mba,
+                                         mbMonocular, infoInertial, false,
+                                         false, priorG, priorA,
+                                         kMaximumInertialGyroBiasRadiansPerSecond,
+                                         kMaximumInertialAccelerationBiasMetersPerSecondSquared) ||
         !IsValidInertialInitialization(mScale, mRwg, mbg, mba,
                                        already_initialized)) {
         AERROR << "Rejected invalid inertial initialization result"
+               << " scale=" << mScale
+               << " gyro_bias_norm=" << mbg.norm()
+               << " acc_bias_norm=" << mba.norm()
                << std::endl;
-        bInitializing = false;
+        bInitializing.store(false, std::memory_order_release);
         return false;
     }
 
+    const double gravity_rotation_cosine = std::clamp(
+        0.5 * (mRwg.trace() - 1.0), -1.0, 1.0);
+    AINFO << "ATLAS_IMU_INITIALIZATION_RESULT"
+          << " map_id=" << target_map->GetId()
+          << " keyframe_id=" << optimization_keyframe_id
+          << " scale=" << mScale
+          << " gravity_rotation_rad=" << std::acos(gravity_rotation_cosine)
+          << " gyro_bias_norm=" << mbg.norm()
+          << " acc_bias_norm=" << mba.norm() << std::endl;
+
     std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
 
-    // Before this line we are not changing the map
+    // Commit the validated scale and synchronize Tracker atomically.
     {
-        std::unique_lock<std::mutex> lock(
-            mpAtlas->GetCurrentMap()->mMutexMapUpdate);
-        if ((fabs(mScale - 1.f) > 0.00001) || !mbMonocular) {
+        std::unique_lock<std::mutex> reset_lock(mMutexReset);
+        if (mbResetRequested ||
+            (mbResetRequestedActiveMap && mpMapToReset == target_map)) {
+            bInitializing.store(false, std::memory_order_release);
+            return false;
+        }
+    }
+
+    {
+        const bool apply_scaled_rotation =
+            (fabs(mScale - 1.f) > 0.00001) || !mbMonocular;
+        if (apply_scaled_rotation) {
             autonomy::common::math::SE3f Twg(mRwg.cast<float>().transpose(),
                                              Eigen::Vector3f::Zero());
-            mpAtlas->GetCurrentMap()->ApplyScaledRotation(Twg, mScale, true);
-            mpTracker->UpdateFrameIMU(mScale, vpKF[0]->GetImuBias(),
-                                      mpCurrentKeyFrame);
+            target_map->ApplyScaledRotation(Twg, mScale, true);
         }
 
         // Check if initialization OK
-        if (!mpAtlas->isImuInitialized())
+        if (!already_initialized) {
             for (int i = 0; i < N; i++) {
                 KeyFrame* pKF2 = vpKF[i];
                 pKF2->bImu = true;
             }
-    }
 
-    mpTracker->UpdateFrameIMU(1.0, vpKF[0]->GetImuBias(), mpCurrentKeyFrame);
-    if (!mpAtlas->isImuInitialized()) {
-        mpAtlas->SetImuInitialized();
-        mpTracker->t0IMU = mpTracker->mCurrentFrame.mTimeStamp;
-        mpCurrentKeyFrame->bImu = true;
+        }
+        mpTracker->UpdateFrameIMU(
+            apply_scaled_rotation ? mScale : 1.0, vpKF.front()->GetImuBias(),
+            mpCurrentKeyFrame);
+        if (!already_initialized) {
+            target_map->SetImuInitialized();
+            mpTracker->t0IMU = mpTracker->mCurrentFrame.mTimeStamp;
+            mpCurrentKeyFrame->bImu = true;
+        }
     }
+    initialization_lock.unlock();
 
     std::chrono::steady_clock::time_point t4 = std::chrono::steady_clock::now();
     bool full_ba_succeeded = true;
     if (bFIBA) {
         if (priorA != 0.f)
             full_ba_succeeded = Optimizer::FullInertialBA(
-                mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId,
-                nullptr, true, priorG, priorA);
+                target_map, 100, false, mpCurrentKeyFrame->mnId,
+                nullptr, true, priorG, priorA, nullptr, nullptr,
+                kMaximumInertialGyroBiasRadiansPerSecond,
+                kMaximumInertialAccelerationBiasMetersPerSecondSquared);
         else
             full_ba_succeeded = Optimizer::FullInertialBA(
-                mpAtlas->GetCurrentMap(), 100, false, mpCurrentKeyFrame->mnId,
-                nullptr, false);
+                target_map, 100, false, mpCurrentKeyFrame->mnId,
+                nullptr, false, priorG, priorA, nullptr, nullptr,
+                kMaximumInertialGyroBiasRadiansPerSecond,
+                kMaximumInertialAccelerationBiasMetersPerSecondSquared);
     }
     if (!full_ba_succeeded) {
         AERROR << "Full inertial BA failed; skipping full-BA map propagation; "
                   "validated pre-BA inertial refinement remains applied"
                << std::endl;
-        bInitializing = false;
+        bInitializing.store(false, std::memory_order_release);
         return false;
     }
 
@@ -1412,7 +1604,22 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
 
     // Get Map Mutex
     std::unique_lock<std::mutex> lock(
-        mpAtlas->GetCurrentMap()->mMutexMapUpdate);
+        target_map->mMutexMapUpdate);
+
+    if (mpAtlas->GetCurrentMap() != target_map) {
+        bInitializing.store(false, std::memory_order_release);
+        AERROR << "Discarding inertial BA result after active map change"
+               << std::endl;
+        return false;
+    }
+    {
+        std::unique_lock<std::mutex> reset_lock(mMutexReset);
+        if (mbResetRequested ||
+            (mbResetRequestedActiveMap && mpMapToReset == target_map)) {
+            bInitializing.store(false, std::memory_order_release);
+            return false;
+        }
+    }
 
     unsigned long GBAid = mpCurrentKeyFrame->mnId;
 
@@ -1421,12 +1628,19 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
         ProcessNewKeyFrame();
         vpKF.push_back(mpCurrentKeyFrame);
         lpKF.push_back(mpCurrentKeyFrame);
+        if (!mpCurrentKeyFrame ||
+            mpCurrentKeyFrame->GetMap() != target_map) {
+            bInitializing.store(false, std::memory_order_release);
+            AERROR << "Discarding inertial BA result after queued map change"
+                   << std::endl;
+            return false;
+        }
     }
 
     // Correct keyframes starting at map first keyframe
     std::list<KeyFrame*> lpKFtoCheck(
-        mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.begin(),
-        mpAtlas->GetCurrentMap()->mvpKeyFrameOrigins.end());
+        target_map->mvpKeyFrameOrigins.begin(),
+        target_map->mvpKeyFrameOrigins.end());
 
     while (!lpKFtoCheck.empty()) {
         KeyFrame* pKF = lpKFtoCheck.front();
@@ -1472,7 +1686,7 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
 
     // Correct MapPoints
     const std::vector<MapPoint*> vpMPs =
-        mpAtlas->GetCurrentMap()->GetAllMapPoints();
+        target_map->GetAllMapPoints();
 
     for (std::size_t i = 0; i < vpMPs.size(); i++) {
         MapPoint* pMP = vpMPs[i];
@@ -1510,11 +1724,22 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
         delete *lit;
     }
     mlNewKeyFrames.clear();
+    idle_monitor_.SetQueueEmpty(true);
 
     mpTracker->mState = Tracker::OK;
-    bInitializing = false;
+    bInitializing.store(false, std::memory_order_release);
 
-    mpCurrentKeyFrame->GetMap()->IncreaseChangeIndex();
+    target_map->IncreaseChangeIndex();
+
+    AINFO << "ATLAS_IMU_INITIALIZATION_COMMIT"
+          << " map_id=" << target_map->GetId()
+          << " optimization_keyframe_id=" << optimization_keyframe_id
+          << " optimized_keyframes=" << N
+          << " committed_keyframes=" << vpKF.size()
+          << " coordinate_epoch=" << target_map->GetCoordinateEpoch()
+          << " previous_revision=" << snapshot_map_revision
+          << " current_revision=" << target_map->GetMapChangeIndex()
+          << std::endl;
 
     return true;
 }
@@ -1555,7 +1780,7 @@ void LocalMapper::ScaleRefinement() {
     if (!std::isfinite(mScale) || mScale < 1e-1 || mScale > 5.0 ||
         !IsFiniteRotation(mRwg)) {
         AINFO << "scale too small" << std::endl;
-        bInitializing = false;
+        bInitializing.store(false, std::memory_order_release);
         return;
     }
 
@@ -1580,6 +1805,7 @@ void LocalMapper::ScaleRefinement() {
         delete *lit;
     }
     mlNewKeyFrames.clear();
+    idle_monitor_.SetQueueEmpty(true);
 
     double t_inertial_only =
         std::chrono::duration_cast<std::chrono::duration<double>>(t1 - t0)
@@ -1592,7 +1818,7 @@ void LocalMapper::ScaleRefinement() {
 }
 
 bool LocalMapper::IsInitializing() {
-    return bInitializing;
+    return bInitializing.load(std::memory_order_acquire);
 }
 
 double LocalMapper::GetCurrKFTime() {

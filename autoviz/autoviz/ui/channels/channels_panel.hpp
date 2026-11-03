@@ -27,8 +27,6 @@
 
 #include "autoviz/common/session_config.hpp"
 
-class QLabel;
-class QLineEdit;
 class QToolButton;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -36,6 +34,12 @@ class QTimer;
 class QPoint;
 
 namespace autoviz {
+namespace widget {
+class EmptyState;
+class SearchBox;
+class StatusBadge;
+}  // namespace widget
+
 namespace common {
 class VisualizationManager;
 }
@@ -273,14 +277,14 @@ class ChannelsPanel : public QWidget {
   /** Non-owning; provides ChannelManager access. */
   common::VisualizationManager* manager_ = nullptr;
 
-  /** Filter line edit (substring match on channel names). */
-  QLineEdit* filter_edit_ = nullptr;
+  /** Filter search box (substring match on channel names). */
+  widget::SearchBox* filter_edit_ = nullptr;
 
   /** Compact status chip (counts / health). */
-  QLabel* status_label_ = nullptr;
+  widget::StatusBadge* status_label_ = nullptr;
 
   /** Shown when no channels are available. */
-  QLabel* empty_hint_ = nullptr;
+  widget::EmptyState* empty_hint_ = nullptr;
 
   /** Channel / field tree. */
   QTreeWidget* tree_ = nullptr;

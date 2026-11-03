@@ -123,8 +123,30 @@ def test_load_default_yaml():
     assert settings["habitat"]["robot"]["tf"]["enabled"] is True
     assert settings.channel_map()["tf"] == "/tf"
     assert settings.channel_map()["clock"] == "/clock"
+    assert settings.channel_map()["gt_pose"] == "/gt/pose"
+    assert "gt_odom" not in settings.channel_map()
     assert settings.channel_map()["map_cloud"] == "/overall/map"
-    assert settings["habitat"]["sensors"]["odom"]["child_frame"] == "base_link"
+    assert settings["habitat"]["sensors"]["odom"]["child_frame"] == "base_footprint"
+
+
+def test_truth_odometry_channel_is_optional():
+    settings = Config.load(minimal_config())
+    assert settings.channel_map()["gt_pose"] == "/gt/pose"
+    assert "gt_odom" not in settings.channel_map()
+
+
+def test_reject_non_string_truth_odometry_channel():
+    bad = minimal_config()
+    bad["habitat"]["robot"]["truth"]["odometry_channel"] = 42
+    with pytest.raises(ValueError, match="truth.odometry_channel"):
+        Config.load(bad)
+
+
+def test_reject_duplicate_truth_odometry_channel():
+    bad = minimal_config()
+    bad["habitat"]["robot"]["truth"]["odometry_channel"] = "/odom"
+    with pytest.raises(ValueError, match="duplicate channel"):
+        Config.load(bad)
 
 
 def test_load_fake_yaml():

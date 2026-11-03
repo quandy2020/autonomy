@@ -124,7 +124,8 @@ bool MLPnPsolver::iterate(int nIterations, bool& bNoMore,
     std::vector<std::size_t> vAvailableIndices;
 
     int nCurrentIterations = 0;
-    while (mnIterations < mRansacMaxIts || nCurrentIterations < nIterations) {
+    while (internal::ShouldContinueRansacIterations(
+        mnIterations, mRansacMaxIts, nCurrentIterations, nIterations)) {
         nCurrentIterations++;
         mnIterations++;
 

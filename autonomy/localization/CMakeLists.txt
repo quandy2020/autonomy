@@ -186,6 +186,7 @@ autocmake_binary(autonomy.localization
   SOURCES localization_main.cpp
   DEPENDENCIES
     autonomy
+    autonomy::localization_atlas
     glog::glog
     autonomy::cli11
 )

@@ -29,6 +29,7 @@
 | 出 | `map_cloud` | `/overall/map` | PointCloud2（采样一次，缓存重发） |
 | 出 | `robot_description` | `/robot_description` | String（URDF XML，有 urdf 时） |
 | 出 | `gt_pose` | `/gt/pose` | PoseStamped（默认关） |
+| 出 | `gt_odom` | `/gt/odometry` | Odometry（可选，与 `gt_pose` 同时间戳，`map -> base_link`） |
 
 具体以当前 YAML 为准；改通道名后需保证全局唯一（`validate` 会查重）。
 
@@ -39,6 +40,7 @@
 | 约定 | 说明 |
 |------|------|
 | RGB / depth / CameraInfo | 同一 `header.stamp`（Runner 硬同步） |
+| `gt_pose` / `gt_odom` | 同一仿真周期和时间戳，平面 x/y/yaw 一致；Odometry 为 `map -> base_link`，并包含 `base_link_height` |
 | Fixed Frame（Autoviz） | `nav` 下用 `map` |
 | 相机光学 | 深度点云可经 `optical_to_camera_link` 转到 `camera_link` |
 
@@ -49,3 +51,4 @@
 - `sensors.camera.enabled: false` 时不建 rgb/depth writer；可仅保留 `depth_points_channel`（Fake / Isaac 特例）。
 - `map.enabled && map.publish`（且非 slam）才建 `map_grid` / `map_cloud`。
 - `lidar_3d.enabled` 才发 `/points`。
+- `robot.truth.enabled` 启用 `/gt/pose`；仅当 `robot.truth.odometry_channel` 非空时同时创建 `gt_odom` writer。

@@ -93,6 +93,25 @@ void WriteStereoSettings(std::ostream* output) {
             << "Stereo.ThDepth: 40.0\n";
 }
 
+void WriteImuMonocularSettings(std::ostream* output) {
+    *output << "Camera1.fx: 500.0\n"
+            << "Camera1.fy: 501.0\n"
+            << "Camera1.cx: 320.0\n"
+            << "Camera1.cy: 240.0\n"
+            << "IMU.NoiseGyro: 1.0e-04\n"
+            << "IMU.NoiseAcc: 1.0e-03\n"
+            << "IMU.GyroWalk: 1.0e-05\n"
+            << "IMU.AccWalk: 1.0e-04\n"
+            << "IMU.Frequency: 100.0\n"
+            << "IMU.InsertKFsWhenLost: 1\n"
+            << "IMU.T_b_c1: !!opencv-matrix\n"
+            << "   rows: 4\n"
+            << "   cols: 4\n"
+            << "   dt: f\n"
+            << "   data: [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,\n"
+            << "           0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ]\n";
+}
+
 TEST(ConfigLoaderTest, PublicTypeIsAvailable) {
     EXPECT_TRUE(std::is_class_v<ConfigLoader>);
 }
@@ -170,6 +189,68 @@ TEST(ConfigLoaderTest, KeepsAsymmetricKannalaBrandtCamera2Coefficients) {
     for (std::size_t index = 0; index < expected.size(); ++index) {
         EXPECT_FLOAT_EQ(camera2->getParameter(index + 4), expected[index]);
     }
+}
+
+TEST(ConfigLoaderTest, DefaultsImuInitializationKeyFrameMinimumInterval) {
+    ScopedConfigFile config;
+    std::ostream& output = config.output();
+    WriteCommonSettings(&output, "PinHole");
+    WriteImuMonocularSettings(&output);
+
+    ConfigLoader settings(config.Close(), System::IMU_MONOCULAR);
+
+    EXPECT_FLOAT_EQ(settings.imuInitKeyFrameMinInterval(), 0.25F);
+}
+
+TEST(ConfigLoaderTest, LoadsImuInitializationKeyFrameMinimumInterval) {
+    ScopedConfigFile config;
+    std::ostream& output = config.output();
+    WriteCommonSettings(&output, "PinHole");
+    WriteImuMonocularSettings(&output);
+    output << "IMU.InitKeyFrameMinInterval: 0.10\n";
+
+    ConfigLoader settings(config.Close(), System::IMU_MONOCULAR);
+
+    EXPECT_FLOAT_EQ(settings.imuInitKeyFrameMinInterval(), 0.10F);
+}
+
+TEST(ConfigLoaderDeathTest,
+     RejectsZeroImuInitializationKeyFrameMinimumInterval) {
+    ScopedConfigFile config;
+    std::ostream& output = config.output();
+    WriteCommonSettings(&output, "PinHole");
+    WriteImuMonocularSettings(&output);
+    output << "IMU.InitKeyFrameMinInterval: 0.0\n";
+    const std::string config_path = config.Close();
+
+    EXPECT_EXIT({ ConfigLoader settings(config_path, System::IMU_MONOCULAR); },
+                ::testing::ExitedWithCode(255), "");
+}
+
+TEST(ConfigLoaderDeathTest,
+     RejectsNegativeImuInitializationKeyFrameMinimumInterval) {
+    ScopedConfigFile config;
+    std::ostream& output = config.output();
+    WriteCommonSettings(&output, "PinHole");
+    WriteImuMonocularSettings(&output);
+    output << "IMU.InitKeyFrameMinInterval: -0.1\n";
+    const std::string config_path = config.Close();
+
+    EXPECT_EXIT({ ConfigLoader settings(config_path, System::IMU_MONOCULAR); },
+                ::testing::ExitedWithCode(255), "");
+}
+
+TEST(ConfigLoaderDeathTest,
+     RejectsNonFiniteImuInitializationKeyFrameMinimumInterval) {
+    ScopedConfigFile config;
+    std::ostream& output = config.output();
+    WriteCommonSettings(&output, "PinHole");
+    WriteImuMonocularSettings(&output);
+    output << "IMU.InitKeyFrameMinInterval: .Inf\n";
+    const std::string config_path = config.Close();
+
+    EXPECT_EXIT({ ConfigLoader settings(config_path, System::IMU_MONOCULAR); },
+                ::testing::ExitedWithCode(255), "");
 }
 
 }  // namespace

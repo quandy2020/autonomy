@@ -238,6 +238,16 @@ std::uint64_t Map::GetCoordinateEpoch() {
     return coordinate_epoch_.load(std::memory_order_acquire);
 }
 
+bool Map::GetCoordinateState(std::uint64_t* coordinate_epoch,
+                             bool* imu_initialized) {
+    if (coordinate_epoch == nullptr || imu_initialized == nullptr)
+        return false;
+    std::unique_lock<std::mutex> lock(mMutexMap);
+    *coordinate_epoch = coordinate_epoch_.load(std::memory_order_acquire);
+    *imu_initialized = mbImuInitialized;
+    return true;
+}
+
 bool Map::IsInUse() {
     return mIsInUse;
 }

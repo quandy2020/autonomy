@@ -37,7 +37,7 @@ habitat:
     max_angular_accel: 2.0
     wheel_separation: 0.55  # m; used for odom yaw-noise scale
     map_frame: map
-    base_link_height: 0.01   # odom→base_link z
+    base_link_height: 0.01   # base_footprint→base_link z / GT base height
     watchdog_sec: 0.5
     control_hz: 50.0
     cmd_vel: /cmd_vel
@@ -129,8 +129,8 @@ habitat:
       enabled: true
       channel: /odom
       frame: odom
-      # Both slam and nav use base_link (nav tree: map→odom→base_link).
-      child_frame: base_link
+      # URDF root; normal tree: map→odom→base_footprint→base_link.
+      child_frame: base_footprint
       # Keep 0 in slam so wheel odom matches GT laser rays (runner also glues
       # odom←GT each tick in slam mode). Non-zero only for nav odometry demos.
       noise: 0.0

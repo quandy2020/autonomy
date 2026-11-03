@@ -36,6 +36,7 @@
 
 #include <opencv2/calib3d.hpp>
 
+#include <cmath>
 #include <exception>
 #include <utility>
 
@@ -1140,7 +1141,7 @@ void Frame::ComputeStereoFromRGBD(const cv::Mat& imDepth) {
 
         const float d = imDepth.at<float>(v, u);
 
-        if (d > 0) {
+        if (std::isfinite(d) && d > 0.0F) {
             mvDepth[i] = d;
             mvuRight[i] = kpU.pt.x - mbf / d;
         }

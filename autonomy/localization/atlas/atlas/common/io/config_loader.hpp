@@ -133,6 +133,9 @@ public:
     float imuFrequency() {
         return imuFrequency_;
     }
+    float imuInitKeyFrameMinInterval() {
+        return imuInitKeyFrameMinInterval_;
+    }
     autonomy::common::math::SE3f Tbc() {
         return Tbc_;
     }
@@ -288,6 +291,7 @@ private:
     float noiseGyro_, noiseAcc_;
     float gyroWalk_, accWalk_;
     float imuFrequency_;
+    float imuInitKeyFrameMinInterval_ = 0.25F;
     autonomy::common::math::SE3f Tbc_;
     bool insertKFsWhenLost_;
 

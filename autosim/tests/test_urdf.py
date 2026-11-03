@@ -192,6 +192,16 @@ def test_default_yaml_urdf():
     assert settings["habitat"]["robot"]["urdf"] == "robot/turtlebot3_burger/turtlebot3_burger.urdf"
 
 
+def test_turtlebot_has_standard_camera_optical_frame():
+    model = UrdfModel.load("robot/turtlebot3_burger/turtlebot3_burger.urdf")
+    assert model is not None
+    assert model.parents["camera_optical_frame"][0] == "camera_link"
+    roll, pitch, yaw = model.joint_rpy["camera_optical_frame"]
+    assert roll == pytest.approx(-math.pi / 2.0)
+    assert pitch == pytest.approx(0.0)
+    assert yaw == pytest.approx(-math.pi / 2.0)
+
+
 def test_reject_missing_urdf():
     bad = minimal_robot_config(urdf="robot/does_not_exist.urdf")
     with pytest.raises(ValueError, match="urdf"):

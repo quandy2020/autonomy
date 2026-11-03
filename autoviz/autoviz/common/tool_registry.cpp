@@ -18,6 +18,10 @@
 #include "autoviz/plugins/tools/pose_estimate/pose_estimate_tool.hpp"
 #include "autoviz/plugins/tools/point/publish_point_tool.hpp"
 #include "autoviz/plugins/tools/select/select_tool.hpp"
+#include "autoviz/plugins/tools/close_all/close_all_tool.hpp"
+#include "autoviz/plugins/tools/open_all/open_all_tool.hpp"
+#include "autoviz/plugins/tools/overlay_picker/overlay_picker_tool.hpp"
+#include "autoviz/plugins/tools/screenshot/screenshot_listener_tool.hpp"
 
 namespace autoviz {
 namespace common {
@@ -56,6 +60,19 @@ void ToolRegistry::registerBuiltinTools() {
   registerTool("NavGoal", [] { return std::make_unique<tools::NavGoalTool>(); });
   registerTool("PublishPoint",
                [] { return std::make_unique<tools::PublishPointTool>(); });
+  registerTool("OverlayPicker",
+               [] { return std::make_unique<tools::OverlayPickerTool>(); },
+               "Overlay Picker");
+  registerTool(
+      "ScreenshotListener",
+      [] { return std::make_unique<tools::ScreenshotListenerTool>(); },
+      "Screenshot");
+  registerTool("OpenAll",
+               [] { return std::make_unique<tools::OpenAllTool>(); },
+               "Open All");
+  registerTool("CloseAll",
+               [] { return std::make_unique<tools::CloseAllTool>(); },
+               "Close All");
 }
 
 std::vector<std::string> ToolRegistry::toolIds() const {

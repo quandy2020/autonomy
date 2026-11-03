@@ -59,15 +59,6 @@ QLineEdit#AutovizCyanLineEdit {
 }
 QLineEdit#AutovizCyanLineEdit:focus { border-color: {{panel-accent}}; }
 
-QLineEdit#AutovizCompactFilter {
-  background: rgba(255,255,255,0.72); color: {{panel-text}};
-  border: 1px solid {{panel-border}}; border-radius: 7px;
-  padding: 3px 8px; min-height: 24px; font-size: 12px;
-}
-QLineEdit#AutovizCompactFilter:focus {
-  border-color: {{panel-accent}}; background: rgba(255,255,255,0.92);
-}
-
 QComboBox#AutovizCyanCombo {
   background: {{panel-surface}}; color: {{panel-text}};
   border: 1px solid {{panel-border}}; border-radius: 8px;

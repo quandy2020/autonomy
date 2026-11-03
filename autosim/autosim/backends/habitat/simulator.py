@@ -587,23 +587,26 @@ class Simulator:
         return images
 
     def camera_local_offset(self) -> Tuple[float, float, float]:
-        """Habitat agent-local RGB-D mount (``autonomy_ros`` ``sim.engine_sensors``).
+        """Return the RGB-D mount in Habitat agent coordinates.
 
-        Pinhole rig sits at ``[0, height, 0]`` in agent frame (Y-up). Only
-        vertical offset is used; planar offsets belong in URDF static TF, not
-        the Habitat agent sensor (agent forward is local ``-Z``).
+        URDF mounts use REP-103 ``(x forward, y left, z up)`` while Habitat's
+        agent-local axes are ``(x right, y up, -z forward)``.  Applying the
+        full mount here keeps rendered RGB-D rays at the same physical origin
+        advertised by TF.  An explicit ``sensor_height`` overrides only the
+        URDF z coordinate, preserving its calibrated planar offset.
         """
         camera_cfg = self.settings.get("habitat", {}).get("sensors", {}).get("camera", {})
-        # ``height`` is image pixels; never use it as Habitat Y.
-        if camera_cfg.get("sensor_height") is not None:
-            height = float(camera_cfg["sensor_height"])
-        elif self.urdf is not None and "camera_link" in self.urdf.mounts:
-            _, _, height = self.urdf.camera_xyz()
+        ros_x = 0.0
+        ros_y = 0.0
+        ros_z = 0.5
+        if self.urdf is not None and "camera_link" in self.urdf.mounts:
+            ros_x, ros_y, ros_z = self.urdf.camera_xyz()
         elif self.urdf is not None:
-            _, _, height = self.urdf.laser_xyz()
-        else:
-            height = 0.5
-        return (0.0, float(height), 0.0)
+            ros_x, ros_y, ros_z = self.urdf.laser_xyz()
+        # ``height`` is image pixels; never use it as a physical z offset.
+        if camera_cfg.get("sensor_height") is not None:
+            ros_z = float(camera_cfg["sensor_height"])
+        return (-float(ros_y), float(ros_z), -float(ros_x))
 
     @staticmethod
     def habitat_look_direction(yaw: float) -> Tuple[float, float, float]:
@@ -841,8 +844,8 @@ class Simulator:
         """Align ``floor_y`` to the render-mesh floor under the agent.
 
         Navmesh Y is often a few centimetres above the GLB collision/visual
-        floor (MP3D). Lidar rays then hit geometry below ``floor_y`` while
-        ``odom→base_link`` still assumes ground at z=0, so Autoviz shows the
+        floor (MP3D). Lidar rays then hit geometry below ``floor_y`` while the
+        odometry root still assumes ground at z=0, so Autoviz shows the
         robot floating above the ground ring. A downward mesh cast fixes that.
         """
         if self.session is None:
@@ -1561,10 +1564,11 @@ class Simulator:
 
     @staticmethod
     def align_camera_image(image: np.ndarray) -> np.ndarray:
-        """Return camera image for ROS ``camera_link`` (``autonomy_ros`` style).
+        """Return the pinhole image in OpenCV/REP-103 optical orientation.
 
         With agent ``Ry(yaw - π/2)`` and sensor orientation ``[0,0,0]``, Habitat
-        pinhole output already matches REP-103 ``camera_link`` (+X forward).
+        pinhole pixels already use x-right, y-down, z-forward optical axes, so
+        no image rotation or reflection is required.
         """
         return np.ascontiguousarray(np.asarray(image))
 

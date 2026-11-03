@@ -18,6 +18,7 @@
 | 07–08 | [Isaac](docs/07_isaac.md) · [地图与可视化](docs/08_map_and_viz.md) | USD / PhysX / Autoviz |
 | 09–10 | [测试](docs/09_testing.md) · [排错](docs/10_troubleshooting.md) | pytest 与常见问题 |
 | 11 | [数据采集](docs/11_dataset.md) | LeRobot v2.1 模仿学习落盘 |
+| 13 | [Atlas 验证](docs/13_atlas_validation.md) | RGB-D + IMU、真值轨迹、稠密点云与栅格地图 |
 
 索引：[`docs/README.md`](docs/README.md)。
 
@@ -60,11 +61,103 @@ CONFIG=src/autonomy/autosim/config/isaac.yaml \
 src/autonomy/autosim/scripts/run.sh teleop
 ```
 
+## Atlas 验证（RGB-D + IMU）
+
+`config/atlas.yaml` 使用 Habitat 发布同步 RGB-D、IMU、TF、仿真时钟和
+`/gt/odometry`；Atlas 独占 `map -> odom`、稠密点云与占用栅格。启动前先
+确认没有其他 Atlas 或地图发布进程：
+
+```bash
+docker exec -it SpaceHero /bin/bash
+pgrep -af autonomy.localization
+```
+
+若有旧进程，先通过对应 launch 停止，不能同时运行两个 Atlas。完整验证按
+下面顺序使用四个终端。
+
+### 1. 编译
+
+```bash
+docker exec -it SpaceHero /bin/bash
+cd /workspace/autonomy
+colcon build --packages-up-to autonomy
+```
+
+### 2. 启动仿真、Atlas 和遥控
+
+终端一启动 Habitat：
+
+```bash
+docker exec -it SpaceHero /bin/bash
+cd /workspace/autonomy
+CONFIG=src/autonomy/autosim/config/atlas.yaml \
+  src/autonomy/autosim/scripts/run.sh sim
+```
+
+终端二启动 Atlas。这里必须从源码根目录启动，使 launch 内的相对配置路径
+能够正确解析：
+
+```bash
+docker exec -it SpaceHero /bin/bash
+source /workspace/autonomy/install/setup.bash
+cd /workspace/autonomy/src/autonomy
+export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
+export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/localization/launch
+autolink launch start localization_atlas_autosim.launch
+```
+
+终端三遥控机器人，让相机经过有纹理、包含转弯和回访的路线：
+
+```bash
+docker exec -it SpaceHero /bin/bash
+cd /workspace/autonomy
+CONFIG=src/autonomy/autosim/config/atlas.yaml \
+  src/autonomy/autosim/scripts/run.sh teleop
+```
+
+### 3. 录制并评测
+
+终端四录制 120 秒。`--require-maps` 会在轨迹、稠密点云或占用栅格没有
+有效数据时返回非零：
+
+```bash
+docker exec -it SpaceHero /bin/bash
+cd /workspace/autonomy
+source install/setup.bash
+export PYTHONPATH=/workspace/autonomy/install/autonomy/python:/workspace/autonomy/install/autonomy/lib/python:${PYTHONPATH:-}
+export LD_LIBRARY_PATH=/workspace/autonomy/install/autonomy/lib:/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}
+python3 src/autonomy/autonomy/localization/atlas/examples/record_autosim_trajectories.py \
+  --duration-sec 120 \
+  --require-maps \
+  --output-dir /workspace/autonomy/data/atlas_autosim
+
+python3 src/autonomy/autonomy/localization/atlas/examples/evaluate_autosim.py \
+  /workspace/autonomy/data/atlas_autosim/ground_truth_trajectory.tum \
+  /workspace/autonomy/data/atlas_autosim/atlas_trajectory.tum \
+  --output /workspace/autonomy/data/atlas_autosim/trajectory_metrics.json
+```
+
+结果目录包含 `atlas_trajectory.tum`、`ground_truth_trajectory.tum`、
+`validation_summary.json` 和 `trajectory_metrics.json`。可省略
+`--duration-sec`，按 Ctrl-C 时记录器仍会原子写完文件。
+
+### 4. 停止
+
+在终端二停止 Atlas，再分别在 sim 和 teleop 终端按 Ctrl-C：
+
+```bash
+autolink launch stop localization_atlas_autosim.launch
+```
+
+Fake 后端只适合消息冒烟测试；ATE/RPE 和地图验收应使用带纹理的 Habitat
+或 Isaac 场景。输入输出话题、外参覆盖与指标说明见
+[`docs/13_atlas_validation.md`](docs/13_atlas_validation.md)。
+
 ## 资源
 
 | 路径 | 内容 |
 |------|------|
-| [`docs/`](docs/) | 00–10 维护文档 |
+| [`docs/`](docs/) | 完整文档与索引 |
 | [`images/`](images/) | 演示动图 |
 | [`usd/`](usd/) | Isaac USD（大场景见 `usd/.gitignore`） |
 | [`config/`](config/) | YAML |

@@ -34,9 +34,13 @@
 #include "atlas/map/atlas.hpp"
 #include "atlas/map_drawer.hpp"
 #include "atlas/mapping/local_mapper.hpp"
+#include "atlas/mapping/mapping_telemetry.hpp"
 #include "atlas/sensor/frame.hpp"
 #include "atlas/sensor/imu_types.hpp"
 #include "atlas/system.hpp"
+#include "atlas/tracking/recovery_policy.hpp"
+#include "atlas/tracking/rgbd_temporal_pose_estimator.hpp"
+#include "atlas/tracking/visual_initial_mapping_barrier.hpp"
 #include "atlas/viewer.hpp"
 
 #include "atlas/sensor/camera/geometric_camera.hpp"
@@ -46,6 +50,10 @@
 #include <unordered_set>
 
 namespace autonomy::localization::atlas {
+
+namespace internal {
+class LocalMapTrackingTransaction;
+}
 
 class Viewer;
 class FrameDrawer;
@@ -117,6 +125,15 @@ public:
     int GetNumberDataset();
     int GetMatchesInliers();
 
+    bool ConsumeVisualInitialMappingBarrier() {
+        return visual_initial_mapping_barrier_.Consume();
+    }
+
+    // Tracker-thread owned; call after frame processing has stopped.
+    const internal::MappingTelemetryStats& GetMappingTelemetryStats() const {
+        return mapping_telemetry_.stats();
+    }
+
     // DEBUG
     void SaveSubTrajectory(std::string strNameFile_frames,
                            std::string strNameFile_kf,
@@ -147,6 +164,10 @@ public:
 
     eTrackingState mState;
     eTrackingState mLastProcessedState;
+    eTrackingState last_logged_state_ = SYSTEM_NOT_READY;
+    int last_logged_inliers_ = -1;
+    int consecutive_local_map_fails_ = 0;
+    int consecutive_pose_holds_ = 0;
 
     // Input sensor
     int mSensor;
@@ -179,6 +200,7 @@ public:
     // True if local mapping is deactivated and we are performing only
     // localization
     bool mbOnlyTracking;
+    bool imu_rgbd_visual_recovery_active_;
 
     void Reset(bool bLocMap = false);
     void ResetActiveMap(bool bLocMap = false);
@@ -213,6 +235,7 @@ public:
 protected:
     // Main tracking function. It is independent of the input sensor.
     void Track();
+    void LogVisualSlamEvent(const char* event);
 
     // Map initialization for stereo and RGB-D
     void StereoInitialization();
@@ -224,18 +247,55 @@ protected:
 
     void CheckReplacedInLastFrame();
     bool TrackReferenceKeyFrame();
+    bool HoldLastImuRgbdPose();
+    RgbdTemporalPoseEstimator::FrameView CurrentRgbdTemporalFrameView(
+        Map* current_map) const;
+    void LogRgbdTemporalMapPointShadow(
+        const RgbdTemporalPoseEstimator::Result& result,
+        Map* current_map) const;
+    bool TryRgbdTemporalPose(
+        Map* current_map, RgbdTemporalPoseEstimator::Quality* quality,
+        RgbdTemporalPoseEstimator::Result* accepted_result,
+        internal::LocalMapTrackingTransaction* transaction);
+    bool AdvanceRgbdTemporalOdometryReference(
+        Map* current_map, RgbdTemporalPoseEstimator::Quality quality);
+    bool RebaseRgbdTemporalReferenceAfterMapUpdate(Map* current_map,
+                                                   int previous_map_revision,
+                                                   int current_map_revision);
+    bool ValidateAndCommitRgbdTemporalPose(
+        Map* expected_map,
+        const RgbdTemporalPoseEstimator::Result& accepted_result,
+        internal::LocalMapTrackingTransaction* transaction,
+        int* validation_inliers);
+    void UpdateRgbdTemporalReference(Map* current_map);
+
+    RgbdTemporalPoseEstimator rgbd_temporal_pose_estimator_;
+    internal::BoundedRgbdTemporalOdometryState rgbd_temporal_odometry_state_;
+    bool TrackImuRgbdVisualRecoveryReferenceKeyFrames();
     void UpdateLastFrame();
     bool TrackWithMotionModel();
     bool PredictStateIMU();
 
     bool Relocalization();
 
-    void UpdateLocalMap();
-    void UpdateLocalPoints();
-    void UpdateLocalKeyFrames();
+    void UpdateLocalMap(
+        bool publish_reference_points = true,
+        internal::LocalMapTrackingTransaction* transaction = nullptr);
+    void UpdateLocalPoints(
+        internal::LocalMapTrackingTransaction* transaction = nullptr);
+    void UpdateLocalKeyFrames(
+        internal::LocalMapTrackingTransaction* transaction = nullptr);
 
-    bool TrackLocalMap();
-    void SearchLocalPoints();
+    bool TrackLocalMap(
+        bool force_visual_pose_optimization = false,
+        internal::LocalMapCommitMode commit_mode =
+            internal::LocalMapCommitMode::kCommit,
+        int* validation_inliers = nullptr, int required_minimum_inliers = 0,
+        internal::LocalMapTrackingTransaction* transaction = nullptr);
+    void SearchLocalPoints(
+        bool commit_statistics = true,
+        std::vector<MapPoint*>* deferred_visible_points = nullptr,
+        internal::LocalMapTrackingTransaction* transaction = nullptr);
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
@@ -243,10 +303,16 @@ protected:
     // Perform preintegration from last frame
     void PreintegrateIMU();
 
+    /** Keep the active map after a moderate sensor-time gap (loop-close stall). */
+    void SoftRecoverAfterTimestampJump();
+
     // Reset IMU biases and compute frame velocity
     void ResetFrameIMU();
 
     bool mbMapUpdated;
+    // Updated only by the tracking thread.
+    internal::MappingTelemetry mapping_telemetry_;
+    internal::VisualInitialMappingBarrier visual_initial_mapping_barrier_;
 
     // Imu preintegration from last frame
     IMU::Preintegrated* mpImuPreintegratedFromLastKF;
@@ -314,6 +380,7 @@ protected:
 
     float mImuFreq;
     double mImuPer;
+    double mImuInitKeyFrameMinInterval = 0.25;
     bool mInsertKFsLost;
 
     // New KeyFrame rules (according to fps)

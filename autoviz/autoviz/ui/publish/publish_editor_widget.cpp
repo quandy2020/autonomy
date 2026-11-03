@@ -31,6 +31,7 @@
 #include <chrono>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/display/status_badge.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
@@ -314,7 +315,10 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   result_group_ = new QGroupBox(tr("Status"), editor_body_);
   auto* result_layout = new QVBoxLayout(result_group_);
   result_layout->setContentsMargins(10, 14, 10, 10);
-  result_status_label_ = new QLabel(tr("Ready"), result_group_);
+  result_status_label_ = new widget::StatusBadge(
+      tr("Ready"), widget::StatusBadge::Status::kNeutral, result_group_);
+  result_status_label_->SetTone(style::Tone::Frost);
+  result_status_label_->setAccessibleName(tr("Publish result status"));
   result_edit_ = makeJsonEditor(result_group_, tr("Publish status"), true);
   result_edit_->setMaximumHeight(80);
   result_layout->addWidget(result_status_label_);
@@ -793,10 +797,10 @@ int PublishEditorWidget::resolveActivePublisherRow() const {
 
 void PublishEditorWidget::showResult(bool success, const QString& summary,
                                      const QString& details) {
-  result_status_label_->setText(summary);
-  result_status_label_->setStyleSheet(
-      success ? style::type(style::Role::Ok, 12, 700)
-              : style::type(style::Role::Danger, 12, 700));
+  result_status_label_->SetText(summary);
+  result_status_label_->SetStatus(
+      success ? widget::StatusBadge::Status::kSuccess
+              : widget::StatusBadge::Status::kError);
   if (!details.isEmpty()) {
     result_edit_->setPlainText(details);
   }

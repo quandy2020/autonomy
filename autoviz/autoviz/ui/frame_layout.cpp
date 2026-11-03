@@ -940,6 +940,8 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
       frame_->panels_->teleop_dock_ = target;
     } else if (target_object_name == QLatin1String("TfTreeDock")) {
       target = frame_->panels_->createTfTreePanelDock();
+    } else if (target_object_name == QLatin1String("OperatorToolsDock")) {
+      target = frame_->panels_->createOperatorToolsPanelDock();
     } else if (target_object_name == QLatin1String("PublishDock")) {
       target = frame_->panels_->createPublishPanelDock();
     } else if (target_object_name == QLatin1String("MapDock")) {
@@ -1550,6 +1552,10 @@ void FrameLayout::showPanelByObjectName(const QString& object_name) {
   }
   if (dock == nullptr && object_name == QLatin1String("TfTreeDock")) {
     dock = frame_->panels_->createTfTreePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("OperatorToolsDock")) {
+    dock = frame_->panels_->createOperatorToolsPanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
   }
   if (dock == nullptr && object_name == QLatin1String("PublishDock")) {

@@ -36,6 +36,8 @@ const PanelCatalogEntry kPanelCatalog[] = {
      "Visualize Autolink node, channel, and service topology"},
     {"TfTreeDock", "PanelTransformTree", "Transforms",
      "Show the transform tree"},
+    {"OperatorToolsDock", "PanelOperatorTools", "Operator Tools",
+     "Operator visualization control panels (Yes/No, Record, Fit, Tablet, ...)"},
 };
 
 }  // namespace
