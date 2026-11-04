@@ -106,6 +106,14 @@ class MainPanelHost : public QMainWindow {
   QList<QDockWidget*> hostedPanels() const;
 
   /**
+   * @brief Docks detached into the parking lot (hidden but not deleted).
+   *
+   * Needed so expand/restore and @c orderedDockWidgets can rediscover
+   * multi-instance panels (e.g. a second Image) after they were parked.
+   */
+  QList<QDockWidget*> parkedPanels() const;
+
+  /**
    * @brief Attach a single panel (e.g. after show) without a full retile.
    * @param dock Dock to add to the current splitter layout.
    */

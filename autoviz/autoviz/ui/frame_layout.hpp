@@ -97,7 +97,7 @@ namespace rendering { class ViewController; class OgreRenderWindow; }
  * ## Expand / tile
  *
  * Expand hides sibling main panels and records
- * @c pre_expand_visible_main_panels_ for restore. Tiling is coalesced through
+ * @c pre_expand_visible_main_panel_docks_ for restore. Tiling is coalesced through
  * @ref scheduleTileCenterPanels() / @c center_tile_epoch_.
  *
  * @note Not a @c QObject — owned by @ref VisualizationFrame.
@@ -459,8 +459,11 @@ class FrameLayout {
   /** Main panel currently expanded to fill the center, or @c nullptr. */
   PanelDockWidget* expanded_main_panel_dock_ = nullptr;
 
-  /** Object names of main panels visible before the last expand. */
-  QStringList pre_expand_visible_main_panels_;
+  /** Main panels that were requested-visible before the last expand. */
+  QList<QPointer<PanelDockWidget>> pre_expand_visible_main_panel_docks_;
+
+  /** Mosaic splitter snapshot taken before expand (exact layout restore). */
+  QByteArray pre_expand_mosaic_layout_;
 
   /** Re-entrancy guard while @ref tileCenterPanels() runs. */
   bool center_tiling_ = false;

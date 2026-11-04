@@ -798,7 +798,8 @@ void FrameSession::applyStartupWindowState() {
 
 void FrameSession::restoreWindowLayout() {
   frame_->layout_->expanded_main_panel_dock_ = nullptr;
-  frame_->layout_->pre_expand_visible_main_panels_.clear();
+  frame_->layout_->pre_expand_visible_main_panel_docks_.clear();
+  frame_->layout_->pre_expand_mosaic_layout_.clear();
   frame_->layout_->syncMainPanelExpandUi(nullptr);
   const bool skip_window_geometry = LoadAppUiPreferences().start_maximized;
   const std::string geometry_b64 = frame_->manager_->windowGeometryBase64();

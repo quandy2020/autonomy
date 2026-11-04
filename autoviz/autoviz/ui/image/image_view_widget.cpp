@@ -458,8 +458,40 @@ void ImageViewWidget::resizeEvent(QResizeEvent* event) {
 }
 
 void ImageViewWidget::wheelEvent(QWheelEvent* event) {
-  const double factor = event->angleDelta().y() > 0 ? 1.1 : 0.9;
-  zoom_scale_ = std::clamp(zoom_scale_ * factor, 0.05, 20.0);
+  // Prefer pixelDelta for high-res trackpads; fall back to angle notches.
+  double steps = 0.0;
+  if (!event->pixelDelta().isNull()) {
+    steps = event->pixelDelta().y() / 40.0;
+  } else {
+    steps = event->angleDelta().y() / 120.0;
+  }
+  if (std::abs(steps) < 1e-6) {
+    event->ignore();
+    return;
+  }
+
+  // ~25% per wheel notch — discrete 1.1x felt sluggish on Image panels.
+  constexpr double kZoomStep = 1.25;
+  const double factor = std::pow(kZoomStep, steps);
+  const double old_zoom = zoom_scale_;
+  const double new_zoom = std::clamp(old_zoom * factor, 0.05, 20.0);
+  if (std::abs(new_zoom - old_zoom) < 1e-9) {
+    event->accept();
+    return;
+  }
+
+  // Keep the image point under the cursor stable while zooming.
+  const QPointF cursor = event->position();
+  const QRectF before = imageDrawRect();
+  zoom_scale_ = new_zoom;
+  if (!before.isEmpty() && fit_scale_ > 0.0 && old_zoom > 0.0) {
+    const double u = (cursor.x() - before.left()) / before.width();
+    const double v = (cursor.y() - before.top()) / before.height();
+    const QRectF after = imageDrawRect();
+    const QPointF after_pt(after.left() + u * after.width(),
+                           after.top() + v * after.height());
+    pan_offset_ += cursor - after_pt;
+  }
   update();
   event->accept();
 }

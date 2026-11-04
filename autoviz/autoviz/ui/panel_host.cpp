@@ -656,6 +656,19 @@ void MainPanelHost::parkDock(QDockWidget* dock) {
   dock->hide();
 }
 
+QList<QDockWidget*> MainPanelHost::parkedPanels() const {
+  QList<QDockWidget*> docks;
+  if (parking_ == nullptr) {
+    return docks;
+  }
+  for (QObject* child : parking_->children()) {
+    if (auto* dock = qobject_cast<QDockWidget*>(child)) {
+      docks.push_back(dock);
+    }
+  }
+  return docks;
+}
+
 QSize MainPanelHost::minimumSizeHint() const { return QSize(0, 0); }
 
 QSize MainPanelHost::sizeHint() const { return QSize(640, 480); }
@@ -1260,6 +1273,11 @@ bool MainPanelHost::restoreMosaicLayout(
     return false;
   }
 
+  // Hold mutating_mosaic_ so visibilityChanged from park/show cannot re-enter
+  // removePanel / addPanel and leave an empty title-less pane (blank column).
+  const bool was_mutating = mutating_mosaic_;
+  mutating_mosaic_ = true;
+
   // Clear BEFORE BuildMosaicNode. WrapDockInPane reuses an existing
   // mainPanelPane parent; if we build first then clearSplitterTree(), those
   // panes are deleteLater()'d while still referenced by the new tree — UAF
@@ -1277,6 +1295,7 @@ bool MainPanelHost::restoreMosaicLayout(
   QList<QDockWidget*> placed;
   QWidget* built = BuildMosaicNode(root_object, resolve, &placed);
   if (built == nullptr || placed.isEmpty()) {
+    mutating_mosaic_ = was_mutating;
     return false;
   }
 
@@ -1309,15 +1328,21 @@ bool MainPanelHost::restoreMosaicLayout(
       dock->raise();
     }
   }
-  FillSplitter(root_splitter_);
+  // Drop any title-less empty panes left by park/reparent churn, then refill.
+  ScrubEmptyPanesRecursive(root_splitter_, root_splitter_);
+  if (root_splitter_->count() > 0) {
+    EqualizeSplitter(root_splitter_);
+    FillSplitter(root_splitter_);
+  }
   RaiseSplitterHandles(root_splitter_);
+  mutating_mosaic_ = was_mutating;
   const QPointer<MainPanelHost> self(this);
   QTimer::singleShot(0, this, [self]() {
-    if (self == nullptr || self->root_splitter_ == nullptr) {
+    if (self == nullptr || self->root_splitter_ == nullptr ||
+        self->mutating_mosaic_) {
       return;
     }
-    FillSplitter(self->root_splitter_);
-    RaiseSplitterHandles(self->root_splitter_);
+    self->scrubEmptyPanes();
   });
   return true;
 }

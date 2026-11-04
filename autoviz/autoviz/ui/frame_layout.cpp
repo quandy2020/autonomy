@@ -764,20 +764,79 @@ void FrameLayout::configureFlexibleDock(PanelDockWidget* dock) {
 
 void FrameLayout::restoreExpandedMainPanel() {
   if (expanded_main_panel_dock_ == nullptr &&
-      pre_expand_visible_main_panels_.isEmpty()) {
+      pre_expand_visible_main_panel_docks_.isEmpty() &&
+      pre_expand_mosaic_layout_.isEmpty()) {
     return;
   }
+  // Block visibilityChanged → removePanel / addPanel / scheduleTile for the
+  // whole restore. Early show()+handlers used to append an empty mosaic pane
+  // (title-less blank column) beside the restored tree.
+  const bool was_suppressing = suppress_center_tile_;
+  suppress_center_tile_ = true;
   expanded_main_panel_dock_ = nullptr;
-  for (const QString& name : pre_expand_visible_main_panels_) {
-    if (auto* dock = frame_->findChild<PanelDockWidget*>(name)) {
-      if (isMainPanel(dock)) {
+
+  const QList<QPointer<PanelDockWidget>> restore_docks =
+      pre_expand_visible_main_panel_docks_;
+  const QByteArray mosaic = pre_expand_mosaic_layout_;
+  pre_expand_visible_main_panel_docks_.clear();
+  pre_expand_mosaic_layout_.clear();
+
+  bool restored_mosaic = false;
+  if (!mosaic.isEmpty() && main_panel_host_ != nullptr) {
+    // Prefer exact splitter tree (e.g. 3D | Image/Image) over PreferredGridSize
+    // which collapses multi-instance panels that were parked out of discovery.
+    center_manual_layout_ = true;
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->parkRenderWindowInEntry(entry);
+    });
+    restored_mosaic = main_panel_host_->restoreMosaicLayout(
+        mosaic,
+        [this, &restore_docks](const QString& object_name) -> QDockWidget* {
+          for (const QPointer<PanelDockWidget>& dock : restore_docks) {
+            if (!dock.isNull() && dock->objectName() == object_name) {
+              return dock.data();
+            }
+          }
+          for (PanelDockWidget* dock : orderedDockWidgets()) {
+            if (dock != nullptr && dock->objectName() == object_name) {
+              return dock;
+            }
+          }
+          return frame_->findChild<PanelDockWidget*>(object_name);
+        });
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->reinstallRenderWindowInEntry(entry);
+    });
+  }
+  if (restored_mosaic) {
+    // restoreMosaicLayout already showed placed docks; only re-show any leaf
+    // that failed to resolve so requestedVisible stays consistent.
+    for (const QPointer<PanelDockWidget>& dock : restore_docks) {
+      if (dock.isNull() || dock->property("panelDisposed").toBool()) {
+        continue;
+      }
+      if (!main_panel_host_->hostsPanel(dock.data())) {
         dock->show();
+        ensureMainPanelDockAttached(dock.data());
       }
     }
+    main_panel_host_->scrubEmptyPanes();
+    main_panel_host_->syncHorizontalDockLayout();
+    syncMainPanelExpandUi(nullptr);
+    suppress_center_tile_ = was_suppressing;
+  } else {
+    for (const QPointer<PanelDockWidget>& dock : restore_docks) {
+      if (dock.isNull() || !isMainPanel(dock.data()) ||
+          dock->property("panelDisposed").toBool()) {
+        continue;
+      }
+      dock->show();
+    }
+    suppress_center_tile_ = was_suppressing;
+    syncMainPanelExpandUi(nullptr);
+    center_manual_layout_ = false;
+    tileCenterPanels();
   }
-  pre_expand_visible_main_panels_.clear();
-  syncMainPanelExpandUi(nullptr);
-  tileCenterPanels();
 }
 
 void FrameLayout::expandPanelDock(PanelDockWidget* dock) {
@@ -809,24 +868,35 @@ void FrameLayout::expandPanelDock(PanelDockWidget* dock) {
     restoreExpandedMainPanel();
   }
 
-  pre_expand_visible_main_panels_.clear();
+  // Prefer requestedVisible() over isVisible(): during prior expand/restore
+  // churn a dock may be briefly invisible while still part of the layout set.
+  pre_expand_visible_main_panel_docks_.clear();
   for (PanelDockWidget* candidate : orderedDockWidgets()) {
     if (candidate != nullptr && isMainPanel(candidate) &&
-        candidate->isVisible()) {
-      pre_expand_visible_main_panels_.push_back(candidate->objectName());
+        !candidate->property("panelDisposed").toBool() &&
+        !candidate->isFloating() && candidate->requestedVisible()) {
+      pre_expand_visible_main_panel_docks_.push_back(candidate);
     }
   }
+  // Snapshot mosaic while all leaves are still hosted (exact restore later).
+  pre_expand_mosaic_layout_ = main_panel_host_->saveMosaicLayout();
 
+  // Suppress visibilityChanged side-effects while hiding siblings so they are
+  // not permanently detached via removePanel before tileCenterPanels runs.
+  const bool was_suppressing = suppress_center_tile_;
+  suppress_center_tile_ = true;
   expanded_main_panel_dock_ = dock;
   ensureMainPanelDockAttached(dock);
   for (PanelDockWidget* candidate : orderedDockWidgets()) {
-    if (candidate == nullptr || candidate == dock || !isMainPanel(candidate)) {
+    if (candidate == nullptr || candidate == dock || !isMainPanel(candidate) ||
+        candidate->isFloating()) {
       continue;
     }
     candidate->hide();
   }
   dock->show();
   dock->raise();
+  suppress_center_tile_ = was_suppressing;
   syncMainPanelExpandUi(dock);
   tileCenterPanels();
 }
@@ -1995,6 +2065,12 @@ QList<PanelDockWidget*> FrameLayout::orderedDockWidgets() const {
   // has SEGV'd in QMetaObject::cast when a dock QObject edge was dangling.
   if (main_panel_host_ != nullptr) {
     for (QDockWidget* dock : main_panel_host_->hostedPanels()) {
+      add(qobject_cast<PanelDockWidget*>(dock));
+    }
+    // Parked multi-instance panels (2nd Image, Split View, …) are parented to
+    // MainPanelHost::parking_ — not frame_ children — and must stay discoverable
+    // so expand/restore / tileCenterPanels can bring them back.
+    for (QDockWidget* dock : main_panel_host_->parkedPanels()) {
       add(qobject_cast<PanelDockWidget*>(dock));
     }
   }

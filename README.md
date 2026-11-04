@@ -57,12 +57,12 @@ Modern C++ · Autolink RT · Behavior trees · *No ROS runtime required*
 <table>
   <tr>
     <td align="center" width="50%" valign="top">
-      <h3>Localization · Argus LIVO</h3>
-      <a href="docs/assets/localization/argus_mid25.mp4">
-        <img src="docs/assets/localization/argus.png" alt="Argus LIVO" width="100%"/>
+      <h3>Localization · Atlas-SLAM</h3>
+      <a href="https://www.bilibili.com/video/BV1qzxX62Ef2/">
+        <img src="docs/source/06_Localization/images/Atlas-SLAM.png" alt="Atlas-SLAM" width="100%"/>
       </a>
       <p>
-        <a href="docs/assets/localization/argus_mid25.mp4"><b>▶ Mid-360 demo</b></a>
+        <a href="https://www.bilibili.com/video/BV1qzxX62Ef2/"><b>▶ Atlas-SLAM demo</b></a>
         &nbsp;·&nbsp;
         <a href="autonomy/localization/README.md">Guide</a>
       </p>
