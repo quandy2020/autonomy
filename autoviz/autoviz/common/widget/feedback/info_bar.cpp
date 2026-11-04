@@ -15,7 +15,7 @@
 #include <QVBoxLayout>
 #include <algorithm>
 
-#include "autoviz/common/widget/foundation/theme_tokens.hpp"
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
 
 namespace autoviz {
 namespace widget {
@@ -35,8 +35,8 @@ QStyle::StandardPixmap IconForLevel(FeedbackLevel level) {
   return QStyle::SP_MessageBoxInformation;
 }
 
-QColor SemanticColor(FeedbackLevel level) {
-  const ThemeTokens& tokens = GetThemeTokens();
+QColor SemanticColor(FeedbackLevel level, style::Tone tone) {
+  const ThemeTokens& tokens = GetThemeTokens(tone);
   switch (level) {
     case FeedbackLevel::kInformation:
       return tokens.accent;
@@ -97,6 +97,16 @@ void InfoBar::SetLevel(FeedbackLevel level) {
   UpdatePresentation();
 }
 
+void InfoBar::SetTone(style::Tone tone) {
+  if (tone_ == tone) {
+    return;
+  }
+  tone_ = tone;
+  ApplyWidgetTheme(this, tone_, true);
+  UpdateSemanticColors();
+  UpdatePresentation();
+}
+
 bool InfoBar::is_closable() const { return closable_; }
 
 void InfoBar::SetClosable(bool closable) {
@@ -135,6 +145,7 @@ void InfoBar::paintEvent(QPaintEvent* event) {
 
 void InfoBar::Initialize() {
   setObjectName(QStringLiteral("AutovizInfoBar"));
+  setProperty("autovizRole", QStringLiteral("infoBar"));
   setFrameStyle(QFrame::NoFrame);
   setAttribute(Qt::WA_OpaquePaintEvent, false);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
@@ -186,6 +197,7 @@ void InfoBar::Initialize() {
   });
   root->addWidget(close_button_, 0, Qt::AlignTop);
 
+  ApplyWidgetTheme(this, tone_, true);
   UpdateSemanticColors();
   UpdatePresentation();
 }
@@ -196,11 +208,14 @@ void InfoBar::UpdatePresentation() {
       icon.pixmap(icon_label_->size(), devicePixelRatioF(),
                   isEnabled() ? QIcon::Normal : QIcon::Disabled));
 
-  const QString accessible_text = title_label_->text().isEmpty()
-                                      ? message_label_->text()
-                                      : title_label_->text() +
-                                            QStringLiteral(". ") +
-                                            message_label_->text();
+  QString accessible_text = title_label_->text();
+  const QString message = message_label_->text();
+  if (!message.isEmpty()) {
+    if (!accessible_text.isEmpty()) {
+      accessible_text += QStringLiteral(". ");
+    }
+    accessible_text += message;
+  }
   setAccessibleName(accessible_text);
   setAccessibleDescription(accessible_text);
   updateGeometry();
@@ -208,8 +223,8 @@ void InfoBar::UpdatePresentation() {
 }
 
 void InfoBar::UpdateSemanticColors() {
-  const ThemeTokens& tokens = GetThemeTokens();
-  border_color_ = SemanticColor(level_);
+  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  border_color_ = SemanticColor(level_, tone_);
   background_color_ = Blend(border_color_, tokens.surface, 24);
 }
 

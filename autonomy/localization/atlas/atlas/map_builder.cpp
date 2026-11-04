@@ -1500,13 +1500,25 @@ public:
     }
 
     void RefreshMappingKeyframes(double timestamp, bool force = false) {
-        if (!mapping || !system || !latest.valid)
+        if (!mapping || !system)
             return;
         const bool map_changed = system->MapChanged();
+        bool coordinate_rebased = false;
+        if (latest.map_id_valid) {
+            if (!mapping_coordinate_epoch_valid) {
+                mapping_coordinate_epoch = latest.coordinate_epoch;
+                mapping_coordinate_epoch_valid = true;
+            } else if (mapping_coordinate_epoch != latest.coordinate_epoch) {
+                coordinate_rebased = true;
+                mapping_coordinate_epoch = latest.coordinate_epoch;
+            }
+        }
+        const bool force_mapping_poses = map_changed || coordinate_rebased;
         const double period =
             std::max(0.0, config.mapping_keyframe_poll_period_sec);
         const bool refresh_due =
-            force || map_changed || last_mapping_refresh_time < 0.0 ||
+            force || map_changed || coordinate_rebased ||
+            last_mapping_refresh_time < 0.0 ||
             timestamp < last_mapping_refresh_time || period <= 0.0 ||
             timestamp - last_mapping_refresh_time >= period;
         if (!refresh_due)
@@ -1570,7 +1582,7 @@ public:
                 trajectory, submitted_frame_ids, last_sent_mapping_poses,
                 config.mapping_options.rebuild_translation_threshold,
                 config.mapping_options.rebuild_rotation_threshold_radians,
-                map_changed);
+                force_mapping_poses);
         if (!pose_updates.empty()) {
             if (mapping->UpdatePoses(pose_updates)) {
                 internal::RecordSentMappingPoses(
@@ -1579,7 +1591,7 @@ public:
                 AWARN << "Atlas mapping rejected optimized pose updates";
             }
         }
-        if (map_changed && !mapping->RequestRebuild()) {
+        if (force_mapping_poses && !mapping->RequestRebuild()) {
             AWARN << "Atlas mapping rejected loop-closure rebuild request";
         }
 
@@ -1637,6 +1649,8 @@ public:
         mapping_map_id_valid = false;
         mapping_map_id = 0;
         mapping_destructive_epoch = 0;
+        mapping_coordinate_epoch_valid = false;
+        mapping_coordinate_epoch = 0;
         stale_candidates_discarded = 0;
         capacity_candidates_discarded = 0;
         protected_keyframes_capacity_dropped = 0;
@@ -1668,6 +1682,8 @@ public:
     bool mapping_map_id_valid = false;
     std::uint64_t mapping_map_id = 0;
     std::uint64_t mapping_destructive_epoch = 0;
+    bool mapping_coordinate_epoch_valid = false;
+    std::uint64_t mapping_coordinate_epoch = 0;
     std::uint64_t stale_candidates_discarded = 0;
     std::uint64_t capacity_candidates_discarded = 0;
     std::uint64_t protected_keyframes_capacity_dropped = 0;
@@ -1889,15 +1905,17 @@ bool MapBuilder::TrackMonocular(const ImageFrame& image,
     const bool metric_scale_ready =
         impl_->config.sensor != SensorMode::kMonocularInertial ||
         impl_->system->isFinished();
-    if (impl_->mapping && impl_->latest.valid && metric_scale_ready) {
-        map::MappingFrame frame;
-        frame.timestamp = image.time;
-        frame.world_from_camera = ToIsometry(impl_->latest.pose_world_camera);
-        frame.camera = impl_->mapping_camera;
-        frame.depth_source = map::DepthSource::kMonocularTemporal;
-        frame.color_encoding = ToColorEncoding(image.encoding);
-        frame.color = image.pixels;
-        impl_->QueueMappingFrame(std::move(frame));
+    if (impl_->mapping && metric_scale_ready) {
+        if (impl_->latest.valid) {
+            map::MappingFrame frame;
+            frame.timestamp = image.time;
+            frame.world_from_camera = ToIsometry(impl_->latest.pose_world_camera);
+            frame.camera = impl_->mapping_camera;
+            frame.depth_source = map::DepthSource::kMonocularTemporal;
+            frame.color_encoding = ToColorEncoding(image.encoding);
+            frame.color = image.pixels;
+            impl_->QueueMappingFrame(std::move(frame));
+        }
         impl_->RefreshMappingKeyframes(image.time);
     }
     return true;
@@ -1918,18 +1936,20 @@ bool MapBuilder::TrackStereo(const ImageFrame& left, const ImageFrame& right,
     const autonomy::common::math::SE3f pose = impl_->system->TrackStereo(
         left.pixels, right.pixels, time, impl_->TakeImu(time));
     impl_->UpdateResult(time, pose, identity_before_tracking, result);
-    if (impl_->mapping && impl_->latest.valid) {
-        map::MappingFrame frame;
-        frame.timestamp = time;
-        frame.world_from_camera = ToIsometry(impl_->latest.pose_world_camera);
-        frame.camera = impl_->mapping_camera;
-        frame.secondary_camera = impl_->secondary_mapping_camera;
-        frame.secondary_from_camera = impl_->secondary_from_camera;
-        frame.depth_source = map::DepthSource::kStereo;
-        frame.color_encoding = ToColorEncoding(left.encoding);
-        frame.color = left.pixels;
-        frame.right = right.pixels;
-        impl_->QueueMappingFrame(std::move(frame));
+    if (impl_->mapping) {
+        if (impl_->latest.valid) {
+            map::MappingFrame frame;
+            frame.timestamp = time;
+            frame.world_from_camera = ToIsometry(impl_->latest.pose_world_camera);
+            frame.camera = impl_->mapping_camera;
+            frame.secondary_camera = impl_->secondary_mapping_camera;
+            frame.secondary_from_camera = impl_->secondary_from_camera;
+            frame.depth_source = map::DepthSource::kStereo;
+            frame.color_encoding = ToColorEncoding(left.encoding);
+            frame.color = left.pixels;
+            frame.right = right.pixels;
+            impl_->QueueMappingFrame(std::move(frame));
+        }
         impl_->RefreshMappingKeyframes(time);
     }
     return true;
@@ -1950,16 +1970,19 @@ bool MapBuilder::TrackRgbd(const ImageFrame& color, const ImageFrame& depth,
     const autonomy::common::math::SE3f pose = impl_->system->TrackRGBD(
         color.pixels, depth.pixels, time, impl_->TakeImu(time));
     impl_->UpdateResult(time, pose, identity_before_tracking, result);
-    if (impl_->mapping && impl_->latest.valid) {
-        map::MappingFrame frame;
-        frame.timestamp = time;
-        frame.world_from_camera = ToIsometry(impl_->latest.pose_world_camera);
-        frame.camera = impl_->mapping_camera;
-        frame.depth_source = map::DepthSource::kRgbd;
-        frame.color_encoding = ToColorEncoding(color.encoding);
-        frame.color = color.pixels;
-        frame.depth = depth.pixels;
-        impl_->QueueMappingFrame(std::move(frame));
+    if (impl_->mapping) {
+        if (impl_->latest.valid) {
+            map::MappingFrame frame;
+            frame.timestamp = time;
+            frame.world_from_camera =
+                ToIsometry(impl_->latest.pose_world_camera);
+            frame.camera = impl_->mapping_camera;
+            frame.depth_source = map::DepthSource::kRgbd;
+            frame.color_encoding = ToColorEncoding(color.encoding);
+            frame.color = color.pixels;
+            frame.depth = depth.pixels;
+            impl_->QueueMappingFrame(std::move(frame));
+        }
         impl_->RefreshMappingKeyframes(time);
     }
     return true;

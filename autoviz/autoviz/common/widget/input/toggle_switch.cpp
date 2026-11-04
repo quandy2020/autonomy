@@ -15,6 +15,8 @@
 #include <QStyleOptionFocusRect>
 #include <algorithm>
 
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
+
 namespace autoviz::widget {
 
 ToggleSwitch::ToggleSwitch(QWidget* parent)
@@ -113,16 +115,16 @@ void ToggleSwitch::showEvent(QShowEvent* event) {
 
 void ToggleSwitch::AnimateToCheckedState(bool checked) {
   const qreal target = checked ? 1.0 : 0.0;
-  const bool animations_enabled =
-      style()->styleHint(QStyle::SH_Widget_Animate, nullptr, this) != 0;
-  if (!isVisible() || !isEnabled() || !animations_enabled) {
+  const int duration =
+      MotionPolicy::ResolveDuration(GetThemeTokens(tone_).animation_fast_ms);
+  if (!isVisible() || !isEnabled() || duration == 0) {
     animation_->stop();
     setThumbPosition(target);
     return;
   }
 
   animation_->stop();
-  animation_->setDuration(GetThemeTokens(tone_).animation_fast_ms);
+  animation_->setDuration(duration);
   animation_->setStartValue(thumb_position_);
   animation_->setEndValue(target);
   animation_->start(QAbstractAnimation::KeepWhenStopped);

@@ -12,12 +12,10 @@
 #include <QCompleter>
 #include <QFont>
 #include <QFormLayout>
-#include <QFrame>
 #include <QGroupBox>
-#include <QHash>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QKeyEvent>
-#include <QTreeWidgetItem>
 #include <QLabel>
 #include <QMenu>
 #include <QMetaObject>
@@ -25,18 +23,19 @@
 #include <QPushButton>
 #include <QSplitter>
 #include <QTimer>
+#include <QTreeWidgetItem>
 #include <QVBoxLayout>
-
 #include <chrono>
 #include <thread>
 
-#include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/interaction/service_client_registry.hpp"
 #include "autoviz/common/interaction/service_discovery.hpp"
-#include "autoviz/ui/theme/panel.hpp"
-#include "autoviz/ui/theme/style.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/layout/separator.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/service/service_message_codec.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace service_panel {
@@ -55,13 +54,16 @@ QString ShortTypeLabel(const std::string& type) {
 
 ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
                                          QWidget* parent)
-    : manager_(manager), config_(DefaultServiceCallPanelConfig()), QWidget(parent) {
+    : manager_(manager),
+      config_(DefaultServiceCallPanelConfig()),
+      QWidget(parent) {
   ApplyPanelShell(this);
   setFocusPolicy(Qt::StrongFocus);
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  root->setContentsMargins(
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
   root->setSpacing(6);
 
   rqt_top_bar_ = new QWidget(this);
@@ -79,7 +81,8 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   service_combo_->completer()->setFilterMode(Qt::MatchContains);
   top_layout->addWidget(service_combo_, 2);
 
-  refresh_services_button_ = new QPushButton(QStringLiteral("\u21bb"), rqt_top_bar_);
+  refresh_services_button_ =
+      new QPushButton(QStringLiteral("\u21bb"), rqt_top_bar_);
   refresh_services_button_->setFlat(true);
   refresh_services_button_->setFixedSize(32, 32);
   refresh_services_button_->setToolTip(tr("Refresh service list"));
@@ -87,20 +90,19 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
 
   editing_mode_check_ = new QCheckBox(tr("Advanced"), rqt_top_bar_);
   editing_mode_check_->setChecked(config_.editing_mode);
-  editing_mode_check_->setToolTip(tr("Show JSON editor and request/response types"));
+  editing_mode_check_->setToolTip(
+      tr("Show JSON editor and request/response types"));
   top_layout->addWidget(editing_mode_check_);
 
-  auto* action_separator = new QFrame(rqt_top_bar_);
-  action_separator->setFrameShape(QFrame::VLine);
-  action_separator->setFrameShadow(QFrame::Sunken);
+  auto* action_separator = new widget::Separator(Qt::Vertical, rqt_top_bar_);
+  action_separator->SetTone(style::Tone::Frost);
   action_separator->setFixedWidth(2);
   top_layout->addWidget(action_separator);
 
   call_button_ = new QPushButton(tr("Call"), rqt_top_bar_);
   call_button_->setMinimumSize(88, 32);
   call_button_->setDefault(true);
-  call_button_->setStyleSheet(
-      style::sheet(QStringLiteral("service")));
+  call_button_->setStyleSheet(style::sheet(QStringLiteral("service")));
   top_layout->addWidget(call_button_);
   root->addWidget(rqt_top_bar_);
 
@@ -109,8 +111,8 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   status_label_->setWordWrap(true);
   root->addWidget(status_label_);
 
-  payload_splitter_ = new QSplitter(config_.vertical_layout ? Qt::Vertical : Qt::Horizontal,
-                                    this);
+  payload_splitter_ = new QSplitter(
+      config_.vertical_layout ? Qt::Vertical : Qt::Horizontal, this);
   payload_splitter_->setChildrenCollapsible(false);
 
   request_group_ = new QGroupBox(tr("Request"), payload_splitter_);
@@ -122,9 +124,11 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   request_expand->setFlat(true);
   auto* request_collapse = new QPushButton(tr("Collapse all"), request_group_);
   request_collapse->setFlat(true);
-  auto* request_add_array = new QPushButton(QStringLiteral("+"), request_group_);
+  auto* request_add_array =
+      new QPushButton(QStringLiteral("+"), request_group_);
   request_add_array->setFlat(true);
-  auto* request_remove_array = new QPushButton(QStringLiteral("-"), request_group_);
+  auto* request_remove_array =
+      new QPushButton(QStringLiteral("-"), request_group_);
   request_remove_array->setFlat(true);
   request_toolbar->addWidget(request_expand);
   request_toolbar->addWidget(request_collapse);
@@ -132,7 +136,8 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   request_toolbar->addWidget(request_add_array);
   request_toolbar->addWidget(request_remove_array);
   request_tree_ = new publish_panel::PublishFieldTreeWidget(request_group_);
-  request_tree_->setDisplayMode(publish_panel::PublishFieldTreeWidget::DisplayMode::kFieldsEditor);
+  request_tree_->setDisplayMode(
+      publish_panel::PublishFieldTreeWidget::DisplayMode::kFieldsEditor);
   request_tree_->setValueColumnTitle(tr("Expression"));
   request_tree_->setMinimumHeight(140);
   request_layout->addLayout(request_toolbar);
@@ -146,13 +151,15 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   response_toolbar->setContentsMargins(0, 0, 0, 0);
   auto* response_expand = new QPushButton(tr("Expand all"), response_group_);
   response_expand->setFlat(true);
-  auto* response_collapse = new QPushButton(tr("Collapse all"), response_group_);
+  auto* response_collapse =
+      new QPushButton(tr("Collapse all"), response_group_);
   response_collapse->setFlat(true);
   response_toolbar->addWidget(response_expand);
   response_toolbar->addWidget(response_collapse);
   response_toolbar->addStretch();
   response_tree_ = new publish_panel::PublishFieldTreeWidget(response_group_);
-  response_tree_->setDisplayMode(publish_panel::PublishFieldTreeWidget::DisplayMode::kFieldsEditor);
+  response_tree_->setDisplayMode(
+      publish_panel::PublishFieldTreeWidget::DisplayMode::kFieldsEditor);
   response_tree_->setValueColumnTitle(tr("Value"));
   response_tree_->setReadOnly(true);
   response_tree_->setMinimumHeight(140);
@@ -188,12 +195,15 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
   json_splitter->setChildrenCollapsible(false);
   auto* request_json_group = new QGroupBox(tr("Request JSON"), advanced_body_);
   auto* request_json_layout = new QVBoxLayout(request_json_group);
-  request_edit_ = makeJsonEditor(request_json_group, tr("Service request JSON"));
+  request_edit_ =
+      makeJsonEditor(request_json_group, tr("Service request JSON"));
   request_json_layout->addWidget(request_edit_);
   json_splitter->addWidget(request_json_group);
-  auto* response_json_group = new QGroupBox(tr("Response JSON"), advanced_body_);
+  auto* response_json_group =
+      new QGroupBox(tr("Response JSON"), advanced_body_);
   auto* response_json_layout = new QVBoxLayout(response_json_group);
-  response_edit_ = makeJsonEditor(response_json_group, tr("Service response JSON"), true);
+  response_edit_ =
+      makeJsonEditor(response_json_group, tr("Service response JSON"), true);
   response_json_layout->addWidget(response_edit_);
   json_splitter->addWidget(response_json_group);
   advanced_layout->addWidget(json_splitter, 1);
@@ -213,9 +223,10 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
           &ServiceEditorWidget::onRefreshServices);
   connect(request_edit_, &QPlainTextEdit::textChanged, this,
           &ServiceEditorWidget::onFieldEdited);
-  connect(call_button_, &QPushButton::clicked, this, &ServiceEditorWidget::onCallClicked);
-  connect(request_tree_, &publish_panel::PublishFieldTreeWidget::messageEdited, this,
-          &ServiceEditorWidget::onRequestTreeEdited);
+  connect(call_button_, &QPushButton::clicked, this,
+          &ServiceEditorWidget::onCallClicked);
+  connect(request_tree_, &publish_panel::PublishFieldTreeWidget::messageEdited,
+          this, &ServiceEditorWidget::onRequestTreeEdited);
   connect(request_expand, &QPushButton::clicked, request_tree_,
           &publish_panel::PublishFieldTreeWidget::expandAllFields);
   connect(request_collapse, &QPushButton::clicked, request_tree_,
@@ -231,7 +242,8 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
 
   service_timer_ = new QTimer(this);
   service_timer_->setInterval(5000);
-  connect(service_timer_, &QTimer::timeout, this, &ServiceEditorWidget::onRefreshServices);
+  connect(service_timer_, &QTimer::timeout, this,
+          &ServiceEditorWidget::onRefreshServices);
   service_timer_->start();
 
   refreshServices();
@@ -266,8 +278,7 @@ QPlainTextEdit* ServiceEditorWidget::makeJsonEditor(QWidget* parent,
             delete menu;
           });
   if (read_only) {
-    editor->setStyleSheet(
-        style::sheet(QStringLiteral("service")));
+    editor->setStyleSheet(style::sheet(QStringLiteral("service")));
   }
   return editor;
 }
@@ -366,8 +377,7 @@ void ServiceEditorWidget::applyButtonStyle() {
     call_button_->setStyleSheet(
         style::sheet(QStringLiteral("service"), tokens));
   } else {
-    call_button_->setStyleSheet(
-        style::sheet(QStringLiteral("service")));
+    call_button_->setStyleSheet(style::sheet(QStringLiteral("service")));
   }
 }
 
@@ -378,9 +388,9 @@ void ServiceEditorWidget::updateCallButtonState() {
   const ServiceCallPanelConfig current = config();
   const bool has_node =
       manager_ != nullptr && manager_->autolinkNode() != nullptr;
-  const bool ready =
-      !current.service_name.isEmpty() && !current.request_type.isEmpty() &&
-      !current.request_json.trimmed().isEmpty();
+  const bool ready = !current.service_name.isEmpty() &&
+                     !current.request_type.isEmpty() &&
+                     !current.request_json.trimmed().isEmpty();
   call_button_->setEnabled(has_node && ready && !call_in_progress_.load());
 
   if (call_in_progress_.load()) {
@@ -427,7 +437,8 @@ void ServiceEditorWidget::resolveTypesForService(const QString& service_name) {
   }
 }
 
-void ServiceEditorWidget::maybeFillTemplateForType(const QString& message_type) {
+void ServiceEditorWidget::maybeFillTemplateForType(
+    const QString& message_type) {
   if (suppress_template_update_ || message_type.trimmed().isEmpty()) {
     return;
   }
@@ -595,9 +606,10 @@ void ServiceEditorWidget::onCallClicked() {
     QString error_text;
     bool call_ok = false;
     if (result.ok) {
-      const std::string response_type = snapshot.response_type.isEmpty()
-                                            ? snapshot.request_type.toStdString()
-                                            : snapshot.response_type.toStdString();
+      const std::string response_type =
+          snapshot.response_type.isEmpty()
+              ? snapshot.request_type.toStdString()
+              : snapshot.response_type.toStdString();
       const CodecResult decoded = ServiceMessageCodec::instance().decodeToJson(
           response_type, result.response_bytes);
       if (decoded.ok) {

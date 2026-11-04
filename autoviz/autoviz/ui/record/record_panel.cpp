@@ -4,16 +4,11 @@
 
 #include "autoviz/ui/record/record_panel.hpp"
 
-#include <algorithm>
-#include <cmath>
-#include <functional>
-
 #include <QAbstractItemView>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDateTime>
 #include <QFileInfo>
-#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QKeyEvent>
@@ -32,10 +27,14 @@
 #include <QTreeWidgetItem>
 #include <QVBoxLayout>
 #include <QWheelEvent>
+#include <algorithm>
+#include <cmath>
+#include <functional>
 
+#include "autoviz/common/interaction/playback_controller.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/widget/input/search_box.hpp"
-#include "autoviz/common/interaction/playback_controller.hpp"
+#include "autoviz/common/widget/layout/separator.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
@@ -66,14 +65,11 @@ QToolButton* MakeTransportButton(QWidget* parent, const QString& text,
   return button;
 }
 
-QFrame* MakeTransportSeparator(QWidget* parent) {
-  auto* line = new QFrame(parent);
-  line->setFrameShape(QFrame::VLine);
-  line->setFrameShadow(QFrame::Plain);
+widget::Separator* MakeTransportSeparator(QWidget* parent) {
+  auto* line = new widget::Separator(Qt::Vertical, parent);
+  line->SetTone(style::Tone::Frost);
   line->setFixedWidth(1);
   line->setFixedHeight(18);
-  line->setStyleSheet(QStringLiteral(
-      "QFrame { background-color: #c8ced4; border: none; max-width: 1px; }"));
   return line;
 }
 
@@ -81,7 +77,8 @@ QFrame* MakeTransportSeparator(QWidget* parent) {
 
 class RecordPanel::DensityBar : public QWidget {
  public:
-  using SeekCallback = std::function<void(double /*normalized*/, bool /*final*/)>;
+  using SeekCallback =
+      std::function<void(double /*normalized*/, bool /*final*/)>;
   using RangeCallback = std::function<void(double /*start*/, double /*end*/)>;
   using TimeFormat = std::function<QString(double /*seconds*/)>;
 
@@ -91,9 +88,9 @@ class RecordPanel::DensityBar : public QWidget {
     setMouseTracking(true);
     setCursor(Qt::PointingHandCursor);
     setFocusPolicy(Qt::StrongFocus);
-    setToolTip(QObject::tr(
-        "Click / drag to scrub · wheel ±100 ms (Shift ±1 s) · "
-        "drag amber grips for In/Out"));
+    setToolTip(
+        QObject::tr("Click / drag to scrub · wheel ±100 ms (Shift ±1 s) · "
+                    "drag amber grips for In/Out"));
   }
 
   void setBins(std::vector<float> bins) {
@@ -115,9 +112,7 @@ class RecordPanel::DensityBar : public QWidget {
     update();
   }
 
-  void setTotalTimeSec(double total) {
-    total_sec_ = std::max(0.0, total);
-  }
+  void setTotalTimeSec(double total) { total_sec_ = std::max(0.0, total); }
 
   void setTimeFormatter(TimeFormat fmt) { time_fmt_ = std::move(fmt); }
   void setSeekCallback(SeekCallback cb) { seek_cb_ = std::move(cb); }
@@ -154,17 +149,18 @@ class RecordPanel::DensityBar : public QWidget {
         if (h < 0.5) {
           continue;
         }
-        painter.fillRect(QRectF(x0, track.bottom() - h, std::max(1.0, x1 - x0), h),
-                         QColor(0x5b, 0xb0, 0xff, 150));
+        painter.fillRect(
+            QRectF(x0, track.bottom() - h, std::max(1.0, x1 - x0), h),
+            QColor(0x5b, 0xb0, 0xff, 150));
       }
     }
 
     // Played region (start → playhead).
     const qreal x_ph = track.left() + playhead_ * track.width();
     if (playhead_ > 0.001) {
-      painter.fillRect(
-          QRectF(track.left(), track.top(), x_ph - track.left(), track.height()),
-          QColor(0x0d, 0x94, 0x88, 48));
+      painter.fillRect(QRectF(track.left(), track.top(), x_ph - track.left(),
+                              track.height()),
+                       QColor(0x0d, 0x94, 0x88, 48));
     }
 
     // Dim outside active trim range.
@@ -172,9 +168,9 @@ class RecordPanel::DensityBar : public QWidget {
     const qreal x_out = track.left() + range_end_ * track.width();
     if (range_end_ > range_start_ + 1e-6 &&
         (range_start_ > 1e-6 || range_end_ < 1.0 - 1e-6)) {
-      painter.fillRect(
-          QRectF(track.left(), track.top(), x_in - track.left(), track.height()),
-          QColor(0x1f, 0x23, 0x28, 55));
+      painter.fillRect(QRectF(track.left(), track.top(), x_in - track.left(),
+                              track.height()),
+                       QColor(0x1f, 0x23, 0x28, 55));
       painter.fillRect(
           QRectF(x_out, track.top(), track.right() - x_out, track.height()),
           QColor(0x1f, 0x23, 0x28, 55));
@@ -291,8 +287,7 @@ class RecordPanel::DensityBar : public QWidget {
       QWidget::wheelEvent(event);
       return;
     }
-    const double step =
-        (event->modifiers() & Qt::ShiftModifier) ? 1.0 : 0.1;
+    const double step = (event->modifiers() & Qt::ShiftModifier) ? 1.0 : 0.1;
     const double delta =
         (event->angleDelta().y() > 0 ? -step : step) / total_sec_;
     const double next = std::clamp(playhead_ + delta, 0.0, 1.0);
@@ -387,22 +382,23 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   open_button_ = new QToolButton(this);
   open_button_->setText(tr("Open"));
   open_button_->setToolTip(tr("Open an Autolink .record / .bag / .mcap file"));
-  open_button_->setIcon(IconLoader::menuIcon(QStringLiteral("file.open_record")));
+  open_button_->setIcon(
+      IconLoader::menuIcon(QStringLiteral("file.open_record")));
   open_button_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
   open_button_->setAutoRaise(true);
 
-  seek_start_button_ =
-      MakeTransportButton(this, QStringLiteral("|◀"), tr("Seek to range start (Home)"));
-  step_back_button_ = MakeTransportButton(
-      this, QStringLiteral("◀"), tr("Step back 100 ms (Left)"));
+  seek_start_button_ = MakeTransportButton(this, QStringLiteral("|◀"),
+                                           tr("Seek to range start (Home)"));
+  step_back_button_ = MakeTransportButton(this, QStringLiteral("◀"),
+                                          tr("Step back 100 ms (Left)"));
   play_pause_button_ =
       MakeTransportButton(this, tr("Play"), tr("Play / pause (Space)"));
-  step_forward_button_ = MakeTransportButton(
-      this, QStringLiteral("▶"), tr("Step forward 100 ms (Right)"));
-  seek_end_button_ =
-      MakeTransportButton(this, QStringLiteral("▶|"), tr("Seek to range end (End)"));
-  stop_button_ =
-      MakeTransportButton(this, tr("Stop"), tr("Stop and reset to range start"));
+  step_forward_button_ = MakeTransportButton(this, QStringLiteral("▶"),
+                                             tr("Step forward 100 ms (Right)"));
+  seek_end_button_ = MakeTransportButton(this, QStringLiteral("▶|"),
+                                         tr("Seek to range end (End)"));
+  stop_button_ = MakeTransportButton(this, tr("Stop"),
+                                     tr("Stop and reset to range start"));
   // Guillemets = message step (distinct from single ◀/▶ time step).
   prev_msg_button_ = MakeTransportButton(
       this, QStringLiteral("«"),
@@ -455,9 +451,8 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   StyleHintLabel(file_label_);
 
   density_bar_ = new DensityBar(this);
-  density_bar_->setTimeFormatter([](double seconds) {
-    return FormatClock(seconds);
-  });
+  density_bar_->setTimeFormatter(
+      [](double seconds) { return FormatClock(seconds); });
   density_bar_->setSeekCallback([this](double normalized, bool final) {
     if (manager_ == nullptr || !ensureFileOpen()) {
       return;
@@ -468,8 +463,7 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
       return;
     }
     if (!seeking_) {
-      scrub_resume_play_ =
-          playback.isPlaying() && !playback.isPaused();
+      scrub_resume_play_ = playback.isPlaying() && !playback.isPaused();
       if (scrub_resume_play_) {
         playback.pause();
       }
@@ -482,9 +476,8 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
     timeline_->blockSignals(false);
     const int pct =
         static_cast<int>(std::lround(std::clamp(normalized, 0.0, 1.0) * 100.0));
-    time_label_->setText(tr("%1 / %2 (%3%)")
-                             .arg(FormatClock(t), FormatClock(total))
-                             .arg(pct));
+    time_label_->setText(
+        tr("%1 / %2 (%3%)").arg(FormatClock(t), FormatClock(total)).arg(pct));
     density_bar_->setPlayheadNormalized(normalized);
     if (final) {
       seeking_ = false;
@@ -597,9 +590,9 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   channel_tree_->setUniformRowHeights(true);
   channel_tree_->setAlternatingRowColors(true);
   channel_tree_->setSelectionMode(QAbstractItemView::SingleSelection);
-  channel_tree_->setToolTip(tr(
-      "Uncheck to mute. Double-click opens Messages. "
-      "Selection scopes « / » message step."));
+  channel_tree_->setToolTip(
+      tr("Uncheck to mute. Double-click opens Messages. "
+         "Selection scopes « / » message step."));
   channel_tree_->header()->setStretchLastSection(false);
   channel_tree_->header()->setSectionResizeMode(kColumnChannel,
                                                 QHeaderView::Stretch);
@@ -609,12 +602,9 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
                                                 QHeaderView::ResizeToContents);
   StylePanelTree(channel_tree_);
 
-  auto* section_rule = new QFrame(this);
-  section_rule->setFrameShape(QFrame::HLine);
-  section_rule->setFrameShadow(QFrame::Plain);
+  auto* section_rule = new widget::Separator(Qt::Horizontal, this);
+  section_rule->SetTone(style::Tone::Frost);
   section_rule->setFixedHeight(1);
-  section_rule->setStyleSheet(QStringLiteral(
-      "QFrame { background-color: #e2e6ea; border: none; max-height: 1px; }"));
 
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 8);
@@ -642,7 +632,8 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
           &RecordPanel::onStepForwardClicked);
   connect(seek_end_button_, &QToolButton::clicked, this,
           &RecordPanel::onSeekEndClicked);
-  connect(stop_button_, &QToolButton::clicked, this, &RecordPanel::onStopClicked);
+  connect(stop_button_, &QToolButton::clicked, this,
+          &RecordPanel::onStopClicked);
   connect(prev_msg_button_, &QToolButton::clicked, this,
           &RecordPanel::onStepPrevMessage);
   connect(next_msg_button_, &QToolButton::clicked, this,
@@ -656,7 +647,8 @@ RecordPanel::RecordPanel(common::VisualizationManager* manager, QWidget* parent)
   connect(loop_check_, &QCheckBox::toggled, this, &RecordPanel::onLoopToggled);
   connect(rate_combo_, qOverload<int>(&QComboBox::activated), this,
           &RecordPanel::onRateChanged);
-  connect(timeline_, &QSlider::sliderPressed, this, &RecordPanel::onSeekPressed);
+  connect(timeline_, &QSlider::sliderPressed, this,
+          &RecordPanel::onSeekPressed);
   connect(timeline_, &QSlider::sliderReleased, this,
           &RecordPanel::onSeekReleased);
   connect(timeline_, &QSlider::valueChanged, this, &RecordPanel::onSeekMoved);
@@ -728,16 +720,15 @@ void RecordPanel::reloadFromPlayback() {
   } else {
     file_label_->setText(QFileInfo(QString::fromStdString(path)).fileName());
     timeline_->setEnabled(playback.totalTimeSec() > 0.0);
-    channels_header_->setText(
-        tr("Channels (%1)").arg(playback.channelCount()));
+    channels_header_->setText(tr("Channels (%1)").arg(playback.channelCount()));
   }
   loop_check_->blockSignals(true);
   loop_check_->setChecked(playback.loop());
   loop_check_->blockSignals(false);
 
   const QString rate_text =
-      QString::number(playback.playRate(), 'f', 2).replace(QStringLiteral(".00"),
-                                                           QStringLiteral(".0")) +
+      QString::number(playback.playRate(), 'f', 2)
+          .replace(QStringLiteral(".00"), QStringLiteral(".0")) +
       QLatin1Char('x');
   int rate_index = rate_combo_->findText(rate_text);
   if (rate_index < 0) {
@@ -906,7 +897,8 @@ void RecordPanel::onSetRangeEnd() {
     return;
   }
   integration::PlaybackController& playback = manager_->playback();
-  playback.setPlaybackRange(playback.rangeStartSec(), playback.currentTimeSec());
+  playback.setPlaybackRange(playback.rangeStartSec(),
+                            playback.currentTimeSec());
   syncRangeLabel();
   syncDensityBar();
   syncTimelineFromPlayback();
@@ -963,8 +955,7 @@ void RecordPanel::onSeekReleased() {
       static_cast<double>(timeline_->value()) / kTimelineTicks;
   integration::PlaybackController& playback = manager_->playback();
   const double total = playback.totalTimeSec();
-  const double t =
-      total > 0.0 ? std::clamp(normalized, 0.0, 1.0) * total : 0.0;
+  const double t = total > 0.0 ? std::clamp(normalized, 0.0, 1.0) * total : 0.0;
   seeking_ = false;
   playback.seekTo(t);
   if (scrub_resume_play_) {
@@ -985,13 +976,11 @@ void RecordPanel::onSeekMoved(int value) {
   integration::PlaybackController& playback = manager_->playback();
   const double total = playback.totalTimeSec();
   const double normalized = static_cast<double>(value) / kTimelineTicks;
-  const double t =
-      total > 0.0 ? std::clamp(normalized, 0.0, 1.0) * total : 0.0;
+  const double t = total > 0.0 ? std::clamp(normalized, 0.0, 1.0) * total : 0.0;
   const int pct =
       total > 0.0 ? static_cast<int>(std::lround((t / total) * 100.0)) : 0;
-  time_label_->setText(tr("%1 / %2 (%3%)")
-                           .arg(FormatClock(t), FormatClock(total))
-                           .arg(pct));
+  time_label_->setText(
+      tr("%1 / %2 (%3%)").arg(FormatClock(t), FormatClock(total)).arg(pct));
   if (density_bar_ != nullptr && total > 0.0) {
     density_bar_->setPlayheadNormalized(normalized);
   }
@@ -1013,7 +1002,8 @@ void RecordPanel::onChannelItemChanged(QTreeWidgetItem* item, int column) {
   applyExcludedChannelsFromTree();
 }
 
-void RecordPanel::onChannelDoubleClicked(QTreeWidgetItem* item, int /*column*/) {
+void RecordPanel::onChannelDoubleClicked(QTreeWidgetItem* item,
+                                         int /*column*/) {
   if (item == nullptr || item->isDisabled()) {
     return;
   }
@@ -1096,7 +1086,8 @@ void RecordPanel::syncTransportButtons() {
     return;
   }
   const integration::PlaybackController& playback = manager_->playback();
-  const bool has_file = !playback.currentFile().empty() || !loaded_file_.empty();
+  const bool has_file =
+      !playback.currentFile().empty() || !loaded_file_.empty();
   const bool has_duration = has_file && playback.totalTimeSec() > 0.0;
 
   play_pause_button_->setEnabled(true);
@@ -1120,9 +1111,9 @@ void RecordPanel::syncTransportButtons() {
     play_pause_button_->setToolTip(tr("Pause playback (Space)"));
   } else {
     play_pause_button_->setText(tr("Play"));
-    play_pause_button_->setToolTip(
-        has_file ? tr("Start or resume playback (Space)")
-                 : tr("Open a record, then play"));
+    play_pause_button_->setToolTip(has_file
+                                       ? tr("Start or resume playback (Space)")
+                                       : tr("Open a record, then play"));
   }
 }
 
@@ -1150,8 +1141,7 @@ void RecordPanel::syncTimelineFromPlayback() {
                            .arg(FormatClock(current), FormatClock(total))
                            .arg(pct));
   if (density_bar_ != nullptr && total > 0.0) {
-    density_bar_->setPlayheadNormalized(
-        std::clamp(current / total, 0.0, 1.0));
+    density_bar_->setPlayheadNormalized(std::clamp(current / total, 0.0, 1.0));
   }
 }
 
@@ -1168,10 +1158,9 @@ void RecordPanel::syncRangeLabel() {
     range_label_->setText(tr("Range: full"));
     return;
   }
-  range_label_->setText(
-      tr("Range: %1 – %2")
-          .arg(FormatClock(playback.rangeStartSec()),
-               FormatClock(playback.rangeEndSec())));
+  range_label_->setText(tr("Range: %1 – %2")
+                            .arg(FormatClock(playback.rangeStartSec()),
+                                 FormatClock(playback.rangeEndSec())));
 }
 
 void RecordPanel::syncDensityBar() {

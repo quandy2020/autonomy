@@ -10,6 +10,8 @@
 #include <QVariant>
 #include <QVector>
 
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
+
 class QButtonGroup;
 class QKeyEvent;
 class QToolButton;
@@ -42,6 +44,9 @@ class NavigationRail : public QFrame {
   bool labels_visible() const;
   void SetLabelsVisible(bool visible);
 
+  style::Tone tone() const noexcept { return tone_; }
+  void SetTone(style::Tone tone);
+
  signals:
   void CurrentChanged(int index, const QVariant& data);
   void ItemActivated(int index, const QVariant& data);
@@ -50,15 +55,18 @@ class NavigationRail : public QFrame {
   void keyPressEvent(QKeyEvent* event) override;
 
  private:
+  void ApplyTheme();
   void Rebuild();
   void MoveCurrent(int step);
   void ActivateCurrent();
   bool IsSelectable(int index) const;
+  void UpdateAccessibility();
 
   QVector<NavigationItem> items_;
   QVector<QToolButton*> buttons_;
   QVBoxLayout* layout_ = nullptr;
   QButtonGroup* button_group_ = nullptr;
+  style::Tone tone_ = style::Tone::Shell;
   int current_index_ = -1;
   bool labels_visible_ = true;
 };

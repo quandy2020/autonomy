@@ -9,6 +9,8 @@
 #include <QVector>
 #include <QWidget>
 
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
+
 class QHBoxLayout;
 class QKeyEvent;
 class QToolButton;
@@ -36,6 +38,9 @@ class Breadcrumb : public QWidget {
   int current_index() const;
   void SetCurrentIndex(int index);
 
+  style::Tone tone() const noexcept { return tone_; }
+  void SetTone(style::Tone tone);
+
  signals:
   void ItemActivated(int index, const QVariant& data);
   void CurrentIndexChanged(int index);
@@ -44,14 +49,17 @@ class Breadcrumb : public QWidget {
   void keyPressEvent(QKeyEvent* event) override;
 
  private:
+  void ApplyTheme();
   void Rebuild();
   void MoveCurrent(int step);
   void ActivateCurrent();
   bool IsSelectable(int index) const;
+  void UpdateAccessibility();
 
   QVector<BreadcrumbItem> items_;
   QVector<QToolButton*> buttons_;
   QHBoxLayout* layout_ = nullptr;
+  style::Tone tone_ = style::Tone::Shell;
   int current_index_ = -1;
 };
 

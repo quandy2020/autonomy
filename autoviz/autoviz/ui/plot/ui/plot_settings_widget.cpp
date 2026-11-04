@@ -4,18 +4,14 @@
 
 #include "autoviz/ui/plot/ui/plot_settings_widget.hpp"
 
-#include <algorithm>
-#include <functional>
-
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDoubleSpinBox>
 #include <QFontMetrics>
 #include <QFormLayout>
-#include <QSpinBox>
-#include <QHash>
 #include <QHBoxLayout>
+#include <QHash>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -23,16 +19,20 @@
 #include <QPushButton>
 #include <QSignalBlocker>
 #include <QSizePolicy>
+#include <QSpinBox>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <functional>
 
-#include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/interaction/channel_manager.hpp"
-#include "autoviz/ui/theme/glass.hpp"
-#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/input/segmented_control.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
+#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -45,7 +45,8 @@ QLineEdit* ValuePathLineEdit(QComboBox* value_combo) {
   return value_combo != nullptr ? value_combo->lineEdit() : nullptr;
 }
 
-bool ShouldDrillPlotValuePath(common::VisualizationManager* manager, const QString& channel,
+bool ShouldDrillPlotValuePath(common::VisualizationManager* manager,
+                              const QString& channel,
                               const QString& field_path) {
   if (channel.trimmed().isEmpty() || field_path.trimmed().isEmpty()) {
     return false;
@@ -54,22 +55,25 @@ bool ShouldDrillPlotValuePath(common::VisualizationManager* manager, const QStri
   return !PlotNextLevelFieldPaths(message_type, field_path).isEmpty();
 }
 
-bool IsCompletePlotValuePath(common::VisualizationManager* manager, const QString& channel,
+bool IsCompletePlotValuePath(common::VisualizationManager* manager,
+                             const QString& channel,
                              const QString& field_path) {
   return IsPlottablePlotValuePath(channel, field_path) &&
          !ShouldDrillPlotValuePath(manager, channel, field_path);
 }
 
-void UpdateValueValidation(common::VisualizationManager* manager, QComboBox* value_combo,
-                           const QString& channel, const QString& field_path) {
+void UpdateValueValidation(common::VisualizationManager* manager,
+                           QComboBox* value_combo, const QString& channel,
+                           const QString& field_path) {
   QLineEdit* line_edit = ValuePathLineEdit(value_combo);
   if (line_edit == nullptr) {
     return;
   }
   const bool valid = IsCompletePlotValuePath(manager, channel, field_path);
-  line_edit->setStyleSheet(valid ? QString() : style::mark(style::Mark::Invalid));
-  line_edit->setToolTip(valid ? QString()
-                              : QObject::tr("Select a numeric message field path"));
+  line_edit->setStyleSheet(valid ? QString()
+                                 : style::mark(style::Mark::Invalid));
+  line_edit->setToolTip(
+      valid ? QString() : QObject::tr("Select a numeric message field path"));
 }
 
 std::function<void()> InstallPlotValuePathEditor(
@@ -116,11 +120,12 @@ std::function<void()> InstallPlotValuePathEditor(
       value_combo->hidePopup();
       return;
     }
-    QTimer::singleShot(0, value_combo, [value_combo]() { value_combo->showPopup(); });
+    QTimer::singleShot(0, value_combo,
+                       [value_combo]() { value_combo->showPopup(); });
   };
 
-  const auto apply_choice = [manager, value_combo, line_edit, on_pick, refresh_items](
-                                const QString& choice) {
+  const auto apply_choice = [manager, value_combo, line_edit, on_pick,
+                             refresh_items](const QString& choice) {
     if (value_combo->property(kPlotValueRefreshing).toBool()) {
       return;
     }
@@ -166,8 +171,8 @@ std::function<void()> InstallPlotValuePathEditor(
                        debounce->start();
                      }
                    });
-  QObject::connect(value_combo, QOverload<int>::of(&QComboBox::activated), value_combo,
-                   [value_combo, apply_choice](int index) {
+  QObject::connect(value_combo, QOverload<int>::of(&QComboBox::activated),
+                   value_combo, [value_combo, apply_choice](int index) {
                      if (value_combo->property(kPlotValueRefreshing).toBool()) {
                        return;
                      }
@@ -178,8 +183,8 @@ std::function<void()> InstallPlotValuePathEditor(
 }
 
 QString ColorSwatchStyle(const QColor& color) {
-  const QString css = color.isValid() ? color.name(QColor::HexRgb)
-                                      : QStringLiteral("#4e98e2");
+  const QString css =
+      color.isValid() ? color.name(QColor::HexRgb) : QStringLiteral("#4e98e2");
   return style::mark(style::Mark::Swatch, css);
 }
 
@@ -192,42 +197,26 @@ QPushButton* MakeColorSwatch(const QColor& color, QWidget* parent) {
   return button;
 }
 
-QWidget* MakeSegmentedToggle(QWidget* parent, const QStringList& labels,
-                             int checked_index,
-                             const std::function<void(int)>& on_changed) {
-  auto* container = new QWidget(parent);
-  container->setObjectName(QStringLiteral("plot_segmented_toggle"));
-  container->setAttribute(Qt::WA_StyledBackground, true);
-  auto* layout = new QHBoxLayout(container);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-  container->setFixedHeight(24);
-  container->setStyleSheet(
-      style::sheet(QStringLiteral("plot/segmented_toggle_inline"),
-                   style::tokens()));
-
+widget::SegmentedControl* MakeSegmentedToggle(
+    QWidget* parent, const QStringList& labels, int checked_index,
+    const std::function<void(int)>& on_changed) {
   int min_button_w = 48;
-  {
-    QFontMetrics fm(container->font());
-    for (const QString& label : labels) {
-      min_button_w = std::max(min_button_w, fm.horizontalAdvance(label) + 20);
-    }
+  const QFontMetrics metrics(parent->font());
+  for (const QString& label : labels) {
+    min_button_w =
+        std::max(min_button_w, metrics.horizontalAdvance(label) + 20);
   }
 
-  for (int i = 0; i < labels.size(); ++i) {
-    auto* button = new QPushButton(labels.at(i), container);
-    button->setCheckable(true);
-    button->setChecked(i == checked_index);
-    button->setAutoExclusive(true);
-    button->setCursor(Qt::PointingHandCursor);
-    button->setMinimumWidth(min_button_w);
-    button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    layout->addWidget(button, 1);
-    QObject::connect(button, &QPushButton::clicked, container, [on_changed, i]() {
-      on_changed(i);
-    });
+  auto* segments = new widget::SegmentedControl(parent);
+  segments->SetTone(style::Tone::Frost);
+  segments->setMinimumWidth(min_button_w * labels.size());
+  for (const QString& label : labels) {
+    segments->AddSegment(label);
   }
-  return container;
+  segments->SetCurrentIndex(checked_index);
+  QObject::connect(segments, &widget::SegmentedControl::CurrentIndexChanged,
+                   segments, on_changed);
+  return segments;
 }
 
 }  // namespace
@@ -238,8 +227,9 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   ApplyCompactSettingsShell(this);
   setMinimumWidth(260);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setContentsMargins(
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
   outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
   outer->setAlignment(Qt::AlignTop);
 
@@ -261,8 +251,7 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
                               static_cast<int>(PlotXAxisMode::kIndex));
   x_axis_mode_combo_->addItem(tr("Message path"),
                               static_cast<int>(PlotXAxisMode::kMessagePath));
-  x_axis_mode_combo_->addItem(tr("XY"),
-                              static_cast<int>(PlotXAxisMode::kXY));
+  x_axis_mode_combo_->addItem(tr("XY"), static_cast<int>(PlotXAxisMode::kXY));
   general_form->addRow(tr("X-axis value type"), x_axis_mode_combo_);
   max_points_spin_ = new QSpinBox(general_body);
   max_points_spin_->setRange(1000, 500000);
@@ -272,10 +261,10 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   connect(max_points_spin_, QOverload<int>::of(&QSpinBox::valueChanged), this,
           &PlotSettingsWidget::emitConfigChanged);
   message_path_mode_combo_ = new QComboBox(general_body);
-  message_path_mode_combo_->addItem(tr("Current"),
-                                    static_cast<int>(PlotMessagePathMode::kCurrent));
-  message_path_mode_combo_->addItem(tr("Accumulated"),
-                                    static_cast<int>(PlotMessagePathMode::kAccumulated));
+  message_path_mode_combo_->addItem(
+      tr("Current"), static_cast<int>(PlotMessagePathMode::kCurrent));
+  message_path_mode_combo_->addItem(
+      tr("Accumulated"), static_cast<int>(PlotMessagePathMode::kAccumulated));
   message_path_mode_combo_->setCurrentIndex(
       config_.message_path_mode == PlotMessagePathMode::kAccumulated ? 1 : 0);
   general_form->addRow(tr("Message path mode"), message_path_mode_combo_);
@@ -287,10 +276,10 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
           ? 1
           : 0);
   general_form->addRow(tr("Sync with other plots"), sync_plots_combo_);
-  sync_group_edit_ = new QLineEdit(config_.sync_group.isEmpty()
-                                       ? QStringLiteral("default")
-                                       : config_.sync_group,
-                                   general_body);
+  sync_group_edit_ =
+      new QLineEdit(config_.sync_group.isEmpty() ? QStringLiteral("default")
+                                                 : config_.sync_group,
+                    general_body);
   sync_group_edit_->setPlaceholderText(tr("default"));
   general_form->addRow(tr("Sync group"), sync_group_edit_);
   sync_y_axis_check_ = new QCheckBox(tr("Sync Y axis"), general_body);
@@ -305,8 +294,9 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   xml_row->addWidget(import_xml);
   xml_row->addWidget(export_xml);
   general_form->addRow(tr("Plot file"), xml_row);
-  connect(sync_plots_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, &PlotSettingsWidget::emitConfigChanged);
+  connect(sync_plots_combo_,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &PlotSettingsWidget::emitConfigChanged);
   connect(sync_group_edit_, &QLineEdit::textChanged, this,
           &PlotSettingsWidget::emitConfigChanged);
   connect(sync_y_axis_check_, &QCheckBox::toggled, this,
@@ -317,8 +307,9 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
           &PlotSettingsWidget::importXmlRequested);
   connect(export_xml, &QPushButton::clicked, this,
           &PlotSettingsWidget::exportXmlRequested);
-  connect(message_path_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, &PlotSettingsWidget::emitConfigChanged);
+  connect(message_path_mode_combo_,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          &PlotSettingsWidget::emitConfigChanged);
   outer->addWidget(makeCollapsibleSection(tr("General"), general_body, true));
 
   auto* legend_body = new QWidget(this);
@@ -343,8 +334,8 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
       new QLabel(tr("Timestamp source is configured per series (Log time / "
                     "Receive time)."),
                  x_axis_timestamp_body_));
-  connect(x_window_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &PlotSettingsWidget::emitConfigChanged);
+  connect(x_window_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &PlotSettingsWidget::emitConfigChanged);
 
   x_axis_index_body_ = new QWidget(this);
   auto* index_layout = new QVBoxLayout(x_axis_index_body_);
@@ -360,7 +351,8 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   message_path_layout->setContentsMargins(0, 0, 0, 0);
   message_path_layout->addWidget(new QLabel(
       tr("X and Y values come from message fields configured per series. "
-         "Use Current to show only the latest point, or Accumulated for history."),
+         "Use Current to show only the latest point, or Accumulated for "
+         "history."),
       x_axis_message_path_body_));
   x_axis_message_path_body_->setVisible(false);
 
@@ -388,8 +380,9 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   x_axis_layout->addWidget(x_axis_message_path_body_);
   x_axis_layout->addWidget(x_axis_xy_body);
   outer->addWidget(makeCollapsibleSection(tr("X-axis"), x_axis_body, false));
-  connect(x_axis_mode_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, [this](int /*index*/) {
+  connect(x_axis_mode_combo_,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          [this](int /*index*/) {
             updateAxisModeVisibility();
             emitConfigChanged();
           });
@@ -428,10 +421,10 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   StyleCompactSettingsField(y_max_spin_);
   y_range_form->addRow(tr("Y max"), y_max_spin_);
   y_axis_layout->addLayout(y_range_form);
-  connect(y_min_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &PlotSettingsWidget::emitConfigChanged);
-  connect(y_max_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
-          &PlotSettingsWidget::emitConfigChanged);
+  connect(y_min_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &PlotSettingsWidget::emitConfigChanged);
+  connect(y_max_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          this, &PlotSettingsWidget::emitConfigChanged);
 
   show_grid_check_ = new QCheckBox(tr("Show grid"), y_axis_body);
   show_grid_check_->setChecked(config_.show_grid);
@@ -460,12 +453,13 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   show_reference_y_check_ = new QCheckBox(tr("Reference line"), y_axis_body);
   show_reference_y_check_->setChecked(config_.show_reference_y);
   y_axis_layout->addWidget(show_reference_y_check_);
-  connect(show_reference_y_check_, &QCheckBox::toggled, this, [this](bool checked) {
-    if (reference_y_spin_ != nullptr) {
-      reference_y_spin_->setEnabled(checked);
-    }
-    emitConfigChanged();
-  });
+  connect(show_reference_y_check_, &QCheckBox::toggled, this,
+          [this](bool checked) {
+            if (reference_y_spin_ != nullptr) {
+              reference_y_spin_->setEnabled(checked);
+            }
+            emitConfigChanged();
+          });
   reference_y_spin_ = new QDoubleSpinBox(y_axis_body);
   reference_y_spin_->setRange(-1.0e9, 1.0e9);
   reference_y_spin_->setDecimals(4);
@@ -476,10 +470,12 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   ref_form->setContentsMargins(0, 0, 0, 0);
   ref_form->addRow(tr("Y value"), reference_y_spin_);
   y_axis_layout->addLayout(ref_form);
-  connect(reference_y_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, &PlotSettingsWidget::emitConfigChanged);
+  connect(reference_y_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+          &PlotSettingsWidget::emitConfigChanged);
 
-  lock_axis_scales_check_ = new QCheckBox(tr("Locked axis scales (1:1)"), y_axis_body);
+  lock_axis_scales_check_ =
+      new QCheckBox(tr("Locked axis scales (1:1)"), y_axis_body);
   lock_axis_scales_check_->setChecked(config_.lock_axis_scales);
   y_axis_layout->addWidget(lock_axis_scales_check_);
   connect(lock_axis_scales_check_, &QCheckBox::toggled, this,
@@ -517,10 +513,12 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   StyleCompactSettingsField(y_max_right_spin_);
   y_right_form->addRow(tr("Right Y max"), y_max_right_spin_);
   y_axis_layout->addLayout(y_right_form);
-  connect(y_min_right_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, &PlotSettingsWidget::emitConfigChanged);
-  connect(y_max_right_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, &PlotSettingsWidget::emitConfigChanged);
+  connect(y_min_right_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+          &PlotSettingsWidget::emitConfigChanged);
+  connect(y_max_right_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+          &PlotSettingsWidget::emitConfigChanged);
 
   outer->addWidget(makeCollapsibleSection(tr("Y-axis"), y_axis_body, false));
 
@@ -540,9 +538,11 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   series_filter_combo_->addItem(tr("Visible"));
   series_filter_combo_->addItem(tr("Hidden"));
   StyleCompactSettingsField(series_filter_combo_);
-  connect(series_filter_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          this, [this](int /*index*/) { applySeriesFilter(); });
-  add_series_button_ = MakeFlatActionButton(QStringLiteral("+"), series_toolbar);
+  connect(series_filter_combo_,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+          [this](int /*index*/) { applySeriesFilter(); });
+  add_series_button_ =
+      MakeFlatActionButton(QStringLiteral("+"), series_toolbar);
   add_series_button_->setToolTip(tr("Add series"));
   add_series_button_->setFixedSize(22, 22);
   add_series_button_->setStyleSheet(
@@ -565,7 +565,8 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
 }
 
 QWidget* PlotSettingsWidget::makeCollapsibleSection(const QString& title,
-                                                    QWidget* body, bool expanded) {
+                                                    QWidget* body,
+                                                    bool expanded) {
   return MakeCollapsibleSection(this, title, body, expanded);
 }
 
@@ -581,7 +582,8 @@ void PlotSettingsWidget::updateAxisModeVisibility() {
   if (x_axis_message_path_body_ != nullptr) {
     x_axis_message_path_body_->setVisible(mode == PlotXAxisMode::kMessagePath);
   }
-  if (QWidget* xy_body = findChild<QWidget*>(QStringLiteral("x_axis_xy_body"))) {
+  if (QWidget* xy_body =
+          findChild<QWidget*>(QStringLiteral("x_axis_xy_body"))) {
     xy_body->setVisible(mode == PlotXAxisMode::kXY);
   }
   if (message_path_mode_combo_ != nullptr) {
@@ -595,7 +597,8 @@ void PlotSettingsWidget::updateAxisModeVisibility() {
 void PlotSettingsWidget::setConfig(const PlotPanelConfig& config) {
   config_ = config;
   title_edit_->setText(config_.title);
-  const int mode_index = x_axis_mode_combo_->findData(static_cast<int>(config_.x_axis_mode));
+  const int mode_index =
+      x_axis_mode_combo_->findData(static_cast<int>(config_.x_axis_mode));
   if (mode_index >= 0) {
     x_axis_mode_combo_->setCurrentIndex(mode_index);
   }
@@ -608,8 +611,8 @@ void PlotSettingsWidget::setConfig(const PlotPanelConfig& config) {
     const QSignalBlocker block_group(sync_group_edit_);
     const QSignalBlocker block_y(sync_y_axis_check_);
     const QSignalBlocker block_cursor(sync_cursor_check_);
-    const bool sync_on =
-        !config_.sync_group.trimmed().isEmpty() || config_.sync_with_other_plots;
+    const bool sync_on = !config_.sync_group.trimmed().isEmpty() ||
+                         config_.sync_with_other_plots;
     sync_plots_combo_->setCurrentIndex(sync_on ? 1 : 0);
     sync_group_edit_->setText(config_.sync_group.isEmpty()
                                   ? QStringLiteral("default")
@@ -692,8 +695,8 @@ void PlotSettingsWidget::refreshChannelLists() {
     if (item == nullptr || item->widget() == nullptr) {
       continue;
     }
-    auto* value_combo =
-        item->widget()->findChild<QComboBox*>(QStringLiteral("plot_series_value_combo"));
+    auto* value_combo = item->widget()->findChild<QComboBox*>(
+        QStringLiteral("plot_series_value_combo"));
     if (value_combo == nullptr) {
       continue;
     }
@@ -731,7 +734,8 @@ void PlotSettingsWidget::applySeriesFilter() {
   const int mode = series_filter_combo_->currentIndex();
   for (int i = 0; i < series_list_layout_->count(); ++i) {
     QLayoutItem* item = series_list_layout_->itemAt(i);
-    if (item == nullptr || item->widget() == nullptr || i >= config_.series.size()) {
+    if (item == nullptr || item->widget() == nullptr ||
+        i >= config_.series.size()) {
       continue;
     }
     bool visible = true;
@@ -764,13 +768,15 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   title_label->setStyleSheet(
       style::sheet(QStringLiteral("plot/series_title"), style::tokens()));
   title_label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-  title_label->setToolTip(series.channel.isEmpty() ? tr("Select a channel in Value")
-                                                   : series.channel);
+  title_label->setToolTip(series.channel.isEmpty()
+                              ? tr("Select a channel in Value")
+                              : series.channel);
   auto* visibility_button = new QToolButton(card);
   visibility_button->setObjectName(QStringLiteral("plot_series_visibility"));
   visibility_button->setCheckable(true);
   visibility_button->setChecked(series.enabled);
-  visibility_button->setText(series.enabled ? QStringLiteral("◉") : QStringLiteral("○"));
+  visibility_button->setText(series.enabled ? QStringLiteral("◉")
+                                            : QStringLiteral("○"));
   visibility_button->setToolTip(tr("Toggle series visibility"));
   visibility_button->setAutoRaise(true);
   visibility_button->setFixedSize(20, 20);
@@ -801,7 +807,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   value_combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   value_combo->setMinimumWidth(120);
   StyleCompactSettingsField(value_combo);
-  const QString combined = CombinedPlotValuePath(series.channel, series.field_path);
+  const QString combined =
+      CombinedPlotValuePath(series.channel, series.field_path);
   if (!combined.isEmpty()) {
     value_combo->setEditText(combined);
   } else if (QLineEdit* line_edit = value_combo->lineEdit()) {
@@ -815,7 +822,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   channel_button->setFixedSize(20, 20);
   value_layout->addWidget(value_combo, 1);
   value_layout->addWidget(channel_button, 0, Qt::AlignVCenter);
-  UpdateValueValidation(manager_, value_combo, series.channel, series.field_path);
+  UpdateValueValidation(manager_, value_combo, series.channel,
+                        series.field_path);
   form->addRow(MakeSettingsFormLabel(tr("Value"), card), value_box);
 
   auto* label_edit = new QLineEdit(
@@ -846,16 +854,17 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
     curve_style_combo->setCurrentIndex(idx >= 0 ? idx : 0);
   }
   StyleCompactSettingsField(curve_style_combo);
-  form->addRow(MakeSettingsFormLabel(tr("Curve style"), card), curve_style_combo);
+  form->addRow(MakeSettingsFormLabel(tr("Curve style"), card),
+               curve_style_combo);
 
-  auto* show_line = MakeSegmentedToggle(
-      card, {tr("Off"), tr("On")}, series.show_line ? 1 : 0,
-      [this, index](int selected) {
-        if (index >= 0 && index < config_.series.size()) {
-          config_.series[index].show_line = selected == 1;
-          emit configChanged();
-        }
-      });
+  auto* show_line =
+      MakeSegmentedToggle(card, {tr("Off"), tr("On")}, series.show_line ? 1 : 0,
+                          [this, index](int selected) {
+                            if (index >= 0 && index < config_.series.size()) {
+                              config_.series[index].show_line = selected == 1;
+                              emit configChanged();
+                            }
+                          });
   form->addRow(MakeSettingsFormLabel(tr("Show line"), card), show_line);
 
   auto* show_points = MakeSegmentedToggle(
@@ -892,7 +901,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   auto* pattern_edit = new QLineEdit(series.channel_pattern, card);
   pattern_edit->setPlaceholderText(tr("/robot/*/odom"));
   StyleCompactSettingsField(pattern_edit);
-  form->addRow(MakeSettingsFormLabel(tr("Channel pattern"), card), pattern_edit);
+  form->addRow(MakeSettingsFormLabel(tr("Channel pattern"), card),
+               pattern_edit);
 
   connect(point_size_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
           card, [this, index](double value) {
@@ -901,8 +911,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
               emit configChanged();
             }
           });
-  connect(y_scale_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), card,
-          [this, index](double value) {
+  connect(y_scale_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          card, [this, index](double value) {
             if (index < config_.series.size()) {
               config_.series[index].y_scale = value;
               emit configChanged();
@@ -953,9 +963,11 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   secondary_combo->setMinimumWidth(120);
   StyleCompactSettingsField(secondary_combo);
   const QString secondary_combined = CombinedPlotValuePath(
-      series.secondary_channel.isEmpty() ? series.channel : series.secondary_channel,
+      series.secondary_channel.isEmpty() ? series.channel
+                                         : series.secondary_channel,
       series.secondary_field_path);
-  if (!series.secondary_field_path.isEmpty() || !series.secondary_channel.isEmpty()) {
+  if (!series.secondary_field_path.isEmpty() ||
+      !series.secondary_channel.isEmpty()) {
     secondary_combo->setEditText(secondary_combined);
   } else if (QLineEdit* line_edit = secondary_combo->lineEdit()) {
     line_edit->setPlaceholderText(tr("/channel.field (operand b)"));
@@ -982,7 +994,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
                            static_cast<int>(PlotTimestampMode::kReceiveTime));
   timestamp_combo->addItem(tr("Custom field"),
                            static_cast<int>(PlotTimestampMode::kCustomField));
-  const int ts_index = timestamp_combo->findData(static_cast<int>(series.timestamp_mode));
+  const int ts_index =
+      timestamp_combo->findData(static_cast<int>(series.timestamp_mode));
   timestamp_combo->setCurrentIndex(ts_index >= 0 ? ts_index : 0);
   StyleCompactSettingsField(timestamp_combo);
   form->addRow(MakeSettingsFormLabel(tr("Timestamp"), card), timestamp_combo);
@@ -990,8 +1003,10 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   auto* custom_ts_edit = new QLineEdit(series.custom_timestamp_path, card);
   custom_ts_edit->setPlaceholderText(tr("e.g. header.stamp"));
   StyleCompactSettingsField(custom_ts_edit);
-  form->addRow(MakeSettingsFormLabel(tr("Custom timestamp"), card), custom_ts_edit);
-  custom_ts_edit->setEnabled(series.timestamp_mode == PlotTimestampMode::kCustomField);
+  form->addRow(MakeSettingsFormLabel(tr("Custom timestamp"), card),
+               custom_ts_edit);
+  custom_ts_edit->setEnabled(series.timestamp_mode ==
+                             PlotTimestampMode::kCustomField);
 
   auto* x_channel_edit = new QLineEdit(series.x_channel, card);
   x_channel_edit->setPlaceholderText(tr("X channel (XY; empty = same as Y)"));
@@ -999,8 +1014,7 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   form->addRow(MakeSettingsFormLabel(tr("X channel"), card), x_channel_edit);
 
   auto* x_field_edit = new QLineEdit(series.x_field_path, card);
-  x_field_edit->setPlaceholderText(
-      tr("X-value path (message path / XY mode)"));
+  x_field_edit->setPlaceholderText(tr("X-value path (message path / XY mode)"));
   StyleCompactSettingsField(x_field_edit);
   form->addRow(MakeSettingsFormLabel(tr("X-value path"), card), x_field_edit);
 
@@ -1009,16 +1023,17 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   QLineEdit* value_line_edit = ValuePathLineEdit(value_combo);
 
   const auto sync_value_path_display = [this, title_label, value_combo](
-                                             const QString& channel,
-                                             const QString& field_path) {
+                                           const QString& channel,
+                                           const QString& field_path) {
     UpdateValueValidation(manager_, value_combo, channel, field_path);
     title_label->setText(SeriesCardTitle(channel));
     title_label->setToolTip(channel.isEmpty() ? tr("Select a channel in Value")
                                               : channel);
   };
 
-  const auto commit_value_path = [this, index, title_label, value_combo, value_line_edit,
-                                  label_edit, sync_value_path_display]() {
+  const auto commit_value_path = [this, index, title_label, value_combo,
+                                  value_line_edit, label_edit,
+                                  sync_value_path_display]() {
     if (index >= config_.series.size() || value_line_edit == nullptr) {
       return;
     }
@@ -1056,93 +1071,108 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
             [this, sync_value_path_display](const QString& text) {
               QString channel;
               QString field_path;
-              SplitPlotValuePath(text.trimmed(), knownChannels(), &channel, &field_path);
+              SplitPlotValuePath(text.trimmed(), knownChannels(), &channel,
+                                 &field_path);
               sync_value_path_display(channel, field_path);
             });
-    connect(value_line_edit, &QLineEdit::editingFinished, card, commit_value_path);
+    connect(value_line_edit, &QLineEdit::editingFinished, card,
+            commit_value_path);
   }
   const std::function<void()> refresh_value_suggestions =
       InstallPlotValuePathEditor(value_combo, manager_, commit_value_path);
   connect(channel_button, &QToolButton::clicked, card,
-          [value_combo, value_line_edit, commit_value_path, refresh_value_suggestions,
-           channel_button, this]() {
+          [value_combo, value_line_edit, commit_value_path,
+           refresh_value_suggestions, channel_button, this]() {
             QMenu menu(value_combo);
             const QStringList channels = AllKnownChannels(manager_);
             for (const QString& channel : channels) {
-              menu.addAction(channel, [value_combo, value_line_edit, commit_value_path,
-                                       refresh_value_suggestions, channel]() {
-                const QString next = channel + QLatin1Char('.');
-                if (value_line_edit != nullptr) {
-                  value_line_edit->setText(next);
-                  value_line_edit->setCursorPosition(next.size());
-                  value_line_edit->setFocus();
-                } else {
-                  value_combo->setEditText(next);
-                }
-                commit_value_path();
-                refresh_value_suggestions();
-              });
+              menu.addAction(
+                  channel, [value_combo, value_line_edit, commit_value_path,
+                            refresh_value_suggestions, channel]() {
+                    const QString next = channel + QLatin1Char('.');
+                    if (value_line_edit != nullptr) {
+                      value_line_edit->setText(next);
+                      value_line_edit->setCursorPosition(next.size());
+                      value_line_edit->setFocus();
+                    } else {
+                      value_combo->setEditText(next);
+                    }
+                    commit_value_path();
+                    refresh_value_suggestions();
+                  });
             }
-            menu.exec(channel_button->mapToGlobal(QPoint(0, channel_button->height())));
+            menu.exec(channel_button->mapToGlobal(
+                QPoint(0, channel_button->height())));
           });
-  connect(visibility_button, &QToolButton::toggled, card, [this, index, visibility_button](bool checked) {
-    if (index < config_.series.size()) {
-      config_.series[index].enabled = checked;
-      visibility_button->setText(checked ? QStringLiteral("◉") : QStringLiteral("○"));
-      emit configChanged();
-      applySeriesFilter();
-    }
-  });
+  connect(visibility_button, &QToolButton::toggled, card,
+          [this, index, visibility_button](bool checked) {
+            if (index < config_.series.size()) {
+              config_.series[index].enabled = checked;
+              visibility_button->setText(checked ? QStringLiteral("◉")
+                                                 : QStringLiteral("○"));
+              emit configChanged();
+              applySeriesFilter();
+            }
+          });
   connect(remove_button, &QToolButton::clicked, card,
           [this, index]() { emit removeSeriesRequested(index); });
-  connect(color_swatch, &QPushButton::clicked, card, [this, index, color_swatch, color_button]() {
-    if (index >= config_.series.size()) {
-      return;
-    }
-    const QColor chosen = QColorDialog::getColor(config_.series[index].color, this);
-    if (!chosen.isValid()) {
-      return;
-    }
-    config_.series[index].color = chosen;
-    color_swatch->setStyleSheet(ColorSwatchStyle(chosen));
-    UpdateColorButton(color_button, chosen);
-    emit configChanged();
-  });
-  connect(label_edit, &QLineEdit::textChanged, card, [this, index](const QString& text) {
-    if (index < config_.series.size()) {
-      config_.series[index].label = text;
-      emit configChanged();
-    }
-  });
-  connect(color_button, &QPushButton::clicked, card, [this, index, color_swatch, color_button]() {
-    if (index >= config_.series.size()) {
-      return;
-    }
-    const QColor chosen = QColorDialog::getColor(config_.series[index].color, this);
-    if (!chosen.isValid()) {
-      return;
-    }
-    config_.series[index].color = chosen;
-    color_swatch->setStyleSheet(ColorSwatchStyle(chosen));
-    UpdateColorButton(color_button, chosen);
-    emit configChanged();
-  });
-  connect(line_size_edit, &QLineEdit::textChanged, card, [this, index](const QString& text) {
-    if (index < config_.series.size()) {
-      config_.series[index].line_size = text;
-      emit configChanged();
-    }
-  });
-  connect(curve_style_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
-          card, [this, index, curve_style_combo](int /*idx*/) {
+  connect(color_swatch, &QPushButton::clicked, card,
+          [this, index, color_swatch, color_button]() {
+            if (index >= config_.series.size()) {
+              return;
+            }
+            const QColor chosen =
+                QColorDialog::getColor(config_.series[index].color, this);
+            if (!chosen.isValid()) {
+              return;
+            }
+            config_.series[index].color = chosen;
+            color_swatch->setStyleSheet(ColorSwatchStyle(chosen));
+            UpdateColorButton(color_button, chosen);
+            emit configChanged();
+          });
+  connect(label_edit, &QLineEdit::textChanged, card,
+          [this, index](const QString& text) {
+            if (index < config_.series.size()) {
+              config_.series[index].label = text;
+              emit configChanged();
+            }
+          });
+  connect(color_button, &QPushButton::clicked, card,
+          [this, index, color_swatch, color_button]() {
+            if (index >= config_.series.size()) {
+              return;
+            }
+            const QColor chosen =
+                QColorDialog::getColor(config_.series[index].color, this);
+            if (!chosen.isValid()) {
+              return;
+            }
+            config_.series[index].color = chosen;
+            color_swatch->setStyleSheet(ColorSwatchStyle(chosen));
+            UpdateColorButton(color_button, chosen);
+            emit configChanged();
+          });
+  connect(line_size_edit, &QLineEdit::textChanged, card,
+          [this, index](const QString& text) {
+            if (index < config_.series.size()) {
+              config_.series[index].line_size = text;
+              emit configChanged();
+            }
+          });
+  connect(curve_style_combo,
+          QOverload<int>::of(&QComboBox::currentIndexChanged), card,
+          [this, index, curve_style_combo](int /*idx*/) {
             if (index < config_.series.size()) {
               config_.series[index].curve_style = static_cast<PlotCurveStyle>(
                   curve_style_combo->currentData().toInt());
               emit configChanged();
             }
           });
-  connect(binary_op_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), card,
-          [this, index, binary_op_combo, secondary_combo, max_dt_spin](int /*idx*/) {
+  connect(binary_op_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          card,
+          [this, index, binary_op_combo, secondary_combo,
+           max_dt_spin](int /*idx*/) {
             if (index >= config_.series.size()) {
               return;
             }
@@ -1154,8 +1184,8 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
             max_dt_spin->setEnabled(enabled);
             emit configChanged();
           });
-  connect(max_dt_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), card,
-          [this, index](double value) {
+  connect(max_dt_spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
+          card, [this, index](double value) {
             if (index < config_.series.size()) {
               config_.series[index].binary_max_dt_sec = value;
               emit configChanged();
@@ -1163,45 +1193,46 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
           });
 
   QLineEdit* secondary_line_edit = ValuePathLineEdit(secondary_combo);
-  const auto commit_secondary_path =
-      [this, index, secondary_line_edit]() {
-        if (index >= config_.series.size() || secondary_line_edit == nullptr) {
-          return;
-        }
-        QString channel;
-        QString field_path;
-        SplitPlotValuePath(secondary_line_edit->text().trimmed(), knownChannels(),
-                           &channel, &field_path);
-        if (config_.series[index].secondary_channel == channel &&
-            config_.series[index].secondary_field_path == field_path) {
-          return;
-        }
-        config_.series[index].secondary_channel = channel;
-        config_.series[index].secondary_field_path = field_path;
-        emit configChanged();
-      };
+  const auto commit_secondary_path = [this, index, secondary_line_edit]() {
+    if (index >= config_.series.size() || secondary_line_edit == nullptr) {
+      return;
+    }
+    QString channel;
+    QString field_path;
+    SplitPlotValuePath(secondary_line_edit->text().trimmed(), knownChannels(),
+                       &channel, &field_path);
+    if (config_.series[index].secondary_channel == channel &&
+        config_.series[index].secondary_field_path == field_path) {
+      return;
+    }
+    config_.series[index].secondary_channel = channel;
+    config_.series[index].secondary_field_path = field_path;
+    emit configChanged();
+  };
   if (secondary_line_edit != nullptr) {
     connect(secondary_line_edit, &QLineEdit::editingFinished, card,
             commit_secondary_path);
   }
   InstallPlotValuePathEditor(secondary_combo, manager_, commit_secondary_path);
 
-  connect(timestamp_combo, QOverload<int>::of(&QComboBox::currentIndexChanged), card,
-          [this, index, timestamp_combo, custom_ts_edit](int /*idx*/) {
+  connect(timestamp_combo, QOverload<int>::of(&QComboBox::currentIndexChanged),
+          card, [this, index, timestamp_combo, custom_ts_edit](int /*idx*/) {
             if (index < config_.series.size()) {
               config_.series[index].timestamp_mode =
-                  static_cast<PlotTimestampMode>(timestamp_combo->currentData().toInt());
+                  static_cast<PlotTimestampMode>(
+                      timestamp_combo->currentData().toInt());
               custom_ts_edit->setEnabled(config_.series[index].timestamp_mode ==
-                                           PlotTimestampMode::kCustomField);
+                                         PlotTimestampMode::kCustomField);
               emit configChanged();
             }
           });
-  connect(custom_ts_edit, &QLineEdit::textChanged, card, [this, index](const QString& text) {
-    if (index < config_.series.size()) {
-      config_.series[index].custom_timestamp_path = text;
-      emit configChanged();
-    }
-  });
+  connect(custom_ts_edit, &QLineEdit::textChanged, card,
+          [this, index](const QString& text) {
+            if (index < config_.series.size()) {
+              config_.series[index].custom_timestamp_path = text;
+              emit configChanged();
+            }
+          });
   connect(x_channel_edit, &QLineEdit::textChanged, card,
           [this, index](const QString& text) {
             if (index < config_.series.size()) {
@@ -1209,12 +1240,13 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
               emit configChanged();
             }
           });
-  connect(x_field_edit, &QLineEdit::textChanged, card, [this, index](const QString& text) {
-    if (index < config_.series.size()) {
-      config_.series[index].x_field_path = text;
-      emit configChanged();
-    }
-  });
+  connect(x_field_edit, &QLineEdit::textChanged, card,
+          [this, index](const QString& text) {
+            if (index < config_.series.size()) {
+              config_.series[index].x_field_path = text;
+              emit configChanged();
+            }
+          });
   return card;
 }
 
@@ -1234,8 +1266,8 @@ void PlotSettingsWidget::rebuildSeriesSection() {
 
 void PlotSettingsWidget::emitConfigChanged() {
   config_.title = title_edit_->text();
-  config_.x_axis_mode = static_cast<PlotXAxisMode>(
-      x_axis_mode_combo_->currentData().toInt());
+  config_.x_axis_mode =
+      static_cast<PlotXAxisMode>(x_axis_mode_combo_->currentData().toInt());
   if (message_path_mode_combo_ != nullptr) {
     config_.message_path_mode = static_cast<PlotMessagePathMode>(
         message_path_mode_combo_->currentData().toInt());

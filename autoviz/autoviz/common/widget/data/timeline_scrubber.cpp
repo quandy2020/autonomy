@@ -266,10 +266,13 @@ qreal TimelineScrubber::XFromPosition(qint64 position) const {
   if (maximum_ <= minimum_) {
     return track.left();
   }
-  const qreal fraction =
-      (static_cast<qreal>(position) - static_cast<qreal>(minimum_)) /
-      (static_cast<qreal>(maximum_) - static_cast<qreal>(minimum_));
-  return track.left() + qBound<qreal>(0.0, fraction, 1.0) * track.width();
+  const long double offset =
+      static_cast<long double>(position) - static_cast<long double>(minimum_);
+  const long double span =
+      static_cast<long double>(maximum_) - static_cast<long double>(minimum_);
+  const long double fraction = std::clamp(offset / span, 0.0L, 1.0L);
+  return track.left() +
+         static_cast<qreal>(fraction * static_cast<long double>(track.width()));
 }
 
 void TimelineScrubber::RebuildMarkerPositions() {

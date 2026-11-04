@@ -32,6 +32,7 @@ class AutoSuggestBox final : public QLineEdit {
 
  public:
   explicit AutoSuggestBox(QWidget* parent = nullptr);
+  ~AutoSuggestBox() override;
 
   void SetModel(QAbstractItemModel* model);
   QAbstractItemModel* model() const noexcept { return model_.data(); }

@@ -34,6 +34,7 @@ class WidgetInputTest final : public QObject {
   void VectorEditorEmitsOneCoherentValue();
   void AutoSuggestDebouncesAndActivatesRows();
   void AutoSuggestActivatesRowsInsertedAsynchronously();
+  void AutoSuggestDisconnectsOwnedModelBeforeChildDestruction();
   void ButtonVariantsRemainUsable();
 };
 
@@ -284,6 +285,18 @@ void WidgetInputTest::AutoSuggestActivatesRowsInsertedAsynchronously() {
   QTest::keyClick(&box, Qt::Key_Down);
   QTest::keyClick(&box, Qt::Key_Return);
   QCOMPARE(activation_spy.count(), 1);
+}
+
+void WidgetInputTest::AutoSuggestDisconnectsOwnedModelBeforeChildDestruction() {
+  auto* box = new AutoSuggestBox;
+  auto* owned_model =
+      new QStringListModel({QStringLiteral("Owned suggestion")}, box);
+  box->SetModel(owned_model);
+  QCOMPARE(box->model(), owned_model);
+
+  // The model is a younger QObject child than the popup. Destruction must
+  // disconnect its destroyed signal before the popup child is deleted.
+  delete box;
 }
 
 void WidgetInputTest::ButtonVariantsRemainUsable() {

@@ -13,6 +13,8 @@
 #include <QStyle>
 #include <QTimerEvent>
 
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
+
 namespace autoviz::widget {
 
 Skeleton::Skeleton(QWidget* parent) : QWidget(parent) {
@@ -103,10 +105,8 @@ void Skeleton::timerEvent(QTimerEvent* event) {
 }
 
 void Skeleton::SyncAnimation() {
-  const bool animations_enabled =
-      style()->styleHint(QStyle::SH_Widget_Animate, nullptr, this) != 0;
-  const bool should_run =
-      active_ && isVisible() && isEnabled() && animations_enabled;
+  const bool should_run = active_ && isVisible() && isEnabled() &&
+                          !MotionPolicy::ReducedMotionEnabled();
   if (should_run && !timer_.isActive()) {
     timer_.start(30, Qt::CoarseTimer, this);
   } else if (!should_run && timer_.isActive()) {

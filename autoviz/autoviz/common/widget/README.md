@@ -24,20 +24,32 @@ consolidates the useful capabilities found in the projects under
 
 ## Modules
 
-- `foundation`: semantic colors, density, typography, radii, and motion.
-- `input`: buttons, switches, numeric/vector fields, suggestions, and choices.
-- `layout`: surfaces/cards, separators, collapsible panels, and responsive flow.
-- `navigation`: breadcrumbs, command palette, workflow steps, and navigation.
-- `feedback`: progress, information bars, skeletons, and toasts.
-- `data`: DataGrid, PropertyEditor, logs, pagination, filters, loading overlays,
-  and timeline.
-- `display`: allocation-conscious status badges and live metric primitives.
-- `overlay`: popovers, teaching tips, and drawers.
-- `docking`: backend-neutral docking facade.
+- `foundation`: `ThemeTokens`, `ApplyWidgetTheme()`, and `MotionPolicy`.
+- `input`: `Button`/`IconButton`, `ToggleSwitch`, `SegmentedControl`, search,
+  password, suggestion, number/vector, color, file-drop, multi-select, tree,
+  rating, shortcut, and form-state controls.
+- `layout`: `Surface`, `Separator`, `CollapsiblePanel`, and `FlowLayout`.
+- `navigation`: `Breadcrumb`, `NavigationRail`, `CommandPalette`, `CommandBar`,
+  `StepIndicator`, and `PipsPager`.
+- `feedback`: `InfoBar`, `ProgressBar`, `ProgressRing`, `Skeleton`, and `Toast`.
+- `data`: `DataGrid`, `EmptyState`, `FilterBar`, `LoadingOverlay`,
+  `ListDetailView`, `LogView`, `Pagination`, `PropertyEditor`, and
+  `TimelineScrubber`.
+- `display`: `Avatar`, `Tag`, `Watermark`, `StatusBadge`, and `Sparkline`.
+- `overlay`: `Popover`, `TeachingTip`, and `Drawer`.
+- `docking`: `DockManager`, backed by native `QDockWidget` in the core build.
 
 Include only the component headers that a translation unit needs. The umbrella
 header `autoviz/common/widget/widget.hpp` is intended for prototypes and the
-component gallery.
+component gallery; it includes every public component header.
+
+## Motion policy
+
+All component animations resolve their duration through `MotionPolicy`.
+Applications may call `MotionPolicy::SetPreference()` to request system,
+full, or reduced motion. System mode also honors `QStyle::SH_Widget_Animate`,
+`AUTOVIZ_REDUCED_MOTION`, and `PREFERS_REDUCED_MOTION`. Hidden widgets stop
+their timers independently of this process-wide preference.
 
 ## Component gallery
 
@@ -58,6 +70,13 @@ docker exec -w /workspace/autonomy \
   ./build/autonomy/bin/autoviz_widget_gallery --smoke-test
 ```
 
+The standalone Bazel build exposes the same gallery target:
+
+```bash
+cd /workspace/autonomy/src/autonomy/autoviz
+bazel build //:autoviz_widget_gallery
+```
+
 ## Tests
 
 Widget tests use QtTest with the offscreen platform and have an independent
@@ -70,6 +89,9 @@ docker exec -w /workspace/autonomy SpaceHero \
 docker exec -w /workspace/autonomy SpaceHero \
   ctest --test-dir build/autonomy -R '^autoviz_widget_' --output-on-failure
 ```
+
+The QtTest suite is registered through CMake/CTest. Bazel currently covers the
+library, application, and gallery, so run widget tests with the commands above.
 
 ## Third-party boundary
 

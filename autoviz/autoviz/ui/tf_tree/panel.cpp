@@ -4,15 +4,11 @@
 
 #include "autoviz/ui/tf_tree/panel.hpp"
 
-#include <algorithm>
-#include <cmath>
-
 #include <QApplication>
 #include <QClipboard>
 #include <QDateTime>
 #include <QDoubleSpinBox>
 #include <QFocusEvent>
-#include <QShowEvent>
 #include <QFormLayout>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -22,6 +18,7 @@
 #include <QMenu>
 #include <QPainter>
 #include <QPixmap>
+#include <QShowEvent>
 #include <QSignalBlocker>
 #include <QSplitter>
 #include <QTabWidget>
@@ -29,17 +26,20 @@
 #include <QToolButton>
 #include <QTreeWidget>
 #include <QVBoxLayout>
+#include <algorithm>
+#include <cmath>
 #include <functional>
 #include <vector>
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/common/widget/layout/separator.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
-#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/tf_tree/graph_view.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -57,12 +57,9 @@ constexpr char kTextMuted[] = "#64748b";
 constexpr char kAccent[] = "#0891b2";
 constexpr char kStatic[] = "#d97706";
 
-QFrame* MakeToolbarSeparator(QWidget* parent) {
-  auto* separator = new QFrame(parent);
-  separator->setFrameShape(QFrame::VLine);
-  separator->setFixedWidth(1);
-  separator->setStyleSheet(
-      style::mark(style::Mark::VLine));
+widget::Separator* MakeToolbarSeparator(QWidget* parent) {
+  auto* separator = new widget::Separator(Qt::Vertical, parent);
+  separator->SetTone(style::Tone::Frost);
   return separator;
 }
 
@@ -94,7 +91,8 @@ QIcon MakeGlyphIcon(const std::function<void(QPainter&, const QRectF&)>& paint,
 /** Matches Channel Graph node glyph (cyan card). */
 QIcon MakeFrameGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
-    const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3, r.height() - 7);
+    const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3,
+                      r.height() - 7);
     p.setPen(QPen(QColor(0x67, 0xe8, 0xf9), 1.2));
     p.setBrush(QColor(0xec, 0xfe, 0xff));
     p.drawRoundedRect(card, 3.5, 3.5);
@@ -107,7 +105,8 @@ QIcon MakeFrameGlyphIcon() {
 /** Amber card for static TF frames. */
 QIcon MakeStaticGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
-    const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3, r.height() - 7);
+    const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3,
+                      r.height() - 7);
     p.setPen(QPen(QColor(QLatin1String(kStatic)), 1.2, Qt::DashLine));
     p.setBrush(QColor(0xff, 0xfb, 0xeb));
     p.drawRoundedRect(card, 3.5, 3.5);
@@ -117,7 +116,8 @@ QIcon MakeStaticGlyphIcon() {
   });
 }
 
-QWidget* MakeLegendChip(const QIcon& icon, const QString& tip, QWidget* parent) {
+QWidget* MakeLegendChip(const QIcon& icon, const QString& tip,
+                        QWidget* parent) {
   auto* label = new QLabel(parent);
   label->setPixmap(icon.pixmap(16, 16));
   label->setToolTip(tip);
@@ -159,7 +159,8 @@ TfTreePanel::TfTreePanel(transform::Buffer* tf_buffer,
   setFocusPolicy(Qt::StrongFocus);
   setupUi();
 
-  // Cap tree rebuilds: transforms-changed fires per setTransform (often >> 30Hz).
+  // Cap tree rebuilds: transforms-changed fires per setTransform (often >>
+  // 30Hz).
   refresh_timer_ = new QTimer(this);
   refresh_timer_->setTimerType(Qt::PreciseTimer);
   refresh_timer_->setSingleShot(true);
@@ -168,8 +169,8 @@ TfTreePanel::TfTreePanel(transform::Buffer* tf_buffer,
           &TfTreePanel::onCoalescedRefresh);
 
   if (tf_buffer_ != nullptr) {
-    transforms_changed_connection_ =
-        tf_buffer_->_addTransformsChangedListener([this]() { scheduleRefresh(); });
+    transforms_changed_connection_ = tf_buffer_->_addTransformsChangedListener(
+        [this]() { scheduleRefresh(); });
   }
   force_rebuild_ = true;
   onCoalescedRefresh();
@@ -220,8 +221,8 @@ common::TfTreePanelPersistConfig TfTreePanel::config() const {
   }
   out.stale_only =
       stale_only_button_ != nullptr && stale_only_button_->isChecked();
-  out.max_age_sec = max_age_spin_ != nullptr ? max_age_spin_->value()
-                                             : kDefaultMaxAgeSec;
+  out.max_age_sec =
+      max_age_spin_ != nullptr ? max_age_spin_->value() : kDefaultMaxAgeSec;
   return out;
 }
 
@@ -276,8 +277,7 @@ void TfTreePanel::showEvent(QShowEvent* event) {
 
 void TfTreePanel::setupUi() {
   ApplyPanelShell(this);
-  setStyleSheet(
-      style::sheet(QStringLiteral("tf_tree"), style::Tone::Frost));
+  setStyleSheet(style::sheet(QStringLiteral("tf_tree"), style::Tone::Frost));
   setObjectName(QStringLiteral("TfTreePanelContent"));
 
   auto* root = new QVBoxLayout(this);
@@ -386,15 +386,13 @@ void TfTreePanel::setupUi() {
   detail_title_ = new QLabel(tr("Frame details"), detail_panel);
   detail_title_->setWordWrap(true);
   detail_title_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  detail_title_->setStyleSheet(
-      style::type(style::Role::PanelBody, 15, 600));
+  detail_title_->setStyleSheet(style::type(style::Role::PanelBody, 15, 600));
   detail_layout->addWidget(detail_title_);
 
   detail_hint_ = new QLabel(tr("Select a frame to inspect transform metadata."),
                             detail_panel);
   detail_hint_->setWordWrap(true);
-  detail_hint_->setStyleSheet(
-      style::type(style::Role::PanelMuted, 12));
+  detail_hint_->setStyleSheet(style::type(style::Role::PanelMuted, 12));
   detail_layout->addWidget(detail_hint_);
 
   detail_body_ = new QWidget(detail_panel);
@@ -411,7 +409,8 @@ void TfTreePanel::setupUi() {
   detail_last_time_value_ = MakeDetailValue(detail_body_);
   detail_age_value_ = MakeDetailValue(detail_body_);
   detail_count_value_ = MakeDetailValue(detail_body_);
-  form->addRow(MakeDetailLabel(tr("Parent"), detail_body_), detail_parent_value_);
+  form->addRow(MakeDetailLabel(tr("Parent"), detail_body_),
+               detail_parent_value_);
   form->addRow(MakeDetailLabel(tr("Type"), detail_body_), detail_type_value_);
   form->addRow(MakeDetailLabel(tr("Authority"), detail_body_),
                detail_authority_value_);
@@ -438,17 +437,17 @@ void TfTreePanel::setupUi() {
   auto* status_bar = new QFrame(this);
   ApplyPanelFooterChrome(status_bar);
   auto* status_layout = new QHBoxLayout(status_bar);
-  status_layout->setContentsMargins(PanelChromeLayout::kFooterMarginH,
-                                    PanelChromeLayout::kFooterMarginV,
-                                    PanelChromeLayout::kFooterMarginH,
-                                    PanelChromeLayout::kFooterMarginV);
+  status_layout->setContentsMargins(
+      PanelChromeLayout::kFooterMarginH, PanelChromeLayout::kFooterMarginV,
+      PanelChromeLayout::kFooterMarginH, PanelChromeLayout::kFooterMarginV);
   summary_label_ = new QLabel(status_bar);
   StylePanelStatusLabel(summary_label_);
   summary_label_->setTextInteractionFlags(Qt::TextSelectableByMouse);
   status_layout->addWidget(summary_label_, 1);
   root->addWidget(status_bar);
 
-  connect(filter_edit_, &QLineEdit::textChanged, this, &TfTreePanel::onFilterChanged);
+  connect(filter_edit_, &QLineEdit::textChanged, this,
+          &TfTreePanel::onFilterChanged);
   connect(stale_only_button_, &QToolButton::toggled, this,
           &TfTreePanel::onStaleOnlyToggled);
   connect(max_age_spin_, &QDoubleSpinBox::valueChanged, this,
@@ -457,16 +456,17 @@ void TfTreePanel::setupUi() {
           &TfTreePanel::onFrameSelectionChanged);
   connect(tree_, &QTreeWidget::customContextMenuRequested, this,
           &TfTreePanel::onTreeContextMenu);
-  connect(graph_view_, &TfTreeGraphView::frameActivated, this, [this](const QString& frame_id) {
-    if (tree_ == nullptr || frame_id.isEmpty()) {
-      return;
-    }
-    const auto node_it = frame_nodes_.find(frame_id);
-    if (node_it != frame_nodes_.end() && node_it->item != nullptr) {
-      tree_->setCurrentItem(node_it->item);
-      updateDetailsForItem(node_it->item);
-    }
-  });
+  connect(graph_view_, &TfTreeGraphView::frameActivated, this,
+          [this](const QString& frame_id) {
+            if (tree_ == nullptr || frame_id.isEmpty()) {
+              return;
+            }
+            const auto node_it = frame_nodes_.find(frame_id);
+            if (node_it != frame_nodes_.end() && node_it->item != nullptr) {
+              tree_->setCurrentItem(node_it->item);
+              updateDetailsForItem(node_it->item);
+            }
+          });
   connect(fit_button, &QToolButton::clicked, this, [this]() {
     if (graph_view_ != nullptr) {
       graph_view_->zoomToFit();
@@ -487,8 +487,8 @@ QString TfTreePanel::formatTimestampSec(double sec) const {
   if (!(sec > 0.0) || !std::isfinite(sec)) {
     return tr("Unknown");
   }
-  const QDateTime date_time = QDateTime::fromSecsSinceEpoch(
-      static_cast<qint64>(sec), Qt::UTC);
+  const QDateTime date_time =
+      QDateTime::fromSecsSinceEpoch(static_cast<qint64>(sec), Qt::UTC);
   return date_time.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"));
 }
 
@@ -555,9 +555,8 @@ QString TfTreePanel::structureFingerprint(
                     (stats.is_static ? QLatin1Char('S') : QLatin1Char('D'));
     if (stale_only) {
       const double age = frameAgeSec(stats, now);
-      const bool is_stale =
-          !stats.is_static && age >= 0.0 && age > max_age &&
-          age < kMaxPlausibleAgeSeconds;
+      const bool is_stale = !stats.is_static && age >= 0.0 && age > max_age &&
+                            age < kMaxPlausibleAgeSeconds;
       token += is_stale ? QLatin1Char('X') : QLatin1Char('F');
     }
     parts.push_back(token);
@@ -571,18 +570,17 @@ double TfTreePanel::frameAgeSec(const transform::TfFrameStats& stats,
   if (stats.is_static || stats.last_stamp_ns <= 0 || !(now_sec > 0.0)) {
     return -1.0;
   }
-  const double stamp_sec =
-      static_cast<double>(stats.last_stamp_ns) * 1e-9;
+  const double stamp_sec = static_cast<double>(stats.last_stamp_ns) * 1e-9;
   return now_sec - stamp_sec;
 }
 
-bool TfTreePanel::framePassesFilters(
-    const QString& frame_id, const QString& parent_id,
-    const transform::TfFrameStats& stats, double now_sec) const {
+bool TfTreePanel::framePassesFilters(const QString& frame_id,
+                                     const QString& parent_id,
+                                     const transform::TfFrameStats& stats,
+                                     double now_sec) const {
   const QString filter =
       filter_edit_ != nullptr ? filter_edit_->text().trimmed() : QString();
-  if (!filter.isEmpty() &&
-      !frame_id.contains(filter, Qt::CaseInsensitive) &&
+  if (!filter.isEmpty() && !frame_id.contains(filter, Qt::CaseInsensitive) &&
       !parent_id.contains(filter, Qt::CaseInsensitive)) {
     return false;
   }
@@ -630,9 +628,9 @@ void TfTreePanel::updateStatsInPlace(
       ++root_count;
     }
   }
-  updateSummaryLabel(static_cast<int>(visible.size()),
-                     std::max(1, tree_ != nullptr ? tree_->topLevelItemCount()
-                                                  : root_count));
+  updateSummaryLabel(
+      static_cast<int>(visible.size()),
+      std::max(1, tree_ != nullptr ? tree_->topLevelItemCount() : root_count));
   if (graph_view_ != nullptr && view_tabs_ != nullptr &&
       view_tabs_->currentWidget() == graph_view_) {
     // Text + stale already applied; pass empty filter to avoid double-filter.
@@ -723,7 +721,8 @@ void TfTreePanel::rebuildTree() {
 
   for (const transform::TfFrameStats& stats : frames) {
     const QString frame_id = QString::fromStdString(stats.frame_id);
-    const QString parent = NormalizeParent(QString::fromStdString(stats.parent_id));
+    const QString parent =
+        NormalizeParent(QString::fromStdString(stats.parent_id));
     if (!framePassesFilters(frame_id, parent, stats, now)) {
       continue;
     }
@@ -746,7 +745,8 @@ void TfTreePanel::rebuildTree() {
     const QString frame_id = it.key();
     const transform::TfFrameStats stats = frame_nodes_.value(frame_id).stats;
     QTreeWidgetItem* item = it.value();
-    const QString parent = NormalizeParent(QString::fromStdString(stats.parent_id));
+    const QString parent =
+        NormalizeParent(QString::fromStdString(stats.parent_id));
     if (!parent.isEmpty() && item_by_frame.contains(parent)) {
       item_by_frame.value(parent)->addChild(item);
     } else {
@@ -757,12 +757,13 @@ void TfTreePanel::rebuildTree() {
 
   for (int i = 0; i < tree_->topLevelItemCount(); ++i) {
     QTreeWidgetItem* root = tree_->topLevelItem(i);
-    std::function<void(QTreeWidgetItem*)> expand_all = [&](QTreeWidgetItem* node) {
-      node->setExpanded(true);
-      for (int c = 0; c < node->childCount(); ++c) {
-        expand_all(node->child(c));
-      }
-    };
+    std::function<void(QTreeWidgetItem*)> expand_all =
+        [&](QTreeWidgetItem* node) {
+          node->setExpanded(true);
+          for (int c = 0; c < node->childCount(); ++c) {
+            expand_all(node->child(c));
+          }
+        };
     expand_all(root);
   }
 
@@ -874,10 +875,10 @@ void TfTreePanel::onTreeContextMenu(const QPoint& pos) {
 
 void TfTreePanel::onFrameSelectionChanged() {
   if (graph_view_ != nullptr) {
-    const QTreeWidgetItem* item = tree_ != nullptr ? tree_->currentItem() : nullptr;
-    graph_view_->setCurrentFrame(item != nullptr
-                                     ? item->data(0, kRoleFrameId).toString()
-                                     : QString());
+    const QTreeWidgetItem* item =
+        tree_ != nullptr ? tree_->currentItem() : nullptr;
+    graph_view_->setCurrentFrame(
+        item != nullptr ? item->data(0, kRoleFrameId).toString() : QString());
   }
   updateDetailsForItem(tree_->currentItem());
 }
@@ -904,7 +905,8 @@ void TfTreePanel::updateDetailsForItem(QTreeWidgetItem* item) {
   detail_hint_->hide();
   detail_body_->show();
 
-  const QString parent = NormalizeParent(QString::fromStdString(node.stats.parent_id));
+  const QString parent =
+      NormalizeParent(QString::fromStdString(node.stats.parent_id));
   set_if_changed(detail_parent_value_,
                  parent.isEmpty() ? tr("(root)") : parent);
   set_if_changed(detail_type_value_,
@@ -915,13 +917,12 @@ void TfTreePanel::updateDetailsForItem(QTreeWidgetItem* item) {
                              : QStringLiteral("tf_tree/detail_type_dynamic"),
         style::Tone::Frost));
   }
-  set_if_changed(
-      detail_authority_value_,
-      node.stats.authority.empty() ? tr("Unknown")
-                                   : QString::fromStdString(node.stats.authority));
+  set_if_changed(detail_authority_value_,
+                 node.stats.authority.empty()
+                     ? tr("Unknown")
+                     : QString::fromStdString(node.stats.authority));
 
-  const double stamp_sec =
-      static_cast<double>(node.stats.last_stamp_ns) / 1e9;
+  const double stamp_sec = static_cast<double>(node.stats.last_stamp_ns) / 1e9;
   set_if_changed(detail_last_time_value_, formatTimestampSec(stamp_sec));
 
   if (node.stats.is_static) {

@@ -1676,17 +1676,14 @@ void MappingPipeline::ApplyPoseUpdates(std::vector<TimedPose> poses,
         changed = changed ||
                   translation >= options_.rebuild_translation_threshold ||
                   rotation >= options_.rebuild_rotation_threshold_radians;
-        if (can_rebuild_complete_map)
-            cached_pose_updates.emplace_back(iterator, pose);
+        cached_pose_updates.emplace_back(iterator, pose);
     }
     PruneOptimizedPoses();
     if (!changed)
         return;
 
-    if (!can_rebuild_complete_map) {
+    if (!can_rebuild_complete_map)
         ++skipped_incomplete_rebuilds_;
-        return;
-    }
 
     for (const auto& [cached, pose] : cached_pose_updates) {
         cached->world_from_camera = pose.world_from_camera;
@@ -1715,7 +1712,7 @@ void MappingPipeline::ApplyPoseUpdates(std::vector<TimedPose> poses,
         if (cached_frame == cached_frames_by_id_.end()) {
             MarkHistoryIncomplete();
             ++skipped_incomplete_rebuilds_;
-            return;
+            continue;
         }
         CachedFrame& cached = *cached_frame->second;
         const auto current_pose = optimized_poses_.find(cached.frame_id);
@@ -1726,7 +1723,7 @@ void MappingPipeline::ApplyPoseUpdates(std::vector<TimedPose> poses,
             reference_pose == optimized_poses_.end()) {
             MarkHistoryIncomplete();
             ++skipped_incomplete_rebuilds_;
-            return;
+            continue;
         }
         MappingFrame updated = *cached.source_frame;
         if (!cached.payload_resident &&
@@ -1734,7 +1731,7 @@ void MappingPipeline::ApplyPoseUpdates(std::vector<TimedPose> poses,
              !ReadArchivedPayload(cached, nullptr, &updated))) {
             MarkHistoryIncomplete();
             ++skipped_incomplete_rebuilds_;
-            return;
+            continue;
         }
         updated.world_from_camera = current_pose->second;
         const Eigen::Isometry3d reference_from_camera =
@@ -1754,7 +1751,7 @@ void MappingPipeline::ApplyPoseUpdates(std::vector<TimedPose> poses,
         if (!ProjectAndFilter(updated, &points)) {
             MarkHistoryIncomplete();
             ++skipped_incomplete_rebuilds_;
-            return;
+            continue;
         }
         if (cached.payload_resident) {
             cached.camera_points = std::move(points);
@@ -1763,7 +1760,7 @@ void MappingPipeline::ApplyPoseUpdates(std::vector<TimedPose> poses,
         } else if (!WriteArchivedPayload(&cached, points, &updated)) {
             MarkHistoryIncomplete();
             ++skipped_incomplete_rebuilds_;
-            return;
+            continue;
         }
         cached.world_from_camera = current_pose->second;
         ++retriangulated_frames_;
@@ -1926,10 +1923,8 @@ MappingFrameRemovalResults MappingPipeline::ApplyFrameRemovals(
 bool MappingPipeline::Rebuild(
     double timestamp,
     const std::unordered_set<std::uint64_t>& excluded_frame_ids) {
-    if (!cache_contains_complete_history_) {
+    if (!cache_contains_complete_history_)
         ++skipped_incomplete_rebuilds_;
-        return false;
-    }
 
     DenseMap rebuilt_dense_map(options_.dense_map);
     DenseMap rebuilt_navigation_map(NavigationMapOptions(options_));
@@ -1955,6 +1950,7 @@ bool MappingPipeline::Rebuild(
         }
     }
     OccupancyGridMap rebuilt_occupancy_grid(options_.occupancy_grid);
+    bool skipped_unloadable_payload = false;
     for (const CachedFrame& cached : cache_) {
         if (excluded_frame_ids.count(cached.frame_id) != 0U)
             continue;
@@ -1964,11 +1960,13 @@ bool MappingPipeline::Rebuild(
             if (!cached.archived ||
                 !ReadArchivedPayload(cached, &archived_points, nullptr)) {
                 MarkHistoryIncomplete();
-                ++skipped_incomplete_rebuilds_;
-                return false;
+                skipped_unloadable_payload = true;
+                continue;
             }
             camera_points = &archived_points;
         }
+        if (camera_points->empty())
+            continue;
         auto world_points =
             TransformPoints(*camera_points, cached.world_from_camera);
         const Eigen::Vector3f sensor_origin =
@@ -1989,6 +1987,13 @@ bool MappingPipeline::Rebuild(
         rebuilt_navigation_map.Integrate(navigation_points);
         rebuilt_occupancy_grid.Integrate(sensor_origin, semantic_points);
     }
+    // Frame removal must not drop voxels for surviving frames we cannot load.
+    // Pose updates still replace the map so BA/IMU pose changes cannot leave
+    // ghost walls from the previous voxel grid.
+    if (skipped_unloadable_payload)
+        ++skipped_incomplete_rebuilds_;
+    if (skipped_unloadable_payload && !excluded_frame_ids.empty())
+        return false;
     dense_map_ = std::move(rebuilt_dense_map);
     navigation_map_ = std::move(rebuilt_navigation_map);
     have_navigation_center_ = have_rebuilt_navigation_center;

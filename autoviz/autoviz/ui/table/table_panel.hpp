@@ -28,7 +28,6 @@ class QDragMoveEvent;
 class QDropEvent;
 class QLineEdit;
 class QPoint;
-class QTableWidget;
 class QTimer;
 class QToolButton;
 
@@ -39,10 +38,12 @@ class VisualizationManager;
 class PanelDockWidget;
 
 namespace widget {
+class DataGrid;
 class StatusBadge;
-}
+}  // namespace widget
 
 namespace table_panel {
+class TableModel;
 
 /**
  * @class TablePanel
@@ -109,7 +110,8 @@ class TablePanel : public QWidget {
   QLineEdit* path_edit_ = nullptr;
   QLineEdit* row_filter_edit_ = nullptr;
   widget::StatusBadge* status_label_ = nullptr;
-  QTableWidget* table_ = nullptr;
+  widget::DataGrid* data_grid_ = nullptr;
+  TableModel* table_model_ = nullptr;
   QTimer* tick_timer_ = nullptr;
   QToolButton* expand_button_ = nullptr;
   QString unfiltered_row_status_;

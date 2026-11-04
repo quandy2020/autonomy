@@ -17,21 +17,25 @@
 #include <QFocusEvent>
 #include <QHBoxLayout>
 #include <QHeaderView>
+#include <QItemSelectionModel>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMimeData>
-#include <QTableWidget>
+#include <QSortFilterProxyModel>
+#include <QTableView>
 #include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
 #include <automsgs/msgs/DynamicFactory.hh>
+#include <utility>
 
 #include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/protobuf_qt_string.hpp"
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/data/data_grid.hpp"
 #include "autoviz/common/widget/display/status_badge.hpp"
 #include "autoviz/common/widget/input/search_box.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
@@ -41,6 +45,7 @@
 #include "autoviz/ui/plot/field/message_path_navigation.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
+#include "autoviz/ui/table/table_model.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -251,12 +256,11 @@ TablePanel::TablePanel(common::VisualizationManager* manager, QWidget* parent)
   path_label->setStyleSheet(style::type(style::Role::PanelMuted, 11));
   toolbar_layout->addWidget(path_label);
 
-  path_edit_ = new QLineEdit(toolbar);
-  path_edit_->setObjectName(QStringLiteral("AutovizCyanLineEdit"));
+  auto* path_box = new widget::SearchBox(toolbar);
+  path_box->SetTone(style::Tone::Frost);
+  path_edit_ = path_box;
+  path_edit_->setAccessibleName(tr("Table source path"));
   path_edit_->setPlaceholderText(tr("/channel.array_field"));
-  path_edit_->setClearButtonEnabled(true);
-  path_edit_->setStyleSheet(
-      style::sheet(QStringLiteral("widget/fields"), style::Tone::Frost));
   toolbar_layout->addWidget(path_edit_, 1);
 
   auto* row_filter_box = new widget::SearchBox(toolbar);
@@ -272,26 +276,26 @@ TablePanel::TablePanel(common::VisualizationManager* manager, QWidget* parent)
   toolbar_layout->addWidget(status_label_, 0, Qt::AlignVCenter);
   layout->addWidget(toolbar);
 
-  table_ = new QTableWidget(this);
-  table_->setObjectName(QStringLiteral("TablePanelGrid"));
-  table_->setAlternatingRowColors(true);
-  table_->setSelectionBehavior(QAbstractItemView::SelectRows);
-  table_->setSelectionMode(QAbstractItemView::ExtendedSelection);
-  table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
-  table_->setSortingEnabled(true);
-  table_->verticalHeader()->setVisible(true);
-  table_->horizontalHeader()->setStretchLastSection(true);
-  table_->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
-  table_->setStyleSheet(
-      style::sheet(QStringLiteral("channels"), style::Tone::Frost));
-  table_->setContextMenuPolicy(Qt::CustomContextMenu);
-  layout->addWidget(table_, 1);
+  table_model_ = new TableModel(this);
+  data_grid_ = new widget::DataGrid(this);
+  data_grid_->setObjectName(QStringLiteral("TablePanelGrid"));
+  data_grid_->setAccessibleName(tr("Live table rows"));
+  data_grid_->SetTone(style::Tone::Frost);
+  data_grid_->SetSourceModel(table_model_);
+  QTableView* table_view = data_grid_->view();
+  table_view->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  table_view->verticalHeader()->setVisible(true);
+  table_view->horizontalHeader()->setStretchLastSection(true);
+  table_view->horizontalHeader()->setSectionResizeMode(
+      QHeaderView::Interactive);
+  table_view->setContextMenuPolicy(Qt::CustomContextMenu);
+  layout->addWidget(data_grid_, 1);
 
   connect(path_edit_, &QLineEdit::editingFinished, this,
           &TablePanel::onPathEdited);
   connect(row_filter_edit_, &QLineEdit::textChanged, this,
           &TablePanel::onRowFilterEdited);
-  connect(table_, &QTableWidget::customContextMenuRequested, this,
+  connect(table_view, &QTableView::customContextMenuRequested, this,
           &TablePanel::onTableContextMenu);
 
   tick_timer_ = new QTimer(this);
@@ -486,10 +490,9 @@ std::string TablePanel::messageTypeForChannel(const QString& channel) const {
 
 void TablePanel::clearTable(const QString& status_hint) {
   unfiltered_row_status_.clear();
-  if (table_ != nullptr) {
-    table_->clear();
-    table_->setRowCount(0);
-    table_->setColumnCount(0);
+  if (data_grid_ != nullptr && table_model_ != nullptr) {
+    widget::ScopedDataGridUpdate update(data_grid_);
+    table_model_->Clear();
   }
   status_label_->SetStatus(widget::StatusBadge::Status::kNeutral);
   updateStatus(status_hint);
@@ -511,32 +514,16 @@ void TablePanel::onRowFilterEdited(const QString& text) {
 }
 
 void TablePanel::applyRowFilter() {
-  if (table_ == nullptr) {
+  if (data_grid_ == nullptr || table_model_ == nullptr) {
     return;
   }
   const QString filter = config_.row_filter.trimmed();
-  const int rows = table_->rowCount();
-  int shown = 0;
-  for (int row = 0; row < rows; ++row) {
-    bool match = filter.isEmpty();
-    if (!match) {
-      for (int column = 0; column < table_->columnCount(); ++column) {
-        const QTableWidgetItem* item = table_->item(row, column);
-        if (item != nullptr &&
-            item->text().contains(filter, Qt::CaseInsensitive)) {
-          match = true;
-          break;
-        }
-      }
-    }
-    table_->setRowHidden(row, !match);
-    if (match) {
-      ++shown;
-    }
-  }
+  data_grid_->SetFilterText(filter);
+  const int rows = table_model_->rowCount();
   if (rows <= 0 || unfiltered_row_status_.isEmpty()) {
     return;
   }
+  const int shown = data_grid_->proxy_model()->rowCount();
   status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
   if (filter.isEmpty()) {
     updateStatus(unfiltered_row_status_);
@@ -546,20 +533,26 @@ void TablePanel::applyRowFilter() {
 }
 
 void TablePanel::onTableContextMenu(const QPoint& pos) {
-  if (table_ == nullptr) {
+  if (data_grid_ == nullptr || data_grid_->view() == nullptr ||
+      data_grid_->proxy_model() == nullptr) {
     return;
   }
-  const QTableWidgetItem* cell = table_->itemAt(pos);
+  QTableView* view = data_grid_->view();
+  QSortFilterProxyModel* proxy = data_grid_->proxy_model();
+  const QModelIndex cell = view->indexAt(pos);
+  const QString cell_text = cell.data(Qt::DisplayRole).toString();
   QMenu menu(this);
   QAction* copy_cell = nullptr;
-  if (cell != nullptr && !cell->text().isEmpty()) {
+  if (cell.isValid() && !cell_text.isEmpty()) {
     copy_cell = menu.addAction(tr("Copy cell"));
   }
   QAction* copy_row = nullptr;
-  if (cell != nullptr) {
+  if (cell.isValid()) {
     copy_row = menu.addAction(tr("Copy row"));
   }
-  const QList<QTableWidgetItem*> selected = table_->selectedItems();
+  const QModelIndexList selected = view->selectionModel() != nullptr
+                                       ? view->selectionModel()->selectedRows()
+                                       : QModelIndexList();
   QAction* copy_selection = nullptr;
   if (!selected.isEmpty()) {
     copy_selection = menu.addAction(tr("Copy selection"));
@@ -567,49 +560,47 @@ void TablePanel::onTableContextMenu(const QPoint& pos) {
   if (menu.isEmpty()) {
     return;
   }
-  QAction* chosen = menu.exec(table_->viewport()->mapToGlobal(pos));
+  QAction* chosen = menu.exec(view->viewport()->mapToGlobal(pos));
   QClipboard* clipboard = QApplication::clipboard();
   if (chosen == nullptr || clipboard == nullptr) {
     return;
   }
   if (chosen == copy_cell) {
-    clipboard->setText(cell->text());
+    clipboard->setText(cell_text);
     return;
   }
 
-  auto row_text = [this](int row) {
+  auto row_text = [proxy](int row) {
     QStringList cells;
-    for (int column = 0; column < table_->columnCount(); ++column) {
-      const QTableWidgetItem* item = table_->item(row, column);
-      cells.push_back(item != nullptr ? item->text() : QString());
+    cells.reserve(proxy->columnCount());
+    for (int column = 0; column < proxy->columnCount(); ++column) {
+      cells.push_back(
+          proxy->index(row, column).data(Qt::DisplayRole).toString());
     }
     return cells.join(QLatin1Char('\t'));
   };
 
   if (chosen == copy_row) {
-    clipboard->setText(row_text(cell->row()));
+    clipboard->setText(row_text(cell.row()));
     return;
   }
   if (chosen == copy_selection) {
-    QList<int> rows;
-    for (const QTableWidgetItem* item : selected) {
-      if (item == nullptr || rows.contains(item->row())) {
-        continue;
-      }
-      rows.push_back(item->row());
-    }
-    std::sort(rows.begin(), rows.end());
+    QModelIndexList rows = selected;
+    std::sort(rows.begin(), rows.end(),
+              [](const QModelIndex& lhs, const QModelIndex& rhs) {
+                return lhs.row() < rhs.row();
+              });
     QStringList lines;
     QStringList headers;
-    for (int column = 0; column < table_->columnCount(); ++column) {
-      const QTableWidgetItem* header = table_->horizontalHeaderItem(column);
-      headers.push_back(header != nullptr ? header->text() : QString());
+    headers.reserve(proxy->columnCount());
+    for (int column = 0; column < proxy->columnCount(); ++column) {
+      headers.push_back(proxy->headerData(column, Qt::Horizontal).toString());
     }
     if (!headers.isEmpty()) {
       lines.push_back(headers.join(QLatin1Char('\t')));
     }
-    for (int row : rows) {
-      lines.push_back(row_text(row));
+    for (const QModelIndex& row : rows) {
+      lines.push_back(row_text(row.row()));
     }
     clipboard->setText(lines.join(QLatin1Char('\n')));
   }
@@ -646,8 +637,8 @@ void TablePanel::renderPayload(const std::string& payload) {
     return;
   }
 
-  const bool sorting = table_->isSortingEnabled();
-  table_->setSortingEnabled(false);
+  TableSnapshot snapshot;
+  snapshot.capped = count > kMaxRows;
 
   if (field->type() == google::protobuf::FieldDescriptor::TYPE_MESSAGE) {
     const google::protobuf::Descriptor* elem_desc = field->message_type();
@@ -668,13 +659,11 @@ void TablePanel::renderPayload(const std::string& payload) {
     if (headers.isEmpty()) {
       headers.push_back(QStringLiteral("value"));
     }
+    snapshot.headers = headers;
+    snapshot.cells.reserve(static_cast<qsizetype>(std::min(count, kMaxRows)) *
+                           headers.size());
 
-    table_->setColumnCount(headers.size());
-    table_->setHorizontalHeaderLabels(headers);
-
-    int rows = 0;
-    table_->setRowCount(0);
-    for (int i = 0; i < count && rows < kMaxRows; ++i) {
+    for (int i = 0; i < count && snapshot.row_count < kMaxRows; ++i) {
       if (repeated.use_single_index && i != repeated.single_index) {
         continue;
       }
@@ -684,54 +673,46 @@ void TablePanel::renderPayload(const std::string& payload) {
           !plot::ElementMatchesPathFilter(element, *repeated.element_filter)) {
         continue;
       }
-      const int row = table_->rowCount();
-      table_->insertRow(row);
       if (columns.isEmpty()) {
-        table_->setItem(row, 0,
-                        new QTableWidgetItem(QString::fromStdString(
-                            element.ShortDebugString())));
+        snapshot.cells.push_back(
+            QString::fromStdString(element.ShortDebugString()));
       } else {
-        for (int c = 0; c < columns.size(); ++c) {
-          table_->setItem(
-              row, c,
-              new QTableWidgetItem(FormatScalar(element, columns.at(c))));
+        for (const google::protobuf::FieldDescriptor* column : columns) {
+          snapshot.cells.push_back(FormatScalar(element, column));
         }
       }
-      ++rows;
+      ++snapshot.row_count;
     }
-    unfiltered_row_status_ =
-        rows == 1 ? tr("1 row")
-                  : tr("%1 rows%2")
-                        .arg(rows)
-                        .arg(count > kMaxRows ? tr(" (capped)") : QString());
-    status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
-    updateStatus(unfiltered_row_status_);
   } else {
-    table_->setColumnCount(1);
-    table_->setHorizontalHeaderLabels({ProtobufToQString(field->name())});
-    table_->setRowCount(0);
-    int rows = 0;
-    for (int i = 0; i < count && rows < kMaxRows; ++i) {
+    snapshot.headers = {ProtobufToQString(field->name())};
+    snapshot.cells.reserve(std::min(count, kMaxRows));
+    for (int i = 0; i < count && snapshot.row_count < kMaxRows; ++i) {
       if (repeated.use_single_index && i != repeated.single_index) {
         continue;
       }
-      const int row = table_->rowCount();
-      table_->insertRow(row);
-      table_->setItem(row, 0,
-                      new QTableWidgetItem(
-                          FormatRepeatedScalar(*repeated.container, field, i)));
-      ++rows;
+      snapshot.cells.push_back(
+          FormatRepeatedScalar(*repeated.container, field, i));
+      ++snapshot.row_count;
     }
-    unfiltered_row_status_ =
-        rows == 1 ? tr("1 row")
-                  : tr("%1 rows%2")
-                        .arg(rows)
-                        .arg(count > kMaxRows ? tr(" (capped)") : QString());
-    status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
-    updateStatus(unfiltered_row_status_);
   }
 
-  table_->setSortingEnabled(sorting);
+  const int rows = snapshot.row_count;
+  const bool capped = snapshot.capped;
+  {
+    widget::ScopedDataGridUpdate update(data_grid_);
+    if (!table_model_->Replace(std::move(snapshot))) {
+      status_label_->SetStatus(widget::StatusBadge::Status::kError);
+      unfiltered_row_status_.clear();
+      updateStatus(tr("Invalid table data"));
+      return;
+    }
+  }
+  unfiltered_row_status_ =
+      rows == 1
+          ? tr("1 row")
+          : tr("%1 rows%2").arg(rows).arg(capped ? tr(" (capped)") : QString());
+  status_label_->SetStatus(widget::StatusBadge::Status::kSuccess);
+  updateStatus(unfiltered_row_status_);
   applyRowFilter();
 }
 

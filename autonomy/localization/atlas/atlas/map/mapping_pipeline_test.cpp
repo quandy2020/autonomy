@@ -991,7 +991,7 @@ TEST(MappingPipelineTest, RejectsInvalidRollingNavigationWindow) {
     EXPECT_THROW(MappingPipeline(std::move(options)), std::invalid_argument);
 }
 
-TEST(MappingPipelineTest, IncompleteHistoryNeverDestroysOlderMapData) {
+TEST(MappingPipelineTest, IncompleteHistoryRebuildsWithoutGhostVoxels) {
     MappingPipelineOptions options;
     options.queue_capacity = 4;
     options.maximum_cached_frames = 2;
@@ -1029,9 +1029,19 @@ TEST(MappingPipelineTest, IncompleteHistoryNeverDestroysOlderMapData) {
     ASSERT_TRUE(pipeline.Flush());
     const auto after = pipeline.LatestSnapshot();
     ASSERT_NE(after, nullptr);
-    EXPECT_EQ(after->dense_map.points.size(), 3U);
-    EXPECT_EQ(after->dense_map.generation, before->dense_map.generation);
-    EXPECT_EQ(pipeline.stats().skipped_incomplete_rebuilds, 1U);
+    EXPECT_GT(after->dense_map.generation, before->dense_map.generation);
+    ASSERT_FALSE(after->dense_map.points.empty());
+    bool found_updated_pose = false;
+    bool found_stale_pose = false;
+    for (const auto& point : after->dense_map.points) {
+        if (std::abs(point.position.x() - 4.0F) < 1e-3F)
+            found_updated_pose = true;
+        if (std::abs(point.position.x() - 2.0F) < 1e-3F)
+            found_stale_pose = true;
+    }
+    EXPECT_TRUE(found_updated_pose);
+    EXPECT_FALSE(found_stale_pose);
+    EXPECT_GE(pipeline.stats().skipped_incomplete_rebuilds, 1U);
     pipeline.Stop();
 }
 
@@ -1151,7 +1161,7 @@ TEST(MappingPipelineTest, ArchivedMonocularFrameRetriangulatesLosslessly) {
     pipeline.Stop();
 }
 
-TEST(MappingPipelineTest, ArchiveQuotaFailureKeepsExistingMap) {
+TEST(MappingPipelineTest, ArchiveQuotaFailureRebuildsResidualFrames) {
     ScopedTestDirectory directory("archive_failure");
     MappingPipelineOptions options;
     options.queue_capacity = 4;
@@ -1191,13 +1201,22 @@ TEST(MappingPipelineTest, ArchiveQuotaFailureKeepsExistingMap) {
     ASSERT_TRUE(pipeline.Flush());
     const auto after = pipeline.LatestSnapshot();
     ASSERT_NE(after, nullptr);
-    EXPECT_EQ(after->dense_map.points.size(), 3U);
-    EXPECT_EQ(after->dense_map.generation, before->dense_map.generation);
+    EXPECT_GT(after->dense_map.generation, before->dense_map.generation);
+    bool found_updated_pose = false;
+    bool found_stale_pose = false;
+    for (const auto& point : after->dense_map.points) {
+        if (std::abs(point.position.x() - 4.0F) < 1e-3F)
+            found_updated_pose = true;
+        if (std::abs(point.position.x() - 2.0F) < 1e-3F)
+            found_stale_pose = true;
+    }
+    EXPECT_TRUE(found_updated_pose);
+    EXPECT_FALSE(found_stale_pose);
     EXPECT_GE(pipeline.stats().history_archive_failures, 1U);
     pipeline.Stop();
 }
 
-TEST(MappingPipelineTest, CorruptArchiveHeaderNeverReplacesExistingMap) {
+TEST(MappingPipelineTest, CorruptArchiveHeaderSkipsUnreadableFrames) {
     ScopedTestDirectory directory("corrupt_archive");
     MappingPipelineOptions options;
     options.queue_capacity = 4;
@@ -1252,8 +1271,9 @@ TEST(MappingPipelineTest, CorruptArchiveHeaderNeverReplacesExistingMap) {
     ASSERT_TRUE(pipeline.Flush());
     const auto after = pipeline.LatestSnapshot();
     ASSERT_NE(after, nullptr);
-    EXPECT_EQ(after->dense_map.points.size(), 2U);
-    EXPECT_EQ(after->dense_map.generation, before->dense_map.generation);
+    EXPECT_GT(after->dense_map.generation, before->dense_map.generation);
+    EXPECT_LE(after->dense_map.points.size(), before->dense_map.points.size());
+    EXPECT_FALSE(after->dense_map.points.empty());
     EXPECT_GE(pipeline.stats().history_archive_failures, 1U);
     EXPECT_GE(pipeline.stats().skipped_incomplete_rebuilds, 1U);
     pipeline.Stop();

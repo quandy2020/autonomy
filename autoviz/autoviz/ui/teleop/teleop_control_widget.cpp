@@ -2,14 +2,9 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
-#include "autoviz/common/interaction/teleop_channels.hpp"
 #include "autoviz/ui/teleop/teleop_control_widget.hpp"
 
-#include <algorithm>
-
-#include <QAbstractButton>
 #include <QAbstractSpinBox>
-#include <QButtonGroup>
 #include <QCheckBox>
 #include <QDoubleSpinBox>
 #include <QFocusEvent>
@@ -21,20 +16,16 @@
 #include <QSizePolicy>
 #include <QToolButton>
 #include <QVBoxLayout>
+#include <algorithm>
 
-#include "autoviz/ui/theme/glass.hpp"
-#include "autoviz/ui/theme/style.hpp"
+#include "autoviz/common/interaction/teleop_channels.hpp"
+#include "autoviz/common/widget/input/segmented_control.hpp"
 #include "autoviz/ui/teleop/teleop_joystick_widget.hpp"
+#include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace teleop {
 namespace {
-
-QString HexAccent() { return glass::ShellCssAccent(); }
-QString HexText() { return glass::ShellCssText(); }
-QString HexMuted() { return glass::ShellCssMuted(); }
-QString HexBorder() { return glass::ShellCssBorder(); }
-QString HexBg() { return glass::ShellCssBg(); }
 
 constexpr char kDanger[] = "#E11D48";
 constexpr char kDangerHover[] = "#BE123C";
@@ -47,8 +38,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   auto* card = new QFrame(parent);
   card->setObjectName(QStringLiteral("TeleopSpeedCard"));
   card->setToolTip(tip);
-  card->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/speed_card")));
+  card->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_card")));
 
   auto* root = new QVBoxLayout(card);
   root->setContentsMargins(12, 10, 12, 10);
@@ -71,21 +61,18 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   spin->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
   spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   spin->setFixedHeight(28);
-  spin->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/speed_spin")));
+  spin->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_spin")));
   root->addWidget(spin);
 
   auto* unit_label = new QLabel(unit.trimmed(), card);
   unit_label->setAlignment(Qt::AlignHCenter);
-  unit_label->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/speed_unit")));
+  unit_label->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_unit")));
   root->addWidget(unit_label);
   root->addSpacing(8);
 
   auto* rule = new QFrame(card);
   rule->setFixedHeight(1);
-  rule->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/speed_rule")));
+  rule->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_rule")));
   root->addWidget(rule);
   root->addSpacing(8);
 
@@ -94,8 +81,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   steppers->setSpacing(10);
   steppers->addStretch(1);
 
-  const QString step_style =
-      style::sheet(QStringLiteral("teleop/step_button"));
+  const QString step_style = style::sheet(QStringLiteral("teleop/step_button"));
 
   auto* minus = new QToolButton(card);
   minus->setText(QStringLiteral("−"));
@@ -133,8 +119,7 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   setAttribute(Qt::WA_StyledBackground, true);
   setFocusPolicy(Qt::StrongFocus);
   setMinimumWidth(220);
-  setStyleSheet(
-      style::sheet(QStringLiteral("teleop/control_root")));
+  setStyleSheet(style::sheet(QStringLiteral("teleop/control_root")));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(10, 10, 10, 10);
@@ -143,8 +128,7 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   // —— Header glass strip ——
   auto* header = new QFrame(this);
   header->setObjectName(QStringLiteral("TeleopHeader"));
-  header->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/header")));
+  header->setStyleSheet(style::sheet(QStringLiteral("teleop/header")));
   auto* header_layout = new QVBoxLayout(header);
   header_layout->setContentsMargins(8, 8, 8, 8);
   header_layout->setSpacing(8);
@@ -153,39 +137,20 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   top_row->setSpacing(8);
   top_row->setContentsMargins(0, 0, 0, 0);
 
-  auto* mode_shell = new QFrame(header);
-  mode_shell->setObjectName(QStringLiteral("TeleopModeSegment"));
-  mode_shell->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/mode_segment")));
-  auto* mode_row = new QHBoxLayout(mode_shell);
-  mode_row->setContentsMargins(3, 3, 3, 3);
-  mode_row->setSpacing(2);
-  mode_group_ = new QButtonGroup(this);
-  mode_group_->setExclusive(true);
-  dual_mode_button_ = new QToolButton(mode_shell);
-  dual_mode_button_->setText(tr("Dual"));
-  dual_mode_button_->setToolTip(tr("Left: Move · Right: Turn"));
-  dual_mode_button_->setCheckable(true);
-  dual_mode_button_->setChecked(true);
-  dual_mode_button_->setCursor(Qt::PointingHandCursor);
-  dual_mode_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  dual_mode_button_->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/mode_toggle")));
-  arcade_mode_button_ = new QToolButton(mode_shell);
-  arcade_mode_button_->setText(tr("Arcade"));
-  arcade_mode_button_->setToolTip(tr("WASD / arrows to drive · Space: E-Stop"));
-  arcade_mode_button_->setCheckable(true);
-  arcade_mode_button_->setCursor(Qt::PointingHandCursor);
-  arcade_mode_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  arcade_mode_button_->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/mode_toggle")));
-  mode_group_->addButton(dual_mode_button_,
-                         static_cast<int>(TeleopStickMode::kDual));
-  mode_group_->addButton(arcade_mode_button_,
-                         static_cast<int>(TeleopStickMode::kArcade));
-  mode_row->addWidget(dual_mode_button_);
-  mode_row->addWidget(arcade_mode_button_);
-  top_row->addWidget(mode_shell, 1);
+  mode_control_ = new widget::SegmentedControl(header);
+  mode_control_->setObjectName(QStringLiteral("TeleopModeSegment"));
+  mode_control_->setAccessibleName(tr("Teleoperation stick mode"));
+  mode_control_->setToolTip(
+      tr("Dual: left stick moves and right stick turns; Arcade: use WASD or "
+         "arrow keys, Space for emergency stop"));
+  mode_control_->SetTone(style::Tone::Frost);
+  mode_control_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  mode_control_->AddSegment(tr("Dual"),
+                            static_cast<int>(TeleopStickMode::kDual));
+  mode_control_->AddSegment(tr("Arcade"),
+                            static_cast<int>(TeleopStickMode::kArcade));
+  mode_control_->SetCurrentIndex(0);
+  top_row->addWidget(mode_control_, 1);
 
   smart_teleop_check_ = new QCheckBox(tr("Smart"), header);
   smart_teleop_check_->setCursor(Qt::PointingHandCursor);
@@ -221,8 +186,9 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   auto* dual_row = new QHBoxLayout();
   dual_row->setSpacing(18);
 
-  auto make_pad_column = [&](TeleopJoystickWidget** stick_out, TeleopStickAxes axes,
-                             const QString& caption, const QString& tip) {
+  auto make_pad_column = [&](TeleopJoystickWidget** stick_out,
+                             TeleopStickAxes axes, const QString& caption,
+                             const QString& tip) {
     auto* col = new QWidget(dual_frame_);
     auto* col_layout = new QVBoxLayout(col);
     col_layout->setContentsMargins(0, 0, 0, 0);
@@ -234,16 +200,14 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
     col_layout->addWidget(stick, 1);
     auto* cap = new QLabel(caption, col);
     cap->setAlignment(Qt::AlignHCenter);
-    cap->setStyleSheet(
-        style::sheet(QStringLiteral("teleop/pad_caption")));
+    cap->setStyleSheet(style::sheet(QStringLiteral("teleop/pad_caption")));
     col_layout->addWidget(cap);
     return col;
   };
 
-  dual_row->addWidget(
-      make_pad_column(&move_joystick_, TeleopStickAxes::kOmni, tr("Move"),
-                      tr("Move — drag the ring")),
-      1);
+  dual_row->addWidget(make_pad_column(&move_joystick_, TeleopStickAxes::kOmni,
+                                      tr("Move"), tr("Move — drag the ring")),
+                      1);
   dual_row->addWidget(
       make_pad_column(&turn_joystick_, TeleopStickAxes::kYaw, tr("Turn"),
                       tr("Turn — drag left / right on the ring")),
@@ -268,8 +232,7 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   hint_label_ = new QLabel(this);
   hint_label_->setWordWrap(true);
   hint_label_->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
-  hint_label_->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/hint")));
+  hint_label_->setStyleSheet(style::sheet(QStringLiteral("teleop/hint")));
   root->addWidget(hint_label_);
 
   auto* stop_button = new QPushButton(tr("E-STOP"), this);
@@ -277,17 +240,20 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   stop_button->setMinimumHeight(40);
   stop_button->setCursor(Qt::PointingHandCursor);
   stop_button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  stop_button->setStyleSheet(
-      style::sheet(QStringLiteral("teleop/estop")));
+  stop_button->setStyleSheet(style::sheet(QStringLiteral("teleop/estop")));
   root->addWidget(stop_button);
 
-  connect(mode_group_, &QButtonGroup::idClicked, this, [this](int id) {
-    setStickMode(static_cast<TeleopStickMode>(id));
-  });
-  connect(max_linear_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, [this](double) { emitMaxSpeedsFromUi(); });
-  connect(max_angular_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, [this](double) { emitMaxSpeedsFromUi(); });
+  connect(mode_control_, &widget::SegmentedControl::SegmentClicked, this,
+          [this](int index) {
+            setStickMode(static_cast<TeleopStickMode>(
+                mode_control_->segment_data(index).toInt()));
+          });
+  connect(max_linear_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+          [this](double) { emitMaxSpeedsFromUi(); });
+  connect(max_angular_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+          [this](double) { emitMaxSpeedsFromUi(); });
   connect(smart_teleop_check_, &QCheckBox::toggled, this, [this](bool checked) {
     smart_teleop_enabled_ = checked;
     updateSmartTeleopHint();
@@ -355,8 +321,8 @@ void TeleopControlWidget::setSmartTeleopAvailable(bool available) {
     smart_teleop_check_->setToolTip(
         tr("Requires building with autonomy (task teleop proto)"));
   } else {
-    smart_teleop_check_->setToolTip(
-        tr("Send velocity via autonomy task teleop (MPPI assist), not /cmd_vel"));
+    smart_teleop_check_->setToolTip(tr(
+        "Send velocity via autonomy task teleop (MPPI assist), not /cmd_vel"));
   }
 }
 
@@ -436,11 +402,8 @@ void TeleopControlWidget::setStickMode(TeleopStickMode mode) {
 
 void TeleopControlWidget::applyModeUi() {
   const bool arcade = stick_mode_ == TeleopStickMode::kArcade;
-  if (dual_mode_button_ != nullptr) {
-    dual_mode_button_->setChecked(!arcade);
-  }
-  if (arcade_mode_button_ != nullptr) {
-    arcade_mode_button_->setChecked(arcade);
+  if (mode_control_ != nullptr) {
+    mode_control_->SetCurrentIndex(arcade ? 1 : 0);
   }
   if (dual_frame_ != nullptr) {
     dual_frame_->setVisible(!arcade);
@@ -456,7 +419,8 @@ void TeleopControlWidget::applyModeUi() {
   }
 }
 
-void TeleopControlWidget::emitArcadeFromStick(double x, double y, bool released) {
+void TeleopControlWidget::emitArcadeFromStick(double x, double y,
+                                              bool released) {
   emit linearChanged(0.0, y);
   emit angularChanged(-x);
   if (released) {

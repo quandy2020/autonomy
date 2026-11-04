@@ -18,6 +18,8 @@
 #include <QVariant>
 #include <algorithm>
 
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
+
 namespace autoviz::widget {
 
 Drawer::Drawer(QWidget* parent)
@@ -144,7 +146,8 @@ void Drawer::Show() {
   if (!was_visible) {
     SetProgress(0.0);
   }
-  animation_->setDuration(GetThemeTokens(tone_).animation_normal_ms);
+  animation_->setDuration(
+      MotionPolicy::ResolveDuration(GetThemeTokens(tone_).animation_normal_ms));
   animation_->setStartValue(progress_);
   animation_->setEndValue(1.0);
   animation_->start(QAbstractAnimation::KeepWhenStopped);
@@ -163,7 +166,8 @@ void Drawer::Dismiss() {
     emit Closed();
     return;
   }
-  animation_->setDuration(GetThemeTokens(tone_).animation_normal_ms);
+  animation_->setDuration(
+      MotionPolicy::ResolveDuration(GetThemeTokens(tone_).animation_normal_ms));
   animation_->setStartValue(progress_);
   animation_->setEndValue(0.0);
   animation_->start(QAbstractAnimation::KeepWhenStopped);
@@ -288,8 +292,7 @@ void Drawer::UpdateContentGeometry() {
 }
 
 bool Drawer::AnimationsEnabled() const {
-  return isVisible() && isEnabled() &&
-         style()->styleHint(QStyle::SH_Widget_Animate, nullptr, this) != 0;
+  return isVisible() && isEnabled() && !MotionPolicy::ReducedMotionEnabled();
 }
 
 }  // namespace autoviz::widget

@@ -19,7 +19,6 @@
 #pragma once
 
 #include <QWidget>
-
 #include <cstdint>
 #include <mutex>
 #include <string>
@@ -37,6 +36,7 @@ namespace autoviz {
 namespace widget {
 class EmptyState;
 class SearchBox;
+class SegmentedControl;
 class StatusBadge;
 }  // namespace widget
 
@@ -90,7 +90,8 @@ class ChannelsPanel : public QWidget {
   /**
    * @brief Rebuilds the channel tree when structure changes; otherwise a no-op.
    *
-   * Compares against @c cached_channel_keys_ via @ref channelsStructureChanged().
+   * Compares against @c cached_channel_keys_ via @ref
+   * channelsStructureChanged().
    *
    * @see rebuildTree()
    */
@@ -292,13 +293,14 @@ class ChannelsPanel : public QWidget {
   /** Toggle lightweight Hz probe subscriptions. */
   QToolButton* probe_button_ = nullptr;
 
-  /** Type filter chip container (All/Numeric/…). */
-  QWidget* type_filter_chips_ = nullptr;
+  /** Type filter choices (All/Numeric/…). */
+  widget::SegmentedControl* type_filter_chips_ = nullptr;
 
   /** Periodic timer driving @ref refreshStats(). */
   QTimer* stats_timer_ = nullptr;
 
-  /** Last known sorted channel keys; used by @ref channelsStructureChanged(). */
+  /** Last known sorted channel keys; used by @ref channelsStructureChanged().
+   */
   QStringList cached_channel_keys_;
 
   /** Active type chip. */

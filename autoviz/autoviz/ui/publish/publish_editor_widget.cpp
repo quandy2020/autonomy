@@ -10,6 +10,7 @@
 #include <QDateTime>
 #include <QDoubleSpinBox>
 #include <QFont>
+#include <QFrame>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -25,21 +26,20 @@
 #include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
-#include <QFrame>
-
 #include <algorithm>
 #include <chrono>
 
-#include "autoviz/common/visualization_manager.hpp"
-#include "autoviz/common/widget/display/status_badge.hpp"
-#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/interaction/channel_writer_registry.hpp"
-#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/display/status_badge.hpp"
+#include "autoviz/common/widget/layout/separator.hpp"
+#include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
+#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -107,7 +107,8 @@ void StyleGhostButton(QPushButton* button) {
       style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
-int FindPresetIndex(const QVector<PublishPreset>& presets, const QString& name) {
+int FindPresetIndex(const QVector<PublishPreset>& presets,
+                    const QString& name) {
   for (int i = 0; i < presets.size(); ++i) {
     if (presets.at(i).name.compare(name, Qt::CaseInsensitive) == 0) {
       return i;
@@ -117,7 +118,8 @@ int FindPresetIndex(const QVector<PublishPreset>& presets, const QString& name) 
 }
 
 QString FormatTimestampNow() {
-  return QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz"));
+  return QDateTime::currentDateTime().toString(
+      QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz"));
 }
 
 }  // namespace
@@ -143,7 +145,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   auto* collection_layout = new QHBoxLayout(collection_frame);
   collection_layout->setContentsMargins(12, 8, 12, 8);
   collection_layout->setSpacing(8);
-  collection_layout->addWidget(MakeFieldLabel(tr("Collection"), collection_frame));
+  collection_layout->addWidget(
+      MakeFieldLabel(tr("Collection"), collection_frame));
   preset_combo_ = new QComboBox(collection_frame);
   preset_combo_->setMinimumWidth(140);
   StyleToolbarCombo(preset_combo_);
@@ -179,7 +182,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   message_type_combo_->setEditable(true);
   message_type_combo_->setInsertPolicy(QComboBox::NoInsert);
   message_type_combo_->setMinimumWidth(160);
-  message_type_combo_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  message_type_combo_->setSizePolicy(QSizePolicy::Expanding,
+                                     QSizePolicy::Fixed);
   StyleToolbarCombo(message_type_combo_);
   top_layout->addWidget(message_type_combo_, 2);
   top_layout->addWidget(MakeFieldLabel(tr("Freq"), top_frame));
@@ -192,14 +196,13 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   StyleToolbarSpin(publish_rate_spin_);
   top_layout->addWidget(publish_rate_spin_);
   auto* hz_label = MakeFieldLabel(tr("Hz"), top_frame);
-  hz_label->setStyleSheet(
-      style::type(style::Role::PanelMuted, 12));
+  hz_label->setStyleSheet(style::type(style::Role::PanelMuted, 12));
   top_layout->addWidget(hz_label);
   editing_mode_check_ = new QCheckBox(tr("Advanced"), top_frame);
   editing_mode_check_->setChecked(config_.editing_mode);
   editing_mode_check_->setToolTip(tr("Show JSON editor and collection"));
-  editing_mode_check_->setStyleSheet(
-      style::sheet(QStringLiteral("publish/advanced_check"), style::Tone::Frost));
+  editing_mode_check_->setStyleSheet(style::sheet(
+      QStringLiteral("publish/advanced_check"), style::Tone::Frost));
   top_layout->addWidget(editing_mode_check_);
 
   add_publisher_button_ = new QPushButton(QStringLiteral("+"), top_frame);
@@ -212,10 +215,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   refresh_topics_button_->setToolTip(tr("Refresh channel list"));
   StyleIconChipButton(refresh_topics_button_);
 
-  auto* action_separator = new QFrame(top_frame);
-  action_separator->setFrameShape(QFrame::NoFrame);
-  action_separator->setFixedWidth(1);
-  action_separator->setStyleSheet(style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  auto* action_separator = new widget::Separator(Qt::Vertical, top_frame);
+  action_separator->SetTone(style::Tone::Frost);
   action_separator->setMinimumHeight(22);
 
   publish_once_button_ = new QPushButton(tr("Publish"), top_frame);
@@ -239,7 +240,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   tree_card_layout->setContentsMargins(0, 0, 0, 0);
   tree_card_layout->setSpacing(0);
   publishers_tree_ = new PublishFieldTreeWidget(tree_card);
-  publishers_tree_->setDisplayMode(PublishFieldTreeWidget::DisplayMode::kRqtPublishers);
+  publishers_tree_->setDisplayMode(
+      PublishFieldTreeWidget::DisplayMode::kRqtPublishers);
   publishers_tree_->setMinimumHeight(160);
   publishers_tree_->setToolTip(
       tr("rqt-style publisher list.\n"
@@ -260,7 +262,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   expression_toolbar_layout->setSpacing(6);
   expression_toolbar_layout->addWidget(
       MakeFieldLabel(tr("Expression"), expression_toolbar_));
-  reset_template_button_ = new QPushButton(tr("Use template"), expression_toolbar_);
+  reset_template_button_ =
+      new QPushButton(tr("Use template"), expression_toolbar_);
   StyleGhostButton(reset_template_button_);
   fill_latest_button_ = new QPushButton(tr("From latest"), expression_toolbar_);
   StyleGhostButton(fill_latest_button_);
@@ -279,7 +282,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   auto* request_layout = new QVBoxLayout(request_group_);
   request_layout->setContentsMargins(10, 14, 10, 10);
   message_tabs_ = new QTabWidget(request_group_);
-  message_edit_ = makeJsonEditor(message_tabs_, tr("Message expression (JSON)"));
+  message_edit_ =
+      makeJsonEditor(message_tabs_, tr("Message expression (JSON)"));
 
   auto* fields_tab = new QWidget(message_tabs_);
   auto* fields_layout = new QVBoxLayout(fields_tab);
@@ -301,7 +305,8 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   fields_toolbar->addWidget(add_array_button);
   fields_toolbar->addWidget(remove_array_button);
   field_tree_ = new PublishFieldTreeWidget(fields_tab);
-  field_tree_->setDisplayMode(PublishFieldTreeWidget::DisplayMode::kFieldsEditor);
+  field_tree_->setDisplayMode(
+      PublishFieldTreeWidget::DisplayMode::kFieldsEditor);
   fields_layout->addLayout(fields_toolbar);
   fields_layout->addWidget(field_tree_, 1);
 
@@ -346,8 +351,9 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
           &PublishEditorWidget::onResetTemplate);
   connect(fill_latest_button_, &QPushButton::clicked, this,
           &PublishEditorWidget::onFillFromLatest);
-  connect(publish_rate_spin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged),
-          this, &PublishEditorWidget::onPublishRateChanged);
+  connect(publish_rate_spin_,
+          QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+          &PublishEditorWidget::onPublishRateChanged);
   connect(add_publisher_button_, &QPushButton::clicked, this,
           &PublishEditorWidget::onAddPublisher);
   connect(remove_publisher_button_, &QPushButton::clicked, this,
@@ -358,12 +364,12 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
           &PublishEditorWidget::onPublishOnceClicked);
   connect(publishers_tree_, &PublishFieldTreeWidget::publisherEdited, this,
           &PublishEditorWidget::onPublisherEdited);
-  connect(publishers_tree_, &PublishFieldTreeWidget::publisherPublishingChanged, this,
-          &PublishEditorWidget::onPublisherPublishingChanged);
+  connect(publishers_tree_, &PublishFieldTreeWidget::publisherPublishingChanged,
+          this, &PublishEditorWidget::onPublisherPublishingChanged);
   connect(publishers_tree_, &PublishFieldTreeWidget::publisherRateChanged, this,
           &PublishEditorWidget::onPublisherRateChanged);
-  connect(publishers_tree_, &PublishFieldTreeWidget::publisherSelectionChanged, this,
-          [this](int index) {
+  connect(publishers_tree_, &PublishFieldTreeWidget::publisherSelectionChanged,
+          this, [this](int index) {
             if (index >= 0 && !suppress_draft_sync_) {
               loadPublisherAt(index);
               emitConfigChanged();
@@ -413,14 +419,12 @@ QPlainTextEdit* PublishEditorWidget::makeJsonEditor(QWidget* parent,
   QHash<QString, QString> tokens = style::tokens(style::Tone::Frost);
   tokens.insert(QStringLiteral("{{editor-bg}}"),
                 read_only ? QLatin1String(kBg) : QLatin1String(kSurface));
-  editor->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), tokens));
+  editor->setStyleSheet(style::sheet(QStringLiteral("publish"), tokens));
   return editor;
 }
 
 void PublishEditorWidget::applyChromeStyles() {
-  setStyleSheet(
-      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  setStyleSheet(style::sheet(QStringLiteral("publish"), style::Tone::Frost));
 }
 
 void PublishEditorWidget::refreshPublishButtonAppearance() {
@@ -500,7 +504,8 @@ void PublishEditorWidget::setConfig(const PublishPanelConfig& config) {
   // Persistently saved layouts may still use plain Twist on /cmd_vel; autonomy
   // stack requires TwistStamped (controller / autosim / task).
   if (config_.channel == QStringLiteral("/cmd_vel") &&
-      (config_.message_type == QStringLiteral("automsgs.msgs.geometry_msgs.Twist") ||
+      (config_.message_type ==
+           QStringLiteral("automsgs.msgs.geometry_msgs.Twist") ||
        config_.message_type == QStringLiteral("geometry_msgs/Twist") ||
        config_.message_type == QStringLiteral("geometry_msgs.Twist"))) {
     config_.message_type =
@@ -578,7 +583,8 @@ void PublishEditorWidget::refreshChannels() {
   QStringList channels = plot::AllKnownChannels(manager_);
   for (const PublishEntry& entry : config_.publishers) {
     const QString channel = entry.channel.trimmed();
-    if (!channel.isEmpty() && !channels.contains(channel, Qt::CaseInsensitive)) {
+    if (!channel.isEmpty() &&
+        !channels.contains(channel, Qt::CaseInsensitive)) {
       channels.push_back(channel);
     }
   }
@@ -587,8 +593,7 @@ void PublishEditorWidget::refreshChannels() {
       channels.push_back(custom);
     }
   }
-  if (!current.isEmpty() &&
-      !channels.contains(current, Qt::CaseInsensitive)) {
+  if (!current.isEmpty() && !channels.contains(current, Qt::CaseInsensitive)) {
     channels.push_back(current);
   }
   channels.sort(Qt::CaseInsensitive);
@@ -617,8 +622,10 @@ void PublishEditorWidget::rebuildMessageTypeList() {
   message_type_combo_->blockSignals(true);
   const QString current = message_type_combo_->currentText();
   message_type_combo_->clear();
-  for (const std::string& type : PublishMessageCodec::instance().listMessageTypes()) {
-    message_type_combo_->addItem(ShortTypeLabel(type), QString::fromStdString(type));
+  for (const std::string& type :
+       PublishMessageCodec::instance().listMessageTypes()) {
+    message_type_combo_->addItem(ShortTypeLabel(type),
+                                 QString::fromStdString(type));
   }
   const int index = message_type_combo_->findText(current);
   if (index >= 0) {
@@ -658,7 +665,8 @@ bool PublishEditorWidget::prepareDraftPublisher(PublishEntry* entry,
   }
   ensureDraftExpression();
   captureDraftFromUi();
-  if (config_.message_json.trimmed().isEmpty() && !config_.message_type.isEmpty()) {
+  if (config_.message_json.trimmed().isEmpty() &&
+      !config_.message_type.isEmpty()) {
     maybeFillTemplateForType(config_.message_type);
     captureDraftFromUi();
   }
@@ -713,8 +721,7 @@ void PublishEditorWidget::loadPublisherAt(int index) {
   if (index < 0 || index >= config_.publishers.size()) {
     return;
   }
-  if (selectedPublisherRow() == index &&
-      publishers_tree_ != nullptr &&
+  if (selectedPublisherRow() == index && publishers_tree_ != nullptr &&
       publishers_tree_->isPublisherRootSelected(index) &&
       channel_combo_->currentText().trimmed().compare(
           config_.publishers.at(index).channel, Qt::CaseInsensitive) == 0) {
@@ -772,8 +779,8 @@ void PublishEditorWidget::updatePublishButtonState() {
                 : tr("Set channel and type first"));
   }
   const bool can_publish_once =
-      has_node &&
-      (selectedPublisherCanPublish() || (has_channel && has_type && has_message));
+      has_node && (selectedPublisherCanPublish() ||
+                   (has_channel && has_type && has_message));
   publish_once_button_->setEnabled(can_publish_once);
   remove_publisher_button_->setEnabled(resolveActivePublisherRow() >= 0);
 }
@@ -798,9 +805,9 @@ int PublishEditorWidget::resolveActivePublisherRow() const {
 void PublishEditorWidget::showResult(bool success, const QString& summary,
                                      const QString& details) {
   result_status_label_->SetText(summary);
-  result_status_label_->SetStatus(
-      success ? widget::StatusBadge::Status::kSuccess
-              : widget::StatusBadge::Status::kError);
+  result_status_label_->SetStatus(success
+                                      ? widget::StatusBadge::Status::kSuccess
+                                      : widget::StatusBadge::Status::kError);
   if (!details.isEmpty()) {
     result_edit_->setPlainText(details);
   }
@@ -831,7 +838,8 @@ void PublishEditorWidget::rememberCustomChannel(const QString& channel) {
   custom_channels_.push_back(trimmed);
 }
 
-QString PublishEditorWidget::messageTypeForChannel(const QString& channel) const {
+QString PublishEditorWidget::messageTypeForChannel(
+    const QString& channel) const {
   if (channel.isEmpty()) {
     return {};
   }
@@ -853,7 +861,8 @@ void PublishEditorWidget::setMessageTypeField(const QString& message_type) {
   message_type_combo_->setEditText(message_type);
 }
 
-void PublishEditorWidget::fillMessageJson(const QString& json, bool user_edited) {
+void PublishEditorWidget::fillMessageJson(const QString& json,
+                                          bool user_edited) {
   suppress_template_update_ = true;
   message_edit_->setPlainText(json);
   config_.message_json = json;
@@ -934,24 +943,29 @@ void PublishEditorWidget::updateMetadataPanel() {
   const QString inferred = messageTypeForChannel(channel);
 
   QStringList lines;
-  lines << tr("Endpoint: %1").arg(channel.isEmpty() ? tr("(not set)") : channel);
+  lines
+      << tr("Endpoint: %1").arg(channel.isEmpty() ? tr("(not set)") : channel);
   lines << tr("Schema (selected): %1")
-               .arg(schema.isEmpty() ? tr("(not set)") : ShortTypeLabel(schema.toStdString()));
-  if (!inferred.isEmpty() && inferred.compare(schema, Qt::CaseInsensitive) != 0) {
-    lines << tr("Schema (discovered): %1").arg(ShortTypeLabel(inferred.toStdString()));
+               .arg(schema.isEmpty() ? tr("(not set)")
+                                     : ShortTypeLabel(schema.toStdString()));
+  if (!inferred.isEmpty() &&
+      inferred.compare(schema, Qt::CaseInsensitive) != 0) {
+    lines << tr("Schema (discovered): %1")
+                 .arg(ShortTypeLabel(inferred.toStdString()));
   }
 
   if (manager_ != nullptr && !channel.isEmpty()) {
     bool found = false;
     for (const integration::ChannelInfo& info : manager_->channels()) {
-      if (QString::fromStdString(info.channel_name).compare(channel, Qt::CaseInsensitive) ==
-          0) {
+      if (QString::fromStdString(info.channel_name)
+              .compare(channel, Qt::CaseInsensitive) == 0) {
         found = true;
         lines << tr("Discovered type: %1")
                      .arg(info.message_type.empty()
                               ? tr("(unknown)")
                               : ShortTypeLabel(info.message_type));
-        lines << tr("Has writer: %1").arg(info.has_writer ? tr("yes") : tr("no"));
+        lines
+            << tr("Has writer: %1").arg(info.has_writer ? tr("yes") : tr("no"));
         break;
       }
     }
@@ -978,7 +992,8 @@ void PublishEditorWidget::onFieldsEdited() {
   emitConfigChanged();
 }
 
-void PublishEditorWidget::maybeFillTemplateForType(const QString& message_type) {
+void PublishEditorWidget::maybeFillTemplateForType(
+    const QString& message_type) {
   if (suppress_template_update_ || message_type.trimmed().isEmpty()) {
     return;
   }
@@ -1018,33 +1033,37 @@ void PublishEditorWidget::requestAutoFillMessage(const QString& channel,
   const QString captured_channel = channel;
   const QString captured_type = message_type;
   QTimer::singleShot(0, this, [this, captured_channel, captured_type]() {
-    if (latest_fill_channel_.compare(captured_channel, Qt::CaseInsensitive) != 0) {
+    if (latest_fill_channel_.compare(captured_channel, Qt::CaseInsensitive) !=
+        0) {
       return;
     }
     latest_fill_subscription_ =
         integration::ChannelReaderRegistry::instance().subscribe(
             captured_channel.toStdString(),
-            [this, captured_channel, captured_type](const std::string& payload) {
-              QTimer::singleShot(0, this, [this, captured_channel, captured_type,
-                                             payload]() {
-                if (latest_fill_channel_.compare(captured_channel,
-                                                 Qt::CaseInsensitive) != 0) {
-                  return;
-                }
-                const std::string decoded =
-                    integration::DecodeChannelPayload(payload);
-                const CodecResult decoded_json =
-                    PublishMessageCodec::instance().decodePayloadToJson(
-                        captured_type.toStdString(), decoded);
-                if (decoded_json.ok) {
-                  fillMessageJson(decoded_json.text, false);
-                } else if (message_edit_->toPlainText().trimmed().isEmpty()) {
-                  maybeFillTemplateForType(captured_type);
-                }
-                cancelLatestMessageFill();
-                updatePublishButtonState();
-                emitConfigChanged();
-              });
+            [this, captured_channel,
+             captured_type](const std::string& payload) {
+              QTimer::singleShot(
+                  0, this, [this, captured_channel, captured_type, payload]() {
+                    if (latest_fill_channel_.compare(
+                            captured_channel, Qt::CaseInsensitive) != 0) {
+                      return;
+                    }
+                    const std::string decoded =
+                        integration::DecodeChannelPayload(payload);
+                    const CodecResult decoded_json =
+                        PublishMessageCodec::instance().decodePayloadToJson(
+                            captured_type.toStdString(), decoded);
+                    if (decoded_json.ok) {
+                      fillMessageJson(decoded_json.text, false);
+                    } else if (message_edit_->toPlainText()
+                                   .trimmed()
+                                   .isEmpty()) {
+                      maybeFillTemplateForType(captured_type);
+                    }
+                    cancelLatestMessageFill();
+                    updatePublishButtonState();
+                    emitConfigChanged();
+                  });
             });
   });
 }
@@ -1063,7 +1082,8 @@ void PublishEditorWidget::applyPreset(const PublishPreset& preset) {
   refreshChannels();
   channel_combo_->setCurrentText(preset.channel);
   setMessageTypeField(preset.message_type);
-  fillMessageJson(preset.message_json, !preset.message_json.trimmed().isEmpty());
+  fillMessageJson(preset.message_json,
+                  !preset.message_json.trimmed().isEmpty());
 
   publish_rate_spin_->setValue(preset.publish_rate_hz);
   config_.publish_rate_hz = preset.publish_rate_hz;
@@ -1213,9 +1233,9 @@ void PublishEditorWidget::onSavePreset() {
   const QString default_name = current.active_preset_name.isEmpty()
                                    ? current.channel
                                    : current.active_preset_name;
-  const QString name = QInputDialog::getText(
-      this, tr("Save to collection"), tr("Request name:"), QLineEdit::Normal,
-      default_name, &ok);
+  const QString name =
+      QInputDialog::getText(this, tr("Save to collection"), tr("Request name:"),
+                            QLineEdit::Normal, default_name, &ok);
   if (!ok) {
     return;
   }
@@ -1234,7 +1254,8 @@ void PublishEditorWidget::onSavePreset() {
   preset.button_tooltip = current.button_tooltip;
   preset.button_color = current.button_color;
 
-  const int existing_index = FindPresetIndex(config_.saved_presets, trimmed_name);
+  const int existing_index =
+      FindPresetIndex(config_.saved_presets, trimmed_name);
   if (existing_index >= 0) {
     config_.saved_presets[existing_index] = preset;
   } else {
@@ -1271,7 +1292,8 @@ void PublishEditorWidget::onDeletePreset() {
     config_.active_preset_name.clear();
   }
   rebuildPresetCombo();
-  showResult(true, tr("Deleted"), tr("Removed request \"%1\".").arg(preset_name));
+  showResult(true, tr("Deleted"),
+             tr("Removed request \"%1\".").arg(preset_name));
   emitConfigChanged();
 }
 
@@ -1282,9 +1304,9 @@ void PublishEditorWidget::onAddPublisher() {
   const int existing_index = findPublisherIndexByChannel(config_.channel);
   if (existing_index >= 0) {
     loadPublisherAt(existing_index);
-    showResult(false, tr("Already in list"),
-               tr("Publisher for %1 is already in the list.")
-                   .arg(config_.channel));
+    showResult(
+        false, tr("Already in list"),
+        tr("Publisher for %1 is already in the list.").arg(config_.channel));
     updatePublishButtonState();
     return;
   }
@@ -1304,10 +1326,9 @@ void PublishEditorWidget::onAddPublisher() {
   }
   enterDraftMode();
   startPublisherTimer(entry);
-  showResult(true, tr("Publisher added"),
-             tr("Added %1 at %2 Hz.")
-                 .arg(entry.channel)
-                 .arg(entry.publish_rate_hz));
+  showResult(
+      true, tr("Publisher added"),
+      tr("Added %1 at %2 Hz.").arg(entry.channel).arg(entry.publish_rate_hz));
   updatePublishButtonState();
   emitConfigChanged();
 }
@@ -1358,14 +1379,16 @@ void PublishEditorWidget::syncConfigFromPublishersTree() {
 }
 
 void PublishEditorWidget::onPublisherEdited(int index) {
-  if (suppress_tree_update_ || index < 0 || index >= config_.publishers.size()) {
+  if (suppress_tree_update_ || index < 0 ||
+      index >= config_.publishers.size()) {
     return;
   }
   syncPublisherJsonFromTree(index);
   emitConfigChanged();
 }
 
-void PublishEditorWidget::onPublisherPublishingChanged(int index, bool publishing) {
+void PublishEditorWidget::onPublisherPublishingChanged(int index,
+                                                       bool publishing) {
   if (index < 0 || index >= config_.publishers.size()) {
     return;
   }
@@ -1400,7 +1423,9 @@ void PublishEditorWidget::rebuildPublishersTree() {
 }
 
 int PublishEditorWidget::selectedPublisherRow() const {
-  return publishers_tree_ == nullptr ? -1 : publishers_tree_->selectedPublisherIndex();
+  return publishers_tree_ == nullptr
+             ? -1
+             : publishers_tree_->selectedPublisherIndex();
 }
 
 bool PublishEditorWidget::selectedPublisherCanPublish() const {
@@ -1423,13 +1448,15 @@ int PublishEditorWidget::findPublisherIndexById(const QString& id) const {
   return -1;
 }
 
-int PublishEditorWidget::findPublisherIndexByChannel(const QString& channel) const {
+int PublishEditorWidget::findPublisherIndexByChannel(
+    const QString& channel) const {
   const QString trimmed = channel.trimmed();
   if (trimmed.isEmpty()) {
     return -1;
   }
   for (int i = 0; i < config_.publishers.size(); ++i) {
-    if (config_.publishers.at(i).channel.compare(trimmed, Qt::CaseInsensitive) == 0) {
+    if (config_.publishers.at(i).channel.compare(trimmed,
+                                                 Qt::CaseInsensitive) == 0) {
       return i;
     }
   }
@@ -1516,7 +1543,8 @@ bool PublishEditorWidget::publishDraft(bool from_loop) {
     syncJsonFromFields();
   }
   captureDraftFromUi();
-  if (config_.message_json.trimmed().isEmpty() && !config_.message_type.isEmpty()) {
+  if (config_.message_json.trimmed().isEmpty() &&
+      !config_.message_type.isEmpty()) {
     ensureDraftExpression();
     captureDraftFromUi();
   }
@@ -1569,9 +1597,9 @@ bool PublishEditorWidget::publishEntry(int index, bool from_loop) {
     if (!from_loop) {
       showResult(false, tr("Validation failed"), encoded.error);
     } else {
-      showResult(false, tr("Loop publish stopped"),
-                 tr("Validation failed for %1: %2")
-                     .arg(entry.channel, encoded.error));
+      showResult(
+          false, tr("Loop publish stopped"),
+          tr("Validation failed for %1: %2").arg(entry.channel, encoded.error));
     }
     stopPublisherTimer(entry.id);
     return false;
@@ -1595,8 +1623,7 @@ bool PublishEditorWidget::publishEntry(int index, bool from_loop) {
            "Message type: %2")
             .arg(entry.channel, entry.message_type);
     if (!diag.detail.empty()) {
-      details += tr("\nDetail: %1")
-                     .arg(QString::fromStdString(diag.detail));
+      details += tr("\nDetail: %1").arg(QString::fromStdString(diag.detail));
     }
     details += tr("\nTopology reader: %1  Writer peer: %2")
                    .arg(diag.topology_has_reader ? tr("yes") : tr("no"))

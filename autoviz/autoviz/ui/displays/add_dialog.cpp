@@ -4,37 +4,36 @@
 
 #include "autoviz/ui/displays/add_dialog.hpp"
 
-#include <map>
-#include <vector>
-
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QFont>
-#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
+#include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
-#include <QPaintEvent>
 #include <QPalette>
 #include <QPushButton>
 #include <QStackedWidget>
-#include <QStyledItemDelegate>
 #include <QStyleOptionViewItem>
-#include <QAbstractItemView>
+#include <QStyledItemDelegate>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
+#include <map>
+#include <vector>
 
 #include "autoviz/common/display_catalog.hpp"
 #include "autoviz/common/display_factory.hpp"
-#include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/interaction/channel_manager.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/input/segmented_control.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -60,7 +59,8 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
 
     QRect row = opt.rect;
     if (const auto* view = qobject_cast<const QAbstractItemView*>(opt.widget)) {
-      row = QRect(2, opt.rect.y(), view->viewport()->width() - 4, opt.rect.height());
+      row = QRect(2, opt.rect.y(), view->viewport()->width() - 4,
+                  opt.rect.height());
     }
 
     if (selected || hovered) {
@@ -198,8 +198,7 @@ QString SuggestDisplayName(const QString& type, const QString& channel,
     return base;
   }
   for (int suffix = 2; suffix < 1000; ++suffix) {
-    const QString candidate =
-        base + QLatin1Char(' ') + QString::number(suffix);
+    const QString candidate = base + QLatin1Char(' ') + QString::number(suffix);
     if (!disallowed.contains(candidate)) {
       return candidate;
     }
@@ -212,7 +211,8 @@ void PopulateDisplayTypeTree(QTreeWidget* tree) {
   const QIcon package_icon =
       IconLoader::load(QStringLiteral(":/autoviz/icons/default/package.svg"));
   std::map<QString, QTreeWidgetItem*> package_items;
-  for (const common::DisplayTypeInfo& info : common::DisplayCatalog::allTypes()) {
+  for (const common::DisplayTypeInfo& info :
+       common::DisplayCatalog::allTypes()) {
     const QString package_q = QString::fromStdString(info.package);
     QTreeWidgetItem* package_item = nullptr;
     const auto found = package_items.find(package_q);
@@ -238,12 +238,12 @@ void PopulateDisplayTypeTree(QTreeWidget* tree) {
 QTreeWidgetItem* InsertTopicPath(QTreeWidget* tree, const QString& channel,
                                  bool disabled) {
   QTreeWidgetItem* current = tree->invisibleRootItem();
-  const QStringList parts =
-      channel.split(QLatin1Char('/'), Qt::SkipEmptyParts);
+  const QStringList parts = channel.split(QLatin1Char('/'), Qt::SkipEmptyParts);
   for (int part_index = 0; part_index < parts.size(); ++part_index) {
     const QString part = QStringLiteral("/") + parts[part_index];
     QTreeWidgetItem* match = nullptr;
-    for (int child_index = 0; child_index < current->childCount(); ++child_index) {
+    for (int child_index = 0; child_index < current->childCount();
+         ++child_index) {
       QTreeWidgetItem* child = current->child(child_index);
       if (child != nullptr && child->text(0) == part &&
           !child->data(0, kTypeRole).isValid()) {
@@ -313,8 +313,7 @@ void ApplyFrostedTree(QTreeWidget* tree) {
     tree->viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
     tree->viewport()->setAutoFillBackground(false);
   }
-  tree->setStyleSheet(
-      style::sheet(QStringLiteral("add_display/frosted_tree")));
+  tree->setStyleSheet(style::sheet(QStringLiteral("add_display/frosted_tree")));
   tree->setFocusPolicy(Qt::StrongFocus);
   tree->setAttribute(Qt::WA_MacShowFocusRect, false);
   tree->setIndentation(12);
@@ -357,27 +356,16 @@ AddDisplayDialog::AddDisplayDialog(
                            kCardInset + 6);
   root->setSpacing(10);
 
-  segment_track_ = new QFrame(this);
-  segment_track_->setObjectName(QStringLiteral("CreateVizSegmentTrack"));
-  segment_track_->setAttribute(Qt::WA_StyledBackground, true);
-  segment_track_->setStyleSheet(
-      style::sheet(QStringLiteral("add_display/segment_track")));
-  segment_track_->setFixedHeight(46);
-  auto* segment_layout = new QHBoxLayout(segment_track_);
-  segment_layout->setContentsMargins(5, 5, 5, 5);
-  segment_layout->setSpacing(6);
-  tab_by_type_ = new QPushButton(tr("Type"), segment_track_);
-  tab_by_channel_ = new QPushButton(tr("Channel"), segment_track_);
-  tab_by_type_->setCursor(Qt::PointingHandCursor);
-  tab_by_channel_->setCursor(Qt::PointingHandCursor);
-  tab_by_type_->setCheckable(false);
-  tab_by_channel_->setCheckable(false);
-  segment_layout->addWidget(tab_by_type_, 1);
-  segment_layout->addWidget(tab_by_channel_, 1);
-  connect(tab_by_type_, &QPushButton::clicked, this,
-          [this]() { setActiveTab(display_tab_); });
-  connect(tab_by_channel_, &QPushButton::clicked, this,
-          [this]() { setActiveTab(topic_tab_); });
+  segment_control_ = new widget::SegmentedControl(this);
+  segment_control_->setObjectName(QStringLiteral("CreateVizSegmentControl"));
+  segment_control_->setAccessibleName(tr("Display source"));
+  segment_control_->SetTone(style::Tone::Frost);
+  segment_control_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  segment_control_->setFixedHeight(46);
+  segment_control_->AddSegment(tr("Type"));
+  segment_control_->AddSegment(tr("Channel"));
+  connect(segment_control_, &widget::SegmentedControl::SegmentClicked, this,
+          &AddDisplayDialog::setActiveTab);
 
   auto* well = new GlassWell(this);
   auto* well_layout = new QVBoxLayout(well);
@@ -389,7 +377,8 @@ AddDisplayDialog::AddDisplayDialog(
   stack_->setStyleSheet(style::mark(style::Mark::Clear));
 
   display_tree_ = new QTreeWidget(stack_);
-  display_tree_->setObjectName(QStringLiteral("AddDisplayDialog/DisplayTypeTree"));
+  display_tree_->setObjectName(
+      QStringLiteral("AddDisplayDialog/DisplayTypeTree"));
   display_tree_->setHeaderHidden(true);
   display_tree_->setIconSize(QSize(16, 16));
   display_tree_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -431,7 +420,8 @@ AddDisplayDialog::AddDisplayDialog(
       style::sheet(QStringLiteral("add_display/name_caption")));
 
   name_editor_ = new QLineEdit(footer);
-  name_editor_->setObjectName(QStringLiteral("AddDisplayDialog/DisplayNameEdit"));
+  name_editor_->setObjectName(
+      QStringLiteral("AddDisplayDialog/DisplayNameEdit"));
   name_editor_->setPlaceholderText(tr("Name this visualization"));
   name_editor_->setStyleSheet(
       style::sheet(QStringLiteral("add_display/line_edit")));
@@ -456,8 +446,9 @@ AddDisplayDialog::AddDisplayDialog(
   action_layout->setContentsMargins(0, 2, 0, 0);
   action_layout->setSpacing(10);
 
-  button_box_ = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
-                                     Qt::Horizontal, action_row);
+  button_box_ =
+      new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
+                           Qt::Horizontal, action_row);
   button_box_->setObjectName(QStringLiteral("AddDisplayDialog/ButtonBox"));
   button_box_->setCenterButtons(false);
   if (QPushButton* ok = button_box_->button(QDialogButtonBox::Ok)) {
@@ -481,7 +472,7 @@ AddDisplayDialog::AddDisplayDialog(
   footer_layout->addWidget(name_editor_);
   footer_layout->addWidget(action_row);
 
-  root->addWidget(segment_track_);
+  root->addWidget(segment_control_);
   root->addWidget(well, 1);
   root->addWidget(footer);
 
@@ -519,8 +510,8 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing, true);
 
-  const QRectF outer = QRectF(rect()).adjusted(kCardInset, kCardInset, -kCardInset,
-                                               -kCardInset);
+  const QRectF outer =
+      QRectF(rect()).adjusted(kCardInset, kCardInset, -kCardInset, -kCardInset);
   QPainterPath card;
   card.addRoundedRect(outer, kCardRadius, kCardRadius);
 
@@ -541,8 +532,9 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
   wash.setColorAt(1.0, QColor(241, 245, 249, 40));
   painter.fillPath(card, wash);
 
-  QLinearGradient sheen(outer.topLeft(),
-                        QPointF(outer.left(), outer.top() + outer.height() * 0.38));
+  QLinearGradient sheen(
+      outer.topLeft(),
+      QPointF(outer.left(), outer.top() + outer.height() * 0.38));
   sheen.setColorAt(0.0, QColor(255, 255, 255, 150));
   sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
   painter.fillPath(card, sheen);
@@ -551,22 +543,23 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
   painter.setPen(QPen(QColor(255, 255, 255, 200), 1.2));
   painter.drawPath(card);
   painter.setPen(QPen(QColor(203, 213, 225, 110), 1.0));
-  painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0), kCardRadius - 1.0,
-                          kCardRadius - 1.0);
+  painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0),
+                          kCardRadius - 1.0, kCardRadius - 1.0);
 }
 
 void AddDisplayDialog::mousePressEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
     // Drag from empty chrome / segment track margins (not tab buttons).
     QWidget* hit = childAt(event->pos());
-    const bool on_tab = hit == tab_by_type_ || hit == tab_by_channel_;
-    const bool on_track =
-        segment_track_ != nullptr &&
-        (hit == segment_track_ ||
-         (hit != nullptr && hit->parentWidget() == segment_track_));
-    if (!on_tab && (hit == nullptr || hit == this || on_track)) {
+    const bool on_segment_button = segment_control_ != nullptr &&
+                                   hit != nullptr && hit != segment_control_ &&
+                                   segment_control_->isAncestorOf(hit);
+    const bool on_segment_track = hit == segment_control_;
+    if (!on_segment_button &&
+        (hit == nullptr || hit == this || on_segment_track)) {
       dragging_ = true;
-      drag_offset_ = event->globalPosition().toPoint() - frameGeometry().topLeft();
+      drag_offset_ =
+          event->globalPosition().toPoint() - frameGeometry().topLeft();
       event->accept();
       return;
     }
@@ -591,18 +584,11 @@ void AddDisplayDialog::mouseReleaseEvent(QMouseEvent* event) {
 }
 
 void AddDisplayDialog::setActiveTab(int index) {
+  if (segment_control_ != nullptr) {
+    segment_control_->SetCurrentIndex(index);
+  }
   if (stack_ != nullptr) {
     stack_->setCurrentIndex(index);
-  }
-  if (tab_by_type_ != nullptr) {
-    tab_by_type_->setStyleSheet(style::sheet(
-        index == display_tab_ ? QStringLiteral("add_display/segment_tab_active")
-                              : QStringLiteral("add_display/segment_tab_inactive")));
-  }
-  if (tab_by_channel_ != nullptr) {
-    tab_by_channel_->setStyleSheet(style::sheet(
-        index == topic_tab_ ? QStringLiteral("add_display/segment_tab_active")
-                            : QStringLiteral("add_display/segment_tab_inactive")));
   }
   onTabChanged(index);
 }

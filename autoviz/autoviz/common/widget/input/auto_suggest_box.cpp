@@ -66,6 +66,13 @@ AutoSuggestBox::AutoSuggestBox(QWidget* parent)
   list_view_->setPalette(themed);
 }
 
+AutoSuggestBox::~AutoSuggestBox() {
+  debounce_timer_->stop();
+  DisconnectModelSignals();
+  RemovePositionWatchers();
+  popup_->hide();
+}
+
 void AutoSuggestBox::SetModel(QAbstractItemModel* model) {
   if (model_.data() == model) {
     return;

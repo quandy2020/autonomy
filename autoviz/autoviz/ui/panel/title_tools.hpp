@@ -4,7 +4,8 @@
 
 /**
  * @file title_tools.hpp
- * @brief Foxglove-style panel title-bar tool factories (split / change / expand).
+ * @brief Foxglove-style panel title-bar tool factories (split / change /
+ * expand).
  *
  * Builds compact tool-button strips installed via
  * @ref PanelDockWidget::setTitleBarTools(). Aligns with 3D View title tools:
@@ -19,11 +20,9 @@
 
 #pragma once
 
+#include <QString>
 #include <functional>
 
-#include <QString>
-
-class QFrame;
 class QIcon;
 class QMenu;
 class QToolButton;
@@ -83,9 +82,9 @@ void ConfigurePanelMoreToolButton(QToolButton* button, QMenu* menu);
 /**
  * @brief Creates a thin vertical separator for title-bar tool groups.
  * @param parent Parent tools host.
- * @return New separator @c QFrame.
+ * @return New separator widget.
  */
-QFrame* CreateTitleSeparator(QWidget* parent);
+QWidget* CreateTitleSeparator(QWidget* parent);
 
 /**
  * @struct PanelTitleBarOptions
@@ -96,19 +95,20 @@ QFrame* CreateTitleSeparator(QWidget* parent);
  * Expand. Close stays on @ref PanelDockWidget.
  */
 struct PanelTitleBarOptions {
-  bool show_reset = false;                 /**< Show reset tool button. */
-  std::function<void()> on_reset;          /**< Reset callback. */
+  bool show_reset = false;        /**< Show reset tool button. */
+  std::function<void()> on_reset; /**< Reset callback. */
 
-  bool show_settings = false;              /**< Show settings toggle. */
-  bool settings_checked = false;           /**< Initial settings checked state. */
-  std::function<void(bool)> on_settings_toggled; /**< Settings toggled callback. */
+  bool show_settings = false;    /**< Show settings toggle. */
+  bool settings_checked = false; /**< Initial settings checked state. */
+  std::function<void(bool)>
+      on_settings_toggled; /**< Settings toggled callback. */
 
-  bool show_split = true;                  /**< Show split right / down. */
-  bool show_change = true;                 /**< Show change-panel control. */
+  bool show_split = true;  /**< Show split right / down. */
+  bool show_change = true; /**< Show change-panel control. */
 
-  bool show_expand = true;                 /**< Show expand / maximize. */
-  bool expand_checkable = true;            /**< Expand button is checkable. */
-  std::function<void()> on_expand;         /**< Expand callback. */
+  bool show_expand = true;         /**< Show expand / maximize. */
+  bool expand_checkable = true;    /**< Expand button is checkable. */
+  std::function<void()> on_expand; /**< Expand callback. */
 };
 
 /**
@@ -116,9 +116,9 @@ struct PanelTitleBarOptions {
  * @brief Result of @ref CreatePanelTitleBarTools() — host plus key buttons.
  */
 struct PanelTitleBarTools {
-  QWidget* widget = nullptr;                 /**< Tools host to install on the dock. */
-  QToolButton* settings_button = nullptr;    /**< Settings toggle (may be null). */
-  QToolButton* expand_button = nullptr;      /**< Expand toggle (may be null). */
+  QWidget* widget = nullptr; /**< Tools host to install on the dock. */
+  QToolButton* settings_button = nullptr; /**< Settings toggle (may be null). */
+  QToolButton* expand_button = nullptr;   /**< Expand toggle (may be null). */
 };
 
 /**

@@ -11,11 +11,14 @@
 #include <QVBoxLayout>
 #include <utility>
 
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
+
 namespace autoviz {
 namespace widget {
 
 NavigationRail::NavigationRail(QWidget* parent) : QFrame(parent) {
   setObjectName(QStringLiteral("AutovizNavigationRail"));
+  setProperty("autovizRole", QStringLiteral("navigationRail"));
   setFrameShape(QFrame::NoFrame);
   setFocusPolicy(Qt::StrongFocus);
   setAccessibleName(tr("Main navigation"));
@@ -28,6 +31,8 @@ NavigationRail::NavigationRail(QWidget* parent) : QFrame(parent) {
 
   button_group_ = new QButtonGroup(this);
   button_group_->setExclusive(true);
+  ApplyTheme();
+  UpdateAccessibility();
 }
 
 const QVector<NavigationItem>& NavigationRail::items() const { return items_; }
@@ -75,6 +80,7 @@ void NavigationRail::SetCurrentIndex(int index) {
     buttons_[i]->setChecked(i == index);
   }
   setFocus(Qt::OtherFocusReason);
+  UpdateAccessibility();
   emit CurrentChanged(index, items_[index].data);
 }
 
@@ -92,6 +98,14 @@ void NavigationRail::SetLabelsVisible(bool visible) {
                                             : Qt::ToolButtonIconOnly);
   }
   updateGeometry();
+}
+
+void NavigationRail::SetTone(style::Tone tone) {
+  if (tone_ == tone) {
+    return;
+  }
+  tone_ = tone;
+  ApplyTheme();
 }
 
 void NavigationRail::keyPressEvent(QKeyEvent* event) {
@@ -158,7 +172,7 @@ void NavigationRail::Rebuild() {
                                                : Qt::ToolButtonIconOnly);
     button->setFocusPolicy(Qt::NoFocus);
     button->setAccessibleName(items_[i].text);
-    button->setMinimumHeight(40);
+    button->setProperty("autovizRole", QStringLiteral("navigationItem"));
     button_group_->addButton(button, i);
     connect(button, &QToolButton::clicked, this, [this, i]() {
       setFocus(Qt::MouseFocusReason);
@@ -173,7 +187,22 @@ void NavigationRail::Rebuild() {
     layout_->addWidget(button);
   }
   layout_->addStretch(1);
+  ApplyTheme();
+  UpdateAccessibility();
   updateGeometry();
+}
+
+void NavigationRail::ApplyTheme() {
+  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  layout_->setContentsMargins(tokens.spacing_xs, tokens.spacing_xs,
+                              tokens.spacing_xs, tokens.spacing_xs);
+  layout_->setSpacing(tokens.spacing_xs);
+  for (QToolButton* button : buttons_) {
+    button->setMinimumHeight(tokens.control_height_large);
+  }
+  ApplyWidgetTheme(this, tone_, true);
+  updateGeometry();
+  update();
 }
 
 void NavigationRail::MoveCurrent(int step) {
@@ -203,6 +232,18 @@ void NavigationRail::ActivateCurrent() {
 bool NavigationRail::IsSelectable(int index) const {
   return index >= 0 && index < static_cast<int>(items_.size()) &&
          items_[index].enabled;
+}
+
+void NavigationRail::UpdateAccessibility() {
+  if (IsSelectable(current_index_)) {
+    setAccessibleDescription(tr("Current item: %1, %2 of %3")
+                                 .arg(items_[current_index_].text)
+                                 .arg(current_index_ + 1)
+                                 .arg(items_.size()));
+    return;
+  }
+  setAccessibleDescription(items_.isEmpty() ? tr("No navigation items")
+                                            : tr("No current item"));
 }
 
 }  // namespace widget

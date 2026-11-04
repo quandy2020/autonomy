@@ -8,6 +8,8 @@
 #include <QFrame>
 #include <QString>
 
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
+
 class QLabel;
 class QPaintEvent;
 class QPushButton;
@@ -43,6 +45,9 @@ class InfoBar : public QFrame {
   FeedbackLevel level() const;
   void SetLevel(FeedbackLevel level);
 
+  style::Tone tone() const noexcept { return tone_; }
+  void SetTone(style::Tone tone);
+
   bool is_closable() const;
   void SetClosable(bool closable);
 
@@ -67,6 +72,7 @@ class InfoBar : public QFrame {
   QPushButton* close_button_ = nullptr;
   QColor background_color_;
   QColor border_color_;
+  style::Tone tone_ = style::Tone::Shell;
   bool closable_ = true;
 };
 

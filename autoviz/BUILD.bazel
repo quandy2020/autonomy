@@ -122,6 +122,18 @@ cc_binary(
     ],
 )
 
+# Standalone component gallery, matching the optional CMake target.
+cc_binary(
+    name = "autoviz_widget_gallery",
+    srcs = ["examples/widget_gallery_main.cpp"],
+    copts = _AVIZ_COPTS,
+    data = [":runtime_files"],
+    deps = [
+        ":autoviz",
+        "//tools:qt6",
+    ],
+)
+
 # Friendly alias matching the installed binary name.
 alias(
     name = "autoviz_bin",

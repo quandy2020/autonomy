@@ -18,20 +18,17 @@
 
 #pragma once
 
-#include <memory>
-#include <vector>
-
 #include <QDialog>
 #include <QPoint>
 #include <QString>
+#include <memory>
+#include <vector>
 
 class QCheckBox;
 class QDialogButtonBox;
-class QFrame;
 class QLineEdit;
 class QMouseEvent;
 class QPaintEvent;
-class QPushButton;
 class QStackedWidget;
 class QTreeWidget;
 class QWidget;
@@ -39,6 +36,10 @@ class QWidget;
 namespace autoviz {
 namespace common {
 class VisualizationManager;
+}
+
+namespace widget {
+class SegmentedControl;
 }
 
 /**
@@ -49,9 +50,10 @@ class VisualizationManager;
  * accept when @ref AddDisplayDialog::isValid() succeeds.
  */
 struct AddDisplaySelection {
-  QString type;          /**< Catalog display type id (e.g. @c "TF", @c "PointCloud2"). */
-  QString display_name;  /**< Unique instance name shown in the Displays tree. */
-  QString channel;       /**< Optional Autolink channel; empty when not applicable. */
+  QString
+      type; /**< Catalog display type id (e.g. @c "TF", @c "PointCloud2"). */
+  QString display_name; /**< Unique instance name shown in the Displays tree. */
+  QString channel; /**< Optional Autolink channel; empty when not applicable. */
 };
 
 /**
@@ -101,10 +103,9 @@ class AddDisplayDialog : public QDialog {
    *        reused; validated in @ref isValid() / @ref onNameChanged().
    * @param parent Qt parent (typically the Displays panel / main window).
    */
-  AddDisplayDialog(
-      std::shared_ptr<common::VisualizationManager> manager,
-      const QStringList& disallowed_display_names,
-      QWidget* parent = nullptr);
+  AddDisplayDialog(std::shared_ptr<common::VisualizationManager> manager,
+                   const QStringList& disallowed_display_names,
+                   QWidget* parent = nullptr);
 
   /**
    * @brief Preferred dialog size for first show.
@@ -123,7 +124,8 @@ class AddDisplayDialog : public QDialog {
   /**
    * @brief Instance name to assign to the new Display.
    *
-   * @return @c selection_.display_name (unique vs. @c disallowed_display_names_).
+   * @return @c selection_.display_name (unique vs. @c
+   * disallowed_display_names_).
    */
   QString selectedName() const { return selection_.display_name; }
 
@@ -239,14 +241,8 @@ class AddDisplayDialog : public QDialog {
   /** Last selection made on the By Channel tab. */
   AddDisplaySelection topic_tab_selection_;
 
-  /** Segment-control track hosting the two tab buttons. */
-  QFrame* segment_track_ = nullptr;
-
-  /** Segment button: browse by display type. */
-  QPushButton* tab_by_type_ = nullptr;
-
-  /** Segment button: browse by Autolink channel. */
-  QPushButton* tab_by_channel_ = nullptr;
+  /** Segment control switching between display type and channel browsing. */
+  widget::SegmentedControl* segment_control_ = nullptr;
 
   /** Stacked widget switching between type and channel trees. */
   QStackedWidget* stack_ = nullptr;

@@ -12,6 +12,8 @@
 #include <QTimerEvent>
 #include <algorithm>
 
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
+
 namespace autoviz::widget {
 
 ProgressRing::ProgressRing(QWidget* parent) : QWidget(parent) {
@@ -118,10 +120,8 @@ void ProgressRing::timerEvent(QTimerEvent* event) {
 }
 
 void ProgressRing::SyncAnimation() {
-  const bool animations_enabled =
-      style()->styleHint(QStyle::SH_Widget_Animate, nullptr, this) != 0;
-  const bool should_run =
-      indeterminate_ && isVisible() && isEnabled() && animations_enabled;
+  const bool should_run = indeterminate_ && isVisible() && isEnabled() &&
+                          !MotionPolicy::ReducedMotionEnabled();
   if (should_run && !timer_.isActive()) {
     timer_.start(16, Qt::PreciseTimer, this);
   } else if (!should_run && timer_.isActive()) {
@@ -139,17 +139,14 @@ void ProgressRing::UpdateAccessibleValue() {
       static_cast<qint64>(maximum_) - static_cast<qint64>(minimum_);
   const qint64 progress =
       static_cast<qint64>(value_) - static_cast<qint64>(minimum_);
-  const int percent =
-      range > 0
-          ? qRound(100.0 * static_cast<qreal>(progress) /
-                   static_cast<qreal>(range))
-          : 0;
-  setAccessibleDescription(
-      tr("%1 percent; value %2; range %3 to %4")
-          .arg(percent)
-          .arg(value_)
-          .arg(minimum_)
-          .arg(maximum_));
+  const int percent = range > 0 ? qRound(100.0 * static_cast<qreal>(progress) /
+                                         static_cast<qreal>(range))
+                                : 0;
+  setAccessibleDescription(tr("%1 percent; value %2; range %3 to %4")
+                               .arg(percent)
+                               .arg(value_)
+                               .arg(minimum_)
+                               .arg(maximum_));
 }
 
 }  // namespace autoviz::widget

@@ -6,16 +6,45 @@
 
 #include <QHBoxLayout>
 #include <QKeyEvent>
-#include <QLabel>
+#include <QPainter>
 #include <QPointer>
 #include <QToolButton>
 #include <utility>
 
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
+
 namespace autoviz {
 namespace widget {
+namespace {
+
+class BreadcrumbSeparator final : public QWidget {
+ public:
+  explicit BreadcrumbSeparator(QWidget* parent) : QWidget(parent) {
+    setObjectName(QStringLiteral("AutovizBreadcrumbSeparator"));
+    setProperty("autovizRole", QStringLiteral("decorative"));
+    setFocusPolicy(Qt::NoFocus);
+    setAttribute(Qt::WA_TransparentForMouseEvents);
+  }
+
+  QSize sizeHint() const override {
+    return QSize(fontMetrics().horizontalAdvance(QStringLiteral("›")) + 4,
+                 fontMetrics().height());
+  }
+
+ protected:
+  void paintEvent(QPaintEvent* event) override {
+    Q_UNUSED(event);
+    QPainter painter(this);
+    painter.setPen(palette().color(QPalette::Text));
+    painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("›"));
+  }
+};
+
+}  // namespace
 
 Breadcrumb::Breadcrumb(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("AutovizBreadcrumb"));
+  setProperty("autovizRole", QStringLiteral("breadcrumb"));
   setFocusPolicy(Qt::StrongFocus);
   setAccessibleName(tr("Breadcrumb navigation"));
 
@@ -23,6 +52,8 @@ Breadcrumb::Breadcrumb(QWidget* parent) : QWidget(parent) {
   layout_->setContentsMargins(0, 0, 0, 0);
   layout_->setSpacing(4);
   layout_->addStretch(1);
+  ApplyTheme();
+  UpdateAccessibility();
 }
 
 const QVector<BreadcrumbItem>& Breadcrumb::items() const { return items_; }
@@ -62,7 +93,16 @@ void Breadcrumb::SetCurrentIndex(int index) {
     buttons_[i]->setChecked(i == current_index_);
   }
   setFocus(Qt::OtherFocusReason);
+  UpdateAccessibility();
   emit CurrentIndexChanged(index);
+}
+
+void Breadcrumb::SetTone(style::Tone tone) {
+  if (tone_ == tone) {
+    return;
+  }
+  tone_ = tone;
+  ApplyTheme();
 }
 
 void Breadcrumb::keyPressEvent(QKeyEvent* event) {
@@ -122,9 +162,7 @@ void Breadcrumb::Rebuild() {
 
   for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
     if (i > 0) {
-      auto* separator = new QLabel(QStringLiteral("›"), this);
-      separator->setAccessibleName(tr("Separator"));
-      separator->setFocusPolicy(Qt::NoFocus);
+      auto* separator = new BreadcrumbSeparator(this);
       layout_->addWidget(separator);
     }
 
@@ -138,6 +176,7 @@ void Breadcrumb::Rebuild() {
     button->setEnabled(items_[i].enabled);
     button->setFocusPolicy(Qt::NoFocus);
     button->setAccessibleName(items_[i].text);
+    button->setProperty("autovizRole", QStringLiteral("breadcrumbItem"));
     connect(button, &QToolButton::clicked, this, [this, i]() {
       setFocus(Qt::MouseFocusReason);
       const QVariant data = items_[i].data;
@@ -151,7 +190,20 @@ void Breadcrumb::Rebuild() {
     layout_->addWidget(button);
   }
   layout_->addStretch(1);
+  ApplyTheme();
+  UpdateAccessibility();
   updateGeometry();
+}
+
+void Breadcrumb::ApplyTheme() {
+  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  layout_->setSpacing(tokens.spacing_xs);
+  for (QToolButton* button : buttons_) {
+    button->setMinimumHeight(tokens.control_height_small);
+  }
+  ApplyWidgetTheme(this, tone_, true);
+  updateGeometry();
+  update();
 }
 
 void Breadcrumb::MoveCurrent(int step) {
@@ -182,6 +234,18 @@ void Breadcrumb::ActivateCurrent() {
 bool Breadcrumb::IsSelectable(int index) const {
   return index >= 0 && index < static_cast<int>(items_.size()) &&
          items_[index].enabled;
+}
+
+void Breadcrumb::UpdateAccessibility() {
+  if (IsSelectable(current_index_)) {
+    setAccessibleDescription(tr("Current item: %1, %2 of %3")
+                                 .arg(items_[current_index_].text)
+                                 .arg(current_index_ + 1)
+                                 .arg(items_.size()));
+    return;
+  }
+  setAccessibleDescription(items_.isEmpty() ? tr("No breadcrumb items")
+                                            : tr("No current item"));
 }
 
 }  // namespace widget

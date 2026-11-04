@@ -17,7 +17,6 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QMimeData>
-#include <QPushButton>
 #include <QSet>
 #include <QTimer>
 #include <QToolButton>
@@ -35,6 +34,7 @@
 #include "autoviz/common/widget/data/empty_state.hpp"
 #include "autoviz/common/widget/display/status_badge.hpp"
 #include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/common/widget/input/segmented_control.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/plugins/displays/image/image_utils.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
@@ -151,34 +151,22 @@ bool IsDraggableItem(const QTreeWidgetItem* item) {
          item->data(kColumnName, plot::kTopicMapDraggableRole).toBool();
 }
 
-QWidget* MakeTypeFilterChips(QWidget* parent, int checked_index,
-                             const std::function<void(int)>& on_changed) {
-  auto* container = new QWidget(parent);
-  container->setObjectName(QStringLiteral("plot_segmented_toggle"));
-  container->setAttribute(Qt::WA_StyledBackground, true);
-  auto* layout = new QHBoxLayout(container);
-  layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(0);
-  container->setFixedHeight(24);
-  container->setStyleSheet(style::sheet(
-      QStringLiteral("plot/segmented_toggle_inline"), style::Tone::Frost));
-
+widget::SegmentedControl* MakeTypeFilterChips(
+    QWidget* parent, int checked_index,
+    const std::function<void(int)>& on_changed) {
+  auto* segments = new widget::SegmentedControl(parent);
+  segments->SetTone(style::Tone::Frost);
+  segments->setAccessibleName(QObject::tr("Channel type filter"));
   const QStringList labels = {QObject::tr("All"), QObject::tr("Numeric"),
                               QObject::tr("Image"), QObject::tr("Geo"),
                               QObject::tr("TF")};
-  for (int i = 0; i < labels.size(); ++i) {
-    auto* button = new QPushButton(labels.at(i), container);
-    button->setCheckable(true);
-    button->setChecked(i == checked_index);
-    button->setAutoExclusive(true);
-    button->setCursor(Qt::PointingHandCursor);
-    button->setFlat(true);
-    button->setProperty("channelsTypeFilterIndex", i);
-    layout->addWidget(button, 1);
-    QObject::connect(button, &QPushButton::clicked, container,
-                     [on_changed, i]() { on_changed(i); });
+  for (const QString& label : labels) {
+    segments->AddSegment(label);
   }
-  return container;
+  segments->SetCurrentIndex(checked_index);
+  QObject::connect(segments, &widget::SegmentedControl::CurrentIndexChanged,
+                   segments, on_changed);
+  return segments;
 }
 
 class ChannelsTreeWidget : public QTreeWidget {
@@ -925,17 +913,9 @@ void ChannelsPanel::syncTypeFilterChips() const {
     return;
   }
   const int wanted = static_cast<int>(type_filter_);
-  const QList<QPushButton*> buttons =
-      type_filter_chips_->findChildren<QPushButton*>();
-  for (QPushButton* button : buttons) {
-    if (button == nullptr) {
-      continue;
-    }
-    const int index = button->property("channelsTypeFilterIndex").toInt();
-    button->blockSignals(true);
-    button->setChecked(index == wanted);
-    button->blockSignals(false);
-  }
+  type_filter_chips_->blockSignals(true);
+  type_filter_chips_->SetCurrentIndex(wanted);
+  type_filter_chips_->blockSignals(false);
 }
 
 void ChannelsPanel::storeProbePayload(const std::string& channel,

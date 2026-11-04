@@ -4,7 +4,8 @@
 
 /**
  * @file teleop_control_widget.hpp
- * @brief On-screen teleop controls — dual / arcade sticks, speeds, smart teleop.
+ * @brief On-screen teleop controls — dual / arcade sticks, speeds, smart
+ * teleop.
  *
  * Emits normalized linear / angular commands consumed by @ref TeleopPanel,
  * which scales them by max speeds and publishes Twist (or smart-teleop goals).
@@ -21,8 +22,6 @@
 
 #include "autoviz/ui/teleop/teleop_types.hpp"
 
-class QAbstractButton;
-class QButtonGroup;
 class QCheckBox;
 class QDoubleSpinBox;
 class QEvent;
@@ -32,6 +31,10 @@ class QKeyEvent;
 class QLabel;
 
 namespace autoviz {
+namespace widget {
+class SegmentedControl;
+}
+
 namespace teleop {
 
 class TeleopJoystickWidget;
@@ -249,35 +252,35 @@ class TeleopControlWidget : public QWidget {
   /** @brief Clears @c key_* flags and @c keyboard_driving_. */
   void clearKeyboardState();
 
-  /** @brief Reads speed spins into members and emits @ref maxSpeedsChanged(). */
+  /** @brief Reads speed spins into members and emits @ref maxSpeedsChanged().
+   */
   void emitMaxSpeedsFromUi();
 
   /** @brief Refreshes the hint label from smart-teleop status text. */
   void updateSmartTeleopHint();
 
-  TeleopStickMode stick_mode_ = TeleopStickMode::kDual; /**< Active stick layout. */
-  bool smart_teleop_enabled_ = false;   /**< Smart-teleop checkbox state. */
-  QString smart_teleop_status_text_;    /**< Status line under the sticks. */
-  double max_linear_speed_ = 0.5;       /**< Max |linear| m/s. */
-  double max_angular_speed_ = 0.5;      /**< Max |angular.z| rad/s. */
-  QButtonGroup* mode_group_ = nullptr; /**< Dual vs Arcade exclusive group. */
-  QAbstractButton* dual_mode_button_ = nullptr;   /**< Dual mode toggle. */
-  QAbstractButton* arcade_mode_button_ = nullptr; /**< Arcade mode toggle. */
-  QDoubleSpinBox* max_linear_spin_ = nullptr;     /**< Max linear editor. */
-  QDoubleSpinBox* max_angular_spin_ = nullptr;    /**< Max angular editor. */
-  QFrame* dual_frame_ = nullptr;        /**< Container for Move + Turn sticks. */
-  QFrame* arcade_frame_ = nullptr;      /**< Container for Arcade stick. */
+  TeleopStickMode stick_mode_ =
+      TeleopStickMode::kDual;         /**< Active stick layout. */
+  bool smart_teleop_enabled_ = false; /**< Smart-teleop checkbox state. */
+  QString smart_teleop_status_text_;  /**< Status line under the sticks. */
+  double max_linear_speed_ = 0.5;     /**< Max |linear| m/s. */
+  double max_angular_speed_ = 0.5;    /**< Max |angular.z| rad/s. */
+  widget::SegmentedControl* mode_control_ = nullptr; /**< Dual/Arcade mode. */
+  QDoubleSpinBox* max_linear_spin_ = nullptr;        /**< Max linear editor. */
+  QDoubleSpinBox* max_angular_spin_ = nullptr;       /**< Max angular editor. */
+  QFrame* dual_frame_ = nullptr;   /**< Container for Move + Turn sticks. */
+  QFrame* arcade_frame_ = nullptr; /**< Container for Arcade stick. */
   TeleopJoystickWidget* move_joystick_ = nullptr;   /**< Dual Move pad. */
   TeleopJoystickWidget* turn_joystick_ = nullptr;   /**< Dual Turn pad. */
   TeleopJoystickWidget* arcade_joystick_ = nullptr; /**< Arcade pad. */
-  QLabel* hint_label_ = nullptr;        /**< Keyboard / smart-teleop hint. */
+  QLabel* hint_label_ = nullptr; /**< Keyboard / smart-teleop hint. */
   QCheckBox* smart_teleop_check_ = nullptr; /**< Route via teleop goals. */
-  bool key_forward_ = false;            /**< Keyboard: forward held. */
-  bool key_back_ = false;               /**< Keyboard: back held. */
-  bool key_left_ = false;               /**< Keyboard: left / turn left held. */
-  bool key_right_ = false;              /**< Keyboard: right / turn right held. */
-  bool keyboard_driving_ = false;       /**< @c true while keys drive sticks. */
-  bool suppress_speed_signal_ = false;  /**< Guard while syncing speed spins. */
+  bool key_forward_ = false;                /**< Keyboard: forward held. */
+  bool key_back_ = false;                   /**< Keyboard: back held. */
+  bool key_left_ = false;         /**< Keyboard: left / turn left held. */
+  bool key_right_ = false;        /**< Keyboard: right / turn right held. */
+  bool keyboard_driving_ = false; /**< @c true while keys drive sticks. */
+  bool suppress_speed_signal_ = false; /**< Guard while syncing speed spins. */
 };
 
 }  // namespace teleop

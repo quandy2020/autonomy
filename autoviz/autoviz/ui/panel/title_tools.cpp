@@ -5,15 +5,15 @@
 #include "autoviz/ui/panel/title_tools.hpp"
 
 #include <QApplication>
-#include <QFrame>
 #include <QHBoxLayout>
 #include <QMenu>
 #include <QTimer>
 #include <QToolButton>
 #include <QWidgetAction>
 
-#include "autoviz/ui/panel/change_menu.hpp"
+#include "autoviz/common/widget/layout/separator.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/panel/change_menu.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
@@ -22,7 +22,8 @@ namespace autoviz {
 
 namespace {
 
-void WireExpandButton(QToolButton* button, const std::function<void()>& on_expand) {
+void WireExpandButton(QToolButton* button,
+                      const std::function<void()>& on_expand) {
   if (button == nullptr || !on_expand) {
     return;
   }
@@ -112,13 +113,10 @@ void ConfigurePanelMoreToolButton(QToolButton* button, QMenu* menu) {
   }
 }
 
-QFrame* CreateTitleSeparator(QWidget* parent) {
-  auto* separator = new QFrame(parent);
-  separator->setFrameShape(QFrame::VLine);
-  separator->setFrameShadow(QFrame::Plain);
+QWidget* CreateTitleSeparator(QWidget* parent) {
+  auto* separator = new widget::Separator(Qt::Vertical, parent);
+  separator->SetTone(style::Tone::Frost);
   separator->setFixedSize(QSize(1, 18));
-  separator->setStyleSheet(
-      style::sheet(QStringLiteral("widget/separator_mid")));
   return separator;
 }
 
@@ -215,13 +213,12 @@ PanelTitleBarTools CreatePanelTitleBarTools(
   }
 
   if (options.show_expand) {
-    result.expand_button = CreateTitleToolButton(
-        tools, IconLoader::panelExpandIcon(),
-        QObject::tr("Expand"), options.expand_checkable);
+    result.expand_button =
+        CreateTitleToolButton(tools, IconLoader::panelExpandIcon(),
+                              QObject::tr("Expand"), options.expand_checkable);
     layout->addWidget(result.expand_button);
-    WireExpandButton(result.expand_button, options.on_expand
-                                               ? options.on_expand
-                                               : callbacks.expand);
+    WireExpandButton(result.expand_button,
+                     options.on_expand ? options.on_expand : callbacks.expand);
   }
 
   return result;

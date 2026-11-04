@@ -1729,6 +1729,7 @@ bool LocalMapper::InitializeIMU(float priorG, float priorA, bool bFIBA) {
     mpTracker->mState = Tracker::OK;
     bInitializing.store(false, std::memory_order_release);
 
+    target_map->InformNewBigChange();
     target_map->IncreaseChangeIndex();
 
     AINFO << "ATLAS_IMU_INITIALIZATION_COMMIT"
@@ -1812,6 +1813,7 @@ void LocalMapper::ScaleRefinement() {
             .count();
 
     // To perform pose-inertial opt w.r.t. last keyframe
+    mpCurrentKeyFrame->GetMap()->InformNewBigChange();
     mpCurrentKeyFrame->GetMap()->IncreaseChangeIndex();
 
     return;

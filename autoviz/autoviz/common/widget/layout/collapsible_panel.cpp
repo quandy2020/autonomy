@@ -13,6 +13,7 @@
 #include <QVBoxLayout>
 #include <QVariant>
 
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
 #include "autoviz/common/widget/input/button.hpp"
 
 namespace autoviz::widget {
@@ -47,7 +48,8 @@ CollapsiblePanel::CollapsiblePanel(QWidget* parent)
   root->addWidget(content_host_);
 
   animation_->setEasingCurve(QEasingCurve::OutCubic);
-  animation_->setDuration(tokens.animation_normal_ms);
+  animation_->setDuration(
+      MotionPolicy::ResolveDuration(tokens.animation_normal_ms));
   connect(animation_, &QPropertyAnimation::finished, this,
           &CollapsiblePanel::FinishTransition);
   UpdateHeader();
@@ -138,16 +140,17 @@ void CollapsiblePanel::UpdateHeader() {
 
 void CollapsiblePanel::StartTransition() {
   animation_->stop();
+  const int duration =
+      MotionPolicy::ResolveDuration(GetThemeTokens(tone()).animation_normal_ms);
   const bool animations_enabled =
-      animation_enabled_ && isVisible() && isEnabled() &&
-      style()->styleHint(QStyle::SH_Widget_Animate, nullptr, this) != 0;
+      animation_enabled_ && isVisible() && isEnabled() && duration > 0;
   if (!animations_enabled) {
     FinishTransition();
     return;
   }
 
   content_host_->show();
-  animation_->setDuration(GetThemeTokens(tone()).animation_normal_ms);
+  animation_->setDuration(duration);
   animation_->setStartValue(content_host_->height());
   animation_->setEndValue(expanded_ ? ExpandedHeight() : 0);
   animation_->start(QAbstractAnimation::KeepWhenStopped);
