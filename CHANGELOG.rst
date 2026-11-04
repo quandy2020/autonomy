@@ -2,6 +2,29 @@
 Changelog for package autonomy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.3.0 (2026-11-04)
+------------------
+* **Architecture**
+
+  * Split the tree into sibling packages under one Autocmake umbrella: ``automsgs``, ``autolink``, ``autodriver``, optional ``autoviz``, plus ``autosim`` and ``automanip``.
+  * Move Atlas into ``autonomy/localization/atlas``; keep Cartographer and Argus LIVO as first-class localization backends.
+  * Fold manipulation out of ``autonomy/manipulation`` into ``automanip`` (MoveIt-shaped stack + Bolza OCP: DDP / SQP / IPM / SLP / MPC).
+* **Localization / mapping**
+
+  * Atlas RGB-D inertial tracking with AutoSim: dense point cloud, occupancy grid, rolling navigation map, and ``map`` → ``odom`` TF.
+  * Rebuild fused voxels after BA / IMU init / scale refinement (``InformNewBigChange``) so dense clouds do not leave ghost walls.
+  * Hold the last IMU-RGBD pose when parked instead of resetting the atlas map after TrackLocalMap failure.
+* **Visualization / simulation**
+
+  * Native AutoViz (Qt + Ogre, Autolink, no ROS): occupancy, dense cloud, GPS overlay, robot model.
+  * AutoSim sensor–actuator bridge (Habitat / Fake / Isaac + PhysX) with Atlas RGB-D+IMU validation path.
+* **Build / CMake**
+
+  * ``version.json`` / package version ``0.3.0``; ``BUILD_AUTOVIZ``; C++20; Autocmake domain options ``AUTONOMY_BUILD_<MOD>``.
+* **Docs**
+
+  * Refresh architecture, localization Atlas+AutoSim quickstart, AutoViz / AutoSim / Automanip guides.
+
 0.2.0 (2026-07-17)
 ------------------
 * **Architecture**

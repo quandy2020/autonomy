@@ -52,7 +52,7 @@ endif()
 # SuiteSparse/Ceres → FindBLAS probes optional nvpl; skip when absent.
 set(CMAKE_DISABLE_FIND_PACKAGE_nvpl TRUE)
 
-project(autonomy VERSION 0.2.0 LANGUAGES CXX C)
+project(autonomy VERSION 0.3.0 LANGUAGES CXX C)
 
 # --- autocmake ---------------------------------------------------------------
 # Prefer a system / prefix install; otherwise load the vendored tree under

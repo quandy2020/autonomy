@@ -6,7 +6,7 @@
 
 Modern C++ · Autolink RT · Behavior trees · *No ROS runtime required*
 
-[![Version](https://img.shields.io/badge/Version-0.2.0-2563EB?style=for-the-badge)](version.json)
+[![Version](https://img.shields.io/badge/Version-0.3.0-2563EB?style=for-the-badge)](version.json)
 [![C++](https://img.shields.io/badge/C%2B%2B-20-0F172A?style=for-the-badge&logo=cplusplus&logoColor=white)](CMakeLists.txt)
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20ARM64-334155?style=for-the-badge&logo=linux&logoColor=white)](docs/source/02_Installation/00_guide.md)
 [![License](https://img.shields.io/badge/License-Apache--2.0-0891B2?style=for-the-badge)](LICENSE)
