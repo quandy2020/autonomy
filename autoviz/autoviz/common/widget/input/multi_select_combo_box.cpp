@@ -124,7 +124,7 @@ void MultiSelectComboBox::SetTone(style::Tone tone) {
 }
 
 QSize MultiSelectComboBox::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QSize hint = button_->sizeHint();
   hint.setWidth(qMax(hint.width(), 180));
   hint.setHeight(qMax(hint.height(), tokens.control_height_medium));
@@ -132,7 +132,7 @@ QSize MultiSelectComboBox::sizeHint() const {
 }
 
 QSize MultiSelectComboBox::minimumSizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   return QSize(120, tokens.control_height_small);
 }
 

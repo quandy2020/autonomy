@@ -32,6 +32,7 @@ class SearchBox final : public QLineEdit {
   void SearchRequested(const QString& query);
 
  protected:
+  bool event(QEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
   void paintEvent(QPaintEvent* event) override;
 

@@ -4,13 +4,19 @@
 
 #include <QAbstractItemModelTester>
 #include <QCoreApplication>
+#include <QFrame>
+#include <QHeaderView>
 #include <QImage>
+#include <QPixmap>
+#include <QProxyStyle>
 #include <QSignalSpy>
+#include <QTableView>
 #include <QTest>
 #include <QVariant>
 #include <limits>
 #include <thread>
 
+#include "autoviz/common/widget/data/data_grid.hpp"
 #include "autoviz/common/widget/data/empty_state.hpp"
 #include "autoviz/common/widget/data/log_view.hpp"
 #include "autoviz/common/widget/data/pagination.hpp"
@@ -19,6 +25,25 @@
 
 namespace autoviz::widget {
 namespace {
+
+class SolidStandardIconStyle final : public QProxyStyle {
+ public:
+  explicit SolidStandardIconStyle(const QColor& color) : color_(color) {}
+
+  QIcon standardIcon(StandardPixmap standard_pixmap,
+                     const QStyleOption* option = nullptr,
+                     const QWidget* widget = nullptr) const override {
+    if (standard_pixmap != QStyle::SP_FileDialogContentsView) {
+      return QProxyStyle::standardIcon(standard_pixmap, option, widget);
+    }
+    QPixmap pixmap(16, 16);
+    pixmap.fill(color_);
+    return QIcon(pixmap);
+  }
+
+ private:
+  QColor color_;
+};
 
 LogEntry MakeLogEntry(int sequence) {
   LogEntry entry;
@@ -38,6 +63,8 @@ class WidgetDataTest final : public QObject {
   void PropertyModelValidatesAndKeeps64BitValues();
   void PropertyModelRejectsNonFiniteValues();
   void EmptyStateUsesSemanticToneAndAccessibility();
+  void EmptyStateRefreshesOnlyTheDefaultIconAfterStyleChange();
+  void DataViewsUseCleanNativePresentation();
   void LogModelBoundsAndQueuesCrossThreadMutations();
 };
 
@@ -229,6 +256,48 @@ void WidgetDataTest::EmptyStateUsesSemanticToneAndAccessibility() {
   empty.render(&image);
   QVERIFY(!image.isNull());
   QVERIFY(image != blank);
+}
+
+void WidgetDataTest::EmptyStateRefreshesOnlyTheDefaultIconAfterStyleChange() {
+  SolidStandardIconStyle first_style(QColor(12, 90, 210));
+  SolidStandardIconStyle second_style(QColor(220, 52, 68));
+  EmptyState empty;
+
+  empty.setStyle(&first_style);
+  const QImage first_icon = empty.icon().pixmap(QSize(16, 16)).toImage();
+  empty.setStyle(&second_style);
+  const QImage second_icon = empty.icon().pixmap(QSize(16, 16)).toImage();
+  QVERIFY(first_icon != second_icon);
+
+  QPixmap custom_pixmap(16, 16);
+  custom_pixmap.fill(QColor(20, 180, 90));
+  const QIcon custom_icon(custom_pixmap);
+  empty.SetIcon(custom_icon);
+  const qint64 custom_cache_key = empty.icon().cacheKey();
+  empty.setStyle(&first_style);
+  QCOMPARE(empty.icon().cacheKey(), custom_cache_key);
+}
+
+void WidgetDataTest::DataViewsUseCleanNativePresentation() {
+  DataGrid grid;
+  auto* grid_view =
+      grid.findChild<QTableView*>(QStringLiteral("AutovizDataGridView"));
+  QVERIFY(grid_view != nullptr);
+  QVERIFY(!grid_view->showGrid());
+  QCOMPARE(grid_view->frameShape(), QFrame::NoFrame);
+  QVERIFY(!grid_view->horizontalHeader()->highlightSections());
+
+  PropertyEditor property_editor;
+  QCOMPARE(property_editor.frameShape(), QFrame::NoFrame);
+  QVERIFY(property_editor.allColumnsShowFocus());
+  QVERIFY(!property_editor.header()->highlightSections());
+
+  LogView log_view;
+  auto* log_table = log_view.findChild<QTableView*>();
+  QVERIFY(log_table != nullptr);
+  QVERIFY(!log_table->showGrid());
+  QCOMPARE(log_table->frameShape(), QFrame::NoFrame);
+  QVERIFY(!log_table->horizontalHeader()->highlightSections());
 }
 
 void WidgetDataTest::LogModelBoundsAndQueuesCrossThreadMutations() {

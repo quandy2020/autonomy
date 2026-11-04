@@ -36,17 +36,18 @@ class VisualizationManager;
  * @class TimePanel
  * @brief Compact time strip with experimental and legacy layouts.
  *
- * ## Layout (experimental)
+ * ## Layout
  *
  * @code
- * ┌────────────────────────────────────────────────────────────┐
- * │ [Pause] [Reset]  Sync ▾  Source ▾   sim …  wall …  FPS …  │
- * └────────────────────────────────────────────────────────────┘
+ * ┌──────────────────────────────────────────────────────────────────────┐
+ * │ [Time] [Elapsed] [Wall] [WallΔ]   …   [Reset] Experimental   30 fps │
+ * │ experimental: [Pause] Sync▾ Source▾  (replaces Elapsed/Wall chips)  │
+ * └──────────────────────────────────────────────────────────────────────┘
  * @endcode
  *
- * When @ref experimental() is false, a denser legacy row (@c old_widget_) is
- * shown instead of @c experimental_widget_. Toggling experimental emits
- * @ref layoutChanged() so the frame can relayout docks.
+ * Absolute Time stays visible; @c old_widget_ holds the legacy metric chips
+ * and @c experimental_widget_ the pause/sync strip. Toggling experimental
+ * emits @ref layoutChanged() so the frame can relayout docks.
  *
  * ## Data flow
  *

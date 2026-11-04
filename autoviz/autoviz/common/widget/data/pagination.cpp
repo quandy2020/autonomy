@@ -8,6 +8,7 @@
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QPalette>
 #include <QPointer>
 #include <QSignalBlocker>
 #include <QVariant>
@@ -18,6 +19,18 @@
 #include "autoviz/common/widget/input/button.hpp"
 
 namespace autoviz::widget {
+namespace {
+
+void SetLabelColors(QLabel* label, const QColor& text, const QColor& disabled) {
+  QPalette palette = label->palette();
+  palette.setColor(QPalette::WindowText, text);
+  palette.setColor(QPalette::Text, text);
+  palette.setColor(QPalette::Disabled, QPalette::WindowText, disabled);
+  palette.setColor(QPalette::Disabled, QPalette::Text, disabled);
+  label->setPalette(palette);
+}
+
+}  // namespace
 
 Pagination::Pagination(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("AutovizPagination"));
@@ -26,7 +39,7 @@ Pagination::Pagination(QWidget* parent) : QWidget(parent) {
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
   auto* layout = new QHBoxLayout(this);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->setSpacing(tokens.spacing_sm);
 
@@ -35,14 +48,14 @@ Pagination::Pagination(QWidget* parent) : QWidget(parent) {
   layout->addWidget(range_label_);
   layout->addStretch(1);
 
-  auto* page_size_label = new QLabel(tr("Rows"), this);
-  layout->addWidget(page_size_label);
+  page_size_label_ = new QLabel(tr("Rows"), this);
+  layout->addWidget(page_size_label_);
 
   page_size_box_ = new QComboBox(this);
   page_size_box_->setAccessibleName(tr("Rows per page"));
   page_size_box_->setSizeAdjustPolicy(QComboBox::AdjustToContents);
   layout->addWidget(page_size_box_);
-  page_size_label->setBuddy(page_size_box_);
+  page_size_label_->setBuddy(page_size_box_);
 
   previous_button_ = new Button(QStringLiteral("‹"), this);
   previous_button_->SetButtonSize(Button::Size::kSmall);
@@ -112,9 +125,13 @@ void Pagination::SetPageSizes(QVector<int> page_sizes) {
 
 void Pagination::SetTone(style::Tone tone) {
   tone_ = tone;
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   previous_button_->SetTone(tone);
   next_button_->SetTone(tone);
   ApplyWidgetTheme(page_size_box_, tone, false);
+  SetLabelColors(range_label_, tokens.text_muted, tokens.disabled);
+  SetLabelColors(page_size_label_, tokens.text_muted, tokens.disabled);
+  SetLabelColors(page_label_, tokens.text, tokens.disabled);
   update();
 }
 

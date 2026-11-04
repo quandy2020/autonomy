@@ -10,33 +10,33 @@
 #include <QPainter>
 #include <QPointer>
 #include <QPushButton>
-#include <QStyle>
 #include <QStyleOption>
 #include <QVBoxLayout>
 #include <algorithm>
 
+#include "autoviz/common/widget/feedback/feedback_accessibility.hpp"
+#include "autoviz/common/widget/foundation/semantic_icon.hpp"
 #include "autoviz/common/widget/foundation/widget_theme.hpp"
 
 namespace autoviz {
 namespace widget {
 namespace {
 
-QStyle::StandardPixmap IconForLevel(FeedbackLevel level) {
+internal::SemanticStatusIcon IconForLevel(FeedbackLevel level) {
   switch (level) {
     case FeedbackLevel::kInformation:
-      return QStyle::SP_MessageBoxInformation;
+      return internal::SemanticStatusIcon::kInformation;
     case FeedbackLevel::kSuccess:
-      return QStyle::SP_DialogApplyButton;
+      return internal::SemanticStatusIcon::kSuccess;
     case FeedbackLevel::kWarning:
-      return QStyle::SP_MessageBoxWarning;
+      return internal::SemanticStatusIcon::kWarning;
     case FeedbackLevel::kError:
-      return QStyle::SP_MessageBoxCritical;
+      return internal::SemanticStatusIcon::kError;
   }
-  return QStyle::SP_MessageBoxInformation;
+  return internal::SemanticStatusIcon::kInformation;
 }
 
-QColor SemanticColor(FeedbackLevel level, style::Tone tone) {
-  const ThemeTokens& tokens = GetThemeTokens(tone);
+QColor SemanticColor(FeedbackLevel level, const ThemeTokens& tokens) {
   switch (level) {
     case FeedbackLevel::kInformation:
       return tokens.accent;
@@ -127,7 +127,8 @@ QSize InfoBar::sizeHint() const {
 void InfoBar::changeEvent(QEvent* event) {
   if (event->type() == QEvent::PaletteChange ||
       event->type() == QEvent::StyleChange ||
-      event->type() == QEvent::ScreenChangeInternal) {
+      event->type() == QEvent::ScreenChangeInternal ||
+      event->type() == QEvent::EnabledChange) {
     UpdateSemanticColors();
     UpdatePresentation();
   }
@@ -136,11 +137,13 @@ void InfoBar::changeEvent(QEvent* event) {
 
 void InfoBar::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(QPen(border_color_, 1.0));
   painter.setBrush(background_color_);
-  painter.drawRoundedRect(rect().adjusted(0, 0, -1, -1), 6.0, 6.0);
+  painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+                          tokens.radius_medium, tokens.radius_medium);
 }
 
 void InfoBar::Initialize() {
@@ -151,13 +154,15 @@ void InfoBar::Initialize() {
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 
   auto* root = new QHBoxLayout(this);
-  root->setContentsMargins(12, 10, 8, 10);
-  root->setSpacing(10);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  root->setContentsMargins(tokens.spacing_lg, tokens.spacing_md,
+                           tokens.spacing_sm, tokens.spacing_md);
+  root->setSpacing(tokens.spacing_sm);
 
   icon_label_ = new QLabel(this);
+  icon_label_->setObjectName(QStringLiteral("AutovizInfoBarLevelIcon"));
   icon_label_->setFixedSize(20, 20);
   icon_label_->setScaledContents(true);
-  icon_label_->setAccessibleName(tr("Notification type"));
   root->addWidget(icon_label_, 0, Qt::AlignTop);
 
   auto* text_layout = new QVBoxLayout;
@@ -169,7 +174,7 @@ void InfoBar::Initialize() {
   title_label_->setWordWrap(true);
   title_label_->setVisible(false);
   QFont title_font = title_label_->font();
-  title_font.setBold(true);
+  title_font.setWeight(QFont::DemiBold);
   title_label_->setFont(title_font);
   text_layout->addWidget(title_label_);
 
@@ -185,8 +190,8 @@ void InfoBar::Initialize() {
   close_button_ = new QPushButton(this);
   close_button_->setObjectName(QStringLiteral("AutovizInfoBarCloseButton"));
   close_button_->setFlat(true);
-  close_button_->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
-  close_button_->setFixedSize(28, 28);
+  close_button_->setFixedSize(44, 44);
+  close_button_->setIconSize(QSize(18, 18));
   close_button_->setAccessibleName(tr("Close notification"));
   connect(close_button_, &QPushButton::clicked, this, [this]() {
     QPointer<InfoBar> guard(this);
@@ -203,7 +208,10 @@ void InfoBar::Initialize() {
 }
 
 void InfoBar::UpdatePresentation() {
-  const QIcon icon = style()->standardIcon(IconForLevel(level_));
+  close_button_->setIcon(internal::MakePaletteCloseIcon(palette()));
+  icon_label_->setAccessibleName(internal::FeedbackLevelAccessibleName(level_));
+  const QIcon icon = internal::MakePaletteStatusIcon(palette(), accent_color_,
+                                                     IconForLevel(level_));
   icon_label_->setPixmap(
       icon.pixmap(icon_label_->size(), devicePixelRatioF(),
                   isEnabled() ? QIcon::Normal : QIcon::Disabled));
@@ -217,15 +225,17 @@ void InfoBar::UpdatePresentation() {
     accessible_text += message;
   }
   setAccessibleName(accessible_text);
-  setAccessibleDescription(accessible_text);
+  setAccessibleDescription(
+      internal::FeedbackAccessibleDescription(level_, accessible_text));
   updateGeometry();
   update();
 }
 
 void InfoBar::UpdateSemanticColors() {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
-  border_color_ = SemanticColor(level_, tone_);
-  background_color_ = Blend(border_color_, tokens.surface, 24);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  accent_color_ = SemanticColor(level_, tokens);
+  border_color_ = Blend(accent_color_, tokens.border, 48);
+  background_color_ = Blend(accent_color_, tokens.surface_raised, 18);
 }
 
 }  // namespace widget

@@ -1219,18 +1219,15 @@ void FrameLayout::applyDefaultDockLayout() {
     frame_->panels_->views_dock_->raise();
   }
 
+  // Keep Record docked on the right but closed — no preview until a record
+  // is opened (File → Open Record / drop) or the user toggles Panels → Record.
   if (frame_->panels_->record_dock_ != nullptr) {
     if (frame_->dockWidgetArea(frame_->panels_->record_dock_) !=
         Qt::RightDockWidgetArea) {
       frame_->removeDockWidget(frame_->panels_->record_dock_);
       addSidebarDock(frame_->panels_->record_dock_, Qt::RightDockWidgetArea);
     }
-    frame_->panels_->record_dock_->show();
-    if (frame_->panels_->views_dock_ != nullptr) {
-      frame_->tabifyDockWidget(frame_->panels_->views_dock_,
-                               frame_->panels_->record_dock_);
-      frame_->panels_->views_dock_->raise();
-    }
+    frame_->panels_->record_dock_->hide();
   }
 
   applyMainPanelDefaultLayout();

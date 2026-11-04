@@ -72,7 +72,7 @@ void FileDropZone::SetTone(style::Tone tone) {
 }
 
 QSize FileDropZone::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   return QSize(qMax(240, fontMetrics().horizontalAdvance(prompt_) +
                              2 * tokens.spacing_lg),
                88);
@@ -111,7 +111,7 @@ void FileDropZone::dropEvent(QDropEvent* event) {
 
 void FileDropZone::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QColor border =
       drag_active_ || hasFocus() ? tokens.focus_ring : tokens.border;
   QColor background =

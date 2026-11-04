@@ -4,6 +4,7 @@
 
 #include "autoviz/common/widget/data/loading_overlay.hpp"
 
+#include <QApplication>
 #include <QCoreApplication>
 #include <QEvent>
 #include <QHideEvent>
@@ -26,7 +27,7 @@ LoadingOverlay::LoadingOverlay(QWidget* target) : QWidget(nullptr) {
   setAttribute(Qt::WA_TransparentForMouseEvents, false);
 
   auto* layout = new QVBoxLayout(this);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   layout->setContentsMargins(tokens.spacing_lg, tokens.spacing_lg,
                              tokens.spacing_lg, tokens.spacing_lg);
   layout->setSpacing(tokens.spacing_sm);
@@ -47,10 +48,7 @@ LoadingOverlay::LoadingOverlay(QWidget* target) : QWidget(nullptr) {
 }
 
 LoadingOverlay::~LoadingOverlay() {
-  if (application_filter_installed_ &&
-      QCoreApplication::instance() != nullptr) {
-    QCoreApplication::instance()->removeEventFilter(this);
-  }
+  ReleaseInputFilter();
   if (target_ != nullptr) {
     target_->removeEventFilter(this);
   }
@@ -60,6 +58,8 @@ void LoadingOverlay::AttachTo(QWidget* target) {
   if (target_ == target) {
     return;
   }
+  ReleaseInputFilter();
+  hide();
   if (target_ != nullptr) {
     target_->removeEventFilter(this);
   }
@@ -107,6 +107,9 @@ void LoadingOverlay::SetLoading(bool loading) {
     return;
   }
   loading_ = loading;
+  if (!loading_) {
+    SyncInputFilter();
+  }
   SyncGeometryAndVisibility();
   emit LoadingChanged(loading_);
 }
@@ -145,8 +148,11 @@ bool LoadingOverlay::eventFilter(QObject* watched, QEvent* event) {
       case QEvent::Resize:
       case QEvent::Move:
       case QEvent::Show:
-      case QEvent::Hide:
       case QEvent::ParentChange:
+        SyncGeometryAndVisibility();
+        break;
+      case QEvent::Hide:
+        ReleaseInputFilter();
         SyncGeometryAndVisibility();
         break;
       default:
@@ -158,7 +164,7 @@ bool LoadingOverlay::eventFilter(QObject* watched, QEvent* event) {
 
 void LoadingOverlay::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QColor background = tokens.surface;
   background.setAlpha(224);
   QPainter painter(this);
@@ -199,26 +205,60 @@ void LoadingOverlay::SyncAnimation() {
   progress_ring_->SetIndeterminate(loading_ && isVisible());
 }
 
-void LoadingOverlay::SyncInputFilter() {
-  const bool should_install = blocks_input_ && loading_ && isVisible();
-  setFocusPolicy(should_install ? Qt::StrongFocus : Qt::NoFocus);
-  if (!should_install && hasFocus()) {
+void LoadingOverlay::CapturePreviousFocus() {
+  QWidget* focused = QApplication::focusWidget();
+  if (focused == nullptr || focused == this || isAncestorOf(focused)) {
+    previous_focus_.clear();
+    return;
+  }
+  previous_focus_ = focused;
+}
+
+void LoadingOverlay::ReleaseInputFilter() {
+  if (application_filter_installed_) {
+    if (QCoreApplication* application = QCoreApplication::instance();
+        application != nullptr) {
+      application->removeEventFilter(this);
+    }
+    application_filter_installed_ = false;
+  }
+  RestorePreviousFocus();
+  setFocusPolicy(Qt::NoFocus);
+  if (hasFocus()) {
     clearFocus();
   }
+}
 
+void LoadingOverlay::RestorePreviousFocus() {
+  const QPointer<QWidget> previous = previous_focus_;
+  previous_focus_.clear();
+  if (previous == nullptr || !previous->isVisible() || !previous->isEnabled()) {
+    return;
+  }
+  QWidget* current = QApplication::focusWidget();
+  if (current != nullptr && current != this && !isAncestorOf(current)) {
+    return;
+  }
+  previous->setFocus(Qt::OtherFocusReason);
+}
+
+void LoadingOverlay::SyncInputFilter() {
+  const bool should_install = blocks_input_ && loading_ && isVisible();
+  if (!should_install) {
+    ReleaseInputFilter();
+    return;
+  }
+  setFocusPolicy(Qt::StrongFocus);
+  if (application_filter_installed_) {
+    return;
+  }
   QCoreApplication* application = QCoreApplication::instance();
   if (application == nullptr) {
     return;
   }
-  if (should_install == application_filter_installed_) {
-    return;
-  }
-  application_filter_installed_ = should_install;
-  if (should_install) {
-    application->installEventFilter(this);
-  } else {
-    application->removeEventFilter(this);
-  }
+  CapturePreviousFocus();
+  application->installEventFilter(this);
+  application_filter_installed_ = true;
 }
 
 }  // namespace autoviz::widget

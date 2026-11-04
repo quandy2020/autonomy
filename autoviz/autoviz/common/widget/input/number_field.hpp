@@ -8,6 +8,8 @@
 
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
+class QEvent;
+class QPaintEvent;
 class QWheelEvent;
 
 namespace autoviz::widget {
@@ -26,6 +28,9 @@ class NumberField final : public QDoubleSpinBox {
   QSize minimumSizeHint() const override;
 
  protected:
+  bool event(QEvent* event) override;
+  bool eventFilter(QObject* watched, QEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
   void wheelEvent(QWheelEvent* event) override;
 
  private:

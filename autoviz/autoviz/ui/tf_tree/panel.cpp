@@ -39,6 +39,7 @@
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/tf_tree/graph_view.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -47,14 +48,25 @@ namespace {
 
 constexpr int kRoleFrameId = Qt::UserRole;
 
-/** Light tokens shared with Channel Graph / TfTreeGraphView. */
-constexpr char kBg[] = "rgba(255,255,255,128)";
-constexpr char kSurface[] = "rgba(240,249,255,155)";
-constexpr char kSurfaceRaised[] = "rgba(255,255,255,175)";
-constexpr char kBorder[] = "rgba(186,230,253,140)";
-constexpr char kText[] = "#1e293b";
-constexpr char kTextMuted[] = "#64748b";
-constexpr char kAccent[] = "#0891b2";
+/** Shell-backed tokens shared with Channel Graph / TfTreeGraphView. */
+QString TfToken(const char* key, const char* fallback) {
+  const QString value = style::tokens().value(QString::fromLatin1(key));
+  return value.isEmpty() ? QString::fromLatin1(fallback) : value;
+}
+
+QString kBg() { return TfToken("{{panel-bg}}", "rgba(255,255,255,228)"); }
+QString kSurface() {
+  return TfToken("{{panel-surface}}", "rgba(248,250,255,245)");
+}
+QString kSurfaceRaised() {
+  return TfToken("{{panel-surface-raised}}", "rgba(255,255,255,255)");
+}
+QString kBorder() {
+  return TfToken("{{panel-border}}", "rgba(170,185,205,160)");
+}
+QString kText() { return TfToken("{{panel-text}}", "#1A1A2E"); }
+QString kTextMuted() { return TfToken("{{panel-muted}}", "#5A6478"); }
+QString kAccent() { return TfToken("{{panel-accent}}", "#007AFF"); }
 constexpr char kStatic[] = "#d97706";
 
 widget::Separator* MakeToolbarSeparator(QWidget* parent) {
@@ -88,16 +100,17 @@ QIcon MakeGlyphIcon(const std::function<void(QPainter&, const QRectF&)>& paint,
   return QIcon(pixmap);
 }
 
-/** Matches Channel Graph node glyph (cyan card). */
+/** Matches Channel Graph node glyph (Shell accent card). */
 QIcon MakeFrameGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
+    const glass::ShellTokens s = glass::Shell();
     const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3,
                       r.height() - 7);
-    p.setPen(QPen(QColor(0x67, 0xe8, 0xf9), 1.2));
-    p.setBrush(QColor(0xec, 0xfe, 0xff));
+    p.setPen(QPen(s.accent, 1.2));
+    p.setBrush(s.accent_soft);
     p.drawRoundedRect(card, 3.5, 3.5);
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(QLatin1String(kAccent)));
+    p.setBrush(s.accent);
     p.drawEllipse(QPointF(card.left() + 5.5, card.center().y()), 3.2, 3.2);
   });
 }
@@ -735,7 +748,7 @@ void TfTreePanel::rebuildTree() {
       item->setForeground(0, QBrush(QColor(kStatic)));
     } else {
       item->setToolTip(0, frame_id);
-      item->setForeground(0, QBrush(QColor(kText)));
+      item->setForeground(0, QBrush(QColor(kText())));
     }
     frame_nodes_.insert(frame_id, FrameNode{stats, item});
     item_by_frame.insert(frame_id, item);

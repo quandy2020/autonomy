@@ -1,0 +1,5 @@
+# Large SMPL-X packs (download via scripts/download_humanoids.py).
+humanoid_data/
+humanoids.zip
+*.zip
+!README.md

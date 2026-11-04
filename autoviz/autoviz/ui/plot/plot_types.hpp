@@ -126,7 +126,7 @@ struct PlotSeriesConfig {
   QString x_channel;
   QString custom_timestamp_path;  /**< Stamp path for @ref PlotTimestampMode::kCustomField. */
   QString label;  /**< Legend / tooltip label. */
-  QColor color = QColor(QStringLiteral("#4e98e2"));  /**< Series stroke color. */
+  QColor color = QColor(QStringLiteral("#007AFF"));  /**< Series stroke (Shell accent default). */
   QString line_size = QStringLiteral("auto");  /**< Stroke width hint (@c auto or px). */
   PlotCurveStyle curve_style = PlotCurveStyle::kLines;  /**< Stroke style. */
   bool show_line = true;  /**< Draw connecting line (vs points / sticks only). */

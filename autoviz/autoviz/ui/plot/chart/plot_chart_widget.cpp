@@ -26,6 +26,7 @@
 #include "autoviz/ui/plot/core/plot_time_join.hpp"
 #include "autoviz/ui/plot/core/plot_xy_align.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -1358,7 +1359,9 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
       synced_cursor_x_ <= range.max_x &&
       !(hover_active_ && std::abs(hover_x_ - synced_cursor_x_) < 1e-12)) {
     const QPointF top = mapToChart(synced_cursor_x_, range.max_y, range);
-    QPen pen(QColor(125, 211, 252, 200));
+    QColor sync = glass::Shell().accent;
+    sync.setAlpha(200);
+    QPen pen(sync);
     pen.setWidth(1);
     pen.setCosmetic(true);
     pen.setStyle(Qt::DashLine);
@@ -1371,17 +1374,20 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
   drawBrush(painter, range, chart);
 
   if (interaction_mode_ == PlotInteractionMode::kZoom && !zoom_rect_.isNull()) {
-    painter.setPen(QPen(QColor(78, 152, 226), 1, Qt::DashLine));
-    painter.setBrush(QColor(78, 152, 226, 40));
+    const QColor zoom = glass::Shell().accent;
+    QColor zoom_fill = zoom;
+    zoom_fill.setAlpha(40);
+    painter.setPen(QPen(zoom, 1, Qt::DashLine));
+    painter.setBrush(zoom_fill);
     painter.drawRect(zoom_rect_);
   }
 
   const QRect add_button = addSeriesButtonRect();
-  painter.setPen(QColor(210, 210, 210));
-  painter.setBrush(Qt::white);
+  painter.setPen(glass::Shell().border_light);
+  painter.setBrush(glass::Shell().card);
   painter.drawRoundedRect(add_button, 4, 4);
   painter.fillRect(QRect(add_button.left() + 10, add_button.top() + 10, 8, 8),
-                   QColor(QStringLiteral("#4e98e2")));
+                   glass::Shell().accent);
   painter.setPen(QColor(60, 60, 60));
   painter.drawText(add_button.adjusted(24, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft,
                    tr("Click to add a series"));

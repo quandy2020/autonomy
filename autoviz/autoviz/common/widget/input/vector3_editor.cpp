@@ -22,7 +22,7 @@ Vector3Editor::Vector3Editor(QWidget* parent) : QWidget(parent) {
 
   auto* layout = new QHBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(GetThemeTokens(tone_).spacing_sm);
+  layout->setSpacing(GetThemeTokens(this, tone_).spacing_sm);
 
   x_field_ = new NumberField(this);
   y_field_ = new NumberField(this);

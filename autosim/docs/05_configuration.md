@@ -66,6 +66,8 @@ habitat:
 | `dataset.root` | 输出目录（含 `meta/` `data/` `videos/`） |
 | `dataset.fps` | 录制频率（可低于 `control_hz`） |
 | `dataset.episode_frames` | `>0` 时按帧数切 episode；`0` 则退出时 flush |
+| `scenario.pedestrian` | CPU 行人（agents YAML / SFM）；激光融合始终可用 |
+| `humanoids.*` | Habitat SMPL-X 视觉（TrackVLA 布局）；见 [14](14_habitat_humanoids.md) |
 
 ---
 

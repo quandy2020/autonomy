@@ -12,6 +12,7 @@
 class QEvent;
 class QHideEvent;
 class QLabel;
+class QPaintEvent;
 class QPushButton;
 class QTimer;
 
@@ -31,6 +32,9 @@ class Toast : public QFrame {
   FeedbackLevel level() const;
   void SetLevel(FeedbackLevel level);
 
+  style::Tone tone() const noexcept { return tone_; }
+  void SetTone(style::Tone tone);
+
   int duration_ms() const;
   void SetDurationMs(int duration_ms);
 
@@ -49,9 +53,12 @@ class Toast : public QFrame {
   void changeEvent(QEvent* event) override;
   void showEvent(QShowEvent* event) override;
   void hideEvent(QHideEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
 
  private:
+  void ApplyTheme();
   void Reposition();
+  void UpdateAccessibility();
   void UpdateIcon();
 
   FeedbackLevel level_ = FeedbackLevel::kInformation;
@@ -60,6 +67,7 @@ class Toast : public QFrame {
   QLabel* message_label_ = nullptr;
   QPushButton* close_button_ = nullptr;
   QTimer* dismiss_timer_ = nullptr;
+  style::Tone tone_ = style::Tone::Shell;
   bool dismissed_ = false;
 };
 

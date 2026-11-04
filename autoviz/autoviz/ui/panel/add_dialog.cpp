@@ -52,7 +52,9 @@ class GlassWell : public QWidget {
     painter.fillPath(path, sheen);
     painter.setPen(QPen(QColor(255, 255, 255, 160), 1.0));
     painter.drawPath(path);
-    painter.setPen(QPen(QColor(186, 230, 253, 90), 1.0));
+    QColor rim = glass::Shell().glass_rim;
+    rim.setAlpha(90);
+    painter.setPen(QPen(rim, 1.0));
     painter.drawRoundedRect(card.adjusted(1.0, 1.0, -1.0, -1.0), 13.0, 13.0);
   }
 };
@@ -78,8 +80,8 @@ class ContinuousListDelegate : public QStyledItemDelegate {
       painter->setRenderHint(QPainter::Antialiasing, true);
       QPainterPath path;
       path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 10.0, 10.0);
-      painter->fillPath(path, selected ? QColor(20, 184, 166, 78)
-                                       : QColor(165, 243, 252, 56));
+      painter->fillPath(path, selected ? glass::ShellSelectionFill()
+                                       : glass::ShellHoverFill());
       painter->restore();
     }
 
@@ -87,8 +89,9 @@ class ContinuousListDelegate : public QStyledItemDelegate {
     opt.state.setFlag(QStyle::State_MouseOver, false);
     opt.backgroundBrush = Qt::NoBrush;
     if (selected) {
-      opt.palette.setColor(QPalette::Text, QColor(0x0F, 0x76, 0x6E));
-      opt.palette.setColor(QPalette::WindowText, QColor(0x0F, 0x76, 0x6E));
+      const QColor ink = glass::ShellSelectionInk();
+      opt.palette.setColor(QPalette::Text, ink);
+      opt.palette.setColor(QPalette::WindowText, ink);
       opt.font.setWeight(QFont::DemiBold);
     }
     QStyledItemDelegate::paint(painter, opt, index);
@@ -135,7 +138,7 @@ AddPanelDialog::AddPanelDialog(const QStringList& available_panels,
       style::sheet(QStringLiteral("add_panel")));
   QPalette pal = list_->palette();
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
+  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   list_->setPalette(pal);
   list_->setItemDelegate(new ContinuousListDelegate(list_));

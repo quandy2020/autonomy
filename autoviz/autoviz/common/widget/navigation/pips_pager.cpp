@@ -4,11 +4,15 @@
 
 #include "autoviz/common/widget/navigation/pips_pager.hpp"
 
+#include <QEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QResizeEvent>
+#include <limits>
+
+#include "autoviz/common/widget/navigation/navigation_direction.hpp"
 
 namespace autoviz::widget {
 namespace {
@@ -19,7 +23,7 @@ constexpr qreal kPipSpacing = 10.0;
 
 }  // namespace
 
-PipsPager::PipsPager(QWidget *parent) : QWidget(parent) {
+PipsPager::PipsPager(QWidget* parent) : QWidget(parent) {
   setObjectName(QStringLiteral("AutovizPipsPager"));
   setProperty("autovizRole", QStringLiteral("pipsPager"));
   setAccessibleName(tr("Page selector"));
@@ -82,24 +86,39 @@ void PipsPager::SetTone(style::Tone tone) {
 }
 
 QSize PipsPager::sizeHint() const {
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const int count = qMin(page_count_, maximum_visible_pips_);
   const int width =
       count > 0
           ? qRound(count * kCurrentPipDiameter + (count - 1) * kPipSpacing)
           : qRound(kCurrentPipDiameter);
-  return QSize(width + 8, 28);
+  return QSize(qMax(width + 8, tokens.control_height_medium),
+               tokens.control_height_medium);
 }
 
-QSize PipsPager::minimumSizeHint() const { return QSize(28, 28); }
+QSize PipsPager::minimumSizeHint() const {
+  const int touch_extent = GetThemeTokens(this, tone_).control_height_medium;
+  return QSize(touch_extent, touch_extent);
+}
 
-void PipsPager::keyPressEvent(QKeyEvent *event) {
+void PipsPager::changeEvent(QEvent* event) {
+  QWidget::changeEvent(event);
+  if (event->type() == QEvent::LayoutDirectionChange) {
+    RebuildGeometry();
+    update();
+  }
+}
+
+void PipsPager::keyPressEvent(QKeyEvent* event) {
   int next_page = current_page_;
   switch (event->key()) {
     case Qt::Key_Left:
+    case Qt::Key_Right:
+      next_page += internal::HorizontalKeyStep(event->key(), layoutDirection());
+      break;
     case Qt::Key_Up:
       --next_page;
       break;
-    case Qt::Key_Right:
     case Qt::Key_Down:
       ++next_page;
       break;
@@ -123,7 +142,7 @@ void PipsPager::keyPressEvent(QKeyEvent *event) {
   event->accept();
 }
 
-void PipsPager::mouseReleaseEvent(QMouseEvent *event) {
+void PipsPager::mouseReleaseEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
     const int page = HitTest(event->position());
     if (page >= 0) {
@@ -135,9 +154,9 @@ void PipsPager::mouseReleaseEvent(QMouseEvent *event) {
   QWidget::mouseReleaseEvent(event);
 }
 
-void PipsPager::paintEvent(QPaintEvent *event) {
+void PipsPager::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens &tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(Qt::NoPen);
@@ -157,7 +176,7 @@ void PipsPager::paintEvent(QPaintEvent *event) {
   }
 }
 
-void PipsPager::resizeEvent(QResizeEvent *event) {
+void PipsPager::resizeEvent(QResizeEvent* event) {
   QWidget::resizeEvent(event);
   RebuildGeometry();
 }
@@ -183,16 +202,19 @@ void PipsPager::RebuildGeometry() {
       qBound(0, current_page_ - half, page_count_ - visible_count);
   const qreal total_width =
       visible_count * kCurrentPipDiameter + (visible_count - 1) * kPipSpacing;
-  qreal x = (width() - total_width) * 0.5;
+  const qreal start_x = (width() - total_width) * 0.5;
   const qreal center_y = height() * 0.5;
   for (int i = 0; i < visible_count; ++i) {
     const int page = first + i;
+    const int visual_index =
+        internal::VisualIndex(i, visible_count, layoutDirection());
+    const qreal x =
+        start_x + visual_index * (kCurrentPipDiameter + kPipSpacing);
     const qreal diameter =
         page == current_page_ ? kCurrentPipDiameter : kPipDiameter;
     visible_pages_.push_back(page);
     pip_rects_.push_back(QRectF(x + (kCurrentPipDiameter - diameter) * 0.5,
                                 center_y - diameter * 0.5, diameter, diameter));
-    x += kCurrentPipDiameter + kPipSpacing;
   }
 }
 
@@ -203,13 +225,23 @@ void PipsPager::UpdateAccessibility() {
           : tr("No pages"));
 }
 
-int PipsPager::HitTest(const QPointF &position) const {
+int PipsPager::HitTest(const QPointF& position) const {
+  if (pip_rects_.isEmpty() || !QRectF(rect()).contains(position)) {
+    return -1;
+  }
+
+  // Pip centers stay fixed when the selected pip grows. Choosing the nearest
+  // center removes dead gaps without making the hit region jump on selection.
+  int nearest_index = -1;
+  qreal nearest_distance = std::numeric_limits<qreal>::max();
   for (int i = 0; i < pip_rects_.size(); ++i) {
-    if (pip_rects_[i].adjusted(-4, -4, 4, 4).contains(position)) {
-      return visible_pages_[i];
+    const qreal distance = qAbs(position.x() - pip_rects_[i].center().x());
+    if (distance < nearest_distance) {
+      nearest_distance = distance;
+      nearest_index = i;
     }
   }
-  return -1;
+  return nearest_index >= 0 ? visible_pages_[nearest_index] : -1;
 }
 
 }  // namespace autoviz::widget

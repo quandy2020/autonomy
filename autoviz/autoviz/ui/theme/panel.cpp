@@ -67,8 +67,8 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
       painter->setRenderHint(QPainter::Antialiasing, true);
       QPainterPath path;
       path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 8.0, 8.0);
-      painter->fillPath(path, selected ? QColor(20, 184, 166, 78)
-                                       : QColor(165, 243, 252, 56));
+      painter->fillPath(path, selected ? glass::ShellSelectionFill()
+                                       : glass::ShellHoverFill());
       painter->restore();
     }
 
@@ -76,8 +76,9 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
     opt.state.setFlag(QStyle::State_MouseOver, false);
     opt.backgroundBrush = Qt::NoBrush;
     if (selected) {
-      opt.palette.setColor(QPalette::Text, QColor(0x0F, 0x76, 0x6E));
-      opt.palette.setColor(QPalette::WindowText, QColor(0x0F, 0x76, 0x6E));
+      const QColor ink = glass::ShellSelectionInk();
+      opt.palette.setColor(QPalette::Text, ink);
+      opt.palette.setColor(QPalette::WindowText, ink);
       opt.font.setWeight(QFont::DemiBold);
     }
     QStyledItemDelegate::paint(painter, opt, index);
@@ -95,10 +96,10 @@ void ApplyTransparentSelectionPalette(QWidget* widget) {
   pal.setBrush(QPalette::Base, Qt::transparent);
   pal.setBrush(QPalette::Window, Qt::transparent);
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
+  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-               QColor(0x0F, 0x76, 0x6E));
+               glass::ShellSelectionInk());
   widget->setPalette(pal);
 }
 
@@ -506,11 +507,18 @@ void PaintPanelFrostedCard(QPainter& painter, const QRect& rect, qreal radius) {
   QPainterPath card;
   card.addRoundedRect(outer, radius, radius);
 
-  painter.fillPath(card, QColor(252, 253, 253, 228));
+  const glass::ShellTokens s = glass::Shell();
+  QColor plate = s.glass_fill_deep;
+  plate.setAlpha(228);
+  painter.fillPath(card, plate);
   QLinearGradient wash(outer.topLeft(), outer.bottomRight());
   wash.setColorAt(0.0, QColor(255, 255, 255, 70));
-  wash.setColorAt(0.45, QColor(245, 252, 250, 28));
-  wash.setColorAt(1.0, QColor(241, 245, 249, 40));
+  QColor cool = s.glass_cool;
+  cool.setAlpha(28);
+  wash.setColorAt(0.45, cool);
+  QColor end = s.alternate_base;
+  end.setAlpha(40);
+  wash.setColorAt(1.0, end);
   painter.fillPath(card, wash);
 
   QLinearGradient sheen(
@@ -522,7 +530,9 @@ void PaintPanelFrostedCard(QPainter& painter, const QRect& rect, qreal radius) {
 
   painter.setPen(QPen(QColor(255, 255, 255, 200), 1.2));
   painter.drawPath(card);
-  painter.setPen(QPen(QColor(186, 230, 253, 110), 1.0));
+  QColor rim = s.glass_rim;
+  rim.setAlpha(qMin(rim.alpha(), 110));
+  painter.setPen(QPen(rim, 1.0));
   painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0), radius - 1.0,
                           radius - 1.0);
 }
@@ -631,7 +641,9 @@ void UpdateColorButton(QPushButton* button, const QColor& color) {
 QWidget* MakeCollapsibleSection(QWidget* parent, const QString& title,
                                 QWidget* body, bool expanded) {
   auto* section = new widget::CollapsiblePanel(parent);
-  section->SetAnimationEnabled(false);
+  section->SetTone(style::Tone::Frost);
+  // Soft expand/collapse for Liquid Glass settings panels.
+  section->SetAnimationEnabled(true);
   section->SetTitle(title);
   section->SetContentWidget(body);
   section->SetExpanded(expanded);

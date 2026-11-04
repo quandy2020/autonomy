@@ -39,6 +39,7 @@ SavedViewConfig ToSavedViewConfig(const std::string& name,
   config.pitch = state.pitch;
   config.distance = state.distance;
   config.near_clip_distance = state.near_clip_distance;
+  config.far_clip_distance = state.far_clip_distance;
   config.invert_z_axis = state.invert_z_axis;
   config.focal_shape_size = state.focal_shape_size;
   config.focal_shape_fixed_size = state.focal_shape_fixed_size;
@@ -75,6 +76,9 @@ rendering::ViewState ToViewState(const SavedViewConfig& config) {
   state.pitch = config.pitch;
   state.distance = config.distance;
   state.near_clip_distance = config.near_clip_distance;
+  state.far_clip_distance = config.far_clip_distance > 0.f
+                                ? config.far_clip_distance
+                                : 100000.f;
   state.invert_z_axis = config.invert_z_axis;
   state.focal_shape_size = config.focal_shape_size;
   state.focal_shape_fixed_size = config.focal_shape_fixed_size;

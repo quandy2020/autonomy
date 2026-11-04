@@ -5,6 +5,14 @@ in the following local open-source projects. The current implementation is an
 Autoviz clean-room implementation and does not copy GPL source or assets.
 No upstream implementation file or asset is copied by this component library.
 
+- **apple-hig**, revision
+  `e00f1af16c71f4122e7c964563d2f563fd490d7e`, MIT License. Design-guideline
+  reference only. The implementation transfers general hierarchy, harmony,
+  semantic-color, accessibility, and motion principles to Qt/Linux; it does
+  not copy Apple HIG text, source code, fonts, SF Symbols, templates, token
+  exports, or binary assets. Apple intellectual property remains governed by
+  Apple's own licenses.
+
 - **Fluent-Qt**, revision `ff9436c1`, MIT License.
 - **ElaWidgetTools**, revision `aae58f5`, MIT License.
 - **qt-material-widgets**, revision `a6bb62c`, BSD 3-Clause License.

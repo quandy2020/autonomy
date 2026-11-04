@@ -9,6 +9,7 @@
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
 class QEvent;
+class QPaintEvent;
 
 namespace autoviz::widget {
 
@@ -29,6 +30,7 @@ class ProgressBar final : public QProgressBar {
 
  protected:
   void changeEvent(QEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
 
  private:
   void ApplyPalette();

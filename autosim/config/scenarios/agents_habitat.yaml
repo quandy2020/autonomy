@@ -1,0 +1,71 @@
+# Habitat pedestrians for MP3D (map frame, meters).
+# With scenario.pedestrian.wander + spread_spawn, start poses are re-seeded onto
+# separated navmesh points and goals become far random navigable targets.
+# behavior: regular | impassive | surprised | scared | curious | threatening
+agents:
+  - id: 1
+    pose: {x: -3.2, y: 0.5, yaw: 0.0}
+    radius: 0.22
+    height: 1.7
+    speed: 0.72
+    behavior: regular
+    skin: 1
+    goal_tolerance: 0.55
+    cyclic_goals: true
+    goals:
+      - {x: -2.0, y: 0.5}
+  - id: 2
+    pose: {x: -5.0, y: -0.3, yaw: 1.57}
+    radius: 0.22
+    height: 1.7
+    speed: 0.65
+    behavior: curious
+    skin: 2
+    goal_tolerance: 0.55
+    cyclic_goals: true
+    goals:
+      - {x: -3.5, y: -0.3}
+  - id: 3
+    pose: {x: -2.5, y: -0.8, yaw: 0.0}
+    radius: 0.22
+    height: 1.7
+    speed: 0.78
+    behavior: regular
+    skin: 3
+    goal_tolerance: 0.55
+    cyclic_goals: true
+    goals:
+      - {x: -4.0, y: -0.8}
+  - id: 4
+    pose: {x: -4.8, y: 0.8, yaw: 3.14}
+    radius: 0.22
+    height: 1.7
+    speed: 0.70
+    behavior: regular
+    skin: 0
+    goal_tolerance: 0.55
+    cyclic_goals: true
+    goals:
+      - {x: -3.0, y: 0.8}
+  - id: 5
+    pose: {x: -1.5, y: 0.2, yaw: -0.5}
+    radius: 0.22
+    height: 1.7
+    speed: 0.68
+    behavior: impassive
+    skin: 4
+    goal_tolerance: 0.55
+    cyclic_goals: true
+    goals:
+      - {x: -2.8, y: 0.2}
+  - id: 6
+    pose: {x: -6.0, y: 0.4, yaw: 0.8}
+    radius: 0.22
+    height: 1.7
+    speed: 0.74
+    behavior: curious
+    skin: 5
+    goal_tolerance: 0.55
+    cyclic_goals: true
+    goals:
+      - {x: -4.5, y: 0.0}

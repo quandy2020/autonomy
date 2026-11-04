@@ -10,7 +10,6 @@
 #include <QDoubleSpinBox>
 #include <QFormLayout>
 #include <QFrame>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -116,66 +115,65 @@ TeleopSettingsWidget::TeleopSettingsWidget(common::VisualizationManager* manager
   outer->setAlignment(Qt::AlignTop);
 
   // —— Panel ——
-  auto* panel_group = new QGroupBox(tr("Panel"), this);
-  StyleSettingsGroupBox(panel_group);
-  auto* panel_form = new QFormLayout(panel_group);
+  auto* panel_body = new QWidget(this);
+  auto* panel_form = new QFormLayout(panel_body);
   ApplyCompactForm(panel_form);
-  title_edit_ = new QLineEdit(config_.title, panel_group);
+  title_edit_ = new QLineEdit(config_.title, panel_body);
   title_edit_->setPlaceholderText(tr("Teleop"));
-  panel_form->addRow(MakeFormLabel(tr("Title"), panel_group), title_edit_);
-  outer->addWidget(panel_group);
+  panel_form->addRow(MakeFormLabel(tr("Title"), panel_body), title_edit_);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Panel"), panel_body, true));
 
   // —— Publish ——
-  auto* publish_group = new QGroupBox(tr("Publish"), this);
-  StyleSettingsGroupBox(publish_group);
-  auto* publish_form = new QFormLayout(publish_group);
+  auto* publish_body = new QWidget(this);
+  auto* publish_form = new QFormLayout(publish_body);
   ApplyCompactForm(publish_form);
-  topic_edit_ = new QLineEdit(config_.topic, publish_group);
+  topic_edit_ = new QLineEdit(config_.topic, publish_body);
   topic_edit_->setPlaceholderText(QStringLiteral("/cmd_vel"));
-  publish_form->addRow(MakeFormLabel(tr("Topic"), publish_group), topic_edit_);
-  publish_rate_spin_ = new QDoubleSpinBox(publish_group);
+  publish_form->addRow(MakeFormLabel(tr("Topic"), publish_body), topic_edit_);
+  publish_rate_spin_ = new QDoubleSpinBox(publish_body);
   publish_rate_spin_->setRange(0.1, 100.0);
   publish_rate_spin_->setSingleStep(0.5);
   publish_rate_spin_->setDecimals(1);
   publish_rate_spin_->setSuffix(QStringLiteral(" Hz"));
   publish_rate_spin_->setValue(config_.publish_rate_hz);
   StylePlainSpin(publish_rate_spin_);
-  publish_form->addRow(MakeFormLabel(tr("Rate"), publish_group),
+  publish_form->addRow(MakeFormLabel(tr("Rate"), publish_body),
                        publish_rate_spin_);
 
   stop_on_release_check_ =
-      new QCheckBox(tr("Stop on stick release"), publish_group);
+      new QCheckBox(tr("Stop on stick release"), publish_body);
   stop_on_release_check_->setChecked(config_.stop_on_release);
   stop_on_release_check_->setStyleSheet(
       style::sheet(QStringLiteral("teleop/settings_form_check")));
   publish_form->addRow(QString(), stop_on_release_check_);
 
   smart_teleop_check_ =
-      new QCheckBox(tr("Smart teleop (task assist)"), publish_group);
+      new QCheckBox(tr("Smart teleop (task assist)"), publish_body);
   smart_teleop_check_->setChecked(config_.smart_teleop_enabled);
   smart_teleop_check_->setToolTip(
       tr("Send velocity via autonomy task teleop instead of /cmd_vel"));
   smart_teleop_check_->setStyleSheet(
       style::sheet(QStringLiteral("teleop/settings_form_check")));
   publish_form->addRow(QString(), smart_teleop_check_);
-  outer->addWidget(publish_group);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Publish"), publish_body, true));
 
   // —— Control ——
-  auto* control_group = new QGroupBox(tr("Control"), this);
-  StyleSettingsGroupBox(control_group);
-  auto* control_form = new QFormLayout(control_group);
+  auto* control_body = new QWidget(this);
+  auto* control_form = new QFormLayout(control_body);
   ApplyCompactForm(control_form);
-  stick_mode_combo_ = new QComboBox(control_group);
+  stick_mode_combo_ = new QComboBox(control_body);
   stick_mode_combo_->addItem(tr("Dual sticks"),
                              static_cast<int>(TeleopStickMode::kDual));
   stick_mode_combo_->addItem(tr("Arcade + keyboard"),
                              static_cast<int>(TeleopStickMode::kArcade));
   stick_mode_combo_->setCurrentIndex(
       stick_mode_combo_->findData(static_cast<int>(config_.stick_mode)));
-  control_form->addRow(MakeFormLabel(tr("Mode"), control_group),
+  control_form->addRow(MakeFormLabel(tr("Mode"), control_body),
                        stick_mode_combo_);
 
-  auto* speed_row = new QWidget(control_group);
+  auto* speed_row = new QWidget(control_body);
   auto* speed_layout = new QHBoxLayout(speed_row);
   speed_layout->setContentsMargins(0, 0, 0, 0);
   speed_layout->setSpacing(8);
@@ -189,9 +187,10 @@ TeleopSettingsWidget::TeleopSettingsWidget(common::VisualizationManager* manager
                      config_.max_angular_speed, QStringLiteral(" rad/s"),
                      speed_row),
       1);
-  control_form->addRow(MakeFormLabel(tr("Max speeds"), control_group),
+  control_form->addRow(MakeFormLabel(tr("Max speeds"), control_body),
                        speed_row);
-  outer->addWidget(control_group);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Control"), control_body, true));
 
   // —— Axis mapping ——
   auto* mapping_body = new QWidget(this);

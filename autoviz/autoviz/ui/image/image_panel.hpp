@@ -537,10 +537,10 @@ class ImagePanel : public QWidget {
   /** Histogram + stats strip under the tool row (inside chrome). */
   QWidget* analysis_strip_ = nullptr;
 
-  /** One-click hide for the floating chrome. */
+  /** Chevron (▼) to collapse the floating chrome. */
   QToolButton* overlay_hide_button_ = nullptr;
 
-  /** Small pill to restore the floating chrome when hidden. */
+  /** Chevron (▲) to restore the floating chrome when hidden. */
   QToolButton* overlay_reveal_button_ = nullptr;
 
   /** Luminance histogram with colormap range handles. */

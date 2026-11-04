@@ -167,7 +167,7 @@ QSize Sparkline::minimumSizeHint() const { return QSize(64, 32); }
 
 void Sparkline::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const QColor line =
       isEnabled() ? (line_color_.isValid() ? line_color_ : tokens.accent)
                   : tokens.disabled;

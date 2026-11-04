@@ -31,6 +31,14 @@
 - 实现：`backends/habitat/simulator.py`（`Simulator`）。
 - 适合数据集回放与 navmesh 占据。
 - URDF 可挂载为 kinematic 关节体（视觉可隐藏以免遮挡相机）。
+- 动态行人：CPU `Traffic` + 可选 TrackVLA 式 SMPL-X（`humanoids/`）；见 [14](14_habitat_humanoids.md)。配置：`config/habitat_people.yaml`。
+
+| 文件 | 作用 |
+|------|------|
+| `humanoids/assets.py` | 发现 URDF + motion pkl |
+| `humanoids/controller.py` | walk/stop gait |
+| `humanoids/actor.py` | 单人 kinematic AO |
+| `humanoids/sync.py` | `HumanoidSync`（Traffic → AO） |
 
 ---
 

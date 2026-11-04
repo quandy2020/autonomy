@@ -460,6 +460,9 @@ class PublishEditorWidget : public QWidget {
   /** @brief Updates Publish Once button label / color from config. */
   void refreshPublishButtonAppearance();
 
+  /** @brief Shows / hides the frosted empty-state tip over the publishers tree. */
+  void updateEmptyHintVisibility();
+
   /** Non-owning; channel discovery and publish path. */
   common::VisualizationManager* manager_ = nullptr;
 
@@ -509,6 +512,7 @@ class PublishEditorWidget : public QWidget {
   QPushButton* refresh_topics_button_ = nullptr;  /**< Refresh channel list. */
   QPushButton* publish_once_button_ = nullptr;    /**< Publish once action. */
   PublishFieldTreeWidget* publishers_tree_ = nullptr; /**< Rqt publishers table. */
+  QLabel* empty_hint_label_ = nullptr;                /**< Frosted empty-state tip. */
   QPushButton* reset_template_button_ = nullptr;  /**< Reload default JSON. */
   QPushButton* fill_latest_button_ = nullptr;     /**< Fill from latest message. */
   QTabWidget* message_tabs_ = nullptr;            /**< Fields / JSON / Metadata. */

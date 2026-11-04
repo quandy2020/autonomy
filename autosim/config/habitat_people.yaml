@@ -1,0 +1,214 @@
+# Copyright 2026 The Openbot Authors (duyongquan)
+#
+# Habitat + SMPL-X dynamic humans (CPU Traffic + kinematic AO).
+# Assets: data/humanoids/humanoid_data (scripts/download_humanoids.py; see docs/14).
+#
+#   CONFIG=src/autonomy/autosim/config/habitat_people.yaml src/autonomy/autosim/scripts/run.sh sim
+
+
+habitat:
+  backend: habitat
+  # task.launch + Autoviz 导航：nav + map.publish（见 autosim/README.md）。
+  # Cartographer SLAM：改 mode: slam，并单独起 localization。
+  mode: nav
+
+  # --- Habitat scene resource (two modes, mirrors autonomy_ros habitat/sim.py) ---
+  #
+  # Mode 1: dataset config beside scene folders (glob */*.glb is relative to it).
+  #   dataset_config: /workspace/autonomy/src/mp3d.scene_dataset_config.json
+  #   scene_id: 8WUmhLawc2A/8WUmhLawc2A.glb
+  #
+  # Mode 2 (default): direct .glb — auto-installs dataset config in the scene parent.
+  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
+  # Procedural mockamap (no GLB): use config/fake.yaml instead.
+  # Dynamic pedestrians (CPU SFM) + optional SMPL-X visuals: see habitat_people.yaml
+  # and docs/14_habitat_humanoids.md. Off by default so plain GLB demos stay light.
+  scenario:
+    # Pedestrians need this + map warmup navmesh Field so SFM skirts walls.
+    enabled: true
+    pedestrian:
+      enabled: true
+      social: true
+      agents: config/scenarios/agents_habitat.yaml
+      count: 6
+      radius: 0.22
+      height: 1.7
+      speed: 0.80
+      seed: 11
+      # Random tours on Habitat navmesh (try_step + ShortestPath), not Arena box.
+      wander: true
+      wander_min_dist: 2.5
+      spread_spawn: true
+      spread_min_dist: 1.8
+      stuck_steps: 12
+      goal_tolerance: 0.40
+      # Peer avoidance while wandering (Helbing social + soft overlap push).
+      social: true
+      social_force_factor: 1.2
+      social_margin: 0.10
+      A: 2.4
+      B: 0.35
+  # TrackVLA-layout kinematic humanoids (RGB-D). Requires assets under
+  # data/humanoids/humanoid_data or AUTOSIM_HUMANOID_ROOT.
+  humanoids:
+    enabled: true
+    root: data/humanoids/humanoid_data
+    visual: humanoid          # humanoid | none
+    names: []                 # empty = all avatars under root; non-empty = allowlist
+    # Optional: map HuNav/agents skin id → TrackVLA folder name
+    # skin_map: {1: male_46, 2: female_2, 3: male_56}
+    sync_hz: 30
+    snap_navmesh: true
+  # MP3D origin (0,0) often yields a flat semantic field; autosim may auto-relocate.
+  spawn: [-4.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
+  gpu: 0
+
+  robot:
+    urdf: robot/turtlebot3_burger/turtlebot3_burger.urdf   # empty = no URDF; path relative to autosim/
+    description_channel: /robot_description               # Autoviz RobotModel (when urdf set)
+    max_linear: 0.5
+    max_angular: 1.0
+    # First-order twist dynamics (m/s², rad/s²). 0 = unlimited (snap).
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
+    wheel_separation: 0.55  # m; used for odom yaw-noise scale
+    map_frame: map
+    base_link_height: 0.01   # base_footprint→base_link z / GT base height
+    watchdog_sec: 0.5
+    control_hz: 50.0
+    cmd_vel: /cmd_vel
+    truth:
+      enabled: false
+      channel: /gt/pose
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      # Forced true in nav (drift-corrected map→odom so LaserScan matches GT map).
+      # Forced false in slam (Cartographer owns map→odom).
+      publish_map_odom: false
+    clock:
+      enabled: true
+      channel: /clock
+    footprint:
+      enabled: true
+      channel: /footprint
+      frame: base_link
+
+  sensors:
+    lidar_2d:
+      enabled: true
+      channel: /scan
+      # Sensor frame: LaserScan is planar (z=0) in this frame; Autoviz height
+      # comes from TF base_link→laser_link (~0.17 m on turtlebot3).
+      frame: laser_link
+      rate_hz: 10.0
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      num_beams: 360
+      noise: 0.0           # no Gaussian range noise (clean sim scan)
+
+    lidar_3d:
+      enabled: false
+      channel: /points
+      frame: lidar_link
+      rate_hz: 10.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.26
+        angle_max: 0.26
+        num_rings: 16
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.015         # Gaussian σ on radial range (m)
+      motion_compensate: true  # deskew spin into scan-end frame
+
+    camera:
+      enabled: true
+      width: 1280
+      height: 720
+      hfov_deg: 90.0       # horizontal FOV → CameraInfo K
+      sensor_height: 0.6   # Habitat agent camera Y (matches autonomy_ros sensor_height)
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      depth_points_channel: /camera/depth/points
+      depth_points_stride: 1
+      info_channel: /camera/camera_info
+      semantic_enabled: true
+      semantic_channel: /camera/semantic/image_raw   # rgb8 colored (Habitat semantic_to_rgb)
+      semantic_ids_channel: /camera/semantic/instance_ids  # mono16 ids for Atlas PLP
+      frame: camera_link
+      rate_hz: 15.0        # Habitat render ~20-40ms/frame; 30Hz overloads sensor worker
+      noise:
+        depth: 0.0         # Gaussian σ on valid depth (m); 0 = clean sim image
+
+    # Global orthographic overhead RGB (fit navigable floor plan).
+    topdown:
+      enabled: true
+      mode: orthographic     # orthographic | pinhole
+      fit_scene: true        # center + scale from navigable cells
+      align_navmesh: true    # straighten floor plan (cancel robot yaw + PCA)
+      ortho_margin: 1.02     # pad around navigable AABB
+      ortho_fill: 0.96       # floor plan fills this fraction of the frame
+      # ortho_scale: 0.08    # optional Habitat scale (visible≈1/scale m); omit=auto
+      width: 2048            # native Habitat render (HD); keep == height for ortho
+      height: 2048
+      height_m: 8.0          # above floor (keep below roof)
+      rate_hz: 4.0           # slightly lower — 2k×2k COLOR is heavier
+      frame: topdown_link
+      channel: /camera/topdown/image_raw
+      info_channel: /camera/topdown/camera_info
+
+    imu:
+      enabled: true
+      channel: /imu
+      frame: imu_link
+      rate_hz: 200.0
+      # Habitat has no physics IMU. Gravity is composed into REP-145 specific
+      # force for a level robot (f_z = a_z + g). Set 0 for kinematic-only.
+      gravity: 9.80665
+      noise:
+        gyro: 0.01         # Gaussian σ on ω_z (rad/s)
+        accel: 0.05        # Gaussian σ on specific-force (m/s²)
+        gyro_bias: 0.001   # constant bias draw at start (rad/s)
+        accel_bias: 0.01   # constant bias draw at start (m/s²)
+
+    odom:
+      enabled: true
+      channel: /odom
+      frame: odom
+      # URDF root; normal tree: map→odom→base_footprint→base_link.
+      child_frame: base_footprint
+      # Keep 0 in slam so wheel odom matches GT laser rays (runner also glues
+      # odom←GT each tick in slam mode). Non-zero only for nav odometry demos.
+      noise: 0.0
+
+  map:
+    enabled: true           # GT occupancy from Habitat navmesh / panoramic sample
+    publish: true
+    frame: map
+    rate_hz: 1.0            # OccupancyGrid republish for late subscribers
+    ply:
+      # Panoramic Habitat ray-cast of the loaded GLB → /overall/map
+      channel: /overall/map
+      stride: 1
+      range_max: 30.0
+      horizontal:
+        angle_min: -3.14159
+        angle_max: 3.14159
+        num_beams: 360
+      vertical:
+        angle_min: -0.5
+        angle_max: 0.5
+        num_rings: 32
+    grid:
+      channel: /map
+      resolution: 0.05
+      z_min: 0.1
+      z_max: 2.5

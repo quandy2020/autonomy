@@ -67,10 +67,18 @@ class Field:
         points = np.asarray(position, dtype=np.float64).reshape(-1, 2)
         if points.shape[0] == 0 or self.grid.size == 0 or self.resolution <= 0.0:
             return np.zeros((points.shape[0],), dtype=bool)
+        height, width = self.grid.shape
         span = int(np.ceil(float(radius) / self.resolution)) + 1
         cols = np.floor((points[:, 0] - self.origin_x) / self.resolution).astype(int)
         rows = np.floor((points[:, 1] - self.origin_y) / self.resolution).astype(int)
-        hit = np.zeros((points.shape[0],), dtype=bool)
+        # Outside the occupancy map is void — treat as blocked (else walkers
+        # leave the building into empty space around Habitat navmesh crops).
+        hit = (
+            (rows < 0)
+            | (cols < 0)
+            | (rows >= height)
+            | (cols >= width)
+        )
         for row_offset in range(-span, span + 1):
             for col_offset in range(-span, span + 1):
                 hit |= self.cell_hits(points, rows + row_offset, cols + col_offset, radius)

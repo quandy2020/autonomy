@@ -55,6 +55,7 @@ class Drawer final : public QWidget {
  protected:
   bool event(QEvent* event) override;
   bool eventFilter(QObject* watched, QEvent* event) override;
+  bool focusNextPrevChild(bool next) override;
   void hideEvent(QHideEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
   void mousePressEvent(QMouseEvent* event) override;
@@ -65,12 +66,15 @@ class Drawer final : public QWidget {
   qreal progress() const noexcept { return progress_; }
   void SetProgress(qreal progress);
   QRectF PanelRect() const;
+  void FocusFirstDescendant();
   void SyncToParent();
   void UpdateContentGeometry();
+  void RestorePreviousFocus();
   bool AnimationsEnabled() const;
 
   QPropertyAnimation* animation_ = nullptr;
   QPointer<QWidget> observed_parent_;
+  QPointer<QWidget> previous_focus_;
   QWidget* content_ = nullptr;
   Placement placement_ = Placement::kRight;
   style::Tone tone_ = style::Tone::Shell;

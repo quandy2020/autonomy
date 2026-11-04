@@ -4,53 +4,72 @@
 
 #include "autoviz/ui/theme/application.hpp"
 
+#include <QAbstractButton>
 #include <QApplication>
+#include <QCheckBox>
+#include <QFrame>
+#include <QToolBar>
+#include <QMenuBar>
+#include <QStatusBar>
 #include <QColor>
 #include <QFont>
 #include <QFontMetrics>
 #include <QGuiApplication>
+#include <QHash>
 #include <QKeySequence>
 #include <QMenu>
 #include <QPalette>
 #include <QPointer>
+#include <QRadioButton>
 #include <QStyle>
 #include <QStyleFactory>
 #include <QStyleHints>
+#include <QWidget>
 #include <QtGlobal>
 
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
-#include "autoviz/ui/theme/proxy.hpp"
 #include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/proxy.hpp"
 #include "autoviz/ui/theme/style.hpp"
-
-#include <QHash>
 
 namespace autoviz {
 namespace {
 
 /**
- * Frosted-glass shell — cool light surfaces + pale cyan accents.
- * Overlay (3D HUD / floating tools) shares the same cyan language via glass::.
+ * Apple-style shell — neutral grouped surfaces with a dynamic blue tint.
+ * Overlay (3D HUD / floating tools) retains its viewport-specific palette.
  */
 
 QPalette BuildPaletteFromShell(const glass::ShellTokens& t) {
   QPalette palette;
-  palette.setColor(QPalette::Window, t.window);
+  // Opaque roles only — translucent Window/Base make Fusion indicators vanish.
+  QColor window = t.window;
+  window.setAlpha(255);
+  QColor base = t.base;
+  base.setAlpha(255);
+  QColor button = t.button;
+  button.setAlpha(255);
+  QColor border = t.border;
+  border.setAlpha(255);
+  palette.setColor(QPalette::Window, window);
   palette.setColor(QPalette::WindowText, t.window_text);
-  palette.setColor(QPalette::Base, t.base);
+  palette.setColor(QPalette::Base, base);
   palette.setColor(QPalette::AlternateBase, t.alternate_base);
   palette.setColor(QPalette::ToolTipBase, t.tooltip_base);
   palette.setColor(QPalette::ToolTipText, t.tooltip_text);
   palette.setColor(QPalette::Text, t.text);
-  palette.setColor(QPalette::Button, t.button);
+  palette.setColor(QPalette::Button, button);
   palette.setColor(QPalette::ButtonText, t.button_text);
   palette.setColor(QPalette::BrightText, t.accent);
   palette.setColor(QPalette::Link, t.link);
+  // Soft selection for text; checkbox chrome paints Shell.accent itself.
   palette.setColor(QPalette::Highlight, t.selection_bg);
   palette.setColor(QPalette::HighlightedText, t.selection_text);
-  palette.setColor(QPalette::Mid, t.border);
+  palette.setColor(QPalette::Mid, border);
   palette.setColor(QPalette::Midlight, t.border_light);
+  palette.setColor(QPalette::Light, base);
+  palette.setColor(QPalette::Dark, border);
   palette.setColor(QPalette::Disabled, QPalette::Text, t.disabled_text);
   palette.setColor(QPalette::Disabled, QPalette::ButtonText, t.disabled_text);
   palette.setColor(QPalette::Disabled, QPalette::WindowText, t.disabled_text);
@@ -62,33 +81,18 @@ QString Hex(const QColor& c) { return glass::Hex(c); }
 QString BuildPanelsMenuCheckboxIndicatorQss(const glass::ShellTokens& t,
                                             const QString& selector_prefix,
                                             bool dark) {
-  // Spec: milky glass panels; teal hover & accent (match Displays / Add Panel).
-  const QColor bg = dark ? QColor(0x24, 0x28, 0x30) : QColor(0xFF, 0xFF, 0xFF);
-  const QColor text = dark ? QColor(0xE2, 0xE8, 0xF0) : QColor(0x1E, 0x29, 0x3B);
-  const QColor border = dark ? QColor(0x3A, 0x40, 0x4A) : QColor(0xCB, 0xD5, 0xE1);
-  const QColor hover = dark ? QColor(0x37, 0x41, 0x51) : QColor(20, 184, 166, 48);
-  const QColor separator =
-      dark ? QColor(0x3A, 0x40, 0x4A) : QColor(0xE2, 0xE8, 0xF0);
-  Q_UNUSED(hover);
-  Q_UNUSED(t);
+  Q_UNUSED(dark);
+  // Follow Shell (Liquid / Light / Dark) — no legacy teal/slate hardcodes.
   QHash<QString, QString> tokens;
   tokens.insert(QStringLiteral("{{root}}"), selector_prefix);
-  tokens.insert(QStringLiteral("{{bg}}"), Hex(bg));
-  tokens.insert(QStringLiteral("{{text}}"), Hex(text));
-  tokens.insert(QStringLiteral("{{border}}"), Hex(border));
-  tokens.insert(QStringLiteral("{{sep}}"), Hex(separator));
+  tokens.insert(QStringLiteral("{{bg}}"), Hex(t.card));
+  tokens.insert(QStringLiteral("{{text}}"), Hex(t.text));
+  tokens.insert(QStringLiteral("{{border}}"), Hex(t.border));
+  tokens.insert(QStringLiteral("{{sep}}"), Hex(t.border_light));
   return style::sheet(QStringLiteral("menu"), tokens);
 }
 
-bool PreferDarkPanelsMenu() {
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-  if (QGuiApplication::styleHints() != nullptr) {
-    return QGuiApplication::styleHints()->colorScheme() == Qt::ColorScheme::Dark;
-  }
-#endif
-  const QColor window = QApplication::palette().color(QPalette::Window);
-  return window.lightness() < 128;
-}
+bool PreferDarkPanelsMenu() { return glass::ShellIsDark(); }
 
 QString BuildShellStylesheet(const glass::ShellTokens& /*t*/) {
   return style::sheet(QStringLiteral("theme"));
@@ -96,10 +100,12 @@ QString BuildShellStylesheet(const glass::ShellTokens& /*t*/) {
 
 void ApplyAppFont(QApplication& app) {
   QFont font = app.font();
-  font.setFamilies({QStringLiteral("Segoe UI"), QStringLiteral("Ubuntu"),
-                    QStringLiteral("Cantarell"), QStringLiteral("Noto Sans"),
-                    QStringLiteral("Sans Serif")});
-  font.setPointSizeF(9.0);
+  font.setFamilies({QStringLiteral(".AppleSystemUIFont"),
+                    QStringLiteral("SF Pro Text"),
+                    QStringLiteral("Helvetica Neue"), QStringLiteral("Inter"),
+                    QStringLiteral("Liberation Sans"),
+                    QStringLiteral("Noto Sans"), QStringLiteral("Sans Serif")});
+  font.setPointSizeF(10.5);
   app.setFont(font);
 }
 
@@ -111,18 +117,16 @@ QColor AppThemeSuggestedViewportBackground() { return QColor(48, 48, 48); }
 
 QPalette BuildThemePalette() { return BuildPaletteFromShell(glass::Shell()); }
 
-QString BuildAppThemeStylesheet() { return BuildShellStylesheet(glass::Shell()); }
+QString BuildAppThemeStylesheet() {
+  return BuildShellStylesheet(glass::Shell());
+}
 
 QString BuildPanelsMenuStylesheet() {
   return BuildPanelsMenuCheckboxIndicatorQss(
       glass::Shell(), QStringLiteral("QMenu"), PreferDarkPanelsMenu());
 }
 
-QColor PanelsMenuIconInk() {
-  // Match glass Shell secondary text — soft slate, not harsh black.
-  return PreferDarkPanelsMenu() ? QColor(0xE2, 0xE8, 0xF0)
-                                : QColor(0x47, 0x55, 0x69);
-}
+QColor PanelsMenuIconInk() { return glass::Shell().secondary_text; }
 
 namespace {
 QPointer<QMenu> g_active_glass_menu;
@@ -157,9 +161,10 @@ void PrepareAppMenu(QMenu* menu) {
     menu->setPalette(pal);
   }
   QFont font = menu->font();
-  font.setFamilies({QStringLiteral("Inter"), QStringLiteral("Segoe UI"),
-                    QStringLiteral("Roboto"), QStringLiteral("Noto Sans"),
-                    QStringLiteral("Sans Serif")});
+  font.setFamilies(
+      {QStringLiteral(".AppleSystemUIFont"), QStringLiteral("SF Pro Text"),
+       QStringLiteral("Helvetica Neue"), QStringLiteral("Inter"),
+       QStringLiteral("Liberation Sans"), QStringLiteral("Sans Serif")});
   font.setPixelSize(14);
   menu->setFont(font);
   menu->setToolTipsVisible(true);
@@ -176,9 +181,9 @@ void PrepareAppMenu(QMenu* menu) {
     };
     const bool panels = menu->property("autovizPanelsMenu").toBool();
     // Must match ProxyStyle layout constants.
-    const int leading =
-        panels ? (12 + 16 + 8 + 14 + 10)  // pad+icon+gap+check+gap
-               : (12 + 16 + 10);         // pad+icon+gap
+    const int leading = panels
+                            ? (12 + 16 + 8 + 14 + 10)  // pad+icon+gap+check+gap
+                            : (12 + 16 + 10);          // pad+icon+gap
     constexpr int kPadR = 28;
     constexpr int kSubmenuW = 12;
     constexpr int kShortcutGap = 36;
@@ -211,7 +216,8 @@ void PrepareAppMenu(QMenu* menu) {
             qMax(max_shortcut, measure(fm, portable) + kShortcutSafety);
       }
       if (!shortcut.isEmpty()) {
-        max_shortcut = qMax(max_shortcut, measure(fm, shortcut) + kShortcutSafety);
+        max_shortcut =
+            qMax(max_shortcut, measure(fm, shortcut) + kShortcutSafety);
       }
       if (action->menu() != nullptr) {
         need_submenu = true;
@@ -221,8 +227,7 @@ void PrepareAppMenu(QMenu* menu) {
     menu->setProperty("glassMaxShortcutW", max_shortcut);
     const int hmargin =
         2 * menu->style()->pixelMetric(QStyle::PM_MenuHMargin, nullptr, menu);
-    const int shortcut_w =
-        max_shortcut > 0 ? (kShortcutGap + max_shortcut) : 0;
+    const int shortcut_w = max_shortcut > 0 ? (kShortcutGap + max_shortcut) : 0;
     // Prefer minimumWidth so style sizeFromContents can still grow the popup.
     const int width = leading + max_label + shortcut_w +
                       (need_submenu ? kSubmenuW : 0) + kPadR + hmargin + 40;
@@ -253,14 +258,11 @@ void ApplyAppTheme(QApplication& app) {
   proxy->setParent(&app);
 
   const glass::ShellTokens theme = glass::Shell();
-  const bool dark_menu = PreferDarkPanelsMenu();
-  proxy->setAccentColor(dark_menu ? theme.accent : QColor(0x14, 0xB8, 0xA6));
-  proxy->setSelectionBackground(dark_menu ? QColor(0x37, 0x41, 0x51)
-                                          : QColor(20, 184, 166, 78));
-  proxy->setHoverBackground(dark_menu ? QColor(0x37, 0x41, 0x51)
-                                      : QColor(165, 243, 252, 56));
-  proxy->setMenuShortcutColor(dark_menu ? QColor(0x94, 0xA3, 0xB8)
-                                        : theme.secondary_text);
+  proxy->setAccentColor(theme.accent);
+  proxy->setSelectionBackground(theme.selection_bg);
+  proxy->setHoverBackground(glass::ShellIsLiquid() ? theme.accent_soft
+                                                   : theme.hover_bg);
+  proxy->setMenuShortcutColor(theme.secondary_text);
   app.setStyle(proxy);
   app.setPalette(BuildPaletteFromShell(theme));
   widget::InvalidateThemeTokens();
@@ -269,6 +271,89 @@ void ApplyAppTheme(QApplication& app) {
   // getOpaqueChildren SEGV during the first paints after RenderSystem ready.
   // Shell chrome uses Fusion+ProxyStyle+palette; panels keep local sheets.
   app.setStyleSheet(QString());
+}
+
+void RefreshAppThemeChrome(QApplication& app) {
+  widget::InvalidateThemeTokens();
+  const glass::ShellTokens shell = glass::Shell();
+  const QPalette app_pal = BuildPaletteFromShell(shell);
+  app.setPalette(app_pal);
+  if (auto* proxy = qobject_cast<ProxyStyle*>(app.style())) {
+    proxy->setAccentColor(shell.accent);
+    proxy->setSelectionBackground(shell.selection_bg);
+    proxy->setHoverBackground(glass::ShellIsLiquid() ? shell.accent_soft
+                                                     : shell.hover_bg);
+    proxy->setMenuShortcutColor(shell.secondary_text);
+  }
+
+  auto restyle = [&](QWidget* widget) {
+    if (widget == nullptr) {
+      return;
+    }
+    const QString name = widget->objectName();
+    if (name == QLatin1String(AppThemeIds::kPanelToolbar)) {
+      if (auto* frame = qobject_cast<QFrame*>(widget)) {
+        ApplyPanelToolbarChrome(frame);
+      }
+    } else if (name == QLatin1String(AppThemeIds::kPanelFooter)) {
+      if (auto* frame = qobject_cast<QFrame*>(widget)) {
+        ApplyPanelFooterChrome(frame);
+      }
+    } else if (name == QLatin1String(AppThemeIds::kPanelTitleTools)) {
+      ApplyPanelTitleToolsChrome(widget);
+    } else if (name == QLatin1String(AppThemeIds::kMenuBar) ||
+               qobject_cast<QMenuBar*>(widget) != nullptr) {
+      QPalette pal = app_pal;
+      pal.setColor(QPalette::WindowText, shell.window_text);
+      pal.setColor(QPalette::ButtonText, shell.window_text);
+      pal.setColor(QPalette::Text, shell.text);
+      widget->setPalette(pal);
+      widget->setStyleSheet(glass::ShellMenuBarStyleSheet());
+    } else if (name == QLatin1String(AppThemeIds::kToolBar) ||
+               qobject_cast<QToolBar*>(widget) != nullptr) {
+      QPalette pal = app_pal;
+      pal.setColor(QPalette::WindowText, shell.secondary_text);
+      pal.setColor(QPalette::ButtonText, shell.secondary_text);
+      pal.setColor(QPalette::Text, shell.text);
+      widget->setPalette(pal);
+      widget->setStyleSheet(glass::ShellToolBarStyleSheet(false));
+    } else if (qobject_cast<QStatusBar*>(widget) != nullptr) {
+      widget->setStyleSheet(glass::ShellStatusBarStyleSheet());
+    } else if (name == QLatin1String(AppThemeIds::kPanelContent) ||
+               name.endsWith(QLatin1String("Panel")) ||
+               name.contains(QLatin1String("/"))) {
+      // Re-token panel QSS so Liquid / Dark / Light backgrounds refresh.
+      if (!ShouldSkipPanelShellBackground(widget)) {
+        ApplyPanelShell(widget);
+      }
+    } else if (qobject_cast<QCheckBox*>(widget) != nullptr ||
+               qobject_cast<QRadioButton*>(widget) != nullptr) {
+      widget->setPalette(app_pal);
+    }
+    widget->style()->unpolish(widget);
+    widget->style()->polish(widget);
+    widget->update();
+  };
+
+  for (QWidget* top : app.topLevelWidgets()) {
+    if (top == nullptr) {
+      continue;
+    }
+    top->setPalette(app_pal);
+    restyle(top);
+    const auto widgets = top->findChildren<QWidget*>();
+    for (QWidget* child : widgets) {
+      restyle(child);
+    }
+    // Force checkbox / radio indicators to repaint with Shell accent.
+    for (QAbstractButton* button : top->findChildren<QAbstractButton*>()) {
+      if (qobject_cast<QCheckBox*>(button) != nullptr ||
+          qobject_cast<QRadioButton*>(button) != nullptr) {
+        button->update();
+      }
+    }
+    top->update();
+  }
 }
 
 }  // namespace autoviz

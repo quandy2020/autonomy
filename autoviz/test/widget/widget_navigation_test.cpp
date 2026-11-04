@@ -33,7 +33,8 @@ void WidgetNavigationTest::InfoBarUsesToneAndAccessibleText() {
   bar.SetTitle(QStringLiteral("Connection"));
   bar.SetMessage(QString());
   QCOMPARE(bar.accessibleName(), QStringLiteral("Connection"));
-  QCOMPARE(bar.accessibleDescription(), bar.accessibleName());
+  QCOMPARE(bar.accessibleDescription(),
+           QStringLiteral("Information notification. Connection"));
 
   bar.SetTitle(QString());
   bar.SetMessage(QStringLiteral("Receiving localization data"));

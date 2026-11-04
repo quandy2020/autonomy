@@ -70,11 +70,14 @@ Isaac 默认用 `rooms.json` 挤出的密高墙点云（实心、启动快）。
 | 显示 | 话题 |
 |------|------|
 | Image | `/camera/rgb/image_raw`、`/camera/depth/image_raw` |
-| Map | `/map` |
-| PointCloud2 | `/overall/map` |
+| Image（俯视） | `/camera/topdown/image_raw`（`sensors.topdown`：默认正交 + `fit_scene` 罩住整层） |
+| Map | `/map`（全局占用栅格俯视） |
+| PointCloud2 | `/overall/map`（全局场景点云俯视） |
 | LaserScan | `/scan` |
 | RobotModel | `/robot_description`（autosim 发布 URDF **文件绝对路径**，Autoviz 按目录解析 `meshes/`） |
-| TF | `/tf` `/tf_static` |
+| TF | `/tf` `/tf_static`（含 `base_link→topdown_link`） |
+
+全局俯视优先用 **Map `/map`** + **PointCloud2 `/overall/map`**（Fixed Frame=`map`）。需要看人/家具着色时再开 **Image `/camera/topdown/image_raw`**。
 
 `/overall/map` **采样一次**（密化只跑一遍），之后按 `rate_hz` **重发缓存**（Autolink 非 latch，晚订阅也能看到）。`/map` OccupancyGrid 同样按 `rate_hz` 刷新。
 

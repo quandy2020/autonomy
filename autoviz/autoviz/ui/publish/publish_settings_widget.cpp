@@ -6,7 +6,6 @@
 
 #include <QColorDialog>
 #include <QFormLayout>
-#include <QGroupBox>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSignalBlocker>
@@ -26,23 +25,25 @@ PublishSettingsWidget::PublishSettingsWidget(QWidget* parent)
   outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
   outer->setAlignment(Qt::AlignTop);
 
-  auto* title_form = new QFormLayout();
+  auto* general_body = new QWidget(this);
+  auto* title_form = new QFormLayout(general_body);
   ApplyCompactForm(title_form);
-  title_edit_ = new QLineEdit(config_.title, this);
+  title_edit_ = new QLineEdit(config_.title, general_body);
   title_form->addRow(tr("Title"), title_edit_);
-  outer->addLayout(title_form);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("General"), general_body, true));
 
-  auto* button_group = new QGroupBox(tr("Send button"), this);
-  StyleSettingsGroupBox(button_group);
-  auto* form = new QFormLayout(button_group);
+  auto* button_body = new QWidget(this);
+  auto* form = new QFormLayout(button_body);
   ApplyCompactForm(form);
-  button_label_edit_ = new QLineEdit(config_.button_label, button_group);
-  button_tooltip_edit_ = new QLineEdit(config_.button_tooltip, button_group);
-  button_color_button_ = MakeFlatActionButton(tr("Choose color"), button_group);
+  button_label_edit_ = new QLineEdit(config_.button_label, button_body);
+  button_tooltip_edit_ = new QLineEdit(config_.button_tooltip, button_body);
+  button_color_button_ = MakeFlatActionButton(tr("Choose color"), button_body);
   form->addRow(tr("Label"), button_label_edit_);
   form->addRow(tr("Tooltip"), button_tooltip_edit_);
   form->addRow(tr("Color"), button_color_button_);
-  outer->addWidget(button_group);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Send button"), button_body, true));
   outer->addStretch();
 
   connect(title_edit_, &QLineEdit::textChanged, this,

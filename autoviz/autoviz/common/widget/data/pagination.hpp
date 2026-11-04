@@ -68,6 +68,7 @@ class Pagination final : public QWidget {
   Button* previous_button_ = nullptr;
   Button* next_button_ = nullptr;
   QLabel* range_label_ = nullptr;
+  QLabel* page_size_label_ = nullptr;
   QLabel* page_label_ = nullptr;
   QComboBox* page_size_box_ = nullptr;
   QVector<int> page_sizes_ = {25, 50, 100, 200};

@@ -22,6 +22,34 @@ consolidates the useful capabilities found in the projects under
 - Public names describe semantics (`Button`, `InfoBar`, `Surface`) rather than
   an upstream toolkit (`MaterialButton`, `FluentCard`, and so on).
 
+## Apple-quality appearance profile
+
+The visual profile follows the transferable principles in the Apple Human
+Interface Guidelines reference at `Elevatormusic/apple-hig` revision
+`e00f1af16c71f4122e7c964563d2f563fd490d7e`: hierarchy, harmony, clarity,
+content deference, consistent states, and purposeful motion. Autoviz is a
+cross-platform Qt desktop application, so this is an interpretation rather
+than an Apple-platform conformance claim.
+
+- Keep Linux/Qt window chrome, menus, shortcuts, native dialogs, and system
+  fonts. Do not imitate macOS traffic-light controls or bundle SF fonts and SF
+  Symbols.
+- Resolve appearance through semantic `ThemeTokens` and `QPalette` roles.
+  Light, dark, inactive, disabled, and high-contrast palettes must remain
+  legible without mechanical color inversion.
+- Keep content surfaces opaque. Reserve translucent or material-like treatment
+  for navigation, tool, popover, and overlay chrome, with an opaque fallback;
+  never stack live blur effects.
+- Use the shared 4 px spacing rhythm and concentric small/medium/large radii.
+  Pointer-driven controls have at least a 24 px target; touch-oriented layouts
+  should use the 44 px large size.
+- Body and placeholder text target at least 4.5:1 contrast. Focus indicators,
+  meaningful glyphs, and control boundaries target at least 3:1, and state is
+  never communicated by color alone.
+- Hover, pressed, focused, selected, disabled, loading, empty, and error states
+  are first-class. Every animation goes through `MotionPolicy`, stops while
+  hidden, and has a no-motion fallback.
+
 ## Modules
 
 - `foundation`: `ThemeTokens`, `ApplyWidgetTheme()`, and `MotionPolicy`.
@@ -69,6 +97,37 @@ docker exec -w /workspace/autonomy \
   -e QT_QPA_PLATFORM=offscreen SpaceHero \
   ./build/autonomy/bin/autoviz_widget_gallery --smoke-test
 ```
+
+Use `--appearance=system|light|dark` to review a specific palette. The default
+is `system`. `--capture` saves the complete gallery content, including sections
+below the visible scroll viewport:
+
+```bash
+docker exec -w /workspace/autonomy \
+  -e QT_QPA_PLATFORM=offscreen SpaceHero \
+  ./build/autonomy/bin/autoviz_widget_gallery \
+  --appearance=light --capture=/tmp/autoviz_widget_gallery_light.png
+docker exec -w /workspace/autonomy \
+  -e QT_QPA_PLATFORM=offscreen SpaceHero \
+  ./build/autonomy/bin/autoviz_widget_gallery \
+  --appearance=dark --capture=/tmp/autoviz_widget_gallery_dark.png
+```
+
+Use `--capture-target` for a deterministic component capture. Legal values are
+`dock`, `command-palette`, `toast`, `drawer`, `popover`, `teaching-tip`, and
+`states`. The `states` target is a compact normal, focused, selected, disabled,
+and validation-error matrix kept out of the main gallery flow:
+
+```bash
+docker exec -w /workspace/autonomy \
+  -e QT_QPA_PLATFORM=offscreen SpaceHero \
+  ./build/autonomy/bin/autoviz_widget_gallery \
+  --appearance=dark --capture-target=states \
+  --capture=/tmp/autoviz_widget_states_dark.png
+```
+
+Capture mode selects reduced motion before constructing the gallery so repeated
+captures do not depend on animation timer phase.
 
 The standalone Bazel build exposes the same gallery target:
 

@@ -10,6 +10,7 @@
 
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
+class QEvent;
 class QKeyEvent;
 class QMouseEvent;
 class QPaintEvent;
@@ -23,7 +24,7 @@ class PipsPager final : public QWidget {
   Q_OBJECT
 
  public:
-  explicit PipsPager(QWidget *parent = nullptr);
+  explicit PipsPager(QWidget* parent = nullptr);
 
   int page_count() const noexcept { return page_count_; }
   void SetPageCount(int count);
@@ -42,16 +43,17 @@ class PipsPager final : public QWidget {
   void PageActivated(int page);
 
  protected:
-  void keyPressEvent(QKeyEvent *event) override;
-  void mouseReleaseEvent(QMouseEvent *event) override;
-  void paintEvent(QPaintEvent *event) override;
-  void resizeEvent(QResizeEvent *event) override;
+  void changeEvent(QEvent* event) override;
+  void keyPressEvent(QKeyEvent* event) override;
+  void mouseReleaseEvent(QMouseEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
+  void resizeEvent(QResizeEvent* event) override;
 
  private:
   void ActivatePage(int page);
   void RebuildGeometry();
   void UpdateAccessibility();
-  int HitTest(const QPointF &position) const;
+  int HitTest(const QPointF& position) const;
 
   QVector<int> visible_pages_;
   QVector<QRectF> pip_rects_;

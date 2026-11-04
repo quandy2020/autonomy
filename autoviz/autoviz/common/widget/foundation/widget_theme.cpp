@@ -21,63 +21,100 @@ QColor Blend(const QColor& foreground, const QColor& background, int alpha) {
       (foreground.alpha() * alpha + background.alpha() * inverse) / 255);
 }
 
-void ApplyPalette(QWidget* widget, const QPalette& palette, style::Tone tone) {
+ThemeAppearance ResolveAppearance(ThemeAppearance appearance,
+                                  const QPalette& palette) {
+  if (appearance != ThemeAppearance::kSystem) {
+    return appearance;
+  }
+  return qGray(palette.color(QPalette::Window).rgb()) < 128
+             ? ThemeAppearance::kDark
+             : ThemeAppearance::kLight;
+}
+
+void ApplyPalette(QWidget* widget, const QPalette& palette, style::Tone tone,
+                  const ThemeTokens& tokens) {
   widget->setPalette(palette);
   widget->setProperty("autovizTone", tone == style::Tone::Frost
                                          ? QStringLiteral("frost")
                                          : QStringLiteral("shell"));
+  widget->setProperty("autovizAppearance", tokens.is_dark
+                                               ? QStringLiteral("dark")
+                                               : QStringLiteral("light"));
 }
 
 }  // namespace
 
-QPalette BuildWidgetPalette(style::Tone tone, const QPalette& base) {
-  const ThemeTokens& tokens = GetThemeTokens(tone);
+QPalette BuildWidgetPalette(style::Tone tone, const QPalette& base,
+                            ThemeAppearance appearance) {
+  const ThemeAppearance resolved = ResolveAppearance(appearance, base);
+  const ThemeTokens& tokens = GetThemeTokens(tone, resolved);
   QPalette palette = base;
 
   palette.setColor(QPalette::Window, tokens.window);
   palette.setColor(QPalette::WindowText, tokens.text);
   palette.setColor(QPalette::Base, tokens.surface);
-  palette.setColor(QPalette::AlternateBase, tokens.surface_raised);
-  palette.setColor(QPalette::ToolTipBase, tokens.surface_raised);
+  palette.setColor(QPalette::AlternateBase, tokens.surface_sunken);
+  palette.setColor(QPalette::ToolTipBase, tokens.surface_material);
   palette.setColor(QPalette::ToolTipText, tokens.text);
   palette.setColor(QPalette::Text, tokens.text);
-  palette.setColor(QPalette::Button, tokens.surface_raised);
+  palette.setColor(QPalette::Button, tokens.surface_material);
   palette.setColor(QPalette::ButtonText, tokens.text);
   palette.setColor(QPalette::BrightText, tokens.danger);
-  palette.setColor(QPalette::Link, tokens.accent);
+  palette.setColor(QPalette::Link, tokens.accent_text);
+  palette.setColor(QPalette::LinkVisited, tokens.accent_text);
   palette.setColor(QPalette::Highlight, tokens.accent);
   palette.setColor(QPalette::HighlightedText, tokens.on_accent);
-  palette.setColor(QPalette::PlaceholderText, tokens.text_muted);
+  palette.setColor(QPalette::PlaceholderText, tokens.placeholder);
   palette.setColor(QPalette::Light, Blend(tokens.surface, tokens.text, 224));
   palette.setColor(QPalette::Midlight, Blend(tokens.surface, tokens.text, 208));
-  palette.setColor(QPalette::Mid, tokens.border);
-  palette.setColor(QPalette::Dark, Blend(tokens.border, tokens.text, 168));
+  palette.setColor(QPalette::Mid, tokens.separator);
+  palette.setColor(QPalette::Dark, tokens.border_strong);
+  palette.setColor(QPalette::Shadow, tokens.shadow_ambient);
 
-  const QColor disabled_surface = Blend(tokens.disabled, tokens.surface, 24);
+  palette.setColor(QPalette::Inactive, QPalette::WindowText,
+                   tokens.text_secondary);
+  palette.setColor(QPalette::Inactive, QPalette::Text, tokens.text_secondary);
+  palette.setColor(QPalette::Inactive, QPalette::ButtonText,
+                   tokens.text_secondary);
+  palette.setColor(QPalette::Inactive, QPalette::Highlight,
+                   tokens.surface_selected);
+  palette.setColor(QPalette::Inactive, QPalette::HighlightedText, tokens.text);
+  palette.setColor(QPalette::Inactive, QPalette::Link, tokens.accent_text);
+
   palette.setColor(QPalette::Disabled, QPalette::WindowText, tokens.disabled);
   palette.setColor(QPalette::Disabled, QPalette::Text, tokens.disabled);
   palette.setColor(QPalette::Disabled, QPalette::ButtonText, tokens.disabled);
   palette.setColor(QPalette::Disabled, QPalette::PlaceholderText,
                    tokens.disabled);
-  palette.setColor(QPalette::Disabled, QPalette::Base, disabled_surface);
-  palette.setColor(QPalette::Disabled, QPalette::Button, disabled_surface);
+  palette.setColor(QPalette::Disabled, QPalette::Base, tokens.surface_sunken);
+  palette.setColor(QPalette::Disabled, QPalette::Button, tokens.surface_sunken);
+  palette.setColor(QPalette::Disabled, QPalette::Highlight,
+                   tokens.border_subtle);
+  palette.setColor(QPalette::Disabled, QPalette::HighlightedText,
+                   tokens.disabled);
+  palette.setColor(QPalette::Disabled, QPalette::Link, tokens.disabled);
   return palette;
 }
 
-void ApplyWidgetTheme(QWidget* widget, style::Tone tone, bool recursive) {
+void ApplyWidgetTheme(QWidget* widget, style::Tone tone, bool recursive,
+                      ThemeAppearance appearance) {
   if (widget == nullptr) {
     return;
   }
 
-  const QPalette palette = BuildWidgetPalette(tone, widget->palette());
-  ApplyPalette(widget, palette, tone);
+  const ThemeAppearance resolved =
+      ResolveAppearance(appearance, widget->palette());
+  const ThemeTokens& tokens = GetThemeTokens(tone, resolved);
+  const QPalette palette =
+      BuildWidgetPalette(tone, widget->palette(), resolved);
+  ApplyPalette(widget, palette, tone, tokens);
   if (!recursive) {
     return;
   }
 
   const QList<QWidget*> descendants = widget->findChildren<QWidget*>();
   for (QWidget* descendant : descendants) {
-    ApplyPalette(descendant, palette, tone);
+    ApplyPalette(descendant, palette, tone, tokens);
   }
 }
 

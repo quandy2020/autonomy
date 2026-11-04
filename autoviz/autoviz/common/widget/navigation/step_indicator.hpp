@@ -10,6 +10,7 @@
 
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
+class QEvent;
 class QKeyEvent;
 class QMouseEvent;
 class QPaintEvent;
@@ -45,6 +46,7 @@ class StepIndicator final : public QWidget {
   void StepActivated(int index);
 
  protected:
+  void changeEvent(QEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
   void mouseReleaseEvent(QMouseEvent* event) override;
   void paintEvent(QPaintEvent* event) override;

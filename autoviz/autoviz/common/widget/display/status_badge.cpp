@@ -121,20 +121,21 @@ void StatusBadge::paintEvent(QPaintEvent* event) {
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing, true);
 
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QColor accent = AccentForStatus(status_, tokens);
   if (!isEnabled()) {
     accent = tokens.disabled;
   }
   const QColor background = Blend(tokens.surface, accent, 33);
   const QColor border = Blend(tokens.surface, accent, 107);
+  const QColor text_color = isEnabled() ? tokens.text : tokens.text_secondary;
 
   const QRectF bounds = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
   painter.setPen(QPen(border, 1.0));
   painter.setBrush(background);
   painter.drawRoundedRect(bounds, bounds.height() / 2.0, bounds.height() / 2.0);
 
-  painter.setPen(accent);
+  painter.setPen(text_color);
   painter.setFont(font());
   const QRect text_bounds = rect().adjusted(9, 0, -9, 0);
   const QString visible_text = QFontMetrics(font()).elidedText(

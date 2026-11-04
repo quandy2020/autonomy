@@ -22,6 +22,7 @@ to the robot. Optional ``agents`` YAML lists poses, goals, and behaviors.
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -66,6 +67,12 @@ class Pedestrian:
         "goal_force_factor": 1.0,
         "social_force_factor": 1.0,
         "obstacle_force_factor": 1.0,
+        # Navmesh wandering: pick far free-space goals instead of short loops.
+        "wander": False,
+        "wander_min_dist": 3.5,
+        "spread_spawn": False,
+        "spread_min_dist": 2.0,
+        "social_margin": 0.08,
     }
 
     def __init__(self, settings: Mapping[str, Any] | None = None) -> None:
@@ -88,6 +95,7 @@ class Pedestrian:
         self.agent_names = np.zeros((0,), dtype=object)
         self.group_ids = np.zeros((0,), dtype=np.int32)
         self.skins = np.zeros((0,), dtype=np.int32)
+        self.avatars = np.zeros((0,), dtype=object)
         self.radii = np.zeros((0,), dtype=np.float64)
         self.goal_radii = np.zeros((0,), dtype=np.float64)
         self.beh_config = np.zeros((0,), dtype=np.int32)
@@ -100,6 +108,11 @@ class Pedestrian:
         self.cyclic = np.zeros((0,), dtype=bool)
         self.arena: Arena | None = None
         self.field: Field | None = None
+        # Optional Habitat pathfinder — hard constraint onto navigable surface.
+        self.pathfinder: Any = None
+        self.nav_floor_y: float = 0.0
+        # Per-agent navmesh polylines (map x/y); SFM steers to the next vertex.
+        self.path_waypoints: list[list[tuple[float, float]]] = []
         self.force = Force(merged)
         self.behavior = Behavior(
             notice=float(merged["notice"]),
@@ -204,6 +217,9 @@ class Pedestrian:
         self.skins = np.array(
             [int(row.get("skin", 0) or 0) for row in agents.records], dtype=np.int32
         )
+        self.avatars = np.array(
+            [str(row.get("avatar") or "") for row in agents.records], dtype=object
+        )
         self.radii = np.array(
             [float(row.get("radius", self.settings.get("radius", 0.2))) for row in agents.records],
             dtype=np.float64,
@@ -282,6 +298,7 @@ class Pedestrian:
         )
         self.group_ids = np.full((count,), -1, dtype=np.int32)
         self.skins = np.zeros((count,), dtype=np.int32)
+        self.avatars = np.array([""] * count, dtype=object)
         self.radii = np.full(
             (count,), float(self.settings.get("radius", 0.2)), dtype=np.float64
         )
@@ -325,6 +342,15 @@ class Pedestrian:
             raise ValueError("dt must be >= 0")
         if self.arena is None or self.position.shape[0] == 0:
             return
+        # Habitat navmesh wander: try_step along ShortestPath + social avoidance.
+        if self.pathfinder is not None and bool(self.settings.get("wander", False)):
+            self.step_navmesh_wander(
+                float(dt),
+                bodies=bodies,
+                body_radius=float(body_radius),
+                robot=robot,
+            )
+            return
         if self.social:
             self.step_social(float(dt), bodies, float(body_radius), robot)
         else:
@@ -337,6 +363,7 @@ class Pedestrian:
         body_radius: float,
     ) -> None:
         """Legacy goal walk with separation and wall skirting."""
+        self.follow_nav_paths()
         velocity = self.limit_speed(self.desired_velocity() + self.separation())
         start = np.array(self.position, dtype=np.float64, copy=True)
         proposed = self.choose_step(start, velocity, dt)
@@ -356,6 +383,7 @@ class Pedestrian:
         robot: tuple[float, float, float] | np.ndarray | None,
     ) -> None:
         """SFM integration with robot reaction profiles."""
+        self.follow_nav_paths()
         robot_xy, robot_yaw = self.robot_state(robot)
         preferred, impassive = self.behavior.preferred(
             self.kinds,
@@ -585,7 +613,11 @@ class Pedestrian:
 
     def place_step(self, start: np.ndarray, velocity: np.ndarray, dt: float) -> np.ndarray:
         """Clamp one candidate and drop any part that enters an occupied cell."""
-        proposed = self.arena.clamp(start + velocity * dt)
+        proposed = start + velocity * dt
+        # When Habitat navmesh owns free-space, do not Arena-clamp — the default
+        # 10×10 box fights spread_spawn and freezes walkers off the tiny rectangle.
+        if self.pathfinder is None and self.arena is not None:
+            proposed = self.arena.clamp(proposed)
         if self.field is None:
             return proposed
         radius = float(self.settings["radius"])
@@ -593,6 +625,203 @@ class Pedestrian:
         blocked = self.field.blocked(proposed, radius)
         proposed[blocked] = start[blocked]
         return proposed
+
+    def step_navmesh_wander(
+        self,
+        dt: float,
+        bodies: np.ndarray | None = None,
+        body_radius: float = 0.0,
+        robot: tuple[float, float, float] | np.ndarray | None = None,
+    ) -> None:
+        """Navmesh random walk with social avoidance (peer + optional robot).
+
+        Steering = goal direction along ShortestPath, plus Helbing-style
+        repulsion from other pedestrians (and robot when ``social``), then
+        Habitat ``try_step`` so avoidance stays on the navigable surface.
+        """
+        n = int(self.position.shape[0])
+        if n == 0 or self.pathfinder is None:
+            return
+        self._ensure_path_slots()
+        try_step = getattr(self.pathfinder, "try_step", None)
+        if not callable(try_step):
+            try_step = getattr(self.pathfinder, "try_step_no_sliding", None)
+        tol = float(self.settings.get("goal_tolerance", 0.45))
+        stuck_lim = max(8, int(self.settings.get("stuck_steps", 18)))
+        social_on = bool(self.settings.get("social", True))
+        # Precompute pairwise social repulsion once per tick.
+        social = (
+            self.force.social(self.position, float(self.settings["radius"]))
+            if social_on and n >= 2
+            else np.zeros((n, 2), dtype=np.float64)
+        )
+        # Soft disk separation (handles hard overlaps SFM exponential misses).
+        if social_on and n >= 2:
+            social = social + self.separation()
+        robot_xy, _robot_yaw = self.robot_state(robot)
+        if social_on and robot_xy is not None:
+            social = social + self.force.bodies(
+                self.position,
+                float(self.settings["radius"]),
+                robot_xy.reshape(1, 2),
+                float(self.settings.get("radius", 0.22)),
+            )
+        if bodies is not None and np.asarray(bodies).size:
+            social = social + self.force.bodies(
+                self.position,
+                float(self.settings["radius"]),
+                bodies,
+                float(body_radius),
+            )
+
+        for i in range(n):
+            if not self.path_waypoints[i]:
+                self.assign_wander_goal(i)
+            self.follow_nav_paths_one(i, tol)
+            gx = float(self.goal[i, 0])
+            gy = float(self.goal[i, 1])
+            x = float(self.position[i, 0])
+            y = float(self.position[i, 1])
+            dx, dy = gx - x, gy - y
+            dist = math.hypot(dx, dy)
+            if dist <= tol or int(self.stuck[i]) >= stuck_lim:
+                self.assign_wander_goal(i)
+                self.stuck[i] = 0
+                gx = float(self.goal[i, 0])
+                gy = float(self.goal[i, 1])
+                dx, dy = gx - x, gy - y
+                dist = math.hypot(dx, dy)
+            if dist < 1e-4:
+                self.assign_wander_goal(i)
+                continue
+            speed = float(self.speed[i]) if i < self.speed.shape[0] else float(
+                self.settings.get("speed", 0.8)
+            )
+            speed = max(speed, 0.35)
+            # Preferred velocity toward waypoint + social avoidance.
+            goal_vx, goal_vy = (dx / dist) * speed, (dy / dist) * speed
+            gain = float(self.settings.get("social_force_factor", 1.0))
+            if i < self.social_force_factor.shape[0]:
+                gain *= float(self.social_force_factor[i])
+            avoid_x = float(social[i, 0]) * gain
+            avoid_y = float(social[i, 1]) * gain
+            vx, vy = goal_vx + avoid_x, goal_vy + avoid_y
+            vnorm = math.hypot(vx, vy)
+            if vnorm < 1e-4:
+                vx, vy = goal_vx, goal_vy
+                vnorm = math.hypot(vx, vy)
+            # Cap to preferred speed (avoidance can otherwise explode).
+            scale = speed / max(vnorm, 1e-6)
+            if vnorm > speed:
+                vx, vy = vx * scale, vy * scale
+            step = speed * dt
+            tx = x + vx / max(math.hypot(vx, vy), 1e-6) * min(step, max(dist, step))
+            ty = y + vy / max(math.hypot(vx, vy), 1e-6) * min(step, max(dist, step))
+            moved = False
+            if callable(try_step):
+                try:
+                    hit = try_step(
+                        self._habitat_point(x, y), self._habitat_point(tx, ty)
+                    )
+                    if hit is not None:
+                        hx, hy = float(hit[0]), -float(hit[2])
+                        if np.isfinite(hx) and np.isfinite(hy):
+                            self.position[i, 0] = hx
+                            self.position[i, 1] = hy
+                            if len(hit) >= 2 and np.isfinite(float(hit[1])):
+                                self.nav_floor_y = float(hit[1])
+                            moved = True
+                except Exception:
+                    moved = False
+            if not moved:
+                snapped = self.snap_one(tx, ty, allow_random=False)
+                if snapped is not None:
+                    self.position[i, 0], self.position[i, 1] = snapped
+                    moved = True
+            if not moved:
+                self.stuck[i] += 1
+            else:
+                delta = math.hypot(
+                    float(self.position[i, 0]) - x, float(self.position[i, 1]) - y
+                )
+                if delta > 1e-4:
+                    self.stuck[i] = 0
+                    self.yaw[i] = math.atan2(
+                        float(self.position[i, 1]) - y,
+                        float(self.position[i, 0]) - x,
+                    )
+                    self.velocity[i, 0] = (float(self.position[i, 0]) - x) / max(dt, 1e-6)
+                    self.velocity[i, 1] = (float(self.position[i, 1]) - y) / max(dt, 1e-6)
+                else:
+                    self.stuck[i] += 1
+                    if int(self.stuck[i]) >= stuck_lim:
+                        near = self.random_navigable_near(x, y, radius=2.0)
+                        if near is not None:
+                            self.position[i, 0], self.position[i, 1] = near
+                        self.assign_wander_goal(i)
+                        self.stuck[i] = 0
+
+        # Final soft de-penetration between peers, still on navmesh.
+        if social_on and n >= 2:
+            self.resolve_peer_overlaps(try_step)
+
+    def follow_nav_paths_one(self, index: int, tol: float) -> None:
+        """Advance agent ``index`` along its navmesh polyline."""
+        self._ensure_path_slots()
+        pts = self.path_waypoints[index]
+        if not pts:
+            return
+        px = float(self.position[index, 0])
+        py = float(self.position[index, 1])
+        while pts and math.hypot(pts[0][0] - px, pts[0][1] - py) <= tol:
+            pts.pop(0)
+        if pts:
+            self.goal[index] = pts[0]
+        else:
+            self.assign_wander_goal(index)
+
+    def resolve_peer_overlaps(self, try_step: Any) -> None:
+        """Push overlapping pedestrians apart along navmesh when possible."""
+        n = int(self.position.shape[0])
+        gap = 2.0 * float(self.settings["radius"]) + float(
+            self.settings.get("social_margin", 0.08)
+        )
+        for i in range(n):
+            for j in range(i + 1, n):
+                dx = float(self.position[i, 0] - self.position[j, 0])
+                dy = float(self.position[i, 1] - self.position[j, 1])
+                dist = math.hypot(dx, dy)
+                if dist >= gap or dist < 1e-6:
+                    if dist < 1e-6:
+                        dx, dy, dist = 1.0, 0.0, 1.0
+                    else:
+                        continue
+                push = 0.5 * (gap - dist)
+                ux, uy = dx / dist, dy / dist
+                for index, sign in ((i, 1.0), (j, -1.0)):
+                    x = float(self.position[index, 0])
+                    y = float(self.position[index, 1])
+                    tx = x + sign * ux * push
+                    ty = y + sign * uy * push
+                    placed = False
+                    if callable(try_step):
+                        try:
+                            hit = try_step(
+                                self._habitat_point(x, y),
+                                self._habitat_point(tx, ty),
+                            )
+                            if hit is not None:
+                                hx, hy = float(hit[0]), -float(hit[2])
+                                if np.isfinite(hx) and np.isfinite(hy):
+                                    self.position[index, 0] = hx
+                                    self.position[index, 1] = hy
+                                    placed = True
+                        except Exception:
+                            placed = False
+                    if not placed:
+                        snapped = self.snap_one(tx, ty, allow_random=False)
+                        if snapped is not None:
+                            self.position[index, 0], self.position[index, 1] = snapped
 
     def step_cost(self, start: np.ndarray, proposed: np.ndarray) -> np.ndarray:
         """Distance left to the goal. A step that does not move sorts last."""
@@ -623,13 +852,387 @@ class Pedestrian:
         return self.arena.clamp(placed)
 
     def keep_free(self, start: np.ndarray, proposed: np.ndarray) -> np.ndarray:
-        """Reject a clearance step that lands back inside an occupied cell."""
-        if self.field is None:
-            return proposed
+        """Reject steps into occupied cells / off the Habitat navmesh."""
         placed = np.array(proposed, dtype=np.float64, copy=True)
-        blocked = self.field.blocked(placed, float(self.settings["radius"]))
-        placed[blocked] = start[blocked]
+        start_xy = np.asarray(start, dtype=np.float64).reshape(-1, 2)
+        if self.field is not None:
+            blocked = self.field.blocked(placed, float(self.settings["radius"]))
+            placed[blocked] = start_xy[blocked]
+        if self.pathfinder is not None:
+            placed = self.constrain_navmesh(start_xy, placed)
         return placed
+
+    def bind_pathfinder(self, pathfinder: Any, floor_y: float = 0.0) -> None:
+        """Attach Habitat ``pathfinder`` and snap every walker/goal onto it."""
+        self.pathfinder = pathfinder
+        self.nav_floor_y = float(floor_y)
+        if pathfinder is None or self.position.shape[0] == 0:
+            return
+        if not bool(getattr(pathfinder, "is_loaded", True)):
+            self.pathfinder = None
+            return
+        self.expand_arena_to_navmesh()
+        if bool(self.settings.get("spread_spawn", False)):
+            self.spread_agents_on_navmesh()
+        else:
+            self.position = self.snap_points(self.position, allow_random=True)
+        self.goal = self.snap_points(self.goal, allow_random=True)
+        for index, waypoints in enumerate(self.goal_lists):
+            if not waypoints:
+                continue
+            points = np.asarray(waypoints, dtype=np.float64).reshape(-1, 2)
+            points = self.snap_points(points, allow_random=True)
+            self.goal_lists[index] = [
+                (float(x), float(y)) for x, y in points.reshape(-1, 2)
+            ]
+            gi = int(self.goal_index[index]) if index < self.goal_index.shape[0] else 0
+            if self.goal_lists[index]:
+                gi = min(max(gi, 0), len(self.goal_lists[index]) - 1)
+                self.goal_index[index] = gi
+                self.goal[index] = self.goal_lists[index][gi]
+        self._ensure_path_slots()
+        if bool(self.settings.get("wander", False)):
+            for index in range(int(self.position.shape[0])):
+                self.assign_wander_goal(index)
+        logger.info(
+            "pedestrian pathfinder bound: agents=%d floor_y=%.3f wander=%s spread=%s",
+            int(self.position.shape[0]),
+            self.nav_floor_y,
+            bool(self.settings.get("wander", False)),
+            bool(self.settings.get("spread_spawn", False)),
+        )
+
+    def snap_points(
+        self, points: np.ndarray, *, allow_random: bool = False
+    ) -> np.ndarray:
+        """Project ``(N, 2)`` map poses onto navigable navmesh cells."""
+        pts = np.asarray(points, dtype=np.float64).reshape(-1, 2)
+        if pts.shape[0] == 0 or self.pathfinder is None:
+            return pts
+        out = np.array(pts, dtype=np.float64, copy=True)
+        for i in range(out.shape[0]):
+            snapped = self.snap_one(float(out[i, 0]), float(out[i, 1]), allow_random=allow_random)
+            if snapped is not None:
+                out[i, 0], out[i, 1] = snapped
+        return out
+
+    def snap_one(
+        self, x: float, y: float, *, allow_random: bool = False
+    ) -> tuple[float, float] | None:
+        """Snap one map ``(x, y)`` to Habitat navmesh; ``None`` if impossible."""
+        if self.pathfinder is None:
+            return (float(x), float(y))
+        query = self._habitat_point(x, y)
+        snap = getattr(self.pathfinder, "snap_point", None)
+        navigable = getattr(self.pathfinder, "is_navigable", None)
+        try:
+            if callable(navigable) and bool(navigable(query)):
+                return (float(x), float(y))
+            if callable(snap):
+                hit = snap(query)
+                if hit is not None:
+                    sx, sy = float(hit[0]), -float(hit[2])
+                    if np.isfinite(sx) and np.isfinite(sy):
+                        # Reject wild snaps into a distant island.
+                        if math.hypot(sx - x, sy - y) <= 3.0 or allow_random:
+                            if not callable(navigable) or bool(
+                                navigable(self._habitat_point(sx, sy))
+                            ):
+                                return (sx, sy)
+            if allow_random:
+                return self.random_navigable()
+        except Exception:
+            if allow_random:
+                return self.random_navigable()
+        return None
+
+    def expand_arena_to_navmesh(self) -> None:
+        """Grow the planar Arena to Habitat navmesh bounds (map frame)."""
+        if self.pathfinder is None:
+            return
+        get_bounds = getattr(self.pathfinder, "get_bounds", None)
+        if not callable(get_bounds):
+            return
+        try:
+            lo, hi = get_bounds()
+        except Exception:
+            return
+        x0, x1 = float(lo[0]), float(hi[0])
+        # map_y = -Habitat_Z
+        y0, y1 = -float(hi[2]), -float(lo[2])
+        if y0 > y1:
+            y0, y1 = y1, y0
+        pad = 1.0
+        self.settings["x_length"] = max(abs(x1 - x0) + 2.0 * pad, 4.0)
+        self.settings["y_length"] = max(abs(y1 - y0) + 2.0 * pad, 4.0)
+        self.settings["center_x"] = 0.5 * (x0 + x1)
+        self.settings["center_y"] = 0.5 * (y0 + y1)
+        self.settings["spawn_x"] = float(self.settings["center_x"])
+        self.settings["spawn_y"] = float(self.settings["center_y"])
+        try:
+            self.arena = self.make_arena()
+        except ValueError:
+            pass
+
+    def random_navigable(self) -> tuple[float, float] | None:
+        """Sample one Habitat navigable point in map frame."""
+        random_nav = getattr(self.pathfinder, "get_random_navigable_point", None)
+        if not callable(random_nav):
+            return None
+        try:
+            for _ in range(16):
+                point = random_nav()
+                if point is None:
+                    continue
+                sx, sy = float(point[0]), -float(point[2])
+                if np.isfinite(sx) and np.isfinite(sy):
+                    self.nav_floor_y = float(point[1])
+                    return (sx, sy)
+        except Exception:
+            return None
+        return None
+
+    def random_navigable_away(
+        self,
+        origin: tuple[float, float],
+        *,
+        min_dist: float,
+        avoid: np.ndarray | None = None,
+        trials: int = 48,
+    ) -> tuple[float, float] | None:
+        """Sample a navigable point far from ``origin`` (and optional peers)."""
+        best: tuple[float, float] | None = None
+        best_score = -1.0
+        ox, oy = float(origin[0]), float(origin[1])
+        peers = (
+            np.asarray(avoid, dtype=np.float64).reshape(-1, 2)
+            if avoid is not None
+            else np.zeros((0, 2), dtype=np.float64)
+        )
+        for _ in range(max(8, int(trials))):
+            point = self.random_navigable()
+            if point is None:
+                continue
+            px, py = point
+            dist = math.hypot(px - ox, py - oy)
+            if dist < float(min_dist):
+                continue
+            peer = 0.0
+            if peers.shape[0]:
+                peer = float(
+                    np.min(np.hypot(peers[:, 0] - px, peers[:, 1] - py))
+                )
+            # Prefer far from self and not clustered on another agent.
+            score = dist + 0.75 * peer
+            if score > best_score:
+                best_score = score
+                best = (px, py)
+        return best if best is not None else self.random_navigable()
+
+    def spread_agents_on_navmesh(self) -> None:
+        """Re-seed agents onto well-separated navigable points."""
+        count = int(self.position.shape[0])
+        if count == 0 or self.pathfinder is None:
+            return
+        min_dist = float(self.settings.get("spread_min_dist", 2.0))
+        placed: list[tuple[float, float]] = []
+        for _ in range(count):
+            avoid = np.asarray(placed, dtype=np.float64).reshape(-1, 2)
+            origin = placed[-1] if placed else (0.0, 0.0)
+            point = self.random_navigable_away(
+                origin, min_dist=min_dist, avoid=avoid, trials=64
+            )
+            if point is None:
+                point = self.random_navigable()
+            if point is None:
+                point = (float(self.position[len(placed), 0]), float(self.position[len(placed), 1]))
+            placed.append(point)
+        self.position = np.asarray(placed, dtype=np.float64).reshape(-1, 2)
+        self.velocity = np.zeros_like(self.position)
+
+    def assign_wander_goal(self, index: int) -> None:
+        """Pick a reachable navmesh goal (ShortestPath) so agents keep moving."""
+        if index < 0 or index >= int(self.position.shape[0]):
+            return
+        self._ensure_path_slots()
+        ox = float(self.position[index, 0])
+        oy = float(self.position[index, 1])
+        min_dist = float(self.settings.get("wander_min_dist", 3.5))
+        # After being stuck, accept closer goals so motion resumes quickly.
+        if index < self.stuck.shape[0] and int(self.stuck[index]) >= int(
+            self.settings.get("stuck_steps", 25)
+        ):
+            min_dist = max(1.2, 0.45 * min_dist)
+        avoid = (
+            np.delete(self.position, index, axis=0)
+            if self.position.shape[0] > 1
+            else None
+        )
+        chosen: tuple[float, float] | None = None
+        path: list[tuple[float, float]] | None = None
+        for _ in range(56):
+            point = self.random_navigable_away(
+                (ox, oy), min_dist=min_dist, avoid=avoid, trials=8
+            )
+            if point is None:
+                point = self.random_navigable_near(ox, oy, radius=max(2.5, min_dist))
+            if point is None:
+                continue
+            path = self.compute_nav_path(ox, oy, point[0], point[1])
+            if path is not None and len(path) >= 2:
+                chosen = point
+                break
+            path = None
+        if chosen is None:
+            near = self.random_navigable_near(ox, oy, radius=3.0)
+            if near is not None:
+                path = self.compute_nav_path(ox, oy, near[0], near[1])
+                chosen = near if path is not None else near
+        if chosen is None:
+            sample = self.sample_goals(1)
+            if sample.shape[0] == 0:
+                return
+            chosen = (float(sample[0, 0]), float(sample[0, 1]))
+            path = self.compute_nav_path(ox, oy, chosen[0], chosen[1])
+        self.goal[index] = chosen
+        self.goal_lists[index] = [chosen]
+        if index < self.goal_index.shape[0]:
+            self.goal_index[index] = 0
+        if path is not None and len(path) >= 2:
+            self.path_waypoints[index] = path[1:]  # skip current pose
+            self.goal[index] = self.path_waypoints[index][0]
+        else:
+            self.path_waypoints[index] = [chosen]
+
+    def _ensure_path_slots(self) -> None:
+        """Pad ``path_waypoints`` to the current agent count."""
+        n = int(self.position.shape[0])
+        while len(self.path_waypoints) < n:
+            self.path_waypoints.append([])
+        if len(self.path_waypoints) > n:
+            self.path_waypoints = self.path_waypoints[:n]
+
+    def follow_nav_paths(self) -> None:
+        """Advance along ShortestPath vertices; keep ``goal`` = next waypoint."""
+        if self.pathfinder is None:
+            return
+        self._ensure_path_slots()
+        tol = float(self.settings.get("goal_tolerance", 0.4))
+        for index in range(int(self.position.shape[0])):
+            pts = self.path_waypoints[index]
+            if not pts:
+                continue
+            px = float(self.position[index, 0])
+            py = float(self.position[index, 1])
+            while pts and math.hypot(pts[0][0] - px, pts[0][1] - py) <= tol:
+                pts.pop(0)
+            if pts:
+                self.goal[index] = pts[0]
+            elif bool(self.settings.get("wander", False)):
+                self.assign_wander_goal(index)
+
+    def compute_nav_path(
+        self, x0: float, y0: float, x1: float, y1: float
+    ) -> list[tuple[float, float]] | None:
+        """Habitat ``ShortestPath`` in map frame, or None if disconnected."""
+        if self.pathfinder is None:
+            return None
+        find_path = getattr(self.pathfinder, "find_path", None)
+        if not callable(find_path):
+            return None
+        try:
+            import habitat_sim
+
+            path = habitat_sim.ShortestPath()
+            path.requested_start = self._habitat_point(x0, y0)
+            path.requested_end = self._habitat_point(x1, y1)
+            if not bool(find_path(path)):
+                return None
+            points = []
+            for hit in list(getattr(path, "points", []) or []):
+                sx, sy = float(hit[0]), -float(hit[2])
+                if np.isfinite(sx) and np.isfinite(sy):
+                    points.append((sx, sy))
+            return points if len(points) >= 2 else None
+        except Exception:
+            return None
+
+    def random_navigable_near(
+        self, x: float, y: float, *, radius: float = 3.0
+    ) -> tuple[float, float] | None:
+        """Sample a navigable point near ``(x, y)`` when the API exists."""
+        near = getattr(self.pathfinder, "get_random_navigable_point_near", None)
+        if callable(near):
+            try:
+                for _ in range(24):
+                    point = near(self._habitat_point(x, y), float(radius))
+                    if point is None:
+                        continue
+                    sx, sy = float(point[0]), -float(point[2])
+                    if np.isfinite(sx) and np.isfinite(sy):
+                        if len(point) >= 2 and np.isfinite(float(point[1])):
+                            self.nav_floor_y = float(point[1])
+                        return (sx, sy)
+            except Exception:
+                pass
+        # Fallback: reject random samples that are too far.
+        for _ in range(24):
+            point = self.random_navigable()
+            if point is None:
+                continue
+            if math.hypot(point[0] - x, point[1] - y) <= float(radius) * 1.5:
+                return point
+        return self.random_navigable()
+
+    def constrain_navmesh(self, start: np.ndarray, proposed: np.ndarray) -> np.ndarray:
+        """Keep each step on Habitat navmesh via ``try_step`` / snap."""
+        placed = np.array(proposed, dtype=np.float64, copy=True)
+        start_xy = np.asarray(start, dtype=np.float64).reshape(-1, 2)
+        # Prefer sliding so agents glide along walls instead of freezing.
+        try_step = getattr(self.pathfinder, "try_step", None)
+        if not callable(try_step):
+            try_step = getattr(self.pathfinder, "try_step_no_sliding", None)
+        for i in range(placed.shape[0]):
+            sx0, sy0 = float(start_xy[i, 0]), float(start_xy[i, 1])
+            px, py = float(placed[i, 0]), float(placed[i, 1])
+            start_h = self._habitat_point(sx0, sy0)
+            end_h = self._habitat_point(px, py)
+            moved = False
+            if callable(try_step):
+                try:
+                    hit = try_step(start_h, end_h)
+                    if hit is not None:
+                        hx, hy = float(hit[0]), -float(hit[2])
+                        if np.isfinite(hx) and np.isfinite(hy):
+                            placed[i, 0], placed[i, 1] = hx, hy
+                            if len(hit) >= 2 and np.isfinite(float(hit[1])):
+                                self.nav_floor_y = float(hit[1])
+                            moved = True
+                except Exception:
+                    moved = False
+            if not moved:
+                snapped = self.snap_one(px, py, allow_random=False)
+                if snapped is None:
+                    back = self.snap_one(sx0, sy0, allow_random=True)
+                    placed[i, 0], placed[i, 1] = (
+                        back if back is not None else (sx0, sy0)
+                    )
+                else:
+                    # Only accept if still near the attempted step (no teleport).
+                    if math.hypot(snapped[0] - sx0, snapped[1] - sy0) <= max(
+                        0.75, math.hypot(px - sx0, py - sy0) + 0.25
+                    ):
+                        placed[i, 0], placed[i, 1] = snapped
+                    else:
+                        back = self.snap_one(sx0, sy0, allow_random=True)
+                        placed[i, 0], placed[i, 1] = (
+                            back if back is not None else (sx0, sy0)
+                        )
+        return placed
+
+    def _habitat_point(self, x: float, y: float) -> list[float]:
+        """Map ``(x, y)`` → Habitat ``[X, Y, Z]`` with ``map_y = -Z``."""
+        return [float(x), float(self.nav_floor_y), -float(y)]
 
     def face(self, start: np.ndarray) -> None:
         """Aim yaw along the step that was actually taken."""
@@ -644,8 +1247,19 @@ class Pedestrian:
         self.stuck[~moved] += 1
 
     def sample_goals(self, count: int) -> np.ndarray:
-        """Goals inside the rectangle and, when a map exists, off the walls."""
-        if self.arena is None or count == 0:
+        """Goals on Habitat navmesh when bound; else arena / occupancy free space."""
+        if count == 0:
+            return np.zeros((0, 2), dtype=np.float64)
+        if self.pathfinder is not None:
+            samples: list[tuple[float, float]] = []
+            for _ in range(max(count * 4, count)):
+                point = self.random_navigable()
+                if point is None:
+                    break
+                samples.append(point)
+                if len(samples) >= count:
+                    return np.asarray(samples[:count], dtype=np.float64)
+        if self.arena is None:
             return np.zeros((0, 2), dtype=np.float64)
         goals = self.arena.sample(self.rng, count)
         if self.field is None:
@@ -669,7 +1283,10 @@ class Pedestrian:
             self.stuck[index] = 0
 
     def advance_goal(self, index: int, force: bool = False) -> None:
-        """Next waypoint, wrap if cyclic, or sample a free-space goal."""
+        """Next waypoint, wrap if cyclic, wander on navmesh, or sample free space."""
+        if bool(self.settings.get("wander", False)) and self.pathfinder is not None:
+            self.assign_wander_goal(index)
+            return
         waypoints = self.goal_lists[index] if index < len(self.goal_lists) else []
         if len(waypoints) > 1:
             nxt = int(self.goal_index[index]) + 1

@@ -10,6 +10,7 @@
 | 新手 | [00 指南](00_guide.md) → [03 快速开始](03_quickstart.md) → [06 话题](06_topics.md) |
 | 集成 Autoviz / 导航 | [05 配置](05_configuration.md) → [08 地图与可视化](08_map_and_viz.md) |
 | Isaac / USD | [07 Isaac](07_isaac.md) → [10 排错](10_troubleshooting.md) |
+| Habitat 动态人体 | [14 Habitat humanoids](14_habitat_humanoids.md) → [04 后端](04_backends.md) |
 | Atlas SLAM 验证 | [13 Atlas 验证](13_atlas_validation.md) → [06 话题](06_topics.md) |
 | 改代码 | [02 架构](02_architecture.md) → [04 后端](04_backends.md) → [09 测试](09_testing.md) |
 | 模仿学习 | [11 数据采集](11_dataset.md) → [02 架构](02_architecture.md) |
@@ -30,7 +31,9 @@
 | 09 | [09_testing.md](09_testing.md) | pytest 与冒烟 |
 | 10 | [10_troubleshooting.md](10_troubleshooting.md) | 常见问题 |
 | 11 | [11_dataset.md](11_dataset.md) | LeRobot 模仿学习采集 |
+| 12 | [12_hunav_isaac.md](12_hunav_isaac.md) | HuNav Autolink / Isaac manager |
 | 13 | [13_atlas_validation.md](13_atlas_validation.md) | Atlas RGB-D + IMU、真值与地图验收 |
+| 14 | [14_habitat_humanoids.md](14_habitat_humanoids.md) | Habitat TrackVLA 式 SMPL-X 动态人体 |
 
 ## 维护约定
 

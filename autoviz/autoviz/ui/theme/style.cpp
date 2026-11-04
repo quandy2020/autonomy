@@ -106,6 +106,28 @@ QHash<QString, QString> tokens(Tone tone) {
   t.insert(QStringLiteral("{{accent}}"), glass::Hex(s.accent));
   t.insert(QStringLiteral("{{accent-pressed}}"), glass::Hex(s.accent_pressed));
   t.insert(QStringLiteral("{{accent-soft}}"), glass::Hex(s.accent_soft));
+  // Translucent accent washes for QSS that used to hardcode teal/cyan rgba.
+  auto accent_a = [&](int alpha) {
+    QColor c = s.accent;
+    c.setAlpha(qBound(0, alpha, 255));
+    return glass::Rgba(c);
+  };
+  t.insert(QStringLiteral("{{accent-a08}}"), accent_a(20));
+  t.insert(QStringLiteral("{{accent-a10}}"), accent_a(26));
+  t.insert(QStringLiteral("{{accent-a14}}"), accent_a(36));
+  t.insert(QStringLiteral("{{accent-a16}}"), accent_a(41));
+  t.insert(QStringLiteral("{{accent-a18}}"), accent_a(46));
+  t.insert(QStringLiteral("{{accent-a20}}"), accent_a(51));
+  t.insert(QStringLiteral("{{accent-a22}}"), accent_a(56));
+  t.insert(QStringLiteral("{{accent-a24}}"), accent_a(61));
+  t.insert(QStringLiteral("{{accent-a26}}"), accent_a(66));
+  t.insert(QStringLiteral("{{accent-a28}}"), accent_a(71));
+  t.insert(QStringLiteral("{{accent-a32}}"), accent_a(82));
+  t.insert(QStringLiteral("{{accent-a35}}"), accent_a(89));
+  t.insert(QStringLiteral("{{accent-a40}}"), accent_a(102));
+  t.insert(QStringLiteral("{{accent-a55}}"), accent_a(55));
+  t.insert(QStringLiteral("{{accent-a70}}"), accent_a(70));
+  t.insert(QStringLiteral("{{accent-a90}}"), accent_a(230));
   t.insert(QStringLiteral("{{sel-bg}}"), glass::Hex(s.selection_bg));
   t.insert(QStringLiteral("{{sel-text}}"), glass::Hex(s.selection_text));
   t.insert(QStringLiteral("{{border}}"), glass::Hex(s.border));
@@ -147,25 +169,46 @@ QHash<QString, QString> tokens(Tone tone) {
            QString::fromLatin1(AppThemeIds::kSettingsScroll));
   t.insert(QStringLiteral("{{panels-menu}}"), QString());
 
-  // Panel-family sheets always need these (Tone::Shell used to omit them →
-  // literal "{{panel-…}}" in QSS → "Could not parse stylesheet").
-  t.insert(QStringLiteral("{{panel-bg}}"), QStringLiteral("rgba(255,255,255,128)"));
-  t.insert(QStringLiteral("{{panel-surface}}"),
-           QStringLiteral("rgba(240,249,255,155)"));
-  t.insert(QStringLiteral("{{panel-border}}"),
-           QStringLiteral("rgba(186,230,253,140)"));
-  t.insert(QStringLiteral("{{panel-text}}"), QStringLiteral("#1e293b"));
-  t.insert(QStringLiteral("{{panel-muted}}"), QStringLiteral("#64748b"));
-  t.insert(QStringLiteral("{{panel-accent}}"), QStringLiteral("#0891b2"));
-  t.insert(QStringLiteral("{{panel-accent-pressed}}"), QStringLiteral("#0E7490"));
+  // Panel-family sheets — always derive from Shell so Liquid / Dark / Light
+  // stay in sync (hardcoded milky cyan washed out Liquid Glass checkboxes).
+  QColor panel_bg = s.glass_fill;
+  QColor panel_surface = s.glass_fill_deep;
+  QColor panel_raised = s.base;
+  if (glass::ShellIsLiquid()) {
+    panel_bg.setAlpha(qMax(panel_bg.alpha(), 235));
+    panel_surface.setAlpha(qMax(panel_surface.alpha(), 245));
+    panel_raised.setAlpha(255);
+  } else if (glass::ShellIsDark()) {
+    panel_bg.setAlpha(qMax(panel_bg.alpha(), 230));
+    panel_surface.setAlpha(qMax(panel_surface.alpha(), 240));
+    panel_raised = s.card;
+    panel_raised.setAlpha(255);
+  } else {
+    panel_bg.setAlpha(qMax(panel_bg.alpha(), 200));
+    panel_surface.setAlpha(qMax(panel_surface.alpha(), 220));
+    panel_raised.setAlpha(255);
+  }
+  t.insert(QStringLiteral("{{panel-bg}}"), glass::Rgba(panel_bg));
+  t.insert(QStringLiteral("{{panel-surface}}"), glass::Rgba(panel_surface));
+  t.insert(QStringLiteral("{{panel-border}}"), glass::Rgba(s.glass_rim));
+  t.insert(QStringLiteral("{{panel-text}}"), glass::Hex(s.text));
+  t.insert(QStringLiteral("{{panel-muted}}"), glass::Hex(s.secondary_text));
+  t.insert(QStringLiteral("{{panel-accent}}"), glass::Hex(s.accent));
+  t.insert(QStringLiteral("{{panel-accent-pressed}}"),
+           glass::Hex(s.accent_pressed));
   t.insert(QStringLiteral("{{panel-surface-raised}}"),
-           QStringLiteral("rgba(255,255,255,175)"));
-  // Common extras used by feature sections when callers omit them.
-  t.insert(QStringLiteral("{{accent-teal}}"), QStringLiteral("#14B8A6"));
+           glass::Rgba(panel_raised));
+  // Legacy {{accent-teal}} now follows Shell accent so Liquid Glass (system
+  // blue) and Light/Dark stay one palette — dual teal/blue chrome is gone.
+  t.insert(QStringLiteral("{{accent-teal}}"), glass::Hex(s.accent));
   t.insert(QStringLiteral("{{accent-color}}"), glass::Hex(s.accent));
-  t.insert(QStringLiteral("{{header-start}}"),
-           QStringLiteral("rgba(240,249,255,200)"));
-  t.insert(QStringLiteral("{{editor-bg}}"), QStringLiteral("rgba(255,255,255,180)"));
+  t.insert(QStringLiteral("{{on-accent}}"), QStringLiteral("#FFFFFF"));
+  QColor header = s.glass_fill_deep;
+  header.setAlpha(qMax(header.alpha(), 220));
+  t.insert(QStringLiteral("{{header-start}}"), glass::Rgba(header));
+  QColor editor = s.base;
+  editor.setAlpha(255);
+  t.insert(QStringLiteral("{{editor-bg}}"), glass::Rgba(editor));
   t.insert(QStringLiteral("{{btn-bg}}"), glass::Hex(s.accent));
   t.insert(QStringLiteral("{{btn-hover}}"), glass::Hex(s.accent_pressed));
   t.insert(QStringLiteral("{{color}}"), glass::Hex(s.accent));

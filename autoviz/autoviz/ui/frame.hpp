@@ -336,10 +336,12 @@ class VisualizationFrame : public QMainWindow {
   bool eventFilter(QObject* watched, QEvent* event) override;
 
   /**
-   * @brief Tears down Ogre/GLX, ignores the close, then exits the event loop.
+   * @brief Fades the window out, then tears down Ogre/GLX and exits the loop.
    *
    * Accepting the close would make Qt @c hideChildren() walk
-   * @c WA_PaintOnScreen surfaces and SIGSEGV on NVIDIA/GLX.
+   * @c WA_PaintOnScreen surfaces and SIGSEGV on NVIDIA/GLX. The close is
+   * always ignored; teardown runs after a short opacity fade when motion is
+   * enabled.
    */
   void closeEvent(QCloseEvent* event) override;
 
@@ -551,8 +553,16 @@ class VisualizationFrame : public QMainWindow {
    */
   void markConfigModified();
 
+  /**
+   * @brief Sync Ogre teardown + deferred @c QCoreApplication::exit after fade.
+   */
+  void finishCloseTeardown();
+
   /** Shared display / tool / TF / time hub used by all panels and viewports. */
   std::shared_ptr<common::VisualizationManager> manager_;
+
+  /** Guards re-entrant close while the opacity fade is running. */
+  bool close_fade_active_ = false;
 
   /** Dock host, center grid tiling, expand-one-panel state. */
   std::unique_ptr<FrameLayout> layout_;

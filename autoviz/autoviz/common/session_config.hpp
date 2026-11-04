@@ -75,6 +75,9 @@ struct SavedViewConfig {
   /** Near clip plane distance. */
   float near_clip_distance = 0.01f;
 
+  /** Far clip plane distance (meters). */
+  float far_clip_distance = 100000.f;
+
   /** Invert Z axis flag. */
   bool invert_z_axis = false;
 

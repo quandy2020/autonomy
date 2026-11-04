@@ -41,6 +41,7 @@
 #include "autoviz/common/interaction/topology_graph_builder.hpp"
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
@@ -55,7 +56,10 @@ namespace {
 constexpr int kAutoRefreshMs = 2000;
 constexpr int kFilterDebounceMs = 250;
 
-constexpr char kNodeColor[] = "#0891b2";
+QString kNodeColor() {
+  const QString v = style::tokens().value(QStringLiteral("{{accent}}"));
+  return v.isEmpty() ? QStringLiteral("#007AFF") : v;
+}
 constexpr char kChannelColor[] = "#7c3aed";
 constexpr char kServiceColor[] = "#ef4444";
 
@@ -97,7 +101,7 @@ QIcon MakeServiceGlyphIcon() {
 
 QIcon MakeRefreshGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
-    const QColor ink(0x1e, 0x29, 0x3b);
+    const QColor ink = glass::Shell().text;
     const QPointF center = r.center();
     constexpr qreal kRadius = 5.2;
     const QRectF arc(center.x() - kRadius, center.y() - kRadius, kRadius * 2.0,
@@ -123,10 +127,10 @@ QIcon MakeRefreshGlyphIcon() {
 QIcon MakeHopGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
     const QPointF center = r.center();
-    p.setPen(QPen(QColor(QStringLiteral("#0891b2")), 1.6));
+    p.setPen(QPen(QColor(kNodeColor()), 1.6));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(center, 6.5, 6.5);
-    p.setBrush(QColor(QStringLiteral("#0891b2")));
+    p.setBrush(QColor(kNodeColor()));
     p.setPen(Qt::NoPen);
     p.drawEllipse(center, 2.2, 2.2);
   });
@@ -176,7 +180,7 @@ QString KindTitle(integration::GraphVertexKind kind) {
 QColor KindAccent(integration::GraphVertexKind kind) {
   switch (kind) {
     case integration::GraphVertexKind::kNode:
-      return QColor(QLatin1String(kNodeColor));
+      return QColor(kNodeColor());
     case integration::GraphVertexKind::kChannel:
       return QColor(QLatin1String(kChannelColor));
     case integration::GraphVertexKind::kService:
@@ -448,26 +452,24 @@ QWidget* MakeMetricChip(const QString& label, const QString& value,
   auto* chip = new QFrame(parent);
   chip->setObjectName(QStringLiteral("PropertyMetricChip"));
   chip->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/metric_chip"),
+                   style::Tone::Frost));
   auto* layout = new QVBoxLayout(chip);
-  layout->setContentsMargins(12, 8, 12, 8);
+  layout->setContentsMargins(10, 8, 10, 8);
   layout->setSpacing(2);
 
   auto* value_label = new QLabel(value, chip);
   value_label->setAlignment(Qt::AlignCenter);
-  QFont value_font = value_label->font();
-  value_font.setPointSize(13);
-  value_font.setBold(true);
-  value_label->setFont(value_font);
   QHash<QString, QString> value_tokens = style::tokens(style::Tone::Frost);
   value_tokens.insert(QStringLiteral("{{accent-color}}"), accent.name());
   value_label->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), value_tokens));
+      style::sheet(QStringLiteral("channel_graph/metric_value"), value_tokens));
 
   auto* key_label = new QLabel(label, chip);
   key_label->setAlignment(Qt::AlignCenter);
   key_label->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/metric_label"),
+                   style::Tone::Frost));
 
   layout->addWidget(value_label);
   layout->addWidget(key_label);
@@ -478,23 +480,23 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
   auto* card = new QFrame(parent);
   card->setObjectName(QStringLiteral("PropertySectionCard"));
   card->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/section_card"),
+                   style::Tone::Frost));
   auto* layout = new QVBoxLayout(card);
   layout->setContentsMargins(14, 12, 14, 12);
-  layout->setSpacing(8);
+  layout->setSpacing(6);
 
   auto* header = new QHBoxLayout();
   header->setContentsMargins(0, 0, 0, 0);
+  header->setSpacing(8);
   auto* title = new QLabel(section.title, card);
-  QFont title_font = title->font();
-  title_font.setPointSize(11);
-  title_font.setBold(true);
-  title->setFont(title_font);
   title->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/section_title"),
+                   style::Tone::Frost));
   auto* count = new QLabel(QString::number(section.entries.size()), card);
   count->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/section_count"),
+                   style::Tone::Frost));
   // Don't count the placeholder "None" as a real entry count for empty lists.
   if (section.entries.size() == 1 &&
       section.entries.front().title == QObject::tr("None")) {
@@ -513,14 +515,15 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
                : QStringLiteral("channel_graph/entry_row_divider"),
         style::Tone::Frost));
     auto* row_layout = new QVBoxLayout(row);
-    row_layout->setContentsMargins(0, 8, 0, 4);
-    row_layout->setSpacing(2);
+    row_layout->setContentsMargins(0, i == 0 ? 4 : 8, 0, 4);
+    row_layout->setSpacing(3);
 
     auto* name = new QLabel(entry.title, row);
     name->setWordWrap(true);
     name->setTextInteractionFlags(Qt::TextSelectableByMouse);
     name->setStyleSheet(
-        style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+        style::sheet(QStringLiteral("channel_graph/entry_title"),
+                     style::Tone::Frost));
     row_layout->addWidget(name);
 
     if (!entry.subtitle.isEmpty()) {
@@ -528,7 +531,8 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
       meta->setWordWrap(true);
       meta->setTextInteractionFlags(Qt::TextSelectableByMouse);
       meta->setStyleSheet(
-          style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+          style::sheet(QStringLiteral("channel_graph/entry_subtitle"),
+                       style::Tone::Frost));
       row_layout->addWidget(meta);
     }
     layout->addWidget(row);
@@ -539,43 +543,53 @@ QWidget* MakeSectionCard(const PropertySectionData& section, QWidget* parent) {
 QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   const QColor accent = KindAccent(page.kind);
   auto* dialog = new QDialog(parent);
+  dialog->setObjectName(QStringLiteral("ChannelGraphPropertyDialog"));
   dialog->setAttribute(Qt::WA_DeleteOnClose);
+  dialog->setAttribute(Qt::WA_StyledBackground, true);
+  // Tool window stays above the graph view so edge paints never cover content.
+  dialog->setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
   dialog->setWindowTitle(
       QObject::tr("%1 properties").arg(KindTitle(page.kind)));
-  dialog->resize(520, 560);
+  dialog->resize(480, 520);
   dialog->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/property_dialog"),
+                   style::Tone::Frost));
 
   auto* root = new QVBoxLayout(dialog);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(0);
 
   auto* header = new QFrame(dialog);
+  header->setObjectName(QStringLiteral("ChannelGraphPropertyHeader"));
   QHash<QString, QString> header_tokens = style::tokens(style::Tone::Frost);
   header_tokens.insert(
       QStringLiteral("{{header-start}}"),
-      QColor(accent.red(), accent.green(), accent.blue(), 36).name(QColor::HexArgb));
+      QColor(accent.red(), accent.green(), accent.blue(), 40).name(QColor::HexArgb));
   header->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), header_tokens));
+      style::sheet(QStringLiteral("channel_graph/property_header"),
+                   header_tokens));
   auto* header_layout = new QVBoxLayout(header);
-  header_layout->setContentsMargins(18, 16, 18, 16);
+  header_layout->setContentsMargins(16, 14, 16, 14);
   header_layout->setSpacing(10);
 
   auto* top_row = new QHBoxLayout();
+  top_row->setContentsMargins(0, 0, 0, 0);
+  top_row->setSpacing(8);
   auto* badge = new QLabel(
       QStringLiteral("%1  %2").arg(KindGlyph(page.kind), KindTitle(page.kind)),
       header);
   QHash<QString, QString> badge_tokens = style::tokens(style::Tone::Frost);
   badge_tokens.insert(QStringLiteral("{{accent-color}}"), accent.name());
   badge->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), badge_tokens));
+      style::sheet(QStringLiteral("channel_graph/kind_badge"), badge_tokens));
   top_row->addWidget(badge, 0, Qt::AlignLeft | Qt::AlignVCenter);
   top_row->addStretch(1);
 
   auto* close_button = new QPushButton(QObject::tr("Close"), header);
   close_button->setCursor(Qt::PointingHandCursor);
   close_button->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/dialog_close"),
+                   style::Tone::Frost));
   QObject::connect(close_button, &QPushButton::clicked, dialog, &QDialog::accept);
   top_row->addWidget(close_button, 0, Qt::AlignRight);
   header_layout->addLayout(top_row);
@@ -584,23 +598,25 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
   name->setWordWrap(true);
   name->setTextInteractionFlags(Qt::TextSelectableByMouse);
   QFont name_font = name->font();
-  name_font.setPointSize(16);
+  name_font.setPointSize(15);
   name_font.setBold(true);
   name->setFont(name_font);
   name->setStyleSheet(
-      style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+      style::sheet(QStringLiteral("channel_graph/dialog_name"),
+                   style::Tone::Frost));
   header_layout->addWidget(name);
 
   if (!page.subtitle.isEmpty()) {
     auto* subtitle = new QLabel(page.subtitle, header);
     subtitle->setWordWrap(true);
     subtitle->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    subtitle->setStyleSheet(style::type(style::Role::PanelMuted, 12));
+    subtitle->setStyleSheet(style::type(style::Role::Muted, 12));
     header_layout->addWidget(subtitle);
   }
 
   if (!page.metrics.isEmpty()) {
     auto* metrics = new QHBoxLayout();
+    metrics->setContentsMargins(0, 2, 0, 0);
     metrics->setSpacing(8);
     for (const auto& metric : page.metrics) {
       metrics->addWidget(
@@ -612,12 +628,19 @@ QDialog* CreatePropertyDialog(QWidget* parent, const PropertyPage& page) {
 
   auto* scroll = new QScrollArea(dialog);
   scroll->setWidgetResizable(true);
+  scroll->setFrameShape(QFrame::NoFrame);
   scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  scroll->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph/property_dialog"),
+                   style::Tone::Frost));
   auto* body = new QWidget(scroll);
-  body->setStyleSheet(style::sheet(QStringLiteral("channel_graph"), style::Tone::Frost));
+  body->setObjectName(QStringLiteral("ChannelGraphPropertyBody"));
+  body->setStyleSheet(
+      style::sheet(QStringLiteral("channel_graph/dialog_scroll_body"),
+                   style::Tone::Frost));
   auto* body_layout = new QVBoxLayout(body);
-  body_layout->setContentsMargins(16, 16, 16, 16);
-  body_layout->setSpacing(12);
+  body_layout->setContentsMargins(14, 14, 14, 14);
+  body_layout->setSpacing(10);
   for (const PropertySectionData& section : page.sections) {
     body_layout->addWidget(MakeSectionCard(section, body));
   }

@@ -19,6 +19,7 @@
 
 #include "autoviz/common/display_status.hpp"
 #include "autoviz/ui/theme/application.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 
 namespace autoviz {
@@ -374,8 +375,8 @@ void AddMonochromeMenuSlices(QIcon& icon, const QImage& raw_mask, const QColor& 
                              qreal scale, bool white_when_on = false) {
   const QImage mask = NormalizeMenuMask(raw_mask, raw_mask.width());
   const QColor normal_ink =
-      ink.isValid() ? ink : QColor(0x47, 0x55, 0x69);  // #475569
-  const QColor active_ink = QColor(0x0F, 0x76, 0x6E);  // #0D9488
+      ink.isValid() ? ink : glass::Shell().secondary_text;
+  const QColor active_ink = glass::ShellSelectionInk();
 
   auto make_pm = [&](const QColor& color, int alpha) {
     QPixmap pm(QPixmap::fromImage(TintMaskSourceIn(mask, color, alpha)));

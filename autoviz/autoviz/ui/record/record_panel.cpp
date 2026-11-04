@@ -39,6 +39,7 @@
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -1060,25 +1061,30 @@ void RecordPanel::onTick() {
 }
 
 void RecordPanel::applyChromeStyles() {
+  const glass::ShellTokens s = glass::Shell();
   setStyleSheet(QStringLiteral(
-      "QToolButton { padding: 3px 7px; min-height: 22px; }"
-      "QToolButton#RecordMsgStep {"
-      "  font-weight: 600; font-size: 13px; padding: 3px 8px;"
-      "  min-width: 26px;"
-      "}"
-      "QToolButton#RecordRangeAction {"
-      "  padding: 2px 8px; color: #3d4a57;"
-      "}"
-      "QLabel#RecordTimeLabel {"
-      "  color: #3d4a57;"
-      "  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;"
-      "  font-size: 11px;"
-      "}"
-      "QTreeWidget {"
-      "  border: 1px solid #d0d7de; border-radius: 6px;"
-      "  background: #ffffff;"
-      "}"
-      "QComboBox { min-height: 22px; padding: 1px 6px; }"));
+                    "QToolButton { padding: 3px 7px; min-height: 22px; }"
+                    "QToolButton#RecordMsgStep {"
+                    "  font-weight: 600; font-size: 13px; padding: 3px 8px;"
+                    "  min-width: 26px;"
+                    "}"
+                    "QToolButton#RecordRangeAction {"
+                    "  padding: 2px 8px; color: %1;"
+                    "}"
+                    "QLabel#RecordTimeLabel {"
+                    "  color: %1;"
+                    "  font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;"
+                    "  font-size: 11px;"
+                    "}"
+                    "QTreeWidget {"
+                    "  border: 1px solid %2; border-radius: %3px;"
+                    "  background: %4;"
+                    "}"
+                    "QComboBox { min-height: 22px; padding: 1px 6px; }")
+                    .arg(glass::Hex(s.secondary_text), glass::Hex(s.border),
+                         QString::number(s.control_radius > 6 ? 6
+                                                              : s.control_radius),
+                         glass::Hex(s.card)));
 }
 
 void RecordPanel::syncTransportButtons() {

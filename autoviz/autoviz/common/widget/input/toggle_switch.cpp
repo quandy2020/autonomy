@@ -11,13 +11,23 @@
 #include <QPainter>
 #include <QPropertyAnimation>
 #include <QShowEvent>
-#include <QStyle>
-#include <QStyleOptionFocusRect>
 #include <algorithm>
 
 #include "autoviz/common/widget/foundation/motion_policy.hpp"
 
 namespace autoviz::widget {
+namespace {
+
+constexpr qreal kTrackHeight = 31.0;
+constexpr qreal kThumbDiameter = 27.0;
+constexpr qreal kThumbInset = 2.0;
+
+QColor WithOpacity(QColor color, qreal opacity) {
+  color.setAlpha(qRound(color.alpha() * std::clamp(opacity, 0.0, 1.0)));
+  return color;
+}
+
+}  // namespace
 
 ToggleSwitch::ToggleSwitch(QWidget* parent)
     : QAbstractButton(parent),
@@ -43,7 +53,7 @@ void ToggleSwitch::SetTone(style::Tone tone) {
   update();
 }
 
-QSize ToggleSwitch::sizeHint() const { return QSize(44, 24); }
+QSize ToggleSwitch::sizeHint() const { return QSize(51, 44); }
 
 QSize ToggleSwitch::minimumSizeHint() const { return sizeHint(); }
 
@@ -58,8 +68,12 @@ void ToggleSwitch::setThumbPosition(qreal position) {
 
 void ToggleSwitch::changeEvent(QEvent* event) {
   QAbstractButton::changeEvent(event);
-  if (event->type() == QEvent::EnabledChange && !isEnabled()) {
-    StopAnimationAtCurrentState();
+  if (event->type() == QEvent::EnabledChange) {
+    setCursor(isEnabled() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    if (!isEnabled()) {
+      StopAnimationAtCurrentState();
+    }
+    update();
   }
 }
 
@@ -74,37 +88,55 @@ bool ToggleSwitch::hitButton(const QPoint& position) const {
 
 void ToggleSwitch::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
-  const QRectF track = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  const QRectF track(0.5, (height() - kTrackHeight) * 0.5,
+                     qMax(0.0, width() - 1.0), kTrackHeight);
   const qreal radius = track.height() * 0.5;
 
-  QColor track_color = isChecked() ? tokens.accent : tokens.border;
+  QColor track_color = isChecked() ? tokens.accent : tokens.surface_sunken;
   if (!isEnabled()) {
-    track_color = tokens.disabled;
+    track_color = WithOpacity(track_color, isChecked() ? 0.42 : 0.58);
+  } else if (isDown()) {
+    track_color = isChecked() ? tokens.accent_pressed : tokens.surface_pressed;
   } else if (underMouse()) {
-    track_color = isChecked() ? tokens.accent_hovered : tokens.surface_hovered;
+    track_color = isChecked() ? tokens.accent_hovered : tokens.surface_material;
   }
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
-  painter.setPen(Qt::NoPen);
+  if (isChecked()) {
+    painter.setPen(Qt::NoPen);
+  } else {
+    painter.setPen(QPen(WithOpacity(tokens.border_subtle, 0.72), 1.0));
+  }
   painter.setBrush(track_color);
   painter.drawRoundedRect(track, radius, radius);
 
-  constexpr qreal kInset = 3.0;
-  const qreal diameter = track.height() - 2.0 * kInset;
-  const qreal travel = track.width() - diameter - 2.0 * kInset;
-  const qreal thumb_x = track.left() + kInset + travel * thumb_position_;
-  const QRectF thumb(thumb_x, track.top() + kInset, diameter, diameter);
-  painter.setBrush(isEnabled() ? tokens.surface_raised : tokens.surface);
+  const qreal travel = track.width() - kThumbDiameter - 2.0 * kThumbInset;
+  const qreal logical_position = layoutDirection() == Qt::RightToLeft
+                                     ? 1.0 - thumb_position_
+                                     : thumb_position_;
+  const qreal thumb_x = track.left() + kThumbInset + travel * logical_position;
+  const QRectF thumb(thumb_x, track.top() + kThumbInset, kThumbDiameter,
+                     kThumbDiameter);
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(WithOpacity(QColor(Qt::black), tokens.is_dark ? 0.34 : 0.2));
+  painter.drawEllipse(thumb.translated(0.0, 2.0));
+  painter.setBrush(WithOpacity(QColor(Qt::black), tokens.is_dark ? 0.2 : 0.12));
+  painter.drawEllipse(thumb.translated(0.0, 1.0));
+  painter.setBrush(WithOpacity(QColor(Qt::white), isEnabled() ? 1.0 : 0.74));
+  painter.setPen(QPen(WithOpacity(QColor(Qt::black), 0.08), 0.75));
   painter.drawEllipse(thumb);
 
   if (hasFocus()) {
-    QStyleOptionFocusRect focus;
-    focus.initFrom(this);
-    focus.rect = rect().adjusted(0, 0, -1, -1);
-    focus.backgroundColor = tokens.surface;
-    style()->drawPrimitive(QStyle::PE_FrameFocusRect, &focus, &painter, this);
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(
+        QPen(tokens.focus_ring_outer, tokens.focus_ring_width + 2.0));
+    painter.drawRoundedRect(track.adjusted(-3.0, -3.0, 3.0, 3.0), radius + 3.0,
+                            radius + 3.0);
+    painter.setPen(QPen(tokens.focus_ring, 1.5));
+    painter.drawRoundedRect(track.adjusted(-1.0, -1.0, 1.0, 1.0), radius + 1.0,
+                            radius + 1.0);
   }
 }
 
@@ -115,8 +147,8 @@ void ToggleSwitch::showEvent(QShowEvent* event) {
 
 void ToggleSwitch::AnimateToCheckedState(bool checked) {
   const qreal target = checked ? 1.0 : 0.0;
-  const int duration =
-      MotionPolicy::ResolveDuration(GetThemeTokens(tone_).animation_fast_ms);
+  const int duration = MotionPolicy::ResolveDuration(
+      GetThemeTokens(this, tone_).animation_normal_ms);
   if (!isVisible() || !isEnabled() || duration == 0) {
     animation_->stop();
     setThumbPosition(target);

@@ -5,6 +5,7 @@
 #include "autoviz/common/widget/data/data_grid.hpp"
 
 #include <QAbstractItemModel>
+#include <QFrame>
 #include <QHeaderView>
 #include <QRegularExpression>
 #include <QSortFilterProxyModel>
@@ -36,6 +37,9 @@ DataGrid::DataGrid(QWidget* parent) : QWidget(parent) {
   view_->setModel(proxy_model_);
   view_->setSortingEnabled(true);
   view_->setAlternatingRowColors(true);
+  view_->setShowGrid(false);
+  view_->setFrameShape(QFrame::NoFrame);
+  view_->setCornerButtonEnabled(false);
   view_->setWordWrap(false);
   view_->setSelectionBehavior(QAbstractItemView::SelectRows);
   view_->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -43,8 +47,9 @@ DataGrid::DataGrid(QWidget* parent) : QWidget(parent) {
   view_->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
   view_->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed);
   view_->verticalHeader()->setDefaultSectionSize(
-      GetThemeTokens(tone_).control_height_small);
+      GetThemeTokens(this, tone_).control_height_small);
   view_->horizontalHeader()->setSectionsMovable(true);
+  view_->horizontalHeader()->setHighlightSections(false);
   view_->horizontalHeader()->setStretchLastSection(true);
   layout->addWidget(view_);
   ApplyWidgetTheme(this, tone_);
@@ -101,7 +106,7 @@ void DataGrid::SetTone(style::Tone tone) {
   }
   tone_ = tone;
   view_->verticalHeader()->setDefaultSectionSize(
-      GetThemeTokens(tone_).control_height_small);
+      GetThemeTokens(this, tone_).control_height_small);
   ApplyWidgetTheme(this, tone_);
 }
 

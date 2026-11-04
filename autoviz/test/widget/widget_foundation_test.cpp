@@ -17,6 +17,9 @@
 #include "autoviz/common/widget/display/status_badge.hpp"
 #include "autoviz/common/widget/feedback/progress_ring.hpp"
 #include "autoviz/common/widget/foundation/motion_policy.hpp"
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
+#include "autoviz/common/widget/input/button.hpp"
 #include "autoviz/common/widget/input/toggle_switch.hpp"
 #include "autoviz/common/widget/layout/surface.hpp"
 
@@ -67,11 +70,31 @@ QImage RenderAtDevicePixelRatio(QWidget* widget, qreal device_pixel_ratio) {
   return image;
 }
 
+qreal LinearChannel(qreal channel) {
+  return channel <= 0.04045 ? channel / 12.92
+                            : std::pow((channel + 0.055) / 1.055, 2.4);
+}
+
+qreal ContrastRatio(const QColor& foreground, const QColor& background) {
+  const qreal foreground_luminance =
+      0.2126 * LinearChannel(foreground.redF()) +
+      0.7152 * LinearChannel(foreground.greenF()) +
+      0.0722 * LinearChannel(foreground.blueF());
+  const qreal background_luminance =
+      0.2126 * LinearChannel(background.redF()) +
+      0.7152 * LinearChannel(background.greenF()) +
+      0.0722 * LinearChannel(background.blueF());
+  return (qMax(foreground_luminance, background_luminance) + 0.05) /
+         (qMin(foreground_luminance, background_luminance) + 0.05);
+}
+
 class WidgetFoundationTest final : public QObject {
   Q_OBJECT
 
  private slots:
   void MotionPolicyHonorsOverridesEnvironmentAndStyle();
+  void SemanticThemeMapsNativePaletteAndStateGroups();
+  void ExplicitAppearanceChangesSelfPaintedWidgets();
   void TimelineKeepsNearMaximumMarkersPrecise();
   void RepresentativeWidgetsRenderAtCommonDevicePixelRatios();
 };
@@ -111,6 +134,171 @@ void WidgetFoundationTest::MotionPolicyHonorsOverridesEnvironmentAndStyle() {
   MotionPolicy::RefreshSystemPreference();
   QCOMPARE(MotionPolicy::ReducedMotionEnabled(),
            QApplication::style()->styleHint(QStyle::SH_Widget_Animate) == 0);
+}
+
+void WidgetFoundationTest::SemanticThemeMapsNativePaletteAndStateGroups() {
+  const ThemeTokens& light =
+      GetThemeTokens(style::Tone::Shell, ThemeAppearance::kLight);
+  const ThemeTokens& dark =
+      GetThemeTokens(style::Tone::Shell, ThemeAppearance::kDark);
+  const ThemeTokens& frost_light =
+      GetThemeTokens(style::Tone::Frost, ThemeAppearance::kLight);
+  const ThemeTokens& frost_dark =
+      GetThemeTokens(style::Tone::Frost, ThemeAppearance::kDark);
+  QVERIFY(!light.is_dark);
+  QVERIFY(dark.is_dark);
+  QVERIFY(!frost_light.is_dark);
+  QVERIFY(frost_dark.is_dark);
+  QVERIFY(qGray(light.window.rgb()) > qGray(dark.window.rgb()));
+  QVERIFY(qGray(light.text.rgb()) < qGray(dark.text.rgb()));
+  QCOMPARE(light.border, light.border_subtle);
+  QCOMPARE(dark.border, dark.border_subtle);
+
+  QCOMPARE(light.window, QColor(242, 242, 247));
+  QCOMPARE(light.surface, QColor(255, 255, 255));
+  QCOMPARE(light.accent, QColor(0, 122, 255));
+  QCOMPARE(light.accent_filled, QColor(0, 113, 227));
+  QCOMPARE(light.accent_filled_hovered, QColor(0, 110, 220));
+  QCOMPARE(light.accent_filled_pressed, QColor(0, 91, 181));
+  QCOMPARE(light.on_accent_filled, QColor(Qt::white));
+  QCOMPARE(light.success, QColor(52, 199, 89));
+  QCOMPARE(light.warning, QColor(255, 149, 0));
+  QCOMPARE(light.danger, QColor(255, 59, 48));
+  QCOMPARE(light.danger_filled, QColor(215, 0, 21));
+  QCOMPARE(light.danger_filled_hovered, QColor(204, 0, 20));
+  QCOMPARE(light.danger_filled_pressed, QColor(184, 0, 18));
+  QCOMPARE(light.on_danger_filled, QColor(Qt::white));
+  QCOMPARE(dark.window, QColor(0, 0, 0));
+  QCOMPARE(dark.surface, QColor(28, 28, 30));
+  QCOMPARE(dark.surface_raised, QColor(44, 44, 46));
+  QCOMPARE(dark.surface_material, QColor(58, 58, 60));
+  QCOMPARE(dark.accent, QColor(10, 132, 255));
+  QCOMPARE(dark.accent_filled, QColor(0, 113, 227));
+  QCOMPARE(dark.on_accent_filled, QColor(Qt::white));
+  QCOMPARE(dark.danger_filled, QColor(215, 0, 21));
+  QCOMPARE(dark.on_danger_filled, QColor(Qt::white));
+  QCOMPARE(light.control_height_compact, 28);
+  QCOMPARE(light.control_height_small, 32);
+  QCOMPARE(light.control_height_medium, 44);
+  QCOMPARE(light.control_height_large, 50);
+
+  for (const ThemeTokens* tokens : {&light, &dark, &frost_light, &frost_dark}) {
+    QVERIFY(tokens->surface_sunken.isValid());
+    QVERIFY(tokens->surface_material.isValid());
+    QVERIFY(tokens->surface_selected.isValid());
+    QVERIFY(tokens->text_secondary.isValid());
+    QVERIFY(tokens->placeholder.isValid());
+    QVERIFY(tokens->border_strong.isValid());
+    QVERIFY(tokens->focus_ring_outer.isValid());
+    QVERIFY(tokens->radius_small < tokens->radius_medium);
+    QVERIFY(tokens->radius_medium < tokens->radius_large);
+    QVERIFY(tokens->focus_ring_width >= 3);
+    QVERIFY(ContrastRatio(tokens->text, tokens->surface) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->text_secondary, tokens->surface) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->focus_ring, tokens->surface) >= 3.0);
+    QVERIFY(ContrastRatio(tokens->border_strong, tokens->surface) >= 3.0);
+    QVERIFY(ContrastRatio(tokens->accent_text, tokens->surface) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->on_accent, tokens->accent) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->on_accent_hovered, tokens->accent_hovered) >=
+            4.5);
+    QVERIFY(ContrastRatio(tokens->on_accent_pressed, tokens->accent_pressed) >=
+            4.5);
+    QVERIFY(ContrastRatio(tokens->on_accent_filled, tokens->accent_filled) >=
+            4.5);
+    QVERIFY(ContrastRatio(tokens->on_accent_filled,
+                          tokens->accent_filled_hovered) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->on_accent_filled,
+                          tokens->accent_filled_pressed) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->on_danger, tokens->danger) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->on_danger_hovered, tokens->danger_hovered) >=
+            4.5);
+    QVERIFY(ContrastRatio(tokens->on_danger_pressed, tokens->danger_pressed) >=
+            4.5);
+    QVERIFY(ContrastRatio(tokens->on_danger_filled, tokens->danger_filled) >=
+            4.5);
+    QVERIFY(ContrastRatio(tokens->on_danger_filled,
+                          tokens->danger_filled_hovered) >= 4.5);
+    QVERIFY(ContrastRatio(tokens->on_danger_filled,
+                          tokens->danger_filled_pressed) >= 4.5);
+  }
+
+  QPalette light_base;
+  light_base.setColor(QPalette::Window, Qt::white);
+  const QPalette light_palette = BuildWidgetPalette(
+      style::Tone::Shell, light_base, ThemeAppearance::kSystem);
+  QCOMPARE(light_palette.color(QPalette::Active, QPalette::Base),
+           light.surface);
+  QCOMPARE(light_palette.color(QPalette::Active, QPalette::AlternateBase),
+           light.surface_sunken);
+  QCOMPARE(light_palette.color(QPalette::Active, QPalette::Button),
+           light.surface_material);
+  QCOMPARE(light_palette.color(QPalette::Active, QPalette::PlaceholderText),
+           light.placeholder);
+  QCOMPARE(light_palette.color(QPalette::Active, QPalette::Link),
+           light.accent_text);
+
+  QPalette dark_base;
+  dark_base.setColor(QPalette::Window, Qt::black);
+  const QPalette dark_palette = BuildWidgetPalette(
+      style::Tone::Shell, dark_base, ThemeAppearance::kSystem);
+  QCOMPARE(dark_palette.color(QPalette::Active, QPalette::Base), dark.surface);
+  QCOMPARE(dark_palette.color(QPalette::Inactive, QPalette::Highlight),
+           dark.surface_selected);
+  QCOMPARE(dark_palette.color(QPalette::Disabled, QPalette::Text),
+           dark.disabled);
+
+  QWidget themed;
+  QWidget existing_child(&themed);
+  ApplyWidgetTheme(&themed, style::Tone::Shell, false, ThemeAppearance::kDark);
+  QCOMPARE(themed.property("autovizTone").toString(), QStringLiteral("shell"));
+  QCOMPARE(themed.property("autovizAppearance").toString(),
+           QStringLiteral("dark"));
+  QVERIFY(GetThemeTokens(&themed).is_dark);
+
+  ApplyWidgetTheme(&themed, style::Tone::Shell, true, ThemeAppearance::kDark);
+  QVERIFY(GetThemeTokens(&existing_child).is_dark);
+  QWidget late_child(&themed);
+  QVERIFY(GetThemeTokens(&late_child).is_dark);
+}
+
+void WidgetFoundationTest::ExplicitAppearanceChangesSelfPaintedWidgets() {
+  Button light_button(QStringLiteral("Continue"));
+  light_button.SetVariant(Button::Variant::kPrimary);
+  light_button.resize(light_button.sizeHint());
+  ApplyWidgetTheme(&light_button, style::Tone::Shell, false,
+                   ThemeAppearance::kLight);
+
+  Button dark_button(QStringLiteral("Continue"));
+  dark_button.SetVariant(Button::Variant::kPrimary);
+  dark_button.resize(dark_button.sizeHint());
+  ApplyWidgetTheme(&dark_button, style::Tone::Shell, false,
+                   ThemeAppearance::kDark);
+
+  Surface light_surface;
+  light_surface.SetElevation(Surface::Elevation::kRaised);
+  light_surface.resize(160, 80);
+  ApplyWidgetTheme(&light_surface, style::Tone::Shell, false,
+                   ThemeAppearance::kLight);
+
+  Surface dark_surface;
+  dark_surface.SetElevation(Surface::Elevation::kRaised);
+  dark_surface.resize(160, 80);
+  ApplyWidgetTheme(&dark_surface, style::Tone::Shell, false,
+                   ThemeAppearance::kDark);
+
+  const QVector<QWidget*> themed_widgets = {&light_button, &dark_button,
+                                            &light_surface, &dark_surface};
+  for (QWidget* widget : themed_widgets) {
+    widget->show();
+  }
+  QCoreApplication::processEvents();
+
+  QVERIFY(!GetThemeTokens(&light_button).is_dark);
+  QVERIFY(GetThemeTokens(&dark_button).is_dark);
+  QVERIFY(RenderAtDevicePixelRatio(&light_button, 1.0) !=
+          RenderAtDevicePixelRatio(&dark_button, 1.0));
+  QVERIFY(RenderAtDevicePixelRatio(&light_surface, 1.0) !=
+          RenderAtDevicePixelRatio(&dark_surface, 1.0));
 }
 
 void WidgetFoundationTest::TimelineKeepsNearMaximumMarkersPrecise() {

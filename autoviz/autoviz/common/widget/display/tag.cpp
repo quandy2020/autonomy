@@ -80,16 +80,16 @@ void Tag::SetTone(style::Tone tone) {
 }
 
 QSize Tag::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
-  const int close_width = removable_ ? tokens.control_height_compact : 0;
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  const int close_width = removable_ ? tokens.control_height_medium : 0;
   return QSize(fontMetrics().horizontalAdvance(text()) + close_width +
                    2 * tokens.spacing_md,
-               tokens.control_height_small);
+               tokens.control_height_medium);
 }
 
 QSize Tag::minimumSizeHint() const {
-  return QSize(GetThemeTokens(tone_).control_height_large,
-               GetThemeTokens(tone_).control_height_compact);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  return QSize(tokens.control_height_medium, tokens.control_height_medium);
 }
 
 void Tag::keyPressEvent(QKeyEvent* event) {
@@ -115,7 +115,7 @@ void Tag::mouseReleaseEvent(QMouseEvent* event) {
 
 void Tag::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QColor accent = AccentForKind(kind_, tokens);
   if (!isEnabled()) {
     accent = tokens.disabled;
@@ -123,35 +123,47 @@ void Tag::paintEvent(QPaintEvent* event) {
   const QColor background =
       isChecked() ? Mix(accent, tokens.surface, 54)
                   : Mix(accent, tokens.surface, underMouse() ? 34 : 22);
+  const QColor text_color = isEnabled() ? tokens.text : tokens.text_secondary;
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setPen(QPen(hasFocus() ? tokens.focus_ring : accent,
                       hasFocus() ? tokens.focus_ring_width : 1));
   painter.setBrush(background);
-  painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
-                          height() / 2.0, height() / 2.0);
+  const QRect capsule_rect(0, (height() - tokens.control_height_small) / 2,
+                           width(), tokens.control_height_small);
+  painter.drawRoundedRect(QRectF(capsule_rect).adjusted(0.5, 0.5, -0.5, -0.5),
+                          capsule_rect.height() / 2.0,
+                          capsule_rect.height() / 2.0);
 
   QRect text_rect =
-      rect().adjusted(tokens.spacing_md, 0, -tokens.spacing_md, 0);
+      capsule_rect.adjusted(tokens.spacing_md, 0, -tokens.spacing_md, 0);
   if (removable_) {
-    text_rect.setRight(RemoveRect().left() - tokens.spacing_xs);
+    if (layoutDirection() == Qt::RightToLeft) {
+      text_rect.setLeft(RemoveRect().right() + tokens.spacing_xs);
+    } else {
+      text_rect.setRight(RemoveRect().left() - tokens.spacing_xs);
+    }
   }
-  painter.setPen(accent);
+  painter.setPen(text_color);
+  const Qt::TextElideMode elide_mode =
+      layoutDirection() == Qt::RightToLeft ? Qt::ElideLeft : Qt::ElideRight;
   painter.drawText(
-      text_rect, Qt::AlignVCenter | Qt::AlignLeft,
-      fontMetrics().elidedText(text(), Qt::ElideRight, text_rect.width()));
+      text_rect, Qt::AlignVCenter | Qt::AlignLeading | Qt::TextSingleLine,
+      fontMetrics().elidedText(text(), elide_mode, text_rect.width()));
 
   if (removable_) {
-    const QRect close = RemoveRect().adjusted(6, 6, -6, -6);
+    QRect close(QPoint(), QSize(tokens.spacing_md, tokens.spacing_md));
+    close.moveCenter(RemoveRect().center());
     painter.drawLine(close.topLeft(), close.bottomRight());
     painter.drawLine(close.topRight(), close.bottomLeft());
   }
 }
 
 QRect Tag::RemoveRect() const {
-  const int extent = GetThemeTokens(tone_).control_height_compact;
-  return QRect(width() - extent, (height() - extent) / 2, extent, extent);
+  const int extent = GetThemeTokens(this, tone_).control_height_medium;
+  const int x = layoutDirection() == Qt::RightToLeft ? 0 : width() - extent;
+  return QRect(x, (height() - extent) / 2, extent, extent);
 }
 
 void Tag::UpdateAccessibility() {

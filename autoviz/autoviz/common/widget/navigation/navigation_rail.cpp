@@ -5,8 +5,11 @@
 #include "autoviz/common/widget/navigation/navigation_rail.hpp"
 
 #include <QButtonGroup>
+#include <QFocusEvent>
 #include <QKeyEvent>
+#include <QPainter>
 #include <QPointer>
+#include <QStyleOptionToolButton>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <utility>
@@ -15,11 +18,92 @@
 
 namespace autoviz {
 namespace widget {
+namespace {
+
+QColor Blend(const QColor& foreground, const QColor& background, int alpha) {
+  const int bounded = qBound(0, alpha, 255);
+  const int inverse = 255 - bounded;
+  return QColor(
+      (foreground.red() * bounded + background.red() * inverse) / 255,
+      (foreground.green() * bounded + background.green() * inverse) / 255,
+      (foreground.blue() * bounded + background.blue() * inverse) / 255,
+      (foreground.alpha() * bounded + background.alpha() * inverse) / 255);
+}
+
+class NavigationItemButton final : public QToolButton {
+ public:
+  explicit NavigationItemButton(style::Tone tone, QWidget* parent)
+      : QToolButton(parent), tone_(tone) {
+    setAttribute(Qt::WA_Hover);
+    setAutoRaise(true);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+  }
+
+  void SetTone(style::Tone tone) {
+    tone_ = tone;
+    update();
+  }
+
+ protected:
+  void paintEvent(QPaintEvent* event) override {
+    Q_UNUSED(event);
+    const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+    const bool selected = isChecked();
+    const bool pressed = isDown();
+    const bool hovered = underMouse();
+    const bool keyboard_focus =
+        selected && parentWidget() != nullptr && parentWidget()->hasFocus();
+
+    QColor fill = Qt::transparent;
+    if (selected) {
+      fill = Blend(tokens.accent, tokens.surface, pressed ? 54 : 34);
+    } else if (pressed) {
+      fill = Blend(tokens.text, tokens.surface, 28);
+    } else if (hovered) {
+      fill = tokens.surface_hovered;
+    }
+
+    const QRectF bounds = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setBrush(fill);
+    if (keyboard_focus) {
+      painter.setPen(QPen(tokens.focus_ring, tokens.focus_ring_width));
+    } else if (selected) {
+      painter.setPen(QPen(Blend(tokens.accent, tokens.border, 92), 1.0));
+    } else {
+      painter.setPen(Qt::NoPen);
+    }
+    painter.drawRoundedRect(bounds, tokens.radius_medium, tokens.radius_medium);
+
+    // Keep compact desktop labels at body-text contrast. Selection already has
+    // an accent fill and outline, so accent-colored text would communicate the
+    // same state twice while falling below 4.5:1 on the tinted surface.
+    QColor foreground = tokens.text;
+    if (!isEnabled()) {
+      foreground = tokens.disabled;
+    }
+    QStyleOptionToolButton option;
+    initStyleOption(&option);
+    option.rect = rect().adjusted(tokens.spacing_sm, 0, -tokens.spacing_sm, 0);
+    option.palette.setColor(QPalette::ButtonText, foreground);
+    option.palette.setColor(QPalette::Text, foreground);
+    option.state &= ~QStyle::State_Sunken;
+    option.state &= ~QStyle::State_Raised;
+    style()->drawControl(QStyle::CE_ToolButtonLabel, &option, &painter, this);
+  }
+
+ private:
+  style::Tone tone_;
+};
+
+}  // namespace
 
 NavigationRail::NavigationRail(QWidget* parent) : QFrame(parent) {
   setObjectName(QStringLiteral("AutovizNavigationRail"));
   setProperty("autovizRole", QStringLiteral("navigationRail"));
   setFrameShape(QFrame::NoFrame);
+  setAttribute(Qt::WA_TranslucentBackground);
   setFocusPolicy(Qt::StrongFocus);
   setAccessibleName(tr("Main navigation"));
   setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Expanding);
@@ -108,6 +192,20 @@ void NavigationRail::SetTone(style::Tone tone) {
   ApplyTheme();
 }
 
+void NavigationRail::focusInEvent(QFocusEvent* event) {
+  QFrame::focusInEvent(event);
+  for (QToolButton* button : buttons_) {
+    button->update();
+  }
+}
+
+void NavigationRail::focusOutEvent(QFocusEvent* event) {
+  QFrame::focusOutEvent(event);
+  for (QToolButton* button : buttons_) {
+    button->update();
+  }
+}
+
 void NavigationRail::keyPressEvent(QKeyEvent* event) {
   switch (event->key()) {
     case Qt::Key_Up:
@@ -160,7 +258,7 @@ void NavigationRail::Rebuild() {
   buttons_.clear();
 
   for (int i = 0; i < static_cast<int>(items_.size()); ++i) {
-    auto* button = new QToolButton(this);
+    auto* button = new NavigationItemButton(tone_, this);
     button->setObjectName(QStringLiteral("AutovizNavigationItem"));
     button->setCheckable(true);
     button->setChecked(i == current_index_);
@@ -193,11 +291,12 @@ void NavigationRail::Rebuild() {
 }
 
 void NavigationRail::ApplyTheme() {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   layout_->setContentsMargins(tokens.spacing_xs, tokens.spacing_xs,
                               tokens.spacing_xs, tokens.spacing_xs);
   layout_->setSpacing(tokens.spacing_xs);
   for (QToolButton* button : buttons_) {
+    static_cast<NavigationItemButton*>(button)->SetTone(tone_);
     button->setMinimumHeight(tokens.control_height_large);
   }
   ApplyWidgetTheme(this, tone_, true);

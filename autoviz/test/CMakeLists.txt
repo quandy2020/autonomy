@@ -25,8 +25,12 @@ autoviz_add_widget_test(
 autoviz_add_widget_test(
   autoviz_widget_input_test widget/widget_input_test.cpp)
 autoviz_add_widget_test(
+  autoviz_widget_segmented_control_test widget/widget_segmented_control_test.cpp)
+autoviz_add_widget_test(
   autoviz_widget_lifecycle_test widget/widget_lifecycle_test.cpp)
 autoviz_add_widget_test(
   autoviz_widget_navigation_test widget/widget_navigation_test.cpp)
+autoviz_add_widget_test(
+  autoviz_widget_rtl_navigation_test widget/widget_rtl_navigation_test.cpp)
 autoviz_add_widget_test(
   autoviz_widget_table_test widget/widget_table_test.cpp)

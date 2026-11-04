@@ -4,6 +4,7 @@
 
 #include "autoviz/ui/publish/publish_editor_widget.hpp"
 
+#include <QAbstractSpinBox>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCompleter>
@@ -11,6 +12,7 @@
 #include <QDoubleSpinBox>
 #include <QFont>
 #include <QFrame>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -40,19 +42,16 @@
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
 #include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace publish_panel {
 namespace {
 
-/** Light tokens aligned with Transform Tree. */
-constexpr char kBg[] = "rgba(255,255,255,128)";
-constexpr char kSurface[] = "rgba(240,249,255,155)";
-constexpr char kBorder[] = "rgba(186,230,253,140)";
-constexpr char kText[] = "#1e293b";
-constexpr char kTextMuted[] = "#64748b";
-constexpr char kAccent[] = "#0891b2";
+QString kBg() { return glass::Rgba(glass::Shell().glass_fill); }
+QString kSurface() { return glass::Rgba(glass::Shell().glass_fill_deep); }
+QColor kAccent() { return glass::Shell().accent; }
 
 QString ShortTypeLabel(const std::string& type) {
   QString label = QString::fromStdString(type);
@@ -66,7 +65,7 @@ QString ShortTypeLabel(const std::string& type) {
 QLabel* MakeFieldLabel(const QString& text, QWidget* parent) {
   auto* label = new QLabel(text, parent);
   label->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+      style::sheet(QStringLiteral("publish/field_label"), style::Tone::Frost));
   return label;
 }
 
@@ -74,16 +73,25 @@ void StyleToolbarCombo(QComboBox* combo) {
   if (combo == nullptr) {
     return;
   }
-  combo->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  combo->setObjectName(QStringLiteral("AutovizToolbarCombo"));
+  combo->setFixedHeight(30);
+  combo->setStyleSheet(style::sheet(QStringLiteral("publish/toolbar_combo"),
+                                    style::Tone::Frost));
+  if (combo->lineEdit() != nullptr) {
+    combo->lineEdit()->setFrame(false);
+    combo->lineEdit()->setStyleSheet(QStringLiteral(
+        "QLineEdit { background: transparent; border: none; }"));
+  }
 }
 
 void StyleToolbarSpin(QDoubleSpinBox* spin) {
   if (spin == nullptr) {
     return;
   }
-  spin->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  spin->setFixedHeight(30);
+  spin->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
+  spin->setStyleSheet(style::sheet(QStringLiteral("publish/toolbar_spin"),
+                                   style::Tone::Frost));
 }
 
 void StyleIconChipButton(QPushButton* button) {
@@ -92,9 +100,9 @@ void StyleIconChipButton(QPushButton* button) {
   }
   button->setFlat(false);
   button->setCursor(Qt::PointingHandCursor);
-  button->setFixedSize(32, 32);
-  button->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  button->setFixedSize(30, 30);
+  button->setStyleSheet(style::sheet(QStringLiteral("publish/icon_chip_button"),
+                                     style::Tone::Frost));
 }
 
 void StyleGhostButton(QPushButton* button) {
@@ -103,8 +111,8 @@ void StyleGhostButton(QPushButton* button) {
   }
   button->setFlat(true);
   button->setCursor(Qt::PointingHandCursor);
-  button->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  button->setStyleSheet(style::sheet(QStringLiteral("publish/ghost_text_button"),
+                                     style::Tone::Frost));
 }
 
 int FindPresetIndex(const QVector<PublishPreset>& presets,
@@ -136,14 +144,17 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   latest_fill_timer_->setSingleShot(true);
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(10, 10, 10, 10);
-  root->setSpacing(10);
+  root->setContentsMargins(PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin,
+                           PanelSettingsLayout::kOuterMargin);
+  root->setSpacing(8);
 
   auto* collection_frame = new QFrame(this);
   collection_frame->setObjectName(QStringLiteral("PublishCollectionBar"));
   collection_bar_ = collection_frame;
   auto* collection_layout = new QHBoxLayout(collection_frame);
-  collection_layout->setContentsMargins(12, 8, 12, 8);
+  collection_layout->setContentsMargins(10, 8, 10, 8);
   collection_layout->setSpacing(8);
   collection_layout->addWidget(
       MakeFieldLabel(tr("Collection"), collection_frame));
@@ -164,13 +175,13 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   top_frame->setObjectName(QStringLiteral("PublishToolbar"));
   rqt_top_bar_ = top_frame;
   auto* top_layout = new QHBoxLayout(top_frame);
-  top_layout->setContentsMargins(12, 10, 12, 10);
-  top_layout->setSpacing(8);
+  top_layout->setContentsMargins(10, 8, 10, 8);
+  top_layout->setSpacing(6);
   top_layout->addWidget(MakeFieldLabel(tr("Channel"), top_frame));
   channel_combo_ = new QComboBox(top_frame);
   channel_combo_->setEditable(true);
   channel_combo_->setInsertPolicy(QComboBox::NoInsert);
-  channel_combo_->setMinimumWidth(140);
+  channel_combo_->setMinimumWidth(120);
   channel_combo_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   channel_combo_->setCompleter(new QCompleter(channel_combo_));
   channel_combo_->completer()->setCaseSensitivity(Qt::CaseInsensitive);
@@ -181,22 +192,21 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   message_type_combo_ = new QComboBox(top_frame);
   message_type_combo_->setEditable(true);
   message_type_combo_->setInsertPolicy(QComboBox::NoInsert);
-  message_type_combo_->setMinimumWidth(160);
+  message_type_combo_->setMinimumWidth(140);
   message_type_combo_->setSizePolicy(QSizePolicy::Expanding,
                                      QSizePolicy::Fixed);
   StyleToolbarCombo(message_type_combo_);
-  top_layout->addWidget(message_type_combo_, 2);
+  top_layout->addWidget(message_type_combo_, 3);
   top_layout->addWidget(MakeFieldLabel(tr("Freq"), top_frame));
   publish_rate_spin_ = new QDoubleSpinBox(top_frame);
   publish_rate_spin_->setRange(0.1, 100.0);
   publish_rate_spin_->setSingleStep(0.5);
   publish_rate_spin_->setDecimals(1);
   publish_rate_spin_->setValue(config_.publish_rate_hz);
-  publish_rate_spin_->setFixedWidth(72);
+  publish_rate_spin_->setFixedWidth(68);
   StyleToolbarSpin(publish_rate_spin_);
   top_layout->addWidget(publish_rate_spin_);
   auto* hz_label = MakeFieldLabel(tr("Hz"), top_frame);
-  hz_label->setStyleSheet(style::type(style::Role::PanelMuted, 12));
   top_layout->addWidget(hz_label);
   editing_mode_check_ = new QCheckBox(tr("Advanced"), top_frame);
   editing_mode_check_->setChecked(config_.editing_mode);
@@ -217,11 +227,13 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
 
   auto* action_separator = new widget::Separator(Qt::Vertical, top_frame);
   action_separator->SetTone(style::Tone::Frost);
-  action_separator->setMinimumHeight(22);
+  action_separator->setFixedWidth(1);
+  action_separator->setMinimumHeight(20);
 
   publish_once_button_ = new QPushButton(tr("Publish"), top_frame);
   publish_once_button_->setToolTip(tr("Publish once (Ctrl+Enter)"));
-  publish_once_button_->setMinimumSize(96, 34);
+  publish_once_button_->setMinimumWidth(88);
+  publish_once_button_->setFixedHeight(30);
   publish_once_button_->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
   publish_once_button_->setDefault(true);
   publish_once_button_->setCursor(Qt::PointingHandCursor);
@@ -236,19 +248,37 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
 
   auto* tree_card = new QFrame(this);
   tree_card->setObjectName(QStringLiteral("PublishTreeCard"));
-  auto* tree_card_layout = new QVBoxLayout(tree_card);
+  auto* tree_card_layout = new QGridLayout(tree_card);
   tree_card_layout->setContentsMargins(0, 0, 0, 0);
   tree_card_layout->setSpacing(0);
   publishers_tree_ = new PublishFieldTreeWidget(tree_card);
   publishers_tree_->setDisplayMode(
       PublishFieldTreeWidget::DisplayMode::kRqtPublishers);
   publishers_tree_->setMinimumHeight(160);
+  publishers_tree_->setAttribute(Qt::WA_TranslucentBackground, true);
+  publishers_tree_->setAutoFillBackground(false);
+  if (publishers_tree_->viewport() != nullptr) {
+    publishers_tree_->viewport()->setAutoFillBackground(false);
+    publishers_tree_->viewport()->setAttribute(Qt::WA_TranslucentBackground,
+                                               true);
+  }
   publishers_tree_->setToolTip(
-      tr("rqt-style publisher list.\n"
-         "Checkbox toggles loop publish.\n"
-         "Edit expression values inline.\n"
+      tr("Checkbox toggles loop publish. Edit values inline. "
          "Right-click arrays for +/- elements."));
-  tree_card_layout->addWidget(publishers_tree_, 1);
+  tree_card_layout->addWidget(publishers_tree_, 0, 0);
+
+  empty_hint_label_ = new QLabel(
+      tr("Add a publisher with +.\n"
+         "Checkbox toggles loop publish.\n"
+         "Edit expression values inline."),
+      tree_card);
+  empty_hint_label_->setAlignment(Qt::AlignCenter);
+  empty_hint_label_->setWordWrap(true);
+  empty_hint_label_->setMaximumWidth(360);
+  empty_hint_label_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+  empty_hint_label_->setStyleSheet(
+      style::sheet(QStringLiteral("publish/empty_hint"), style::Tone::Frost));
+  tree_card_layout->addWidget(empty_hint_label_, 0, 0, Qt::AlignCenter);
   root->addWidget(tree_card, 1);
 
   editor_body_ = new QWidget(this);
@@ -418,13 +448,15 @@ QPlainTextEdit* PublishEditorWidget::makeJsonEditor(QWidget* parent,
   editor->setFont(mono);
   QHash<QString, QString> tokens = style::tokens(style::Tone::Frost);
   tokens.insert(QStringLiteral("{{editor-bg}}"),
-                read_only ? QLatin1String(kBg) : QLatin1String(kSurface));
-  editor->setStyleSheet(style::sheet(QStringLiteral("publish"), tokens));
+                read_only ? kBg() : kSurface());
+  editor->setStyleSheet(
+      style::sheet(QStringLiteral("publish/json_editor"), tokens));
   return editor;
 }
 
 void PublishEditorWidget::applyChromeStyles() {
-  setStyleSheet(style::sheet(QStringLiteral("publish"), style::Tone::Frost));
+  setStyleSheet(
+      style::sheet(QStringLiteral("publish/panel_chrome"), style::Tone::Frost));
 }
 
 void PublishEditorWidget::refreshPublishButtonAppearance() {
@@ -441,7 +473,7 @@ void PublishEditorWidget::refreshPublishButtonAppearance() {
     publish_once_button_->setToolTip(tr("Publish once (Ctrl+Enter)"));
   }
 
-  QColor accent(kAccent);
+  QColor accent = kAccent();
   if (config_.button_color.isValid()) {
     accent = config_.button_color;
   }
@@ -450,7 +482,16 @@ void PublishEditorWidget::refreshPublishButtonAppearance() {
   tokens.insert(QStringLiteral("{{btn-bg}}"), accent.name());
   tokens.insert(QStringLiteral("{{btn-hover}}"), hover);
   publish_once_button_->setStyleSheet(
-      style::sheet(QStringLiteral("publish"), tokens));
+      style::sheet(QStringLiteral("publish/publish_once_button"), tokens));
+}
+
+void PublishEditorWidget::updateEmptyHintVisibility() {
+  if (empty_hint_label_ == nullptr) {
+    return;
+  }
+  const bool empty =
+      publishers_tree_ == nullptr || publishers_tree_->topLevelItemCount() == 0;
+  empty_hint_label_->setVisible(empty);
 }
 
 void PublishEditorWidget::keyPressEvent(QKeyEvent* event) {
@@ -1420,6 +1461,7 @@ void PublishEditorWidget::rebuildPublishersTree() {
   suppress_tree_update_ = true;
   publishers_tree_->setPublishers(config_.publishers);
   suppress_tree_update_ = false;
+  updateEmptyHintVisibility();
 }
 
 int PublishEditorWidget::selectedPublisherRow() const {

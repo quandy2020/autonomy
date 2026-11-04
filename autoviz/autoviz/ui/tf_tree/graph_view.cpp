@@ -29,6 +29,8 @@
 #include <QStringList>
 #include <QWheelEvent>
 
+#include "autoviz/ui/theme/glass.hpp"
+
 namespace autoviz {
 namespace {
 
@@ -98,25 +100,33 @@ struct GraphPalette {
 
 GraphPalette MakeGraphPalette(const QPalette& palette) {
   Q_UNUSED(palette);
-  // Frosted-glass shell + cyan accents (glass::Shell).
+  const glass::ShellTokens s = glass::Shell();
   GraphPalette graph;
-  graph.canvas = QColor(0xE0, 0xF2, 0xFE);
-  graph.node_fill = QColor(255, 255, 255);
-  graph.node_fill_bottom = QColor(0xF0, 0xF9, 0xFF);
-  graph.node_static_fill = QColor(255, 251, 235);       // amber-50
+  graph.canvas = s.alternate_base;
+  graph.node_fill = s.card;
+  graph.node_fill_bottom = s.base;
+  graph.node_static_fill = QColor(255, 251, 235);       // amber-50 (static TF)
   graph.node_static_fill_bottom = QColor(254, 243, 199);  // amber-100
-  graph.node_current_fill = QColor(236, 254, 255);      // #ecfeff
-  graph.edge = QColor(8, 145, 178, 190);
-  graph.edge_stale = QColor(148, 163, 184);
-  graph.ink = QColor(0x1E, 0x29, 0x3B);
-  graph.secondary_text = QColor(0x64, 0x74, 0x8B);
-  graph.accent = QColor(8, 145, 178);
-  graph.accent_soft = QColor(125, 211, 252, 50);
+  QColor current = s.accent_soft;
+  current.setAlpha(255);
+  graph.node_current_fill = current;
+  QColor edge = s.accent;
+  edge.setAlpha(190);
+  graph.edge = edge;
+  graph.edge_stale = s.disabled_text;
+  graph.ink = s.text;
+  graph.secondary_text = s.secondary_text;
+  graph.accent = s.accent;
+  QColor soft = s.accent_soft;
+  soft.setAlpha(50);
+  graph.accent_soft = soft;
   graph.static_accent = QColor(217, 119, 6);
-  graph.placeholder_fill = QColor(255, 255, 255);
-  graph.label_bg = QColor(255, 255, 255, 245);
-  graph.legend_fill = QColor(255, 255, 255);
-  graph.legend_border = QColor(0xC7, 0xE0, 0xF0);
+  graph.placeholder_fill = s.card;
+  QColor label = s.card;
+  label.setAlpha(245);
+  graph.label_bg = label;
+  graph.legend_fill = s.card;
+  graph.legend_border = s.border_light;
   return graph;
 }
 
@@ -709,7 +719,7 @@ void TfTreeGraphView::setFrames(
       shadow_item->setZValue(0.4);
     }
 
-    QPen node_pen(QColor(103, 232, 249), 1.3);  // #67e8f9
+    QPen node_pen(glass::Shell().accent, 1.3);
     if (node.is_static) {
       node_pen.setColor(graph_palette.static_accent);
       node_pen.setStyle(Qt::DashLine);

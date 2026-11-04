@@ -21,6 +21,10 @@
 #include <QKeySequence>
 #include <QString>
 
+#include "autoviz/ui/theme/glass.hpp"
+
+class QApplication;
+
 namespace autoviz {
 
 /**
@@ -40,6 +44,12 @@ struct AppShortcutDefinition {
 struct AppUiPreferences {
   /** Empty means follow system locale. */
   QString language_code;
+
+  /**
+   * App chrome theme: @c "system", @c "light", @c "dark", or @c "liquid".
+   * Default @c "light" keeps milky bars readable on dark desktops.
+   */
+  QString theme_mode = QStringLiteral("light");
 
   /** Start the main window maximized on launch. */
   bool start_maximized = true;
@@ -68,6 +78,19 @@ AppUiPreferences LoadAppUiPreferences();
  * @param preferences Values to write.
  */
 void SaveAppUiPreferences(const AppUiPreferences& preferences);
+
+/**
+ * @brief Maps a stored theme id to @ref glass::ShellAppearance.
+ * @param theme_mode @c "system" / @c "light" / @c "dark" / @c "liquid".
+ */
+glass::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode);
+
+/**
+ * @brief Applies @p theme_mode to the live shell and refreshes the app theme.
+ * @param theme_mode Preference id (@c system / @c light / @c dark / @c liquid).
+ * @param app Application to restyle (typically @c qApp).
+ */
+void ApplyUiThemeMode(const QString& theme_mode, QApplication& app);
 
 /**
  * @brief Resolves a shortcut by @p id (user override or default).

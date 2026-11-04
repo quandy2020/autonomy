@@ -31,8 +31,8 @@ namespace autoviz {
  * |-----------|--------|
  * | Column ≠ @ref kViewTreeColValue | Base-class default |
  * | Kind = Invert Z / Focal Shape Fixed Size / Target Frame Choice | None (native checkbox) |
- * | Kind = Target Frame | Display-only (choices are checkable children) |
- * | Other kinds | Base-class QLineEdit |
+ * | Kind = Target Frame | Editable @c QComboBox of TF frames |
+ * | Other kinds | Compact QLineEdit |
  *
  * Kind is stored on @ref kViewTreeColName via @c SetTreeItemMeta; the
  * delegate always reads it from the name-column sibling of @p index.

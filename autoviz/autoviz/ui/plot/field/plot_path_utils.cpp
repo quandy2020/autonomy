@@ -19,33 +19,8 @@ namespace plot {
 namespace {
 
 const std::map<QString, std::string>& TutorialChannelMessageTypes() {
+  // Only real common channels — no /fake/* tutorial stubs.
   static const std::map<QString, std::string> kTutorialChannels = {
-      {QStringLiteral("/fake/path"), "automsgs.msgs.nav_msgs.Path"},
-      {QStringLiteral("/fake/odom"), "automsgs.msgs.nav_msgs.Odometry"},
-      {QStringLiteral("/fake/scan"), "automsgs.msgs.sensor_msgs.LaserScan"},
-      {QStringLiteral("/fake/marker"), "automsgs.msgs.visualization_msgs.Marker"},
-      {QStringLiteral("/fake/marker_array"),
-       "automsgs.msgs.visualization_msgs.MarkerArray"},
-      {QStringLiteral("/fake/occupancy_grid"), "automsgs.msgs.map_msgs.OccupancyGrid"},
-      {QStringLiteral("/fake/point_cloud2"), "automsgs.msgs.sensor_msgs.PointCloud2"},
-      {QStringLiteral("/fake/point_cloud"), "automsgs.msgs.sensor_msgs.PointCloud2"},
-      {QStringLiteral("/fake/pose"), "automsgs.msgs.geometry_msgs.PoseStamped"},
-      {QStringLiteral("/fake/pose_array"), "automsgs.msgs.geometry_msgs.PoseArray"},
-      {QStringLiteral("/fake/image"), "automsgs.msgs.sensor_msgs.Image"},
-      {QStringLiteral("/fake/twist"), "automsgs.msgs.geometry_msgs.TwistStamped"},
-      {QStringLiteral("/fake/wrench"), "automsgs.msgs.geometry_msgs.WrenchStamped"},
-      {QStringLiteral("/fake/grid_cells"), "automsgs.msgs.map_msgs.GridCells"},
-      {QStringLiteral("/fake/point"), "automsgs.msgs.geometry_msgs.PointStamped"},
-      {QStringLiteral("/fake/polygon"), "automsgs.msgs.geometry_msgs.PolygonStamped"},
-      {QStringLiteral("/fake/range"), "automsgs.msgs.sensor_msgs.Range"},
-      {QStringLiteral("/fake/pose_with_covariance"),
-       "automsgs.msgs.geometry_msgs.PoseWithCovarianceStamped"},
-      {QStringLiteral("/fake/camera_info"), "automsgs.msgs.sensor_msgs.CameraInfo"},
-      {QStringLiteral("/fake/imu"), "automsgs.msgs.sensor_msgs.Imu"},
-      {QStringLiteral("/fake/accel"), "automsgs.msgs.geometry_msgs.AccelStamped"},
-      {QStringLiteral("/fake/plot/sine"), "automsgs.msgs.std_msgs.Float64"},
-      {QStringLiteral("/fake/plot/cosine"), "automsgs.msgs.std_msgs.Float64"},
-      {QStringLiteral("/fake/plot/cmd"), "automsgs.msgs.geometry_msgs.Twist"},
       {QStringLiteral("/cmd_vel"),
        "automsgs.msgs.geometry_msgs.TwistStamped"},
   };
@@ -317,7 +292,8 @@ QStringList PlotValuePathSuggestions(common::VisualizationManager* manager,
     return ChannelNameSuggestions(manager, prefix);
   }
 
-  // Exact field prefix without trailing dot: show next-level children (e.g. /fake/path.poses).
+  // Exact field prefix without trailing dot: show next-level children
+  // (e.g. /path.poses).
   if (!field_path.isEmpty() && !prefix.endsWith(QLatin1Char('.'))) {
     const QString expected = channel + QLatin1Char('.') + field_path;
     if (prefix.compare(expected, Qt::CaseInsensitive) == 0) {

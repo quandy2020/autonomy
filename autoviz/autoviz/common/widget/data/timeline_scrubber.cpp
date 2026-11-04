@@ -189,7 +189,7 @@ void TimelineScrubber::mouseReleaseEvent(QMouseEvent* event) {
 
 void TimelineScrubber::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const QRectF track = TrackRect();
   const qreal value_x = XFromPosition(value_);
 
@@ -231,7 +231,7 @@ void TimelineScrubber::resizeEvent(QResizeEvent* event) {
 }
 
 QRectF TimelineScrubber::TrackRect() const {
-  const int margin = GetThemeTokens(tone_).spacing_lg;
+  const int margin = GetThemeTokens(this, tone_).spacing_lg;
   return QRectF(rect()).adjusted(margin, 12, -margin, -12);
 }
 

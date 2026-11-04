@@ -8,6 +8,7 @@
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QFont>
+#include <QFontMetrics>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -19,11 +20,13 @@
 #include <QPalette>
 #include <QPushButton>
 #include <QStackedWidget>
+#include <QStyle>
 #include <QStyleOptionViewItem>
 #include <QStyledItemDelegate>
 #include <QTreeWidget>
 #include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
+#include <algorithm>
 #include <map>
 #include <vector>
 
@@ -49,6 +52,13 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
  public:
   using QStyledItemDelegate::QStyledItemDelegate;
 
+  QSize sizeHint(const QStyleOptionViewItem& option,
+                 const QModelIndex& index) const override {
+    QSize size = QStyledItemDelegate::sizeHint(option, index);
+    size.setHeight(qMax(28, size.height()));
+    return size;
+  }
+
   void paint(QPainter* painter, const QStyleOptionViewItem& option,
              const QModelIndex& index) const override {
     QStyleOptionViewItem opt(option);
@@ -70,13 +80,67 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
       path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 8.0, 8.0);
       if (selected) {
         QLinearGradient fill(row.topLeft(), row.topRight());
-        fill.setColorAt(0.0, QColor(20, 184, 166, 78));
-        fill.setColorAt(1.0, QColor(34, 211, 238, 62));
+        fill.setColorAt(0.0, glass::ShellSelectionFill(78));
+        QColor end = glass::Shell().accent_soft;
+        end.setAlpha(62);
+        fill.setColorAt(1.0, end);
         painter->fillPath(path, fill);
       } else {
-        painter->fillPath(path, QColor(165, 243, 252, 56));
+        painter->fillPath(path, glass::ShellHoverFill());
       }
       painter->restore();
+    }
+
+    const QString type = index.data(kTypeRole).toString();
+    const QString channel = index.data(kChannelRole).toString();
+    // Channel tab flat rows: one line = path (elide) + type badge on the right.
+    if (!type.isEmpty() && !channel.isEmpty() && index.column() == 0) {
+      painter->save();
+      painter->setRenderHint(QPainter::Antialiasing, true);
+      painter->setRenderHint(QPainter::TextAntialiasing, true);
+
+      QRect content = row.adjusted(8, 0, -10, 0);
+      const int icon = opt.decorationSize.width() > 0 ? opt.decorationSize.width()
+                                                      : 16;
+      QRect icon_rect(content.left(), content.center().y() - icon / 2, icon,
+                      icon);
+      if (!opt.icon.isNull()) {
+        opt.icon.paint(painter, icon_rect, Qt::AlignCenter,
+                       selected ? QIcon::Selected : QIcon::Normal,
+                       QIcon::On);
+      }
+      content.setLeft(icon_rect.right() + 8);
+
+      QFont type_font = opt.font;
+      type_font.setWeight(QFont::DemiBold);
+      type_font.setPointSizeF(qMax(10.0, type_font.pointSizeF() - 0.5));
+      const QFontMetrics type_metrics(type_font);
+      const int type_width = type_metrics.horizontalAdvance(type) + 2;
+      QRect type_rect = content;
+      type_rect.setLeft(qMax(content.left() + 40, content.right() - type_width));
+      type_rect.setWidth(content.right() - type_rect.left() + 1);
+
+      QRect path_rect = content;
+      path_rect.setRight(type_rect.left() - 10);
+
+      QFont path_font = opt.font;
+      if (selected) {
+        path_font.setWeight(QFont::DemiBold);
+      }
+      const QColor ink =
+          selected ? glass::ShellSelectionInk() : glass::Shell().text;
+      const QColor muted = glass::Shell().secondary_text;
+      painter->setFont(path_font);
+      painter->setPen(ink);
+      painter->drawText(
+          path_rect, Qt::AlignVCenter | Qt::AlignLeft,
+          QFontMetrics(path_font).elidedText(channel, Qt::ElideMiddle,
+                                             path_rect.width()));
+      painter->setFont(type_font);
+      painter->setPen(selected ? glass::Shell().accent : muted);
+      painter->drawText(type_rect, Qt::AlignVCenter | Qt::AlignRight, type);
+      painter->restore();
+      return;
     }
 
     // Suppress native/QSS selection fill; keep icon + text rendering.
@@ -84,8 +148,9 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
     opt.state.setFlag(QStyle::State_MouseOver, false);
     opt.backgroundBrush = Qt::NoBrush;
     if (selected) {
-      opt.palette.setColor(QPalette::Text, QColor(0x0F, 0x76, 0x6E));
-      opt.palette.setColor(QPalette::WindowText, QColor(0x0F, 0x76, 0x6E));
+      const QColor ink = glass::ShellSelectionInk();
+      opt.palette.setColor(QPalette::Text, ink);
+      opt.palette.setColor(QPalette::WindowText, ink);
       opt.font.setWeight(QFont::DemiBold);
     }
     QStyledItemDelegate::paint(painter, opt, index);
@@ -136,13 +201,19 @@ class GlassFooterBar : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 16.0, 16.0);
 
-    painter.fillPath(path, QColor(255, 255, 255, 96));
+    QColor plate = glass::Shell().glass_fill;
+    plate.setAlpha(96);
+    painter.fillPath(path, plate);
     QLinearGradient wash(card.topLeft(), card.bottomLeft());
     wash.setColorAt(0.0, QColor(255, 255, 255, 130));
-    wash.setColorAt(1.0, QColor(240, 249, 255, 70));
+    QColor wash_end = glass::Shell().alternate_base;
+    wash_end.setAlpha(70);
+    wash.setColorAt(1.0, wash_end);
     painter.fillPath(path, wash);
 
-    painter.setPen(QPen(QColor(186, 230, 253, 120), 1.0));
+    QColor rim = glass::Shell().glass_rim;
+    rim.setAlpha(120);
+    painter.setPen(QPen(rim, 1.0));
     painter.drawPath(path);
     painter.setPen(QPen(QColor(255, 255, 255, 180), 1.0));
     painter.drawRoundedRect(card.adjusted(1.0, 1.0, -1.0, -1.0), 15.0, 15.0);
@@ -164,21 +235,12 @@ AddDisplaySelection SelectionFromDisplayItem(QTreeWidgetItem* item) {
 
 AddDisplaySelection SelectionFromTopicItem(QTreeWidgetItem* item) {
   AddDisplaySelection selection;
-  if (item == nullptr) {
-    return selection;
-  }
-  if (!item->data(0, kTypeRole).isValid()) {
-    for (int child_index = 0; child_index < item->childCount(); ++child_index) {
-      QTreeWidgetItem* child = item->child(child_index);
-      if (child != nullptr && child->data(0, kTypeRole).isValid()) {
-        return SelectionFromTopicItem(child);
-      }
-    }
+  if (item == nullptr || !item->data(0, kTypeRole).isValid()) {
     return selection;
   }
   selection.type = item->data(0, kTypeRole).toString();
-  selection.display_name = item->text(0);
   selection.channel = item->data(0, kChannelRole).toString();
+  selection.display_name = selection.type;
   return selection;
 }
 
@@ -235,75 +297,63 @@ void PopulateDisplayTypeTree(QTreeWidget* tree) {
   }
 }
 
-QTreeWidgetItem* InsertTopicPath(QTreeWidget* tree, const QString& channel,
-                                 bool disabled) {
-  QTreeWidgetItem* current = tree->invisibleRootItem();
-  const QStringList parts = channel.split(QLatin1Char('/'), Qt::SkipEmptyParts);
-  for (int part_index = 0; part_index < parts.size(); ++part_index) {
-    const QString part = QStringLiteral("/") + parts[part_index];
-    QTreeWidgetItem* match = nullptr;
-    for (int child_index = 0; child_index < current->childCount();
-         ++child_index) {
-      QTreeWidgetItem* child = current->child(child_index);
-      if (child != nullptr && child->text(0) == part &&
-          !child->data(0, kTypeRole).isValid()) {
-        match = child;
-        break;
-      }
-    }
-    if (match == nullptr) {
-      match = new QTreeWidgetItem(current);
-      match->setText(0, part);
-      match->setExpanded(part_index < 2);
-      match->setDisabled(disabled);
-      current = match;
-    } else {
-      if (!disabled) {
-        match->setDisabled(false);
-      }
-      current = match;
-    }
-  }
-  return current;
-}
-
 void PopulateTopicTree(QTreeWidget* tree,
                        const common::VisualizationManager& manager) {
   tree->clear();
+  struct Row {
+    QString channel;
+    QString type;
+    QString tip;
+    bool visualizable = false;
+  };
+  std::vector<Row> rows;
+  rows.reserve(manager.channels().size());
   for (const integration::ChannelInfo& channel : manager.channels()) {
+    const QString channel_q = QString::fromStdString(channel.channel_name);
     const std::vector<std::string> display_types =
         common::DisplayCatalog::typesForChannel(channel.channel_name,
                                                 channel.message_type);
-    const bool visualizable = !display_types.empty();
-    QTreeWidgetItem* topic_item = InsertTopicPath(
-        tree, QString::fromStdString(channel.channel_name), !visualizable);
-    topic_item->setData(0, kChannelRole,
-                        QString::fromStdString(channel.channel_name));
-    if (visualizable) {
-      for (QTreeWidgetItem* node = topic_item; node != nullptr;
-           node = node->parent()) {
-        node->setDisabled(false);
-      }
-    }
-    if (!visualizable) {
+    if (display_types.empty()) {
+      rows.push_back(Row{channel_q, {}, {}, false});
       continue;
     }
     for (const std::string& type : display_types) {
       const common::DisplayTypeInfo info =
           common::DisplayCatalog::infoForType(type);
-      auto* row = new QTreeWidgetItem(topic_item);
-      const QString type_q = QString::fromStdString(type);
-      row->setText(0, type_q);
-      row->setIcon(0, IconLoader::displayIcon(type_q));
-      row->setData(0, kTypeRole, type_q);
-      row->setData(0, kChannelRole,
-                   QString::fromStdString(channel.channel_name));
-      row->setToolTip(0, QString::fromStdString(info.description));
+      rows.push_back(Row{channel_q, QString::fromStdString(type),
+                         QString::fromStdString(info.description), true});
     }
+  }
+  std::sort(rows.begin(), rows.end(), [](const Row& a, const Row& b) {
+    const int by_channel = QString::compare(a.channel, b.channel, Qt::CaseInsensitive);
+    if (by_channel != 0) {
+      return by_channel < 0;
+    }
+    return QString::compare(a.type, b.type, Qt::CaseInsensitive) < 0;
+  });
+
+  for (const Row& entry : rows) {
+    auto* row = new QTreeWidgetItem(tree);
+    row->setData(0, kChannelRole, entry.channel);
+    row->setToolTip(0, entry.visualizable
+                           ? (entry.channel + QStringLiteral(" — ") + entry.type +
+                              (entry.tip.isEmpty()
+                                   ? QString()
+                                   : (QStringLiteral("\n") + entry.tip)))
+                           : entry.channel);
+    if (!entry.visualizable) {
+      row->setText(0, entry.channel);
+      row->setDisabled(true);
+      continue;
+    }
+    // Text kept for accessibility / fallback; delegate paints one-line path+type.
+    row->setText(0, entry.channel + QStringLiteral("  ·  ") + entry.type);
+    row->setIcon(0, IconLoader::displayIcon(entry.type));
+    row->setData(0, kTypeRole, entry.type);
   }
 }
 
-void ApplyFrostedTree(QTreeWidget* tree) {
+void ApplyFrostedTree(QTreeWidget* tree, bool flat_list) {
   if (tree == nullptr) {
     return;
   }
@@ -316,18 +366,23 @@ void ApplyFrostedTree(QTreeWidget* tree) {
   tree->setStyleSheet(style::sheet(QStringLiteral("add_display/frosted_tree")));
   tree->setFocusPolicy(Qt::StrongFocus);
   tree->setAttribute(Qt::WA_MacShowFocusRect, false);
-  tree->setIndentation(12);
+  tree->setRootIsDecorated(!flat_list);
+  tree->setItemsExpandable(!flat_list);
+  tree->setIndentation(flat_list ? 4 : 12);
   tree->setUniformRowHeights(true);
   tree->setAnimated(false);
   tree->setAllColumnsShowFocus(false);
+  tree->setTextElideMode(Qt::ElideMiddle);
+  tree->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  tree->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
   // Kill native selection strip (branch vs item) — only the delegate paints.
   QPalette pal = tree->palette();
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
+  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-               QColor(0x0F, 0x76, 0x6E));
+               glass::ShellSelectionInk());
   tree->setPalette(pal);
 
   tree->setItemDelegate(new ContinuousRowDelegate(tree));
@@ -383,7 +438,7 @@ AddDisplayDialog::AddDisplayDialog(
   display_tree_->setIconSize(QSize(16, 16));
   display_tree_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   PopulateDisplayTypeTree(display_tree_);
-  ApplyFrostedTree(display_tree_);
+  ApplyFrostedTree(display_tree_, /*flat_list=*/false);
   display_tree_->setIndentation(10);
   stack_->addWidget(display_tree_);
 
@@ -396,7 +451,7 @@ AddDisplayDialog::AddDisplayDialog(
   topic_tree_->setIconSize(QSize(16, 16));
   topic_tree_->header()->setStretchLastSection(true);
   topic_tree_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-  ApplyFrostedTree(topic_tree_);
+  ApplyFrostedTree(topic_tree_, /*flat_list=*/true);
   show_unvisualizable_topics_ =
       new QCheckBox(tr("Show unvisualizable topics"), topic_page);
   show_unvisualizable_topics_->setStyleSheet(
@@ -412,8 +467,8 @@ AddDisplayDialog::AddDisplayDialog(
 
   auto* footer = new GlassFooterBar(this);
   auto* footer_layout = new QVBoxLayout(footer);
-  footer_layout->setContentsMargins(14, 12, 14, 12);
-  footer_layout->setSpacing(10);
+  footer_layout->setContentsMargins(14, 12, 14, 14);
+  footer_layout->setSpacing(8);
 
   auto* name_caption = new QLabel(tr("Name"), footer);
   name_caption->setStyleSheet(
@@ -443,30 +498,49 @@ AddDisplayDialog::AddDisplayDialog(
   auto* action_row = new QWidget(footer);
   action_row->setAttribute(Qt::WA_TranslucentBackground, true);
   auto* action_layout = new QHBoxLayout(action_row);
-  action_layout->setContentsMargins(0, 2, 0, 0);
-  action_layout->setSpacing(10);
+  action_layout->setContentsMargins(0, 6, 0, 0);
+  action_layout->setSpacing(12);
 
+  // Own the row layout: equal-width Cancel | Confirm aligned to the name field.
+  // QDialogButtonBox keeps role/signals; its own layout is bypassed.
   button_box_ =
       new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel,
                            Qt::Horizontal, action_row);
   button_box_->setObjectName(QStringLiteral("AddDisplayDialog/ButtonBox"));
   button_box_->setCenterButtons(false);
-  if (QPushButton* ok = button_box_->button(QDialogButtonBox::Ok)) {
-    ok->setText(QStringLiteral("Confirm"));
+  QPushButton* ok = button_box_->button(QDialogButtonBox::Ok);
+  QPushButton* cancel = button_box_->button(QDialogButtonBox::Cancel);
+  if (ok != nullptr) {
+    ok->setText(tr("Confirm"));
+    ok->setIcon(QIcon());
     ok->setCursor(Qt::PointingHandCursor);
+    ok->setAutoDefault(true);
+    ok->setDefault(true);
+    ok->setFlat(false);
+    ok->setFocusPolicy(Qt::StrongFocus);
+    ok->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     ok->setStyleSheet(
         style::sheet(QStringLiteral("add_display/primary_button")));
-    ok->setDefault(true);
   }
-  if (QPushButton* cancel = button_box_->button(QDialogButtonBox::Cancel)) {
-    cancel->setText(QStringLiteral("Cancel"));
+  if (cancel != nullptr) {
+    cancel->setText(tr("Cancel"));
+    cancel->setIcon(QIcon());
     cancel->setCursor(Qt::PointingHandCursor);
+    cancel->setAutoDefault(false);
+    cancel->setDefault(false);
+    cancel->setFlat(false);
+    cancel->setFocusPolicy(Qt::StrongFocus);
+    cancel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     cancel->setStyleSheet(
         style::sheet(QStringLiteral("add_display/ghost_button")));
   }
-  // Keep Cancel left of Confirm with a trailing flush to the right edge.
-  action_layout->addStretch(1);
-  action_layout->addWidget(button_box_, 0, Qt::AlignRight);
+  button_box_->hide();
+  if (cancel != nullptr) {
+    action_layout->addWidget(cancel, 1);
+  }
+  if (ok != nullptr) {
+    action_layout->addWidget(ok, 1);
+  }
 
   footer_layout->addWidget(name_caption);
   footer_layout->addWidget(name_editor_);
@@ -523,13 +597,19 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
     painter.fillPath(glow, QColor(15, 23, 42, 4 + (8 - i)));
   }
 
-  // Dense milky body — opaque enough to read, still glass-like.
-  painter.fillPath(card, QColor(252, 253, 253, 228));
+  const glass::ShellTokens shell = glass::Shell();
+  QColor plate = shell.glass_fill_deep;
+  plate.setAlpha(232);
+  painter.fillPath(card, plate);
 
   QLinearGradient wash(outer.topLeft(), outer.bottomRight());
   wash.setColorAt(0.0, QColor(255, 255, 255, 70));
-  wash.setColorAt(0.45, QColor(245, 252, 250, 28));
-  wash.setColorAt(1.0, QColor(241, 245, 249, 40));
+  QColor cool = shell.glass_cool;
+  cool.setAlpha(28);
+  wash.setColorAt(0.45, cool);
+  QColor end = shell.alternate_base;
+  end.setAlpha(40);
+  wash.setColorAt(1.0, end);
   painter.fillPath(card, wash);
 
   QLinearGradient sheen(
@@ -542,7 +622,9 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
   // Inner highlight rim + outer soft edge.
   painter.setPen(QPen(QColor(255, 255, 255, 200), 1.2));
   painter.drawPath(card);
-  painter.setPen(QPen(QColor(203, 213, 225, 110), 1.0));
+  QColor rim = shell.glass_rim;
+  rim.setAlpha(qMin(rim.alpha(), 120));
+  painter.setPen(QPen(rim, 1.0));
   painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0),
                           kCardRadius - 1.0, kCardRadius - 1.0);
 }

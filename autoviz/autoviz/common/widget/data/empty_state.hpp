@@ -57,6 +57,7 @@ class EmptyState : public QWidget {
   QLabel* description_label_ = nullptr;
   QPushButton* action_button_ = nullptr;
   style::Tone tone_ = style::Tone::Shell;
+  bool uses_default_icon_ = true;
 };
 
 }  // namespace widget

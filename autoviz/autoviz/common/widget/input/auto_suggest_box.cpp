@@ -12,8 +12,12 @@
 #include <QKeyEvent>
 #include <QListView>
 #include <QMoveEvent>
+#include <QPaintEvent>
+#include <QPainter>
 #include <QResizeEvent>
 #include <QScreen>
+#include <QStyleOptionViewItem>
+#include <QStyledItemDelegate>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QVariant>
@@ -22,10 +26,85 @@
 #include "autoviz/common/widget/foundation/widget_theme.hpp"
 
 namespace autoviz::widget {
+namespace {
+
+QPalette TransparentListPalette(const QPalette& palette,
+                                const ThemeTokens& tokens) {
+  QPalette transparent = palette;
+  transparent.setColor(QPalette::Base, Qt::transparent);
+  transparent.setColor(QPalette::AlternateBase, Qt::transparent);
+  transparent.setColor(QPalette::Window, Qt::transparent);
+  transparent.setColor(QPalette::Highlight, tokens.surface_selected);
+  transparent.setColor(QPalette::HighlightedText, tokens.text);
+  return transparent;
+}
+
+class SuggestionPopup final : public QFrame {
+ public:
+  explicit SuggestionPopup(QWidget* parent)
+      : QFrame(parent, Qt::Popup | Qt::FramelessWindowHint) {
+    setAttribute(Qt::WA_TranslucentBackground);
+    setAutoFillBackground(false);
+    setFrameShape(QFrame::NoFrame);
+  }
+
+  void SetTone(style::Tone tone) {
+    if (tone_ == tone) {
+      return;
+    }
+    tone_ = tone;
+    update();
+  }
+
+ protected:
+  void paintEvent(QPaintEvent* event) override {
+    Q_UNUSED(event);
+    const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+    const QRectF surface_rect = QRectF(rect()).adjusted(1.5, 1.5, -1.5, -3.0);
+    QColor shadow = tokens.shadow_ambient;
+    shadow.setAlpha(qRound(shadow.alpha() * 0.65));
+
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(shadow);
+    painter.drawRoundedRect(surface_rect.translated(0.0, 1.5),
+                            tokens.radius_medium, tokens.radius_medium);
+
+    painter.setPen(QPen(tokens.border_subtle, 1.0));
+    painter.setBrush(tokens.surface_raised);
+    painter.drawRoundedRect(surface_rect, tokens.radius_medium,
+                            tokens.radius_medium);
+  }
+
+ private:
+  style::Tone tone_ = style::Tone::Shell;
+};
+
+class SuggestionItemDelegate final : public QStyledItemDelegate {
+ public:
+  SuggestionItemDelegate(style::Tone tone, QObject* parent)
+      : QStyledItemDelegate(parent), tone_(tone) {}
+
+  void SetTone(style::Tone tone) { tone_ = tone; }
+
+  QSize sizeHint(const QStyleOptionViewItem& option,
+                 const QModelIndex& index) const override {
+    QSize hint = QStyledItemDelegate::sizeHint(option, index);
+    const ThemeTokens& tokens = GetThemeTokens(option.widget, tone_);
+    hint.setHeight(qMax(tokens.control_height_medium, hint.height()));
+    return hint;
+  }
+
+ private:
+  style::Tone tone_ = style::Tone::Shell;
+};
+
+}  // namespace
 
 AutoSuggestBox::AutoSuggestBox(QWidget* parent)
     : QLineEdit(parent),
-      popup_(new QFrame(this, Qt::Popup | Qt::FramelessWindowHint)),
+      popup_(new SuggestionPopup(this)),
       list_view_(new QListView(popup_)),
       debounce_timer_(new QTimer(this)) {
   setObjectName(QStringLiteral("AutovizAutoSuggestBox"));
@@ -36,21 +115,27 @@ AutoSuggestBox::AutoSuggestBox(QWidget* parent)
 
   popup_->setObjectName(QStringLiteral("AutovizAutoSuggestPopup"));
   popup_->setAttribute(Qt::WA_ShowWithoutActivating);
-  popup_->setFrameShape(QFrame::StyledPanel);
-  popup_->setFrameShadow(QFrame::Raised);
   popup_->hide();
   auto* popup_layout = new QVBoxLayout(popup_);
-  popup_layout->setContentsMargins(0, 0, 0, 0);
+  popup_layout->setContentsMargins(4, 4, 4, 6);
+  popup_layout->setSpacing(0);
   popup_layout->addWidget(list_view_);
 
   list_view_->setObjectName(QStringLiteral("AutovizAutoSuggestList"));
+  list_view_->setAttribute(Qt::WA_TranslucentBackground);
+  list_view_->setAutoFillBackground(false);
   list_view_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+  list_view_->setFrameShape(QFrame::NoFrame);
   list_view_->setFocusPolicy(Qt::NoFocus);
   list_view_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  list_view_->setMouseTracking(true);
   list_view_->setSelectionBehavior(QAbstractItemView::SelectRows);
   list_view_->setSelectionMode(QAbstractItemView::SingleSelection);
   list_view_->setUniformItemSizes(true);
   list_view_->setVerticalScrollMode(QAbstractItemView::ScrollPerItem);
+  list_view_->viewport()->setAttribute(Qt::WA_TranslucentBackground);
+  list_view_->viewport()->setAutoFillBackground(false);
+  list_view_->setItemDelegate(new SuggestionItemDelegate(tone_, list_view_));
 
   debounce_timer_->setSingleShot(true);
   debounce_timer_->setInterval(debounce_ms_);
@@ -63,7 +148,10 @@ AutoSuggestBox::AutoSuggestBox(QWidget* parent)
   const QPalette themed = BuildWidgetPalette(tone_, palette());
   setPalette(themed);
   popup_->setPalette(themed);
-  list_view_->setPalette(themed);
+  const QPalette list_palette =
+      TransparentListPalette(themed, GetThemeTokens(this, tone_));
+  list_view_->setPalette(list_palette);
+  list_view_->viewport()->setPalette(list_palette);
 }
 
 AutoSuggestBox::~AutoSuggestBox() {
@@ -130,13 +218,21 @@ void AutoSuggestBox::SetTone(style::Tone tone) {
   const QPalette themed = BuildWidgetPalette(tone_, palette());
   setPalette(themed);
   popup_->setPalette(themed);
-  list_view_->setPalette(themed);
+  static_cast<SuggestionPopup*>(popup_)->SetTone(tone_);
+  const QPalette list_palette =
+      TransparentListPalette(themed, GetThemeTokens(this, tone_));
+  list_view_->setPalette(list_palette);
+  list_view_->viewport()->setPalette(list_palette);
+  static_cast<SuggestionItemDelegate*>(list_view_->itemDelegate())
+      ->SetTone(tone_);
+  list_view_->doItemsLayout();
+  list_view_->viewport()->update();
 }
 
 QSize AutoSuggestBox::sizeHint() const {
   QSize hint = QLineEdit::sizeHint();
   hint.setWidth(qMax(200, hint.width()));
-  hint.setHeight(GetThemeTokens(tone_).control_height_medium);
+  hint.setHeight(GetThemeTokens(this, tone_).control_height_medium);
   return hint;
 }
 
@@ -339,7 +435,9 @@ void AutoSuggestBox::ShowSuggestions() {
   if (row_height <= 0) {
     row_height = fontMetrics().height() + 10;
   }
-  popup_->resize(width(), visible_rows * row_height + 2);
+  const QMargins margins = popup_->layout()->contentsMargins();
+  popup_->resize(width(),
+                 visible_rows * row_height + margins.top() + margins.bottom());
   if (!list_view_->currentIndex().isValid()) {
     list_view_->setCurrentIndex(model_->index(0, 0));
   }

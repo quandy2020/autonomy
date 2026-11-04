@@ -20,6 +20,8 @@ Native layout::
       - pose: {x: 0, y: 0, yaw: 0}
         speed: 1.0
         behavior: regular
+        avatar: male_46      # optional SMPL-X / People skin name
+        skin: 0              # 0=round-robin; 1..N index; or string → avatar
         goals: [{x: 1, y: 0}, {x: 0, y: 1}]
 """
 
@@ -113,11 +115,28 @@ class Agents:
             if speed_override is not None
             else raw.get("speed", raw.get("max_vel", 1.2))
         )
+        avatar = str(
+            raw.get("avatar") or raw.get("humanoid") or raw.get("skin_name") or ""
+        ).strip()
+        # skin: 0 = round-robin; 1..N = 1-based index into character/humanoid list
+        # (HuNav / Isaac PeopleSync convention). String skins become avatar names.
+        skin_raw = raw.get("skin", 0)
+        skin = 0
+        if isinstance(skin_raw, str) and skin_raw.strip() and not avatar:
+            avatar = skin_raw.strip()
+        else:
+            try:
+                skin = int(skin_raw or 0)
+            except (TypeError, ValueError):
+                if not avatar and skin_raw is not None:
+                    avatar = str(skin_raw).strip()
+                skin = 0
         return {
             "id": int(raw.get("id", index + 1)),
             "name": str(raw.get("name") or f"agent{index + 1}"),
             "group_id": int(raw.get("group_id", -1)),
-            "skin": int(raw.get("skin", 0) or 0),
+            "skin": skin,
+            "avatar": avatar,
             "x": float(pose.get("x", 0.0)),
             "y": float(pose.get("y", 0.0)),
             "yaw": float(pose.get("yaw", pose.get("h", 0.0))),

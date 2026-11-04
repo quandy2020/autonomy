@@ -6,14 +6,16 @@
 
 #include <QAbstractAnimation>
 #include <QEasingCurve>
+#include <QEvent>
 #include <QHideEvent>
 #include <QPropertyAnimation>
 #include <QSignalBlocker>
-#include <QStyle>
 #include <QVBoxLayout>
 #include <QVariant>
 
 #include "autoviz/common/widget/foundation/motion_policy.hpp"
+#include "autoviz/common/widget/foundation/semantic_icon.hpp"
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
 #include "autoviz/common/widget/input/button.hpp"
 
 namespace autoviz::widget {
@@ -28,17 +30,24 @@ CollapsiblePanel::CollapsiblePanel(QWidget* parent)
   setProperty("autovizRole", QStringLiteral("collapsiblePanel"));
   SetElevation(Elevation::kFlat);
 
-  const ThemeTokens& tokens = GetThemeTokens();
+  const ThemeTokens& tokens = GetThemeTokens(this, tone());
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(tokens.spacing_sm, tokens.spacing_sm,
                            tokens.spacing_sm, tokens.spacing_sm);
   root->setSpacing(tokens.spacing_xs);
 
   header_button_->SetVariant(Button::Variant::kSubtle);
+  header_button_->SetButtonSize(Button::Size::kSmall);
+  header_button_->SetContentAlign(Button::ContentAlign::kStart);
+  header_button_->SetTone(tone());
   header_button_->setCheckable(true);
   header_button_->setChecked(true);
   header_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   header_button_->setAccessibleName(tr("Section"));
+  QFont header_font = header_button_->font();
+  header_font.setWeight(QFont::DemiBold);
+  header_font.setPointSizeF(qMax(10.0, header_font.pointSizeF()));
+  header_button_->setFont(header_font);
   connect(header_button_, &QAbstractButton::toggled, this,
           &CollapsiblePanel::SetExpanded);
   root->addWidget(header_button_);
@@ -88,6 +97,7 @@ void CollapsiblePanel::SetAnimationEnabled(bool enabled) {
 void CollapsiblePanel::SetTone(style::Tone tone) {
   Surface::SetTone(tone);
   header_button_->SetTone(tone);
+  UpdateHeader();
 }
 
 void CollapsiblePanel::SetContentWidget(QWidget* content) {
@@ -103,8 +113,9 @@ void CollapsiblePanel::SetContentWidget(QWidget* content) {
   if (content_ != nullptr) {
     content_->setParent(content_host_);
     content_layout_->addWidget(content_);
-    // Keep the child logically shown while the host clips it. This preserves
-    // a valid layout sizeHint when expanding from the collapsed state.
+    // Keep the child logically shown while the host clips it. This
+    // preserves a valid layout sizeHint when expanding from the collapsed
+    // state.
     content_->show();
   }
   FinishTransition();
@@ -125,6 +136,20 @@ QWidget* CollapsiblePanel::TakeContentWidget() {
   return content;
 }
 
+void CollapsiblePanel::changeEvent(QEvent* event) {
+  Surface::changeEvent(event);
+  switch (event->type()) {
+    case QEvent::EnabledChange:
+    case QEvent::PaletteChange:
+    case QEvent::ScreenChangeInternal:
+    case QEvent::StyleChange:
+      UpdateHeader();
+      break;
+    default:
+      break;
+  }
+}
+
 void CollapsiblePanel::hideEvent(QHideEvent* event) {
   animation_->stop();
   FinishTransition();
@@ -132,16 +157,23 @@ void CollapsiblePanel::hideEvent(QHideEvent* event) {
 }
 
 void CollapsiblePanel::UpdateHeader() {
-  header_button_->setIcon(style()->standardIcon(
-      expanded_ ? QStyle::SP_ArrowDown : QStyle::SP_ArrowRight));
+  const ThemeTokens& tokens = GetThemeTokens(this, tone());
+  const QColor ink = expanded_ ? tokens.accent_text : tokens.text_muted;
+  QPalette pal = header_button_->palette();
+  pal.setColor(QPalette::ButtonText, ink);
+  pal.setColor(QPalette::Button, Qt::transparent);
+  header_button_->setPalette(pal);
+  header_button_->setIcon(
+      internal::MakePaletteChevronIcon(header_button_->palette(), expanded_));
   header_button_->setAccessibleDescription(expanded_ ? tr("Expanded")
                                                      : tr("Collapsed"));
+  header_button_->update();
 }
 
 void CollapsiblePanel::StartTransition() {
   animation_->stop();
-  const int duration =
-      MotionPolicy::ResolveDuration(GetThemeTokens(tone()).animation_normal_ms);
+  const int duration = MotionPolicy::ResolveDuration(
+      GetThemeTokens(this, tone()).animation_normal_ms);
   const bool animations_enabled =
       animation_enabled_ && isVisible() && isEnabled() && duration > 0;
   if (!animations_enabled) {

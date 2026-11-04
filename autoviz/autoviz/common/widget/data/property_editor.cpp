@@ -7,6 +7,7 @@
 #include <QColor>
 #include <QDoubleSpinBox>
 #include <QFont>
+#include <QFrame>
 #include <QHeaderView>
 #include <QLineEdit>
 #include <QMetaType>
@@ -492,6 +493,10 @@ PropertyEditor::PropertyEditor(QWidget* parent) : QTreeView(parent) {
   setProperty("autovizRole", QStringLiteral("propertyEditor"));
   setAccessibleName(tr("Property editor"));
   setAlternatingRowColors(true);
+  setFrameShape(QFrame::NoFrame);
+  setAllColumnsShowFocus(true);
+  setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
+  setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
   setAnimated(false);
   setUniformRowHeights(true);
   setRootIsDecorated(true);
@@ -504,6 +509,7 @@ PropertyEditor::PropertyEditor(QWidget* parent) : QTreeView(parent) {
   delegate_ = new PropertyDelegate(this);
   setModel(model_);
   setItemDelegate(delegate_);
+  header()->setHighlightSections(false);
   header()->setStretchLastSection(true);
   header()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
   header()->setSectionResizeMode(1, QHeaderView::Stretch);

@@ -44,7 +44,7 @@ QSize Separator::minimumSizeHint() const { return sizeHint(); }
 void Separator::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
   QPainter painter(this);
-  painter.setPen(QPen(GetThemeTokens(tone_).border, 1));
+  painter.setPen(QPen(GetThemeTokens(this, tone_).border, 1));
   if (orientation_ == Qt::Horizontal) {
     const qreal y = (height() - 1) * 0.5;
     painter.drawLine(QPointF(0, y), QPointF(width(), y));

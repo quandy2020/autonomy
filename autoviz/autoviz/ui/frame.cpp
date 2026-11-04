@@ -8,11 +8,16 @@
 #include <QApplication>
 #include <QCloseEvent>
 #include <QDockWidget>
+#include <QEasingCurve>
 #include <QGridLayout>
 #include <QGuiApplication>
+#include <QPropertyAnimation>
+#include <QScreen>
 #include <QTabWidget>
 #include <QTimer>
 #include <QVector3D>
+
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
 
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/common/selection.hpp"
@@ -125,6 +130,11 @@ VisualizationFrame::VisualizationFrame(
   }
   session_->restorePanelLayouts();
   layout_->restoreDockHideState();
+  // Record stays closed until a file is opened (no preview without a record).
+  if (panels_->record_dock_ != nullptr &&
+      manager_->playback().currentFile().empty()) {
+    panels_->record_dock_->hide();
+  }
   layout_->ensureTimeDockAtBottom();
   panels_->syncDeletePanelMenu();
 
@@ -192,7 +202,22 @@ VisualizationFrame::~VisualizationFrame() {
 
 void VisualizationFrame::setupUi() {
   session_->updateWindowTitle();
-  resize(1280, 800);
+  // Prime the hidden window to the final launch size so the first map is not
+  // 1280×800 then jumped by applyStartupWindowState (visible size flicker).
+  if (LoadAppUiPreferences().start_maximized) {
+    if (QScreen* screen = QGuiApplication::primaryScreen()) {
+      const QRect area = screen->availableGeometry();
+      if (!area.isEmpty()) {
+        setGeometry(area);
+      } else {
+        resize(1280, 800);
+      }
+    } else {
+      resize(1280, 800);
+    }
+  } else {
+    resize(1280, 800);
+  }
   layout_->setupCentralContainer();
 
   viewport_->viewport_dock_ = new PanelDockWidget(tr("3D View"), this);
@@ -323,11 +348,12 @@ void VisualizationFrame::setupUi() {
   connect(panels_->views_dock_, &QDockWidget::visibilityChanged, this,
           [this](bool /*visible*/) { viewport_->syncViewportTitleBarTools(); });
 
+  // Record — default hidden on right sidebar (no live preview). Opens via
+  // Panels menu / File → Open Record… / drop a .record file.
   panels_->record_dock_ =
       panels_->createRecordPanelDock(QStringLiteral("RecordDock"));
   layout_->addSidebarDock(panels_->record_dock_, Qt::RightDockWidgetArea);
-  tabifyDockWidget(panels_->views_dock_, panels_->record_dock_);
-  panels_->views_dock_->raise();
+  panels_->record_dock_->hide();
 
   panels_->tool_props_dock_ = new PanelDockWidget(tr("Tool Properties"), this);
   panels_->tool_props_dock_->setObjectName(QStringLiteral("ToolPropertiesDock"));
@@ -627,6 +653,20 @@ bool VisualizationFrame::eventFilter(QObject* watched, QEvent* event) {
   return QMainWindow::eventFilter(watched, event);
 }
 
+void VisualizationFrame::finishCloseTeardown() {
+  // Sync-destroy Ogre/GLX, then leave the event loop WITHOUT accepting the
+  // close. Qt's close_helper calls hide()→hideChildren() after an accepted
+  // QCloseEvent; that walk SIGSEGVs with WA_PaintOnScreen / GLX children
+  // (deleting those widgets mid-Close also leaves hideChildren walking a
+  // half-updated child list).
+  session_->onAboutToQuit();
+  if (qApp != nullptr) {
+    qApp->setQuitOnLastWindowClosed(false);
+    // Exit after close_helper returns (still no hideChildren — event ignored).
+    QTimer::singleShot(0, qApp, []() { QCoreApplication::exit(0); });
+  }
+}
+
 void VisualizationFrame::closeEvent(QCloseEvent* event) {
   // Docker/X11 often delivers a spurious WM CloseEvent in the first seconds
   // after Ogre maps the WA_NativeWindow (right after "RenderSystem ready").
@@ -636,18 +676,26 @@ void VisualizationFrame::closeEvent(QCloseEvent* event) {
     event->ignore();
     return;
   }
-  // Sync-destroy Ogre/GLX, then leave the event loop WITHOUT accepting the
-  // close. Qt's close_helper calls hide()→hideChildren() after an accepted
-  // QCloseEvent; that walk SIGSEGVs with WA_PaintOnScreen / GLX children
-  // (deleting those widgets mid-Close also leaves hideChildren walking a
-  // half-updated child list).
-  session_->onAboutToQuit();
   event->ignore();
-  if (qApp != nullptr) {
-    qApp->setQuitOnLastWindowClosed(false);
-    // Exit after close_helper returns (still no hideChildren — event ignored).
-    QTimer::singleShot(0, qApp, []() { QCoreApplication::exit(0); });
+  if (close_fade_active_) {
+    return;
   }
+  close_fade_active_ = true;
+
+  const int fade_ms = widget::MotionPolicy::ResolveDuration(320);
+  if (fade_ms <= 0) {
+    finishCloseTeardown();
+    return;
+  }
+
+  auto* fade = new QPropertyAnimation(this, QByteArrayLiteral("windowOpacity"));
+  fade->setDuration(fade_ms);
+  fade->setStartValue(windowOpacity());
+  fade->setEndValue(0.0);
+  fade->setEasingCurve(QEasingCurve::InCubic);
+  connect(fade, &QPropertyAnimation::finished, this,
+          [this]() { finishCloseTeardown(); });
+  fade->start(QAbstractAnimation::DeleteWhenStopped);
 }
 
 void VisualizationFrame::setVisible(bool visible) {

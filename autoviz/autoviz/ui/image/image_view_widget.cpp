@@ -16,6 +16,7 @@
 #include <cmath>
 
 #include "autoviz/ui/image/image_analysis.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 
 namespace autoviz {
 namespace image {
@@ -401,8 +402,11 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
               image_roi.top() * image_rect.height() / frame_.height(),
           image_roi.width() * image_rect.width() / frame_.width(),
           image_roi.height() * image_rect.height() / frame_.height());
-      painter.fillRect(widget_roi, QColor(56, 189, 248, 40));
-      painter.setPen(QPen(QColor(56, 189, 248), 1.5, Qt::DashLine));
+      QColor roi = glass::Shell().accent;
+      QColor roi_fill = roi;
+      roi_fill.setAlpha(40);
+      painter.fillRect(widget_roi, roi_fill);
+      painter.setPen(QPen(roi, 1.5, Qt::DashLine));
       painter.drawRect(widget_roi);
     }
   }

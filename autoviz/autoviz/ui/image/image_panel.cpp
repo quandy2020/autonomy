@@ -101,12 +101,20 @@ class ImageFloatingChrome : public QFrame {
     QPainterPath path;
     path.addRoundedRect(card, 14.0, 14.0);
 
-    // See-through milky glass (image shows through).
-    painter.fillPath(path, QColor(255, 255, 255, 72));
+    // See-through frosted glass (image shows through) — Shell / Liquid.
+    QColor plate = t.glass_fill;
+    plate.setAlpha(72);
+    painter.fillPath(path, plate);
     QLinearGradient body(card.topLeft(), card.bottomLeft());
-    body.setColorAt(0.0, QColor(240, 253, 250, 90));
-    body.setColorAt(0.55, QColor(255, 255, 255, 48));
-    body.setColorAt(1.0, QColor(204, 251, 241, 36));
+    QColor top = t.glass_cool;
+    top.setAlpha(90);
+    QColor mid = t.glass_fill;
+    mid.setAlpha(48);
+    QColor bottom = t.accent_soft;
+    bottom.setAlpha(36);
+    body.setColorAt(0.0, top);
+    body.setColorAt(0.55, mid);
+    body.setColorAt(1.0, bottom);
     painter.fillPath(path, body);
 
     QColor sheen_end = t.glass_sheen;
@@ -117,13 +125,18 @@ class ImageFloatingChrome : public QFrame {
     sheen.setColorAt(1.0, sheen_end);
     painter.fillPath(path, sheen);
 
-    painter.setPen(QPen(QColor(8, 145, 178, 70), 1.0));
+    QColor rim = t.accent;
+    rim.setAlpha(70);
+    painter.setPen(QPen(rim, 1.0));
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
   }
 };
 
-/** iOS-style translucent glass pill for restoring the analysis bar. */
+/**
+ * Compact Liquid Glass chevron affordance for the floating analysis chrome.
+ * Point-up = expand (reveal tools); point-down = collapse (hide tools).
+ */
 class ImageFloatingRevealButton : public QToolButton {
  public:
   explicit ImageFloatingRevealButton(QWidget* parent = nullptr)
@@ -132,37 +145,68 @@ class ImageFloatingRevealButton : public QToolButton {
     setAttribute(Qt::WA_TranslucentBackground, true);
     setAutoFillBackground(false);
     setCursor(Qt::PointingHandCursor);
+    setFocusPolicy(Qt::NoFocus);
+    setToolButtonStyle(Qt::ToolButtonIconOnly);
+    setFixedSize(40, 18);
   }
+
+  void SetPointUp(bool point_up) {
+    if (point_up_ == point_up) {
+      return;
+    }
+    point_up_ = point_up;
+    update();
+  }
+
+  QSize sizeHint() const override { return QSize(40, 18); }
+  QSize minimumSizeHint() const override { return sizeHint(); }
 
  protected:
   void paintEvent(QPaintEvent* /*event*/) override {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
     const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    const qreal radius = card.height() * 0.5;
     QPainterPath path;
-    path.addRoundedRect(card, 14.0, 14.0);
+    path.addRoundedRect(card, radius, radius);
 
     const bool hover = underMouse();
-    // iOS material: light frosted glass over content.
-    painter.fillPath(path, QColor(255, 255, 255, hover ? 92 : 58));
-    painter.fillPath(path, QColor(199, 244, 246, hover ? 55 : 32));
+    const glass::ShellTokens t = glass::Shell();
+    QColor plate = t.glass_fill;
+    plate.setAlpha(hover ? 110 : 70);
+    painter.fillPath(path, plate);
+    QColor cool = t.glass_cool;
+    cool.setAlpha(hover ? 60 : 34);
+    painter.fillPath(path, cool);
     QLinearGradient sheen(card.topLeft(),
-                          QPointF(card.left(), card.top() + card.height() * 0.55));
-    sheen.setColorAt(0.0, QColor(255, 255, 255, hover ? 130 : 95));
+                          QPointF(card.left(), card.top() + card.height() * 0.7));
+    sheen.setColorAt(0.0, QColor(255, 255, 255, hover ? 140 : 100));
     sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
     painter.fillPath(path, sheen);
 
-    painter.setPen(QPen(QColor(255, 255, 255, hover ? 170 : 130), 1.0));
+    painter.setPen(QPen(QColor(255, 255, 255, hover ? 180 : 120), 1.0));
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
 
-    QFont font = this->font();
-    font.setPixelSize(11);
-    font.setWeight(QFont::DemiBold);
-    painter.setFont(font);
-    painter.setPen(hover ? QColor(8, 145, 178, 230) : QColor(30, 41, 59, 210));
-    painter.drawText(rect(), Qt::AlignCenter, text());
+    // Small filled triangle (expand ↑ / collapse ↓).
+    const QPointF c = card.center();
+    QPolygonF tri;
+    if (point_up_) {
+      tri << QPointF(c.x(), c.y() - 3.2) << QPointF(c.x() - 4.8, c.y() + 2.6)
+          << QPointF(c.x() + 4.8, c.y() + 2.6);
+    } else {
+      tri << QPointF(c.x(), c.y() + 3.2) << QPointF(c.x() - 4.8, c.y() - 2.6)
+          << QPointF(c.x() + 4.8, c.y() - 2.6);
+    }
+    QColor ink = hover ? t.accent : t.text;
+    ink.setAlpha(hover ? 230 : 200);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(ink);
+    painter.drawPolygon(tri);
   }
+
+ private:
+  bool point_up_ = true;
 };
 
 QMatrix4x4 TransformToMatrix(
@@ -315,11 +359,13 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
   analysis_label_->setMinimumWidth(80);
   tool_layout->addWidget(analysis_label_, 1);
 
-  overlay_hide_button_ = new QToolButton(tool_bar_);
-  overlay_hide_button_->setText(tr("Hide"));
-  overlay_hide_button_->setToolTip(tr("Hide analysis bar"));
-  overlay_hide_button_->setAutoRaise(true);
-  tool_layout->addWidget(overlay_hide_button_);
+  auto* hide_chevron = new ImageFloatingRevealButton(tool_bar_);
+  hide_chevron->SetPointUp(false);
+  hide_chevron->setToolTip(tr("Hide analysis tools"));
+  hide_chevron->setStyleSheet(
+      style::sheet(QStringLiteral("image/floating_reveal")));
+  overlay_hide_button_ = hide_chevron;
+  tool_layout->addWidget(overlay_hide_button_, 0, Qt::AlignVCenter);
   chrome_layout->addWidget(tool_bar_);
 
   analysis_strip_ = new QWidget(overlay_chrome_);
@@ -339,12 +385,12 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
   chrome_layout->addWidget(analysis_strip_);
   wrap_layout->addWidget(overlay_chrome_);
 
-  overlay_reveal_button_ = new ImageFloatingRevealButton(overlay_wrap_);
-  overlay_reveal_button_->setText(tr("Tools"));
-  overlay_reveal_button_->setToolTip(tr("Show analysis tools"));
-  overlay_reveal_button_->setAutoRaise(true);
-  overlay_reveal_button_->setStyleSheet(
+  auto* reveal_chevron = new ImageFloatingRevealButton(overlay_wrap_);
+  reveal_chevron->SetPointUp(true);
+  reveal_chevron->setToolTip(tr("Show analysis tools"));
+  reveal_chevron->setStyleSheet(
       style::sheet(QStringLiteral("image/floating_reveal")));
+  overlay_reveal_button_ = reveal_chevron;
   overlay_reveal_button_->hide();
   wrap_layout->addWidget(overlay_reveal_button_, 0, Qt::AlignHCenter);
 

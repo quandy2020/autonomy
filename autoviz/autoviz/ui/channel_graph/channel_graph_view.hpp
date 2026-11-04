@@ -60,7 +60,7 @@ struct ChannelGraphLayoutOptions {
   double channel_col_gap = 340.0;         /**< Horizontal gap between channel columns. */
   int channel_columns = 1;                /**< Computed column count for channels. */
   int channel_rows = 1;                   /**< Computed row count for channels. */
-  double writer_column_x = -620.0;        /**< X for writer-only node column. */
+  double writer_column_x = -620.0;        /**< Spine X for the writer column. */
   double reader_column_x = 620.0;         /**< X for reader-only node column. */
   double both_writer_column_x = -400.0;   /**< X for nodes that both write (left). */
   double both_reader_column_x = 400.0;    /**< X for nodes that both read (right). */
@@ -308,11 +308,15 @@ class ChannelGraphView : public QGraphicsView {
   void applyAutoLayout(const integration::TopologyGraph& graph);
 
   /**
-   * @brief Creates or updates section header items (Channels / Services).
+   * @brief Creates frosted column header chips (Writers / Channels / Readers).
    *
-   * @param service_count Number of service vertices (0 hides the service header).
+   * @param writer_count Nodes placed in the writer column.
+   * @param channel_count Channel vertices (0 still shows an empty Channels chip).
+   * @param reader_count Nodes placed in the reader column.
+   * @param service_count Service vertices (0 hides the Services chip).
    */
-  void updateColumnHeaders(int service_count);
+  void updateColumnHeaders(int writer_count, int channel_count, int reader_count,
+                           int service_count);
 
   /**
    * @brief Removes neighborhood dimming / focus styling.

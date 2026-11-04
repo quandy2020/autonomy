@@ -6,33 +6,52 @@
 
 #include <QAbstractButton>
 #include <QButtonGroup>
+#include <QEvent>
 #include <QFontMetrics>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QPaintEvent>
 #include <QPainter>
-#include <QPainterPath>
 #include <QPointer>
 #include <algorithm>
 
 namespace autoviz {
 namespace widget {
+namespace {
+
+int HorizontalKeyStep(int key, Qt::LayoutDirection direction) {
+  const int visual_step = key == Qt::Key_Left ? -1 : 1;
+  return direction == Qt::RightToLeft ? -visual_step : visual_step;
+}
+
+QColor WithOpacity(QColor color, qreal opacity) {
+  color.setAlpha(qRound(color.alpha() * qBound(0.0, opacity, 1.0)));
+  return color;
+}
+
+}  // namespace
 
 class SegmentedControl::SegmentButton final : public QAbstractButton {
  public:
-  SegmentButton(const QString& text, style::Tone tone, QWidget* parent)
-      : QAbstractButton(parent), tone_(tone) {
+  SegmentButton(const QString& text, style::Tone tone, SegmentedControl* parent)
+      : QAbstractButton(parent), owner_(parent), tone_(tone) {
     setProperty("autovizRole", QStringLiteral("segment"));
     setText(text);
     setCheckable(true);
     setCursor(Qt::PointingHandCursor);
-    setFocusPolicy(Qt::StrongFocus);
+    setFocusPolicy(Qt::ClickFocus);
     setSizePolicy(QSizePolicy::MinimumExpanding, QSizePolicy::Fixed);
     setAccessibleName(text);
   }
 
-  void SetPosition(bool first, bool last) {
-    first_ = first;
-    last_ = last;
+  void SetPosition(bool left_edge, bool right_edge) {
+    setProperty("autovizLeftEdge", left_edge);
+    setProperty("autovizRightEdge", right_edge);
+    if (left_edge_ == left_edge && right_edge_ == right_edge) {
+      return;
+    }
+    left_edge_ = left_edge;
+    right_edge_ = right_edge;
     update();
   }
 
@@ -46,7 +65,7 @@ class SegmentedControl::SegmentButton final : public QAbstractButton {
   }
 
   QSize sizeHint() const override {
-    const ThemeTokens& tokens = GetThemeTokens(tone_);
+    const ThemeTokens& tokens = GetThemeTokens(this, tone_);
     const QFontMetrics metrics(font());
     return QSize(
         std::max(tokens.control_height_large,
@@ -56,77 +75,78 @@ class SegmentedControl::SegmentButton final : public QAbstractButton {
   }
 
  protected:
+  void keyPressEvent(QKeyEvent* event) override {
+    if (owner_->HandleNavigationKey(this, event)) {
+      return;
+    }
+    QAbstractButton::keyPressEvent(event);
+  }
+
   void paintEvent(QPaintEvent* event) override {
     Q_UNUSED(event);
-    const ThemeTokens& tokens = GetThemeTokens(tone_);
+    const ThemeTokens& tokens = GetThemeTokens(this, tone_);
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
 
-    QColor fill = tokens.surface_raised;
-    QColor text_color = tokens.text;
-    QColor border = tokens.border;
+    QColor fill = Qt::transparent;
+    QColor text_color = tokens.text_secondary;
+    QColor border = Qt::transparent;
     if (!isEnabled()) {
-      fill = tokens.surface;
       text_color = tokens.disabled;
-      border = tokens.disabled;
+      if (isChecked()) {
+        fill = WithOpacity(tokens.surface_material, 0.7);
+        border = WithOpacity(tokens.border_subtle, 0.55);
+      }
     } else if (isDown()) {
-      fill = tokens.accent_pressed;
-      text_color = tokens.on_accent;
-      border = tokens.accent_pressed;
+      fill = isChecked() ? tokens.surface_pressed : tokens.surface_material;
+      text_color = tokens.text;
     } else if (isChecked()) {
-      fill = tokens.accent;
-      text_color = tokens.on_accent;
-      border = tokens.accent;
+      fill = tokens.surface_raised;
+      text_color = tokens.text;
+      border = tokens.border_subtle;
     } else if (underMouse()) {
       fill = tokens.surface_hovered;
+      text_color = tokens.text;
     }
 
-    const qreal stroke_width =
-        hasFocus() ? static_cast<qreal>(tokens.focus_ring_width) : 1.0;
-    const qreal inset = stroke_width * 0.5;
-    const QRectF bounds = QRectF(rect()).adjusted(inset, inset, -inset, -inset);
-    const qreal radius = tokens.radius_medium;
-    QPainterPath path;
-    if (first_ && last_) {
-      path.addRoundedRect(bounds, radius, radius);
-    } else {
-      const qreal left_radius = first_ ? radius : 0.0;
-      const qreal right_radius = last_ ? radius : 0.0;
-      path.moveTo(bounds.left() + left_radius, bounds.top());
-      path.lineTo(bounds.right() - right_radius, bounds.top());
-      if (right_radius > 0.0) {
-        path.quadTo(bounds.right(), bounds.top(), bounds.right(),
-                    bounds.top() + right_radius);
-      }
-      path.lineTo(bounds.right(), bounds.bottom() - right_radius);
-      if (right_radius > 0.0) {
-        path.quadTo(bounds.right(), bounds.bottom(),
-                    bounds.right() - right_radius, bounds.bottom());
-      }
-      path.lineTo(bounds.left() + left_radius, bounds.bottom());
-      if (left_radius > 0.0) {
-        path.quadTo(bounds.left(), bounds.bottom(), bounds.left(),
-                    bounds.bottom() - left_radius);
-      }
-      path.lineTo(bounds.left(), bounds.top() + left_radius);
-      if (left_radius > 0.0) {
-        path.quadTo(bounds.left(), bounds.top(), bounds.left() + left_radius,
-                    bounds.top());
-      }
-      path.closeSubpath();
+    const QRectF bounds = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
+    const qreal radius =
+        qMin<qreal>(tokens.radius_small, bounds.height() * 0.5);
+    if (isChecked()) {
+      painter.setPen(Qt::NoPen);
+      painter.setBrush(
+          WithOpacity(tokens.shadow_ambient, tokens.is_dark ? 0.32 : 0.22));
+      painter.drawRoundedRect(bounds.translated(0.0, 1.0), radius, radius);
     }
-
-    painter.setPen(QPen(hasFocus() ? tokens.focus_ring : border, stroke_width));
+    painter.setPen(QPen(border, 1.0));
     painter.setBrush(fill);
-    painter.drawPath(path);
+    painter.drawRoundedRect(bounds, radius, radius);
+
+    QFont label_font = font();
+    if (isChecked()) {
+      label_font.setWeight(QFont::DemiBold);
+    }
+    painter.setFont(label_font);
     painter.setPen(text_color);
     painter.drawText(rect().adjusted(8, 0, -8, 0), Qt::AlignCenter, text());
+
+    if (hasFocus()) {
+      painter.setBrush(Qt::NoBrush);
+      painter.setPen(
+          QPen(tokens.focus_ring_outer, tokens.focus_ring_width + 2.0));
+      painter.drawRoundedRect(bounds.adjusted(2.0, 2.0, -2.0, -2.0),
+                              qMax(1.0, radius - 2.0), qMax(1.0, radius - 2.0));
+      painter.setPen(QPen(tokens.focus_ring, 1.5));
+      painter.drawRoundedRect(bounds.adjusted(1.0, 1.0, -1.0, -1.0),
+                              qMax(1.0, radius - 1.0), qMax(1.0, radius - 1.0));
+    }
   }
 
  private:
+  SegmentedControl* owner_ = nullptr;
   style::Tone tone_ = style::Tone::Shell;
-  bool first_ = false;
-  bool last_ = false;
+  bool left_edge_ = false;
+  bool right_edge_ = false;
 };
 
 SegmentedControl::SegmentedControl(QWidget* parent)
@@ -135,8 +155,9 @@ SegmentedControl::SegmentedControl(QWidget* parent)
       layout_(new QHBoxLayout(this)) {
   setObjectName(QStringLiteral("AutovizSegmentedControl"));
   setProperty("autovizRole", QStringLiteral("segmentedControl"));
+  setAttribute(Qt::WA_StyledBackground, false);
   setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
-  layout_->setContentsMargins(0, 0, 0, 0);
+  layout_->setContentsMargins(2, 2, 2, 2);
   layout_->setSpacing(0);
   button_group_->setExclusive(true);
 }
@@ -166,8 +187,11 @@ int SegmentedControl::InsertSegment(int index, const QString& text,
 
   if (current_index_ < 0) {
     SetCurrentIndex(0);
-  } else if (current_index_changed) {
-    emit CurrentIndexChanged(current_index_);
+  } else {
+    UpdateFocusPolicies();
+    if (current_index_changed) {
+      emit CurrentIndexChanged(current_index_);
+    }
   }
   return index;
 }
@@ -192,6 +216,7 @@ void SegmentedControl::RemoveSegment(int index) {
     current_index_ = -1;
   }
   UpdateButtonPositions();
+  UpdateFocusPolicies();
 
   if (removed_current && !buttons_.isEmpty()) {
     SetCurrentIndex(std::min(index, static_cast<int>(buttons_.size()) - 1));
@@ -280,6 +305,7 @@ void SegmentedControl::SetCurrentIndex(int index) {
     buttons_[index]->setChecked(true);
   }
   current_index_ = index;
+  UpdateFocusPolicies();
   const QVariant data = current_data();
   QPointer<SegmentedControl> guard(this);
   emit CurrentIndexChanged(index);
@@ -289,8 +315,19 @@ void SegmentedControl::SetCurrentIndex(int index) {
 }
 
 void SegmentedControl::SetSegmentEnabled(int index, bool enabled) {
-  if (index >= 0 && index < static_cast<int>(buttons_.size())) {
-    buttons_[index]->setEnabled(enabled);
+  if (index < 0 || index >= static_cast<int>(buttons_.size())) {
+    return;
+  }
+  const bool restore_focus = !enabled && buttons_[index]->hasFocus();
+  buttons_[index]->setEnabled(enabled);
+  UpdateFocusPolicies();
+  if (restore_focus) {
+    const int focus_index = is_segment_enabled(current_index_)
+                                ? current_index_
+                                : FirstEnabledIndex();
+    if (focus_index >= 0) {
+      buttons_[focus_index]->setFocus(Qt::OtherFocusReason);
+    }
   }
 }
 
@@ -316,10 +353,117 @@ void SegmentedControl::HandleButtonClicked(SegmentButton* button) {
   emit SegmentClicked(index);
 }
 
+bool SegmentedControl::HandleNavigationKey(SegmentButton* button,
+                                           QKeyEvent* event) {
+  const int source_index = static_cast<int>(buttons_.indexOf(button));
+  if (source_index < 0) {
+    return false;
+  }
+
+  int target_index = -1;
+  switch (event->key()) {
+    case Qt::Key_Left:
+    case Qt::Key_Right:
+      target_index = NextEnabledIndex(
+          source_index, HorizontalKeyStep(event->key(), layoutDirection()));
+      break;
+    case Qt::Key_Home:
+      target_index = FirstEnabledIndex();
+      break;
+    case Qt::Key_End:
+      target_index = LastEnabledIndex();
+      break;
+    default:
+      return false;
+  }
+
+  event->accept();
+  if (target_index < 0) {
+    return true;
+  }
+
+  QPointer<SegmentedControl> guard(this);
+  SetCurrentIndex(target_index);
+  if (guard != nullptr) {
+    const int focus_index = is_segment_enabled(current_index_)
+                                ? current_index_
+                                : FirstEnabledIndex();
+    if (focus_index >= 0) {
+      buttons_[focus_index]->setFocus(Qt::OtherFocusReason);
+    }
+  }
+  return true;
+}
+
+int SegmentedControl::FirstEnabledIndex() const {
+  for (int index = 0; index < static_cast<int>(buttons_.size()); ++index) {
+    if (buttons_[index]->isEnabled()) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+int SegmentedControl::LastEnabledIndex() const {
+  for (int index = static_cast<int>(buttons_.size()) - 1; index >= 0; --index) {
+    if (buttons_[index]->isEnabled()) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+int SegmentedControl::NextEnabledIndex(int index, int step) const {
+  if (step == 0) {
+    return -1;
+  }
+  for (int candidate = index + step;
+       candidate >= 0 && candidate < static_cast<int>(buttons_.size());
+       candidate += step) {
+    if (buttons_[candidate]->isEnabled()) {
+      return candidate;
+    }
+  }
+  return -1;
+}
+
 void SegmentedControl::UpdateButtonPositions() {
   const int button_count = static_cast<int>(buttons_.size());
+  const bool right_to_left = layoutDirection() == Qt::RightToLeft;
   for (int index = 0; index < button_count; ++index) {
-    buttons_[index]->SetPosition(index == 0, index == button_count - 1);
+    const bool left_edge = index == (right_to_left ? button_count - 1 : 0);
+    const bool right_edge = index == (right_to_left ? 0 : button_count - 1);
+    buttons_[index]->SetPosition(left_edge, right_edge);
+  }
+}
+
+void SegmentedControl::UpdateFocusPolicies() {
+  const int focus_index =
+      is_segment_enabled(current_index_) ? current_index_ : FirstEnabledIndex();
+  for (int index = 0; index < static_cast<int>(buttons_.size()); ++index) {
+    buttons_[index]->setFocusPolicy(index == focus_index ? Qt::StrongFocus
+                                                         : Qt::ClickFocus);
+  }
+}
+
+void SegmentedControl::paintEvent(QPaintEvent* event) {
+  Q_UNUSED(event);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  const QRectF bounds = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+  const qreal radius = qMin<qreal>(tokens.radius_medium, bounds.height() * 0.5);
+
+  QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing);
+  painter.setPen(QPen(tokens.border_subtle, 1.0));
+  painter.setBrush(tokens.surface_sunken);
+  painter.drawRoundedRect(bounds, radius, radius);
+}
+
+void SegmentedControl::changeEvent(QEvent* event) {
+  QWidget::changeEvent(event);
+  if (event->type() == QEvent::LayoutDirectionChange) {
+    layout_->invalidate();
+    UpdateButtonPositions();
   }
 }
 

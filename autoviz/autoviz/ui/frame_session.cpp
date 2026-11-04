@@ -622,10 +622,11 @@ void FrameSession::applyStartupWindowState() {
       frame_->show();
     }
   } else {
-    // Docker/X11: showMaximized() often sets isMaximized() without resizing,
-    // and setGeometry()+showMaximized() fight (WM restores the pre-maximize
-    // 1280x800 from setupUi). Always force-fill availableGeometry; treat
-    // Maximized as best-effort, never as proof the window fills the screen.
+    // Docker/X11: showMaximized() often sets isMaximized() without resizing.
+    // Avoid the old maximize↔geometry toggle loop (visible size flicker).
+    // Size the window to availableGeometry while still hidden, show once,
+    // and only nudge geometry later if the WM left us undersized — never
+    // clear Maximized just to setGeometry (that shrinks then grows).
     const auto screen_for = [this]() -> QScreen* {
       if (QScreen* s = frame_->screen()) {
         return s;
@@ -641,53 +642,56 @@ void FrameSession::applyStartupWindowState() {
       if (w == nullptr || area.isEmpty()) {
         return false;
       }
-      // Frame chrome may be a few px off availableGeometry; require ≥95%.
       return w->width() >= static_cast<int>(area.width() * 0.95) &&
              w->height() >= static_cast<int>(area.height() * 0.95);
     };
-    const auto force_fill = [this, screen_for, fills_screen]() {
-      if (!LoadAppUiPreferences().start_maximized) {
-        return;
-      }
-      QScreen* screen = screen_for();
-      if (screen == nullptr) {
-        return;
-      }
-      const QRect area = screen->availableGeometry();
-      if (area.isEmpty()) {
-        return;
-      }
-      // Drop FullScreen (user asked for maximize, not F11 fullscreen).
-      Qt::WindowStates st = frame_->windowState();
-      st &= ~(Qt::WindowMinimized | Qt::WindowFullScreen);
-      frame_->setWindowState(st);
 
-      if (!frame_->isVisible()) {
-        // First show with Maximized hint so WMs that honor it skip the
-        // 1280×800 flash from setupUi.
-        frame_->setWindowState(st | Qt::WindowMaximized);
-        frame_->show();
-      }
+    QScreen* screen = screen_for();
+    const QRect area =
+        screen != nullptr ? screen->availableGeometry() : QRect();
 
-      if (!fills_screen(frame_, area)) {
-        // WM ignored maximize: clear the bit so setGeometry sticks, then
-        // re-assert Maximized for the title-bar button state.
-        frame_->setWindowState(frame_->windowState() & ~Qt::WindowMaximized);
+    Qt::WindowStates st = frame_->windowState();
+    st &= ~(Qt::WindowMinimized | Qt::WindowFullScreen);
+
+    if (!frame_->isVisible()) {
+      if (!area.isEmpty()) {
+        // Final size before first map — setupUi already primed this; refresh
+        // in case the screen changed during loadConfig.
         frame_->setGeometry(area);
-        frame_->move(area.topLeft());
-        frame_->resize(area.size());
-        frame_->setWindowState(frame_->windowState() | Qt::WindowMaximized);
+      }
+      frame_->setWindowState(st | Qt::WindowMaximized);
+      frame_->show();
+      frame_->raise();
+    }
+
+    // One deferred correction if the WM mapped us small despite the prime.
+    // Do not re-toggle Maximized (that was the flash); only push geometry.
+    QTimer::singleShot(0, frame_, [this, screen_for, fills_screen]() {
+      if (!LoadAppUiPreferences().start_maximized || frame_ == nullptr) {
+        return;
+      }
+      QScreen* s = screen_for();
+      if (s == nullptr) {
+        return;
+      }
+      const QRect a = s->availableGeometry();
+      if (a.isEmpty() || fills_screen(frame_, a)) {
+        if (!frame_->isMaximized()) {
+          frame_->setWindowState(frame_->windowState() | Qt::WindowMaximized);
+        }
+        return;
+      }
+      // Keep Maximized bit; setGeometry while maximized is honored on many
+      // X11 WMs when the mapped size was wrong. Fallback: replace state with
+      // a full-area normal window (still no shrink→grow cycle).
+      frame_->setGeometry(a);
+      if (!fills_screen(frame_, a)) {
+        frame_->setWindowState(Qt::WindowNoState);
+        frame_->setGeometry(a);
       } else if (!frame_->isMaximized()) {
         frame_->setWindowState(frame_->windowState() | Qt::WindowMaximized);
       }
-      frame_->raise();
-    };
-
-    force_fill();
-    // Retries cover dock restoreState, Ogre first map, and late WM configure.
-    for (int ms : {0, 50, 150, 400, 800, 1500, 2500}) {
-      QTimer::singleShot(ms, frame_, force_fill);
-    }
+    });
   }
 
   // Show Displays tree shortly after the window maps (avoids blank panel from
@@ -699,9 +703,10 @@ void FrameSession::applyStartupWindowState() {
     }
   });
 
-  // Give sidebars usable width once docks are visible (saved Width:2200
-  // sessions otherwise leave Displays as a thin empty strip).
-  QTimer::singleShot(50, frame_, [this]() {
+  // One settle pass after first map: resize sidebars + ensure 3D mosaic, then
+  // reveal the native GL surface once. Splitting these across 0/50ms timers
+  // made the center 3D View flash (create → resize → park/reinstall).
+  QTimer::singleShot(0, frame_, [this]() {
     if (frame_->panels_->displays_dock_ != nullptr) {
       frame_->resizeDocks({frame_->panels_->displays_dock_}, {320},
                           Qt::Horizontal);
@@ -710,25 +715,30 @@ void FrameSession::applyStartupWindowState() {
       frame_->resizeDocks({frame_->panels_->views_dock_}, {280},
                           Qt::Horizontal);
     }
-  });
 
-  // Fresh start (no loadConfig) never hits activateRestoredViewportAndView.
-  // After the window is shown, ensure the center mosaic hosts 3D View.
-  QTimer::singleShot(0, frame_, [this]() {
-    if (frame_->viewport_->viewport_dock_ == nullptr ||
-        frame_->layout_->main_panel_host_ == nullptr) {
-      return;
-    }
-    const bool host_has_viewport =
-        frame_->layout_->main_panel_host_->hostsPanel(
+    if (frame_->viewport_->viewport_dock_ != nullptr &&
+        frame_->layout_->main_panel_host_ != nullptr) {
+      const bool host_has_viewport =
+          frame_->layout_->main_panel_host_->hostsPanel(
+              frame_->viewport_->viewport_dock_);
+      if (host_has_viewport &&
+          frame_->viewport_->viewport_dock_->requestedVisible()) {
+        frame_->viewport_->ensureViewportPanelReady(
             frame_->viewport_->viewport_dock_);
-    if (host_has_viewport &&
-        frame_->viewport_->viewport_dock_->requestedVisible()) {
-      frame_->viewport_->ensureViewportPanelReady(
-          frame_->viewport_->viewport_dock_);
-    } else {
-      frame_->layout_->applyMainPanelDefaultLayout();
+      } else {
+        frame_->layout_->applyMainPanelDefaultLayout();
+      }
     }
+
+    // Wait one frame for dock resize / WM configure, then reveal GL once at
+    // the final pane size (avoids mid-resize native surface flashes).
+    QTimer::singleShot(32, frame_, [this]() {
+      if (frame_->viewport_ == nullptr) {
+        return;
+      }
+      frame_->viewport_->setViewportRevealHeld(false);
+      frame_->viewport_->requestViewportUpdate();
+    });
 
     // Optional CI/smoke: Split Right the active 3D View after layout settles.
     const int split_ms = qEnvironmentVariableIntValue("AUTOVIZ_SMOKE_SPLIT_MS");
@@ -840,6 +850,16 @@ void FrameSession::restoreWindowLayout() {
   restorePanelLayouts();
   applyPanelVisibility();
   frame_->layout_->restoreDockHideState();
+  // Record has no live preview — keep closed unless a record file is open
+  // (CLI / Open Record / drop). Older sessions often left it tabbed on the
+  // right; do not restore that empty panel as the default right sidebar.
+  // Must run after applyPanelVisibility / restoreState so saved "visible"
+  // lists cannot reopen it.
+  if (frame_->panels_->record_dock_ != nullptr &&
+      frame_->manager_->playback().currentFile().empty()) {
+    frame_->layout_->ensureSidebarDockAttached(frame_->panels_->record_dock_);
+    frame_->panels_->record_dock_->hide();
+  }
 
   ++frame_->layout_->center_tile_epoch_;
   frame_->layout_->center_tile_pending_ = false;
@@ -1269,9 +1289,19 @@ void FrameSession::resizeEvent(QResizeEvent* event) {
 }
 
 void FrameSession::applyBackgroundColor(const QColor& color) {
-  frame_->viewport_->forEachViewportPanel([color](ViewportPanelEntry& entry) {
+  const QColor resolved = color.isValid() ? color : QColor(48, 48, 48);
+  frame_->viewport_->forEachViewportPanel([resolved](ViewportPanelEntry& entry) {
+    if (entry.host != nullptr) {
+      // Stable plate while GL reveal is held — avoids a white flash in the
+      // center 3D column during startup maximize / dock resize.
+      QPalette pal = entry.host->palette();
+      pal.setColor(QPalette::Window, resolved);
+      pal.setColor(QPalette::Base, resolved);
+      entry.host->setAutoFillBackground(true);
+      entry.host->setPalette(pal);
+    }
     if (entry.ogre_viewport != nullptr) {
-      entry.ogre_viewport->setBackgroundColor(color);
+      entry.ogre_viewport->setBackgroundColor(resolved);
     }
   });
   frame_->viewport_->requestViewportUpdate();
@@ -1365,7 +1395,11 @@ void FrameSession::applyUiPreferences(const AppSettingsResult& settings,
                                             const AppUiPreferences& previous_ui) {
   AppUiPreferences ui_preferences;
   ui_preferences.language_code = settings.language_code;
+  ui_preferences.theme_mode = settings.theme_mode.isEmpty()
+                                  ? QStringLiteral("light")
+                                  : settings.theme_mode;
   ui_preferences.start_maximized = settings.start_maximized;
+  ui_preferences.viewport_hud_visible = previous_ui.viewport_hud_visible;
   ui_preferences.shortcuts = settings.shortcuts;
   SaveAppUiPreferences(ui_preferences);
 
@@ -1374,7 +1408,11 @@ void FrameSession::applyUiPreferences(const AppSettingsResult& settings,
   }
 
   if (QApplication* app = qobject_cast<QApplication*>(QApplication::instance())) {
-    ApplyAppTheme(*app);
+    ApplyUiThemeMode(ui_preferences.theme_mode, *app);
+    // ApplyUiThemeMode already RefreshAppThemeChrome; also force menu/tool QSS.
+    if (frame_->chrome_ != nullptr) {
+      frame_->chrome_->refreshShellChrome();
+    }
     if (ui_preferences.language_code != previous_ui.language_code) {
       InstallAppTranslations(*app, ui_preferences.language_code);
     }

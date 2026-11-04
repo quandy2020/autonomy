@@ -48,6 +48,7 @@
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/raw/message_tree.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -56,13 +57,7 @@ namespace {
 
 using automsgs::msgs::DynamicFactory;
 
-/** Light tokens shared with Channels / Log / TF Tree. */
-constexpr char kBg[] = "rgba(255,255,255,128)";
-constexpr char kSurface[] = "rgba(240,249,255,155)";
-constexpr char kBorder[] = "rgba(186,230,253,140)";
-constexpr char kText[] = "#1e293b";
-constexpr char kTextMuted[] = "#64748b";
-constexpr char kAccent[] = "#0891b2";
+QColor kTextMuted() { return glass::Shell().secondary_text; }
 
 std::string StripPackagePrefix(const std::string& type_name) {
   static const char* kPrefix = "automsgs.msgs.";
@@ -661,7 +656,7 @@ void RawMessagesPanel::showSchemaPlaceholder() {
     auto* item = new QTreeWidgetItem(
         message_tree_, {tr("Waiting for messages…"), QString(), QString()});
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
-    item->setForeground(0, QColor(kTextMuted));
+    item->setForeground(0, kTextMuted());
     updateStatusChip(tr("Waiting"));
     return;
   }
@@ -814,7 +809,7 @@ void RawMessagesPanel::resubscribe() {
         {tr("Failed to subscribe to %1").arg(QString::fromStdString(channel)),
          QString(), tr("Autolink may not be ready yet.")});
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
-    item->setForeground(0, QColor(kTextMuted));
+    item->setForeground(0, kTextMuted());
     refreshStatusChip();
   } else {
     refreshStatusChip();
@@ -875,7 +870,7 @@ void RawMessagesPanel::showPayload(const std::string& payload) {
         {tr("Failed to parse message"), ShortSchemaName(message_type),
          tr("%1 bytes").arg(static_cast<qulonglong>(payload.size()))});
     item->setFlags(item->flags() & ~Qt::ItemIsSelectable);
-    item->setForeground(0, QColor(kTextMuted));
+    item->setForeground(0, kTextMuted());
     updateStatusChip(tr("Parse error"));
     return;
   }

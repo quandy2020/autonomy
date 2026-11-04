@@ -36,6 +36,7 @@ from autosim.bridge.cameras import (
     ros_to_habitat_mount,
 )
 from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
+from autosim.bridge.topdown import TOPDOWN_UUID, topdown_spec
 from autosim.robot.urdf import UrdfModel
 
 
@@ -75,6 +76,7 @@ class Simulator:
         self.articulated = None
         self.urdf = self.load_urdf_model()
         self.traffic = None
+        self.humanoid_sync = None
 
         if open_session:
             self.open_habitat()
@@ -147,6 +149,7 @@ class Simulator:
         self.reset(float(spawn[0]), float(spawn[1]), float(spawn[2]))
         self.snap_to_navmesh()
         self.ensure_semantic_spawn()
+        self.attach_humanoids()
 
     def habitat_configuration(self, habitat_sim: Any) -> Any:
         """Build ``SimulatorConfiguration`` from settings.
@@ -479,6 +482,9 @@ class Simulator:
         pano = panorama_spec(sensors)
         if pano is not None:
             sensor_specs.append(self.panorama_color_spec(habitat_sim, pano))
+        topdown = topdown_spec(sensors if isinstance(sensors, Mapping) else None)
+        if topdown is not None:
+            sensor_specs.append(self.topdown_color_spec(habitat_sim, topdown))
         agent_configuration.sensor_specifications = sensor_specs
         return agent_configuration
 
@@ -534,15 +540,376 @@ class Simulator:
         return spec
 
     @staticmethod
+    def topdown_color_spec(habitat_sim: Any, topdown: Mapping[str, Any]) -> Any:
+        """Overhead color camera looking straight down (global debug / people).
+
+        Default ``orthographic`` + runtime ``fit_scene`` covers the navmesh AABB.
+        Pitch −π/2 so the pinhole −Z axis aims at Habitat −Y (floor).
+        """
+        spec = habitat_sim.CameraSensorSpec()
+        spec.uuid = str(topdown.get("uuid") or TOPDOWN_UUID)
+        spec.sensor_type = habitat_sim.SensorType.COLOR
+        spec.resolution = [int(topdown["height"]), int(topdown["width"])]
+        spec.hfov = float(topdown["hfov_deg"])
+        mode = str(topdown.get("mode") or "orthographic").lower()
+        if hasattr(habitat_sim, "SensorSubType"):
+            if mode == "orthographic":
+                spec.sensor_subtype = habitat_sim.SensorSubType.ORTHOGRAPHIC
+                # Habitat: visible ≈ 1/ortho_scale (NOT meters of half-extent).
+                # Default 0.1 ≈ 10 m; larger scale zooms IN. Bootstrap wide view.
+                scale = topdown.get("ortho_scale")
+                if hasattr(spec, "ortho_scale"):
+                    spec.ortho_scale = (
+                        float(scale) if scale is not None else 0.04
+                    )
+            else:
+                spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+        # Agent frame is Habitat Y-up: (0, h, 0) sits above the robot.
+        spec.position = [0.0, float(topdown["height_m"]), 0.0]
+        spec.orientation = [-0.5 * math.pi, 0.0, 0.0]
+        if hasattr(spec, "near"):
+            spec.near = 0.05
+        if hasattr(spec, "far"):
+            spec.far = 200.0
+        return spec
+
+    def topdown_scene_bounds(self) -> tuple[float, float, float, float, float] | None:
+        """Return ``(cx, cz, half_extent, y_lo, y_hi)`` for the overhead camera.
+
+        Prefers the **navigable-cell** AABB from ``get_topdown_view`` (tight floor
+        plan). Full ``pathfinder.get_bounds()`` often spans empty mesh padding and
+        leaves the apartment as a small island in the frame.
+        """
+        if self.session is None:
+            return None
+        pathfinder = getattr(self.session, "pathfinder", None)
+        if pathfinder is None or not bool(getattr(pathfinder, "is_loaded", False)):
+            return None
+        get_bounds = getattr(pathfinder, "get_bounds", None)
+        if not callable(get_bounds):
+            return None
+        try:
+            lo, hi = get_bounds()
+        except Exception:
+            return None
+        y0, y1 = float(lo[1]), float(hi[1])
+        tight = self.topdown_navigable_bounds(pathfinder, lo, hi)
+        if tight is not None:
+            cx, cz, half = tight
+            return (cx, cz, half, y0, y1)
+        x0, x1 = float(lo[0]), float(hi[0])
+        z0, z1 = float(lo[2]), float(hi[2])
+        half = 0.5 * max(abs(x1 - x0), abs(z1 - z0), 1.0)
+        return (0.5 * (x0 + x1), 0.5 * (z0 + z1), half, y0, y1)
+
+    def topdown_navigable_points(
+        self, pathfinder: Any, lo: Any, hi: Any
+    ) -> np.ndarray | None:
+        """Navigable cell centers as ``(N, 2)`` Habitat ``(X, Z)``, or None."""
+        get_topdown_view = getattr(pathfinder, "get_topdown_view", None)
+        if not callable(get_topdown_view):
+            return None
+        resolution = 0.1
+        island_radius = 0.5
+        floor_height = float(self.floor_y or 0.0)
+        if abs(floor_height) < 1e-6:
+            random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+            if callable(random_nav):
+                try:
+                    point = random_nav()
+                    if point is not None and len(point) >= 2:
+                        floor_height = float(point[1])
+                except Exception:
+                    pass
+        try:
+            navigable = np.asarray(
+                get_topdown_view(resolution, floor_height, island_radius),
+                dtype=bool,
+            )
+        except Exception:
+            return None
+        if navigable.size == 0 or not np.any(navigable):
+            return None
+        rows, cols = np.where(navigable)
+        origin_x = float(min(float(lo[0]), float(hi[0])))
+        origin_z = float(min(float(lo[2]), float(hi[2])))
+        # Cell centers: row↑ → +Habitat Z, col↑ → +Habitat X.
+        xs = origin_x + (cols.astype(np.float64) + 0.5) * resolution
+        zs = origin_z + (rows.astype(np.float64) + 0.5) * resolution
+        return np.column_stack([xs, zs])
+
+    def topdown_navigable_bounds(
+        self, pathfinder: Any, lo: Any, hi: Any
+    ) -> tuple[float, float, float] | None:
+        """``(cx, cz, half_extent)`` from navigable cells, or None if empty."""
+        points = self.topdown_navigable_points(pathfinder, lo, hi)
+        if points is None or points.size == 0:
+            return None
+        x0, z0 = float(points[:, 0].min()), float(points[:, 1].min())
+        x1, z1 = float(points[:, 0].max()), float(points[:, 1].max())
+        half = 0.5 * max(x1 - x0, z1 - z0, 1.0)
+        return (0.5 * (x0 + x1), 0.5 * (z0 + z1), half)
+
+    def topdown_align_yaw(self, pathfinder: Any, lo: Any, hi: Any) -> float:
+        """Yaw about Habitat +Y that makes the navmesh long axis image-horizontal.
+
+        Cached on first call so the overhead view does not spin as the agent moves.
+        """
+        cached = getattr(self, "_topdown_align_yaw", None)
+        if cached is not None:
+            return float(cached)
+        yaw = 0.0
+        points = self.topdown_navigable_points(pathfinder, lo, hi)
+        if points is not None and points.shape[0] >= 8:
+            centered = points - points.mean(axis=0, keepdims=True)
+            cov = centered.T @ centered / float(points.shape[0])
+            try:
+                evals, evecs = np.linalg.eigh(cov)
+                axis = evecs[:, int(np.argmax(evals))]
+                # atan2(Z, X): rotate so principal axis → Habitat +X (image right).
+                yaw = -float(math.atan2(float(axis[1]), float(axis[0])))
+            except Exception:
+                yaw = 0.0
+        self._topdown_align_yaw = float(yaw)
+        return float(yaw)
+
+    def topdown_oriented_bounds(
+        self, pathfinder: Any, lo: Any, hi: Any, yaw: float
+    ) -> tuple[float, float, float] | None:
+        """Center + half-extent in the yaw-aligned frame (tighter when tilted)."""
+        points = self.topdown_navigable_points(pathfinder, lo, hi)
+        if points is None or points.size == 0:
+            return None
+        c = math.cos(float(yaw))
+        s = math.sin(float(yaw))
+        # Rotate Habitat XZ by +yaw into camera-aligned axes.
+        xr = c * points[:, 0] - s * points[:, 1]
+        zr = s * points[:, 0] + c * points[:, 1]
+        half = 0.5 * max(float(xr.max() - xr.min()), float(zr.max() - zr.min()), 1.0)
+        # Center back in world XZ.
+        cx_r = 0.5 * (float(xr.min()) + float(xr.max()))
+        cz_r = 0.5 * (float(zr.min()) + float(zr.max()))
+        cx = c * cx_r + s * cz_r
+        cz = -s * cx_r + c * cz_r
+        return (cx, cz, half)
+
+    def align_topdown_sensor(self, cfg: Mapping[str, Any]) -> None:
+        """Place topdown camera above the scene (or agent) before rendering.
+
+        When ``fit_scene`` is true, centers on the navmesh AABB and sizes
+        ``ortho_scale`` so the whole floor plan fits (with ``ortho_margin``).
+
+        Habitat orthographic math (CameraSensor.cpp)::
+
+            orthographicProjection(nearPlaneSize / ortho_scale, ...)
+
+        so **visible meters ≈ 1/ortho_scale** (default ``0.1`` ≈ 10 m). Larger
+        scale zooms in. ``set_projection_params`` does **not** copy
+        ``ortho_scale``; mutate ``specification()`` then nudge ``set_near`` to
+        recompute the base projection matrix.
+        """
+        if self.session is None:
+            return
+        uuid = str(cfg.get("uuid") or TOPDOWN_UUID)
+        getter = getattr(self.session, "get_sensor", None)
+        if not callable(getter):
+            return
+        try:
+            sensor = getter(uuid)
+        except Exception:
+            return
+        if sensor is None:
+            return
+        node = getattr(sensor, "node", None)
+        if node is None:
+            return
+        import magnum as mn
+
+        height_m = float(cfg.get("height_m", 8.0))
+        fit = bool(cfg.get("fit_scene", True))
+        align = bool(cfg.get("align_navmesh", True))
+        align_yaw = 0.0
+        pathfinder = getattr(self.session, "pathfinder", None)
+        get_bounds = getattr(pathfinder, "get_bounds", None) if pathfinder else None
+        if (
+            align
+            and pathfinder is not None
+            and callable(get_bounds)
+            and bool(getattr(pathfinder, "is_loaded", False))
+        ):
+            try:
+                lo, hi = get_bounds()
+                align_yaw = self.topdown_align_yaw(pathfinder, lo, hi)
+            except Exception:
+                align_yaw = 0.0
+
+        bounds = None
+        if fit and pathfinder is not None and callable(get_bounds):
+            try:
+                lo, hi = get_bounds()
+                if align:
+                    oriented = self.topdown_oriented_bounds(
+                        pathfinder, lo, hi, align_yaw
+                    )
+                    if oriented is not None:
+                        cx, cz, half = oriented
+                        y0, y1 = float(lo[1]), float(hi[1])
+                        bounds = (cx, cz, half, y0, y1)
+                if bounds is None:
+                    bounds = self.topdown_scene_bounds()
+            except Exception:
+                bounds = self.topdown_scene_bounds()
+        elif fit:
+            bounds = self.topdown_scene_bounds()
+
+        if bounds is not None:
+            cx, cz, half, _y0, _y1 = bounds
+            margin = max(1.0, float(cfg.get("ortho_margin", 1.05)))
+            fill = float(cfg.get("ortho_fill", 0.92))
+            fill = min(max(fill, 0.4), 0.99)
+            cam_y = float(self.floor_y) + height_m
+            extent = max(2.0 * float(half) * margin, 1.0)
+            scale = cfg.get("ortho_scale")
+            ortho = float(scale) if scale is not None else (fill / extent)
+            world = mn.Vector3(cx, cam_y, cz)
+        else:
+            extent = max(2.0 * height_m, 10.0)
+            fill = min(max(float(cfg.get("ortho_fill", 0.92)), 0.4), 0.99)
+            scale = cfg.get("ortho_scale")
+            ortho = float(scale) if scale is not None else (fill / extent)
+            world = mn.Vector3(self.x, float(self.floor_y) + height_m, -self.y)
+        ortho = float(min(max(ortho, 0.005), 2.0))
+
+        # Sensor is parented under the agent; convert world pose → agent-local
+        # so the view stays world-fixed (not spinning with robot yaw).
+        agent = self.session.get_agent(0)
+        agent_node = getattr(agent, "scene_node", None)
+        if agent_node is None:
+            return
+        parent_T = agent_node.absolute_transformation()
+        local = parent_T.inverted().transform_point(world)
+        node.translation = local
+        # World look-down: Ry(align) * Rx(−π/2). Cancel parent rotation so
+        # image axes stay map/navmesh-aligned instead of robot-tilted.
+        q_pitch = mn.Quaternion.rotation(
+            mn.Rad(-0.5 * math.pi), mn.Vector3(1.0, 0.0, 0.0)
+        )
+        q_yaw = mn.Quaternion.rotation(
+            mn.Rad(float(align_yaw)), mn.Vector3(0.0, 1.0, 0.0)
+        )
+        world_rot = q_yaw * q_pitch
+        try:
+            parent_rot = mn.Quaternion.from_matrix(parent_T.rotation())
+        except Exception:
+            parent_rot = mn.Quaternion()
+        node.rotation = parent_rot.conjugated() * world_rot
+
+        if str(cfg.get("mode") or "orthographic").lower() != "orthographic":
+            return
+        obj = getattr(sensor, "sensor_object", None)
+        if obj is None or not hasattr(obj, "specification"):
+            warnings.warn(
+                "Habitat topdown: CameraSensor missing specification()",
+                stacklevel=2,
+            )
+            return
+        try:
+            live = obj.specification()
+        except Exception as exc:
+            warnings.warn(
+                f"Habitat topdown: specification() failed: {exc!r}",
+                stacklevel=2,
+            )
+            return
+        if live is None or not hasattr(live, "ortho_scale"):
+            return
+        live.ortho_scale = ortho
+        # set_projection_params ignores ortho_scale; set_near recomputes
+        # baseProjMatrix_ from the live CameraSensorSpec.
+        near = float(getattr(live, "near", 0.05) or 0.05)
+        try:
+            if hasattr(obj, "set_near"):
+                obj.set_near(near)
+            elif hasattr(obj, "reset_zoom"):
+                obj.reset_zoom()
+        except Exception as exc:
+            warnings.warn(
+                f"Habitat topdown: failed to recompute projection: {exc!r}",
+                stacklevel=2,
+            )
+        if hasattr(obj, "reset_zoom"):
+            try:
+                obj.reset_zoom()
+            except Exception:
+                pass
+
+    def render_topdown(self) -> np.ndarray | None:
+        """Return overhead RGB ``HxWx3 uint8``, or None if disabled / missing."""
+        sensors = self.settings.get("habitat", {}).get("sensors")
+        cfg = topdown_spec(sensors if isinstance(sensors, Mapping) else None)
+        if cfg is None or self.session is None:
+            return None
+        self.align_topdown_sensor(cfg)
+        observations = self.session.get_sensor_observations()
+        uuid = str(cfg["uuid"])
+        if uuid not in observations:
+            warnings.warn(
+                f"Habitat topdown observation missing {uuid!r}; "
+                f"got {list(observations)!r}",
+                stacklevel=2,
+            )
+            return None
+        image = np.asarray(observations[uuid])
+        if image.ndim == 3 and image.shape[2] >= 3:
+            image = image[..., :3]
+        # Prefer native sensor resolution — nearest-neighbor scale_image softens HD.
+        color = self.rgb_to_uint8(image)
+        dst_h, dst_w = int(cfg["height"]), int(cfg["width"])
+        if color.shape[0] == dst_h and color.shape[1] == dst_w:
+            return np.ascontiguousarray(color)
+        return self.scale_image(color, dst_h, dst_w)
+
+    @staticmethod
     def scale_image(image: np.ndarray, height: int, width: int) -> np.ndarray:
-        """Scale ``image`` to ``height``×``width``. Same shape is returned as-is."""
+        """Scale ``image`` to ``height``×``width``. Same shape is returned as-is.
+
+        Uses bilinear weights when upsizing so HD topdown stays sharper than
+        nearest-neighbor indexing.
+        """
         array = np.asarray(image)
         src_h, src_w = array.shape[:2]
         if src_h == height and src_w == width:
             return array
-        rows = np.linspace(0, src_h - 1, int(height)).round().astype(np.int64)
-        cols = np.linspace(0, src_w - 1, int(width)).round().astype(np.int64)
-        return array[rows][:, cols]
+        if src_h <= 0 or src_w <= 0:
+            return array
+        # Bilinear via map_coordinates when available; else fallback NN.
+        try:
+            from scipy.ndimage import map_coordinates
+
+            ys = np.linspace(0, src_h - 1, int(height), dtype=np.float64)
+            xs = np.linspace(0, src_w - 1, int(width), dtype=np.float64)
+            grid_y, grid_x = np.meshgrid(ys, xs, indexing="ij")
+            if array.ndim == 2:
+                return map_coordinates(
+                    array.astype(np.float64, copy=False),
+                    [grid_y, grid_x],
+                    order=1,
+                    mode="nearest",
+                ).astype(array.dtype, copy=False)
+            channels = [
+                map_coordinates(
+                    array[..., c].astype(np.float64, copy=False),
+                    [grid_y, grid_x],
+                    order=1,
+                    mode="nearest",
+                )
+                for c in range(array.shape[2])
+            ]
+            return np.stack(channels, axis=-1).astype(array.dtype, copy=False)
+        except Exception:
+            rows = np.linspace(0, src_h - 1, int(height)).round().astype(np.int64)
+            cols = np.linspace(0, src_w - 1, int(width)).round().astype(np.int64)
+            return array[rows][:, cols]
 
     def render_surround(self) -> dict[str, np.ndarray]:
         """Render every surround color camera in one Habitat observation.
@@ -805,9 +1172,56 @@ class Simulator:
             -(self.y + sin_y * mx + cos_y * my),
         )
 
+    def attach_humanoids(self) -> None:
+        """Create TrackVLA-style SMPL-X humanoid sync from ``habitat.humanoids``."""
+        if self.session is None:
+            return
+        from autosim.backends.habitat.humanoids.sync import (
+            humanoid_config_from_habitat,
+            maybe_create_humanoid_sync,
+        )
+
+        cfg = humanoid_config_from_habitat(self.settings.get("habitat"))
+        pathfinder = None
+        try:
+            pathfinder = getattr(self.session, "pathfinder", None)
+        except Exception:
+            pathfinder = None
+        self.humanoid_sync = maybe_create_humanoid_sync(
+            self.session,
+            config=cfg,
+            floor_y=float(self.floor_y),
+            pathfinder=pathfinder,
+        )
+
+    def bind_traffic_navmesh(self, traffic: Any = None) -> None:
+        """Hard-constrain CPU pedestrians onto the Habitat navmesh.
+
+        Call after Traffic spawn / map warmup so walkers cannot leave navigable
+        free space (2D Field alone still allows void outside the crop).
+        """
+        host = traffic if traffic is not None else self.traffic
+        if host is None or self.session is None:
+            return
+        ped = getattr(host, "pedestrian", None)
+        binder = getattr(ped, "bind_pathfinder", None)
+        if not callable(binder):
+            return
+        pathfinder = getattr(self.session, "pathfinder", None)
+        if pathfinder is None or not bool(getattr(pathfinder, "is_loaded", False)):
+            return
+        binder(pathfinder, floor_y=float(self.floor_y))
+
     def step(self) -> None:
-        """Advance one sim step (pose is driven by :meth:`set_pose`)."""
-        return None
+        """Advance one sim step; sync kinematic humanoids from Traffic."""
+        sync = self.humanoid_sync
+        if sync is not None and self.traffic is not None:
+            try:
+                # Keep feet height aligned with the robot floor sample.
+                sync.floor_y = float(self.floor_y)
+                sync.sync(self.traffic)
+            except Exception:
+                pass
 
     def pose(self) -> Tuple[float, float, float]:
         """Current planar pose.
@@ -1598,6 +2012,13 @@ class Simulator:
 
     def close(self) -> None:
         """Release the Habitat session."""
+        sync = getattr(self, "humanoid_sync", None)
+        if sync is not None:
+            try:
+                sync.close()
+            except Exception:
+                pass
+            self.humanoid_sync = None
         if self.session is not None:
             self.session.close()
             self.session = None

@@ -13,6 +13,8 @@
 #include "autoviz/common/selection.hpp"
 #include <algorithm>
 #include <QApplication>
+#include <QColor>
+#include <QPalette>
 #include <QFrame>
 #include <QGuiApplication>
 #include <QScrollArea>
@@ -68,6 +70,7 @@
 #include "autoviz/ui/app/settings_dialog.hpp"
 #include "autoviz/ui/app/preferences.hpp"
 #include "autoviz/ui/theme/application.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/app/translation.hpp"
 #include "autoviz/ui/panel/catalog.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
@@ -404,6 +407,34 @@ void FrameChrome::configureMenuBar() {
   frame_->menuBar()->setAutoFillBackground(false);
 }
 
+void FrameChrome::refreshShellChrome() {
+  const glass::ShellTokens shell = glass::Shell();
+  if (QMenuBar* menu_bar = frame_->menuBar()) {
+    QPalette pal = frame_->palette();
+    pal.setColor(QPalette::WindowText, shell.window_text);
+    pal.setColor(QPalette::ButtonText, shell.window_text);
+    pal.setColor(QPalette::Text, shell.text);
+    menu_bar->setPalette(pal);
+    // Explicit sheet — global theme.qss is not installed (SEGV guard).
+    menu_bar->setStyleSheet(glass::ShellMenuBarStyleSheet());
+    menu_bar->update();
+  }
+  if (tool_bar_ != nullptr) {
+    QPalette pal = frame_->palette();
+    pal.setColor(QPalette::WindowText, shell.secondary_text);
+    pal.setColor(QPalette::ButtonText, shell.secondary_text);
+    pal.setColor(QPalette::Text, shell.text);
+    tool_bar_->setPalette(pal);
+    tool_bar_->setStyleSheet(glass::ShellToolBarStyleSheet(true));
+    tool_bar_->update();
+  }
+  if (frame_->statusBar() != nullptr) {
+    frame_->statusBar()->setStyleSheet(glass::ShellStatusBarStyleSheet());
+    frame_->statusBar()->update();
+  }
+  frame_->update();
+}
+
 void FrameChrome::setupToolbar() {
   tool_bar_ = frame_->addToolBar(frame_->tr("Tools"));
   tool_bar_->setObjectName(QString::fromLatin1(AppThemeIds::kToolBar));
@@ -448,6 +479,7 @@ void FrameChrome::setupToolbar() {
     registerPanelToggleActions();
   }
   setupToolbarLayoutControls();
+  refreshShellChrome();
 }
 
 void FrameChrome::setupToolbarLayoutControls() {

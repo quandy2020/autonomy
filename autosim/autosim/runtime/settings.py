@@ -127,6 +127,12 @@ class Config:
         pano = panorama_spec(sensors)
         if pano is not None:
             channels["surround_panorama"] = pano["channel"]
+        from autosim.bridge.topdown import topdown_spec
+
+        topdown = topdown_spec(sensors)
+        if topdown is not None:
+            channels["topdown_rgb"] = topdown["channel"]
+            channels["topdown_info"] = topdown["info_channel"]
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel
@@ -511,6 +517,7 @@ class Config:
         cls.validate_lidar_3d(sensors["lidar_3d"])
         cls.validate_noise_fields(sensors)
         cls.validate_surround(camera_rig(sensors), robot_resolved.get("urdf", ""))
+        cls.validate_topdown(sensors.get("topdown"))
         cls.validate_footprint(robot.get("footprint"), robot_resolved.get("urdf", ""))
         scenario_on = cls.validate_scenario(habitat.get("scenario"))
         if backend == "fake" and not scenario_on:
@@ -520,6 +527,7 @@ class Config:
         cls.validate_map(habitat.get("map"), procedural=scenario_on)
         cls.validate_dataset(habitat.get("dataset") or habitat.get("record"))
         cls.validate_hunav(habitat.get("hunav"))
+        cls.validate_humanoids(habitat.get("humanoids"))
 
         names = [
             robot["cmd_vel"],
@@ -615,6 +623,93 @@ class Config:
                 raise ValueError(
                     f"habitat.robot.footprint.points[{index}] must be numeric"
                 ) from exc
+
+    @classmethod
+    def validate_topdown(cls, block: Any) -> None:
+        """Validate optional ``habitat.sensors.topdown`` overhead RGB."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.sensors.topdown must be a mapping")
+        if "enabled" in block and not isinstance(block["enabled"], bool):
+            raise ValueError("habitat.sensors.topdown.enabled must be a bool")
+        if not block.get("enabled", False):
+            return
+        for key in ("width", "height"):
+            if key in block:
+                cls.require_positive(block[key], f"habitat.sensors.topdown.{key}")
+        for key in ("hfov_deg", "height_m", "rate_hz", "ortho_margin"):
+            if key in block:
+                cls.require_positive(block[key], f"habitat.sensors.topdown.{key}")
+        if "ortho_fill" in block:
+            fill = float(block["ortho_fill"])
+            if fill <= 0.0 or fill >= 1.0:
+                raise ValueError(
+                    "habitat.sensors.topdown.ortho_fill must be in (0, 1)"
+                )
+        if "ortho_scale" in block and block["ortho_scale"] is not None:
+            cls.require_positive(
+                block["ortho_scale"], "habitat.sensors.topdown.ortho_scale"
+            )
+        if "fit_scene" in block and not isinstance(block["fit_scene"], bool):
+            raise ValueError("habitat.sensors.topdown.fit_scene must be a bool")
+        if "align_navmesh" in block and not isinstance(block["align_navmesh"], bool):
+            raise ValueError("habitat.sensors.topdown.align_navmesh must be a bool")
+        if "mode" in block:
+            mode = str(block["mode"]).strip().lower()
+            if mode not in ("orthographic", "pinhole"):
+                raise ValueError(
+                    "habitat.sensors.topdown.mode must be orthographic or pinhole"
+                )
+
+    @classmethod
+    def validate_humanoids(cls, block: Any) -> None:
+        """Validate optional ``habitat.humanoids`` (TrackVLA-style SMPL-X visuals)."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.humanoids must be a mapping")
+        if "enabled" in block and not isinstance(block["enabled"], bool):
+            raise ValueError("habitat.humanoids.enabled must be a bool")
+        if "snap_navmesh" in block and not isinstance(block["snap_navmesh"], bool):
+            raise ValueError("habitat.humanoids.snap_navmesh must be a bool")
+        visual = str(block.get("visual") or "humanoid").strip().lower()
+        if visual not in ("humanoid", "none", "off", "disabled"):
+            raise ValueError(
+                "habitat.humanoids.visual must be humanoid|none, "
+                f"got {visual!r}"
+            )
+        if "sync_hz" in block:
+            cls.require_nonneg(block["sync_hz"], "habitat.humanoids.sync_hz")
+        if "base_offset_y" in block:
+            cls.require_nonneg(
+                block["base_offset_y"], "habitat.humanoids.base_offset_y"
+            )
+        if "motion_fps" in block:
+            cls.require_positive(
+                block["motion_fps"], "habitat.humanoids.motion_fps"
+            )
+        names = block.get("names")
+        if names is not None and not isinstance(names, (list, tuple, str)):
+            raise ValueError("habitat.humanoids.names must be a list or string")
+        if "root" in block and block["root"] is not None:
+            if not isinstance(block["root"], str):
+                raise ValueError("habitat.humanoids.root must be a string")
+        skin_map = block.get("skin_map")
+        if skin_map is not None:
+            if not isinstance(skin_map, Mapping):
+                raise ValueError("habitat.humanoids.skin_map must be a mapping")
+            for key, value in skin_map.items():
+                try:
+                    int(key)
+                except (TypeError, ValueError) as exc:
+                    raise ValueError(
+                        "habitat.humanoids.skin_map keys must be integers"
+                    ) from exc
+                if not isinstance(value, str) or not str(value).strip():
+                    raise ValueError(
+                        "habitat.humanoids.skin_map values must be non-empty strings"
+                    )
 
     @classmethod
     def validate_hunav(cls, block: Any) -> None:
@@ -737,6 +832,12 @@ class Config:
             Behavior.kind_name(block["behavior"])
         if "social" in block and not isinstance(block["social"], bool):
             raise ValueError(f"{path}.social must be a bool")
+        for flag in ("wander", "spread_spawn"):
+            if flag in block and not isinstance(block[flag], bool):
+                raise ValueError(f"{path}.{flag} must be a bool")
+        for key in ("wander_min_dist", "spread_min_dist"):
+            if key in block:
+                cls.require_positive(block[key], f"{path}.{key}")
 
     @classmethod
     def require_between(

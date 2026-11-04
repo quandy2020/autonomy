@@ -12,6 +12,7 @@
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
 class QHBoxLayout;
+class QEvent;
 class QKeyEvent;
 class QToolButton;
 
@@ -46,6 +47,7 @@ class Breadcrumb : public QWidget {
   void CurrentIndexChanged(int index);
 
  protected:
+  void changeEvent(QEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
 
  private:

@@ -72,7 +72,7 @@ QComboBox#AutovizCyanCombo::drop-down {
 }
 QComboBox#AutovizCyanCombo QAbstractItemView {
   background: {{panel-surface}}; color: {{panel-text}};
-  border: 1px solid {{panel-border}}; selection-background-color: rgba(8,145,178,0.16);
+  border: 1px solid {{panel-border}}; selection-background-color: {{accent-a16}};
 }
 
 QComboBox#AutovizToolbarCombo {
@@ -87,17 +87,17 @@ QComboBox#AutovizToolbarCombo::drop-down { border: none; width: 18px; }
 /* @section groups */
 /* control/groups.qss — scoped blocks; safe to Load on matching widget type */
 
-/* compact_group — QGroupBox */
+/* compact_group — QGroupBox (Liquid Glass settings sections) */
 QGroupBox {
   border: 1px solid {{glass-rim}};
-  border-radius: 8px;
-  margin-top: 8px;
+  border-radius: 10px;
+  margin-top: 6px;
   padding: 10px 8px 8px 8px;
-  background: {{glass-deep}};
+  background: {{glass-fill}};
 }
 QGroupBox::title {
   subcontrol-origin: margin; left: 8px; padding: 0 4px;
-  color: {{accent}}; font-weight: 700; font-size: 11px;
+  color: {{muted}}; font-weight: 600; font-size: 11px;
 }
 
 /* segmented_toggle — container #AutovizSegmentedToggle */
@@ -110,10 +110,10 @@ QGroupBox::title {
   border-radius: 9px; color: {{muted}}; font-weight: 600;
 }
 #AutovizSegmentedToggle QPushButton:checked {
-  background: #14B8A6; color: #FFFFFF; font-weight: 700;
+  background: {{accent}}; color: #FFFFFF; font-weight: 700;
 }
 #AutovizSegmentedToggle QPushButton:hover:!checked {
-  background: rgba(255,255,255,0.55); color: #0D9488;
+  background: rgba(255,255,255,0.55); color: {{accent}};
 }
 
 /* collapsible_section */
@@ -155,8 +155,8 @@ QLabel#AutovizAccentBadge {
 }
 
 QLabel#AutovizCyanStatusChip {
-  color: {{panel-accent}}; background: rgba(8,145,178,0.10);
-  border: 1px solid rgba(8,145,178,0.28); border-radius: 10px;
+  color: {{panel-accent}}; background: {{accent-a10}};
+  border: 1px solid {{accent-a28}}; border-radius: 10px;
   padding: 3px 10px; font-size: 11px; font-weight: 700;
 }
 /* @end */
@@ -169,42 +169,42 @@ QToolButton#AutovizLightToolbarIcon {
   min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
 }
 QToolButton#AutovizLightToolbarIcon:hover {
-  background: rgba(8,145,178,0.10); border-color: {{panel-border}};
+  background: {{accent-a10}}; border-color: {{panel-border}};
 }
-QToolButton#AutovizLightToolbarIcon:pressed { background: rgba(8,145,178,0.16); }
+QToolButton#AutovizLightToolbarIcon:pressed { background: {{accent-a16}}; }
 QToolButton#AutovizLightToolbarIcon:checked {
-  background: rgba(8,145,178,0.14); border-color: {{panel-accent}}; color: {{panel-accent}};
+  background: {{accent-a14}}; border-color: {{panel-accent}}; color: {{panel-accent}};
 }
-QToolButton#AutovizLightToolbarIcon:disabled { color: #94a3b8; }
+QToolButton#AutovizLightToolbarIcon:disabled { color: {{disabled}}; }
 
 /* cyan text tool buttons (Expand / Collapse, …) */
 QToolButton#AutovizCyanToolButton {
-  color: {{panel-accent}}; background: rgba(8,145,178,0.10);
-  border: 1px solid rgba(8,145,178,0.35); border-radius: 8px;
+  color: {{panel-accent}}; background: {{accent-a10}};
+  border: 1px solid {{accent-a35}}; border-radius: 8px;
   padding: 4px 10px; font-size: 12px; font-weight: 600;
 }
-QToolButton#AutovizCyanToolButton:hover { background: rgba(8,145,178,0.18); }
-QToolButton#AutovizCyanToolButton:pressed { background: rgba(8,145,178,0.26); }
+QToolButton#AutovizCyanToolButton:hover { background: {{accent-a18}}; }
+QToolButton#AutovizCyanToolButton:pressed { background: {{accent-a26}}; }
 /* @end */
 
 /* @section primary_button */
 /* control/primary_button */
 QPushButton {
-  background: #14B8A6;
+  background: {{accent}};
   color: #FFFFFF;
-  border: 1px solid rgba(45,212,191,0.90);
+  border: 1px solid {{accent}};
   border-radius: 14px;
   padding: 0 14px;
   min-height: 30px;
   font-weight: 700;
   font-size: 12px;
 }
-QPushButton:hover { background: #0D9488; }
-QPushButton:pressed { background: #0D9488; }
+QPushButton:hover { background: {{accent}}; }
+QPushButton:pressed { background: {{accent}}; }
 QPushButton:disabled {
-  background: rgba(20,184,166,0.35);
+  background: {{accent-soft}};
   color: rgba(255,255,255,0.55);
-  border-color: rgba(45,212,191,0.30);
+  border-color: {{accent-a28}};
 }
 /* @end */
 
@@ -212,8 +212,8 @@ QPushButton:disabled {
 /* control/ghost_button */
 QPushButton {
   background: rgba(255,255,255,0.70);
-  color: #0E7490;
-  border: 1px solid rgba(103,232,249,0.80);
+  color: {{accent-pressed}};
+  border: 1px solid {{accent}};
   border-radius: 14px;
   padding: 0 12px;
   min-height: 30px;
@@ -222,13 +222,13 @@ QPushButton {
 }
 QPushButton:hover {
   background: rgba(255,255,255,0.92);
-  border-color: rgba(165,243,252,1.0);
-  color: #14B8A6;
+  border-color: {{accent-soft}};
+  color: {{accent}};
 }
 QPushButton:pressed { background: rgba(224,242,254,0.80); }
 QPushButton:disabled {
-  color: #94A3B8;
-  border-color: rgba(226,232,240,0.70);
+  color: {{disabled}};
+  border-color: {{border-light}};
   background: rgba(255,255,255,0.40);
 }
 /* @end */
@@ -243,7 +243,7 @@ QPushButton {
 QPushButton:hover { background: rgba(254,226,226,0.90); }
 QPushButton:pressed { background: rgba(254,202,202,0.95); }
 QPushButton:disabled {
-  color: #94A3B8; border-color: rgba(226,232,240,0.70);
+  color: {{disabled}}; border-color: {{border-light}};
   background: rgba(255,255,255,0.40);
 }
 /* @end */
@@ -251,19 +251,19 @@ QPushButton:disabled {
 /* @section compact_button */
 /* control/compact_button */
 QPushButton, QToolButton {
-  color: #0E7490; background: rgba(255,255,255,0.70);
-  border: 1px solid rgba(103,232,249,0.80); border-radius: 10px;
+  color: {{accent-pressed}}; background: rgba(255,255,255,0.70);
+  border: 1px solid {{accent}}; border-radius: 10px;
   padding: 4px 10px; font-size: 12px; font-weight: 600;
 }
 QPushButton:hover, QToolButton:hover {
-  background: rgba(255,255,255,0.92); color: #14B8A6;
+  background: rgba(255,255,255,0.92); color: {{accent}};
 }
 QPushButton:pressed, QToolButton:pressed {
   background: rgba(224,242,254,0.80);
 }
 QPushButton:checked, QToolButton:checked {
-  background: #14B8A6; color: #FFFFFF;
-  border-color: rgba(45,212,191,0.90);
+  background: {{accent}}; color: #FFFFFF;
+  border-color: {{accent}};
 }
 /* @end */
 
@@ -280,13 +280,13 @@ QPushButton {
 /* @section color_button_empty */
 /* control/color_button_empty */
 QPushButton {
-  background: rgba(255,255,255,0.70); color: #0E7490;
-  border: 1px solid rgba(103,232,249,0.80); border-radius: 6px;
+  background: rgba(255,255,255,0.70); color: {{accent-pressed}};
+  border: 1px solid {{accent}}; border-radius: 6px;
   padding: 0px 6px; min-height: 0px; max-height: 20px;
   font-size: 11px; font-weight: 600;
 }
 QPushButton:hover {
-  background: rgba(255,255,255,0.92); color: #14B8A6;
+  background: rgba(255,255,255,0.92); color: {{accent}};
 }
 /* @end */
 
@@ -307,14 +307,14 @@ QToolButton:hover { color: {{accent}}; background: rgba(125,211,252,0.18); }
 /* control/tool_button — compact toolbar icon buttons */
 QToolButton {
   background: rgba(255,255,255,0.70); color: {{text}};
-  border: 1px solid rgba(103,232,249,0.80); border-radius: 8px;
+  border: 1px solid {{accent}}; border-radius: 8px;
   padding: 4px; min-width: 28px; min-height: 28px;
 }
 QToolButton:hover { background: rgba(255,255,255,0.92); color: {{accent}}; }
 QToolButton:pressed { background: rgba(224,242,254,0.80); }
 QToolButton:checked {
   background: {{accent}}; color: #FFFFFF;
-  border-color: rgba(45,212,191,0.90);
+  border-color: {{accent}};
 }
 /* @end */
 

@@ -44,7 +44,7 @@ PublishPanel::PublishPanel(common::VisualizationManager* manager, QWidget* paren
   setFocusPolicy(Qt::StrongFocus);
   ApplyPanelShell(this);
   setObjectName(QStringLiteral("PublishPanelContent"));
-  setStyleSheet(style::sheet(QStringLiteral("publish")));
+  setStyleSheet(style::sheet(QStringLiteral("publish/panel_root")));
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);

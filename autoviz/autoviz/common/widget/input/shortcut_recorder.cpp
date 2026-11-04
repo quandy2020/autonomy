@@ -24,7 +24,7 @@ ShortcutRecorder::ShortcutRecorder(QWidget *parent)
 
   auto *layout = new QHBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
-  layout->setSpacing(GetThemeTokens(tone_).spacing_sm);
+  layout->setSpacing(GetThemeTokens(this, tone_).spacing_sm);
   editor_->setAccessibleName(tr("Keyboard shortcut"));
   layout->addWidget(editor_, 1);
   validation_label_->setAccessibleName(tr("Shortcut validation"));
@@ -88,7 +88,7 @@ void ShortcutRecorder::UpdateValidation() {
 void ShortcutRecorder::ApplyTheme() {
   ApplyWidgetTheme(this, tone_, true);
   QPalette palette = validation_label_->palette();
-  palette.setColor(QPalette::WindowText, GetThemeTokens(tone_).danger);
+  palette.setColor(QPalette::WindowText, GetThemeTokens(this, tone_).danger);
   validation_label_->setPalette(palette);
 }
 

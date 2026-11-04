@@ -7,6 +7,7 @@
 #include <QDockWidget>
 #include <QDoubleSpinBox>
 #include <QEvent>
+#include <QImage>
 #include <QLabel>
 #include <QListView>
 #include <QMainWindow>
@@ -25,10 +26,13 @@
 #include "autoviz/common/widget/data/log_view.hpp"
 #include "autoviz/common/widget/data/property_editor.hpp"
 #include "autoviz/common/widget/docking/dock_manager.hpp"
+#include "autoviz/common/widget/feedback/progress_bar.hpp"
 #include "autoviz/common/widget/feedback/skeleton.hpp"
 #include "autoviz/common/widget/input/button.hpp"
 #include "autoviz/common/widget/input/number_field.hpp"
 #include "autoviz/common/widget/input/search_box.hpp"
+#include "autoviz/common/widget/input/segmented_control.hpp"
+#include "autoviz/common/widget/input/toggle_switch.hpp"
 #include "autoviz/common/widget/layout/flow_layout.hpp"
 #include "autoviz/common/widget/layout/separator.hpp"
 #include "autoviz/common/widget/layout/surface.hpp"
@@ -45,6 +49,7 @@ class WidgetComponentsTest final : public QObject {
   void FilterBarDebouncesAndOwnsFilterWidgets();
   void FlowLayoutWrapsItemsWithoutPerRowContainers();
   void PresentationPrimitivesExposeStateAndActivation();
+  void IosControlsPreserveTouchGeometryAndVisualState();
   void NumberFieldRejectsUnfocusedWheelInput();
   void LogViewBoundsAndFiltersEntries();
   void PropertyEditorValidatesAndCreatesTypedEditors();
@@ -146,6 +151,42 @@ void WidgetComponentsTest::PresentationPrimitivesExposeStateAndActivation() {
                     surface.rect().center());
   QTest::keyClick(&surface, Qt::Key_Space);
   QCOMPARE(clicked_spy.count(), 2);
+}
+
+void WidgetComponentsTest::IosControlsPreserveTouchGeometryAndVisualState() {
+  const auto render = [](QWidget* widget, const QSize& minimum_size) {
+    widget->ensurePolished();
+    widget->resize(widget->sizeHint().expandedTo(minimum_size));
+    QImage image(widget->size(), QImage::Format_ARGB32_Premultiplied);
+    image.fill(Qt::transparent);
+    widget->render(&image);
+    return image;
+  };
+
+  ToggleSwitch toggle;
+  QCOMPARE(toggle.sizeHint(), QSize(51, 44));
+  toggle.setEnabled(false);
+  toggle.setChecked(false);
+  const QImage disabled_off = render(&toggle, toggle.sizeHint());
+  toggle.setChecked(true);
+  const QImage disabled_on = render(&toggle, toggle.sizeHint());
+  QVERIFY(disabled_off != disabled_on);
+
+  SegmentedControl segments;
+  segments.AddSegment(QStringLiteral("Live"));
+  segments.AddSegment(QStringLiteral("Paused"));
+  const QImage first_segment = render(&segments, QSize(180, 36));
+  segments.SetCurrentIndex(1);
+  const QImage second_segment = render(&segments, QSize(180, 36));
+  QVERIFY(first_segment != second_segment);
+
+  ProgressBar progress;
+  progress.setRange(0, 100);
+  progress.setValue(25);
+  const QImage quarter = render(&progress, QSize(220, 28));
+  progress.setValue(75);
+  const QImage three_quarters = render(&progress, QSize(220, 28));
+  QVERIFY(quarter != three_quarters);
 }
 
 void WidgetComponentsTest::NumberFieldRejectsUnfocusedWheelInput() {

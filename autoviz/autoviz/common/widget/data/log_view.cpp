@@ -6,6 +6,7 @@
 
 #include <QApplication>
 #include <QClipboard>
+#include <QFrame>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QItemSelectionModel>
@@ -281,10 +282,10 @@ LogView::LogView(QWidget* parent) : QWidget(parent) {
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(0, 0, 0, 0);
-  root->setSpacing(GetThemeTokens(tone_).spacing_sm);
+  root->setSpacing(GetThemeTokens(this, tone_).spacing_sm);
   auto* toolbar = new QHBoxLayout;
   toolbar->setContentsMargins(0, 0, 0, 0);
-  toolbar->setSpacing(GetThemeTokens(tone_).spacing_sm);
+  toolbar->setSpacing(GetThemeTokens(this, tone_).spacing_sm);
 
   search_box_ = new SearchBox(this);
   search_box_->SetSearchBoxSize(SearchBox::Size::kSmall);
@@ -313,6 +314,9 @@ LogView::LogView(QWidget* parent) : QWidget(parent) {
   view_ = new QTableView(this);
   view_->setModel(proxy_model_);
   view_->setAlternatingRowColors(true);
+  view_->setShowGrid(false);
+  view_->setFrameShape(QFrame::NoFrame);
+  view_->setCornerButtonEnabled(false);
   view_->setEditTriggers(QAbstractItemView::NoEditTriggers);
   view_->setSelectionBehavior(QAbstractItemView::SelectRows);
   view_->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -321,8 +325,9 @@ LogView::LogView(QWidget* parent) : QWidget(parent) {
   view_->setTextElideMode(Qt::ElideRight);
   view_->verticalHeader()->setVisible(false);
   view_->verticalHeader()->setDefaultSectionSize(
-      GetThemeTokens(tone_).control_height_small);
+      GetThemeTokens(this, tone_).control_height_small);
   QHeaderView* header = view_->horizontalHeader();
+  header->setHighlightSections(false);
   header->setStretchLastSection(true);
   header->setSectionResizeMode(LogModel::kTimeColumn,
                                QHeaderView::ResizeToContents);

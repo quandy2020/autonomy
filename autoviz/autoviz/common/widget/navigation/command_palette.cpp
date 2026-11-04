@@ -99,7 +99,7 @@ CommandPalette::CommandPalette(QWidget* parent)
   setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 
   auto* layout = new QVBoxLayout(this);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   layout->setContentsMargins(tokens.spacing_md, tokens.spacing_md,
                              tokens.spacing_md, tokens.spacing_md);
   layout->setSpacing(tokens.spacing_sm);

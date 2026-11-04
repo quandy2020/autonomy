@@ -242,15 +242,19 @@ void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
     entry.widget->show();
     entry.widget->raise();
     entry.widget->updateGeometry();
-    (void)entry.widget->winId();
-    if (entry.ogre_viewport != nullptr) {
-      // Undo hideNativeSurface / park so the GLX window paints again.
-      entry.ogre_viewport->showNativeSurface();
+    if (!reveal_held_) {
+      (void)entry.widget->winId();
+      if (entry.ogre_viewport != nullptr) {
+        // Undo hideNativeSurface / park so the GLX window paints again.
+        entry.ogre_viewport->showNativeSurface();
+      }
+      // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
+      // while sibling docks may still be mid-reparent; requestViewportUpdate()
+      // would call objectName() on a disposed dock and SIGSEGV.
+      entry.widget->update();
+    } else if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->hideNativeSurface();
     }
-    // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
-    // while sibling docks may still be mid-reparent; requestViewportUpdate()
-    // would call objectName() on a disposed dock and SIGSEGV.
-    entry.widget->update();
   }
 }
 
@@ -293,9 +297,8 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
   applyViewportEntryRenderSettings(entry);
   connectViewportInteractionsForEntry(entry);
 
-  // Reveal only when the host has a real size. Split creates the dock before
-  // QSplitter assigns pane geometry — initializing at 0×0 leaves a blank /
-  // missing sibling 3D View.
+  // Keep the Qt widget in the layout for geometry, but do not map the native
+  // GLX surface until startup settle (reveal_held_) and the host is sized.
   const bool sized = entry.host != nullptr && entry.host->width() >= 2 &&
                      entry.host->height() >= 2;
   if (entry.dock != nullptr && entry.dock->requestedVisible() &&
@@ -304,11 +307,15 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
     entry.widget->show();
     entry.widget->raise();
     entry.widget->updateGeometry();
-    (void)entry.widget->winId();
-    if (entry.ogre_viewport != nullptr) {
-      entry.ogre_viewport->showNativeSurface();
+    if (!reveal_held_) {
+      (void)entry.widget->winId();
+      if (entry.ogre_viewport != nullptr) {
+        entry.ogre_viewport->showNativeSurface();
+      }
+      entry.widget->update();
+    } else if (entry.ogre_viewport != nullptr) {
+      entry.ogre_viewport->hideNativeSurface();
     }
-    entry.widget->update();
   }
 }
 
@@ -528,11 +535,15 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
           entry.widget->show();
         }
         entry.widget->raise();
-        (void)entry.widget->winId();
-        if (entry.ogre_viewport != nullptr) {
-          entry.ogre_viewport->showNativeSurface();
+        if (!reveal_held_) {
+          (void)entry.widget->winId();
+          if (entry.ogre_viewport != nullptr) {
+            entry.ogre_viewport->showNativeSurface();
+          }
+          entry.widget->update();
+        } else if (entry.ogre_viewport != nullptr) {
+          entry.ogre_viewport->hideNativeSurface();
         }
-        entry.widget->update();
       }
     }
   }
@@ -643,10 +654,59 @@ void FrameViewport::requestViewportUpdate() {
   });
 }
 
+void FrameViewport::setViewportRevealHeld(bool held) {
+  if (reveal_held_ == held) {
+    return;
+  }
+  reveal_held_ = held;
+  if (!reveal_held_) {
+    revealViewportSurfaces();
+  } else {
+    forEachViewportPanel([](ViewportPanelEntry& entry) {
+      if (entry.ogre_viewport != nullptr) {
+        entry.ogre_viewport->hideNativeSurface();
+      }
+    });
+  }
+}
+
+void FrameViewport::revealViewportSurfaces() {
+  if (reveal_held_) {
+    return;
+  }
+  forEachViewportPanel([this](ViewportPanelEntry& entry) {
+    if (entry.ogre_viewport == nullptr || entry.widget == nullptr ||
+        entry.host == nullptr || entry.dock == nullptr) {
+      return;
+    }
+    if (!entry.dock->requestedVisible() || !entry.dock->isVisible()) {
+      return;
+    }
+    if (entry.widget->parentWidget() != entry.host) {
+      return;
+    }
+    if (entry.host->width() < 2 || entry.host->height() < 2) {
+      return;
+    }
+    entry.widget->setGeometry(entry.host->rect());
+    if (!entry.widget->isVisible()) {
+      entry.widget->show();
+    }
+    entry.widget->raise();
+    (void)entry.widget->winId();
+    entry.ogre_viewport->showNativeSurface();
+    entry.widget->update();
+  });
+}
+
 void FrameViewport::viewportTick(float delta_seconds) {
   syncToolContext();
   forEachViewportPanel([this, delta_seconds](ViewportPanelEntry& entry) {
     if (entry.ogre_viewport == nullptr) {
+      return;
+    }
+    // Startup settle: do not paint until the window/layout stop resizing.
+    if (reveal_held_) {
       return;
     }
     // Hidden 3D docks must not keep painting their native Ogre surface —

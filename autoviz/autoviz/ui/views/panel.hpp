@@ -53,6 +53,7 @@ class ViewController;
 enum class ViewTreeItemKind {
   kCurrentView = 0,       /**< Root group: live camera under the active controller. */
   kNearClip,              /**< Near clip plane distance (float). */
+  kFarClip,               /**< Far clip plane distance (float). */
   kInvertZ,               /**< Invert Z axis (checkable). */
   kTargetFrame,           /**< Look-at / follow TF frame (parent of choice list). */
   kTargetFrameChoice,     /**< One checkable TF frame under @ref kTargetFrame. */
@@ -381,21 +382,28 @@ class ViewsPanel : public QWidget {
 
   /**
    * @brief Pushes TF frame names (plus Fixed sentinel) into @ref ViewTreeDelegate
-   *        and rebuilds the Target Frame checkable choice list.
+   *        and syncs the Target Frame value cell.
    */
   void updateFrameDelegate();
 
   /**
-   * @brief Rebuilds checkable children under the Target Frame property row.
+   * @brief Syncs the Target Frame value cell (clears legacy radio children).
    */
   void rebuildTargetFrameChoices();
 
   /**
-   * @brief Applies an exclusive Target Frame choice (unchecks siblings).
+   * @brief Applies a legacy Target Frame radio-row choice (compat).
    *
    * @param choice Checked @ref ViewTreeItemKind::kTargetFrameChoice item.
    */
   void applyTargetFrameChoice(QTreeWidgetItem* choice);
+
+  /**
+   * @brief Applies a Target Frame name from the value-column combo.
+   *
+   * @param frame Frame id or Fixed sentinel.
+   */
+  void applyTargetFrame(const QString& frame);
 
   /**
    * @brief Formats a controller type for display, e.g. @c "Orbit (autoviz)".

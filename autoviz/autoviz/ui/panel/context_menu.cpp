@@ -4,11 +4,11 @@
 
 #include "autoviz/ui/panel/context_menu.hpp"
 
+#include <QAction>
 #include <QApplication>
 #include <QCoreApplication>
 #include <QMenu>
 #include <QTimer>
-#include <QWidgetAction>
 
 #include "autoviz/ui/panel/change_menu.hpp"
 
@@ -18,32 +18,30 @@ QMenu* CreatePanelContextMenu(QWidget* parent,
                               const PanelContextMenuCallbacks& callbacks) {
   auto* menu = new QMenu(parent);
 
-  auto* change_menu = menu->addMenu(QCoreApplication::translate("autoviz", "Change panel"));
-  auto* picker = new ChangePanelMenuWidget(change_menu);
-  auto* picker_action = new QWidgetAction(change_menu);
-  picker_action->setDefaultWidget(picker);
-  change_menu->addAction(picker_action);
+  auto* change_panel = menu->addAction(
+      QCoreApplication::translate("autoviz", "Change panel"));
   QObject::connect(
-      picker, &ChangePanelMenuWidget::panelSelected, change_menu,
-      [callbacks, change_menu, menu](const QString& object_name) {
-        // Tear down popups before dock surgery so they cannot cover the
-        // replacement panel's title/toolbar.
-        change_menu->close();
-        if (menu->parentWidget() != nullptr) {
-          menu->close();
+      change_panel, &QAction::triggered, menu,
+      [callbacks, menu]() {
+        QWidget* anchor = menu->parentWidget();
+        if (anchor == nullptr) {
+          anchor = QApplication::activeWindow();
         }
-        if (object_name == callbacks.current_object_name) {
-          return;
-        }
-        if (!callbacks.change_panel) {
-          return;
-        }
-        const auto change = callbacks.change_panel;
-        // Keep the deferred swap alive even if the popup menu is destroyed
-        // with the source dock's title tools.
-        QTimer::singleShot(0, qApp, [change, object_name]() {
-          change(object_name);
-        });
+        // Close the context menu first so it cannot cover the picker.
+        menu->close();
+        ShowChangePanelPopup(
+            anchor, [callbacks](const QString& object_name) {
+              if (object_name == callbacks.current_object_name) {
+                return;
+              }
+              if (!callbacks.change_panel) {
+                return;
+              }
+              const auto change = callbacks.change_panel;
+              QTimer::singleShot(0, qApp, [change, object_name]() {
+                change(object_name);
+              });
+            });
       });
 
   menu->addSeparator();

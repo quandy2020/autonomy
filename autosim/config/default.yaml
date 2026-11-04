@@ -20,8 +20,29 @@ habitat:
   # Mode 2 (default): direct .glb — auto-installs dataset config in the scene parent.
   path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
   # Procedural mockamap (no GLB): use config/fake.yaml instead.
+  # Dynamic pedestrians (CPU SFM) + optional SMPL-X visuals: see habitat_people.yaml
+  # and docs/14_habitat_humanoids.md. Off by default so plain GLB demos stay light.
   scenario:
     enabled: false
+    pedestrian:
+      enabled: false
+      social: true
+      agents: config/scenarios/agents_habitat.yaml
+      count: 4
+      radius: 0.22
+      height: 1.7
+      speed: 0.85
+      seed: 11
+  # TrackVLA-layout kinematic humanoids (RGB-D). Requires assets under
+  # data/humanoids/humanoid_data or AUTOSIM_HUMANOID_ROOT.
+  humanoids:
+    enabled: false
+    root: data/humanoids/humanoid_data
+    visual: humanoid          # humanoid | none
+    names: []                 # empty = all under root; non-empty = allowlist
+    # skin_map: {1: male_46, 2: female_2}
+    sync_hz: 30
+    snap_navmesh: true
   # MP3D origin (0,0) often yields a flat semantic field; autosim may auto-relocate.
   spawn: [-4.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
   gpu: 0

@@ -22,6 +22,7 @@
 
 class QPainter;
 class QStyleOption;
+class QStyleOptionComplex;
 class QStyleOptionTab;
 class QWidget;
 
@@ -106,6 +107,18 @@ class ProxyStyle : public QProxyStyle {
                    const QWidget* widget = nullptr) const override;
 
   /**
+   * @brief Draws native compound controls with flat semantic materials.
+   *
+   * @param control Compound control id.
+   * @param option Control state and palette.
+   * @param painter Target painter.
+   * @param widget Optional associated widget.
+   */
+  void drawComplexControl(ComplexControl control,
+                          const QStyleOptionComplex* option, QPainter* painter,
+                          const QWidget* widget = nullptr) const override;
+
+  /**
    * @brief Adjusts content sizes (e.g. denser menu items).
    *
    * @param type Contents type.
@@ -143,10 +156,10 @@ class ProxyStyle : public QProxyStyle {
                   const QWidget* widget = nullptr) const override;
 
  private:
-  QColor accent_{0x30, 0x8C, 0xC6};          /**< Highlight accent. */
-  QColor selection_bg_{0xE6, 0xF2, 0xFF};    /**< Selection wash. */
-  QColor hover_bg_{0xE6, 0xF2, 0xFF};        /**< Hover wash. */
-  QColor menu_shortcut_{0x66, 0x66, 0x66};   /**< Menu shortcut text. */
+  QColor accent_{0x30, 0x8C, 0xC6};        /**< Highlight accent. */
+  QColor selection_bg_{0xE6, 0xF2, 0xFF};  /**< Selection wash. */
+  QColor hover_bg_{0xE6, 0xF2, 0xFF};      /**< Hover wash. */
+  QColor menu_shortcut_{0x66, 0x66, 0x66}; /**< Menu shortcut text. */
 };
 
 }  // namespace autoviz

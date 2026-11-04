@@ -143,7 +143,7 @@ void Watermark::RebuildTile(qreal device_pixel_ratio) {
   QPainter painter(&tile_);
   painter.setRenderHint(QPainter::Antialiasing);
   painter.setRenderHint(QPainter::TextAntialiasing);
-  QColor color = GetThemeTokens(tone_).text_muted;
+  QColor color = GetThemeTokens(this, tone_).text_muted;
   color.setAlphaF(color.alphaF() * opacity_);
   painter.setPen(color);
   painter.setFont(font());

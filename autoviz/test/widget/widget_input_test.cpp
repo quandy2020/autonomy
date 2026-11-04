@@ -4,14 +4,20 @@
 
 #include <QAbstractButton>
 #include <QFont>
+#include <QFrame>
 #include <QImage>
+#include <QLineEdit>
+#include <QListView>
 #include <QSignalSpy>
 #include <QStringListModel>
 #include <QTest>
 #include <QVector3D>
 
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
 #include "autoviz/common/widget/input/auto_suggest_box.hpp"
 #include "autoviz/common/widget/input/button.hpp"
+#include "autoviz/common/widget/input/form_controller.hpp"
+#include "autoviz/common/widget/input/number_field.hpp"
 #include "autoviz/common/widget/input/password_box.hpp"
 #include "autoviz/common/widget/input/search_box.hpp"
 #include "autoviz/common/widget/input/segmented_control.hpp"
@@ -21,12 +27,24 @@
 namespace autoviz::widget {
 namespace {
 
+QImage RenderControl(QWidget* control) {
+  control->ensurePolished();
+  control->resize(control->sizeHint().expandedTo(QSize(220, 36)));
+  QImage image(control->size(), QImage::Format_ARGB32_Premultiplied);
+  image.fill(Qt::transparent);
+  control->render(&image);
+  return image;
+}
+
 class WidgetInputTest final : public QObject {
   Q_OBJECT
 
  private slots:
   void SearchAndPasswordFieldsKeepNativeSemantics();
   void SearchBoxSizesFollowTokensAndFonts();
+  void CustomFieldsExposeDesktopInteractionStates();
+  void CustomFieldsKeepRoundedMaterialsAfterRecursiveTheme();
+  void ValidationErrorsRenderAndClear();
   void SegmentedControlMaintainsSelectionAcrossChanges();
   void SegmentedControlSupportsKeyboardActivation();
   void SegmentedControlUsesThemeTokens();
@@ -97,6 +115,113 @@ void WidgetInputTest::SearchBoxSizesFollowTokensAndFonts() {
   search.SetSearchBoxSize(SearchBox::Size::kCompact);
   QVERIFY(search.sizeHint().height() >= search.fontMetrics().height() + 2);
   QCOMPARE(search.minimumSizeHint().height(), search.sizeHint().height());
+}
+
+void WidgetInputTest::CustomFieldsExposeDesktopInteractionStates() {
+  SearchBox search;
+  search.SetSearchBoxSize(SearchBox::Size::kCompact);
+  search.resize(search.sizeHint());
+  QVERIFY(search.testAttribute(Qt::WA_Hover));
+  QCOMPARE(search.focusPolicy(), Qt::StrongFocus);
+  QVERIFY(search.minimumSizeHint().height() >=
+          GetThemeTokens().control_height_compact);
+
+  PasswordBox password;
+  password.resize(password.sizeHint());
+  QVERIFY(password.testAttribute(Qt::WA_Hover));
+  QCOMPARE(password.focusPolicy(), Qt::StrongFocus);
+  QVERIFY(password.sizeHint().height() >=
+          GetThemeTokens().control_height_small);
+
+  QImage enabled(password.size(), QImage::Format_ARGB32_Premultiplied);
+  enabled.fill(Qt::transparent);
+  password.render(&enabled);
+  password.setEnabled(false);
+  QImage disabled(password.size(), QImage::Format_ARGB32_Premultiplied);
+  disabled.fill(Qt::transparent);
+  password.render(&disabled);
+  QVERIFY(enabled != disabled);
+}
+
+void WidgetInputTest::CustomFieldsKeepRoundedMaterialsAfterRecursiveTheme() {
+  QWidget host;
+  SearchBox search(&host);
+  PasswordBox password(&host);
+  NumberField number(&host);
+  search.setText(QStringLiteral("map"));
+  password.setText(QStringLiteral("secret"));
+  number.setRange(0.01, 1.0);
+  number.setValue(0.05);
+
+  ApplyWidgetTheme(&host, style::Tone::Shell, true, ThemeAppearance::kLight);
+  for (const QWidget* field :
+       {static_cast<QWidget*>(&search), static_cast<QWidget*>(&password),
+        static_cast<QWidget*>(&number)}) {
+    QCOMPARE(field->palette().color(QPalette::Base).alpha(), 0);
+  }
+  QCOMPARE(number.buttonSymbols(), QAbstractSpinBox::NoButtons);
+  QVERIFY(!number.hasFrame());
+  QLineEdit* number_editor = number.findChild<QLineEdit*>();
+  QVERIFY(number_editor != nullptr);
+  QCOMPARE(number_editor->palette().color(QPalette::Base).alpha(), 0);
+
+  const QImage light_search = RenderControl(&search);
+  const QImage light_password = RenderControl(&password);
+  const QImage light_number = RenderControl(&number);
+  for (const QImage* image : {&light_search, &light_password, &light_number}) {
+    QVERIFY(!image->isNull());
+    const QColor corner = image->pixelColor(0, 0);
+    const QColor center =
+        image->pixelColor(image->width() / 2, image->height() / 2);
+    QVERIFY(corner.alpha() < center.alpha());
+  }
+
+  ApplyWidgetTheme(&host, style::Tone::Shell, true, ThemeAppearance::kDark);
+  QCOMPARE(search.palette().color(QPalette::Base).alpha(), 0);
+  QCOMPARE(password.palette().color(QPalette::Base).alpha(), 0);
+  QCOMPARE(number.palette().color(QPalette::Base).alpha(), 0);
+  QCOMPARE(number_editor->palette().color(QPalette::Base).alpha(), 0);
+  QVERIFY(RenderControl(&search) != light_search);
+  QVERIFY(RenderControl(&password) != light_password);
+  QVERIFY(RenderControl(&number) != light_number);
+}
+
+void WidgetInputTest::ValidationErrorsRenderAndClear() {
+  SearchBox search;
+  PasswordBox password;
+  NumberField number;
+  password.setText(QStringLiteral("secret"));
+  number.setRange(0.01, 1.0);
+  number.setValue(0.05);
+
+  const QImage normal_search = RenderControl(&search);
+  const QImage normal_password = RenderControl(&password);
+  const QImage normal_number = RenderControl(&number);
+
+  FormController form;
+  form.RegisterField(&search);
+  form.RegisterField(&password);
+  form.RegisterField(&number);
+  form.SetFieldError(&search, QStringLiteral("Unknown frame"));
+  form.SetFieldError(&password, QStringLiteral("Token expired"));
+  form.SetFieldError(&number, QStringLiteral("Value is out of range"));
+
+  QVERIFY(search.property("autovizValidationError").toBool());
+  QVERIFY(password.property("autovizValidationError").toBool());
+  QVERIFY(number.property("autovizValidationError").toBool());
+  QVERIFY(RenderControl(&search) != normal_search);
+  QVERIFY(RenderControl(&password) != normal_password);
+  QVERIFY(RenderControl(&number) != normal_number);
+
+  form.ClearFieldError(&search);
+  form.ClearFieldError(&password);
+  form.ClearFieldError(&number);
+  QVERIFY(!search.property("autovizValidationError").toBool());
+  QVERIFY(!password.property("autovizValidationError").toBool());
+  QVERIFY(!number.property("autovizValidationError").toBool());
+  QVERIFY(RenderControl(&search) == normal_search);
+  QVERIFY(RenderControl(&password) == normal_password);
+  QVERIFY(RenderControl(&number) == normal_number);
 }
 
 void WidgetInputTest::SegmentedControlMaintainsSelectionAcrossChanges() {
@@ -244,6 +369,20 @@ void WidgetInputTest::AutoSuggestDebouncesAndActivatesRows() {
 
   QStringListModel model({QStringLiteral("Alpha"), QStringLiteral("Beta")});
   box.SetModel(&model);
+  auto* popup =
+      box.findChild<QFrame*>(QStringLiteral("AutovizAutoSuggestPopup"));
+  auto* list =
+      box.findChild<QListView*>(QStringLiteral("AutovizAutoSuggestList"));
+  QVERIFY(popup != nullptr);
+  QVERIFY(list != nullptr);
+  QCOMPARE(popup->frameShape(), QFrame::NoFrame);
+  QVERIFY(popup->testAttribute(Qt::WA_TranslucentBackground));
+  QCOMPARE(list->frameShape(), QFrame::NoFrame);
+  QVERIFY(!list->autoFillBackground());
+  QVERIFY(list->viewport()->testAttribute(Qt::WA_TranslucentBackground));
+  QVERIFY(list->sizeHintForRow(0) >=
+          GetThemeTokens(&box).control_height_medium);
+
   box.setText(QStringLiteral("a"));
   QSignalSpy activation_spy(&box, &AutoSuggestBox::SuggestionActivated);
   QTest::keyClick(&box, Qt::Key_Down);

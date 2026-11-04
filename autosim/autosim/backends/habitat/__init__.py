@@ -12,7 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Habitat-Sim WorldBackend (``Simulator`` in this package)."""
+"""Habitat-Sim WorldBackend (``Simulator`` in this package).
+
+Optional TrackVLA-style SMPL-X pedestrians live under ``humanoids/``
+(CPU Traffic poses → kinematic articulated objects for RGB-D).
+"""
 
 from __future__ import annotations
 

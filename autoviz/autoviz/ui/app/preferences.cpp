@@ -4,7 +4,10 @@
 
 #include "autoviz/ui/app/preferences.hpp"
 
+#include <QApplication>
 #include <QSettings>
+
+#include "autoviz/ui/theme/application.hpp"
 
 namespace autoviz {
 
@@ -26,6 +29,15 @@ AppUiPreferences LoadAppUiPreferences() {
   AppUiPreferences preferences;
   QSettings settings;
   preferences.language_code = settings.value(QStringLiteral("ui/language")).toString();
+  preferences.theme_mode =
+      settings.value(QStringLiteral("ui/theme_mode"), QStringLiteral("light"))
+          .toString();
+  if (preferences.theme_mode != QLatin1String("system") &&
+      preferences.theme_mode != QLatin1String("light") &&
+      preferences.theme_mode != QLatin1String("dark") &&
+      preferences.theme_mode != QLatin1String("liquid")) {
+    preferences.theme_mode = QStringLiteral("light");
+  }
   preferences.start_maximized =
       settings.value(QStringLiteral("ui/start_maximized"), true).toBool();
   preferences.viewport_hud_visible =
@@ -48,6 +60,7 @@ AppUiPreferences LoadAppUiPreferences() {
 void SaveAppUiPreferences(const AppUiPreferences& preferences) {
   QSettings settings;
   settings.setValue(QStringLiteral("ui/language"), preferences.language_code);
+  settings.setValue(QStringLiteral("ui/theme_mode"), preferences.theme_mode);
   settings.setValue(QStringLiteral("ui/start_maximized"), preferences.start_maximized);
   settings.setValue(QStringLiteral("ui/viewport_hud_visible"),
                     preferences.viewport_hud_visible);
@@ -62,6 +75,25 @@ void SaveAppUiPreferences(const AppUiPreferences& preferences) {
 QKeySequence ShortcutForId(const AppUiPreferences& preferences,
                            const QString& id) {
   return preferences.shortcuts.value(id);
+}
+
+glass::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode) {
+  if (theme_mode == QLatin1String("dark")) {
+    return glass::ShellAppearance::kDark;
+  }
+  if (theme_mode == QLatin1String("system")) {
+    return glass::ShellAppearance::kSystem;
+  }
+  if (theme_mode == QLatin1String("liquid")) {
+    return glass::ShellAppearance::kLiquid;
+  }
+  return glass::ShellAppearance::kLight;
+}
+
+void ApplyUiThemeMode(const QString& theme_mode, QApplication& app) {
+  glass::SetShellAppearance(ShellAppearanceFromThemeMode(theme_mode));
+  ApplyAppTheme(app);
+  RefreshAppThemeChrome(app);
 }
 
 }  // namespace autoviz

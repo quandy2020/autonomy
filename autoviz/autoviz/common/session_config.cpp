@@ -122,6 +122,8 @@ void ImportRvizViewNode(const YAML::Node& view, SessionConfig* config,
   saved.distance = view["Distance"].as<float>(saved.distance);
   saved.near_clip_distance =
       view["Near Clip Distance"].as<float>(saved.near_clip_distance);
+  saved.far_clip_distance =
+      view["Far Clip Distance"].as<float>(saved.far_clip_distance);
   saved.invert_z_axis = view["Invert Z Axis"].as<bool>(saved.invert_z_axis);
   saved.focal_shape_size =
       view["Focal Shape Size"].as<float>(saved.focal_shape_size);
@@ -562,6 +564,8 @@ void ReadViewFields(const YAML::Node& node, SavedViewConfig* view) {
   view->distance = node["Distance"].as<float>(view->distance);
   view->near_clip_distance =
       node["NearClipDistance"].as<float>(view->near_clip_distance);
+  view->far_clip_distance =
+      node["FarClipDistance"].as<float>(view->far_clip_distance);
   view->invert_z_axis = node["InvertZAxis"].as<bool>(view->invert_z_axis);
   view->focal_shape_size =
       node["FocalShapeSize"].as<float>(view->focal_shape_size);
@@ -588,6 +592,7 @@ void WriteViewFields(YAML::Emitter* out, const SavedViewConfig& view) {
   *out << YAML::Key << "Name" << YAML::Value << view.name;
   *out << YAML::Key << "Type" << YAML::Value << view.type;
   *out << YAML::Key << "NearClipDistance" << YAML::Value << view.near_clip_distance;
+  *out << YAML::Key << "FarClipDistance" << YAML::Value << view.far_clip_distance;
   *out << YAML::Key << "InvertZAxis" << YAML::Value << view.invert_z_axis;
   *out << YAML::Key << "Yaw" << YAML::Value << view.yaw;
   *out << YAML::Key << "Pitch" << YAML::Value << view.pitch;

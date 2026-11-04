@@ -248,17 +248,13 @@ void ViewportHudOverlay::resolveChannelIfNeeded() {
   if (preferred.isEmpty()) {
     return;
   }
-  // Prefer an Odometry display channel; otherwise keep /odom until data arrives,
-  // then also try /fake/odom once.
+  // Prefer an Odometry display channel; otherwise keep /odom until data arrives.
   if (channel_.isEmpty()) {
     setChannel(preferred);
     return;
   }
-  if (!snap.has_data && channel_ == QLatin1String("/odom") &&
-      preferred == QLatin1String("/odom")) {
-    setChannel(QStringLiteral("/fake/odom"));
-  } else if (!snap.has_data && channel_ != preferred &&
-             preferred != QLatin1String("/odom")) {
+  if (!snap.has_data && channel_ != preferred &&
+      preferred != QLatin1String("/odom")) {
     setChannel(preferred);
   }
 }

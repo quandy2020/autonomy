@@ -417,7 +417,8 @@ bool OgreRenderBackend::initialize() {
   impl_->camera_node->attachObject(impl_->camera);
   impl_->camera_node->setFixedYawAxis(true, Ogre::Vector3::UNIT_Z);
   impl_->camera->setNearClipDistance(0.01f);
-  impl_->camera->setFarClipDistance(500.f);
+  // Match RViz outdoor default; per-frame values come from ViewController.
+  impl_->camera->setFarClipDistance(100000.f);
   impl_->camera->setFOVy(Ogre::Degree(45.f));
   impl_->camera->setAutoAspectRatio(true);
 
@@ -500,8 +501,9 @@ void OgreRenderBackend::render(bool show_grid,
   impl_->camera_node->lookAt(ToOgre(look_target), Ogre::Node::TS_WORLD,
                              Ogre::Vector3::NEGATIVE_UNIT_Z);
   impl_->camera->setNearClipDistance(
-      std::max(0.001f, view_controller.nearClipDistance()));
-  impl_->camera->setFarClipDistance(500.f);
+      std::max(0.001f, view_controller.effectiveNearClipDistance()));
+  impl_->camera->setFarClipDistance(
+      std::max(1.f, view_controller.effectiveFarClipDistance()));
 
   if (ortho_2d) {
     // Match ViewController::projectionMatrix TopDownOrtho: equal world metres

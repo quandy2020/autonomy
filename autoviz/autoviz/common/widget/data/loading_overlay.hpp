@@ -53,11 +53,15 @@ class LoadingOverlay final : public QWidget {
   void hideEvent(QHideEvent* event) override;
 
  private:
+  void CapturePreviousFocus();
+  void ReleaseInputFilter();
+  void RestorePreviousFocus();
   void SyncGeometryAndVisibility();
   void SyncAnimation();
   void SyncInputFilter();
 
   QPointer<QWidget> target_;
+  QPointer<QWidget> previous_focus_;
   ProgressRing* progress_ring_ = nullptr;
   QLabel* message_label_ = nullptr;
   style::Tone tone_ = style::Tone::Shell;

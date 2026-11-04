@@ -5,6 +5,7 @@
 #include "autoviz/common/widget/overlay/drawer.hpp"
 
 #include <QAbstractAnimation>
+#include <QApplication>
 #include <QEasingCurve>
 #include <QEvent>
 #include <QHideEvent>
@@ -19,8 +20,28 @@
 #include <algorithm>
 
 #include "autoviz/common/widget/foundation/motion_policy.hpp"
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
 
 namespace autoviz::widget {
+namespace {
+
+QWidget* FindFocusableDescendant(const QWidget* drawer, QWidget* start,
+                                 bool next) {
+  QWidget* candidate = start;
+  do {
+    candidate = next ? candidate->nextInFocusChain()
+                     : candidate->previousInFocusChain();
+    if (candidate != nullptr && candidate != drawer &&
+        drawer->isAncestorOf(candidate) && !candidate->isWindow() &&
+        candidate->isVisibleTo(drawer) && candidate->isEnabled() &&
+        (candidate->focusPolicy() & Qt::TabFocus) != 0) {
+      return candidate;
+    }
+  } while (candidate != nullptr && candidate != start);
+  return nullptr;
+}
+
+}  // namespace
 
 Drawer::Drawer(QWidget* parent)
     : QWidget(parent),
@@ -39,12 +60,11 @@ Drawer::Drawer(QWidget* parent)
     if (closing_) {
       closing_ = false;
       hide();
+      RestorePreviousFocus();
       emit Closed();
       return;
     }
-    if (content_ != nullptr) {
-      content_->setFocus(Qt::OtherFocusReason);
-    }
+    FocusFirstDescendant();
     emit Opened();
   });
 
@@ -88,6 +108,9 @@ void Drawer::SetTone(style::Tone tone) {
     return;
   }
   tone_ = tone;
+  if (content_ != nullptr) {
+    ApplyWidgetTheme(content_, tone_, true);
+  }
   update();
 }
 
@@ -102,6 +125,7 @@ void Drawer::SetContentWidget(QWidget* content) {
   content_ = content;
   if (content_ != nullptr) {
     content_->setParent(this);
+    ApplyWidgetTheme(content_, tone_, true);
     content_->show();
   }
   UpdateContentGeometry();
@@ -126,6 +150,9 @@ void Drawer::Show() {
     return;
   }
   const bool was_visible = isVisible();
+  if (!was_visible) {
+    previous_focus_ = QApplication::focusWidget();
+  }
   closing_ = false;
   animation_->stop();
   SyncToParent();
@@ -135,9 +162,7 @@ void Drawer::Show() {
 
   if (!AnimationsEnabled()) {
     SetProgress(1.0);
-    if (content_ != nullptr) {
-      content_->setFocus(Qt::OtherFocusReason);
-    }
+    FocusFirstDescendant();
     if (!was_visible) {
       emit Opened();
     }
@@ -146,8 +171,9 @@ void Drawer::Show() {
   if (!was_visible) {
     SetProgress(0.0);
   }
-  animation_->setDuration(
-      MotionPolicy::ResolveDuration(GetThemeTokens(tone_).animation_normal_ms));
+  animation_->setDuration(MotionPolicy::ResolveDuration(
+      GetThemeTokens(this, tone_).animation_normal_ms));
+  animation_->setEasingCurve(QEasingCurve::OutCubic);
   animation_->setStartValue(progress_);
   animation_->setEndValue(1.0);
   animation_->start(QAbstractAnimation::KeepWhenStopped);
@@ -163,11 +189,13 @@ void Drawer::Dismiss() {
     SetProgress(0.0);
     closing_ = false;
     hide();
+    RestorePreviousFocus();
     emit Closed();
     return;
   }
-  animation_->setDuration(
-      MotionPolicy::ResolveDuration(GetThemeTokens(tone_).animation_normal_ms));
+  animation_->setDuration(MotionPolicy::ResolveDuration(
+      GetThemeTokens(this, tone_).animation_normal_ms));
+  animation_->setEasingCurve(QEasingCurve::InCubic);
   animation_->setStartValue(progress_);
   animation_->setEndValue(0.0);
   animation_->start(QAbstractAnimation::KeepWhenStopped);
@@ -204,6 +232,23 @@ bool Drawer::eventFilter(QObject* watched, QEvent* event) {
   return QWidget::eventFilter(watched, event);
 }
 
+bool Drawer::focusNextPrevChild(bool next) {
+  if (!isVisible()) {
+    return QWidget::focusNextPrevChild(next);
+  }
+  QWidget* current = QApplication::focusWidget();
+  if (current == nullptr || (current != this && !isAncestorOf(current))) {
+    current = this;
+  }
+  QWidget* target = FindFocusableDescendant(this, current, next);
+  if (target != nullptr) {
+    target->setFocus(next ? Qt::TabFocusReason : Qt::BacktabFocusReason);
+  } else {
+    setFocus(next ? Qt::TabFocusReason : Qt::BacktabFocusReason);
+  }
+  return true;
+}
+
 void Drawer::hideEvent(QHideEvent* event) {
   animation_->stop();
   QWidget::hideEvent(event);
@@ -229,12 +274,12 @@ void Drawer::mousePressEvent(QMouseEvent* event) {
 
 void Drawer::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
 
-  QColor scrim(Qt::black);
-  scrim.setAlpha(qRound(88.0 * progress_));
+  QColor scrim = tokens.scrim;
+  scrim.setAlpha(qRound(scrim.alpha() * progress_));
   painter.fillRect(rect(), scrim);
 
   painter.setPen(QPen(tokens.border, 1));
@@ -255,6 +300,15 @@ void Drawer::SetProgress(qreal progress) {
   progress_ = bounded;
   UpdateContentGeometry();
   update();
+}
+
+void Drawer::FocusFirstDescendant() {
+  QWidget* target = FindFocusableDescendant(this, this, true);
+  if (target != nullptr) {
+    target->setFocus(Qt::OtherFocusReason);
+  } else {
+    setFocus(Qt::PopupFocusReason);
+  }
 }
 
 QRectF Drawer::PanelRect() const {
@@ -286,9 +340,17 @@ void Drawer::UpdateContentGeometry() {
   if (content_ == nullptr) {
     return;
   }
-  const int margin = GetThemeTokens(tone_).spacing_lg;
+  const int margin = GetThemeTokens(this, tone_).spacing_lg;
   content_->setGeometry(
       PanelRect().toAlignedRect().adjusted(margin, margin, -margin, -margin));
+}
+
+void Drawer::RestorePreviousFocus() {
+  if (previous_focus_ != nullptr && previous_focus_->isVisible() &&
+      previous_focus_->isEnabled()) {
+    previous_focus_->setFocus(Qt::PopupFocusReason);
+  }
+  previous_focus_.clear();
 }
 
 bool Drawer::AnimationsEnabled() const {

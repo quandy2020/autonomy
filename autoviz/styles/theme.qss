@@ -48,23 +48,23 @@ QToolBar#AutovizToolBar QToolButton {
   padding: 3px 6px;
   margin: 0;
   border-radius: 5px;
-  color: #475569;
+  color: {{muted}};
 }
 QToolButton:hover {
   background: rgba(148,163,184,0.14);
   border-color: rgba(148,163,184,0.22);
-  color: #0F766E;
+  color: {{accent-pressed}};
 }
 QToolButton:pressed {
   background: rgba(148,163,184,0.22);
 }
 QToolButton:checked {
-  background: rgba(8,145,178,0.14);
-  color: #0E7490;
-  border-color: rgba(8,145,178,0.32);
+  background: {{accent-a14}};
+  color: {{accent-pressed}};
+  border-color: {{accent-a32}};
 }
 QToolButton:checked:hover {
-  background: rgba(8,145,178,0.20);
+  background: {{accent-a20}};
 }
 QToolButton:disabled { color: {{disabled}}; }
 QToolButton#AutovizToolbarChromeButton,
@@ -158,8 +158,8 @@ QHeaderView {
   color: {{muted}};
   border: none;
 }
-QScrollBar:vertical { background: transparent; width: 10px; margin: 0; }
-QScrollBar:horizontal { background: transparent; height: 10px; margin: 0; }
+/* Scrollbars painted by ProxyStyle (Liquid Glass capsule). Avoid QSS here —
+ * stylesheet scrollbars fight Fusion proxy painting and look like gray rails. */
 
 /* --- app/overlay.qss --- */
 /* app/overlay — splitter, dialog, scroll area, tooltip */

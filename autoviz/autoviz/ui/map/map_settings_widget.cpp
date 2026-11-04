@@ -14,7 +14,6 @@
 #include <QFile>
 #include <QFileDialog>
 #include <QFormLayout>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
@@ -30,6 +29,7 @@
 #include <algorithm>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/layout/collapsible_panel.hpp"
 #include "autoviz/ui/map/map_message_ingest.hpp"
 #include "autoviz/ui/map/map_plan.hpp"
 #include "autoviz/ui/map/map_types.hpp"
@@ -57,16 +57,15 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   root->setSpacing(PanelSettingsLayout::kOuterSpacing);
   root->setAlignment(Qt::AlignTop);
 
-  attribute_group_ = new QGroupBox(tr("Attributes"), this);
-  StyleSettingsGroupBox(attribute_group_);
-  auto* attribute_layout = new QVBoxLayout(attribute_group_);
+  auto* attribute_host = new QWidget(this);
+  auto* attribute_layout = new QVBoxLayout(attribute_host);
   ApplyCompactVBox(attribute_layout);
   attribute_hint_ = new QLabel(
-      tr("Select a feature or plan vertex on the map."), attribute_group_);
+      tr("Select a feature or plan vertex on the map."), attribute_host);
   attribute_hint_->setWordWrap(true);
   attribute_hint_->setStyleSheet(PropertyInspectorHintStyle());
   attribute_layout->addWidget(attribute_hint_);
-  attribute_body_ = new QWidget(attribute_group_);
+  attribute_body_ = new QWidget(attribute_host);
   auto* attribute_form = new QFormLayout(attribute_body_);
   ApplyCompactForm(attribute_form);
   attribute_kind_label_ = new QLabel(attribute_body_);
@@ -101,16 +100,21 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   attribute_form->addRow(QString(), attribute_remove_button_);
   attribute_body_->hide();
   attribute_layout->addWidget(attribute_body_);
+  attribute_group_ = new widget::CollapsiblePanel(this);
+  attribute_group_->SetTone(style::Tone::Frost);
+  attribute_group_->SetAnimationEnabled(true);
+  attribute_group_->SetTitle(tr("Attributes"));
+  attribute_group_->SetContentWidget(attribute_host);
+  attribute_group_->SetExpanded(true);
   root->addWidget(attribute_group_);
 
-  auto* general = new QGroupBox(tr("General"), this);
-  StyleSettingsGroupBox(general);
-  auto* general_form = new QFormLayout(general);
+  auto* general_body = new QWidget(this);
+  auto* general_form = new QFormLayout(general_body);
   ApplyCompactForm(general_form);
-  title_edit_ = new QLineEdit(general);
+  title_edit_ = new QLineEdit(general_body);
   general_form->addRow(tr("Title"), title_edit_);
 
-  base_layer_combo_ = MakeEnumCombo(general);
+  base_layer_combo_ = MakeEnumCombo(general_body);
   base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kStreet),
                              static_cast<int>(MapBaseLayer::kStreet));
   base_layer_combo_->addItem(BaseLayerLabel(MapBaseLayer::kSatellite),
@@ -137,54 +141,54 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
                              static_cast<int>(MapBaseLayer::kBingAerial));
   general_form->addRow(tr("Base layer"), base_layer_combo_);
 
-  custom_tile_url_edit_ = new QLineEdit(general);
+  custom_tile_url_edit_ = new QLineEdit(general_body);
   custom_tile_url_edit_->setPlaceholderText(tr("https://example.com/{z}/{x}/{y}.png"));
   general_form->addRow(tr("Custom tile URL"), custom_tile_url_edit_);
 
-  follow_channel_combo_ = new QComboBox(general);
+  follow_channel_combo_ = new QComboBox(general_body);
   follow_channel_combo_->setEditable(false);
   general_form->addRow(tr("Follow channel"), follow_channel_combo_);
 
-  gcs_channel_combo_ = new QComboBox(general);
+  gcs_channel_combo_ = new QComboBox(general_body);
   gcs_channel_combo_->setEditable(false);
   general_form->addRow(tr("GCS channel"), gcs_channel_combo_);
 
-  distance_unit_combo_ = MakeEnumCombo(general);
+  distance_unit_combo_ = MakeEnumCombo(general_body);
   distance_unit_combo_->addItem(DistanceUnitLabel(MapDistanceUnit::kMeters),
                                 static_cast<int>(MapDistanceUnit::kMeters));
   distance_unit_combo_->addItem(DistanceUnitLabel(MapDistanceUnit::kFeet),
                                 static_cast<int>(MapDistanceUnit::kFeet));
   general_form->addRow(tr("Distance units"), distance_unit_combo_);
 
-  center_lat_spin_ = new QDoubleSpinBox(general);
+  center_lat_spin_ = new QDoubleSpinBox(general_body);
   center_lat_spin_->setRange(-85.0, 85.0);
   center_lat_spin_->setDecimals(6);
-  center_lon_spin_ = new QDoubleSpinBox(general);
+  center_lon_spin_ = new QDoubleSpinBox(general_body);
   center_lon_spin_->setRange(-180.0, 180.0);
   center_lon_spin_->setDecimals(6);
-  zoom_spin_ = new QDoubleSpinBox(general);
+  zoom_spin_ = new QDoubleSpinBox(general_body);
   zoom_spin_->setRange(2.0, 20.0);
   zoom_spin_->setSingleStep(0.5);
   general_form->addRow(tr("Center latitude"), center_lat_spin_);
   general_form->addRow(tr("Center longitude"), center_lon_spin_);
   general_form->addRow(tr("Zoom"), zoom_spin_);
-  root->addWidget(general);
+  root->addWidget(
+      MakeCollapsibleSection(this, tr("General"), general_body, true));
 
-  auto* topics_group = new QGroupBox(tr("Channels"), this);
-  StyleSettingsGroupBox(topics_group);
-  auto* topics_layout = new QVBoxLayout(topics_group);
+  auto* topics_body = new QWidget(this);
+  auto* topics_layout = new QVBoxLayout(topics_body);
   ApplyCompactVBox(topics_layout);
   auto* topic_buttons = new QHBoxLayout();
-  auto* add_topic = MakeFlatActionButton(tr("Add"), topics_group);
-  auto* remove_topic = MakeDestructiveFlatActionButton(tr("Remove"), topics_group);
+  auto* add_topic = MakeFlatActionButton(tr("Add"), topics_body);
+  auto* remove_topic = MakeDestructiveFlatActionButton(tr("Remove"), topics_body);
   topic_buttons->addWidget(add_topic);
   topic_buttons->addWidget(remove_topic);
   topic_buttons->addStretch(1);
   topics_layout->addLayout(topic_buttons);
-  topic_list_ = new QListWidget(topics_group);
+  topic_list_ = new QListWidget(topics_body);
   topics_layout->addWidget(topic_list_);
 
-  topic_editor_ = new QWidget(topics_group);
+  topic_editor_ = new QWidget(topics_body);
   auto* topic_form = new QFormLayout(topic_editor_);
   ApplyCompactForm(topic_form);
   topic_channel_combo_ = new QComboBox(topic_editor_);
@@ -229,22 +233,23 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   topic_enabled_check_ = new QCheckBox(tr("Enabled"), topic_editor_);
   topic_form->addRow(QString(), topic_enabled_check_);
   topics_layout->addWidget(topic_editor_);
-  root->addWidget(topics_group);
+  root->addWidget(
+      MakeCollapsibleSection(this, tr("Channels"), topics_body, true));
 
-  auto* overlay_group = new QGroupBox(tr("Overlay layers"), this);
-  StyleSettingsGroupBox(overlay_group);
-  auto* overlay_layout = new QVBoxLayout(overlay_group);
+  auto* overlay_body = new QWidget(this);
+  auto* overlay_layout = new QVBoxLayout(overlay_body);
   ApplyCompactVBox(overlay_layout);
   auto* overlay_buttons = new QHBoxLayout();
-  auto* add_overlay = MakeFlatActionButton(tr("Add"), overlay_group);
-  auto* remove_overlay = MakeDestructiveFlatActionButton(tr("Remove"), overlay_group);
+  auto* add_overlay = MakeFlatActionButton(tr("Add"), overlay_body);
+  auto* remove_overlay =
+      MakeDestructiveFlatActionButton(tr("Remove"), overlay_body);
   overlay_buttons->addWidget(add_overlay);
   overlay_buttons->addWidget(remove_overlay);
   overlay_buttons->addStretch(1);
   overlay_layout->addLayout(overlay_buttons);
-  overlay_list_ = new QListWidget(overlay_group);
+  overlay_list_ = new QListWidget(overlay_body);
   overlay_layout->addWidget(overlay_list_);
-  overlay_editor_ = new QWidget(overlay_group);
+  overlay_editor_ = new QWidget(overlay_body);
   auto* overlay_form = new QFormLayout(overlay_editor_);
   ApplyCompactForm(overlay_form);
   overlay_name_edit_ = new QLineEdit(overlay_editor_);
@@ -258,26 +263,27 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
   overlay_form->addRow(tr("Opacity"), overlay_opacity_spin_);
   overlay_form->addRow(QString(), overlay_enabled_check_);
   overlay_layout->addWidget(overlay_editor_);
-  root->addWidget(overlay_group);
+  root->addWidget(
+      MakeCollapsibleSection(this, tr("Overlay layers"), overlay_body, false));
 
-  auto* geojson_group = new QGroupBox(tr("GeoJSON"), this);
-  StyleSettingsGroupBox(geojson_group);
-  auto* geojson_layout = new QVBoxLayout(geojson_group);
+  auto* geojson_body = new QWidget(this);
+  auto* geojson_layout = new QVBoxLayout(geojson_body);
   ApplyCompactVBox(geojson_layout);
   auto* geojson_buttons = new QHBoxLayout();
-  auto* remove_geojson = MakeDestructiveFlatActionButton(tr("Remove"), geojson_group);
+  auto* remove_geojson =
+      MakeDestructiveFlatActionButton(tr("Remove"), geojson_body);
   geojson_buttons->addWidget(remove_geojson);
   geojson_buttons->addStretch(1);
   geojson_layout->addLayout(geojson_buttons);
-  geojson_list_ = new QListWidget(geojson_group);
+  geojson_list_ = new QListWidget(geojson_body);
   geojson_layout->addWidget(geojson_list_);
-  root->addWidget(geojson_group);
+  root->addWidget(
+      MakeCollapsibleSection(this, tr("GeoJSON"), geojson_body, false));
 
-  auto* plan_group = new QGroupBox(tr("Plan"), this);
-  StyleSettingsGroupBox(plan_group);
-  auto* plan_form = new QFormLayout(plan_group);
+  auto* plan_body = new QWidget(this);
+  auto* plan_form = new QFormLayout(plan_body);
   ApplyCompactForm(plan_form);
-  edit_tool_combo_ = MakeEnumCombo(plan_group);
+  edit_tool_combo_ = MakeEnumCombo(plan_body);
   edit_tool_combo_->addItem(EditToolLabel(MapEditTool::kPan),
                             static_cast<int>(MapEditTool::kPan));
   edit_tool_combo_->addItem(EditToolLabel(MapEditTool::kWaypoint),
@@ -288,49 +294,50 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
                             static_cast<int>(MapEditTool::kRally));
   edit_tool_combo_->setToolTip(tr("1 Pan · 2 Waypoint · 3 Geofence · 4 Rally · M Measure · Esc Cancel · Del Undo · F Fit"));
   plan_form->addRow(tr("Click tool"), edit_tool_combo_);
-  survey_spacing_spin_ = new QDoubleSpinBox(plan_group);
+  survey_spacing_spin_ = new QDoubleSpinBox(plan_body);
   survey_spacing_spin_->setRange(5.0, 500.0);
   survey_spacing_spin_->setSuffix(tr(" m"));
   plan_form->addRow(tr("Survey spacing"), survey_spacing_spin_);
-  corridor_width_spin_ = new QDoubleSpinBox(plan_group);
+  corridor_width_spin_ = new QDoubleSpinBox(plan_body);
   corridor_width_spin_->setRange(5.0, 500.0);
   corridor_width_spin_->setSuffix(tr(" m"));
   plan_form->addRow(tr("Corridor width"), corridor_width_spin_);
-  structure_radius_spin_ = new QDoubleSpinBox(plan_group);
+  structure_radius_spin_ = new QDoubleSpinBox(plan_body);
   structure_radius_spin_->setRange(5.0, 2000.0);
   structure_radius_spin_->setSuffix(tr(" m"));
   plan_form->addRow(tr("Structure radius"), structure_radius_spin_);
   auto* plan_buttons = new QHBoxLayout();
-  auto* survey_button = MakePrimaryActionButton(tr("Survey"), plan_group);
-  auto* corridor_button = MakeFlatActionButton(tr("Corridor"), plan_group);
-  auto* structure_button = MakeFlatActionButton(tr("Structure"), plan_group);
+  auto* survey_button = MakePrimaryActionButton(tr("Survey"), plan_body);
+  auto* corridor_button = MakeFlatActionButton(tr("Corridor"), plan_body);
+  auto* structure_button = MakeFlatActionButton(tr("Structure"), plan_body);
   plan_buttons->addWidget(survey_button);
   plan_buttons->addWidget(corridor_button);
   plan_buttons->addWidget(structure_button);
   plan_form->addRow(QString(), plan_buttons);
   auto* file_buttons = new QHBoxLayout();
-  auto* export_plan = MakeFlatActionButton(tr("Export"), plan_group);
-  auto* import_plan = MakeFlatActionButton(tr("Import"), plan_group);
+  auto* export_plan = MakeFlatActionButton(tr("Export"), plan_body);
+  auto* import_plan = MakeFlatActionButton(tr("Import"), plan_body);
   file_buttons->addWidget(export_plan);
   file_buttons->addWidget(import_plan);
   plan_form->addRow(tr("Plan file"), file_buttons);
-  root->addWidget(plan_group);
+  root->addWidget(MakeCollapsibleSection(this, tr("Plan"), plan_body, false));
 
-  auto* offline_group = new QGroupBox(tr("Offline tiles"), this);
-  StyleSettingsGroupBox(offline_group);
-  auto* offline_form = new QFormLayout(offline_group);
+  auto* offline_body = new QWidget(this);
+  auto* offline_form = new QFormLayout(offline_body);
   ApplyCompactForm(offline_form);
-  offline_min_zoom_spin_ = new QSpinBox(offline_group);
+  offline_min_zoom_spin_ = new QSpinBox(offline_body);
   offline_min_zoom_spin_->setRange(2, 18);
-  offline_max_zoom_spin_ = new QSpinBox(offline_group);
+  offline_max_zoom_spin_ = new QSpinBox(offline_body);
   offline_max_zoom_spin_->setRange(2, 18);
   offline_min_zoom_spin_->setValue(14);
   offline_max_zoom_spin_->setValue(16);
   offline_form->addRow(tr("Min zoom"), offline_min_zoom_spin_);
   offline_form->addRow(tr("Max zoom"), offline_max_zoom_spin_);
-  auto* download_button = MakePrimaryActionButton(tr("Download view"), offline_group);
+  auto* download_button =
+      MakePrimaryActionButton(tr("Download view"), offline_body);
   offline_form->addRow(QString(), download_button);
-  root->addWidget(offline_group);
+  root->addWidget(
+      MakeCollapsibleSection(this, tr("Offline tiles"), offline_body, false));
   root->addStretch(1);
 
   connect(add_topic, &QPushButton::clicked, this, &MapSettingsWidget::onAddTopicLayer);
@@ -532,8 +539,10 @@ void MapSettingsWidget::setSelection(const MapSelectionInfo& info) {
   const bool show = info.valid;
   attribute_body_->setVisible(show);
   attribute_hint_->setVisible(!show);
-  attribute_group_->setTitle(show && !info.title.isEmpty() ? info.title
-                                                           : tr("Attributes"));
+  if (attribute_group_ != nullptr) {
+    attribute_group_->SetTitle(show && !info.title.isEmpty() ? info.title
+                                                            : tr("Attributes"));
+  }
   if (!show) {
     attribute_table_->setRowCount(0);
     return;

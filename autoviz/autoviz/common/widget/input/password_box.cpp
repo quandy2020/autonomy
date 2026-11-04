@@ -5,14 +5,34 @@
 #include "autoviz/common/widget/input/password_box.hpp"
 
 #include <QAction>
-#include <QIcon>
+#include <QEvent>
 #include <QKeySequence>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPalette>
-#include <QStyle>
+
+#include "autoviz/common/widget/foundation/semantic_icon.hpp"
+#include "autoviz/common/widget/foundation/validation_state.hpp"
 
 namespace autoviz::widget {
+namespace {
+
+void EnsureTransparentEditorBase(QLineEdit* editor) {
+  QPalette palette = editor->palette();
+  bool changed = false;
+  for (const QPalette::ColorGroup group :
+       {QPalette::Active, QPalette::Inactive, QPalette::Disabled}) {
+    if (palette.brush(group, QPalette::Base).color().alpha() != 0) {
+      palette.setBrush(group, QPalette::Base, Qt::transparent);
+      changed = true;
+    }
+  }
+  if (changed) {
+    editor->setPalette(palette);
+  }
+}
+
+}  // namespace
 
 PasswordBox::PasswordBox(QWidget* parent) : QLineEdit(parent) {
   setObjectName(QStringLiteral("AutovizPasswordBox"));
@@ -21,11 +41,10 @@ PasswordBox::PasswordBox(QWidget* parent) : QLineEdit(parent) {
   setEchoMode(QLineEdit::Password);
   setFrame(false);
   setFocusPolicy(Qt::StrongFocus);
+  setAttribute(Qt::WA_Hover);
   setTextMargins(10, 0, 4, 0);
-  QPalette field_palette = palette();
-  field_palette.setBrush(QPalette::Base, Qt::transparent);
-  setPalette(field_palette);
   setAttribute(Qt::WA_TranslucentBackground);
+  EnsureTransparentEditorBase(this);
 
   reveal_action_ = new QAction(this);
   addAction(reveal_action_, QLineEdit::TrailingPosition);
@@ -57,23 +76,77 @@ void PasswordBox::SetTone(style::Tone tone) {
 
 QSize PasswordBox::sizeHint() const {
   QSize result = QLineEdit::sizeHint();
-  result.setHeight(GetThemeTokens(tone_).control_height_medium);
+  result.setHeight(GetThemeTokens(this, tone_).control_height_medium);
   result.setWidth(qMax(result.width(), 200));
   return result;
 }
 
+bool PasswordBox::event(QEvent* event) {
+  switch (event->type()) {
+    case QEvent::Enter:
+    case QEvent::Leave:
+    case QEvent::FocusIn:
+    case QEvent::FocusOut:
+      update();
+      break;
+    case QEvent::EnabledChange:
+      if (reveal_action_ != nullptr) {
+        UpdateRevealAction();
+      }
+      update();
+      break;
+    case QEvent::PaletteChange:
+      EnsureTransparentEditorBase(this);
+      if (reveal_action_ != nullptr) {
+        UpdateRevealAction();
+      }
+      update();
+      break;
+    case QEvent::DynamicPropertyChange:
+      update();
+      break;
+    default:
+      break;
+  }
+  return QLineEdit::event(event);
+}
+
 void PasswordBox::paintEvent(QPaintEvent* event) {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
-  QPainter painter(this);
-  painter.setRenderHint(QPainter::Antialiasing);
-  painter.setBrush(isEnabled() ? tokens.surface_raised : tokens.surface);
-  painter.setPen(QPen(hasFocus() ? tokens.focus_ring : tokens.border,
-                      hasFocus() ? tokens.focus_ring_width : 1));
-  const qreal inset = hasFocus() ? tokens.focus_ring_width * 0.5 : 0.5;
-  painter.drawRoundedRect(QRectF(rect()).adjusted(inset, inset, -inset, -inset),
-                          tokens.radius_small, tokens.radius_small);
-  painter.end();
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  QColor fill = tokens.surface_sunken;
+  QColor border = tokens.border_subtle;
+  qreal border_width = 1.0;
+  if (!isEnabled()) {
+    fill = tokens.surface_sunken;
+    border = tokens.disabled;
+  } else if (internal::HasValidationError(this)) {
+    border = tokens.danger;
+    border_width = hasFocus() ? tokens.focus_ring_width + 1.0 : 2.0;
+  } else if (hasFocus()) {
+    border = tokens.focus_ring;
+    border_width = tokens.focus_ring_width;
+  } else if (underMouse()) {
+    fill = tokens.surface_material;
+  }
+
+  QPainter background(this);
+  background.setRenderHint(QPainter::Antialiasing);
+  background.setPen(Qt::NoPen);
+  background.setBrush(fill);
+  background.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+                             tokens.radius_small, tokens.radius_small);
+  background.end();
+
   QLineEdit::paintEvent(event);
+
+  QPainter outline(this);
+  outline.setRenderHint(QPainter::Antialiasing);
+  outline.setBrush(Qt::NoBrush);
+  outline.setPen(
+      QPen(border, border_width, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+  const qreal inset = border_width * 0.5;
+  outline.drawRoundedRect(QRectF(rect()).adjusted(inset, inset, -inset, -inset),
+                          tokens.radius_small, tokens.radius_small);
 }
 
 void PasswordBox::UpdateRevealAction() {
@@ -81,11 +154,8 @@ void PasswordBox::UpdateRevealAction() {
                                             : tr("Show password"));
   reveal_action_->setToolTip(password_visible_ ? tr("Hide password")
                                                : tr("Show password"));
-  const QString icon_name = password_visible_
-                                ? QStringLiteral("view-conceal-symbolic")
-                                : QStringLiteral("view-reveal-symbolic");
-  reveal_action_->setIcon(QIcon::fromTheme(
-      icon_name, style()->standardIcon(QStyle::SP_TitleBarContextHelpButton)));
+  reveal_action_->setIcon(
+      internal::MakePaletteVisibilityIcon(palette(), password_visible_));
 }
 
 }  // namespace autoviz::widget

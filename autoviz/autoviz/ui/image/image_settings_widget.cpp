@@ -105,8 +105,10 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
     : QWidget(parent), manager_(manager), config_() {
   ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(4, 4, 4, 4);
-  outer->setSpacing(4);
+  outer->setContentsMargins(
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
+      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
   outer->setAlignment(Qt::AlignTop);
 
   // —— General (includes title) ——

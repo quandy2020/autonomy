@@ -28,29 +28,29 @@ QToolButton:hover {
 
 /* @section toolbar */
 QFrame#{{id-toolbar}} {
-  background: rgba(255,255,255,0.42);
+  background: {{panel-surface}};
   border: none;
-  border-bottom: 1px solid rgba(186,230,253,0.70);
+  border-bottom: 1px solid {{panel-border}};
 }
 /* @end */
 
 /* @section footer_frame */
 QFrame#{{id-footer}} {
-  background: rgba(255,255,255,0.55);
+  background: {{panel-surface}};
   border: none;
-  border-top: 1px solid rgba(186,230,253,0.70);
+  border-top: 1px solid {{panel-border}};
 }
 /* @end */
 
 /* @section footer */
-background: rgba(255,255,255,0.55);
+background: {{panel-surface}};
 border: none;
-border-top: 1px solid rgba(186,230,253,0.70);
+border-top: 1px solid {{panel-border}};
 /* @end */
 
 /* @section status_bar */
-background: rgba(255,255,255,0.45);
-border-top: 1px solid rgba(186,230,253,0.70);
+background: {{panel-surface}};
+border-top: 1px solid {{panel-border}};
 /* @end */
 
 /* @section window_status_bar */
@@ -64,16 +64,16 @@ QScrollArea { background: transparent; border: none; }
 
 /* @section panel */
 #{{name}} {
-  background: rgba(252,253,253,210); color: {{text}};
-  border: 1px solid rgba(226,232,230,140); border-radius: {{r-panel}}px;
+  background: {{panel-bg}}; color: {{panel-text}};
+  border: 1px solid {{panel-border}}; border-radius: {{r-panel}}px;
 }
 /* @end */
 
 /* @section settings */
 /* shell/settings */
-background: {{glass-fill}};
+background: {{panel-bg}};
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
-  background: rgba(255,255,255,0.88);
+  background: {{editor-bg}};
   color: {{text}};
   border: 1px solid {{border}};
   border-radius: 6px;
@@ -89,14 +89,14 @@ QComboBox QLineEdit {
 }
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
   border-color: {{accent}};
-  background: rgba(255,255,255,0.96);
+  background: {{panel-surface-raised}};
 }
 QComboBox::drop-down {
   subcontrol-origin: padding; subcontrol-position: center right;
   width: 16px; border: none;
 }
 QComboBox QAbstractItemView {
-  background: rgba(255,255,255,0.98);
+  background: {{panel-surface-raised}};
   color: {{text}};
   border: 1px solid {{border}};
   selection-background-color: {{sel-bg}};
@@ -106,6 +106,8 @@ QCheckBox {
   spacing: 6px; font-size: 12px; color: {{text}};
   min-height: 16px; max-height: 18px;
 }
+/* Indicator chrome is painted by ProxyStyle (Shell accent) — do not set
+   QCheckBox::indicator backgrounds here or the white checkmark vanishes. */
 /* @end */
 
 /* @section title_tools */
@@ -144,28 +146,17 @@ QToolButton::menu-indicator {
 }
 /* @end */
 
-
 /* @section tree */
 /* Widget-level only — no ::item/::branch/::indicator (Qt 6.2 QCss SEGV risk).
  * Frosted panel trees use DetachItemViewFromStyleSheets() + palette/delegate. */
 QTreeWidget, QTreeView {
   background: transparent;
-  color: #1E293B;
+  color: {{text}};
   border: none;
   outline: none;
   padding: 2px 2px;
   font-size: 13px;
   show-decoration-selected: 0;
-}
-QScrollBar:vertical {
-  background: transparent; width: 7px; margin: 4px 2px;
-}
-QScrollBar::handle:vertical {
-  background: rgba(45,212,191,0.40);
-  border-radius: 3px; min-height: 24px;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-  height: 0;
 }
 /* @end */
 
@@ -173,7 +164,7 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 /* surface/list */
 QListWidget, QListView {
   background: transparent;
-  color: #1E293B;
+  color: {{text}};
   border: none;
   outline: none;
   padding: 4px;
@@ -195,17 +186,7 @@ QListWidget::item:selected:active, QListView::item:selected:active {
   outline: none;
 }
 QListWidget::item:selected, QListView::item:selected {
-  color: #0D9488; font-weight: 600;
-}
-QScrollBar:vertical {
-  background: transparent; width: 7px; margin: 4px 2px;
-}
-QScrollBar::handle:vertical {
-  background: rgba(45,212,191,0.40);
-  border-radius: 3px; min-height: 24px;
-}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-  height: 0;
+  color: {{accent}}; font-weight: 600;
 }
 /* @end */
 
@@ -213,9 +194,9 @@ QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
 /* surface/help */
 QTextBrowser {
   background: rgba(255,255,255,0.42);
-  color: #475569;
+  color: {{muted}};
   border: none;
-  border-top: 1px solid rgba(186,230,253,0.70);
+  border-top: 1px solid {{panel-border}};
   padding: 12px 14px 14px 14px;
   font-size: 12px;
 }
@@ -232,7 +213,6 @@ QTextBrowser {
   font-size: 12px;
 }
 /* @end */
-
 
 /* @section viewport */
 /* app/viewport.qss */

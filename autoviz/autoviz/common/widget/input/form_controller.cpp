@@ -14,11 +14,24 @@
 #include <QSpinBox>
 #include <QWidget>
 
+#include "autoviz/common/widget/foundation/validation_state.hpp"
+
 namespace autoviz::widget {
+namespace {
 
-FormController::FormController(QObject *parent) : QObject(parent) {}
+void SetValidationErrorState(QWidget* field, bool has_error) {
+  if (field == nullptr || internal::HasValidationError(field) == has_error) {
+    return;
+  }
+  field->setProperty(internal::kValidationErrorProperty, has_error);
+  field->update();
+}
 
-void FormController::RegisterField(QWidget *field, bool required) {
+}  // namespace
+
+FormController::FormController(QObject* parent) : QObject(parent) {}
+
+void FormController::RegisterField(QWidget* field, bool required) {
   if (field == nullptr || fields_.contains(field)) {
     return;
   }
@@ -31,30 +44,30 @@ void FormController::RegisterField(QWidget *field, bool required) {
 
   auto changed = [this, field]() { NotifyFieldChanged(field); };
   QMetaObject::Connection value_connection;
-  if (auto *edit = qobject_cast<QLineEdit *>(field); edit != nullptr) {
+  if (auto* edit = qobject_cast<QLineEdit*>(field); edit != nullptr) {
     value_connection = connect(edit, &QLineEdit::textChanged, this,
-                               [changed](const QString &) { changed(); });
-  } else if (auto *combo = qobject_cast<QComboBox *>(field); combo != nullptr) {
+                               [changed](const QString&) { changed(); });
+  } else if (auto* combo = qobject_cast<QComboBox*>(field); combo != nullptr) {
     value_connection = connect(combo, &QComboBox::currentIndexChanged, this,
                                [changed](int) { changed(); });
-  } else if (auto *button = qobject_cast<QAbstractButton *>(field);
+  } else if (auto* button = qobject_cast<QAbstractButton*>(field);
              button != nullptr) {
     value_connection = connect(button, &QAbstractButton::toggled, this,
                                [changed](bool) { changed(); });
-  } else if (auto *spin = qobject_cast<QSpinBox *>(field); spin != nullptr) {
+  } else if (auto* spin = qobject_cast<QSpinBox*>(field); spin != nullptr) {
     value_connection = connect(spin, &QSpinBox::valueChanged, this,
                                [changed](int) { changed(); });
-  } else if (auto *spin = qobject_cast<QDoubleSpinBox *>(field);
+  } else if (auto* spin = qobject_cast<QDoubleSpinBox*>(field);
              spin != nullptr) {
     value_connection = connect(spin, &QDoubleSpinBox::valueChanged, this,
                                [changed](double) { changed(); });
-  } else if (auto *date_time = qobject_cast<QDateTimeEdit *>(field);
+  } else if (auto* date_time = qobject_cast<QDateTimeEdit*>(field);
              date_time != nullptr) {
     value_connection = connect(date_time, &QDateTimeEdit::dateTimeChanged, this,
-                               [changed](const QDateTime &) { changed(); });
+                               [changed](const QDateTime&) { changed(); });
   }
 
-  FieldState &stored = fields_[field];
+  FieldState& stored = fields_[field];
   stored.value_connection = value_connection;
   stored.destroyed_connection =
       connect(field, &QObject::destroyed, this, [this, field]() {
@@ -66,7 +79,7 @@ void FormController::RegisterField(QWidget *field, bool required) {
   RecomputeState();
 }
 
-void FormController::UnregisterField(QWidget *field) {
+void FormController::UnregisterField(QWidget* field) {
   auto iterator = fields_.find(field);
   if (iterator == fields_.end()) {
     return;
@@ -74,13 +87,13 @@ void FormController::UnregisterField(QWidget *field) {
   disconnect(iterator->value_connection);
   disconnect(iterator->destroyed_connection);
   field->removeEventFilter(this);
-  field->setProperty("autovizValidationError", false);
+  SetValidationErrorState(field, false);
   field->setAccessibleDescription(iterator->base_accessible_description);
   fields_.erase(iterator);
   RecomputeState();
 }
 
-void FormController::SetRequired(QWidget *field, bool required) {
+void FormController::SetRequired(QWidget* field, bool required) {
   auto iterator = fields_.find(field);
   if (iterator == fields_.end() || iterator->required == required) {
     return;
@@ -90,7 +103,7 @@ void FormController::SetRequired(QWidget *field, bool required) {
   RecomputeState();
 }
 
-void FormController::SetFieldError(QWidget *field, const QString &error) {
+void FormController::SetFieldError(QWidget* field, const QString& error) {
   auto iterator = fields_.find(field);
   if (iterator == fields_.end() || iterator->manual_error == error) {
     return;
@@ -100,11 +113,11 @@ void FormController::SetFieldError(QWidget *field, const QString &error) {
   RecomputeState();
 }
 
-void FormController::ClearFieldError(QWidget *field) {
+void FormController::ClearFieldError(QWidget* field) {
   SetFieldError(field, {});
 }
 
-QString FormController::field_error(QWidget *field) const {
+QString FormController::field_error(QWidget* field) const {
   const auto iterator = fields_.constFind(field);
   return iterator == fields_.constEnd() ? QString() : iterator->error;
 }
@@ -116,7 +129,7 @@ void FormController::MarkClean() {
   RecomputeState();
 }
 
-void FormController::NotifyFieldChanged(QWidget *field) {
+void FormController::NotifyFieldChanged(QWidget* field) {
   if (!fields_.contains(field)) {
     return;
   }
@@ -124,15 +137,15 @@ void FormController::NotifyFieldChanged(QWidget *field) {
   RecomputeState();
 }
 
-void FormController::SetSubmitButton(QAbstractButton *button) {
+void FormController::SetSubmitButton(QAbstractButton* button) {
   submit_button_ = button;
   if (submit_button_ != nullptr) {
     submit_button_->setEnabled(valid_);
   }
 }
 
-bool FormController::eventFilter(QObject *watched, QEvent *event) {
-  auto *field = qobject_cast<QWidget *>(watched);
+bool FormController::eventFilter(QObject* watched, QEvent* event) {
+  auto* field = qobject_cast<QWidget*>(watched);
   if (field != nullptr && fields_.contains(field) &&
       event->type() == QEvent::FocusOut) {
     NotifyFieldChanged(field);
@@ -140,25 +153,25 @@ bool FormController::eventFilter(QObject *watched, QEvent *event) {
   return QObject::eventFilter(watched, event);
 }
 
-QVariant FormController::ReadValue(QWidget *field) const {
-  if (const auto *edit = qobject_cast<QLineEdit *>(field); edit != nullptr) {
+QVariant FormController::ReadValue(QWidget* field) const {
+  if (const auto* edit = qobject_cast<QLineEdit*>(field); edit != nullptr) {
     return edit->text();
   }
-  if (const auto *combo = qobject_cast<QComboBox *>(field); combo != nullptr) {
+  if (const auto* combo = qobject_cast<QComboBox*>(field); combo != nullptr) {
     return combo->currentIndex();
   }
-  if (const auto *button = qobject_cast<QAbstractButton *>(field);
+  if (const auto* button = qobject_cast<QAbstractButton*>(field);
       button != nullptr) {
     return button->isChecked();
   }
-  if (const auto *spin = qobject_cast<QSpinBox *>(field); spin != nullptr) {
+  if (const auto* spin = qobject_cast<QSpinBox*>(field); spin != nullptr) {
     return spin->value();
   }
-  if (const auto *spin = qobject_cast<QDoubleSpinBox *>(field);
+  if (const auto* spin = qobject_cast<QDoubleSpinBox*>(field);
       spin != nullptr) {
     return spin->value();
   }
-  if (const auto *date_time = qobject_cast<QDateTimeEdit *>(field);
+  if (const auto* date_time = qobject_cast<QDateTimeEdit*>(field);
       date_time != nullptr) {
     return date_time->dateTime();
   }
@@ -166,12 +179,12 @@ QVariant FormController::ReadValue(QWidget *field) const {
   return property.isValid() ? property.read(field) : QVariant();
 }
 
-QString FormController::ValidateField(QWidget *field,
-                                      const FieldState &state) const {
+QString FormController::ValidateField(QWidget* field,
+                                      const FieldState& state) const {
   if (!state.manual_error.isEmpty()) {
     return state.manual_error;
   }
-  if (const auto *edit = qobject_cast<QLineEdit *>(field); edit != nullptr) {
+  if (const auto* edit = qobject_cast<QLineEdit*>(field); edit != nullptr) {
     if (state.required && edit->text().trimmed().isEmpty()) {
       return tr("This field is required");
     }
@@ -180,11 +193,11 @@ QString FormController::ValidateField(QWidget *field,
     }
     return {};
   }
-  if (const auto *combo = qobject_cast<QComboBox *>(field);
+  if (const auto* combo = qobject_cast<QComboBox*>(field);
       combo != nullptr && state.required && combo->currentIndex() < 0) {
     return tr("This field is required");
   }
-  if (const auto *button = qobject_cast<QAbstractButton *>(field);
+  if (const auto* button = qobject_cast<QAbstractButton*>(field);
       button != nullptr && state.required && button->isCheckable() &&
       !button->isChecked()) {
     return tr("This field is required");
@@ -198,14 +211,14 @@ QString FormController::ValidateField(QWidget *field,
   return {};
 }
 
-void FormController::UpdateField(QWidget *field) {
+void FormController::UpdateField(QWidget* field) {
   auto iterator = fields_.find(field);
   if (iterator == fields_.end()) {
     return;
   }
   const QString previous_error = iterator->error;
   iterator->error = ValidateField(field, *iterator);
-  field->setProperty("autovizValidationError", !iterator->error.isEmpty());
+  SetValidationErrorState(field, !iterator->error.isEmpty());
   field->setAccessibleDescription(iterator->error.isEmpty()
                                       ? iterator->base_accessible_description
                                       : iterator->error);

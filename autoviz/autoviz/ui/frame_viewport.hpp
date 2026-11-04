@@ -228,6 +228,27 @@ class FrameViewport {
   void reinstallRenderWindowInEntry(ViewportPanelEntry& entry);
 
   /**
+   * @brief When @c true, native GL surfaces stay hidden (startup settle).
+   *
+   * Prevents the center 3D View from flashing through create → map →
+   * maximize → dock-resize → park/reinstall before the window is stable.
+   */
+  bool isViewportRevealHeld() const { return reveal_held_; }
+
+  /**
+   * @brief Holds or releases native 3D surface reveal.
+   * @param held @c true keeps surfaces hidden; @c false allows mapping.
+   */
+  void setViewportRevealHeld(bool held);
+
+  /**
+   * @brief Shows native surfaces for visible, sized viewport docks.
+   *
+   * No-op while @ref isViewportRevealHeld() is @c true.
+   */
+  void revealViewportSurfaces();
+
+  /**
    * @brief Lazily creates host layout / overlays when a viewport dock is shown.
    * @param dock Viewport panel dock.
    */
@@ -383,6 +404,12 @@ class FrameViewport {
 
   /** Primary viewport dock created at startup. */
   PanelDockWidget* viewport_dock_ = nullptr;
+
+  /**
+   * Hold native GL reveal until startup window/layout settles (default on).
+   * Cleared by @ref FrameSession::applyStartupWindowState().
+   */
+  bool reveal_held_ = true;
 };
 
 }  // namespace autoviz

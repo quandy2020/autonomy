@@ -15,6 +15,7 @@
 #include "autoviz/common/widget/display/avatar.hpp"
 #include "autoviz/common/widget/display/tag.hpp"
 #include "autoviz/common/widget/feedback/progress_bar.hpp"
+#include "autoviz/common/widget/foundation/theme_tokens.hpp"
 #include "autoviz/common/widget/input/color_picker.hpp"
 #include "autoviz/common/widget/input/file_drop_zone.hpp"
 #include "autoviz/common/widget/input/multi_select_combo_box.hpp"
@@ -185,6 +186,7 @@ void WidgetExtendedComponentsTest::TagSupportsToggleAndExplicitRemoval() {
   Tag tag(QStringLiteral("Loop closure"));
   tag.setCheckable(true);
   tag.SetRemovable(true);
+  QCOMPARE(tag.sizeHint().height(), GetThemeTokens(&tag).control_height_medium);
   tag.resize(tag.sizeHint());
   tag.show();
   tag.setFocus();
@@ -193,6 +195,14 @@ void WidgetExtendedComponentsTest::TagSupportsToggleAndExplicitRemoval() {
   QVERIFY(tag.isChecked());
   QTest::keyClick(&tag, Qt::Key_Delete);
   QCOMPARE(remove_spy.count(), 1);
+
+  QTest::mouseClick(&tag, Qt::LeftButton, Qt::NoModifier,
+                    QPoint(tag.width() - 1, tag.height() / 2));
+  QCOMPARE(remove_spy.count(), 2);
+  tag.setLayoutDirection(Qt::RightToLeft);
+  QTest::mouseClick(&tag, Qt::LeftButton, Qt::NoModifier,
+                    QPoint(1, tag.height() / 2));
+  QCOMPARE(remove_spy.count(), 3);
   QCOMPARE(tag.accessibleName(), QStringLiteral("Loop closure"));
 }
 

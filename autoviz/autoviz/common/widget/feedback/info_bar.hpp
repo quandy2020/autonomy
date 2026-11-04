@@ -72,6 +72,7 @@ class InfoBar : public QFrame {
   QPushButton* close_button_ = nullptr;
   QColor background_color_;
   QColor border_color_;
+  QColor accent_color_;
   style::Tone tone_ = style::Tone::Shell;
   bool closable_ = true;
 };

@@ -42,6 +42,8 @@
 #include "autoviz/ui/plot/field/plot_field_extractor.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
+#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -57,10 +59,9 @@ constexpr int kColumnValue = 4;
 /** Cap concurrent probe subscriptions to avoid bandwidth spikes. */
 constexpr int kMaxProbeChannels = 48;
 
-/** Light tokens shared with Log / TF Tree / Teleop. */
-constexpr char kText[] = "#1e293b";
-constexpr char kTextMuted[] = "#64748b";
-constexpr char kAccent[] = "#0891b2";
+QColor kText() { return glass::Shell().text; }
+QColor kTextMuted() { return glass::Shell().secondary_text; }
+QColor kAccent() { return glass::Shell().accent; }
 
 constexpr int kRoleMessageType = Qt::UserRole + 20;
 constexpr int kRoleFieldsPopulated = Qt::UserRole + 21;
@@ -401,11 +402,11 @@ void ChannelsPanel::styleChannelItem(QTreeWidgetItem* item,
   name_font.setBold(is_channel_leaf);
   item->setFont(kColumnName, name_font);
   item->setForeground(kColumnName,
-                      QColor(is_channel_leaf ? kText : kTextMuted));
-  item->setForeground(kColumnSchema, QColor(kTextMuted));
-  item->setForeground(kColumnHz, QColor(kTextMuted));
-  item->setForeground(kColumnCount, QColor(kTextMuted));
-  item->setForeground(kColumnValue, QColor(kTextMuted));
+                      is_channel_leaf ? kText() : kTextMuted());
+  item->setForeground(kColumnSchema, kTextMuted());
+  item->setForeground(kColumnHz, kTextMuted());
+  item->setForeground(kColumnCount, kTextMuted());
+  item->setForeground(kColumnValue, kTextMuted());
 }
 
 void ChannelsPanel::updateStatusChip() {
@@ -612,9 +613,9 @@ void ChannelsPanel::updateChannelStatsColumns() {
                                       ? QString::number(stats.message_count)
                                       : QStringLiteral("—"));
       item->setText(kColumnValue, QStringLiteral("—"));
-      item->setForeground(kColumnHz, QColor(live ? kAccent : kTextMuted));
+      item->setForeground(kColumnHz, live ? kAccent() : kTextMuted());
       item->setForeground(kColumnCount,
-                          QColor(stats.message_count > 0 ? kText : kTextMuted));
+                          stats.message_count > 0 ? kText() : kTextMuted());
       QFont hz_font = item->font(kColumnHz);
       hz_font.setBold(live);
       item->setFont(kColumnHz, hz_font);
@@ -639,16 +640,16 @@ void ChannelsPanel::updateChannelStatsColumns() {
             type_it->second, payload_it->second, field_path.toStdString());
         if (value.has_value()) {
           item->setText(kColumnValue, FormatLastValue(*value));
-          item->setForeground(kColumnValue, QColor(kAccent));
+          item->setForeground(kColumnValue, kAccent());
           item->setToolTip(kColumnValue,
                            plot::CombinedPlotValuePath(channel, field_path));
         } else {
           item->setText(kColumnValue, QStringLiteral("—"));
-          item->setForeground(kColumnValue, QColor(kTextMuted));
+          item->setForeground(kColumnValue, kTextMuted());
         }
       } else {
         item->setText(kColumnValue, QStringLiteral("—"));
-        item->setForeground(kColumnValue, QColor(kTextMuted));
+        item->setForeground(kColumnValue, kTextMuted());
       }
     }
 
@@ -727,7 +728,7 @@ void ChannelsPanel::onItemExpanded(QTreeWidgetItem* item) {
     if (node->data(kColumnName, plot::kTopicDraggableRole).toBool() ||
         node->data(kColumnName, plot::kTopicTableDraggableRole).toBool()) {
       node->setData(kColumnName, plot::kTopicChannelRole, channel);
-      node->setForeground(kColumnName, QColor(kTextMuted));
+      node->setForeground(kColumnName, kTextMuted());
       const QString field =
           node->data(kColumnName, plot::kTopicFieldPathRole).toString();
       node->setToolTip(kColumnName,

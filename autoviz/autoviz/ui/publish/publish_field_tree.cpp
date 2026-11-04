@@ -711,14 +711,21 @@ void AppendFieldNode(QTreeWidgetItem* parent, const google::protobuf::Message& m
 
 PublishFieldTreeWidget::PublishFieldTreeWidget(QWidget* parent)
     : QTreeWidget(parent) {
-  setAlternatingRowColors(true);
+  setAlternatingRowColors(false);
   setRootIsDecorated(true);
   setUniformRowHeights(true);
-  setIndentation(18);
+  setIndentation(16);
   setAnimated(true);
   setFrameShape(QFrame::NoFrame);
+  setAttribute(Qt::WA_TranslucentBackground, true);
+  setAutoFillBackground(false);
+  setAttribute(Qt::WA_MacShowFocusRect, false);
   setContextMenuPolicy(Qt::CustomContextMenu);
-  setStyleSheet(style::sheet(QStringLiteral("publish")));
+  setStyleSheet(style::sheet(QStringLiteral("publish/field_tree")));
+  if (viewport() != nullptr) {
+    viewport()->setAutoFillBackground(false);
+    viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
+  }
   if (header() != nullptr) {
     header()->setDefaultAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     header()->setHighlightSections(false);

@@ -3,6 +3,7 @@
  *****************************************************************************/
 
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 #include <algorithm>
@@ -243,10 +244,11 @@ QPointF ServiceGridPosition(const ChannelGraphLayoutOptions& layout, int index) 
                  layout.service_origin_y + row * layout.service_row_gap);
 }
 
-/** Shared accents — keep in sync with channel_graph_panel toolbar glyphs. */
-constexpr QRgb kNodeAccentRgb = 0xff0891b2;     // cyan
+/** Kind accents — node follows Shell; channel/service stay semantic. */
 constexpr QRgb kChannelAccentRgb = 0xff7c3aed;  // violet
 constexpr QRgb kServiceAccentRgb = 0xffef4444;  // red
+
+QColor NodeAccentColor() { return glass::Shell().accent; }
 
 /** Channel traffic bands for probe / stats coloring. */
 enum class ActivityBand { kUnknown, kSilent, kLow, kHealthy };
@@ -284,29 +286,37 @@ QColor ColorForActivityBand(ActivityBand band) {
 QColor ColorForKind(integration::GraphVertexKind kind) {
   switch (kind) {
     case integration::GraphVertexKind::kNode:
-      return QColor::fromRgba(kNodeAccentRgb);
+      return NodeAccentColor();
     case integration::GraphVertexKind::kChannel:
       return QColor::fromRgba(kChannelAccentRgb);
     case integration::GraphVertexKind::kService:
       return QColor::fromRgba(kServiceAccentRgb);
   }
-  return QColor(120, 120, 120);
+  return glass::Shell().disabled_text;
 }
 
 QColor ColorForEdge(integration::GraphEdgeKind kind) {
   switch (kind) {
-    case integration::GraphEdgeKind::kPublish:
-      return QColor(0x08, 0x91, 0xB2, 210);
+    case integration::GraphEdgeKind::kPublish: {
+      QColor c = NodeAccentColor();
+      c.setAlpha(210);
+      return c;
+    }
     case integration::GraphEdgeKind::kSubscribe:
       return QColor(0x7c, 0x3a, 0xed, 210);
-    case integration::GraphEdgeKind::kRelay:
-      return QColor(96, 125, 139, 190);
+    case integration::GraphEdgeKind::kRelay: {
+      QColor c = glass::Shell().secondary_text;
+      c.setAlpha(190);
+      return c;
+    }
     case integration::GraphEdgeKind::kServiceServer:
       return QColor(0xef, 0x44, 0x44, 220);
     case integration::GraphEdgeKind::kServiceClient:
       return QColor(0xf9, 0x73, 0x16, 220);
   }
-  return QColor(120, 120, 120, 180);
+  QColor c = glass::Shell().disabled_text;
+  c.setAlpha(180);
+  return c;
 }
 
 Qt::PenStyle PenStyleForEdge(integration::GraphEdgeKind kind) {
@@ -449,6 +459,129 @@ void DrawArrowHead(QPainter* painter, const QPointF& tip, const QPointF& directi
 
 class GraphEdgeItem;
 
+/** Frosted column title chip (Writers / Channels / Readers / Services). */
+class ColumnHeaderItem : public QGraphicsItem {
+ public:
+  ColumnHeaderItem(const QString& title, int count, const QColor& accent,
+                   QGraphicsItem* parent = nullptr)
+      : QGraphicsItem(parent), title_(title), count_(count), accent_(accent) {
+    setZValue(-2);
+    setFlag(QGraphicsItem::ItemIsSelectable, false);
+    setFlag(QGraphicsItem::ItemIsMovable, false);
+    setAcceptedMouseButtons(Qt::NoButton);
+    rebuild();
+  }
+
+  QRectF boundingRect() const override {
+    return bounds_.adjusted(-6.0, -6.0, 6.0, 8.0);
+  }
+
+  void paint(QPainter* painter, const QStyleOptionGraphicsItem*,
+             QWidget*) override {
+    painter->setRenderHint(QPainter::Antialiasing, true);
+    painter->setRenderHint(QPainter::TextAntialiasing, true);
+
+    const glass::ShellTokens shell = glass::Shell();
+    QPainterPath card;
+    card.addRoundedRect(bounds_, 14.0, 14.0);
+
+    // Soft drop shadow.
+    QColor shadow = shell.text;
+    shadow.setAlpha(22);
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(shadow);
+    painter->drawPath(card.translated(0.0, 1.8));
+
+    // Frosted plate + cool wash.
+    QLinearGradient fill(bounds_.topLeft(), bounds_.bottomRight());
+    QColor plate = shell.glass_fill;
+    plate.setAlpha(qMax(plate.alpha(), 236));
+    QColor deep = shell.glass_fill_deep;
+    deep.setAlpha(qMax(deep.alpha(), 245));
+    fill.setColorAt(0.0, plate);
+    fill.setColorAt(1.0, deep);
+    painter->setBrush(fill);
+    QColor rim = shell.glass_rim;
+    rim.setAlpha(qMax(rim.alpha(), 140));
+    painter->setPen(QPen(rim, 1.0));
+    painter->drawPath(card);
+
+    QLinearGradient sheen(bounds_.topLeft(), bounds_.bottomLeft());
+    QColor top_sheen(255, 255, 255, 120);
+    sheen.setColorAt(0.0, top_sheen);
+    sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(sheen);
+    painter->drawRoundedRect(bounds_.adjusted(1.0, 1.0, -1.0, -bounds_.height() * 0.45),
+                             12.0, 12.0);
+
+    // Accent gem.
+    const QRectF gem(bounds_.left() + 12.0,
+                     bounds_.center().y() - 4.5, 9.0, 9.0);
+    QRadialGradient gem_fill(gem.center(), 6.0);
+    gem_fill.setColorAt(0.0, accent_.lighter(125));
+    gem_fill.setColorAt(1.0, accent_);
+    painter->setBrush(gem_fill);
+    painter->setPen(Qt::NoPen);
+    painter->drawEllipse(gem);
+
+    painter->setFont(title_font_);
+    painter->setPen(shell.text);
+    painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_);
+
+    // Count capsule.
+    QPainterPath pill;
+    pill.addRoundedRect(count_rect_, 9.0, 9.0);
+    QColor pill_fill = accent_;
+    pill_fill.setAlpha(28);
+    painter->setBrush(pill_fill);
+    QColor pill_rim = accent_;
+    pill_rim.setAlpha(90);
+    painter->setPen(QPen(pill_rim, 1.0));
+    painter->drawPath(pill);
+
+    painter->setFont(count_font_);
+    painter->setPen(accent_);
+    painter->drawText(count_rect_, Qt::AlignCenter, count_text_);
+  }
+
+ private:
+  void rebuild() {
+    title_font_ = QFont();
+    title_font_.setPointSizeF(11.5);
+    title_font_.setWeight(QFont::DemiBold);
+    title_font_.setLetterSpacing(QFont::AbsoluteSpacing, 0.4);
+
+    count_font_ = QFont();
+    count_font_.setPointSizeF(10.5);
+    count_font_.setWeight(QFont::Bold);
+
+    count_text_ = QString::number(std::max(0, count_));
+    const QFontMetricsF title_fm(title_font_);
+    const QFontMetricsF count_fm(count_font_);
+    const double title_w = title_fm.horizontalAdvance(title_);
+    const double count_w =
+        std::max(22.0, count_fm.horizontalAdvance(count_text_) + 14.0);
+    const double height = 32.0;
+    const double width = 12.0 + 9.0 + 8.0 + title_w + 10.0 + count_w + 12.0;
+    bounds_ = QRectF(-width * 0.5, -height * 0.5, width, height);
+    title_rect_ = QRectF(bounds_.left() + 12.0 + 9.0 + 8.0, bounds_.top(),
+                         title_w + 2.0, height);
+    count_rect_ = QRectF(bounds_.right() - 12.0 - count_w,
+                         bounds_.center().y() - 9.0, count_w, 18.0);
+  }
+
+  QString title_;
+  int count_ = 0;
+  QColor accent_;
+  QString count_text_;
+  QFont title_font_;
+  QFont count_font_;
+  QRectF bounds_;
+  QRectF title_rect_;
+  QRectF count_rect_;
+};
+
 class GraphVertexItem : public QGraphicsObject {
  public:
   GraphVertexItem(const QString& id, integration::GraphVertexKind kind,
@@ -548,7 +681,7 @@ class GraphVertexItem : public QGraphicsObject {
     }
 
     if (selected || emphasized) {
-      QPen highlight(QColor(0x08, 0x91, 0xB2), emphasized ? 2.4 : 2.0);
+      QPen highlight(NodeAccentColor(), emphasized ? 2.4 : 2.0);
       painter->setPen(highlight);
       painter->setBrush(Qt::NoBrush);
       painter->drawPath(shape());
@@ -1276,7 +1409,41 @@ void ChannelGraphView::setGraph(const integration::TopologyGraph& graph,
   }
 
   if (!graph.vertices.empty()) {
-    updateColumnHeaders(service_count);
+    int writer_count = 0;
+    int reader_count = 0;
+    std::unordered_map<std::string, int> pub_count;
+    std::unordered_map<std::string, int> sub_count;
+    for (const integration::GraphEdge& edge : graph.edges) {
+      if (edge.kind == integration::GraphEdgeKind::kPublish ||
+          edge.kind == integration::GraphEdgeKind::kRelay) {
+        pub_count[edge.from_id] += 1;
+      }
+      if (edge.kind == integration::GraphEdgeKind::kSubscribe) {
+        sub_count[edge.to_id] += 1;
+      }
+      if (edge.kind == integration::GraphEdgeKind::kRelay) {
+        sub_count[edge.to_id] += 1;
+      }
+    }
+    for (const integration::GraphVertex& vertex : graph.vertices) {
+      if (vertex.kind != integration::GraphVertexKind::kNode) {
+        continue;
+      }
+      const int pubs = pub_count[vertex.id];
+      const int subs = sub_count[vertex.id];
+      if (pubs > 0 && subs > 0) {
+        if (pubs >= subs) {
+          ++writer_count;
+        } else {
+          ++reader_count;
+        }
+      } else if (pubs > 0) {
+        ++writer_count;
+      } else if (subs > 0) {
+        ++reader_count;
+      }
+    }
+    updateColumnHeaders(writer_count, channel_count, reader_count, service_count);
   }
 
   saved_positions_ = positions;
@@ -1615,30 +1782,28 @@ void ChannelGraphView::applyFocusHighlight(const QString& vertex_id) {
   setFlowAnimationActive(!related_edges.isEmpty());
 }
 
-void ChannelGraphView::updateColumnHeaders(int service_count) {
-  QFont header_font;
-  header_font.setPointSize(10);
-  header_font.setBold(true);
-  const QColor header_color(0x64, 0x74, 0x8b);
-  const double channel_header_y = -42.0;
-  auto add_header = [&](const QString& text, double x, double y) {
-    auto* label = scene_->addText(text, header_font);
-    label->setDefaultTextColor(header_color);
-    const QRectF bounds = label->boundingRect();
-    label->setPos(x - bounds.width() * 0.5, y);
-    label->setZValue(-2);
-    label->setFlag(QGraphicsItem::ItemIsSelectable, false);
-    label->setFlag(QGraphicsItem::ItemIsMovable, false);
+void ChannelGraphView::updateColumnHeaders(int writer_count, int channel_count,
+                                           int reader_count, int service_count) {
+  const double channel_header_y = -56.0;
+  auto add_header = [&](const QString& text, int count, double x, double y,
+                        const QColor& accent) {
+    auto* chip = new ColumnHeaderItem(text, count, accent);
+    scene_->addItem(chip);
+    chip->setPos(x, y);
   };
-  add_header(tr("Writers"), layout_.writer_column_x, channel_header_y);
-  add_header(tr("Channels"), layout_.channel_column_x, channel_header_y);
-  add_header(tr("Readers"), layout_.reader_column_x, channel_header_y);
+  add_header(tr("Writers"), writer_count, layout_.writer_column_x,
+             channel_header_y, NodeAccentColor());
+  add_header(tr("Channels"), channel_count, layout_.channel_column_x,
+             channel_header_y, QColor::fromRgba(kChannelAccentRgb));
+  add_header(tr("Readers"), reader_count, layout_.reader_column_x,
+             channel_header_y, QColor(0x0e, 0xa5, 0xe9));
   if (service_count > 0) {
-    add_header(tr("Services"),
+    add_header(tr("Services"), service_count,
                layout_.service_origin_x +
                    (std::max(1, layout_.service_columns) - 1) *
                        layout_.service_col_gap * 0.5,
-               layout_.service_origin_y - 48.0);
+               layout_.service_origin_y - 56.0,
+               QColor::fromRgba(kServiceAccentRgb));
   }
 }
 
@@ -1690,6 +1855,9 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
   std::unordered_map<std::string, int> node_pub_count;
   std::unordered_map<std::string, int> node_sub_count;
 
+  const double channel_band_mid_y =
+      std::max(0, layout_.channel_rows - 1) * layout_.channel_row_gap * 0.5;
+
   int channel_index = 0;
   for (const integration::GraphVertex& vertex : graph.vertices) {
     if (vertex.kind != integration::GraphVertexKind::kChannel) {
@@ -1703,6 +1871,9 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
     ++channel_index;
   }
 
+  // When channels are hidden, topology emits kRelay node→node edges instead of
+  // pub/sub via channel vertices — still classify writers vs readers.
+  int relay_index = 0;
   for (const integration::GraphEdge& edge : graph.edges) {
     if (edge.kind == integration::GraphEdgeKind::kPublish) {
       auto channel_it = channel_y.find(edge.to_id);
@@ -1718,18 +1889,24 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
       }
       node_sub_count[edge.to_id] += 1;
       node_channel_ys[edge.to_id].push_back(channel_it->second);
+    } else if (edge.kind == integration::GraphEdgeKind::kRelay) {
+      const double synthetic_y =
+          channel_band_mid_y +
+          (relay_index - 4) * (layout_.node_row_gap * 0.35);
+      node_pub_count[edge.from_id] += 1;
+      node_sub_count[edge.to_id] += 1;
+      node_channel_ys[edge.from_id].push_back(synthetic_y);
+      node_channel_ys[edge.to_id].push_back(synthetic_y);
+      ++relay_index;
     }
   }
 
+  // Single spine per side so writers/readers form one vertical column.
+  // Pub+sub nodes join the side they use more (writers if tied).
   std::vector<NodeLayoutSlot> writer_slots;
   std::vector<NodeLayoutSlot> reader_slots;
-  std::vector<NodeLayoutSlot> both_writer_slots;
-  std::vector<NodeLayoutSlot> both_reader_slots;
   writer_slots.reserve(static_cast<std::size_t>(node_count));
   reader_slots.reserve(static_cast<std::size_t>(node_count));
-
-  const double channel_band_mid_y =
-      std::max(0, layout_.channel_rows - 1) * layout_.channel_row_gap * 0.5;
 
   for (const integration::GraphVertex& vertex : graph.vertices) {
     if (vertex.kind != integration::GraphVertexKind::kNode) {
@@ -1748,9 +1925,9 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
 
     if (slot.pub_count > 0 && slot.sub_count > 0) {
       if (slot.pub_count >= slot.sub_count) {
-        both_writer_slots.push_back(slot);
+        writer_slots.push_back(slot);
       } else {
-        both_reader_slots.push_back(slot);
+        reader_slots.push_back(slot);
       }
     } else if (slot.pub_count > 0) {
       writer_slots.push_back(slot);
@@ -1759,7 +1936,10 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
     }
   }
 
-  auto place_column = [&](std::vector<NodeLayoutSlot>& node_slots, double x) {
+  // align_to_channels: writers right-align (ports face channels), readers
+  // left-align — keeps a straight column edge despite variable node widths.
+  auto place_column = [&](std::vector<NodeLayoutSlot>& node_slots, double spine_x,
+                          bool align_to_channels_from_left) {
     if (node_slots.empty()) {
       return;
     }
@@ -1770,17 +1950,22 @@ void ChannelGraphView::applyAutoLayout(const integration::TopologyGraph& graph) 
     }
     const std::vector<double> packed =
         PackPreferredPositions(std::move(preferred), layout_.node_row_gap);
+    const double column_half = kNodeWidthMax * 0.5;
     for (std::size_t i = 0; i < node_slots.size(); ++i) {
       if (auto it = items.find(node_slots[i].id); it != items.end()) {
-        it->second->setPos(x, packed[i]);
+        const double half_w =
+            std::max(1.0, it->second->boundingRect().width() * 0.5);
+        const double center_x =
+            align_to_channels_from_left
+                ? (spine_x + column_half - half_w)   // writers: right edge shared
+                : (spine_x - column_half + half_w);  // readers: left edge shared
+        it->second->setPos(center_x, packed[i]);
       }
     }
   };
 
-  place_column(writer_slots, layout_.writer_column_x);
-  place_column(reader_slots, layout_.reader_column_x);
-  place_column(both_writer_slots, layout_.both_writer_column_x);
-  place_column(both_reader_slots, layout_.both_reader_column_x);
+  place_column(writer_slots, layout_.writer_column_x, true);
+  place_column(reader_slots, layout_.reader_column_x, false);
 
   int service_index = 0;
   for (const integration::GraphVertex& vertex : graph.vertices) {

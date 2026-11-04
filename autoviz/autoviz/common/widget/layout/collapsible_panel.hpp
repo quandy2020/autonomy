@@ -6,6 +6,7 @@
 
 #include "autoviz/common/widget/layout/surface.hpp"
 
+class QEvent;
 class QHideEvent;
 class QPropertyAnimation;
 class QVBoxLayout;
@@ -39,6 +40,7 @@ class CollapsiblePanel final : public Surface {
   void ExpandedChanged(bool expanded);
 
  protected:
+  void changeEvent(QEvent* event) override;
   void hideEvent(QHideEvent* event) override;
 
  private:

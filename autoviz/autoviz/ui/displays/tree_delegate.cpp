@@ -7,6 +7,7 @@
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/displays/tree.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 
 #include <algorithm>
 
@@ -226,9 +227,9 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
     QPainterPath path;
     path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 8.0, 8.0);
     if (selected) {
-      painter->fillPath(path, QColor(20, 184, 166, 78));
+      painter->fillPath(path, glass::ShellSelectionFill());
     } else {
-      painter->fillPath(path, QColor(165, 243, 252, 56));
+      painter->fillPath(path, glass::ShellHoverFill());
     }
     painter->restore();
   }
@@ -237,8 +238,9 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
   opt.state.setFlag(QStyle::State_MouseOver, false);
   opt.backgroundBrush = Qt::NoBrush;
   if (selected) {
-    opt.palette.setColor(QPalette::Text, QColor(0x0F, 0x76, 0x6E));
-    opt.palette.setColor(QPalette::WindowText, QColor(0x0F, 0x76, 0x6E));
+    const QColor ink = glass::ShellSelectionInk();
+    opt.palette.setColor(QPalette::Text, ink);
+    opt.palette.setColor(QPalette::WindowText, ink);
     opt.font.setWeight(QFont::DemiBold);
   }
 
@@ -251,8 +253,12 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(Qt::NoPen);
-    painter->setBrush(selected ? QColor(0x0F, 0x76, 0x6E, 160)
-                               : QColor(148, 163, 184));
+    {
+      QColor grip = selected ? glass::ShellSelectionInk()
+                             : glass::Shell().secondary_text;
+      grip.setAlpha(selected ? 160 : 255);
+      painter->setBrush(grip);
+    }
     const int cx = opt.rect.left() + 5;
     const int cy = opt.rect.center().y();
     for (int row = 0; row < 3; ++row) {
@@ -379,7 +385,7 @@ void DisplayTreeDelegate::paint(QPainter* painter,
   QRect text_rect = opt.rect;
   text_rect.setLeft(swatch_rect.right() + 6);
   painter->setPen(option.state.testFlag(QStyle::State_Selected)
-                      ? QColor(0x0F, 0x76, 0x6E)
+                      ? glass::ShellSelectionInk()
                       : opt.palette.color(QPalette::Text));
   painter->drawText(text_rect, Qt::AlignVCenter | Qt::AlignLeft, rgb_text);
   painter->restore();

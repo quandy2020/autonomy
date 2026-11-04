@@ -309,6 +309,7 @@ ViewState ViewController::state() const {
   ViewState state;
   state.type = type_;
   state.near_clip_distance = near_clip_distance_;
+  state.far_clip_distance = far_clip_distance_;
   state.invert_z_axis = invert_z_axis_;
   state.yaw = yaw_;
   state.pitch = pitch_;
@@ -326,6 +327,8 @@ ViewState ViewController::state() const {
 void ViewController::setState(const ViewState& state) {
   type_ = state.type;
   near_clip_distance_ = state.near_clip_distance;
+  far_clip_distance_ =
+      state.far_clip_distance > 0.f ? state.far_clip_distance : 100000.f;
   invert_z_axis_ = state.invert_z_axis;
   yaw_ = state.yaw;
   pitch_ = state.pitch;
@@ -462,6 +465,7 @@ bool ViewController::resolveThirdPersonTargetToFixed(QMatrix4x4* out) const {
 
 void ViewController::reset() {
   near_clip_distance_ = 0.01f;
+  far_clip_distance_ = 100000.f;
   invert_z_axis_ = false;
   yaw_ = 0.785398f;
   pitch_ = 0.785398f;
@@ -479,6 +483,28 @@ void ViewController::setNearClipDistance(float value) {
   near_clip_distance_ = std::max(0.001f, value);
 }
 
+void ViewController::setFarClipDistance(float value) {
+  far_clip_distance_ = std::max(1.f, value);
+}
+
+float ViewController::effectiveFarClipDistance() const {
+  // Grow with orbit / ortho scale so zooming out over large maps never clips.
+  const float distance_based = std::max(1000.f, std::abs(distance_) * 100.f);
+  float fps_based = 1000.f;
+  if (type_ == ViewControllerType::kFps ||
+      type_ == ViewControllerType::kFpsMotion) {
+    fps_based = std::max(1000.f, fps_position_.length() * 100.f + 1000.f);
+  }
+  return std::max({far_clip_distance_, distance_based, fps_based});
+}
+
+float ViewController::effectiveNearClipDistance() const {
+  const float far = effectiveFarClipDistance();
+  // Keep near/far ratio from exploding depth precision (KITTI-scale outdoor).
+  const float min_near_for_precision = far * 1e-7f;
+  return std::max(near_clip_distance_, min_near_for_precision);
+}
+
 void ViewController::setInvertZAxis(bool value) { invert_z_axis_ = value; }
 
 void ViewController::setFocalShapeSize(float value) {
@@ -491,12 +517,13 @@ void ViewController::setFocalShapeFixedSize(bool value) {
 
 QMatrix4x4 ViewController::projectionMatrix(float aspect_ratio) const {
   QMatrix4x4 projection;
-  const float far_plane = 500.f;
+  const float near_plane = effectiveNearClipDistance();
+  const float far_plane = effectiveFarClipDistance();
   if (type_ == ViewControllerType::kTopDownOrtho) {
     const float half_height = distance_ * 0.5f;
     const float half_width = half_height * aspect_ratio;
     projection.ortho(-half_width, half_width, -half_height, half_height,
-                     near_clip_distance_, far_plane);
+                     near_plane, far_plane);
     return projection;
   }
   const float fov_y =
@@ -504,7 +531,7 @@ QMatrix4x4 ViewController::projectionMatrix(float aspect_ratio) const {
        type_ == ViewControllerType::kFpsMotion)
           ? kFpsFovYDegrees
           : 45.f;
-  projection.perspective(fov_y, aspect_ratio, near_clip_distance_, far_plane);
+  projection.perspective(fov_y, aspect_ratio, near_plane, far_plane);
   if (invert_z_axis_) {
     projection(2, 2) *= -1.f;
   }

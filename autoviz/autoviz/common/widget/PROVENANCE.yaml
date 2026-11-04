@@ -6,6 +6,16 @@ policy:
   gpl_source_allowed_in_core: false
   lgpl_static_link_allowed: false
 sources:
+  - project: apple-hig
+    url: https://github.com/Elevatormusic/apple-hig
+    revision: e00f1af16c71f4122e7c964563d2f563fd490d7e
+    license: MIT
+    usage: design_guideline_reference_only
+    copied_files: []
+    notes: >-
+      Transferable hierarchy, harmony, semantic-color, accessibility, and
+      motion principles only. No Apple fonts, SF Symbols, templates, token
+      exports, source code, or binary assets are copied.
   - project: Fluent-Qt
     path: /home/quandy/workspace/github/Ui/Fluent-Qt
     revision: ff9436c1

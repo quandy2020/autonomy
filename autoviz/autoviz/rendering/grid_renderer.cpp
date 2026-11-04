@@ -28,7 +28,7 @@ QMatrix4x4 CameraState::viewMatrix() const {
 
 QMatrix4x4 CameraState::projectionMatrix(float aspect_ratio) const {
   QMatrix4x4 projection;
-  projection.perspective(45.f, aspect_ratio, 0.05f, 500.f);
+  projection.perspective(45.f, aspect_ratio, 0.05f, 100000.f);
   return projection;
 }
 

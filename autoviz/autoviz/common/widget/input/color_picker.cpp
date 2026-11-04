@@ -56,7 +56,7 @@ void ColorPicker::SetTone(style::Tone tone) {
 }
 
 QSize ColorPicker::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const QString text =
       color_.name(alpha_enabled_ ? QColor::HexArgb : QColor::HexRgb).toUpper();
   return QSize(tokens.spacing_lg * 2 + tokens.control_height_small +
@@ -65,29 +65,42 @@ QSize ColorPicker::sizeHint() const {
 }
 
 QSize ColorPicker::minimumSizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   return QSize(tokens.control_height_large + tokens.spacing_lg,
                tokens.control_height_small);
 }
 
 void ColorPicker::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
-  const QColor border = hasFocus() ? tokens.focus_ring : tokens.border;
-  const QColor background =
-      isDown() ? tokens.surface_hovered : tokens.surface_raised;
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  QColor border = tokens.border;
+  QColor background = tokens.surface_raised;
+  if (!isEnabled()) {
+    border = tokens.disabled;
+    background = tokens.surface;
+  } else if (hasFocus()) {
+    border = tokens.focus_ring;
+  } else if (isDown()) {
+    border = tokens.accent_pressed;
+    background = tokens.surface_hovered;
+  } else if (underMouse()) {
+    border = tokens.accent_hovered;
+    background = tokens.surface_hovered;
+  }
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
-  painter.setPen(QPen(border, hasFocus() ? tokens.focus_ring_width : 1));
+  painter.setPen(QPen(border, hasFocus() ? tokens.focus_ring_width : 1,
+                      Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
   painter.setBrush(background);
-  painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+  const qreal inset = hasFocus() ? tokens.focus_ring_width * 0.5 : 0.5;
+  painter.drawRoundedRect(QRectF(rect()).adjusted(inset, inset, -inset, -inset),
                           tokens.radius_small, tokens.radius_small);
 
   const int swatch_size = qMax(12, height() - 2 * tokens.spacing_sm);
   const QRect swatch(tokens.spacing_sm, (height() - swatch_size) / 2,
                      swatch_size, swatch_size);
-  painter.setPen(QPen(tokens.border, 1));
+  painter.setPen(QPen(isEnabled() ? tokens.border : tokens.disabled, 1));
   painter.setBrush(isEnabled() ? color_ : tokens.disabled);
   painter.drawRoundedRect(QRectF(swatch).adjusted(0.5, 0.5, -0.5, -0.5),
                           tokens.radius_small / 2.0, tokens.radius_small / 2.0);

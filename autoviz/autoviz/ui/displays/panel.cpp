@@ -621,10 +621,10 @@ void DisplaysPanel::setupUi() {
   tree_pal.setBrush(QPalette::Base, Qt::transparent);
   tree_pal.setBrush(QPalette::Window, Qt::transparent);
   tree_pal.setBrush(QPalette::Highlight, Qt::transparent);
-  tree_pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
+  tree_pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
   tree_pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   tree_pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-                    QColor(0x0F, 0x76, 0x6E));
+                    glass::ShellSelectionInk());
   tree_->setPalette(tree_pal);
 
   help_ = new QLabel(this);
@@ -1596,10 +1596,12 @@ void DisplaysPanel::updateHelp(QTreeWidgetItem* item) {
   // under live Argus (paint UAF / free(): invalid next size on teardown).
   help_->setText(
       QStringLiteral(
-          "<div style=\"font-weight:700; color:#1E293B; margin-bottom:6px;\">"
-          "%1</div>"
-          "<div style=\"color:#475569; line-height:1.45;\">%2</div>")
-          .arg(heading.toHtmlEscaped(), body.toHtmlEscaped()));
+          "<div style=\"font-weight:700; color:%1; margin-bottom:6px;\">"
+          "%2</div>"
+          "<div style=\"color:%3; line-height:1.45;\">%4</div>")
+          .arg(glass::Hex(glass::Shell().text), heading.toHtmlEscaped(),
+               glass::Hex(glass::Shell().secondary_text),
+               body.toHtmlEscaped()));
   help_->show();
 }
 

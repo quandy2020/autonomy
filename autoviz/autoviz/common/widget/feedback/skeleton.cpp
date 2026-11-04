@@ -5,6 +5,7 @@
 #include "autoviz/common/widget/feedback/skeleton.hpp"
 
 #include <QEvent>
+#include <QGuiApplication>
 #include <QHideEvent>
 #include <QLinearGradient>
 #include <QPaintEvent>
@@ -23,6 +24,10 @@ Skeleton::Skeleton(QWidget* parent) : QWidget(parent) {
   setAccessibleName(tr("Loading"));
   setAttribute(Qt::WA_TransparentForMouseEvents);
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  if (qGuiApp != nullptr) {
+    connect(qGuiApp, &QGuiApplication::applicationStateChanged, this,
+            [this](Qt::ApplicationState) { SyncAnimation(); });
+  }
 }
 
 void Skeleton::SetActive(bool active) {
@@ -68,7 +73,7 @@ void Skeleton::hideEvent(QHideEvent* event) {
 
 void Skeleton::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QColor base = tokens.border;
   base.setAlpha(isEnabled() ? 105 : 60);
   QColor highlight = tokens.surface_raised;
@@ -105,8 +110,10 @@ void Skeleton::timerEvent(QTimerEvent* event) {
 }
 
 void Skeleton::SyncAnimation() {
-  const bool should_run = active_ && isVisible() && isEnabled() &&
-                          !MotionPolicy::ReducedMotionEnabled();
+  const bool should_run =
+      active_ && isVisible() && isEnabled() &&
+      QGuiApplication::applicationState() == Qt::ApplicationActive &&
+      !MotionPolicy::ReducedMotionEnabled();
   if (should_run && !timer_.isActive()) {
     timer_.start(30, Qt::CoarseTimer, this);
   } else if (!should_run && timer_.isActive()) {

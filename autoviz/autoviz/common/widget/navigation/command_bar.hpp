@@ -8,6 +8,8 @@
 
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
+class QPaintEvent;
+
 namespace autoviz::widget {
 
 // Lightweight QAction-based command surface. QToolBar provides native
@@ -26,8 +28,12 @@ class CommandBar final : public QToolBar {
   style::Tone tone() const noexcept { return tone_; }
   void SetTone(style::Tone tone);
 
+ protected:
+  void paintEvent(QPaintEvent *event) override;
+
  private:
   void ApplyTheme();
+  void SyncActionButtonMetrics();
 
   DisplayMode display_mode_ = DisplayMode::kTextBesideIcon;
   style::Tone tone_ = style::Tone::Shell;

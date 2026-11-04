@@ -4,17 +4,25 @@
 
 #include "autoviz/ui/app/settings_dialog.hpp"
 
+#include <functional>
+
 #include <QAbstractItemView>
+#include <QApplication>
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFont>
 #include <QFrame>
 #include <QHash>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QListWidget>
 #include <QListWidgetItem>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPainterPath>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSlider>
@@ -66,9 +74,9 @@ void AddComboItemIfMissing(QComboBox* combo, const QString& value) {
 }
 
 QHash<QString, QString> AppSettingsTokens() {
-  QHash<QString, QString> tokens = style::tokens();
-  tokens.insert(QStringLiteral("{{accent-teal}}"), QStringLiteral("#14B8A6"));
-  return tokens;
+  // Follow Shell tokens (Liquid Glass system blue / Light / Dark) — do not
+  // reintroduce a second teal accent that fights the chrome.
+  return style::tokens();
 }
 
 QFrame* MakeGroup(QWidget* parent) {
@@ -140,6 +148,176 @@ QWidget* MakePageShell(QWidget* parent, QWidget* group_content) {
   return page;
 }
 
+/** Miniature chrome mock for Appearance → Theme cards. */
+class ThemePreviewCard : public QFrame {
+ public:
+  struct Palette {
+    QColor window;
+    QColor bar;
+    QColor sidebar;
+    QColor content;
+    QColor text;
+    QColor muted;
+    QColor accent;
+    QColor rim;
+    bool liquid = false;
+  };
+
+  ThemePreviewCard(const QString& mode, const QString& title,
+                   const Palette& palette, QWidget* parent = nullptr)
+      : QFrame(parent), mode_(mode), title_(title), palette_(palette) {
+    setObjectName(QStringLiteral("AutovizThemePreviewCard"));
+    setCursor(Qt::PointingHandCursor);
+    setFixedSize(148, 128);
+    setFocusPolicy(Qt::StrongFocus);
+  }
+
+  QString mode() const { return mode_; }
+
+  void setSelected(bool selected) {
+    if (selected_ == selected) {
+      return;
+    }
+    selected_ = selected;
+    update();
+  }
+
+  bool isSelected() const { return selected_; }
+
+  std::function<void()> onClicked;
+
+ protected:
+  void mousePressEvent(QMouseEvent* event) override {
+    if (event != nullptr && event->button() == Qt::LeftButton && onClicked) {
+      onClicked();
+    }
+    QFrame::mousePressEvent(event);
+  }
+
+  void keyPressEvent(QKeyEvent* event) override {
+    if (event != nullptr &&
+        (event->key() == Qt::Key_Return || event->key() == Qt::Key_Space) &&
+        onClicked) {
+      onClicked();
+      return;
+    }
+    QFrame::keyPressEvent(event);
+  }
+
+  void paintEvent(QPaintEvent* event) override {
+    Q_UNUSED(event);
+    QPainter painter(this);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+
+    const QRectF outer = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
+    QPainterPath card;
+    card.addRoundedRect(outer, 12.0, 12.0);
+
+    painter.fillPath(card, palette_.window);
+    if (palette_.liquid) {
+      QLinearGradient wash(outer.topRight(), outer.bottomLeft());
+      wash.setColorAt(0.0, QColor(180, 220, 255, 40));
+      wash.setColorAt(0.55, QColor(255, 255, 255, 0));
+      wash.setColorAt(1.0, QColor(255, 200, 230, 24));
+      painter.fillPath(card, wash);
+    }
+
+    // Mini window chrome inside the card.
+    const QRectF stage = outer.adjusted(10.0, 10.0, -10.0, -28.0);
+    QPainterPath stage_path;
+    stage_path.addRoundedRect(stage, 8.0, 8.0);
+    painter.setClipPath(stage_path);
+
+    painter.fillRect(stage, palette_.content);
+    const QRectF bar(stage.left(), stage.top(), stage.width(), 12.0);
+    painter.fillRect(bar, palette_.bar);
+    if (palette_.liquid) {
+      QLinearGradient sheen(bar.topLeft(), bar.bottomLeft());
+      sheen.setColorAt(0.0, QColor(255, 255, 255, 160));
+      sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
+      painter.fillRect(bar, sheen);
+    }
+    painter.fillRect(QRectF(stage.left(), bar.bottom(), 28.0,
+                            stage.height() - bar.height()),
+                     palette_.sidebar);
+    painter.setBrush(palette_.accent);
+    painter.setPen(Qt::NoPen);
+    painter.drawRoundedRect(
+        QRectF(stage.left() + 36.0, stage.top() + 28.0, 42.0, 10.0), 4.0, 4.0);
+    painter.setBrush(palette_.muted);
+    painter.drawRoundedRect(
+        QRectF(stage.left() + 36.0, stage.top() + 44.0, 58.0, 6.0), 3.0, 3.0);
+    painter.drawRoundedRect(
+        QRectF(stage.left() + 36.0, stage.top() + 54.0, 48.0, 6.0), 3.0, 3.0);
+
+    painter.setClipping(false);
+
+    // Title under the mock.
+    QFont font = painter.font();
+    font.setPointSizeF(10.5);
+    font.setWeight(selected_ ? QFont::DemiBold : QFont::Medium);
+    painter.setFont(font);
+    painter.setPen(palette_.text);
+    painter.drawText(QRectF(outer.left(), outer.bottom() - 22.0, outer.width(),
+                            18.0),
+                     Qt::AlignHCenter | Qt::AlignVCenter, title_);
+
+    // Selection / idle rim.
+    if (selected_) {
+      painter.setPen(QPen(palette_.accent, 2.0));
+    } else {
+      painter.setPen(QPen(palette_.rim, 1.0));
+    }
+    painter.setBrush(Qt::NoBrush);
+    painter.drawPath(card);
+
+    if (selected_ && palette_.liquid) {
+      painter.setPen(QPen(QColor(255, 90, 120, 50), 1.0));
+      painter.drawRoundedRect(outer.adjusted(2.0, 2.0, -1.0, -1.0), 11.0, 11.0);
+      painter.setPen(QPen(QColor(80, 180, 255, 55), 1.0));
+      painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -2.0, -2.0), 11.0, 11.0);
+    }
+  }
+
+ private:
+  QString mode_;
+  QString title_;
+  Palette palette_;
+  bool selected_ = false;
+};
+
+ThemePreviewCard::Palette LightPreviewPalette() {
+  return {QColor(0xF2, 0xF2, 0xF7), QColor(0xFC, 0xFD, 0xFD),
+          QColor(0xE8, 0xE8, 0xED), QColor(0xFF, 0xFF, 0xFF),
+          QColor(0x1C, 0x1C, 0x1E), QColor(0xC6, 0xC6, 0xC8),
+          QColor(0x00, 0x7A, 0xFF), QColor(0xC6, 0xC6, 0xC8), false};
+}
+
+ThemePreviewCard::Palette DarkPreviewPalette() {
+  return {QColor(0x1C, 0x1C, 0x1E), QColor(0x2C, 0x2C, 0x2E),
+          QColor(0x28, 0x28, 0x2A), QColor(0x22, 0x22, 0x24),
+          QColor(0xF2, 0xF2, 0xF7), QColor(0x48, 0x48, 0x4A),
+          QColor(0x0A, 0x84, 0xFF), QColor(0x48, 0x48, 0x4A), false};
+}
+
+ThemePreviewCard::Palette LiquidPreviewPalette() {
+  return {QColor(0xE8, 0xEE, 0xF6), QColor(0xEE, 0xF3, 0xFA),
+          QColor(0xD8, 0xE4, 0xF4), QColor(0xF7, 0xFA, 0xFF),
+          QColor(0x1A, 0x1A, 0x2E), QColor(0xB8, 0xC4, 0xD6),
+          QColor(0x00, 0x7A, 0xFF), QColor(0xB8, 0xC4, 0xD6), true};
+}
+
+void SyncThemePreviewCards(QWidget* host, const QString& theme_mode) {
+  if (host == nullptr) {
+    return;
+  }
+  for (ThemePreviewCard* card : host->findChildren<ThemePreviewCard*>()) {
+    if (card != nullptr) {
+      card->setSelected(card->mode() == theme_mode);
+    }
+  }
+}
+
 }  // namespace
 
 AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
@@ -174,7 +352,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     const char* icon_id;
   };
   const Category categories[] = {
-      {QT_TR_NOOP("Language"), "file.image"},
+      {QT_TR_NOOP("Appearance"), "file.image"},
       {QT_TR_NOOP("General"), "app.settings"},
       {QT_TR_NOOP("3D View"), "panels.fullscreen"},
       {QT_TR_NOOP("Layout"), "file.reset_layout"},
@@ -206,7 +384,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
 
   pages_ = new QStackedWidget(detail);
 
-  // Page: Language
+  // Page: Language / Appearance
   {
     auto* group = MakeGroup(pages_);
     auto* gl = qobject_cast<QVBoxLayout*>(group->layout());
@@ -216,6 +394,50 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     language_combo_->addItem(tr("English"), QStringLiteral("en"));
     language_combo_->addItem(tr("简体中文"), QStringLiteral("zh_CN"));
     gl->addWidget(MakeRow(group, tr("Interface language"), language_combo_));
+    gl->addWidget(MakeHairline(group));
+
+    theme_combo_ = new QComboBox;
+    theme_combo_->setMinimumWidth(220);
+    theme_combo_->addItem(tr("Follow system"), QStringLiteral("system"));
+    theme_combo_->addItem(tr("Light"), QStringLiteral("light"));
+    theme_combo_->addItem(tr("Dark"), QStringLiteral("dark"));
+    theme_combo_->addItem(tr("Liquid Glass"), QStringLiteral("liquid"));
+    gl->addWidget(MakeRow(group, tr("Theme"), theme_combo_));
+    gl->addWidget(MakeHairline(group));
+
+    theme_preview_host_ = new QWidget(group);
+    theme_preview_host_->setObjectName(QStringLiteral("AutovizThemePreviewHost"));
+    auto* preview_layout = new QHBoxLayout(theme_preview_host_);
+    preview_layout->setContentsMargins(14, 12, 14, 14);
+    preview_layout->setSpacing(12);
+
+    struct ThemeCardSpec {
+      const char* mode;
+      const char* title;
+      ThemePreviewCard::Palette (*palette)();
+    };
+    const ThemeCardSpec specs[] = {
+        {"light", QT_TR_NOOP("Light"), &LightPreviewPalette},
+        {"dark", QT_TR_NOOP("Dark"), &DarkPreviewPalette},
+        {"liquid", QT_TR_NOOP("Liquid Glass"), &LiquidPreviewPalette},
+    };
+    for (const ThemeCardSpec& spec : specs) {
+      auto* card = new ThemePreviewCard(QString::fromLatin1(spec.mode),
+                                        tr(spec.title), spec.palette(),
+                                        theme_preview_host_);
+      card->onClicked = [this, mode = QString::fromLatin1(spec.mode)]() {
+        if (theme_combo_ == nullptr) {
+          return;
+        }
+        const int index = theme_combo_->findData(mode);
+        if (index >= 0) {
+          theme_combo_->setCurrentIndex(index);
+        }
+      };
+      preview_layout->addWidget(card, 0, Qt::AlignTop);
+    }
+    preview_layout->addStretch(1);
+    gl->addWidget(theme_preview_host_);
     pages_->addWidget(WrapPage(MakePageShell(pages_, group)));
   }
 
@@ -457,6 +679,31 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
   if (language_index >= 0) {
     language_combo_->setCurrentIndex(language_index);
   }
+  if (theme_combo_ != nullptr) {
+    const int theme_index = theme_combo_->findData(ui_prefs.theme_mode);
+    theme_combo_->setCurrentIndex(theme_index >= 0 ? theme_index : 1);
+    syncThemePreviewSelection(theme_combo_->currentData().toString());
+    const QString preview_restore = ui_prefs.theme_mode;
+    // Live preview while browsing — Done persists; Cancel restores previous.
+    connect(theme_combo_, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, [this](int) {
+              if (theme_combo_ == nullptr) {
+                return;
+              }
+              const QString mode = theme_combo_->currentData().toString();
+              syncThemePreviewSelection(mode);
+              if (QApplication* app =
+                      qobject_cast<QApplication*>(QApplication::instance())) {
+                ApplyUiThemeMode(mode, *app);
+              }
+            });
+    connect(this, &QDialog::rejected, this, [preview_restore]() {
+      if (QApplication* app =
+              qobject_cast<QApplication*>(QApplication::instance())) {
+        ApplyUiThemeMode(preview_restore, *app);
+      }
+    });
+  }
   shortcuts_editor_->setShortcuts(ui_prefs.shortcuts);
   start_maximized_check_->setChecked(ui_prefs.start_maximized);
 
@@ -475,6 +722,11 @@ void AppSettingsDialog::showCategory(int index) {
   if (QListWidgetItem* item = sidebar_->item(index)) {
     page_title_->setText(item->text());
   }
+}
+
+void AppSettingsDialog::syncThemePreviewSelection(const QString& theme_mode) {
+  // "Follow system" has no dedicated card — clears all selections.
+  SyncThemePreviewCards(theme_preview_host_, theme_mode);
 }
 
 void AppSettingsDialog::populateFrameList() {
@@ -545,6 +797,9 @@ AppSettingsResult AppSettingsDialog::resultValues() const {
     result.plot_settings_visible = show_panel_settings_check_->isChecked();
   }
   result.language_code = language_combo_->currentData().toString();
+  result.theme_mode = theme_combo_ != nullptr
+                          ? theme_combo_->currentData().toString()
+                          : QStringLiteral("light");
   result.start_maximized = start_maximized_check_->isChecked();
   if (shortcuts_editor_ != nullptr) {
     result.shortcuts = shortcuts_editor_->shortcuts();

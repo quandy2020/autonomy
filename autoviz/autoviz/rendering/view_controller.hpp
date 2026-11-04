@@ -82,6 +82,8 @@ enum class ViewControllerType {
 struct ViewState {
   ViewControllerType type = ViewControllerType::kOrbit; /**< Controller mode. */
   float near_clip_distance = 0.01f; /**< Near clip plane (meters). */
+  /** Far clip plane (meters). RViz-like default for outdoor / KITTI scenes. */
+  float far_clip_distance = 100000.f;
   bool invert_z_axis = false;       /**< Invert Z when building matrices. */
   float yaw = 0.785398f;            /**< Orbit/ortho yaw (rad). */
   float pitch = 0.785398f;          /**< Orbit pitch (rad). */
@@ -295,6 +297,31 @@ class ViewController {
    */
   void setNearClipDistance(float value);
 
+  /** @brief Configured far clip distance in meters. */
+  float farClipDistance() const { return far_clip_distance_; }
+
+  /**
+   * @brief Sets the far clip plane distance.
+   * @param value Distance in meters (clamped by implementation).
+   */
+  void setFarClipDistance(float value);
+
+  /**
+   * @brief Effective far plane used for projection (grows with zoom distance).
+   *
+   * Ensures large outdoor scenes (KITTI-scale point clouds / trajectories) are
+   * not clipped when the orbit camera is zoomed out beyond the configured far.
+   */
+  float effectiveFarClipDistance() const;
+
+  /**
+   * @brief Effective near plane used for projection.
+   *
+   * Slightly raises the near plane for very large far distances so the depth
+   * buffer retains usable precision (reduces distant occlusion artifacts).
+   */
+  float effectiveNearClipDistance() const;
+
   /** @brief Whether the Z axis is inverted in matrices. */
   bool invertZAxis() const { return invert_z_axis_; }
 
@@ -494,6 +521,7 @@ class ViewController {
 
   ViewControllerType type_ = ViewControllerType::kOrbit;
   float near_clip_distance_ = 0.01f;
+  float far_clip_distance_ = 100000.f;
   bool invert_z_axis_ = false;
   float yaw_ = 0.785398f;
   float pitch_ = 0.785398f;

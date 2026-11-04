@@ -86,7 +86,7 @@ void TreeSelect::SetPlaceholderText(const QString& text) {
 }
 
 QSize TreeSelect::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QSize hint = button_->sizeHint();
   hint.setWidth(qMax(hint.width(), 180));
   hint.setHeight(qMax(hint.height(), tokens.control_height_medium));
@@ -94,7 +94,7 @@ QSize TreeSelect::sizeHint() const {
 }
 
 QSize TreeSelect::minimumSizeHint() const {
-  return QSize(120, GetThemeTokens(tone_).control_height_small);
+  return QSize(120, GetThemeTokens(this, tone_).control_height_small);
 }
 
 void TreeSelect::RebuildMenu() {

@@ -8,11 +8,13 @@
 #include <QAccessible>
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QEasingCurve>
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QLibraryInfo>
 #include <QLocale>
+#include <QPropertyAnimation>
 #include <QTimer>
 #include <QtGlobal>
 
@@ -22,6 +24,7 @@
 #include <glog/logging.h>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/widget/foundation/motion_policy.hpp"
 #include "autoviz/platform/opengl_setup.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/app/quit_signal.hpp"
@@ -61,7 +64,7 @@ int main(int argc, char** argv) {
 
   const autoviz::AppUiPreferences ui_preferences = autoviz::LoadAppUiPreferences();
   autoviz::InstallAppTranslations(app, ui_preferences.language_code);
-  autoviz::ApplyAppTheme(app);
+  autoviz::ApplyUiThemeMode(ui_preferences.theme_mode, app);
 
   QCommandLineParser parser;
   parser.setApplicationDescription(
@@ -110,11 +113,25 @@ int main(int argc, char** argv) {
       if (!app_icon.isNull()) {
         splash->setWindowIcon(app_icon);
       }
+      const int splash_in_ms =
+          autoviz::widget::MotionPolicy::ResolveDuration(280);
+      if (splash_in_ms > 0) {
+        splash->setWindowOpacity(0.0);
+      }
       splash->show();
       splash->raise();
       // Force an immediate paint before heavy init (Qt docs). Do not call
       // activateWindow() — splash is intentionally non-activating on X11.
       splash->repaint();
+      if (splash_in_ms > 0) {
+        auto* fade_in = new QPropertyAnimation(
+            splash.get(), QByteArrayLiteral("windowOpacity"));
+        fade_in->setDuration(splash_in_ms);
+        fade_in->setStartValue(0.0);
+        fade_in->setEndValue(1.0);
+        fade_in->setEasingCurve(QEasingCurve::OutCubic);
+        fade_in->start(QAbstractAnimation::DeleteWhenStopped);
+      }
       splash->showStatusFor(QStringLiteral("Initializing"));
     } else {
       LOG(WARNING) << "Splash image failed to load: "
@@ -165,16 +182,55 @@ int main(int argc, char** argv) {
       frame.loadConfig(config_path);
     }
 
-    if (splash != nullptr) {
-      splash->finish();
-      // Hide without QSplashScreen::finish(main) — that path activates the
-      // main window and has SEGV'd in topLevelWidgets under Docker/X11.
-      splash->hide();
-      splash.reset();
+    // Cross-fade splash → main window. Avoid QSplashScreen::finish(main):
+    // that path activates the main window and has SEGV'd in topLevelWidgets
+    // under Docker/X11.
+    const int handoff_ms =
+        autoviz::widget::MotionPolicy::ResolveDuration(480);
+    if (handoff_ms > 0) {
+      frame.setWindowOpacity(0.0);
     }
-
     frame.applyStartupWindowState();
     app.setQuitOnLastWindowClosed(true);
+
+    if (splash != nullptr) {
+      splash->finish();
+      if (handoff_ms <= 0) {
+        splash->hide();
+        splash.reset();
+        frame.setWindowOpacity(1.0);
+      } else {
+        autoviz::SplashScreen* splash_raw = splash.release();
+        auto* fade_splash = new QPropertyAnimation(
+            splash_raw, QByteArrayLiteral("windowOpacity"));
+        fade_splash->setDuration(handoff_ms);
+        fade_splash->setStartValue(splash_raw->windowOpacity());
+        fade_splash->setEndValue(0.0);
+        fade_splash->setEasingCurve(QEasingCurve::InCubic);
+        QObject::connect(fade_splash, &QPropertyAnimation::finished, splash_raw,
+                         [splash_raw]() {
+                           splash_raw->hide();
+                           splash_raw->deleteLater();
+                         });
+        fade_splash->start(QAbstractAnimation::DeleteWhenStopped);
+
+        auto* fade_frame = new QPropertyAnimation(
+            &frame, QByteArrayLiteral("windowOpacity"));
+        fade_frame->setDuration(handoff_ms);
+        fade_frame->setStartValue(0.0);
+        fade_frame->setEndValue(1.0);
+        fade_frame->setEasingCurve(QEasingCurve::OutCubic);
+        fade_frame->start(QAbstractAnimation::DeleteWhenStopped);
+      }
+    } else if (handoff_ms > 0) {
+      auto* fade_frame =
+          new QPropertyAnimation(&frame, QByteArrayLiteral("windowOpacity"));
+      fade_frame->setDuration(handoff_ms);
+      fade_frame->setStartValue(0.0);
+      fade_frame->setEndValue(1.0);
+      fade_frame->setEasingCurve(QEasingCurve::OutCubic);
+      fade_frame->start(QAbstractAnimation::DeleteWhenStopped);
+    }
 
     // Ctrl+C / SIGTERM → main-window closeEvent (GLX teardown), not a raw
     // Autolink state flip that leaves Qt tearing down WA_PaintOnScreen widgets.

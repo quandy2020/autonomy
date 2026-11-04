@@ -14,6 +14,7 @@ class Button : public QAbstractButton {
  public:
   enum class Variant { kPrimary, kSecondary, kSubtle, kDanger };
   enum class Size { kSmall, kMedium, kLarge };
+  enum class ContentAlign { kCenter, kStart };
 
   explicit Button(QWidget* parent = nullptr);
   explicit Button(const QString& text, QWidget* parent = nullptr);
@@ -22,6 +23,8 @@ class Button : public QAbstractButton {
   void SetVariant(Variant variant);
   Size button_size() const noexcept { return size_; }
   void SetButtonSize(Size size);
+  ContentAlign content_align() const noexcept { return content_align_; }
+  void SetContentAlign(ContentAlign align);
   style::Tone tone() const noexcept { return tone_; }
   void SetTone(style::Tone tone);
 
@@ -29,6 +32,7 @@ class Button : public QAbstractButton {
   QSize minimumSizeHint() const override;
 
  protected:
+  void changeEvent(QEvent* event) override;
   void enterEvent(QEnterEvent* event) override;
   void leaveEvent(QEvent* event) override;
   void paintEvent(QPaintEvent* event) override;
@@ -38,6 +42,7 @@ class Button : public QAbstractButton {
 
   Variant variant_ = Variant::kSecondary;
   Size size_ = Size::kMedium;
+  ContentAlign content_align_ = ContentAlign::kCenter;
   style::Tone tone_ = style::Tone::Shell;
 };
 

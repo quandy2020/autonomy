@@ -35,6 +35,7 @@
 #include "autoviz/common/view_state_io.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/rendering/view_controller.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -81,13 +82,22 @@ Qt::ItemFlags ValueFlags(bool editable, bool checkable = false) {
 }
 
 /**
- * @brief Formats a float for the value column using general format (8 significant digits).
+ * @brief Formats a float for the value column without binary float noise.
  *
  * @param value Numeric camera property.
  * @return Display / edit string written into the tree cell.
  */
 QString FormatFloat(float value) {
-  return QString::number(value, 'g', 8);
+  QString text = QString::number(static_cast<double>(value), 'f', 4);
+  if (text.contains(QLatin1Char('.'))) {
+    while (text.endsWith(QLatin1Char('0'))) {
+      text.chop(1);
+    }
+    if (text.endsWith(QLatin1Char('.'))) {
+      text.chop(1);
+    }
+  }
+  return text;
 }
 
 }  // namespace
@@ -134,22 +144,17 @@ void ViewsPanel::setupUi() {
 
   QHBoxLayout* top_row = nullptr;
   auto* toolbar = MakePanelToolbar(this, &top_row);
-  auto* type_label = new QLabel(tr("Type"), toolbar);
-  type_label->setStyleSheet(
-      style::sheet(QStringLiteral("views"), style::tokens()));
+  auto* type_label = MakeSettingsFormLabel(tr("Type"), toolbar);
   top_row->addWidget(type_label);
   type_selector_ = new QComboBox(toolbar);
   type_selector_->setObjectName(QStringLiteral("ViewsPanel/TypeSelector"));
   type_selector_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   StyleCompactSettingsField(type_selector_);
   top_row->addWidget(type_selector_, 1);
-  auto* zero_button = new QPushButton(tr("Zero"), toolbar);
+  auto* zero_button = MakeFlatActionButton(tr("Zero"), toolbar);
   zero_button->setObjectName(QStringLiteral("ViewsPanel/ZeroButton"));
-  zero_button->setCursor(Qt::PointingHandCursor);
   zero_button->setToolTip(
       tr("Jump to 0,0,0 with the current view controller. Shortcut: Z"));
-  zero_button->setStyleSheet(
-      style::sheet(QStringLiteral("views")));
   top_row->addWidget(zero_button);
   layout->addWidget(toolbar);
 
@@ -158,10 +163,10 @@ void ViewsPanel::setupUi() {
   tree_->setColumnCount(2);
   tree_->setHeaderHidden(true);
   tree_->setRootIsDecorated(true);
-  tree_->setIndentation(12);
+  tree_->setIndentation(14);
   tree_->setIconSize(QSize(16, 16));
   tree_->setUniformRowHeights(true);
-  tree_->setAnimated(true);
+  tree_->setAnimated(false);
   tree_->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
   tree_->setAttribute(Qt::WA_TranslucentBackground, true);
   tree_->setAutoFillBackground(false);
@@ -172,16 +177,20 @@ void ViewsPanel::setupUi() {
   tree_->setAttribute(Qt::WA_MacShowFocusRect, false);
   tree_->setAllColumnsShowFocus(false);
   tree_->header()->setStretchLastSection(true);
+  // Fixed name column keeps value cells aligned like Displays / Image settings.
   tree_->header()->setSectionResizeMode(kViewTreeColName,
-                                        QHeaderView::ResizeToContents);
+                                        QHeaderView::Interactive);
+  tree_->header()->resizeSection(kViewTreeColName, 168);
   StyleFrostedPanelTree(tree_, kViewTreeColName);
   tree_->setObjectName(QStringLiteral("ViewsPanel/PropertyTree"));
   QPalette tree_pal = tree_->palette();
+  tree_pal.setBrush(QPalette::Base, Qt::transparent);
+  tree_pal.setBrush(QPalette::Window, Qt::transparent);
   tree_pal.setBrush(QPalette::Highlight, Qt::transparent);
-  tree_pal.setBrush(QPalette::HighlightedText, QColor(0x0F, 0x76, 0x6E));
+  tree_pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
   tree_pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   tree_pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-                    QColor(0x0F, 0x76, 0x6E));
+                    glass::ShellSelectionInk());
   tree_->setPalette(tree_pal);
   value_delegate_ = new ViewTreeDelegate(tree_);
   tree_->setItemDelegateForColumn(kViewTreeColValue, value_delegate_);
@@ -195,7 +204,7 @@ void ViewsPanel::setupUi() {
   footer->setObjectName(QStringLiteral("ViewsFrostedFooter"));
   footer->setAttribute(Qt::WA_StyledBackground, true);
   footer->setStyleSheet(
-      style::sheet(QStringLiteral("views")));
+      style::sheet(QStringLiteral("views"), style::tokens()));
   auto* button_row = new QHBoxLayout(footer);
   button_row->setContentsMargins(10, 8, 10, 8);
   button_row->setSpacing(8);
@@ -282,6 +291,11 @@ void ViewsPanel::populateCurrentViewProperties(QTreeWidgetItem* parent) {
   near_clip->setFlags(NameFlags() | ValueFlags(true));
   SetTreeItemMeta(near_clip, ViewTreeItemKind::kNearClip);
 
+  auto* far_clip = new QTreeWidgetItem(parent);
+  far_clip->setText(kViewTreeColName, tr("Far Clip Distance"));
+  far_clip->setFlags(NameFlags() | ValueFlags(true));
+  SetTreeItemMeta(far_clip, ViewTreeItemKind::kFarClip);
+
   auto* invert_z = new QTreeWidgetItem(parent);
   invert_z->setText(kViewTreeColName, tr("Invert Z Axis"));
   invert_z->setFlags(NameFlags() | ValueFlags(false, true));
@@ -291,9 +305,8 @@ void ViewsPanel::populateCurrentViewProperties(QTreeWidgetItem* parent) {
   auto* target_frame = new QTreeWidgetItem(parent);
   target_frame->setText(kViewTreeColName, tr("Target Frame"));
   target_frame->setText(kViewTreeColValue, rendering::ViewTargetFrameFixedSentinel());
-  // Parent shows the current selection; choices are checkable children.
-  target_frame->setFlags(NameFlags());
-  target_frame->setExpanded(true);
+  // Value cell uses a Liquid Glass combo (ViewTreeDelegate); no radio children.
+  target_frame->setFlags(NameFlags() | ValueFlags(true));
   SetTreeItemMeta(target_frame, ViewTreeItemKind::kTargetFrame);
 
   auto* distance = new QTreeWidgetItem(parent);
@@ -384,26 +397,15 @@ void ViewsPanel::updateCurrentViewValues(bool update_visibility) {
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kNearClip)) {
     item->setText(kViewTreeColValue, FormatFloat(state.near_clip_distance));
   }
+  if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kFarClip)) {
+    item->setText(kViewTreeColValue, FormatFloat(state.far_clip_distance));
+  }
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kInvertZ)) {
     item->setCheckState(kViewTreeColValue,
                         state.invert_z_axis ? Qt::Checked : Qt::Unchecked);
   }
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kTargetFrame)) {
-    const QString current = view_controller_->targetFrameDisplay();
-    item->setText(kViewTreeColValue, current);
-    for (int i = 0; i < item->childCount(); ++i) {
-      QTreeWidgetItem* choice = item->child(i);
-      if (choice == nullptr) {
-        continue;
-      }
-      const QString frame =
-          choice->data(kViewTreeColName, kViewTreeRoleFrameName).toString();
-      const Qt::CheckState want =
-          frame == current ? Qt::Checked : Qt::Unchecked;
-      if (choice->checkState(kViewTreeColValue) != want) {
-        choice->setCheckState(kViewTreeColValue, want);
-      }
-    }
+    item->setText(kViewTreeColValue, view_controller_->targetFrameDisplay());
   }
   if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kDistance)) {
     item->setText(kViewTreeColValue, FormatFloat(state.distance));
@@ -546,96 +548,35 @@ void ViewsPanel::rebuildTargetFrameChoices() {
   if (parent == nullptr) {
     return;
   }
-
-  QStringList frames;
-  frames.push_back(rendering::ViewTargetFrameFixedSentinel());
-  if (manager_ != nullptr) {
-    for (const auto& name : manager_->frameManager().allFrameNames()) {
-      frames.push_back(QString::fromStdString(name));
-    }
+  // Legacy radio children → combo cell: drop any leftover choice rows.
+  updating_ = true;
+  while (parent->childCount() > 0) {
+    delete parent->takeChild(0);
   }
-  frames.sort(Qt::CaseInsensitive);
-  frames.removeAll(rendering::ViewTargetFrameFixedSentinel());
-  frames.prepend(rendering::ViewTargetFrameFixedSentinel());
-
   const QString current =
       view_controller_ != nullptr ? view_controller_->targetFrameDisplay()
                                   : rendering::ViewTargetFrameFixedSentinel();
-
-  const bool was_updating = updating_;
-  updating_ = true;
-
-  // Rebuild only when the frame set changed to avoid wiping expand state / flicker.
-  QStringList existing;
-  existing.reserve(parent->childCount());
-  for (int i = 0; i < parent->childCount(); ++i) {
-    QTreeWidgetItem* child = parent->child(i);
-    if (child == nullptr) {
-      continue;
-    }
-    existing.push_back(
-        child->data(kViewTreeColName, kViewTreeRoleFrameName).toString());
-  }
-  if (existing != frames) {
-    while (parent->childCount() > 0) {
-      delete parent->takeChild(0);
-    }
-    for (const QString& frame : frames) {
-      auto* choice = new QTreeWidgetItem(parent);
-      choice->setText(kViewTreeColName, frame);
-      choice->setFlags(NameFlags() | ValueFlags(false, true));
-      choice->setData(kViewTreeColName, kViewTreeRoleFrameName, frame);
-      choice->setData(kViewTreeColValue, kViewTreeRoleFrameName, frame);
-      SetTreeItemMeta(choice, ViewTreeItemKind::kTargetFrameChoice);
-    }
-    parent->setExpanded(true);
-  }
-
-  for (int i = 0; i < parent->childCount(); ++i) {
-    QTreeWidgetItem* choice = parent->child(i);
-    if (choice == nullptr) {
-      continue;
-    }
-    const QString frame =
-        choice->data(kViewTreeColName, kViewTreeRoleFrameName).toString();
-    const Qt::CheckState want =
-        frame == current ? Qt::Checked : Qt::Unchecked;
-    if (choice->checkState(kViewTreeColValue) != want) {
-      choice->setCheckState(kViewTreeColValue, want);
-    }
-  }
   parent->setText(kViewTreeColValue, current);
-
-  updating_ = was_updating;
+  updating_ = false;
 }
 
 void ViewsPanel::applyTargetFrameChoice(QTreeWidgetItem* choice) {
-  if (choice == nullptr || view_controller_ == nullptr) {
+  if (choice == nullptr) {
     return;
   }
   const QString frame =
       choice->data(kViewTreeColName, kViewTreeRoleFrameName).toString();
-  if (frame.isEmpty()) {
+  applyTargetFrame(frame);
+}
+
+void ViewsPanel::applyTargetFrame(const QString& frame) {
+  if (frame.isEmpty() || view_controller_ == nullptr) {
     return;
   }
 
   updating_ = true;
-  QTreeWidgetItem* parent = choice->parent();
-  if (parent != nullptr) {
-    for (int i = 0; i < parent->childCount(); ++i) {
-      QTreeWidgetItem* sibling = parent->child(i);
-      if (sibling == nullptr) {
-        continue;
-      }
-      const Qt::CheckState want =
-          sibling == choice ? Qt::Checked : Qt::Unchecked;
-      if (sibling->checkState(kViewTreeColValue) != want) {
-        sibling->setCheckState(kViewTreeColValue, want);
-      }
-    }
-    parent->setText(kViewTreeColValue, frame);
-  } else {
-    choice->setCheckState(kViewTreeColValue, Qt::Checked);
+  if (QTreeWidgetItem* item = findItemByKind(ViewTreeItemKind::kTargetFrame)) {
+    item->setText(kViewTreeColValue, frame);
   }
   updating_ = false;
 
@@ -650,7 +591,6 @@ void ViewsPanel::applyTargetFrameChoice(QTreeWidgetItem* choice) {
     const auto type = view_controller_->type();
     if (type != rendering::ViewControllerType::kFps &&
         type != rendering::ViewControllerType::kFpsMotion) {
-      // setTypeByName("FPS") would call placeFpsEyeOnRobotFrame again (OK).
       view_controller_->setTypeByName(QStringLiteral("FPS"));
     } else {
       view_controller_->setType(rendering::ViewControllerType::kFps);
@@ -829,13 +769,21 @@ void ViewsPanel::onTreeItemChanged(QTreeWidgetItem* item, int column) {
       view_controller_->setNearClipDistance(item->text(kViewTreeColValue).toFloat());
       changed = true;
       break;
+    case ViewTreeItemKind::kFarClip:
+      view_controller_->setFarClipDistance(item->text(kViewTreeColValue).toFloat());
+      changed = true;
+      break;
     case ViewTreeItemKind::kInvertZ:
       view_controller_->setInvertZAxis(item->checkState(kViewTreeColValue) == Qt::Checked);
       changed = true;
       break;
-    case ViewTreeItemKind::kTargetFrame:
-      // Selection is driven by checkable children; parent value is display-only.
-      break;
+    case ViewTreeItemKind::kTargetFrame: {
+      const QString frame = item->text(kViewTreeColValue).trimmed();
+      if (!frame.isEmpty()) {
+        applyTargetFrame(frame);
+      }
+      return;
+    }
     case ViewTreeItemKind::kDistance: {
       rendering::ViewState state = view_controller_->state();
       state.distance = item->text(kViewTreeColValue).toFloat();

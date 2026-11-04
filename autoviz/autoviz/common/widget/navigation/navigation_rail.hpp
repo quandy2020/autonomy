@@ -13,6 +13,7 @@
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
 class QButtonGroup;
+class QFocusEvent;
 class QKeyEvent;
 class QToolButton;
 class QVBoxLayout;
@@ -52,6 +53,8 @@ class NavigationRail : public QFrame {
   void ItemActivated(int index, const QVariant& data);
 
  protected:
+  void focusInEvent(QFocusEvent* event) override;
+  void focusOutEvent(QFocusEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
 
  private:

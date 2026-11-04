@@ -4,6 +4,7 @@
 
 #include "autoviz/common/widget/navigation/step_indicator.hpp"
 
+#include <QEvent>
 #include <QFontMetrics>
 #include <QKeyEvent>
 #include <QMouseEvent>
@@ -13,6 +14,8 @@
 #include <QResizeEvent>
 #include <QVariant>
 #include <utility>
+
+#include "autoviz/common/widget/navigation/navigation_direction.hpp"
 
 namespace autoviz::widget {
 namespace {
@@ -88,6 +91,14 @@ QSize StepIndicator::minimumSizeHint() const {
   return QSize(qMax(120, static_cast<int>(steps_.size()) * 48), 48);
 }
 
+void StepIndicator::changeEvent(QEvent* event) {
+  QWidget::changeEvent(event);
+  if (event->type() == QEvent::LayoutDirectionChange) {
+    RebuildGeometry();
+    update();
+  }
+}
+
 void StepIndicator::keyPressEvent(QKeyEvent* event) {
   if (!interactive_) {
     QWidget::keyPressEvent(event);
@@ -95,11 +106,8 @@ void StepIndicator::keyPressEvent(QKeyEvent* event) {
   }
   switch (event->key()) {
     case Qt::Key_Left:
-      MoveCurrent(-1);
-      event->accept();
-      return;
     case Qt::Key_Right:
-      MoveCurrent(1);
+      MoveCurrent(internal::HorizontalKeyStep(event->key(), layoutDirection()));
       event->accept();
       return;
     case Qt::Key_Home:
@@ -151,7 +159,7 @@ void StepIndicator::paintEvent(QPaintEvent* event) {
     return;
   }
 
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
 
@@ -166,6 +174,8 @@ void StepIndicator::paintEvent(QPaintEvent* event) {
 
   const int cell_width = width() / static_cast<int>(steps_.size());
   for (int index = 0; index < static_cast<int>(steps_.size()); ++index) {
+    const int visual_index = internal::VisualIndex(
+        index, static_cast<int>(steps_.size()), layoutDirection());
     const bool current = index == current_index_;
     const bool complete = index < current_index_;
     const QColor accent =
@@ -193,7 +203,8 @@ void StepIndicator::paintEvent(QPaintEvent* event) {
     painter.setPen(steps_[index].enabled
                        ? (current ? tokens.accent : tokens.text)
                        : tokens.disabled);
-    const QRect text_rect(index * cell_width, 31, cell_width, height() - 31);
+    const QRect text_rect(visual_index * cell_width, 31, cell_width,
+                          height() - 31);
     const QString title = fontMetrics().elidedText(
         steps_[index].title, Qt::ElideRight, qMax(8, cell_width - 8));
     painter.drawText(text_rect, Qt::AlignHCenter | Qt::AlignTop, title);
@@ -241,10 +252,13 @@ void StepIndicator::RebuildGeometry() {
   if (count <= 0) {
     return;
   }
-  centers_.reserve(count);
+  centers_.resize(count);
   const qreal cell_width = static_cast<qreal>(width()) / count;
   for (int index = 0; index < count; ++index) {
-    centers_.push_back(QPointF((index + 0.5) * cell_width, kCircleCenterY));
+    const int visual_index =
+        internal::VisualIndex(index, count, layoutDirection());
+    centers_[index] =
+        QPointF((visual_index + 0.5) * cell_width, kCircleCenterY);
   }
 }
 
@@ -253,8 +267,10 @@ int StepIndicator::HitTest(const QPointF& position) const {
     return -1;
   }
   const int count = static_cast<int>(steps_.size());
-  const int index = qBound(
+  const int visual_index = qBound(
       0, static_cast<int>(position.x() * count / qMax(1, width())), count - 1);
+  const int index =
+      internal::VisualIndex(visual_index, count, layoutDirection());
   return IsSelectable(index) ? index : -1;
 }
 

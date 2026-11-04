@@ -59,6 +59,16 @@ QPalette BuildThemePalette();
 void ApplyAppTheme(QApplication& app);
 
 /**
+ * @brief Re-polishes open windows after @ref glass::SetShellAppearance().
+ *
+ * Refreshes menu/tool bar palettes and re-applies known chrome QSS so a
+ * Light ↔ Dark switch takes effect without restarting.
+ *
+ * @param app Application instance (typically @c qApp).
+ */
+void RefreshAppThemeChrome(QApplication& app);
+
+/**
  * @brief Assembles the global application stylesheet (chrome + widgets + panels).
  * @return QSS string suitable for @c QApplication::setStyleSheet().
  * @see style::sheet()

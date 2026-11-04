@@ -46,6 +46,7 @@ from autosim.bridge.clock import Clock
 from autosim.bridge.messages import Messages
 from autosim.bridge.sensors import Sensors
 from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
+from autosim.bridge.topdown import topdown_spec
 from autosim.dataset import DatasetCollector
 from autosim.robot import Robot
 from autosim.robot.description import load_robot_description
@@ -121,6 +122,7 @@ class Runner:
         self.points_elapsed = 0.0
         self.camera_elapsed = 0.0
         self.surround_elapsed = {camera.name: 0.0 for camera in self.surround}
+        self.topdown_elapsed = 0.0
         self.depth_points_elapsed = 0.0
         self.inertial_elapsed = 0.0
         self.map_elapsed = 0.0
@@ -183,6 +185,7 @@ class Runner:
         # Resolved in assemble_plant once WorldBackend capabilities are known.
         self.surround: tuple = ()
         self.panorama = None
+        self.topdown = topdown_spec(sensors)
         self.imu = sensors["imu"]
         self.odom = sensors["odom"]
         self.spawn = habitat["spawn"]
@@ -266,14 +269,18 @@ class Runner:
         )
         self.traffic = self.world.traffic
         self.simulator.traffic = self.traffic
+        bind_nav = getattr(self.simulator, "bind_traffic_navmesh", None)
+        if callable(bind_nav):
+            bind_nav(self.traffic)
         ped = self.traffic.pedestrian
         if ped is not None and int(getattr(ped, "position", np.zeros((0, 2))).shape[0]) > 0:
             field = self.world.field
             logger.info(
-                "world pedestrians=%d field=%s arena=%s",
+                "world pedestrians=%d field=%s arena=%s navmesh=%s",
                 int(ped.position.shape[0]),
                 "yes" if field is not None else "no",
                 "yes" if ped.arena is not None else "no",
+                "yes" if getattr(ped, "pathfinder", None) is not None else "no",
             )
         self.urdf_for_footprint = self.footprint_urdf()
 
@@ -304,6 +311,9 @@ class Runner:
                 self.world = World.from_block(self.scenario_cfg, built.grid)
                 self.traffic = self.world.traffic
                 self.simulator.traffic = self.traffic
+                bind_nav = getattr(self.simulator, "bind_traffic_navmesh", None)
+                if callable(bind_nav):
+                    bind_nav(self.traffic)
                 # Traffic was rebuilt after bind_bridge — re-attach HuNav.
                 self.rebind_hunav_after_traffic()
             return
@@ -318,6 +328,26 @@ class Runner:
                 f"autosim occupancy warmup failed (laser wall-clip disabled): {exc!r}",
                 stacklevel=2,
             )
+            return
+        # Bind navmesh occupancy onto Traffic so pedestrians skirt walls
+        # (without this, Habitat GLB scenes have no Field and walkers clip).
+        packed = getattr(self.map_builder, "cached_grid", None)
+        if packed is not None:
+            self.world.rebind(packed)
+            self.simulator.traffic = self.traffic
+            bind_nav = getattr(self.simulator, "bind_traffic_navmesh", None)
+            if callable(bind_nav):
+                bind_nav(self.traffic)
+            self.rebind_hunav_after_traffic()
+            ped = self.traffic.pedestrian
+            if ped is not None and int(getattr(ped, "position", np.zeros((0, 2))).shape[0]) > 0:
+                logger.info(
+                    "navmesh field bound for pedestrians=%d grid=%sx%s navmesh=%s",
+                    int(ped.position.shape[0]),
+                    packed[4],
+                    packed[5],
+                    "yes" if getattr(ped, "pathfinder", None) is not None else "no",
+                )
 
     def rebind_hunav_after_traffic(self) -> None:
         """Refresh HuNav service / manager after ``World`` / Traffic recreate."""
@@ -381,6 +411,9 @@ class Runner:
             types[camera.info_key] = CameraInfo
         if self.panorama is not None:
             types["surround_panorama"] = Image
+        if self.topdown is not None:
+            types["topdown_rgb"] = Image
+            types["topdown_info"] = CameraInfo
         if self.imu.get("enabled", False):
             types["imu"] = Imu
         joint_cfg = (self.settings.data.get("habitat") or {}).get("sensors", {}).get(
@@ -677,6 +710,7 @@ class Runner:
             # Depth cloud without RGB (fake) when camera.enabled is false.
             self.emit("depth_points", self.submit_depth_points_only, stamp)
         self.emit("surround", self.submit_surround, stamp)
+        self.emit("topdown", self.submit_topdown, stamp)
         self.emit("dataset", self.record_dataset_frame, stamp, dt)
 
     def record_dataset_frame(self, stamp: Tuple[int, int], dt: float) -> None:
@@ -868,6 +902,37 @@ class Runner:
                 marker_far,
             ),
         )
+
+    def submit_topdown(self, stamp: Tuple[int, int]) -> None:
+        """Publish overhead RGB when ``sensors.topdown.enabled``."""
+        cfg = self.topdown
+        if cfg is None or "topdown_rgb" not in self.bridge.writers:
+            return
+        rate = float(cfg.get("rate_hz", 5.0))
+        if self.topdown_elapsed < 1.0 / max(rate, 1e-3):
+            return
+        render = getattr(self.simulator, "render_topdown", None)
+        if not callable(render):
+            return
+        color = render()
+        if color is None:
+            return
+        self.topdown_elapsed = 0.0
+        frame = str(cfg.get("frame") or "topdown_link")
+        rgb_msg = Messages.encode_image(color, stamp, frame, "rgb8")
+        self.bridge.publish("topdown_rgb", rgb_msg)
+        if "topdown_info" in self.bridge.writers:
+            width = int(cfg["width"])
+            height = int(cfg["height"])
+            matrix = Messages.camera_intrinsics(
+                width, height, float(cfg["hfov_deg"])
+            )
+            info = Messages.encode_camera_info(
+                stamp, frame, width, height, matrix
+            )
+            info.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+            info.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
+            self.bridge.publish("topdown_info", info)
 
     def submit_surround(self, stamp: Tuple[int, int]) -> None:
         """Publish each surround camera (RGB + CameraInfo) at its own ``rate_hz``."""
@@ -1191,6 +1256,7 @@ class Runner:
         self.points_elapsed += dt
         self.camera_elapsed += dt
         self.depth_points_elapsed += dt
+        self.topdown_elapsed += dt
         for name in self.surround_elapsed:
             self.surround_elapsed[name] += dt
         self.inertial_elapsed += dt
@@ -1736,6 +1802,19 @@ class Runner:
                     camera.yaw,
                 )
             )
+        if self.topdown is not None:
+            td_frame = str(self.topdown.get("frame") or "topdown_link")
+            if td_frame not in urdf_links:
+                # ROS z-up: camera above base; pitch −π/2 looks at the floor.
+                mounts.append(
+                    Messages.encode_transform(
+                        stamp,
+                        body_frame,
+                        td_frame,
+                        (0.0, 0.0, float(self.topdown["height_m"])),
+                        rpy=(-0.5 * math.pi, 0.0, 0.0),
+                    )
+                )
         # Dynamic and fixed edges must never have duplicate publishers. Static
         # transforms are periodically repeated because Autolink writers are
         # volatile rather than latched.

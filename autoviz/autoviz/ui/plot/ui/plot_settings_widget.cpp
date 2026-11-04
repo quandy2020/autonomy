@@ -184,7 +184,8 @@ std::function<void()> InstallPlotValuePathEditor(
 
 QString ColorSwatchStyle(const QColor& color) {
   const QString css =
-      color.isValid() ? color.name(QColor::HexRgb) : QStringLiteral("#4e98e2");
+      color.isValid() ? color.name(QColor::HexRgb)
+                      : glass::Hex(glass::Shell().accent);
   return style::mark(style::Mark::Swatch, css);
 }
 

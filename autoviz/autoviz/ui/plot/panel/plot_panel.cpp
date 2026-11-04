@@ -38,6 +38,7 @@
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/plot/chart/plot_chart_widget.hpp"
@@ -57,7 +58,8 @@ constexpr int kMinSettingsWidth = 180;
 constexpr int kMinChartWidth = 160;
 constexpr int kDefaultSettingsWidth = 300;
 constexpr int kSplitterHandleWidth = 6;
-const char* kSeriesColors[] = {"#4e98e2", "#e74c3c", "#2ecc71", "#f39c12",
+/** Index 0 is reserved for glass::Shell().accent at runtime. */
+const char* kSeriesColors[] = {"#007AFF", "#e74c3c", "#2ecc71", "#f39c12",
                                "#9b59b6", "#1abc9c", "#e84393", "#34495e"};
 
 PlotSeriesRuntime* RuntimeAt(
@@ -715,8 +717,13 @@ void PlotPanel::onRemoveSeriesRequested(int index) {
 }
 
 QColor PlotPanel::nextSeriesColor() const {
-  return QColor(QString::fromLatin1(
-      kSeriesColors[color_cursor_ % (sizeof(kSeriesColors) / sizeof(kSeriesColors[0]))]));
+  constexpr int kCount =
+      static_cast<int>(sizeof(kSeriesColors) / sizeof(kSeriesColors[0]));
+  const int index = color_cursor_ % kCount;
+  if (index == 0) {
+    return glass::Shell().accent;
+  }
+  return QColor(QString::fromLatin1(kSeriesColors[index]));
 }
 
 void PlotPanel::applyConfigToUi() {

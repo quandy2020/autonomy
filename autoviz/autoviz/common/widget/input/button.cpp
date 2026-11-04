@@ -12,20 +12,21 @@
 namespace autoviz::widget {
 namespace {
 
-QColor Mix(const QColor& foreground, const QColor& background, int alpha) {
-  const int inverse = 255 - alpha;
-  return QColor(
-      (foreground.red() * alpha + background.red() * inverse) / 255,
-      (foreground.green() * alpha + background.green() * inverse) / 255,
-      (foreground.blue() * alpha + background.blue() * inverse) / 255);
-}
-
 int MnemonicTextWidth(const QFontMetrics& metrics, const QString& text) {
   constexpr int kMeasurementWidth = 100000;
   const QRect bounds = metrics.boundingRect(
       QRect(0, 0, kMeasurementWidth, metrics.height()),
       Qt::AlignLeft | Qt::AlignVCenter | Qt::TextShowMnemonic, text);
   return bounds.width();
+}
+
+QFont ButtonFont(const QFont& base, Button::Variant variant) {
+  QFont result = base;
+  if (variant == Button::Variant::kPrimary ||
+      variant == Button::Variant::kDanger) {
+    result.setWeight(QFont::DemiBold);
+  }
+  return result;
 }
 
 }  // namespace
@@ -43,6 +44,7 @@ Button::Button(const QString& text, QWidget* parent) : Button(parent) {
 void Button::SetVariant(Variant variant) {
   if (variant_ == variant) return;
   variant_ = variant;
+  updateGeometry();
   update();
 }
 
@@ -50,6 +52,14 @@ void Button::SetButtonSize(Size size) {
   if (size_ == size) return;
   size_ = size;
   updateGeometry();
+  update();
+}
+
+void Button::SetContentAlign(ContentAlign align) {
+  if (content_align_ == align) {
+    return;
+  }
+  content_align_ = align;
   update();
 }
 
@@ -72,18 +82,27 @@ int Button::ControlHeight(const ThemeTokens& tokens) const noexcept {
 }
 
 QSize Button::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const int height = ControlHeight(tokens);
   const int icon_width = icon().isNull() ? 0 : height - tokens.spacing_md;
   const int gap = icon_width > 0 && !text().isEmpty() ? tokens.spacing_sm : 0;
   const int horizontal_padding =
       size_ == Size::kSmall ? tokens.spacing_md : tokens.spacing_lg;
-  const int width = MnemonicTextWidth(fontMetrics(), text()) + icon_width +
-                    gap + 2 * horizontal_padding;
+  const QFontMetrics metrics(ButtonFont(font(), variant_));
+  const int width = MnemonicTextWidth(metrics, text()) + icon_width + gap +
+                    2 * horizontal_padding;
   return QSize(qMax(height, width), height);
 }
 
 QSize Button::minimumSizeHint() const { return sizeHint(); }
+
+void Button::changeEvent(QEvent* event) {
+  if (event->type() == QEvent::EnabledChange) {
+    setCursor(isEnabled() ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    update();
+  }
+  QAbstractButton::changeEvent(event);
+}
 
 void Button::enterEvent(QEnterEvent* event) {
   update();
@@ -97,56 +116,97 @@ void Button::leaveEvent(QEvent* event) {
 
 void Button::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   QColor fill;
   QColor foreground;
   QColor border = Qt::transparent;
 
   switch (variant_) {
     case Variant::kPrimary:
-      fill = tokens.accent;
-      foreground = tokens.on_accent;
+      fill = tokens.accent_filled;
+      foreground = tokens.on_accent_filled;
       break;
     case Variant::kDanger:
-      fill = tokens.danger;
-      foreground = QColor(Qt::white);
+      fill = tokens.danger_filled;
+      foreground = tokens.on_danger_filled;
       break;
     case Variant::kSubtle:
       fill = Qt::transparent;
-      foreground = tokens.text;
+      // Disclosure headers: muted when collapsed, accent when expanded.
+      if (isCheckable()) {
+        foreground = isChecked() ? tokens.accent_text : tokens.text_muted;
+      } else {
+        foreground = tokens.accent_text;
+      }
       break;
     case Variant::kSecondary:
-      fill = tokens.surface_raised;
+      fill = tokens.surface_material;
       foreground = tokens.text;
-      border = tokens.border;
       break;
   }
 
   if (!isEnabled()) {
     foreground = tokens.disabled;
-    fill = Mix(tokens.disabled, tokens.surface, 22);
-    border = Mix(tokens.disabled, tokens.surface, 80);
+    fill =
+        variant_ == Variant::kSubtle ? Qt::transparent : tokens.surface_sunken;
+    border = Qt::transparent;
   } else if (isDown()) {
-    fill = fill == Qt::transparent ? tokens.surface_hovered : fill.darker(108);
+    switch (variant_) {
+      case Variant::kPrimary:
+        fill = tokens.accent_filled_pressed;
+        foreground = tokens.on_accent_filled;
+        break;
+      case Variant::kDanger:
+        fill = tokens.danger_filled_pressed;
+        foreground = tokens.on_danger_filled;
+        break;
+      case Variant::kSecondary:
+      case Variant::kSubtle:
+        fill = tokens.surface_pressed;
+        break;
+    }
   } else if (underMouse()) {
-    fill = fill == Qt::transparent ? tokens.surface_hovered : fill.lighter(105);
+    switch (variant_) {
+      case Variant::kPrimary:
+        fill = tokens.accent_filled_hovered;
+        foreground = tokens.on_accent_filled;
+        break;
+      case Variant::kDanger:
+        fill = tokens.danger_filled_hovered;
+        foreground = tokens.on_danger_filled;
+        break;
+      case Variant::kSecondary:
+      case Variant::kSubtle:
+        fill = tokens.surface_hovered;
+        if (variant_ == Variant::kSubtle) {
+          foreground = tokens.accent_text;
+        }
+        break;
+    }
   }
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
+  painter.setFont(ButtonFont(font(), variant_));
   painter.setBrush(fill);
   painter.setPen(QPen(border, 1));
   painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
                           tokens.radius_small, tokens.radius_small);
 
-  QRect content = rect().adjusted(tokens.spacing_md, 0, -tokens.spacing_md, 0);
-  const int icon_extent = qMax(0, height() - tokens.spacing_md);
+  const int pad =
+      size_ == Size::kSmall ? tokens.spacing_sm : tokens.spacing_md;
+  QRect content = rect().adjusted(pad, 0, -pad, 0);
+  const int icon_extent =
+      qMax(0, qMin(height() - tokens.spacing_sm, tokens.spacing_lg + 4));
   const bool has_icon = !icon().isNull();
   const bool has_text = !text().isEmpty();
-  int total_width = has_text ? MnemonicTextWidth(fontMetrics(), text()) : 0;
+  const QFontMetrics metrics(painter.font());
+  int total_width = has_text ? MnemonicTextWidth(metrics, text()) : 0;
   if (has_icon) total_width += icon_extent;
   if (has_icon && has_text) total_width += tokens.spacing_sm;
-  int x = content.center().x() - total_width / 2;
+  int x = content_align_ == ContentAlign::kStart
+              ? content.left()
+              : content.center().x() - total_width / 2;
 
   if (has_icon) {
     const QRect icon_rect(x, (height() - icon_extent) / 2, icon_extent,
@@ -164,8 +224,14 @@ void Button::paintEvent(QPaintEvent* event) {
 
   if (hasFocus()) {
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(QPen(tokens.focus_ring, tokens.focus_ring_width));
-    const qreal inset = tokens.focus_ring_width + 0.5;
+    painter.setPen(
+        QPen(tokens.focus_ring_outer, tokens.focus_ring_width + 2.0));
+    qreal inset = tokens.focus_ring_width + 0.5;
+    painter.drawRoundedRect(
+        QRectF(rect()).adjusted(inset, inset, -inset, -inset),
+        tokens.radius_small - 1, tokens.radius_small - 1);
+    painter.setPen(QPen(tokens.focus_ring, 1.5));
+    inset = 2.0;
     painter.drawRoundedRect(
         QRectF(rect()).adjusted(inset, inset, -inset, -inset),
         tokens.radius_small - 1, tokens.radius_small - 1);

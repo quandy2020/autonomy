@@ -70,6 +70,7 @@ QIcon EmptyState::icon() const { return icon_; }
 
 void EmptyState::SetIcon(const QIcon& icon) {
   icon_ = icon;
+  uses_default_icon_ = false;
   UpdateIconPixmap();
 }
 
@@ -109,9 +110,13 @@ void EmptyState::SetTone(style::Tone tone) {
 QSize EmptyState::sizeHint() const { return QSize(360, 240); }
 
 void EmptyState::changeEvent(QEvent* event) {
+  if (event->type() == QEvent::StyleChange && uses_default_icon_) {
+    icon_ = style()->standardIcon(QStyle::SP_FileDialogContentsView);
+  }
   if (event->type() == QEvent::StyleChange ||
       event->type() == QEvent::PaletteChange ||
-      event->type() == QEvent::EnabledChange) {
+      event->type() == QEvent::EnabledChange ||
+      event->type() == QEvent::ScreenChangeInternal) {
     UpdateIconPixmap();
   }
   QWidget::changeEvent(event);
@@ -119,7 +124,7 @@ void EmptyState::changeEvent(QEvent* event) {
 
 void EmptyState::ApplyTheme() {
   ApplyWidgetTheme(this, tone_);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
 
   QPalette title_palette = title_label_->palette();
   title_palette.setColor(QPalette::WindowText, tokens.text);
@@ -147,7 +152,7 @@ void EmptyState::UpdateIconPixmap() {
   if (!pixmap.isNull()) {
     QPainter painter(&pixmap);
     painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
-    const ThemeTokens& tokens = GetThemeTokens(tone_);
+    const ThemeTokens& tokens = GetThemeTokens(this, tone_);
     painter.fillRect(pixmap.rect(),
                      isEnabled() ? tokens.text_muted : tokens.disabled);
   }

@@ -8,45 +8,78 @@
 #include <QHBoxLayout>
 #include <QHideEvent>
 #include <QLabel>
+#include <QPaintEvent>
+#include <QPainter>
 #include <QPushButton>
 #include <QShowEvent>
-#include <QStyle>
 #include <QTimer>
 #include <algorithm>
+
+#include "autoviz/common/widget/feedback/feedback_accessibility.hpp"
+#include "autoviz/common/widget/foundation/semantic_icon.hpp"
+#include "autoviz/common/widget/foundation/widget_theme.hpp"
 
 namespace autoviz {
 namespace widget {
 namespace {
 
-QStyle::StandardPixmap IconForLevel(FeedbackLevel level) {
+internal::SemanticStatusIcon IconForLevel(FeedbackLevel level) {
   switch (level) {
     case FeedbackLevel::kInformation:
-      return QStyle::SP_MessageBoxInformation;
+      return internal::SemanticStatusIcon::kInformation;
     case FeedbackLevel::kSuccess:
-      return QStyle::SP_DialogApplyButton;
+      return internal::SemanticStatusIcon::kSuccess;
     case FeedbackLevel::kWarning:
-      return QStyle::SP_MessageBoxWarning;
+      return internal::SemanticStatusIcon::kWarning;
     case FeedbackLevel::kError:
-      return QStyle::SP_MessageBoxCritical;
+      return internal::SemanticStatusIcon::kError;
   }
-  return QStyle::SP_MessageBoxInformation;
+  return internal::SemanticStatusIcon::kInformation;
+}
+
+QColor SemanticColor(FeedbackLevel level, const ThemeTokens& tokens) {
+  switch (level) {
+    case FeedbackLevel::kInformation:
+      return tokens.accent;
+    case FeedbackLevel::kSuccess:
+      return tokens.success;
+    case FeedbackLevel::kWarning:
+      return tokens.warning;
+    case FeedbackLevel::kError:
+      return tokens.danger;
+  }
+  return tokens.accent;
+}
+
+QColor Blend(const QColor& foreground, const QColor& background, int alpha) {
+  const int bounded = qBound(0, alpha, 255);
+  const int inverse = 255 - bounded;
+  return QColor(
+      (foreground.red() * bounded + background.red() * inverse) / 255,
+      (foreground.green() * bounded + background.green() * inverse) / 255,
+      (foreground.blue() * bounded + background.blue() * inverse) / 255,
+      (foreground.alpha() * bounded + background.alpha() * inverse) / 255);
 }
 
 }  // namespace
 
 Toast::Toast(QWidget* parent) : QFrame(parent) {
   setObjectName(QStringLiteral("AutovizToast"));
-  setFrameShape(QFrame::StyledPanel);
-  setFrameShadow(QFrame::Raised);
-  setAutoFillBackground(true);
+  setProperty("autovizRole", QStringLiteral("toast"));
+  setFrameShape(QFrame::NoFrame);
+  setAttribute(Qt::WA_TranslucentBackground);
+  setAutoFillBackground(false);
   setFocusPolicy(Qt::NoFocus);
   setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Minimum);
 
   auto* layout = new QHBoxLayout(this);
-  layout->setContentsMargins(12, 8, 8, 8);
-  layout->setSpacing(8);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  layout->setContentsMargins(tokens.spacing_lg, tokens.spacing_sm,
+                             tokens.spacing_sm, tokens.spacing_sm + 2);
+  layout->setSpacing(tokens.spacing_sm);
 
   icon_label_ = new QLabel(this);
+  icon_label_->setObjectName(QStringLiteral("AutovizToastLevelIcon"));
   icon_label_->setFixedSize(18, 18);
   icon_label_->setScaledContents(true);
   layout->addWidget(icon_label_);
@@ -59,9 +92,10 @@ Toast::Toast(QWidget* parent) : QFrame(parent) {
   layout->addWidget(message_label_, 1);
 
   close_button_ = new QPushButton(this);
+  close_button_->setObjectName(QStringLiteral("AutovizToastCloseButton"));
   close_button_->setFlat(true);
-  close_button_->setIcon(style()->standardIcon(QStyle::SP_DialogCloseButton));
-  close_button_->setFixedSize(26, 26);
+  close_button_->setFixedSize(44, 44);
+  close_button_->setIconSize(QSize(18, 18));
   close_button_->setAccessibleName(tr("Dismiss notification"));
   connect(close_button_, &QPushButton::clicked, this, &Toast::Dismiss);
   layout->addWidget(close_button_);
@@ -73,6 +107,7 @@ Toast::Toast(QWidget* parent) : QFrame(parent) {
   if (parent != nullptr) {
     parent->installEventFilter(this);
   }
+  ApplyTheme();
   UpdateIcon();
 }
 
@@ -80,8 +115,7 @@ QString Toast::message() const { return message_label_->text(); }
 
 void Toast::SetMessage(const QString& message) {
   message_label_->setText(message);
-  setAccessibleName(message);
-  setAccessibleDescription(message);
+  UpdateAccessibility();
   updateGeometry();
   if (isVisible()) {
     adjustSize();
@@ -96,6 +130,16 @@ void Toast::SetLevel(FeedbackLevel level) {
     return;
   }
   level_ = level;
+  UpdateIcon();
+  update();
+}
+
+void Toast::SetTone(style::Tone tone) {
+  if (tone_ == tone) {
+    return;
+  }
+  tone_ = tone;
+  ApplyTheme();
   UpdateIcon();
 }
 
@@ -166,7 +210,8 @@ bool Toast::eventFilter(QObject* watched, QEvent* event) {
 void Toast::changeEvent(QEvent* event) {
   if (event->type() == QEvent::PaletteChange ||
       event->type() == QEvent::StyleChange ||
-      event->type() == QEvent::ScreenChangeInternal) {
+      event->type() == QEvent::ScreenChangeInternal ||
+      event->type() == QEvent::EnabledChange) {
     UpdateIcon();
   }
   QFrame::changeEvent(event);
@@ -180,6 +225,39 @@ void Toast::showEvent(QShowEvent* event) {
 void Toast::hideEvent(QHideEvent* event) {
   dismiss_timer_->stop();
   QFrame::hideEvent(event);
+}
+
+void Toast::paintEvent(QPaintEvent* event) {
+  Q_UNUSED(event);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  const QColor accent = SemanticColor(level_, tokens);
+  QColor shadow = tokens.shadow_ambient;
+  shadow.setAlpha(qRound(shadow.alpha() * 0.65));
+
+  QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing);
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(shadow);
+  painter.drawRoundedRect(QRectF(rect()).adjusted(1.5, 2.5, -1.5, -0.5),
+                          tokens.radius_large, tokens.radius_large);
+
+  painter.setPen(QPen(Blend(accent, tokens.border, 42), 1.0));
+  painter.setBrush(Blend(accent, tokens.surface_raised, 12));
+  painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -2.5),
+                          tokens.radius_large, tokens.radius_large);
+}
+
+void Toast::ApplyTheme() {
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
+  if (layout() != nullptr) {
+    layout()->setContentsMargins(tokens.spacing_lg, tokens.spacing_sm,
+                                 tokens.spacing_sm, tokens.spacing_sm + 2);
+    layout()->setSpacing(tokens.spacing_sm);
+  }
+  close_button_->setFixedSize(44, 44);
+  ApplyWidgetTheme(this, tone_, true);
+  updateGeometry();
+  update();
 }
 
 void Toast::Reposition() {
@@ -196,10 +274,22 @@ void Toast::Reposition() {
 }
 
 void Toast::UpdateIcon() {
-  const QIcon icon = style()->standardIcon(IconForLevel(level_));
+  close_button_->setIcon(internal::MakePaletteCloseIcon(palette()));
+  const QIcon icon = internal::MakePaletteStatusIcon(
+      palette(), SemanticColor(level_, GetThemeTokens(this, tone_)),
+      IconForLevel(level_));
   icon_label_->setPixmap(
       icon.pixmap(icon_label_->size(), devicePixelRatioF(),
                   isEnabled() ? QIcon::Normal : QIcon::Disabled));
+  UpdateAccessibility();
+}
+
+void Toast::UpdateAccessibility() {
+  const QString content = message_label_->text();
+  icon_label_->setAccessibleName(internal::FeedbackLevelAccessibleName(level_));
+  setAccessibleName(content);
+  setAccessibleDescription(
+      internal::FeedbackAccessibleDescription(level_, content));
 }
 
 }  // namespace widget

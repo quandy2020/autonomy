@@ -83,13 +83,13 @@ void Rating::SetTone(style::Tone tone) {
 }
 
 QSize Rating::sizeHint() const {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   return QSize(maximum_ * tokens.control_height_small,
                tokens.control_height_medium);
 }
 
 QSize Rating::minimumSizeHint() const {
-  return QSize(maximum_ * 20, GetThemeTokens(tone_).control_height_small);
+  return QSize(maximum_ * 20, GetThemeTokens(this, tone_).control_height_small);
 }
 
 void Rating::keyPressEvent(QKeyEvent* event) {
@@ -148,7 +148,7 @@ void Rating::mousePressEvent(QMouseEvent* event) {
 
 void Rating::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const int visible_value = hover_value_ >= 0 ? hover_value_ : value_;
   const qreal cell_width = static_cast<qreal>(width()) / maximum_;
   const qreal radius =
@@ -156,13 +156,16 @@ void Rating::paintEvent(QPaintEvent* event) {
 
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
+  const QColor active_color = isEnabled() ? tokens.warning : tokens.disabled;
+  const QColor inactive_color =
+      isEnabled() ? tokens.text_muted : tokens.disabled;
   for (int index = 0; index < maximum_; ++index) {
     const QPainterPath star =
         StarPath(QPointF((index + 0.5) * cell_width, height() / 2.0), radius);
     const bool filled = index < visible_value;
-    painter.setPen(QPen(isEnabled() ? tokens.accent : tokens.disabled, 1.5));
-    painter.setBrush(filled ? (isEnabled() ? tokens.accent : tokens.disabled)
-                            : Qt::NoBrush);
+    painter.setPen(QPen(filled ? active_color : inactive_color, 1.5,
+                        Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter.setBrush(filled ? active_color : Qt::NoBrush);
     painter.drawPath(star);
   }
   if (hasFocus()) {

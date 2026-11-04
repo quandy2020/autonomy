@@ -23,7 +23,7 @@ TeachingTip::TeachingTip(QWidget* parent)
   content_->setMaximumWidth(420);
 
   auto* root = new QVBoxLayout(content_);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(content_, tone_);
   root->setContentsMargins(tokens.spacing_sm, tokens.spacing_sm,
                            tokens.spacing_sm, tokens.spacing_sm);
   root->setSpacing(tokens.spacing_sm);

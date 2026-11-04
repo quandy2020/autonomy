@@ -16,10 +16,12 @@
 
 #include "autoviz/ui/views/tree_delegate.hpp"
 
+#include <QComboBox>
 #include <QLineEdit>
 #include <QPainter>
 #include <QStyle>
 
+#include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/views/panel.hpp"
 
 namespace autoviz {
@@ -72,9 +74,22 @@ QWidget* ViewTreeDelegate::createEditor(QWidget* parent,
   }
 
   const ViewTreeItemKind kind = KindFromIndex(index);
-  // Bool props / Target Frame choices use the tree's native checkbox.
-  if (IsCheckableKind(kind) || kind == ViewTreeItemKind::kTargetFrame) {
+  if (IsCheckableKind(kind)) {
     return nullptr;
+  }
+  if (kind == ViewTreeItemKind::kTargetFrame) {
+    auto* combo = new QComboBox(parent);
+    combo->setEditable(true);
+    combo->setInsertPolicy(QComboBox::NoInsert);
+    combo->addItems(frame_names_);
+    StyleCompactSettingsField(combo);
+    return combo;
+  }
+  auto* line = qobject_cast<QLineEdit*>(
+      QStyledItemDelegate::createEditor(parent, option, index));
+  if (line != nullptr) {
+    StyleCompactSettingsField(line);
+    return line;
   }
   return QStyledItemDelegate::createEditor(parent, option, index);
 }
@@ -86,6 +101,16 @@ void ViewTreeDelegate::setEditorData(QWidget* editor,
     return;
   }
 
+  if (auto* combo = qobject_cast<QComboBox*>(editor)) {
+    const QString text = index.data(Qt::EditRole).toString();
+    const int found = combo->findText(text);
+    if (found >= 0) {
+      combo->setCurrentIndex(found);
+    } else {
+      combo->setEditText(text);
+    }
+    return;
+  }
   if (auto* line = qobject_cast<QLineEdit*>(editor)) {
     line->setText(index.data(Qt::EditRole).toString());
     return;
@@ -100,6 +125,10 @@ void ViewTreeDelegate::setModelData(QWidget* editor, QAbstractItemModel* model,
     return;
   }
 
+  if (auto* combo = qobject_cast<QComboBox*>(editor)) {
+    model->setData(index, combo->currentText().trimmed(), Qt::EditRole);
+    return;
+  }
   if (auto* line = qobject_cast<QLineEdit*>(editor)) {
     model->setData(index, line->text().trimmed(), Qt::EditRole);
     return;
@@ -111,7 +140,7 @@ void ViewTreeDelegate::updateEditorGeometry(QWidget* editor,
                                             const QStyleOptionViewItem& option,
                                             const QModelIndex& index) const {
   if (index.column() == kViewTreeColValue) {
-    editor->setGeometry(option.rect);
+    editor->setGeometry(option.rect.adjusted(0, 1, 0, -1));
     return;
   }
   QStyledItemDelegate::updateEditorGeometry(editor, option, index);

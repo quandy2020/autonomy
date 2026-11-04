@@ -35,6 +35,7 @@ class QPushButton;
 class QSlider;
 class QSpinBox;
 class QStackedWidget;
+class QWidget;
 
 namespace autoviz {
 
@@ -65,6 +66,7 @@ struct AppSettingsResult {
   bool plot_settings_visible = true; /**< Plot settings pane visible. */
   bool start_maximized = true;   /**< Launch maximized. */
   QString language_code;         /**< UI locale (empty = system). */
+  QString theme_mode; /**< @c system / @c light / @c dark / @c liquid. */
   QHash<QString, QKeySequence> shortcuts; /**< Shortcut overrides. */
 };
 
@@ -133,6 +135,12 @@ class AppSettingsDialog : public QDialog {
    */
   void showCategory(int index);
 
+  /**
+   * @brief Highlights the theme preview card matching @p theme_mode.
+   * @param theme_mode Preference id (@c light / @c dark / @c liquid / …).
+   */
+  void syncThemePreviewSelection(const QString& theme_mode);
+
   /** Non-owning visualization manager. */
   common::VisualizationManager* manager_ = nullptr;
 
@@ -147,6 +155,12 @@ class AppSettingsDialog : public QDialog {
 
   /** UI language combo. */
   QComboBox* language_combo_ = nullptr;
+
+  /** App chrome theme combo (@c system / @c light / @c dark / @c liquid). */
+  QComboBox* theme_combo_ = nullptr;
+
+  /** Host for theme preview cards under the Theme combo. */
+  QWidget* theme_preview_host_ = nullptr;
 
   /** Shortcut table editor. */
   ShortcutsEditorWidget* shortcuts_editor_ = nullptr;

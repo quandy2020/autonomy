@@ -7,7 +7,6 @@
 #include <QColorDialog>
 #include <QComboBox>
 #include <QFormLayout>
-#include <QGroupBox>
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSpinBox>
@@ -27,29 +26,28 @@ ServiceSettingsWidget::ServiceSettingsWidget(QWidget* parent)
   outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
   outer->setAlignment(Qt::AlignTop);
 
-  auto* general = new QGroupBox(tr("General"), this);
-  StyleSettingsGroupBox(general);
-  auto* general_form = new QFormLayout(general);
+  auto* general_body = new QWidget(this);
+  auto* general_form = new QFormLayout(general_body);
   ApplyCompactForm(general_form);
-  title_edit_ = new QLineEdit(config_.title, general);
-  timeout_spin_ = new QSpinBox(general);
+  title_edit_ = new QLineEdit(config_.title, general_body);
+  timeout_spin_ = new QSpinBox(general_body);
   timeout_spin_->setRange(1, 300);
   timeout_spin_->setValue(config_.timeout_sec);
-  layout_combo_ = new QComboBox(general);
+  layout_combo_ = new QComboBox(general_body);
   layout_combo_->addItem(tr("Vertical"), true);
   layout_combo_->addItem(tr("Horizontal"), false);
   general_form->addRow(tr("Title"), title_edit_);
   general_form->addRow(tr("Timeout (s)"), timeout_spin_);
   general_form->addRow(tr("Layout"), layout_combo_);
-  outer->addWidget(general);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("General"), general_body, true));
 
-  auto* button_group = new QGroupBox(tr("Call button"), this);
-  StyleSettingsGroupBox(button_group);
-  auto* form = new QFormLayout(button_group);
+  auto* button_body = new QWidget(this);
+  auto* form = new QFormLayout(button_body);
   ApplyCompactForm(form);
-  button_label_edit_ = new QLineEdit(config_.button_label, button_group);
-  button_tooltip_edit_ = new QLineEdit(config_.button_tooltip, button_group);
-  button_color_button_ = new QPushButton(button_group);
+  button_label_edit_ = new QLineEdit(config_.button_label, button_body);
+  button_tooltip_edit_ = new QLineEdit(config_.button_tooltip, button_body);
+  button_color_button_ = new QPushButton(button_body);
   button_color_button_->setCursor(Qt::PointingHandCursor);
   UpdateColorButton(button_color_button_,
                     config_.button_color.isValid() ? config_.button_color
@@ -57,7 +55,8 @@ ServiceSettingsWidget::ServiceSettingsWidget(QWidget* parent)
   form->addRow(tr("Label"), button_label_edit_);
   form->addRow(tr("Tooltip"), button_tooltip_edit_);
   form->addRow(tr("Color"), button_color_button_);
-  outer->addWidget(button_group);
+  outer->addWidget(
+      MakeCollapsibleSection(this, tr("Call button"), button_body, true));
   outer->addStretch();
 
   connect(title_edit_, &QLineEdit::textChanged, this,

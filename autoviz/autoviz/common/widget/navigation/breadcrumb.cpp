@@ -4,6 +4,7 @@
 
 #include "autoviz/common/widget/navigation/breadcrumb.hpp"
 
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QPainter>
@@ -12,6 +13,7 @@
 #include <utility>
 
 #include "autoviz/common/widget/foundation/widget_theme.hpp"
+#include "autoviz/common/widget/navigation/navigation_direction.hpp"
 
 namespace autoviz {
 namespace widget {
@@ -24,10 +26,12 @@ class BreadcrumbSeparator final : public QWidget {
     setProperty("autovizRole", QStringLiteral("decorative"));
     setFocusPolicy(Qt::NoFocus);
     setAttribute(Qt::WA_TransparentForMouseEvents);
+    glyph_ = isRightToLeft() ? QStringLiteral("‹") : QStringLiteral("›");
+    setProperty("autovizGlyph", glyph_);
   }
 
   QSize sizeHint() const override {
-    return QSize(fontMetrics().horizontalAdvance(QStringLiteral("›")) + 4,
+    return QSize(fontMetrics().horizontalAdvance(glyph_) + 4,
                  fontMetrics().height());
   }
 
@@ -36,8 +40,11 @@ class BreadcrumbSeparator final : public QWidget {
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setPen(palette().color(QPalette::Text));
-    painter.drawText(rect(), Qt::AlignCenter, QStringLiteral("›"));
+    painter.drawText(rect(), Qt::AlignCenter, glyph_);
   }
+
+ private:
+  QString glyph_;
 };
 
 }  // namespace
@@ -105,14 +112,18 @@ void Breadcrumb::SetTone(style::Tone tone) {
   ApplyTheme();
 }
 
+void Breadcrumb::changeEvent(QEvent* event) {
+  QWidget::changeEvent(event);
+  if (event->type() == QEvent::LayoutDirectionChange) {
+    Rebuild();
+  }
+}
+
 void Breadcrumb::keyPressEvent(QKeyEvent* event) {
   switch (event->key()) {
     case Qt::Key_Left:
-      MoveCurrent(-1);
-      event->accept();
-      return;
     case Qt::Key_Right:
-      MoveCurrent(1);
+      MoveCurrent(internal::HorizontalKeyStep(event->key(), layoutDirection()));
       event->accept();
       return;
     case Qt::Key_Home:
@@ -196,7 +207,7 @@ void Breadcrumb::Rebuild() {
 }
 
 void Breadcrumb::ApplyTheme() {
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   layout_->setSpacing(tokens.spacing_xs);
   for (QToolButton* button : buttons_) {
     button->setMinimumHeight(tokens.control_height_small);

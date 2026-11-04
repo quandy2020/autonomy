@@ -2,12 +2,18 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
+#include <QApplication>
 #include <QCoreApplication>
+#include <QIcon>
 #include <QImage>
 #include <QLabel>
+#include <QPalette>
+#include <QPixmap>
+#include <QPointer>
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QTest>
+#include <QVBoxLayout>
 #include <cmath>
 #include <limits>
 
@@ -16,6 +22,7 @@
 #include "autoviz/common/widget/display/status_badge.hpp"
 #include "autoviz/common/widget/feedback/progress_ring.hpp"
 #include "autoviz/common/widget/feedback/toast.hpp"
+#include "autoviz/common/widget/input/button.hpp"
 #include "autoviz/common/widget/layout/collapsible_panel.hpp"
 #include "autoviz/common/widget/overlay/drawer.hpp"
 #include "autoviz/common/widget/overlay/popover.hpp"
@@ -29,8 +36,11 @@ class WidgetLifecycleTest final : public QObject {
 
  private slots:
   void CollapsiblePanelTransfersContentAndSignalsOnce();
+  void CollapsiblePanelRefreshesSemanticHeaderIcon();
   void LoadingOverlayTracksTargetAndBlocksInput();
+  void LoadingOverlayRestoresFocusSafelyAcrossLifecycle();
   void DrawerHandlesRepeatedShowDismissAndReparent();
+  void DrawerTrapsTabFocusAndRestoresOpener();
   void SparklineKeepsABoundedFiniteHistory();
   void StatusBadgeElidesWithoutLosingMeaning();
   void ProgressRingRendersTheFullIntegerRange();
@@ -63,6 +73,37 @@ void WidgetLifecycleTest::CollapsiblePanelTransfersContentAndSignalsOnce() {
   QCOMPARE(panel.TakeContentWidget(), content);
   QCOMPARE(content->parentWidget(), nullptr);
   delete content;
+}
+
+void WidgetLifecycleTest::CollapsiblePanelRefreshesSemanticHeaderIcon() {
+  CollapsiblePanel panel;
+  Button* header = panel.findChild<Button*>();
+  QVERIFY(header != nullptr);
+
+  QPalette palette = panel.palette();
+  palette.setColor(QPalette::Active, QPalette::ButtonText, QColor(12, 90, 210));
+  panel.setPalette(palette);
+  QCoreApplication::processEvents();
+  const QIcon first_icon = header->icon();
+
+  palette.setColor(QPalette::Active, QPalette::ButtonText, QColor(220, 52, 68));
+  panel.setPalette(palette);
+  QCoreApplication::processEvents();
+  const QIcon second_icon = header->icon();
+  QVERIFY(!first_icon.isNull());
+  QVERIFY(!second_icon.isNull());
+
+  for (const qreal device_pixel_ratio : {1.0, 2.0, 3.0}) {
+    const QPixmap first =
+        first_icon.pixmap(QSize(18, 18), device_pixel_ratio, QIcon::Normal);
+    const QPixmap second =
+        second_icon.pixmap(QSize(18, 18), device_pixel_ratio, QIcon::Normal);
+    QCOMPARE(first.devicePixelRatio(), device_pixel_ratio);
+    QCOMPARE(second.devicePixelRatio(), device_pixel_ratio);
+    QVERIFY(!first.isNull());
+    QVERIFY(!second.isNull());
+    QVERIFY(first.toImage() != second.toImage());
+  }
 }
 
 void WidgetLifecycleTest::LoadingOverlayTracksTargetAndBlocksInput() {
@@ -132,33 +173,154 @@ void WidgetLifecycleTest::LoadingOverlayTracksTargetAndBlocksInput() {
   QVERIFY(!overlay.isVisible());
 }
 
+void WidgetLifecycleTest::LoadingOverlayRestoresFocusSafelyAcrossLifecycle() {
+  QWidget target;
+  target.resize(320, 180);
+  auto* original = new QPushButton(QStringLiteral("Original"), &target);
+  original->show();
+  target.show();
+  target.activateWindow();
+  original->setFocus();
+  QTRY_COMPARE(QApplication::focusWidget(), original);
+
+  LoadingOverlay overlay(&target);
+  overlay.SetLoading(true);
+  QTRY_COMPARE(QApplication::focusWidget(), &overlay);
+  overlay.SetLoading(true);
+  overlay.SetLoading(false);
+  QTRY_COMPARE(QApplication::focusWidget(), original);
+
+  overlay.SetLoading(true);
+  QTRY_COMPARE(QApplication::focusWidget(), &overlay);
+  overlay.AttachTo(nullptr);
+  QTRY_COMPARE(QApplication::focusWidget(), original);
+  overlay.SetLoading(false);
+  overlay.AttachTo(&target);
+
+  auto* doomed = new QPushButton(QStringLiteral("Temporary"), &target);
+  doomed->show();
+  doomed->setFocus();
+  QTRY_COMPARE(QApplication::focusWidget(), doomed);
+  QPointer<QPushButton> doomed_guard(doomed);
+  overlay.SetLoading(true);
+  QTRY_COMPARE(QApplication::focusWidget(), &overlay);
+  delete doomed;
+  QVERIFY(doomed_guard.isNull());
+  overlay.SetLoading(false);
+  QTRY_VERIFY(!overlay.hasFocus());
+
+  original->setFocus();
+  QTRY_COMPARE(QApplication::focusWidget(), original);
+  overlay.SetLoading(true);
+  QTRY_COMPARE(QApplication::focusWidget(), &overlay);
+  target.hide();
+  QTRY_VERIFY(!overlay.isVisible());
+
+  QWidget outside;
+  QPushButton outside_button(QStringLiteral("Outside"), &outside);
+  outside_button.show();
+  outside.show();
+  outside.activateWindow();
+  outside_button.setFocus();
+  QTRY_COMPARE(QApplication::focusWidget(), &outside_button);
+  overlay.SetLoading(false);
+  QCOMPARE(QApplication::focusWidget(), &outside_button);
+}
+
 void WidgetLifecycleTest::DrawerHandlesRepeatedShowDismissAndReparent() {
   QWidget first_host;
   first_host.resize(500, 300);
-  first_host.show();
   QWidget second_host;
   second_host.resize(640, 360);
-  second_host.show();
+  QPushButton opener(QStringLiteral("Open inspector"), &first_host);
+  opener.show();
+  first_host.show();
+  first_host.activateWindow();
+  opener.setFocus();
+  QTRY_COMPARE(QApplication::focusWidget(), &opener);
+
   Drawer drawer(&first_host);
-  drawer.SetContentWidget(new QLabel(QStringLiteral("Inspector")));
+  auto* inspector = new QPushButton(QStringLiteral("Inspector"));
+  drawer.SetContentWidget(inspector);
   QSignalSpy opened_spy(&drawer, &Drawer::Opened);
   QSignalSpy closed_spy(&drawer, &Drawer::Closed);
 
   drawer.Show();
   drawer.Show();
   QTRY_COMPARE(opened_spy.count(), 1);
+  QTRY_COMPARE(QApplication::focusWidget(), inspector);
   drawer.Show();
   QCOMPARE(opened_spy.count(), 1);
   drawer.Dismiss();
   drawer.Dismiss();
   QTRY_COMPARE(closed_spy.count(), 1);
+  QTRY_COMPARE(QApplication::focusWidget(), &opener);
 
+  second_host.show();
   drawer.setParent(&second_host);
   drawer.Show();
   QTRY_COMPARE(opened_spy.count(), 2);
   QCOMPARE(drawer.geometry(), second_host.rect());
   drawer.Dismiss();
   QTRY_COMPARE(closed_spy.count(), 2);
+}
+
+void WidgetLifecycleTest::DrawerTrapsTabFocusAndRestoresOpener() {
+  QWidget host;
+  host.resize(560, 360);
+  QPushButton before(QStringLiteral("Before"), &host);
+  QPushButton opener(QStringLiteral("Open drawer"), &host);
+  QPushButton after(QStringLiteral("After"), &host);
+  before.setGeometry(20, 20, 120, 32);
+  opener.setGeometry(20, 64, 120, 32);
+  after.setGeometry(20, 108, 120, 32);
+  before.show();
+  opener.show();
+  after.show();
+  host.show();
+  host.activateWindow();
+  opener.setFocus();
+  QTRY_COMPARE(QApplication::focusWidget(), &opener);
+
+  Drawer drawer(&host);
+  auto* content = new QWidget;
+  auto* content_layout = new QVBoxLayout(content);
+  auto* first = new QPushButton(QStringLiteral("First"), content);
+  auto* last = new QPushButton(QStringLiteral("Last"), content);
+  content_layout->addWidget(first);
+  content_layout->addWidget(last);
+  QWidget::setTabOrder(first, last);
+  drawer.SetContentWidget(content);
+
+  drawer.Show();
+  QTRY_COMPARE(QApplication::focusWidget(), first);
+  QTest::keyClick(first, Qt::Key_Tab);
+  QTRY_COMPARE(QApplication::focusWidget(), last);
+  QTest::keyClick(last, Qt::Key_Tab);
+  QTRY_COMPARE(QApplication::focusWidget(), first);
+  QVERIFY(QApplication::focusWidget() != &after);
+  QVERIFY(QApplication::focusWidget() != &before);
+
+  QTest::keyClick(first, Qt::Key_Backtab);
+  QTRY_COMPARE(QApplication::focusWidget(), last);
+  QTest::keyClick(last, Qt::Key_Backtab);
+  QTRY_COMPARE(QApplication::focusWidget(), first);
+  QVERIFY(QApplication::focusWidget() != &after);
+  QVERIFY(QApplication::focusWidget() != &before);
+
+  drawer.Dismiss();
+  QTRY_COMPARE(QApplication::focusWidget(), &opener);
+
+  QCOMPARE(drawer.TakeContentWidget(), content);
+  delete content;
+  drawer.Show();
+  QTRY_COMPARE(QApplication::focusWidget(), &drawer);
+  QTest::keyClick(&drawer, Qt::Key_Tab);
+  QCOMPARE(QApplication::focusWidget(), &drawer);
+  QTest::keyClick(&drawer, Qt::Key_Backtab);
+  QCOMPARE(QApplication::focusWidget(), &drawer);
+  drawer.Dismiss();
+  QTRY_COMPARE(QApplication::focusWidget(), &opener);
 }
 
 void WidgetLifecycleTest::SparklineKeepsABoundedFiniteHistory() {

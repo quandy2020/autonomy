@@ -11,7 +11,10 @@
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
 
 class QButtonGroup;
+class QEvent;
 class QHBoxLayout;
+class QKeyEvent;
+class QPaintEvent;
 
 namespace autoviz {
 namespace widget {
@@ -53,11 +56,20 @@ class SegmentedControl final : public QWidget {
   void CurrentDataChanged(const QVariant& data);
   void SegmentClicked(int index);
 
+ protected:
+  void changeEvent(QEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
+
  private:
   class SegmentButton;
 
+  int FirstEnabledIndex() const;
   void HandleButtonClicked(SegmentButton* button);
+  bool HandleNavigationKey(SegmentButton* button, QKeyEvent* event);
+  int LastEnabledIndex() const;
+  int NextEnabledIndex(int index, int step) const;
   void UpdateButtonPositions();
+  void UpdateFocusPolicies();
 
   QButtonGroup* button_group_ = nullptr;
   QHBoxLayout* layout_ = nullptr;

@@ -7,6 +7,7 @@
 #include <QColor>
 #include <QDateTime>
 #include <QFont>
+#include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMainWindow>
@@ -25,6 +26,7 @@
 #include <utility>
 
 #include "autoviz/common/widget/widget.hpp"
+#include "autoviz/ui/theme/application.hpp"
 
 namespace {
 
@@ -33,6 +35,7 @@ using autoviz::widget::AutoSuggestBox;
 using autoviz::widget::Avatar;
 using autoviz::widget::Breadcrumb;
 using autoviz::widget::BreadcrumbItem;
+using autoviz::widget::BuildWidgetPalette;
 using autoviz::widget::Button;
 using autoviz::widget::CollapsiblePanel;
 using autoviz::widget::ColorPicker;
@@ -81,6 +84,7 @@ using autoviz::widget::StepItem;
 using autoviz::widget::Surface;
 using autoviz::widget::Tag;
 using autoviz::widget::TeachingTip;
+using autoviz::widget::ThemeAppearance;
 using autoviz::widget::TimelineMarker;
 using autoviz::widget::TimelineScrubber;
 using autoviz::widget::Toast;
@@ -89,30 +93,232 @@ using autoviz::widget::TreeSelect;
 using autoviz::widget::Vector3Editor;
 using autoviz::widget::Watermark;
 
+enum class CaptureTarget {
+  kGallery,
+  kDock,
+  kCommandPalette,
+  kToast,
+  kDrawer,
+  kPopover,
+  kTeachingTip,
+  kStates,
+};
+
 class DockSmokeHarness final : public QObject {
  public:
-  explicit DockSmokeHarness(QObject* parent)
+  DockSmokeHarness(ThemeAppearance appearance, QObject* parent)
       : QObject(parent),
         host_(std::make_unique<QMainWindow>()),
         manager_(std::make_unique<DockManager>(host_.get())) {
     host_->setObjectName(QStringLiteral("AutovizGalleryDockHost"));
+    host_->setWindowTitle(tr("Autoviz docking preview"));
     host_->setAttribute(Qt::WA_DontShowOnScreen);
-    host_->resize(480, 320);
+    host_->resize(720, 480);
 
-    auto* content = new QLabel(tr("Dock panel content"));
+    auto* canvas = new QLabel(tr("Map canvas"), host_.get());
+    canvas->setAlignment(Qt::AlignCenter);
+    host_->setCentralWidget(canvas);
+
+    auto* content = new QLabel(tr("Inspector controls"));
     content->setAlignment(Qt::AlignCenter);
     manager_->AddPanel(QStringLiteral("gallery.inspector"), tr("Inspector"),
                        content, DockArea::kRight);
+    auto* timeline = new QLabel(tr("Timeline and playback controls"));
+    timeline->setAlignment(Qt::AlignCenter);
+    manager_->AddPanel(QStringLiteral("gallery.timeline"), tr("Timeline"),
+                       timeline, DockArea::kBottom);
+    ApplyWidgetTheme(host_.get(), autoviz::style::Tone::Shell, true,
+                     appearance);
+
     const QByteArray layout_state = manager_->SaveLayout(1);
     manager_->RestoreLayout(layout_state, 1);
     manager_->SetPanelVisible(QStringLiteral("gallery.inspector"), false);
+    manager_->SetPanelVisible(QStringLiteral("gallery.timeline"), false);
     host_->hide();
   }
+
+  QWidget* ShowForCapture() {
+    manager_->SetPanelVisible(QStringLiteral("gallery.inspector"), true);
+    manager_->SetPanelVisible(QStringLiteral("gallery.timeline"), true);
+    host_->show();
+    host_->raise();
+    return host_.get();
+  }
+
+  QWidget* widget() const noexcept { return host_.get(); }
 
  private:
   std::unique_ptr<QMainWindow> host_;
   std::unique_ptr<DockManager> manager_;
 };
+
+class StateCaptureHarness final : public QObject {
+ public:
+  StateCaptureHarness(ThemeAppearance appearance, QObject* parent)
+      : QObject(parent), host_(std::make_unique<Surface>()) {
+    host_->setObjectName(QStringLiteral("AutovizGalleryStateHost"));
+    host_->setWindowTitle(tr("Autoviz interaction states"));
+    host_->SetElevation(Surface::Elevation::kRaised);
+    host_->resize(760, 240);
+
+    auto* layout = new QGridLayout(host_.get());
+    layout->setContentsMargins(24, 24, 24, 24);
+    layout->setHorizontalSpacing(16);
+    layout->setVerticalSpacing(8);
+
+    auto* normal = new Button(tr("Apply"), host_.get());
+    focused_search_ = new SearchBox(host_.get());
+    focused_search_->setPlaceholderText(tr("Focused search"));
+    auto* selected = new ToggleSwitch(host_.get());
+    selected->setAccessibleName(tr("Selected toggle"));
+    selected->setChecked(true);
+
+    auto* disabled = new PasswordBox(host_.get());
+    disabled->setAccessibleName(tr("Disabled password"));
+    disabled->setText(QStringLiteral("disabled"));
+    disabled->setEnabled(false);
+
+    auto* invalid_search = new SearchBox(host_.get());
+    invalid_search->setAccessibleName(tr("Invalid frame"));
+    invalid_search->setText(tr("Unknown frame"));
+    auto* invalid_number = new NumberField(host_.get());
+    invalid_number->setAccessibleName(tr("Invalid voxel size"));
+    invalid_number->setRange(0.01, 1.0);
+    invalid_number->setValue(0.05);
+
+    auto* form = new FormController(host_.get());
+    form->RegisterField(invalid_search);
+    form->RegisterField(invalid_number);
+    form->SetFieldError(invalid_search, tr("Frame is unavailable"));
+    form->SetFieldError(invalid_number, tr("Minimum supported size is 0.1"));
+
+    const auto add_specimen = [layout, this](int row, int column,
+                                             const QString& caption,
+                                             QWidget* control) {
+      auto* label = new QLabel(caption, host_.get());
+      layout->addWidget(label, row * 2, column);
+      layout->addWidget(control, row * 2 + 1, column);
+      layout->setColumnStretch(column, 1);
+    };
+    add_specimen(0, 0, tr("Normal"), normal);
+    add_specimen(0, 1, tr("Focused"), focused_search_);
+    add_specimen(0, 2, tr("Selected"), selected);
+    add_specimen(1, 0, tr("Disabled"), disabled);
+    add_specimen(1, 1, tr("Invalid text"), invalid_search);
+    add_specimen(1, 2, tr("Invalid number"), invalid_number);
+
+    ApplyWidgetTheme(host_.get(), autoviz::style::Tone::Shell, true,
+                     appearance);
+    host_->hide();
+  }
+
+  QWidget* ShowForCapture() {
+    host_->show();
+    host_->raise();
+    host_->activateWindow();
+    focused_search_->setFocus(Qt::OtherFocusReason);
+    return host_.get();
+  }
+
+  QWidget* widget() const noexcept { return host_.get(); }
+
+ private:
+  std::unique_ptr<Surface> host_;
+  SearchBox* focused_search_ = nullptr;
+};
+
+struct OverlayCaptureTargets {
+  CommandPalette* command_palette = nullptr;
+  Toast* toast = nullptr;
+  Drawer* drawer = nullptr;
+  Popover* popover = nullptr;
+  Button* popover_anchor = nullptr;
+  TeachingTip* teaching_tip = nullptr;
+  Button* teaching_tip_anchor = nullptr;
+};
+
+QString CapturePath(const QStringList& arguments) {
+  for (int index = 1; index < arguments.size(); ++index) {
+    const QString& argument = arguments[index];
+    if (argument == QStringLiteral("--capture") &&
+        index + 1 < arguments.size()) {
+      return arguments[index + 1];
+    }
+    constexpr auto kCapturePrefix = "--capture=";
+    if (argument.startsWith(QLatin1String(kCapturePrefix))) {
+      return argument.mid(QLatin1String(kCapturePrefix).size());
+    }
+  }
+  return {};
+}
+
+CaptureTarget CaptureTargetFromArguments(const QStringList& arguments) {
+  QString value;
+  for (int index = 1; index < arguments.size(); ++index) {
+    const QString& argument = arguments[index];
+    if (argument == QStringLiteral("--capture-target") &&
+        index + 1 < arguments.size()) {
+      value = arguments[++index];
+      break;
+    }
+    constexpr auto kTargetPrefix = "--capture-target=";
+    if (argument.startsWith(QLatin1String(kTargetPrefix))) {
+      value = argument.mid(QLatin1String(kTargetPrefix).size());
+      break;
+    }
+  }
+
+  if (value.compare(QStringLiteral("dock"), Qt::CaseInsensitive) == 0) {
+    return CaptureTarget::kDock;
+  }
+  if (value.compare(QStringLiteral("command-palette"), Qt::CaseInsensitive) ==
+      0) {
+    return CaptureTarget::kCommandPalette;
+  }
+  if (value.compare(QStringLiteral("toast"), Qt::CaseInsensitive) == 0) {
+    return CaptureTarget::kToast;
+  }
+  if (value.compare(QStringLiteral("drawer"), Qt::CaseInsensitive) == 0) {
+    return CaptureTarget::kDrawer;
+  }
+  if (value.compare(QStringLiteral("popover"), Qt::CaseInsensitive) == 0) {
+    return CaptureTarget::kPopover;
+  }
+  if (value.compare(QStringLiteral("teaching-tip"), Qt::CaseInsensitive) == 0) {
+    return CaptureTarget::kTeachingTip;
+  }
+  if (value.compare(QStringLiteral("states"), Qt::CaseInsensitive) == 0) {
+    return CaptureTarget::kStates;
+  }
+  return CaptureTarget::kGallery;
+}
+
+ThemeAppearance AppearanceFromArguments(const QStringList& arguments) {
+  for (int index = 1; index < arguments.size(); ++index) {
+    const QString& argument = arguments[index];
+    QString value;
+    if (argument == QStringLiteral("--appearance") &&
+        index + 1 < arguments.size()) {
+      value = arguments[++index];
+    } else {
+      constexpr auto kAppearancePrefix = "--appearance=";
+      if (argument.startsWith(QLatin1String(kAppearancePrefix))) {
+        value = argument.mid(QLatin1String(kAppearancePrefix).size());
+      }
+    }
+
+    if (value.compare(QStringLiteral("light"), Qt::CaseInsensitive) == 0) {
+      return ThemeAppearance::kLight;
+    }
+    if (value.compare(QStringLiteral("dark"), Qt::CaseInsensitive) == 0) {
+      return ThemeAppearance::kDark;
+    }
+    if (value.compare(QStringLiteral("system"), Qt::CaseInsensitive) == 0) {
+      return ThemeAppearance::kSystem;
+    }
+  }
+  return ThemeAppearance::kSystem;
+}
 
 QLabel* MakeTitle(const QString& text, QWidget* parent) {
   auto* title = new QLabel(text, parent);
@@ -268,9 +474,23 @@ QWidget* MakeFeedbackSection(QWidget* parent) {
   Surface* section =
       MakeSection(QObject::tr("Feedback and status"), parent, &layout);
 
+  auto* information =
+      new InfoBar(QObject::tr("Localization ready"),
+                  QObject::tr("Select a map source to begin streaming."),
+                  FeedbackLevel::kInformation, section);
+  information->SetClosable(false);
+  layout->addWidget(information);
   layout->addWidget(new InfoBar(QObject::tr("Connected"),
                                 QObject::tr("Receiving localization data"),
                                 FeedbackLevel::kSuccess, section));
+  layout->addWidget(
+      new InfoBar(QObject::tr("Frame delay"),
+                  QObject::tr("LiDAR frames are arriving 120 ms late."),
+                  FeedbackLevel::kWarning, section));
+  layout->addWidget(
+      new InfoBar(QObject::tr("Sensor unavailable"),
+                  QObject::tr("Camera stream stopped. Check the connection."),
+                  FeedbackLevel::kError, section));
 
   auto* identity = new QWidget(section);
   auto* identity_layout = new FlowLayout(identity, 0, 8, 8);
@@ -512,7 +732,8 @@ QWidget* MakeDataSection(QWidget* parent) {
   return section;
 }
 
-QWidget* MakeOverlaySection(QWidget* parent) {
+QWidget* MakeOverlaySection(QWidget* parent,
+                            OverlayCaptureTargets* capture_targets) {
   QVBoxLayout* layout = nullptr;
   Surface* section =
       MakeSection(QObject::tr("Overlays and commands"), parent, &layout);
@@ -554,6 +775,7 @@ QWidget* MakeOverlaySection(QWidget* parent) {
   command_palette->SetModel(command_model);
   QObject::connect(command_button, &Button::clicked, command_palette,
                    &CommandPalette::ShowPalette);
+  capture_targets->command_palette = command_palette;
 
   auto* toast_button = new Button(QObject::tr("Toast"), actions);
   action_layout->addWidget(toast_button);
@@ -563,6 +785,7 @@ QWidget* MakeOverlaySection(QWidget* parent) {
   toast->SetDurationMs(0);
   toast->hide();
   QObject::connect(toast_button, &Button::clicked, toast, &Toast::Show);
+  capture_targets->toast = toast;
 
   auto* drawer_button = new Button(QObject::tr("Drawer"), actions);
   action_layout->addWidget(drawer_button);
@@ -573,6 +796,7 @@ QWidget* MakeOverlaySection(QWidget* parent) {
   drawer_content->setAlignment(Qt::AlignCenter);
   drawer->SetContentWidget(drawer_content);
   QObject::connect(drawer_button, &Button::clicked, drawer, &Drawer::Show);
+  capture_targets->drawer = drawer;
 
   auto* popover_button = new Button(QObject::tr("Popover"), actions);
   action_layout->addWidget(popover_button);
@@ -584,6 +808,8 @@ QWidget* MakeOverlaySection(QWidget* parent) {
   QObject::connect(
       popover_button, &Button::clicked, popover,
       [popover, popover_button]() { popover->ShowFor(popover_button); });
+  capture_targets->popover = popover;
+  capture_targets->popover_anchor = popover_button;
 
   auto* teaching_button = new Button(QObject::tr("Teaching tip"), actions);
   action_layout->addWidget(teaching_button);
@@ -597,6 +823,8 @@ QWidget* MakeOverlaySection(QWidget* parent) {
                    [teaching_tip, teaching_button]() {
                      teaching_tip->ShowFor(teaching_button);
                    });
+  capture_targets->teaching_tip = teaching_tip;
+  capture_targets->teaching_tip_anchor = teaching_button;
 
   layout->addWidget(actions);
   layout->addStretch(1);
@@ -605,7 +833,7 @@ QWidget* MakeOverlaySection(QWidget* parent) {
 
 class WidgetGallery final : public QScrollArea {
  public:
-  WidgetGallery() {
+  explicit WidgetGallery(ThemeAppearance appearance) {
     setWindowTitle(tr("Autoviz Widget Gallery"));
     setWidgetResizable(true);
     setMinimumSize(900, 640);
@@ -630,15 +858,83 @@ class WidgetGallery final : public QScrollArea {
     flow->addWidget(MakeFeedbackSection(sections));
     flow->addWidget(MakeNavigationSection(sections));
     flow->addWidget(MakeDataSection(sections));
-    flow->addWidget(MakeOverlaySection(sections));
+    flow->addWidget(MakeOverlaySection(sections, &overlay_capture_targets_));
     root_layout->addWidget(sections, 1);
     setWidget(content);
-    ApplyWidgetTheme(content);
+    ApplyWidgetTheme(this, autoviz::style::Tone::Shell, true, appearance);
 
-    // DockManager is window-oriented, so exercise it with a hidden host
-    // instead of nesting a QMainWindow in the scrollable gallery.
-    new DockSmokeHarness(this);
+    // DockManager is window-oriented. Keep its host hidden for the default
+    // gallery, and reveal it only for an explicit dock capture.
+    dock_harness_ = new DockSmokeHarness(appearance, this);
+    state_harness_ = new StateCaptureHarness(appearance, this);
   }
+
+  void ShowCaptureTarget(CaptureTarget target) {
+    switch (target) {
+      case CaptureTarget::kDock:
+        dock_harness_->ShowForCapture();
+        break;
+      case CaptureTarget::kCommandPalette:
+        overlay_capture_targets_.command_palette->ShowPalette();
+        break;
+      case CaptureTarget::kToast:
+        overlay_capture_targets_.toast->Show();
+        break;
+      case CaptureTarget::kDrawer:
+        overlay_capture_targets_.drawer->Show();
+        break;
+      case CaptureTarget::kPopover:
+        overlay_capture_targets_.popover->ShowFor(
+            overlay_capture_targets_.popover_anchor);
+        break;
+      case CaptureTarget::kTeachingTip:
+        overlay_capture_targets_.teaching_tip->ShowFor(
+            overlay_capture_targets_.teaching_tip_anchor);
+        break;
+      case CaptureTarget::kStates:
+        state_harness_->ShowForCapture();
+        break;
+      case CaptureTarget::kGallery:
+        break;
+    }
+  }
+
+  QWidget* CaptureWidget(CaptureTarget target) const {
+    switch (target) {
+      case CaptureTarget::kDock:
+        return dock_harness_->widget();
+      case CaptureTarget::kCommandPalette:
+        return overlay_capture_targets_.command_palette;
+      case CaptureTarget::kToast:
+        return overlay_capture_targets_.toast->parentWidget();
+      case CaptureTarget::kDrawer:
+        return overlay_capture_targets_.drawer->parentWidget();
+      case CaptureTarget::kPopover:
+        return overlay_capture_targets_.popover;
+      case CaptureTarget::kTeachingTip:
+        if (QWidget* active_popup = QApplication::activePopupWidget();
+            active_popup != nullptr) {
+          return active_popup;
+        }
+        for (QWidget* top_level : QApplication::topLevelWidgets()) {
+          if (top_level->isVisible() &&
+              top_level->objectName() == QStringLiteral("AutovizPopover")) {
+            return top_level;
+          }
+        }
+        return nullptr;
+      case CaptureTarget::kStates:
+        return state_harness_->widget();
+      case CaptureTarget::kGallery:
+        return widget();
+    }
+    return nullptr;
+  }
+
+ private:
+  OverlayCaptureTargets overlay_capture_targets_;
+  DockSmokeHarness* dock_harness_ = nullptr;
+  StateCaptureHarness* state_harness_ = nullptr;
 };
 
 }  // namespace
@@ -646,10 +942,47 @@ class WidgetGallery final : public QScrollArea {
 int main(int argc, char* argv[]) {
   QApplication application(argc, argv);
   application.setApplicationName(QStringLiteral("Autoviz Widget Gallery"));
+  autoviz::ApplyAppTheme(application);
 
-  WidgetGallery gallery;
+  const QString capture_path = CapturePath(application.arguments());
+  if (!capture_path.isEmpty()) {
+    autoviz::widget::MotionPolicy::SetPreference(
+        autoviz::widget::MotionPreference::kReducedMotion);
+  }
+
+  const ThemeAppearance appearance =
+      AppearanceFromArguments(application.arguments());
+  application.setPalette(BuildWidgetPalette(autoviz::style::Tone::Shell,
+                                            application.palette(), appearance));
+  WidgetGallery gallery(appearance);
   gallery.show();
-  if (application.arguments().contains(QStringLiteral("--smoke-test"))) {
+  const CaptureTarget capture_target =
+      CaptureTargetFromArguments(application.arguments());
+  if (!capture_path.isEmpty()) {
+    if (capture_target == CaptureTarget::kGallery) {
+      QTimer::singleShot(
+          120, &application, [&application, &gallery, capture_path]() {
+            QWidget* content = gallery.widget();
+            const bool saved =
+                content != nullptr && content->grab().save(capture_path);
+            application.exit(saved ? 0 : 2);
+          });
+    } else {
+      QTimer::singleShot(
+          120, &application,
+          [&application, &gallery, capture_path, capture_target]() {
+            gallery.ShowCaptureTarget(capture_target);
+            QTimer::singleShot(
+                350, &application,
+                [&application, &gallery, capture_path, capture_target]() {
+                  QWidget* target = gallery.CaptureWidget(capture_target);
+                  const bool saved =
+                      target != nullptr && target->grab().save(capture_path);
+                  application.exit(saved ? 0 : 2);
+                });
+          });
+    }
+  } else if (application.arguments().contains(QStringLiteral("--smoke-test"))) {
     QTimer::singleShot(0, &application, &QCoreApplication::quit);
   }
   return application.exec();

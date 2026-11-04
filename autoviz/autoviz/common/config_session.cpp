@@ -89,6 +89,7 @@ void ReadViewFromConfig(const Config& node, SavedViewConfig* view) {
     view->type = value.toStdString();
   }
   node.mapGetFloat("NearClipDistance", &view->near_clip_distance);
+  node.mapGetFloat("FarClipDistance", &view->far_clip_distance);
   node.mapGetBool("InvertZAxis", &view->invert_z_axis);
   node.mapGetFloat("Yaw", &view->yaw);
   node.mapGetFloat("Pitch", &view->pitch);
@@ -117,6 +118,7 @@ void WriteViewToConfig(const SavedViewConfig& view, Config* node) {
   node->mapSetValue("Name", QString::fromStdString(view.name));
   node->mapSetValue("Type", QString::fromStdString(view.type));
   node->mapSetValue("NearClipDistance", view.near_clip_distance);
+  node->mapSetValue("FarClipDistance", view.far_clip_distance);
   node->mapSetValue("InvertZAxis", view.invert_z_axis);
   node->mapSetValue("Yaw", view.yaw);
   node->mapSetValue("Pitch", view.pitch);

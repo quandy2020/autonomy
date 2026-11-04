@@ -5,6 +5,7 @@
 #include "autoviz/common/widget/feedback/progress_ring.hpp"
 
 #include <QEvent>
+#include <QGuiApplication>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QShowEvent>
@@ -19,6 +20,10 @@ namespace autoviz::widget {
 ProgressRing::ProgressRing(QWidget* parent) : QWidget(parent) {
   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
   setAccessibleName(tr("Progress"));
+  if (qGuiApp != nullptr) {
+    connect(qGuiApp, &QGuiApplication::applicationStateChanged, this,
+            [this](Qt::ApplicationState) { SyncAnimation(); });
+  }
   UpdateAccessibleValue();
 }
 
@@ -75,7 +80,7 @@ void ProgressRing::changeEvent(QEvent* event) {
 
 void ProgressRing::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const qreal inset = stroke_width_ * 0.5 + 1.0;
   const QRectF arc_rect = QRectF(rect()).adjusted(inset, inset, -inset, -inset);
   const qint64 range =
@@ -120,8 +125,10 @@ void ProgressRing::timerEvent(QTimerEvent* event) {
 }
 
 void ProgressRing::SyncAnimation() {
-  const bool should_run = indeterminate_ && isVisible() && isEnabled() &&
-                          !MotionPolicy::ReducedMotionEnabled();
+  const bool should_run =
+      indeterminate_ && isVisible() && isEnabled() &&
+      QGuiApplication::applicationState() == Qt::ApplicationActive &&
+      !MotionPolicy::ReducedMotionEnabled();
   if (should_run && !timer_.isActive()) {
     timer_.start(16, Qt::PreciseTimer, this);
   } else if (!should_run && timer_.isActive()) {

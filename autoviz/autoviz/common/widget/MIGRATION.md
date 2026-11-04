@@ -8,6 +8,10 @@ This document is the capability-level migration plan for every repository in
 
 ### Foundation and appearance
 
+- The `Elevatormusic/apple-hig` reference maps to a cross-platform desktop
+  appearance profile in `ThemeTokens`, `ApplyWidgetTheme()`, and local custom
+  painting. Only transferable principles are used; Apple platform chrome,
+  proprietary fonts, SF Symbols, templates, and assets are excluded.
 - Fluent-Qt, ElaWidgetTools, QFluentKit, and Qt-Fluent-Widgets theme managers
   map to `foundation/ThemeTokens` and the existing `autoviz::style` service.
 - Upstream animation settings map to `foundation/MotionPolicy`. System mode

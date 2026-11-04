@@ -9,7 +9,6 @@
 #include <QMenu>
 #include <QTimer>
 #include <QToolButton>
-#include <QWidgetAction>
 
 #include "autoviz/common/widget/layout/separator.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
@@ -36,31 +35,25 @@ void AddChangePanelButton(QWidget* tools, QHBoxLayout* layout,
   auto* change_button = CreateTitleToolButton(
       tools, IconLoader::menuIcon(QStringLiteral("panels.add")),
       QObject::tr("Change panel"));
-  auto* change_menu = new QMenu(change_button);
-  auto* picker = new ChangePanelMenuWidget(change_menu);
-  auto* picker_action = new QWidgetAction(change_menu);
-  picker_action->setDefaultWidget(picker);
-  change_menu->addAction(picker_action);
-  QObject::connect(picker, &ChangePanelMenuWidget::panelSelected, change_button,
-                   [callbacks, change_menu](const QString& object_name) {
-                     // Close the popup first — changing docks while the menu is
-                     // still open leaves it covering the new panel toolbar.
-                     change_menu->close();
-                     if (object_name == callbacks.current_object_name) {
-                       return;
-                     }
-                     if (!callbacks.change_panel) {
-                       return;
-                     }
-                     const auto change = callbacks.change_panel;
-                     // Use qApp as context: change_menu can be torn down with
-                     // the source dock before the timer fires, which would
-                     // cancel the panel swap.
-                     QTimer::singleShot(0, qApp, [change, object_name]() {
-                       change(object_name);
-                     });
+  // Standalone Qt::Popup — never embed the catalog in a scrollable QMenu.
+  QObject::connect(change_button, &QToolButton::clicked, change_button,
+                   [change_button, callbacks]() {
+                     ShowChangePanelPopup(
+                         change_button,
+                         [callbacks](const QString& object_name) {
+                           if (object_name == callbacks.current_object_name) {
+                             return;
+                           }
+                           if (!callbacks.change_panel) {
+                             return;
+                           }
+                           const auto change = callbacks.change_panel;
+                           QTimer::singleShot(0, qApp,
+                                              [change, object_name]() {
+                                                change(object_name);
+                                              });
+                         });
                    });
-  ConfigurePanelMoreToolButton(change_button, change_menu);
   layout->addWidget(change_button);
 }
 

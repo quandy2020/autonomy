@@ -26,7 +26,7 @@ FilterBar::FilterBar(QWidget* parent)
   setAccessibleName(tr("Filters"));
 
   auto* root = new QHBoxLayout(this);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   root->setContentsMargins(0, 0, 0, 0);
   root->setSpacing(tokens.spacing_sm);
 

@@ -21,7 +21,6 @@
 
 class QCheckBox;
 class QComboBox;
-class QGroupBox;
 class QDoubleSpinBox;
 class QLineEdit;
 class QListWidget;
@@ -31,6 +30,9 @@ class QSpinBox;
 class QTableWidget;
 
 namespace autoviz {
+namespace widget {
+class CollapsiblePanel;
+}
 namespace common {
 class VisualizationManager;
 }
@@ -211,7 +213,7 @@ class MapSettingsWidget : public QWidget {
   /** Selection mirrored by the attribute inspector. */
   MapSelectionInfo selection_;
 
-  QGroupBox* attribute_group_ = nullptr;         /**< Attribute inspector. */
+  widget::CollapsiblePanel* attribute_group_ = nullptr; /**< Attribute inspector. */
   QLabel* attribute_hint_ = nullptr;             /**< Empty-selection hint. */
   QWidget* attribute_body_ = nullptr;            /**< Fields shown when something is selected. */
   QLabel* attribute_kind_label_ = nullptr;       /**< Feature kind. */

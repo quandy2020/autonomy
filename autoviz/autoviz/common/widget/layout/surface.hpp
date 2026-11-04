@@ -33,6 +33,7 @@ class Surface : public QFrame {
   void Clicked();
 
  protected:
+  void changeEvent(QEvent* event) override;
   void enterEvent(QEnterEvent* event) override;
   void keyPressEvent(QKeyEvent* event) override;
   void keyReleaseEvent(QKeyEvent* event) override;

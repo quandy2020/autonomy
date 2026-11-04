@@ -18,7 +18,9 @@
 | 07–08 | [Isaac](docs/07_isaac.md) · [地图与可视化](docs/08_map_and_viz.md) | USD / PhysX / Autoviz |
 | 09–10 | [测试](docs/09_testing.md) · [排错](docs/10_troubleshooting.md) | pytest 与常见问题 |
 | 11 | [数据采集](docs/11_dataset.md) | LeRobot v2.1 模仿学习落盘 |
+| 12 | [HuNav Isaac](docs/12_hunav_isaac.md) | Autolink ComputeAgents / manager |
 | 13 | [Atlas 验证](docs/13_atlas_validation.md) | RGB-D + IMU、真值轨迹、稠密点云与栅格地图 |
+| 14 | [Habitat humanoids](docs/14_habitat_humanoids.md) | Habitat SMPL-X 动态人体（本地 `data/humanoids/`） |
 
 索引：[`docs/README.md`](docs/README.md)。
 
@@ -28,18 +30,21 @@
 |----|------|------|
 | 编排 | `runtime/` | Runner、Config、paths |
 | 引擎 | `backends/` | 契约（protocol/registry）+ habitat/fake/isaac |
+| ↳ Habitat 行人 | `backends/habitat/humanoids/` | Traffic → kinematic SMPL-X（RGB-D 可见） |
 | 场景 | `scene/` | Map、World、Traffic、`gen/`、`agents/` |
 | 桥接 | `bridge/` | Bridge、Messages、Teleop、Sensors |
 | 机器人 | `robot/` | plant、URDF、profiles、`policy/` |
 | 数据集 | `dataset/` | LeRobot 采集 |
+| 人体资产 | `data/humanoids/` | SMPL-X URDF + motion pickle（gitignore，需下载） |
 
-详见 [架构](docs/02_architecture.md) · [数据集](docs/11_dataset.md)。
+详见 [架构](docs/02_architecture.md) · [数据集](docs/11_dataset.md) · [Habitat 人体](docs/14_habitat_humanoids.md)。
 
 ## 后端一览
 
 | `habitat.backend` | 配置 | 说明 |
 |-------------------|------|------|
 | `habitat` | `config/default.yaml` | Habitat-Sim + GLB / MP3D |
+| ↳ 行人 | `config/habitat_people.yaml` | CPU SFM + 本地 SMPL-X 动态人体（`data/humanoids/`） |
 | `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario |
 | `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体（默认 turtlebot3） |
 | ↳ 导航 | `config/isaac_nav.yaml` | 差速 turtlebot + 真人行人；对接外部导航/SLAM |
@@ -52,6 +57,15 @@ cd /workspace/autonomy
 # Fake
 CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
 
+# Habitat（默认 GLB / MP3D）
+CONFIG=src/autonomy/autosim/config/default.yaml \
+  src/autonomy/autosim/scripts/run.sh sim
+
+# Habitat + 动态人体（需先准备 data/humanoids/humanoid_data）
+cd src/autonomy/autosim && python3 scripts/download_humanoids.py && cd -
+CONFIG=src/autonomy/autosim/config/habitat_people.yaml \
+  src/autonomy/autosim/scripts/run.sh sim
+
 # Isaac（需 Isaac Lab Python）
 ISAACLAB_PATH=/workspace/isaaclab \
 CONFIG=src/autonomy/autosim/config/isaac.yaml \
@@ -60,6 +74,9 @@ CONFIG=src/autonomy/autosim/config/isaac.yaml \
 # 遥控（另终端，需 TTY 焦点）
 src/autonomy/autosim/scripts/run.sh teleop
 ```
+
+Habitat 行人：平面运动走 `scenario.pedestrian`（agents YAML / SFM），外观为本地
+SMPL-X（`avatar` / `skin` 可配）。详见 [14](docs/14_habitat_humanoids.md)。
 
 ## Atlas 验证（RGB-D + IMU）
 
@@ -160,8 +177,10 @@ Fake 后端只适合消息冒烟测试；ATE/RPE 和地图验收应使用带纹�
 | [`docs/`](docs/) | 完整文档与索引 |
 | [`images/`](images/) | 演示动图 |
 | [`usd/`](usd/) | Isaac USD（大场景见 `usd/.gitignore`） |
-| [`config/`](config/) | YAML |
+| [`data/humanoids/`](data/humanoids/) | Habitat SMPL-X 人体（`scripts/download_humanoids.py`） |
+| [`config/`](config/) | YAML（含 `habitat_people.yaml`、`scenarios/agents_*.yaml`） |
 | [`robot/`](robot/) | 机器人 URDF + meshes |
+| [`scripts/`](scripts/) | `run.sh`、`download_humanoids.py` 等 |
 | [`tests/`](tests/) | pytest |
 
 ## 安装（摘要）

@@ -60,7 +60,7 @@ QSize Avatar::minimumSizeHint() const { return QSize(16, 16); }
 
 void Avatar::paintEvent(QPaintEvent* event) {
   Q_UNUSED(event);
-  const ThemeTokens& tokens = GetThemeTokens(tone_);
+  const ThemeTokens& tokens = GetThemeTokens(this, tone_);
   const QRectF bounds = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);

@@ -118,7 +118,9 @@ class GlassToolColumn : public QFrame {
     tokens.insert(QStringLiteral("{{on-color}}"),
                   glass::Rgba(QColor(g.accent_soft.red(), g.accent_soft.green(),
                                      g.accent_soft.blue(), 245)));
-    tokens.insert(QStringLiteral("{{pressed-bg}}"), glass::Rgba(QColor(56, 189, 248, 40)));
+    QColor pressed = g.accent;
+    pressed.setAlpha(40);
+    tokens.insert(QStringLiteral("{{pressed-bg}}"), glass::Rgba(pressed));
     setStyleSheet(style::sheet(QStringLiteral("chrome/viewport"), tokens));
   }
 

@@ -22,6 +22,7 @@ python3 -m pytest tests -v
 | Fake 联调 | `test_fake.py` · `test_runner_smoke.py`（需 automsgs） |
 | Isaac 无 Kit | `test_backend.py`：传感器布局、floorplan、PhysX block_motion mock |
 | Traffic / Policy | `test_isaac_traffic_policy.py`（Arena、激光融合、PolicyDriver 配置） |
+| Habitat humanoids | `test_habitat_humanoids.py`（资产发现、gait、config；无需 Kit） |
 | 消息编码 | `test_messages.py` |
 
 ```bash
