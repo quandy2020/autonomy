@@ -394,10 +394,10 @@ bool MessageAdapter::GetDenseMap(
     if (message == nullptr || !snapshot)
         return false;
 
-    // The internal dense map remains complete for saving/reconstruction. The
-    // AutoMsgs navigation view is restricted to the configured ground-relative
-    // height band (default [-1, 1] m).
-    const auto& published = snapshot->navigation_map;
+    // Publish the global voxel map. The navigation cloud is a rolling,
+    // ground-height-limited subset used internally for occupancy, not for
+    // `/atlas/dense_map_points`.
+    const auto& published = snapshot->dense_map;
     const auto& points = published.points;
     if (points.empty())
         return false;

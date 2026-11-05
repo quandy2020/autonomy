@@ -46,6 +46,7 @@ from autosim.bridge.clock import Clock
 from autosim.bridge.messages import Messages
 from autosim.bridge.sensors import Sensors
 from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
+from autosim.bridge.chase import chase_spec
 from autosim.bridge.topdown import topdown_spec
 from autosim.dataset import DatasetCollector
 from autosim.robot import Robot
@@ -123,6 +124,7 @@ class Runner:
         self.camera_elapsed = 0.0
         self.surround_elapsed = {camera.name: 0.0 for camera in self.surround}
         self.topdown_elapsed = 0.0
+        self.chase_elapsed = 0.0
         self.depth_points_elapsed = 0.0
         self.inertial_elapsed = 0.0
         self.map_elapsed = 0.0
@@ -186,6 +188,7 @@ class Runner:
         self.surround: tuple = ()
         self.panorama = None
         self.topdown = topdown_spec(sensors)
+        self.chase = chase_spec(sensors)
         self.imu = sensors["imu"]
         self.odom = sensors["odom"]
         self.spawn = habitat["spawn"]
@@ -195,21 +198,22 @@ class Runner:
         self.clock_cfg = self.robot_cfg.get("clock") or {"enabled": False}
         self.footprint = self.robot_cfg.get("footprint") or {"enabled": False}
         self.tf_static_elapsed = TF_STATIC_REPUBLISH_SEC
-        # slam: the localization backend owns map→odom and /map; autosim
-        # publishes odom→the URDF root plus fixed robot joints.
-        # nav: autosim also publishes drift-corrected map→odom and an optional
-        # ground-truth map.
+        # slam: localization owns map→odom and OccupancyGrid ``/map``.
+        # nav: autosim also publishes drift-corrected map→odom.
+        # ``map.publish`` still controls GT ``/overall/map`` (and ``/map`` in nav).
         mode = str(habitat.get("mode", "nav")).strip().lower()
         self.mode = mode if mode in ("slam", "nav") else "nav"
         self.odom = dict(self.odom)
         if isinstance(self.footprint, dict):
             self.footprint = dict(self.footprint)
+        self.map_publish = bool(self.map_cfg.get("publish", True))
         if self.mode == "slam":
             self.tf_cfg["publish_map_odom"] = False
-            self.map_publish = False
+            # Never fight Atlas / Cartographer on OccupancyGrid ``/map``.
+            self.map_grid_publish = False
         else:
             self.tf_cfg["publish_map_odom"] = True
-            self.map_publish = bool(self.map_cfg.get("publish", True))
+            self.map_grid_publish = bool(self.map_publish)
 
     def assemble_plant(self, simulator: Any = None) -> None:
         """Construct robot, WorldBackend, and sensor sampler.
@@ -414,6 +418,9 @@ class Runner:
         if self.topdown is not None:
             types["topdown_rgb"] = Image
             types["topdown_info"] = CameraInfo
+        if self.chase is not None:
+            types["chase_rgb"] = Image
+            types["chase_info"] = CameraInfo
         if self.imu.get("enabled", False):
             types["imu"] = Imu
         joint_cfg = (self.settings.data.get("habitat") or {}).get("sensors", {}).get(
@@ -432,7 +439,8 @@ class Runner:
         if self.map_cfg.get("enabled", False) and self.map_publish:
             if str((self.map_cfg.get("ply") or {}).get("channel") or "").strip():
                 types["map_cloud"] = PointCloud2
-            types["map_grid"] = OccupancyGrid
+            if getattr(self, "map_grid_publish", True):
+                types["map_grid"] = OccupancyGrid
         if self.tf_cfg.get("enabled", False):
             types["tf"] = TFMessage
             types["tf_static"] = TFMessage
@@ -711,6 +719,7 @@ class Runner:
             self.emit("depth_points", self.submit_depth_points_only, stamp)
         self.emit("surround", self.submit_surround, stamp)
         self.emit("topdown", self.submit_topdown, stamp)
+        self.emit("chase", self.submit_chase, stamp)
         self.emit("dataset", self.record_dataset_frame, stamp, dt)
 
     def record_dataset_frame(self, stamp: Tuple[int, int], dt: float) -> None:
@@ -934,6 +943,37 @@ class Runner:
             info.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
             self.bridge.publish("topdown_info", info)
 
+    def submit_chase(self, stamp: Tuple[int, int]) -> None:
+        """Publish third-person chase RGB when ``sensors.chase.enabled``."""
+        cfg = self.chase
+        if cfg is None or "chase_rgb" not in self.bridge.writers:
+            return
+        rate = float(cfg.get("rate_hz", 10.0))
+        if self.chase_elapsed < 1.0 / max(rate, 1e-3):
+            return
+        render = getattr(self.simulator, "render_chase", None)
+        if not callable(render):
+            return
+        color = render()
+        if color is None:
+            return
+        self.chase_elapsed = 0.0
+        frame = str(cfg.get("frame") or "chase_link")
+        rgb_msg = Messages.encode_image(color, stamp, frame, "rgb8")
+        self.bridge.publish("chase_rgb", rgb_msg)
+        if "chase_info" in self.bridge.writers:
+            width = int(cfg["width"])
+            height = int(cfg["height"])
+            matrix = Messages.camera_intrinsics(
+                width, height, float(cfg["hfov_deg"])
+            )
+            info = Messages.encode_camera_info(
+                stamp, frame, width, height, matrix
+            )
+            info.header.stamp.sec = int(rgb_msg.header.stamp.sec)
+            info.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
+            self.bridge.publish("chase_info", info)
+
     def submit_surround(self, stamp: Tuple[int, int]) -> None:
         """Publish each surround camera (RGB + CameraInfo) at its own ``rate_hz``."""
         due = [
@@ -1090,10 +1130,13 @@ class Runner:
         cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(
             self.simulator, self.map_sample_origin()
         )
-        self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
+        if getattr(self, "map_grid_publish", True):
+            self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
         self.map_published = True
         ply_cfg = self.map_cfg.get("ply") or {}
         if not str(ply_cfg.get("channel") or "").strip():
+            return
+        if "map_cloud" not in self.bridge.writers:
             return
         if first:
             cloud_rgb = getattr(self.map_builder, "cloud_rgb", None)
@@ -1194,6 +1237,8 @@ class Runner:
         stamp: Tuple[int, int],
     ) -> None:
         """Republish OccupancyGrid only (late subscribers); skip the PLY cloud."""
+        if "map_grid" not in self.bridge.writers:
+            return
         frame = self.map_cfg["frame"]
         self.bridge.publish(
             "map_grid",
@@ -1257,6 +1302,7 @@ class Runner:
         self.camera_elapsed += dt
         self.depth_points_elapsed += dt
         self.topdown_elapsed += dt
+        self.chase_elapsed += dt
         for name in self.surround_elapsed:
             self.surround_elapsed[name] += dt
         self.inertial_elapsed += dt
@@ -1570,10 +1616,13 @@ class Runner:
         cloud, grid, resolution, ox, oy, _, _ = self.map_builder.sample(
             self.simulator, self.map_sample_origin()
         )
-        self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
+        if getattr(self, "map_grid_publish", True):
+            self.encode_publish_map_grid(grid, resolution, ox, oy, stamp)
         self.map_published = True
         ply_cfg = self.map_cfg.get("ply") or {}
         if not str(ply_cfg.get("channel") or "").strip():
+            return
+        if "map_cloud" not in self.bridge.writers:
             return
         if first:
             stride = int(ply_cfg.get("stride", 1))
@@ -1813,6 +1862,24 @@ class Runner:
                         td_frame,
                         (0.0, 0.0, float(self.topdown["height_m"])),
                         rpy=(-0.5 * math.pi, 0.0, 0.0),
+                    )
+                )
+        if self.chase is not None:
+            chase_frame = str(self.chase.get("frame") or "chase_link")
+            if chase_frame not in urdf_links:
+                # ROS z-up: behind (−X) and above (+Z), pitched down toward robot.
+                pitch = math.radians(float(self.chase.get("pitch_deg", -25.0)))
+                mounts.append(
+                    Messages.encode_transform(
+                        stamp,
+                        body_frame,
+                        chase_frame,
+                        (
+                            -float(self.chase["distance_m"]),
+                            0.0,
+                            float(self.chase["height_m"]),
+                        ),
+                        rpy=(0.0, pitch, 0.0),
                     )
                 )
         # Dynamic and fixed edges must never have duplicate publishers. Static

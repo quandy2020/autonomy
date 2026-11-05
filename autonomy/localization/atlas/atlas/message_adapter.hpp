@@ -37,7 +37,7 @@ public:
         std::string camera_frame = "camera_link";
         std::size_t maximum_path_poses = 10000;
         /** Bounds the serialized colored cloud below Autolink's SHM cap. */
-        std::size_t maximum_dense_map_points = 1500000;
+        std::size_t maximum_dense_map_points = 3000000;
     };
 
     /** @brief Creates an adapter with default options. */

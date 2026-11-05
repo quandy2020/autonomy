@@ -23,6 +23,8 @@
 | 出 | `depth_points` | `/camera/depth/points` | PointCloud2 |
 | 出 | `topdown_rgb` | `/camera/topdown/image_raw` | Image（俯视 rgb8，可选） |
 | 出 | `topdown_info` | `/camera/topdown/camera_info` | CameraInfo（可选） |
+| 出 | `chase_rgb` | `/camera/chase/image_raw` | Image（第三人称跟随 rgb8，可选） |
+| 出 | `chase_info` | `/camera/chase/camera_info` | CameraInfo（可选） |
 | 出 | `imu` | `/imu` | Imu |
 | 出 | `tf` / `tf_static` | `/tf` `/tf_static` | TFMessage |
 | 出 | `clock` | `/clock` | Time |
@@ -52,6 +54,7 @@
 
 - `sensors.camera.enabled: false` 时不建 rgb/depth writer；可仅保留 `depth_points_channel`（Fake / Isaac 特例）。
 - `sensors.topdown.enabled: true` 时建 `topdown_rgb` / `topdown_info`（机载俯视 RGB）。
+- `sensors.chase.enabled: true` 时建 `chase_rgb` / `chase_info`（第三人称跟随；自动 instance URDF，仅 chase 帧可见）。
 - `map.enabled && map.publish`（且非 slam）才建 `map_grid` / `map_cloud`。
 - `lidar_3d.enabled` 才发 `/points`。
 - `robot.truth.enabled` 启用 `/gt/pose`；仅当 `robot.truth.odometry_channel` 非空时同时创建 `gt_odom` writer。

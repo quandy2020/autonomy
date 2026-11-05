@@ -71,6 +71,7 @@ Isaac 默认用 `rooms.json` 挤出的密高墙点云（实心、启动快）。
 |------|------|
 | Image | `/camera/rgb/image_raw`、`/camera/depth/image_raw` |
 | Image（俯视） | `/camera/topdown/image_raw`（`sensors.topdown`：默认正交 + `fit_scene` 罩住整层） |
+| Image（第三人称） | `/camera/chase/image_raw`（`sensors.chase`：身后俯视跟随，可看清机器人运动） |
 | Map | `/map`（全局占用栅格俯视） |
 | PointCloud2 | `/overall/map`（全局场景点云俯视） |
 | LaserScan | `/scan` |

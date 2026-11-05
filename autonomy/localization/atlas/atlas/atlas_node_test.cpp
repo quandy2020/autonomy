@@ -140,7 +140,7 @@ TEST(AtlasNodeOptionsTest, PublishesMapToOdomTfByDefault) {
     EXPECT_EQ(options.odom_frame, "odom");
     EXPECT_EQ(options.base_frame, "base_link");
     EXPECT_EQ(options.camera_frame, "camera_link");
-    EXPECT_EQ(options.maximum_dense_map_points, 1500000U);
+    EXPECT_EQ(options.maximum_dense_map_points, 3000000U);
 }
 
 TEST_F(AtlasNodeTimestampTest, RejectsNonMonotonicSensorDelivery) {
@@ -158,19 +158,21 @@ TEST(MessageAdapterOptionsTest, UsesCameraLinkByDefault) {
     const MessageAdapter::Options options;
     EXPECT_EQ(options.map_frame, "map");
     EXPECT_EQ(options.camera_frame, "camera_link");
-    EXPECT_EQ(options.maximum_dense_map_points, 1500000U);
+    EXPECT_EQ(options.maximum_dense_map_points, 3000000U);
 }
 
 TEST(MessageAdapterMapSnapshotTest, EncodesOneCallerPinnedGeneration) {
     auto snapshot = std::make_shared<map::MapSnapshot>();
-    snapshot->navigation_map.timestamp = 42.25;
-    snapshot->navigation_map.generation = 17;
+    snapshot->dense_map.timestamp = 42.25;
+    snapshot->dense_map.generation = 17;
     map::ColorPoint point;
     point.position = Eigen::Vector3f(1.0F, 2.0F, 3.0F);
     point.red = 11;
     point.green = 22;
     point.blue = 33;
-    snapshot->navigation_map.points.push_back(point);
+    snapshot->dense_map.points.push_back(point);
+    snapshot->navigation_map.timestamp = 42.25;
+    snapshot->navigation_map.generation = 17;
 
     snapshot->occupancy_grid.timestamp = 42.25;
     snapshot->occupancy_grid.generation = 17;
@@ -200,6 +202,26 @@ TEST(MessageAdapterMapSnapshotTest, EncodesOneCallerPinnedGeneration) {
     EXPECT_NEAR(grid.info().origin().position().y(), 2.0, 1e-12);
     EXPECT_NEAR(grid.info().origin().position().z(), 0.0, 1e-12);
     EXPECT_EQ(grid.data_size(), 2);
+}
+
+TEST(MessageAdapterMapSnapshotTest, PublishesGlobalDenseMapNotRollingNavigation) {
+    auto snapshot = std::make_shared<map::MapSnapshot>();
+    snapshot->dense_map.timestamp = 1.5;
+    snapshot->navigation_map.timestamp = 1.5;
+    map::ColorPoint kept;
+    kept.position = Eigen::Vector3f(10.0F, 0.0F, 0.0F);
+    kept.red = 255;
+    snapshot->dense_map.points.push_back(kept);
+    map::ColorPoint far;
+    far.position = Eigen::Vector3f(40.0F, 0.0F, 0.0F);
+    far.red = 1;
+    snapshot->dense_map.points.push_back(far);
+    snapshot->navigation_map.points.push_back(kept);
+
+    MessageAdapter adapter(nullptr);
+    ::automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+    ASSERT_TRUE(adapter.GetDenseMap(snapshot, &cloud));
+    EXPECT_EQ(cloud.width(), 2U);
 }
 
 TEST(MessageAdapterMapSnapshotTest, RejectsMissingCallerSnapshot) {

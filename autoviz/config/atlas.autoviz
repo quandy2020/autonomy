@@ -40,6 +40,19 @@ Displays:
       plane: XY
       reference_frame: <Fixed Frame>
     Type: Grid
+  - Channel: /overall/map
+    Enabled: true
+    Name: OverallMap
+    Properties:
+      alpha: "0.85"
+      color_transform: RGB8
+      decay_time: "0"
+      decimate: "1"
+      max_points: "1000000"
+      point_world_size: "0.03"
+      style: Points
+      point_size: "2"
+    Type: PointCloud2
   - Channel: /atlas/map_points
     Enabled: true
     Name: AtlasMapPoints
@@ -62,7 +75,7 @@ Displays:
       color_transform: RGB8
       decay_time: "0"
       decimate: "1"
-      max_points: "1000000"
+      max_points: "3000000"
       point_world_size: "0.035"
       style: Points
       point_size: "2"
@@ -131,6 +144,23 @@ ImagePanels:
     FlipHorizontal: false
     FlipVertical: false
     HoverPublishChannel: ""
+    ImageChannel: /camera/chase/image_raw
+    LabelScale: 1
+    ObjectName: ChaseDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Habitat Chase
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
     ImageChannel: /atlas/tracking_image
     LabelScale: 1
     ObjectName: ImageDock
@@ -175,6 +205,7 @@ Window:
     - ViewportDock
     - DisplaysDock
     - TfTreeDock
+    - ChaseDock
     - ImageDock
     - FeatureMatchesDock
     - ViewsDock

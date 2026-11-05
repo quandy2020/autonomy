@@ -82,7 +82,7 @@ public:
         double ground_truth_sync_tolerance_sec = 0.05;
         std::size_t ground_truth_buffer_size = 128;
         std::size_t maximum_path_poses = 1000;
-        std::size_t maximum_dense_map_points = 1500000;
+        std::size_t maximum_dense_map_points = 3000000;
         std::size_t maximum_ground_truth_path_poses = 1000;
         std::size_t maximum_sync_queue_size = 20;
     };

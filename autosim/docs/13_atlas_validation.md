@@ -4,6 +4,13 @@
 深度、IMU、TF、时钟和真值；Atlas 负责 `map -> odom`、轨迹、稠密点云与
 占用栅格。不要同时启动其他发布 `map -> odom` 或 `/map` 的模块。
 
+`map.publish: true` 时 Autosim 从场景旁的 `*_semantic.ply` 发布 GT
+`/overall/map`（可视化对照；`stride` 控制点数以免超过 Autolink SHM 上限）。
+OccupancyGrid `/map` 在 `mode: slam` 下保持关闭，避免与 Atlas 抢占。
+Autoviz 配置见 `autoviz/config/atlas.autoviz`（含 OverallMap、Habitat Chase
+`/camera/chase/image_raw`）。`sensors.chase.enabled: true` 时仿真会在身后加载
+URDF mesh，仅 chase 渲染可见，不影响自车 RGB-D。
+
 ## 编译
 
 ```bash
@@ -68,7 +75,7 @@ Atlas 输入：
 
 - `/atlas/odometry`、`/atlas/trajectory`
 - `/atlas/optimized_trajectory`、`/atlas/ground_truth_trajectory`
-- `/atlas/dense_map_points`：相对地面高度 `[-1, 1] m`
+- `/atlas/dense_map_points`：全局稠密体素点云（不含滚动导航窗口）
 - `/atlas/occupancy_grid`
 - `/atlas/tracking_image`、`/atlas/feature_matches`
 - `/atlas/loop_closures`

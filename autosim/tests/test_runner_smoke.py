@@ -362,8 +362,8 @@ def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
     assert len(runner.node.writers["/map"].msgs) >= 1
 
 
-def test_runner_slam_skips_map_and_map_odom(monkeypatch):
-    """SLAM mode must not publish GT /map or identity map→odom (Cartographer owns both)."""
+def test_runner_slam_skips_map_grid_and_map_odom(monkeypatch):
+    """SLAM: no GT OccupancyGrid ``/map`` or map→odom; ``/overall/map`` may publish."""
     import autosim.runtime.runner as runner_module
 
     monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
@@ -378,9 +378,9 @@ def test_runner_slam_skips_map_and_map_odom(monkeypatch):
     sensors["lidar_3d"]["enabled"] = False
     sensors["camera"]["enabled"] = False
     sensors["imu"]["enabled"] = False
-    # Keep map.enabled for internal occupancy; publishing must stay off in slam.
+    # publish=true enables GT ``/overall/map``; OccupancyGrid stays off in slam.
     settings.data["habitat"]["map"]["enabled"] = True
-    settings.data["habitat"]["map"]["publish"] = True  # must be ignored under mode: slam
+    settings.data["habitat"]["map"]["publish"] = True
     settings.data["habitat"]["map"]["ply"]["source"] = ""
     settings.data["habitat"]["map"]["ply"]["file"] = ""
     settings.data["habitat"]["map"]["ply"]["channel"] = "/overall/map"
@@ -404,9 +404,11 @@ def test_runner_slam_skips_map_and_map_odom(monkeypatch):
     runner = Runner(settings, max_steps=3, link=link, simulator=FakeSimulator())
     runner.run()
     assert runner.mode == "slam"
-    assert runner.map_publish is False
+    assert runner.map_publish is True
+    assert runner.map_grid_publish is False
     assert "/map" not in runner.node.writers
-    assert "/overall/map" not in runner.node.writers
+    assert "/overall/map" in runner.node.writers
+    assert len(runner.node.writers["/overall/map"].msgs) >= 1
     assert "/tf" in runner.node.writers
     tf_edges = {
         (item.header.frame_id, item.child_frame_id)

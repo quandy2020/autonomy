@@ -35,6 +35,7 @@ from autosim.bridge.cameras import (
     resolve_surround,
     ros_to_habitat_mount,
 )
+from autosim.bridge.chase import CHASE_UUID, chase_spec
 from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
 from autosim.bridge.topdown import TOPDOWN_UUID, topdown_spec
 from autosim.robot.urdf import UrdfModel
@@ -485,6 +486,9 @@ class Simulator:
         topdown = topdown_spec(sensors if isinstance(sensors, Mapping) else None)
         if topdown is not None:
             sensor_specs.append(self.topdown_color_spec(habitat_sim, topdown))
+        chase = chase_spec(sensors if isinstance(sensors, Mapping) else None)
+        if chase is not None:
+            sensor_specs.append(self.chase_color_spec(habitat_sim, chase))
         agent_configuration.sensor_specifications = sensor_specs
         return agent_configuration
 
@@ -571,6 +575,33 @@ class Simulator:
             spec.near = 0.05
         if hasattr(spec, "far"):
             spec.far = 200.0
+        return spec
+
+    @staticmethod
+    def chase_color_spec(habitat_sim: Any, chase: Mapping[str, Any]) -> Any:
+        """Third-person pinhole behind/above the agent looking at the chassis.
+
+        Habitat agent frame: ``-Z`` forward, ``+Y`` up → mount at
+        ``(0, height, distance)`` with a downward pitch so the robot stays framed.
+        """
+        spec = habitat_sim.CameraSensorSpec()
+        spec.uuid = str(chase.get("uuid") or CHASE_UUID)
+        spec.sensor_type = habitat_sim.SensorType.COLOR
+        spec.resolution = [int(chase["height"]), int(chase["width"])]
+        spec.hfov = float(chase["hfov_deg"])
+        if hasattr(habitat_sim, "SensorSubType"):
+            spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+        spec.position = [
+            0.0,
+            float(chase["height_m"]),
+            float(chase["distance_m"]),
+        ]
+        pitch = math.radians(float(chase.get("pitch_deg", -25.0)))
+        spec.orientation = [pitch, 0.0, 0.0]
+        if hasattr(spec, "near"):
+            spec.near = 0.05
+        if hasattr(spec, "far"):
+            spec.far = 100.0
         return spec
 
     def topdown_scene_bounds(self) -> tuple[float, float, float, float, float] | None:
@@ -869,6 +900,66 @@ class Simulator:
             return np.ascontiguousarray(color)
         return self.scale_image(color, dst_h, dst_w)
 
+    def align_chase_sensor(self, cfg: Mapping[str, Any]) -> None:
+        """Refresh chase mount (behind/above) in case YAML pitch/distance changed."""
+        if self.session is None:
+            return
+        uuid = str(cfg.get("uuid") or CHASE_UUID)
+        getter = getattr(self.session, "get_sensor", None)
+        if not callable(getter):
+            return
+        try:
+            sensor = getter(uuid)
+        except Exception:
+            return
+        if sensor is None:
+            return
+        node = getattr(sensor, "node", None)
+        if node is None:
+            return
+        import magnum as mn
+
+        node.translation = mn.Vector3(
+            0.0, float(cfg["height_m"]), float(cfg["distance_m"])
+        )
+        pitch = math.radians(float(cfg.get("pitch_deg", -25.0)))
+        node.rotation = mn.Quaternion.rotation(
+            mn.Rad(pitch), mn.Vector3(1.0, 0.0, 0.0)
+        )
+
+    def render_chase(self) -> np.ndarray | None:
+        """Return third-person RGB ``HxWx3 uint8``, or None if disabled / missing.
+
+        Briefly shows the instanced URDF so the chassis is visible, then hides it
+        again so the next ego RGB-D capture stays unobstructed.
+        """
+        sensors = self.settings.get("habitat", {}).get("sensors")
+        cfg = chase_spec(sensors if isinstance(sensors, Mapping) else None)
+        if cfg is None or self.session is None:
+            return None
+        self.align_chase_sensor(cfg)
+        self.set_articulated_visible(visible=True)
+        try:
+            observations = self.session.get_sensor_observations()
+        finally:
+            self.set_articulated_visible(visible=False)
+        uuid = str(cfg["uuid"])
+        if uuid not in observations:
+            warnings.warn(
+                f"Habitat chase observation missing {uuid!r}; "
+                f"got {list(observations)!r}",
+                stacklevel=2,
+            )
+            return None
+        image = np.asarray(observations[uuid])
+        if image.ndim == 3 and image.shape[2] >= 3:
+            image = image[..., :3]
+        color = self.rgb_to_uint8(image)
+        dst_h, dst_w = int(cfg["height"]), int(cfg["width"])
+        if color.shape[0] == dst_h and color.shape[1] == dst_w:
+            return np.ascontiguousarray(color)
+        return self.scale_image(color, dst_h, dst_w)
+
     @staticmethod
     def scale_image(image: np.ndarray, height: int, width: int) -> np.ndarray:
         """Scale ``image`` to ``height``×``width``. Same shape is returned as-is.
@@ -1008,16 +1099,25 @@ class Simulator:
         """
         return (math.cos(float(yaw)), 0.0, -math.sin(float(yaw)))
 
+    def chase_enabled(self) -> bool:
+        """True when ``habitat.sensors.chase.enabled`` is set."""
+        sensors = self.settings.get("habitat", {}).get("sensors")
+        return chase_spec(sensors if isinstance(sensors, Mapping) else None) is not None
+
     def should_instance_urdf(self) -> bool:
         """Whether to add the URDF mesh into the Habitat scene.
 
         Default is off: ego RGB-D is attached to the agent, so a visible chassis
-        or camera housing fills the frustum with solid colour blocks.
+        or camera housing fills the frustum with solid colour blocks. Chase /
+        third-person view auto-enables instancing so the robot is visible there;
+        visuals stay hidden except during :meth:`render_chase`.
         """
         if self.urdf is None:
             return False
         robot = self.settings.get("habitat", {}).get("robot", {})
-        return bool(robot.get("instance", False)) if isinstance(robot, Mapping) else False
+        if isinstance(robot, Mapping) and bool(robot.get("instance", False)):
+            return True
+        return self.chase_enabled()
 
     def camera_height(self) -> float | None:
         """Habitat Y height for cameras from URDF, else default eye height."""
@@ -1041,9 +1141,8 @@ class Simulator:
                     robot.collision_group = habitat_sim.physics.CollisionGroups.Noncollidable
                 except Exception:
                     pass
-            # Ego RGB-D is attached to the agent. If the Husky mesh stays visible,
-            # the chassis / lidar fill the frustum as solid colour blocks.
-            self.hide_articulated(robot)
+            # Keep hidden by default so ego RGB-D stays clean; chase toggles.
+            self.set_articulated_visible(robot, False)
             self.articulated = robot
             self.urdf_z_up = True
         except Exception as exc:
@@ -1053,13 +1152,27 @@ class Simulator:
             )
             self.articulated = None
 
+    def set_articulated_visible(
+        self, robot: Any | None = None, visible: bool = True
+    ) -> None:
+        """Show or hide the instanced URDF mesh (and link visual nodes)."""
+        target = self.articulated if robot is None else robot
+        Simulator.apply_articulated_visibility(target, visible)
+
     @staticmethod
     def hide_articulated(robot: Any) -> None:
         """Hide URDF visuals so first-person sensors see only the scene."""
+        Simulator.apply_articulated_visibility(robot, False)
+
+    @staticmethod
+    def apply_articulated_visibility(robot: Any, visible: bool) -> None:
+        """Toggle AO root + per-link visual nodes."""
+        if robot is None:
+            return
         for name in ("visible", "is_visible"):
             if hasattr(robot, name):
                 try:
-                    setattr(robot, name, False)
+                    setattr(robot, name, bool(visible))
                 except Exception:
                     pass
         n_links = int(getattr(robot, "num_links", 0) or 0)
@@ -1068,32 +1181,34 @@ class Simulator:
             if callable(getter):
                 try:
                     for node in getter(link_id) or []:
-                        Simulator.hide_scene_node(node)
+                        Simulator.set_scene_node_visible(node, visible)
                 except Exception:
                     pass
             scene_getter = getattr(robot, "get_link_scene_node", None)
             if callable(scene_getter):
                 try:
-                    Simulator.hide_scene_node(scene_getter(link_id))
+                    Simulator.set_scene_node_visible(scene_getter(link_id), visible)
                 except Exception:
                     pass
-        Simulator.hide_scene_node(getattr(robot, "root_scene_node", None))
+        Simulator.set_scene_node_visible(
+            getattr(robot, "root_scene_node", None), visible
+        )
 
     @staticmethod
-    def hide_scene_node(node: Any) -> None:
-        """Hide a Magnum/Habitat scene node and its children."""
+    def set_scene_node_visible(node: Any, visible: bool) -> None:
+        """Show or hide a Magnum/Habitat scene node and its children."""
         if node is None:
             return
         for name in ("is_visible", "visible"):
             if hasattr(node, name):
                 try:
-                    setattr(node, name, False)
+                    setattr(node, name, bool(visible))
                 except Exception:
                     pass
         setter = getattr(node, "set_visibility", None)
         if callable(setter):
             try:
-                setter(False)
+                setter(bool(visible))
             except Exception:
                 pass
         children = getattr(node, "children", None)
@@ -1101,15 +1216,26 @@ class Simulator:
             return
         try:
             for child in list(children):
-                Simulator.hide_scene_node(child)
+                Simulator.set_scene_node_visible(child, visible)
         except Exception:
             return
 
+    @staticmethod
+    def hide_scene_node(node: Any) -> None:
+        """Hide a Magnum/Habitat scene node and its children."""
+        Simulator.set_scene_node_visible(node, False)
+
     def sync_articulated(self, mn: Any) -> None:
-        """Keep Habitat URDF root aligned; apply URDF z-up → Habitat y-up."""
+        """Keep Habitat URDF root aligned; apply URDF z-up → Habitat y-up.
+
+        Agent sensors use ``Ry(yaw − π/2)`` because Habitat local forward is
+        ``−Z``. Instanced URDFs are different: after ``Rx(−π/2)``, URDF ``+X``
+        already lies on Habitat ``+X``, so planar heading is plain ``Ry(yaw)``
+        (same as humanoid AOs). The old ``yaw − π/2`` left the mesh 90° off.
+        """
         if self.articulated is None:
             return
-        yaw = mn.Quaternion.rotation(mn.Rad(self.yaw - math.pi / 2.0), mn.Vector3(0, 1, 0))
+        yaw = mn.Quaternion.rotation(mn.Rad(self.yaw), mn.Vector3(0, 1, 0))
         # URDF uses z-up; Habitat is y-up → rotate −90° about X.
         z_up_to_y_up = mn.Quaternion.rotation(mn.Rad(-math.pi / 2.0), mn.Vector3(1, 0, 0))
         # map_y = -Habitat_Z  →  Habitat_Z = -map_y

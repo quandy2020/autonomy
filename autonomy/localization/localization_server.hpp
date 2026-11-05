@@ -59,7 +59,7 @@ struct LocalizationOptions {
     std::string atlas_feature_matches_topic = "/atlas/feature_matches";
     std::string atlas_dense_map_points_topic = "/atlas/dense_map_points";
     std::string atlas_occupancy_grid_topic = "/atlas/occupancy_grid";
-    std::size_t atlas_maximum_dense_map_points = 1500000;
+    std::size_t atlas_maximum_dense_map_points = 3000000;
     std::string atlas_tf_topic = "/tf";
     std::string atlas_tf_static_topic = "/tf_static";
     std::string atlas_map_frame = "map";

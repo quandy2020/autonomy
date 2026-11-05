@@ -127,12 +127,17 @@ class Config:
         pano = panorama_spec(sensors)
         if pano is not None:
             channels["surround_panorama"] = pano["channel"]
+        from autosim.bridge.chase import chase_spec
         from autosim.bridge.topdown import topdown_spec
 
         topdown = topdown_spec(sensors)
         if topdown is not None:
             channels["topdown_rgb"] = topdown["channel"]
             channels["topdown_info"] = topdown["info_channel"]
+        chase = chase_spec(sensors)
+        if chase is not None:
+            channels["chase_rgb"] = chase["channel"]
+            channels["chase_info"] = chase["info_channel"]
         ply_channel = str(ply.get("channel") or "").strip()
         if ply_channel:
             channels["map_cloud"] = ply_channel
@@ -518,6 +523,7 @@ class Config:
         cls.validate_noise_fields(sensors)
         cls.validate_surround(camera_rig(sensors), robot_resolved.get("urdf", ""))
         cls.validate_topdown(sensors.get("topdown"))
+        cls.validate_chase(sensors.get("chase"))
         cls.validate_footprint(robot.get("footprint"), robot_resolved.get("urdf", ""))
         scenario_on = cls.validate_scenario(habitat.get("scenario"))
         if backend == "fake" and not scenario_on:
@@ -551,10 +557,10 @@ class Config:
             names.append(fov_marker_channel)
         mapping = habitat.get("map")
         slam = str(habitat.get("mode", "nav")).strip().lower() == "slam"
+        # Respect map.publish in both modes. In slam, OccupancyGrid ``/map`` is
+        # still omitted (Atlas/Cartographer owns it); ``/overall/map`` may publish.
         map_publish = (
-            False
-            if slam
-            else bool(mapping.get("publish", True))
+            bool(mapping.get("publish", True))
             if isinstance(mapping, Mapping)
             else True
         )
@@ -564,7 +570,8 @@ class Config:
             ply_channel = str(ply.get("channel") or "").strip()
             if ply_channel:
                 names.append(ply_channel)
-            names.append(grid["channel"])
+            if not slam:
+                names.append(grid["channel"])
         tf_cfg = robot.get("tf") or {}
         if isinstance(tf_cfg, Mapping) and tf_cfg.get("enabled", False):
             names.extend([tf_cfg.get("channel", "/tf"), tf_cfg.get("static_channel", "/tf_static")])
@@ -577,6 +584,15 @@ class Config:
         if str(robot_resolved.get("urdf") or "").strip():
             desc = str(robot.get("description_channel") or "").strip()
             names.append(desc or "/robot_description")
+        from autosim.bridge.chase import chase_spec as _chase_spec
+        from autosim.bridge.topdown import topdown_spec as _topdown_spec
+
+        topdown = _topdown_spec(sensors)
+        if topdown is not None:
+            names.extend([topdown["channel"], topdown["info_channel"]])
+        chase = _chase_spec(sensors)
+        if chase is not None:
+            names.extend([chase["channel"], chase["info_channel"]])
         hunav = habitat.get("hunav")
         if isinstance(hunav, Mapping) and hunav.get("publish_agents", True):
             names.append(str(hunav.get("agents_channel") or "/hunav/agents"))
@@ -661,6 +677,33 @@ class Config:
                 raise ValueError(
                     "habitat.sensors.topdown.mode must be orthographic or pinhole"
                 )
+
+    @classmethod
+    def validate_chase(cls, block: Any) -> None:
+        """Validate optional ``habitat.sensors.chase`` third-person RGB."""
+        if block is None:
+            return
+        if not isinstance(block, Mapping):
+            raise ValueError("habitat.sensors.chase must be a mapping")
+        if "enabled" in block and not isinstance(block["enabled"], bool):
+            raise ValueError("habitat.sensors.chase.enabled must be a bool")
+        if not block.get("enabled", False):
+            return
+        for key in ("width", "height"):
+            if key in block:
+                cls.require_positive(block[key], f"habitat.sensors.chase.{key}")
+        for key in (
+            "hfov_deg",
+            "distance_m",
+            "height_m",
+            "rate_hz",
+        ):
+            if key in block:
+                cls.require_positive(block[key], f"habitat.sensors.chase.{key}")
+        if "look_at_height_m" in block:
+            float(block["look_at_height_m"])
+        if "pitch_deg" in block:
+            float(block["pitch_deg"])
 
     @classmethod
     def validate_humanoids(cls, block: Any) -> None:
