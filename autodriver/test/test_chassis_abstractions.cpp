@@ -83,6 +83,27 @@ TEST(ChassisSafetyGate, ZerosLateralWhenNotSupported) {
   EXPECT_NEAR(out.twist().linear().y(), 0.0, 1e-6);
 }
 
+TEST(ChassisSafetyGate, SourceLeaseRejectsLateAndReplayedCommands) {
+  autodriver::chassis::SafetyLimits limits;
+  limits.command_max_age_ms = 200;
+  autodriver::chassis::SafetyGate gate(limits);
+  autodriver::chassis::ChassisCommand command;
+  constexpr std::uint64_t kStamp = 10'000'000'000ULL;
+  constexpr std::uint64_t kSteady = 3'000'000'000ULL;
+
+  EXPECT_FALSE(gate.CommandDeadline(command, kStamp, kSteady, 0));
+  auto* stamp = command.mutable_header()->mutable_stamp();
+  stamp->set_sec(10);
+  EXPECT_EQ(gate.CommandDeadline(command, kStamp + 150'000'000, kSteady, 0),
+            kSteady + 50'000'000);
+  EXPECT_FALSE(gate.CommandDeadline(command, kStamp + 200'000'000, kSteady, 0));
+  EXPECT_FALSE(gate.CommandDeadline(command, kStamp - 1, kSteady, 0));
+  EXPECT_FALSE(gate.CommandDeadline(command, kStamp + 1, kSteady, kStamp));
+  EXPECT_FALSE(gate.CommandDeadline(command, kStamp + 10, kSteady, kStamp + 1));
+  stamp->set_nanosec(1'000'000'000);
+  EXPECT_FALSE(gate.CommandDeadline(command, kStamp, kSteady, 0));
+}
+
 TEST(ChassisToolCommand, ParseEnableDisable) {
   autodriver::chassis::ToolCommand cmd;
   ASSERT_TRUE(autodriver::chassis::ParseToolCommand("brush=1", &cmd));

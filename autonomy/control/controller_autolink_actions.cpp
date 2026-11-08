@@ -92,7 +92,13 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
     if (!cmd_vel_writer_) {
         cmd_vel_writer_ =
             node_->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(
-                kCmdVelChannel);
+                options_.publish_navigation_candidate()
+                    ? kNavigationCandidateChannel
+                    : kCmdVelChannel);
+        if (!cmd_vel_writer_ && options_.publish_navigation_candidate()) {
+            AERROR << "ControllerServer: failed to open navigation candidate channel";
+            return false;
+        }
     }
 
     if (!odom_reader_) {

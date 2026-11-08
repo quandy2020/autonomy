@@ -126,10 +126,10 @@ SafetyResult SafetyShieldImplementation::Process(const common::Twist2D& candidat
         return DegradationController::EmergencyStop("feasibility_failed");
     }
 
-    bool feasibility_intervened = !autonomy::common::helper_functions::abs_eq(feasible.x(),
-                                                       safe->x()) ||
-                                  !autonomy::common::helper_functions::abs_eq(feasible.theta(),
-                                                       safe->theta());
+    bool feasibility_intervened =
+        !autonomy::common::helper_functions::abs_eq(feasible.x(), safe->x(), 1e-6F) ||
+        !autonomy::common::helper_functions::abs_eq(feasible.theta(), safe->theta(),
+                                                    1e-6F);
     if (!cbf_.IsSafe(feasible, observation))
     {
         common::Twist2D decelerated = measured;

@@ -1,0 +1,58 @@
+%YAML:1.0
+# Voxel-SLAM pipeline inside Argus (ROS-free).
+pipeline: voxel_slam
+
+lidar:
+  vendor: generic   # generic|livox|velodyne|ouster|hesai|robosense
+  blind: 0.5
+  point_filter_num: 3
+  synthesize_time: 1
+  scan_period: 0.1
+
+extrinsic:
+  # LiDAR ← IMU rotation (row-major 3x3) and translation
+  rota: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+  tran: [0, 0, 0]
+
+odometry:
+  down_size: 0.5
+  voxel_size: 1.0
+  min_eigen_value: 0.01
+  plane_eigen_value_thre: [1.0, 1.0, 1.0]
+  max_layer: 2
+  dept_err: 0.05
+  beam_err: 0.2
+  cov_gyr: [0.1, 0.1, 0.1]
+  cov_acc: [0.1, 0.1, 0.1]
+  degrade_bound: 50
+  point_notime: 0
+  livox_imu_scale: 0
+
+local_ba:
+  win_size: 10
+  imu_coef: 1.0e-4
+  thread_num: 4
+  enable: 1
+  enable_gravity: 0
+
+loop:
+  enable: 1
+  enable_triangle: 1
+  icp_eigval: 0.01
+  jud_default: 0.45
+  ratio_drift: 0.05
+  curr_halt: 10
+  prev_halt: 30
+
+gba:
+  enable: 1
+  voxel_size: 1.0
+  min_eigen_value: 0.01
+  total_max_iter: 3
+  local_win: 10
+  merge_size: 5
+
+session:
+  save_path: ""
+  bagname: session0
+  previous_map: ""

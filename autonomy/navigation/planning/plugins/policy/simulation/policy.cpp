@@ -11,6 +11,7 @@
 #include "autonomy/common/math/math.hpp"
 #include "navigation/common/pose2d.hpp"
 #include "navigation/common/pose2d_convert.hpp"
+#include "navigation/common/twist2d.hpp"
 #include "navigation/planning/tasks/frontier_detector_task.hpp"
 
 namespace navigation

@@ -23,6 +23,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <automsgs/msgs/time_utils.hpp>
 
 namespace autodriver {
 namespace chassis {
@@ -57,6 +59,37 @@ ChassisCommand SafetyGate::ClampVelocity(const ChassisCommand& in) const {
     }
   }
   return out;
+}
+
+std::optional<std::uint64_t> SafetyGate::CommandDeadline(
+    const ChassisCommand& command, std::uint64_t unix_now_ns,
+    std::uint64_t steady_now_ns, std::uint64_t last_source_ns) const {
+  if (limits_.command_max_age_ms == 0) {
+    return std::numeric_limits<std::uint64_t>::max();
+  }
+  if (limits_.command_max_age_ms < 0 || !command.header().has_stamp()) {
+    return std::nullopt;
+  }
+  const auto& stamp = command.header().stamp();
+  if (stamp.sec() < 0 || stamp.nanosec() >= 1'000'000'000) {
+    return std::nullopt;
+  }
+  const auto source_ns =
+      automsgs::msgs::builtin_interfaces::TimeToNanoseconds(stamp);
+  if (source_ns <= last_source_ns || source_ns > unix_now_ns) {
+    return std::nullopt;
+  }
+  const auto max_age_ns =
+      static_cast<std::uint64_t>(limits_.command_max_age_ms) * 1'000'000;
+  const auto age_ns = unix_now_ns - source_ns;
+  if (age_ns >= max_age_ns) {
+    return std::nullopt;
+  }
+  const auto remaining_ns = max_age_ns - age_ns;
+  if (steady_now_ns > std::numeric_limits<std::uint64_t>::max() - remaining_ns) {
+    return std::nullopt;
+  }
+  return steady_now_ns + remaining_ns;
 }
 
 bool SafetyGate::WatchdogExpired(std::uint64_t now_ns,

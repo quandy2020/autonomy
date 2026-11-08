@@ -34,6 +34,7 @@
 #include "autolink/common/log.hpp"
 #include "autolink/time/duration.hpp"
 #include <automsgs/msgs/vehicle_msgs/robot_event_type.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 
 namespace autodriver {
 namespace chassis {
@@ -101,6 +102,7 @@ SafetyLimits ChassisManager::BuildSafetyLimits(
   limits.model = BuildCapability(options).locomotion;
   limits.require_arm = options.require_arm;
   limits.watchdog_ms = options.watchdog_ms;
+  limits.command_max_age_ms = options.command_max_age_ms;
   return limits;
 }
 
@@ -109,6 +111,10 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
   options_ = config.chassis;
   if (!options_.enable) {
     return true;
+  }
+  if (options_.command_max_age_ms < 0) {
+    AERROR << "ChassisManager: command_max_age_ms must be nonnegative";
+    return false;
   }
   if (node == nullptr) {
     AERROR << "ChassisManager: null Autolink node";
@@ -185,6 +191,8 @@ bool ChassisManager::Start(autolink::Node* node, const Config& config) {
   }
 
   last_cmd_ns_ = ReadSteadyTimeNanoseconds();
+  last_source_cmd_ns_ = 0;
+  command_deadline_ns_ = std::numeric_limits<std::uint64_t>::max();
   capability_tick_ = 0;
   running_ = true;
   publish_thread_ = std::thread([this] { RunStatePublishLoop(); });
@@ -242,10 +250,24 @@ void ChassisManager::HandleVelocityCommand(
     return;
   }
 
-  last_cmd_ns_ = ReadSteadyTimeNanoseconds();
+  using automsgs::msgs::builtin_interfaces::TimeNow;
+  using automsgs::msgs::builtin_interfaces::TimeToNanoseconds;
+  const auto received_ns = ReadSteadyTimeNanoseconds();
+  const bool checks_source = safety_->limits().command_max_age_ms > 0;
+  const auto deadline = safety_->CommandDeadline(
+      *msg, checks_source ? TimeToNanoseconds(TimeNow()) : 0, received_ns,
+      last_source_cmd_ns_);
+  if (!deadline) {
+    return;
+  }
   const bool non_zero = IsNonZeroTwist(cmd);
   if (!driver_->ApplyVelocityCommand(cmd)) {
     return;
+  }
+  last_cmd_ns_ = received_ns;
+  command_deadline_ns_ = *deadline;
+  if (checks_source) {
+    last_source_cmd_ns_ = TimeToNanoseconds(msg->header().stamp());
   }
   modes_.NotifyMotionApplied(non_zero);
 
@@ -318,7 +340,8 @@ void ChassisManager::ApplyCommandWatchdogLocked(std::uint64_t now_ns) {
   if (!safety_ || !driver_) {
     return;
   }
-  if (!safety_->WatchdogExpired(now_ns, last_cmd_ns_)) {
+  if (now_ns < command_deadline_ns_ &&
+      !safety_->WatchdogExpired(now_ns, last_cmd_ns_)) {
     return;
   }
   ChassisCommand stop;

@@ -35,6 +35,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <limits>
 #include <thread>
 
 #include "autodriver/config.hpp"
@@ -201,6 +202,9 @@ private:
 
   std::mutex mutex_;                 ///< Guards last_cmd_ns_ and driver IO.
   std::uint64_t last_cmd_ns_ = 0;    ///< Steady-clock ns of last cmd_vel.
+  std::uint64_t last_source_cmd_ns_ = 0;  ///< Last accepted Unix stamp.
+  std::uint64_t command_deadline_ns_ =
+      std::numeric_limits<std::uint64_t>::max();  ///< Steady source expiry.
   int capability_tick_ = 0;         ///< Republish capability every N ticks.
   std::atomic<bool> running_{false}; ///< Publish loop active.
   std::thread publish_thread_;       ///< RunStatePublishLoop worker.

@@ -180,6 +180,8 @@ struct Config {
         std::string tool_cmd_channel;
         /** @brief Soft-stop if no cmd_vel for this long; 0 disables watchdog. */
         int watchdog_ms = 200;
+        /** @brief Maximum Unix timestamp age for cmd_vel; 0 keeps receive-only timing. */
+        int command_max_age_ms = 0;
         /** @brief Soft clamp before ApplyVelocityCommand; 0 = no clamp. */
         double max_linear_speed = 0.0;
         /** @brief Soft clamp for angular.z; 0 = no clamp. */

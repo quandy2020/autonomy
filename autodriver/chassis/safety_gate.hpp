@@ -27,6 +27,7 @@
 #include "chassis/locomotion_model.hpp"
 #include "chassis/operational_mode.hpp"
 #include "chassis/types.hpp"
+#include <optional>
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
@@ -40,6 +41,7 @@ struct SafetyLimits {
   LocomotionModel model;   ///< Kinematics + max speeds from Capability.
   bool require_arm = false;  ///< Idle rejects twist when true.
   int watchdog_ms = 200;     ///< cmd_vel timeout; 0 disables.
+  int command_max_age_ms = 0;  ///< Source timestamp lease; 0 disables.
 };
 
 /**
@@ -84,6 +86,14 @@ public:
    * @return Clamped copy (header preserved).
    */
   ChassisCommand ClampVelocity(const ChassisCommand& in) const;
+
+  /** @brief Convert the remaining Unix timestamp lease to a steady deadline.
+   * Returns nullopt for invalid, expired, future or non-increasing timestamps.
+   * With source timing disabled, returns the maximum steady timestamp.
+   */
+  std::optional<std::uint64_t> CommandDeadline(
+      const ChassisCommand& command, std::uint64_t unix_now_ns,
+      std::uint64_t steady_now_ns, std::uint64_t last_source_ns) const;
 
   /**
    * @brief Whether the mode FSM allows forwarding motion.

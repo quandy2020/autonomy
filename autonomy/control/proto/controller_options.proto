@@ -72,6 +72,8 @@ message ControllerOptions
     autonomy.control.proto.SandoControllerOptions sando_controller_options = 12;
     autonomy.control.proto.PolicyControllerOptions policy_controller_options = 13;
     autonomy.control.proto.NeupanControllerOptions neupan_controller_options = 14;
+    // Route commands through the standalone navigation safety process.
+    bool publish_navigation_candidate = 15;
 
     // Each entry is "id" or "id:ClassName" (autolink plugin_manager)
     repeated string controller_plugins = 9;

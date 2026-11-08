@@ -9,6 +9,7 @@ namespace control {
 
 constexpr char kControllerServerNodeName[] = "controller_server";
 constexpr char kCmdVelChannel[] = "/cmd_vel";
+constexpr char kNavigationCandidateChannel[] = "/navigation/cmd_vel_candidate";
 constexpr char kLocalCostmapTopicName[] = "/local_costmap";
 constexpr char kMapTopicName[] = "/map";
 constexpr char kOdomTopicName[] = "/odom";

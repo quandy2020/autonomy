@@ -1,0 +1,2 @@
+pipeline: lidar
+pipeline: voxel_slam

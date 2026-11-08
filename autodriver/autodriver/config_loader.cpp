@@ -913,6 +913,8 @@ Config FromYaml(const YAML::Node& root) {
         }
         config.chassis.watchdog_ms =
             ReadInt(ch, "watchdog_ms", config.chassis.watchdog_ms);
+        config.chassis.command_max_age_ms =
+            ReadInt(ch, "command_max_age_ms", config.chassis.command_max_age_ms);
         config.chassis.odom_period_ms =
             ReadInt(ch, "odom_period_ms", config.chassis.odom_period_ms);
         config.chassis.capability_period_ticks = ReadInt(

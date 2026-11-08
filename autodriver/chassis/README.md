@@ -71,8 +71,11 @@ chassis:
   event_channel: /robot_event
   odom_channel: /odom
   watchdog_ms: 200
+  command_max_age_ms: 0     # 统一 Unix 时钟的部署可设置正值
   odom_period_ms: 20
 ```
+
+启用 `command_max_age_ms` 后，`/cmd_vel` 必须携带递增的 Unix 时间戳。底盘拒绝缺失、未来、过期和重复的时间戳，只把剩余源租期转换为本地单调时钟截止时间。源租期与接收看门狗中较早到期的一方触发零速。
 
 ## 加厂商
 

@@ -1,0 +1,79 @@
+# Oxford Spires offline replay configuration.
+# The staging input preserves raw Oxford LiDAR and IMU coordinates.
+pipeline: voxel_slam
+trajectory_path: "trajectory.tum"
+
+sensors:
+  lidar:
+    model: generic
+    blind_distance_meters: 0.7
+    point_filter_stride: 1
+    relative_time_synthesis_enabled: false
+    # Raw Oxford PCD points have per-point times and have not been deskewed.
+    deskew_enabled: true
+    scan_period_seconds: 0.1
+    # T_imu_lidar from the official Oxford camera/LiDAR/IMU calibration.
+    lidar_to_imu_rotation: [-0.0166380457, -0.999860106, 0.00171598092, 0.999855257, -0.0166318136, 0.00358431442, -0.00355527312, 0.00177536854, 0.999992104]
+    lidar_to_imu_translation: [-0.000651708678, -0.0155103426, 0.0846326578]
+
+frontend:
+  initialization:
+    minimum_imu_sample_count: 20
+    gravity_magnitude: 9.81
+    maximum_acceleration_variance: 0.05
+    minimum_plane_observability_eigenvalue: 15.0
+  local_mapping:
+    window_size: 10
+  odometry:
+    local_window_size: 10
+    worker_thread_count: 5
+    degradation_count_limit: 10
+    minimum_normal_eigenvalue: 14.0
+    point_downsampling_size_meters: 0.1
+    range_noise_meters: 0.01
+    beam_angle_noise_degrees: 0.01
+    local_bundle_adjustment_enabled: true
+    gravity_bundle_adjustment_enabled: false
+  inertial:
+    # The source uses separate noise settings for EKF odometry and local BA.
+    # These are estimator variances, not raw noise-density values.
+    odometry:
+      gyroscope_measurement_noise: 0.01
+      accelerometer_measurement_noise: 1.0
+    local_mapping:
+      gyroscope_measurement_noise: 0.01
+      accelerometer_measurement_noise: 1.0
+    gyroscope_bias_random_walk_noise: 0.0001
+    accelerometer_bias_random_walk_noise: 0.0001
+
+mapping:
+  voxel:
+    voxel_size_meters: 1.0
+    minimum_plane_eigenvalue: 0.0025
+
+optimization:
+  # Dataset-specific weight; the Voxel-SLAM default caused full-run failure.
+  inertial_factor_coefficient: 0.000025
+  loop_icp_minimum_eigenvalue: 10.0
+
+backend:
+  loop_closure:
+    enabled: true
+    triangle_descriptors_enabled: true
+    descriptor_score_threshold: 0.5
+    maximum_drift_ratio: 0.01
+    same_session_update_interval: 10
+    historical_session_update_interval: 30
+  global_mapping:
+    enabled: true
+    local_window_size: 10
+    submap_merge_size: 5
+    voxel_size_meters: 1.0
+    minimum_plane_eigenvalue: 0.01
+    eigenvalue_thresholds: [2.0, 2.0, 2.0, 2.0]
+    maximum_iteration_count: 3
+
+storage:
+  directory: ""
+  session_name: "oxford-spires"
+  previous_map: ""

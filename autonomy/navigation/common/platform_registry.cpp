@@ -66,7 +66,7 @@ bool ApplyKinematicLimits(const PlatformProfile& profile, const Twist2D& desired
             const double curvature = target.theta() / target.x();
             if (std::abs(curvature) > max_curvature)
             {
-                target.set_theta(Sign(curvature) * max_curvature * target.x());
+                target.set_theta((curvature >= 0.0 ? 1.0 : -1.0) * max_curvature * target.x());
             }
         }
     }
