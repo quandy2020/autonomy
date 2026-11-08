@@ -1,5 +1,0 @@
-components:
-  - name: front
-    type: lidar_frontend
-  - name: front
-    type: visual_frontend

@@ -1,4 +1,0 @@
-pipeline: voxel_slam
-frontend:
-  odometry:
-    worker_thread_count: 6
