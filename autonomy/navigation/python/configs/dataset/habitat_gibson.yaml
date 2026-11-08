@@ -1,0 +1,4 @@
+name: habitat_gibson
+scene_root: ${VNT_PA_DATASET}/habitat/raw/scene_datasets/gibson
+dataset_config: ${VNT_PA_DATASET}/habitat/raw/scene_datasets/gibson/gibson.scene_dataset_config.json
+navmesh_suffix: .go2.navmesh

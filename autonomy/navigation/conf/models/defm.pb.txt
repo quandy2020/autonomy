@@ -3,6 +3,7 @@ name: "defm"
 path: "conf/models/defm_vit_s14.onnx"
 sha256: "bea909a58f645bb3009348d6431e1ba9c9a824a1a76a51dcfaffd5cbc14dc7f4"
 opset: "17"
+backend: "onnx"
 precision: "fp32"
 inputs {
   name: "depth"
@@ -19,8 +20,8 @@ outputs {
   shape: [1, 384]
   dtype: "float32"
 }
-mean: [0.5, 0.5, 0.5]
-std: [0.5, 0.5, 0.5]
+mean: [0.248880, 0.495620, 0.492858]
+std: [0.139357, 0.271314, 0.297177]
 embedding_dim: 384
 token_count: 256
 

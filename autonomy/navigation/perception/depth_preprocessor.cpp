@@ -17,7 +17,9 @@
 #include "navigation/perception/depth_preprocessor.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <limits>
 
 namespace navigation
 {
@@ -66,9 +68,107 @@ bool DecodeDepth(const automsgs::msgs::sensor_msgs::Image& image,
 
 DepthPreprocessor::DepthPreprocessor(DepthPreprocessorOptions options)
     : options_(options),
-      validity_(options.min_depth, options.max_depth)
+      validity_(options.min_depth, options.valid_max_depth)
 {
 }
+
+namespace
+{
+
+/** @brief One axis of a separable resize filter. */
+struct AxisFilter
+{
+    std::vector<std::size_t> offsets{0};
+    std::vector<int> indices;
+    std::vector<double> weights;
+};
+
+/** @brief Build a triangular antialias filter when shrinking, bilinear when growing. */
+AxisFilter BuildAxisFilter(std::uint32_t source, std::uint32_t target)
+{
+    AxisFilter filter;
+    if (source == 0 || target == 0)
+    {
+        return filter;
+    }
+    const double scale = static_cast<double>(source) / target;
+    const double radius = std::max(1.0, scale);
+    for (std::uint32_t out = 0; out < target; ++out)
+    {
+        const double center = (static_cast<double>(out) + 0.5) * scale - 0.5;
+        const int begin = static_cast<int>(std::floor(center - radius));
+        const int end = static_cast<int>(std::ceil(center + radius));
+        double sum = 0.0;
+        std::vector<int> local_indices;
+        std::vector<double> local_weights;
+        for (int index = begin; index <= end; ++index)
+        {
+            const double weight =
+                std::max(0.0, 1.0 - std::abs(static_cast<double>(index) - center) / radius);
+            if (weight <= 0.0)
+            {
+                continue;
+            }
+            local_indices.push_back(std::clamp(index, 0, static_cast<int>(source) - 1));
+            local_weights.push_back(weight);
+            sum += weight;
+        }
+        if (sum <= 0.0)
+        {
+            local_indices.push_back(std::clamp(static_cast<int>(std::lround(center)), 0,
+                                               static_cast<int>(source) - 1));
+            local_weights.push_back(1.0);
+            sum = 1.0;
+        }
+        for (std::size_t i = 0; i < local_weights.size(); ++i)
+        {
+            filter.indices.push_back(local_indices[i]);
+            filter.weights.push_back(local_weights[i] / sum);
+        }
+        filter.offsets.push_back(filter.weights.size());
+    }
+    return filter;
+}
+
+/** @brief Separable resize of one single-channel image. */
+void ResizeBilinear(const std::vector<float>& source, std::uint32_t source_w,
+                    std::uint32_t source_h, std::uint32_t target_w,
+                    std::uint32_t target_h, std::vector<float>* output)
+{
+    output->assign(static_cast<std::size_t>(target_w) * target_h, 0.0F);
+    if (source.empty() || source_w == 0 || source_h == 0 || target_w == 0 || target_h == 0)
+    {
+        return;
+    }
+    const AxisFilter x_filter = BuildAxisFilter(source_w, target_w);
+    const AxisFilter y_filter = BuildAxisFilter(source_h, target_h);
+    for (std::uint32_t y = 0; y < target_h; ++y)
+    {
+        const auto y_begin = y_filter.offsets[y];
+        const auto y_end = y_filter.offsets[y + 1];
+        for (std::uint32_t x = 0; x < target_w; ++x)
+        {
+            const auto x_begin = x_filter.offsets[x];
+            const auto x_end = x_filter.offsets[x + 1];
+            double value = 0.0;
+            for (std::size_t yi = y_begin; yi < y_end; ++yi)
+            {
+                const auto source_y = static_cast<std::size_t>(y_filter.indices[yi]);
+                const double wy = y_filter.weights[yi];
+                for (std::size_t xi = x_begin; xi < x_end; ++xi)
+                {
+                    const auto source_x = static_cast<std::size_t>(x_filter.indices[xi]);
+                    value += wy * x_filter.weights[xi] *
+                             source[source_y * source_w + source_x];
+                }
+            }
+            (*output)[static_cast<std::size_t>(y) * target_w + x] =
+                static_cast<float>(value);
+        }
+    }
+}
+
+}  // namespace
 
 bool DepthPreprocessor::Process(const automsgs::msgs::sensor_msgs::Image& image,
                                 std::vector<float>* chw, DepthStats* stats) const
@@ -77,62 +177,66 @@ bool DepthPreprocessor::Process(const automsgs::msgs::sensor_msgs::Image& image,
     {
         return false;
     }
+    const std::uint32_t width = image.width();
+    const std::uint32_t height = image.height();
     std::vector<float> depth;
-    if (!DecodeDepth(image, &depth))
+    if (!DecodeDepth(image, &depth) || width == 0 || height == 0)
     {
         return false;
     }
 
-    const std::uint32_t size = options_.input_size;
-    const std::uint32_t width = image.width();
-    const std::uint32_t height = image.height();
-    chw->assign(static_cast<std::size_t>(3) * size * size, 0.0F);
-
-    const double scale = std::min(static_cast<double>(size) / width,
-                                  static_cast<double>(size) / height);
-    const std::uint32_t resized_w = std::max(1U, static_cast<std::uint32_t>(width * scale));
-    const std::uint32_t resized_h = std::max(1U, static_cast<std::uint32_t>(height * scale));
-    const std::uint32_t pad_x = (size - resized_w) / 2;
-    const std::uint32_t pad_y = (size - resized_h) / 2;
-
-    for (std::uint32_t y = 0; y < resized_h; ++y)
+    const std::size_t count = static_cast<std::size_t>(width) * height;
+    double min_log = std::numeric_limits<double>::infinity();
+    double max_log = -std::numeric_limits<double>::infinity();
+    for (std::size_t i = 0; i < count; ++i)
     {
-        const double source_y = (static_cast<double>(y) + 0.5) / scale - 0.5;
-        const int y0 = std::clamp(static_cast<int>(std::floor(source_y)), 0,
-                                  static_cast<int>(height) - 1);
-        const int y1 = std::min(y0 + 1, static_cast<int>(height) - 1);
-        const double fy = source_y - std::floor(source_y);
-        for (std::uint32_t x = 0; x < resized_w; ++x)
+        double value = depth[i];
+        if (!std::isfinite(value))
         {
-            const double source_x = (static_cast<double>(x) + 0.5) / scale - 0.5;
-            const int x0 = std::clamp(static_cast<int>(std::floor(source_x)), 0,
-                                      static_cast<int>(width) - 1);
-            const int x1 = std::min(x0 + 1, static_cast<int>(width) - 1);
-            const double fx = source_x - std::floor(source_x);
+            value = 0.0;
+        }
+        value = std::clamp(value, 0.0, options_.max_depth_c1);
+        depth[i] = static_cast<float>(value);
+        const double log_depth = std::log1p(value);
+        min_log = std::min(min_log, log_depth);
+        max_log = std::max(max_log, log_depth);
+    }
+    if (!std::isfinite(min_log) || !std::isfinite(max_log))
+    {
+        return false;
+    }
 
-            const auto sample = [&](int sx, int sy) -> double {
-                const std::size_t index = static_cast<std::size_t>(sy) * width +
-                                          static_cast<std::size_t>(sx);
-                const double value = depth[index];
-                return validity_.IsValid(value) ? value : 0.0;
-            };
-            const double top = sample(x0, y0) * (1.0 - fx) + sample(x1, y0) * fx;
-            const double bottom = sample(x0, y1) * (1.0 - fx) + sample(x1, y1) * fx;
-            const double depth = top * (1.0 - fy) + bottom * fy;
-            if (depth <= 0.0)
-            {
-                continue;
-            }
-            const double clamped = std::clamp(depth, options_.min_depth, options_.max_depth);
-            const double normalized =
-                (clamped - options_.min_depth) / (options_.max_depth - options_.min_depth);
-            const float value = static_cast<float>((normalized - options_.mean) / options_.std);
-            const std::size_t output_index =
-                static_cast<std::size_t>(y + pad_y) * size + (x + pad_x);
-            for (std::size_t channel = 0; channel < 3; ++channel)
-            {
-                (*chw)[channel * size * size + output_index] = value;
-            }
+    const double c1_denominator = std::log1p(options_.max_depth_c1);
+    const double c2_denominator = std::log1p(options_.max_depth_c2);
+    std::array<std::vector<float>, 3> channels;
+    for (auto& channel : channels)
+    {
+        channel.resize(count, 0.0F);
+    }
+    for (std::size_t i = 0; i < count; ++i)
+    {
+        const double log_depth = std::log1p(static_cast<double>(depth[i]));
+        channels[0][i] = static_cast<float>(log_depth / c1_denominator);
+        channels[1][i] = static_cast<float>(
+            std::clamp(log_depth / c2_denominator, 0.0, 1.0));
+        channels[2][i] = max_log > min_log
+                             ? static_cast<float>((log_depth - min_log) /
+                                                  (max_log - min_log))
+                             : 0.0F;
+    }
+
+    const std::uint32_t size = options_.input_size;
+    chw->assign(static_cast<std::size_t>(3) * size * size, 0.0F);
+    for (std::size_t channel = 0; channel < channels.size(); ++channel)
+    {
+        std::vector<float> resized;
+        ResizeBilinear(channels[channel], width, height, size, size, &resized);
+        for (std::uint32_t i = 0; i < size * size; ++i)
+        {
+            const double value =
+                (static_cast<double>(resized[i]) - options_.mean[channel]) /
+                options_.std[channel];
+            (*chw)[channel * size * size + i] = static_cast<float>(value);
         }
     }
     return true;

@@ -54,8 +54,25 @@ std::unique_ptr<perception::ObservationEncoder> CreateEngineEncoder(
     {
         return nullptr;
     }
+    perception::DepthPreprocessorOptions preprocess;
+    if (manifest.mean_size() == 3 && manifest.std_size() == 3)
+    {
+        for (int i = 0; i < 3; ++i)
+        {
+            preprocess.mean[static_cast<std::size_t>(i)] = manifest.mean(i);
+            preprocess.std[static_cast<std::size_t>(i)] = manifest.std(i);
+        }
+    }
+    if (manifest.inputs_size() > 0 && manifest.inputs(0).shape_size() >= 3)
+    {
+        const auto size = manifest.inputs(0).shape(2);
+        if (size > 0)
+        {
+            preprocess.input_size = static_cast<std::uint32_t>(size);
+        }
+    }
     return std::make_unique<perception::DepthFoundationModelEncoder>(
-        std::make_unique<perception::DepthPreprocessor>(),
+        std::make_unique<perception::DepthPreprocessor>(preprocess),
         std::move(model), std::make_unique<perception::AttentionPooler>(),
         std::make_unique<perception::PerceptualUncertaintyEstimator>(),
         perception::DepthFoundationModelEncoder::Options{
@@ -80,14 +97,18 @@ std::unique_ptr<PolicyInterface> CreateEnginePolicy(
     {
         embedding_dim = manifest.embedding_dim();
     }
-    const std::uint32_t context = options.context_size_k() == 0 ? 32 : options.context_size_k();
+    const std::uint32_t context = options.context_size_k() == 0 ? 64 : options.context_size_k();
+    const double forward_step = options.forward_step() > 0.0 ? options.forward_step() : 0.25;
+    const double turn_step = options.turn_step_rad() > 0.0 ? options.turn_step_rad() : 0.5235987756;
+    const double dt_s = options.action_dt_s() > 0.0 ? options.action_dt_s() : 0.5;
     return std::make_unique<vntpa::Policy>(
         options, std::move(loader),
         std::make_unique<vntpa::Preprocessor>(context, embedding_dim, 64),
         std::make_unique<vntpa::Postprocessor>(
-            vntpa::PostprocessorOptions{options.action_chunk_length(), options.action_dt_s(),
-                                        0.5, 0.0, 1.0}),
-        std::make_unique<vntpa::ActionDecoder>());
+            vntpa::PostprocessorOptions{options.action_chunk_length(), dt_s, 0.5, 0.0, 1.0,
+                                        forward_step, turn_step}),
+        std::make_unique<vntpa::ActionDecoder>(
+            vntpa::ActionDecoderOptions{4, forward_step, turn_step, dt_s}));
 }
 
 }  // namespace

@@ -1,0 +1,4 @@
+nproc: 8
+run_name: pan_distributed
+steps: 60000
+batch_scenes: 16

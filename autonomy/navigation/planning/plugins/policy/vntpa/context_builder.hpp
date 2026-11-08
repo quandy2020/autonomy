@@ -26,7 +26,6 @@
 
 #include "navigation/common/pose2d.hpp"
 #include "navigation/memory/context_view.hpp"
-#include "navigation/planning/plugins/policy/vntpa/pose_attention.hpp"
 
 namespace navigation
 {
@@ -40,16 +39,18 @@ struct ContextTensors
 {
     /** @brief K * embedding_dim features. */
     std::vector<float> embeddings;
-    /** @brief K * pose_dim Fourier pose features. */
+    /** @brief K * 3 raw keyframe poses (x, y, yaw). */
     std::vector<float> poses;
+    /** @brief K * P * D keyframe patch tokens. */
+    std::vector<float> tokens;
     /** @brief K mask bytes; 1 means a valid entry. */
     std::vector<std::uint8_t> mask;
     /** @brief Context capacity K. */
     std::uint32_t k{0};
-    /** @brief Feature dimension. */
-    std::uint32_t embedding_dim{0};
-    /** @brief Pose feature dimension. */
-    std::uint32_t pose_dim{0};
+    /** @brief Patch-token count per keyframe. */
+    std::uint32_t token_count{0};
+    /** @brief Patch-token dimension. */
+    std::uint32_t token_dim{0};
 };
 
 class ContextBuilder
@@ -66,9 +67,6 @@ public:
 private:
     /** @brief Context capacity. */
     std::uint32_t k_{32};
-    /** @brief Feature dimension. */
-    std::uint32_t embedding_dim_{384};
-    PoseAttention pose_attention_;
 };
 
 }  // namespace vntpa

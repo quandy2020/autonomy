@@ -46,6 +46,10 @@ struct PostprocessorOptions
     double max_lateral_mps{0.0};
     /** @brief Yaw-rate limit in rad/s. */
     double max_angular_radps{1.0};
+    /** @brief Forward primitive step in metres. */
+    double forward_step{0.25};
+    /** @brief Turn primitive angle in radians. */
+    double turn_step_rad{0.5235987756};
 };
 
 class Postprocessor
@@ -56,7 +60,8 @@ public:
 
     /** @brief Clamp flat actions and build an ActionChunk. */
     bool Build(const std::vector<float>& actions, std::uint32_t chunk_length,
-               std::uint64_t sequence, std::int64_t stamp_ns, ActionChunk* chunk) const;
+               std::uint64_t sequence, std::int64_t stamp_ns, ActionChunk* chunk,
+               const std::vector<std::uint32_t>* kinds = nullptr) const;
 
     /** @brief Read-only options snapshot. */
     [[nodiscard]] const PostprocessorOptions& Options() const;

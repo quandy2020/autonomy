@@ -25,25 +25,21 @@ namespace vntpa
 
 Preprocessor::Preprocessor(std::uint32_t context_size, std::uint32_t embedding_dim,
                            std::uint32_t pose_dim)
-    : query_builder_(embedding_dim),
-      context_builder_(context_size, embedding_dim, pose_dim)
+    : context_builder_(context_size, embedding_dim, pose_dim)
 {
 }
 
-bool Preprocessor::Build(const observation::DepthFeature& depth_feature,
-                         const common::Pose2D& current_pose, const GoalSpec& goal,
+bool Preprocessor::Build(const common::Pose2D& current_pose, const GoalSpec& goal,
                          const memory::ContextView& context, ModelInputs* inputs)
 {
     if (inputs == nullptr)
     {
         return false;
     }
-    inputs->depth_feature.assign(depth_feature.tokens().begin(),
-                                 depth_feature.tokens().end());
-    inputs->depth_token_count = depth_feature.token_count();
-    inputs->depth_token_dim = depth_feature.token_dim();
     bool has_goal = false;
-    if (!query_builder_.Build(current_pose, goal, &inputs->query, &has_goal))
+    if (!query_builder_.Build(current_pose, goal, &inputs->query_pose, &inputs->goal,
+                              &has_goal) ||
+        !has_goal)
     {
         return false;
     }
@@ -52,9 +48,11 @@ bool Preprocessor::Build(const observation::DepthFeature& depth_feature,
     {
         return false;
     }
-    inputs->context = std::move(tensors.embeddings);
-    inputs->context_pose = std::move(tensors.poses);
-    inputs->context_mask = std::move(tensors.mask);
+    inputs->kf_tokens = std::move(tensors.tokens);
+    inputs->kf_pose = std::move(tensors.poses);
+    inputs->kf_valid = std::move(tensors.mask);
+    inputs->token_count = tensors.token_count;
+    inputs->token_dim = tensors.token_dim;
     inputs->context_size = tensors.k;
     return true;
 }

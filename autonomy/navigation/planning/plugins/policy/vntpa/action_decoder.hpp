@@ -16,7 +16,7 @@
 
 /**
  * @file action_decoder.hpp
- * @brief Optional GRU/post-net decoding; identity by default.
+ * @brief Decodes VNT-PA logits into discrete primitives or legacy velocities.
  */
 
 #pragma once
@@ -31,11 +31,38 @@ namespace planning
 namespace vntpa
 {
 
+/** @brief Discrete action mapping used by the decoder. */
+struct ActionDecoderOptions
+{
+    /** @brief Number of action classes (STOP/FORWARD/LEFT/RIGHT). */
+    std::uint32_t action_count{4};
+    /** @brief Forward step in metres. */
+    double forward_step{0.25};
+    /** @brief Turn step in radians. */
+    double turn_step_rad{0.5235987756};
+    /** @brief Seconds represented by one action. */
+    double dt_s{0.5};
+};
+
 class ActionDecoder
 {
 public:
+    /** @brief Construct with action mapping. */
+    explicit ActionDecoder(ActionDecoderOptions options = {});
+
+    /**
+     * @brief Decode logits [chunk, 4] or legacy velocities [chunk, 3].
+     *
+     * @param[out] actions Three floats per action.
+     * @param[out] kinds Optional discrete class per action (empty for legacy input).
+     */
     bool Decode(const std::vector<float>& raw_actions, std::uint32_t chunk_length,
-                std::vector<float>* actions) const;
+                std::vector<float>* actions,
+                std::vector<std::uint32_t>* kinds = nullptr) const;
+
+private:
+    /** @brief Mapping options. */
+    ActionDecoderOptions options_;
 };
 
 }  // namespace vntpa

@@ -11,17 +11,25 @@ policy {
   vntpa {
     model_path: "conf/models/vntpa.onnx"
     action_chunk_length: 8
-    execute_length: 2
+    execute_length: 4
     decision_rate_hz: 5.0
-    action_dt_s: 0.1
-    context_size_k: 32
-    depth_input_name: "depth_feature"
-    pose_input_name: "query_token"
-    context_input_name: "context"
-    context_pose_input_name: "context_pose"
-    context_mask_input_name: "context_mask"
-    output_name: "action_chunk"
-    pose_input_dim: 64
+    action_dt_s: 0.5
+    context_size_k: 64
+    depth_input_name: "kf_tokens"
+    pose_input_name: "kf_pose"
+    context_input_name: "kf_valid"
+    context_pose_input_name: "query_pose"
+    context_mask_input_name: "goal"
+    output_name: "logits"
+    kf_tokens_input_name: "kf_tokens"
+    kf_pose_input_name: "kf_pose"
+    query_pose_input_name: "query_pose"
+    goal_input_name: "goal"
+    valid_input_name: "kf_valid"
+    forward_step: 0.25
+    turn_step_rad: 0.5235987756
+    token_count: 256
+    token_dim: 384
     execution_provider: "cuda"
     device_id: 0
     precision: "fp16"

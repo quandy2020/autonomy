@@ -23,6 +23,23 @@ C++17 端到端导航子模块：Component（autolink 薄入口）+ Runner（业
 | [12-configuration.md](docs/12-configuration.md) | 配置分层、模块化约定 |
 | [13-todo.md](docs/13-todo.md) | TODO、闭环分级与验收顺序 |
 | [14-config-reference.md](docs/14-config-reference.md) | 配置参数含义、调参、调试 |
+| [15-vntpa-alignment.md](docs/15-vntpa-alignment.md) | VNT-PA 对齐与优化清单 |
+
+## Python
+
+Python 工程名与包名均为 **`vntpa`**：
+
+```text
+python/
+├── pyproject.toml
+├── vntpa/
+├── scripts/
+└── tests/
+```
+
+包含 vendored VNT-PA / DeFM、DeFM 预处理/编码、VNT-PA ONNX 推理、
+训练/评估入口、ONNX 导出和 autosim/autolink 桥，支持完全离线单仓库训练。
+详见 [python/README.md](python/README.md)。
 
 ## 快速开始
 
@@ -71,6 +88,7 @@ tools/build_linux.sh /path/to/automsgs/build build-linux
 | `dag/` | navigation/safety/guardian 拓扑 |
 | `launch/` | navigation/simulation/replay |
 | `tools/` | 配置校验、benchmark、目标发送、VNTPA 训练 |
+| `python/` | `vntpa` Python 训练/部署/autosim 桥 |
 | `docs/` | 架构、数据流、设计、仿真、模型、构建、验收 |
 
 ## 复用

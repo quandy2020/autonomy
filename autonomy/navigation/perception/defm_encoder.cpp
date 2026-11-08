@@ -17,6 +17,7 @@
 #include "navigation/perception/defm_encoder.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 
 #include "automsgs/msgs/time_utils.hpp"
@@ -67,16 +68,27 @@ common::Status DepthFoundationModelEncoder::Encode(
         return common::Status::Internal("DeFM inference failed");
     }
     if (output.token_count == 0 || output.token_dim == 0 ||
-        output.tokens.size() <
-            static_cast<std::size_t>(output.token_count) * output.token_dim)
+        output.tokens.size() !=
+            static_cast<std::size_t>(output.token_count) * output.token_dim ||
+        (!output.pooled.empty() && output.pooled.size() != output.token_dim))
     {
         return common::Status::Internal("DeFM output shape is invalid");
     }
 
     std::vector<float> pooled;
     double token_norm = 0.0;
-    if (!pooler_->Pool(output.tokens, output.token_count, output.token_dim, &pooled,
-                       &token_norm))
+    if (!output.pooled.empty())
+    {
+        pooled = output.pooled;
+        double norm_squared = 0.0;
+        for (const float value : pooled)
+        {
+            norm_squared += static_cast<double>(value) * value;
+        }
+        token_norm = std::sqrt(norm_squared);
+    }
+    else if (!pooler_->Pool(output.tokens, output.token_count, output.token_dim, &pooled,
+                            &token_norm))
     {
         return common::Status::Internal("DeFM pooling failed");
     }

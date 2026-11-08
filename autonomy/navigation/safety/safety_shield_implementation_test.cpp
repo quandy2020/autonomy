@@ -72,7 +72,7 @@ int main()
         return 1;
     }
 
-    const std::int64_t now = navigation::std::chrono::duration_cast<std::chrono::nanoseconds>(
+    const std::int64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::steady_clock::now().time_since_epoch())
         .count();
     Twist2D measured = navigation::common::MakeTwist2D(0.3, 0.0, 0.0);

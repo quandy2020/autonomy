@@ -38,9 +38,9 @@ int main()
     obstacle->set_radius(0.05);
     frame.reflex = &observation;
     planning::ObstacleAvoider avoider;
-    if (!avoider.Execute(frame).Ok() || frame.command.set_theta(= 0.0)
+    if (!avoider.Execute(frame).Ok() || std::abs(frame.command.theta()) > 1e-9)
     {
-        std::cerr << "obstacle avoider failed\n");
+        std::cerr << "obstacle avoider failed\n";
         return 1;
     }
     auto* close = observation.add_obstacles();

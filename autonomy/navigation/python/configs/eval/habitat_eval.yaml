@@ -1,0 +1,3 @@
+name: habitat_eval
+success_radius: 0.2
+exec_horizon: 4

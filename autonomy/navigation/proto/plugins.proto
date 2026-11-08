@@ -40,6 +40,15 @@ message VntpaPolicyOptions
     bool enable_reachability_adjuster = 18;
     double reach_min = 19;
     double reach_max = 20;
+    string kf_tokens_input_name = 21;
+    string kf_pose_input_name = 22;
+    string query_pose_input_name = 23;
+    string goal_input_name = 24;
+    string valid_input_name = 25;
+    double forward_step = 26;
+    double turn_step_rad = 27;
+    uint32 token_count = 28;
+    uint32 token_dim = 29;
     reserved 100 to 199;
 }
 

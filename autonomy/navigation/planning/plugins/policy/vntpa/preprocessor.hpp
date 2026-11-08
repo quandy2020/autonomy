@@ -16,7 +16,7 @@
 
 /**
  * @file preprocessor.hpp
- * @brief Assembles VNTPA model inputs from feature, goal and context.
+ * @brief Assembles VNT-PA keyframe/query/goal tensors.
  */
 
 #pragma once
@@ -29,7 +29,6 @@
 #include "navigation/planning/plugins/policy/vntpa/context_builder.hpp"
 #include "navigation/planning/plugins/policy/vntpa/query_builder.hpp"
 #include "navigation/proto/navigation.pb.h"
-#include "navigation/proto/observation.pb.h"
 
 namespace navigation
 {
@@ -38,23 +37,23 @@ namespace planning
 namespace vntpa
 {
 
-/** @brief Fixed-shape tensors passed to the VNTPA model. */
+/** @brief Fixed-shape tensors passed to the single VNT-PA planner ONNX. */
 struct ModelInputs
 {
-    /** @brief N * D depth tokens. */
-    std::vector<float> depth_feature;
-    /** @brief Query token of length D. */
-    std::vector<float> query;
-    /** @brief K * D context embeddings. */
-    std::vector<float> context;
-    /** @brief K * P Fourier context poses. */
-    std::vector<float> context_pose;
-    /** @brief K context mask bytes. */
-    std::vector<std::uint8_t> context_mask;
-    /** @brief Number of depth tokens. */
-    std::uint32_t depth_token_count{0};
-    /** @brief Depth token dimension. */
-    std::uint32_t depth_token_dim{0};
+    /** @brief K * P * D keyframe patch tokens. */
+    std::vector<float> kf_tokens;
+    /** @brief K * 3 keyframe poses. */
+    std::vector<float> kf_pose;
+    /** @brief K mask bytes; 1 means a valid keyframe. */
+    std::vector<std::uint8_t> kf_valid;
+    /** @brief Query pose (x, y, yaw). */
+    std::vector<float> query_pose;
+    /** @brief Goal position (x, y). */
+    std::vector<float> goal;
+    /** @brief Patch-token count per keyframe. */
+    std::uint32_t token_count{0};
+    /** @brief Patch-token dimension. */
+    std::uint32_t token_dim{0};
     /** @brief Context capacity K. */
     std::uint32_t context_size{0};
 };
@@ -62,25 +61,16 @@ struct ModelInputs
 class Preprocessor
 {
 public:
-    /** @brief Construct with fixed tensor dimensions. */
+    /** @brief Construct with fixed context size; other dimensions come from tokens. */
     Preprocessor(std::uint32_t context_size, std::uint32_t embedding_dim,
                  std::uint32_t pose_dim);
 
-    /**
-     * @brief Assemble all model inputs.
-     *
-     * @param[in] depth_feature Encoder output.
-     * @param[in] current_pose Current map pose.
-     * @param[in] goal Active goal.
-     * @param[in] context Memory snapshot.
-     * @param[out] inputs Fixed-shape tensors.
-     */
-    bool Build(const observation::DepthFeature& depth_feature,
-               const common::Pose2D& current_pose, const GoalSpec& goal,
+    /** @brief Assemble keyframe tokens, poses, query and goal. */
+    bool Build(const common::Pose2D& current_pose, const GoalSpec& goal,
                const memory::ContextView& context, ModelInputs* inputs);
 
 private:
-    /** @brief Query token builder. */
+    /** @brief Query pose/goal builder. */
     QueryBuilder query_builder_;
     /** @brief Context tensor builder. */
     ContextBuilder context_builder_;

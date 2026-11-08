@@ -205,4 +205,5 @@ message ModelManifest
     repeated float std = 9;
     uint32 embedding_dim = 10;
     uint32 token_count = 11;
+    string backend = 12;
 }

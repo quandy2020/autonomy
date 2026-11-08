@@ -13,6 +13,16 @@
   `tokens [1,256,384]`、`pooled [1,384]`；PyTorch vs ONNX 最大误差约
   `1.2e-5`（tokens）/ `4.3e-6`（pooled）。
 - 推理 manifest：[defm.pb.txt](../conf/models/defm.pb.txt)。
+- 预处理必须与上游一致，不是普通 min-max：
+  ```text
+  C1 = log1p(depth) / log1p(100)
+  C2 = clip(log1p(depth) / log1p(9), 0, 1)
+  C3 = (log1p(depth) - min_log) / (max_log - min_log)
+  mean = [0.248880, 0.495620, 0.492858]
+  std  = [0.139357, 0.271314, 0.297177]
+  ```
+  `DepthPreprocessor` 已按此实现；输入直接 resize 到 224×224，不再 letterbox。
+- 缩小使用三角抗锯齿滤波、放大使用双线性；与 `torchvision.Resize` 接近，但滤波器实现不是逐位一致。
 - `.pth` / `.onnx` 约 83 MB，已加入根 `.gitignore`；仓库只提交 manifest 和
   `LICENSE.defm`，权重由开发者本地导出/下载。
 

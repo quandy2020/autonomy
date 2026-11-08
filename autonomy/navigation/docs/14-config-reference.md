@@ -50,12 +50,15 @@ echo $NAVIGATION_CONF_DIR
 | `vntpa.action_chunk_length` | 每次输出的动作数 | 1–32，默认 8 | ✅ Blender/Postprocessor |
 | `vntpa.execute_length` | 每次执行的动作数 | ≤ chunk，默认 2 | ✅ Blender |
 | `vntpa.decision_rate_hz` | 策略决策频率 | >0，默认 5 | ✅ Runner worker |
-| `vntpa.action_dt_s` | 单个动作时长 | >0，默认 0.1 | ✅ Blender/Postprocessor |
-| `vntpa.context_size_k` | 空间上下文条目数 | 默认 32 | ✅ VNTPA preprocessor |
-| `vntpa.depth_input_name` | ONNX 输入名 | 与模型一致 | ✅ Engine |
-| `vntpa.pose_input_name` | query 输入名 | 与模型一致 | ✅ Engine |
-| `vntpa.context_input_name` | context 输入名 | 与模型一致 | ✅ Engine |
-| `vntpa.context_pose_input_name` | context pose 输入名 | 与模型一致 | ✅ Engine |
+| `vntpa.action_dt_s` | 单个动作时长 | >0，默认 0.5 | ✅ Blender/Postprocessor |
+| `vntpa.context_size_k` | 空间上下文条目数 | 默认 64 | ✅ VNTPA preprocessor |
+| `vntpa.kf_tokens_input_name` | patch tokens 输入名 | 默认 `kf_tokens` | ✅ Engine |
+| `vntpa.kf_pose_input_name` | 关键帧 pose 输入名 | 默认 `kf_pose` | ✅ Engine |
+| `vntpa.valid_input_name` | keyframe mask 输入名 | 默认 `kf_valid` | ✅ Engine |
+| `vntpa.query_pose_input_name` | query pose 输入名 | 默认 `query_pose` | ✅ Engine |
+| `vntpa.goal_input_name` | goal 输入名 | 默认 `goal` | ✅ Engine |
+| `vntpa.forward_step` | 单步前进距离 | m，默认 0.25 | ✅ 离散动作 |
+| `vntpa.turn_step_rad` | 单步转角 | rad，默认 30° | ✅ 离散动作 |
 | `vntpa.context_mask_input_name` | mask 输入名 | 与模型一致 | ✅ Engine |
 | `vntpa.output_name` | 动作输出名 | 与模型一致 | ✅ Engine |
 | `vntpa.pose_input_dim` | pose 特征维度 | 默认 64 | 🟡 预处理器实际使用 64 |
@@ -76,7 +79,7 @@ echo $NAVIGATION_CONF_DIR
 | `max_instruction_tokens` | 指令最大 token 数 | 默认 64 |
 | `image_input_name` / `text_input_name` / `output_name` | ONNX I/O 名 | 与模型一致 |
 | `action_chunk_length` | 动作块长度 | 默认 8 |
-| `action_dt_s` | 动作间隔 | s，默认 0.1 |
+| `action_dt_s` | 动作间隔 | s，默认 0.5 |
 
 #### NOMAD（`policy.nomad`）
 
@@ -88,7 +91,7 @@ echo $NAVIGATION_CONF_DIR
 | `horizon` | 预测 horizon | 默认 16 |
 | `temperature` | 采样温度 | 默认 1.0 |
 | `action_chunk_length` | 动作块长度 | 默认 8 |
-| `action_dt_s` | 动作间隔 | s，默认 0.1 |
+| `action_dt_s` | 动作间隔 | s，默认 0.5 |
 
 #### 其它插件参数
 

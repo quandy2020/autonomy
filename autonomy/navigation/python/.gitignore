@@ -1,0 +1,12 @@
+__pycache__/
+.pytest_cache/
+docs/build/
+docs/source/generated/
+generated/
+
+# runtime artifacts
+data/
+checkpoints/
+pretrained/
+exports/
+logs/

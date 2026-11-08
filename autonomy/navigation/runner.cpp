@@ -24,6 +24,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <memory>
+#include <vector>
 #include <cmath>
 #include <utility>
 
@@ -237,7 +239,14 @@ std::optional<common::Twist2D> Runner::Tick(const observation::Observation& obse
     {
         keyframe.embedding[i] = feature.pooled(static_cast<int>(i));
     }
-    if (keyframe.embedding_dim > 0)
+    if (feature.token_count() > 0 && feature.token_dim() > 0)
+    {
+        keyframe.token_count = feature.token_count();
+        keyframe.token_dim = feature.token_dim();
+        keyframe.tokens = std::make_shared<const std::vector<float>>(
+            feature.tokens().begin(), feature.tokens().end());
+    }
+    if (keyframe.embedding_dim > 0 || keyframe.tokens != nullptr)
     {
         (void)dependencies_.memory->Insert(keyframe);
     }

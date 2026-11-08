@@ -59,6 +59,23 @@ message GoalSpec
     uint64 sequence = 11;
 }
 
+/** @brief Discrete action emitted by VNT-PA-style policies. */
+enum ActionKind
+{
+    ACTION_KIND_STOP = 0;
+    ACTION_KIND_FORWARD = 1;
+    ACTION_KIND_TURN_LEFT = 2;
+    ACTION_KIND_TURN_RIGHT = 3;
+}
+
+/** @brief One discrete primitive with its physical step size. */
+message ActionPrimitive
+{
+    ActionKind kind = 1;
+    double distance = 2;  // metres for FORWARD
+    double angle = 3;     // radians for turns
+}
+
 /** @brief Fixed-length action chunk produced by a policy. */
 message ActionChunk
 {
@@ -67,6 +84,7 @@ message ActionChunk
     uint64 sequence = 3;
     int64 produced_at_ns = 4;
     string frame = 5;
+    repeated ActionPrimitive primitives = 6;
 }
 
 /** @brief Policy output. Exactly one output variant is set. */

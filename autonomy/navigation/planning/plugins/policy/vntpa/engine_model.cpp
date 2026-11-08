@@ -17,7 +17,10 @@
 #include "navigation/planning/plugins/policy/vntpa/engine_model.hpp"
 
 #include <algorithm>
+#include <string>
 #include <utility>
+
+#include "navigation/common/configuration_loader.hpp"
 
 namespace navigation
 {
@@ -34,7 +37,7 @@ EngineVntpaModel::EngineVntpaModel(plugins::VntpaPolicyOptions options)
 bool EngineVntpaModel::Load(std::string* error)
 {
     autonomy::common::network::InferenceOptions inference;
-    inference.model_path = options_.model_path();
+    inference.model_path = common::ResolveConfigPath(options_.model_path());
     inference.backend_id = options_.execution_provider() == "tensorrt" ? "tensorrt" : "onnx";
     engine_ = autonomy::common::network::Engine::CreateEngine(inference, error);
     return engine_ != nullptr;
@@ -47,13 +50,16 @@ bool EngineVntpaModel::Run(const ModelInputs& inputs, std::vector<float>* action
     {
         return false;
     }
+    const auto name = [](const std::string& configured, const char* fallback) {
+        return configured.empty() ? std::string(fallback) : configured;
+    };
     autonomy::common::network::FloatTensorMap tensors;
-    tensors[options_.depth_input_name()] = inputs.depth_feature;
-    tensors[options_.pose_input_name()] = inputs.query;
-    tensors[options_.context_input_name()] = inputs.context;
-    tensors[options_.context_pose_input_name()] = inputs.context_pose;
-    tensors[options_.context_mask_input_name()] =
-        std::vector<float>(inputs.context_mask.begin(), inputs.context_mask.end());
+    tensors[name(options_.kf_tokens_input_name(), "kf_tokens")] = inputs.kf_tokens;
+    tensors[name(options_.kf_pose_input_name(), "kf_pose")] = inputs.kf_pose;
+    tensors[name(options_.valid_input_name(), "kf_valid")] =
+        std::vector<float>(inputs.kf_valid.begin(), inputs.kf_valid.end());
+    tensors[name(options_.query_pose_input_name(), "query_pose")] = inputs.query_pose;
+    tensors[name(options_.goal_input_name(), "goal")] = inputs.goal;
 
     autonomy::common::network::FloatTensorMap outputs;
     if (!engine_->Run(tensors, &outputs))

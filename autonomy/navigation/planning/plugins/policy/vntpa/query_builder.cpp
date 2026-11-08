@@ -16,10 +16,6 @@
 
 #include "navigation/planning/plugins/policy/vntpa/query_builder.hpp"
 
-#include <cmath>
-
-#include "navigation/common/pose2d.hpp"
-
 namespace navigation
 {
 namespace planning
@@ -27,39 +23,27 @@ namespace planning
 namespace vntpa
 {
 
-QueryBuilder::QueryBuilder(std::uint32_t output_dim) : pose_attention_(output_dim)
-{
-}
-
 bool QueryBuilder::Build(const common::Pose2D& current_pose, const GoalSpec& goal,
-                         std::vector<float>* query, bool* has_goal)
+                         std::vector<float>* query_pose, std::vector<float>* goal_xy,
+                         bool* has_goal) const
 {
-    if (query == nullptr || has_goal == nullptr)
+    if (query_pose == nullptr || goal_xy == nullptr || has_goal == nullptr)
     {
         return false;
     }
+    query_pose->assign({static_cast<float>(current_pose.x()),
+                        static_cast<float>(current_pose.y()),
+                        static_cast<float>(current_pose.theta())});
     *has_goal = goal.has_pose();
     if (!*has_goal)
     {
-        query->assign(pose_attention_.OutputDim(), 0.0F);
+        goal_xy->assign({0.0F, 0.0F});
         return true;
     }
-    const auto& target = goal.pose();
-    common::Pose2D goal_pose;
-    goal_pose.set_x(target.pose().position().x());
-    goal_pose.set_y(target.pose().position().y());
-    const auto& orientation = target.pose().orientation();
-    goal_pose.set_theta(std::atan2(2.0 * (orientation.w() * orientation.z() +
-                          orientation.x() * orientation.y()),
-                   1.0 - 2.0 * (orientation.y() * orientation.y() +
-                                orientation.z() * orientation.z())));
-    const common::Pose2D relative = common::Compose(common::Inverse(current_pose), goal_pose);
-    return pose_attention_.Encode(relative, query);
-}
-
-std::uint32_t QueryBuilder::OutputDim() const
-{
-    return pose_attention_.OutputDim();
+    const auto& position = goal.pose().pose().position();
+    goal_xy->assign({static_cast<float>(position.x()),
+                     static_cast<float>(position.y())});
+    return true;
 }
 
 }  // namespace vntpa

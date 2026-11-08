@@ -26,6 +26,7 @@
 | [12-configuration.md](12-configuration.md) | 配置分层与模块化约定 | 配置维护 |
 | [13-todo.md](13-todo.md) | TODO、闭环分级与验收顺序 | 排期/验收 |
 | [14-config-reference.md](14-config-reference.md) | 配置参数含义、调参、调试命令 | 配置维护/联调 |
+| [15-vntpa-alignment.md](15-vntpa-alignment.md) | VNT-PA 对齐差异与优化清单 | VNTPA 开发 |
 | [11-vntpa-training.md](11-vntpa-training.md) | VNTPA 离线训练/导出 | 模型训练 |
 
 ## 当前状态

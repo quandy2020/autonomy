@@ -1,0 +1,3 @@
+name: autosim_eval
+success_radius: 0.3
+exec_horizon: 4

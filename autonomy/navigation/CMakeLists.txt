@@ -26,6 +26,7 @@ list(FILTER NAVIGATION_SRCS EXCLUDE REGEX "(_test|_component|benchmark_main|goal
 # --- protos ------------------------------------------------------------------
 set(NAVIGATION_GENERATED_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated")
 file(MAKE_DIRECTORY "${NAVIGATION_GENERATED_DIR}/navigation/proto")
+file(MAKE_DIRECTORY "${NAVIGATION_GENERATED_DIR}/python")
 set(NAVIGATION_AUTOMSGS_PROTO_ROOT "${CMAKE_CURRENT_BINARY_DIR}/automsgs_proto")
 file(MAKE_DIRECTORY "${NAVIGATION_AUTOMSGS_PROTO_ROOT}")
 if(NOT EXISTS "${NAVIGATION_AUTOMSGS_PROTO_ROOT}/automsgs")
@@ -46,6 +47,7 @@ add_custom_command(
   OUTPUT ${NAVIGATION_PROTO_SRCS}
   COMMAND protobuf::protoc
     "--cpp_out=${NAVIGATION_GENERATED_DIR}"
+    "--python_out=${NAVIGATION_GENERATED_DIR}/python"
     "--proto_path=${PROJECT_SOURCE_DIR}/autonomy"
     "--proto_path=${NAVIGATION_AUTOMSGS_PROTO_ROOT}"
     ${NAVIGATION_PROTO_INPUTS}

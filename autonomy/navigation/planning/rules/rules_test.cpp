@@ -32,7 +32,9 @@ int main()
 
     planning::ForbiddenZoneRule zone;
     navigation::Region region;
-    for (const auto& point : {{{-1.0, -1.0}, {1.0, -1.0}, {1.0, 1.0}, {-1.0, 1.0}}})
+    const double polygon[4][2] = {
+        {-1.0, -1.0}, {1.0, -1.0}, {1.0, 1.0}, {-1.0, 1.0}};
+    for (const auto& point : polygon)
     {
         auto* vertex = region.add_polygon();
         vertex->set_x(point[0]);

@@ -32,7 +32,8 @@ Postprocessor::Postprocessor(PostprocessorOptions options) : options_(options)
 
 bool Postprocessor::Build(const std::vector<float>& actions, std::uint32_t chunk_length,
                           std::uint64_t sequence, std::int64_t stamp_ns,
-                          ActionChunk* chunk) const
+                          ActionChunk* chunk,
+                          const std::vector<std::uint32_t>* kinds) const
 {
     if (chunk == nullptr || chunk_length == 0 || actions.size() < 3U * chunk_length)
     {
@@ -64,6 +65,20 @@ bool Postprocessor::Build(const std::vector<float>& actions, std::uint32_t chunk
         action->set_theta(
             std::clamp(static_cast<double>(actions[3 * i + 2]), -options_.max_angular_radps,
                        options_.max_angular_radps));
+        if (kinds != nullptr && i < kinds->size())
+        {
+            auto* primitive = chunk->add_primitives();
+            primitive->set_kind(static_cast<ActionKind>((*kinds)[i]));
+            if ((*kinds)[i] == 1U)
+            {
+                primitive->set_distance(options_.forward_step);
+            }
+            else if ((*kinds)[i] == 2U || (*kinds)[i] == 3U)
+            {
+                primitive->set_angle((*kinds)[i] == 2U ? options_.turn_step_rad
+                                                       : -options_.turn_step_rad);
+            }
+        }
     }
     return true;
 }

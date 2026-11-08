@@ -15,7 +15,8 @@ public:
     bool Run(const navigation::planning::vntpa::ModelInputs& inputs,
              std::vector<float>* actions, std::uint32_t* chunk_length) override
     {
-        if (inputs.depth_token_count == 0 || inputs.context_size == 0)
+        if (inputs.kf_tokens.empty() || inputs.context_size == 0 ||
+            inputs.query_pose.size() != 3 || inputs.goal.size() != 2)
         {
             return false;
         }

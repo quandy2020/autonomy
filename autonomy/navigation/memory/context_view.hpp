@@ -25,6 +25,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "navigation/common/pose2d.hpp"
 
@@ -35,6 +36,8 @@ namespace memory
 
 inline constexpr std::size_t kMaxEmbeddingDim = 512;
 inline constexpr std::size_t kMaxContextEntries = 64;
+inline constexpr std::size_t kMaxTokenCount = 256;
+inline constexpr std::size_t kMaxTokenDim = 384;
 
 /**
  * @brief One pose-indexed keyframe.
@@ -48,10 +51,16 @@ struct Keyframe
     std::uint64_t id{0};
     /** @brief Map-frame keyframe pose. */
     common::Pose2D pose;
-    /** @brief Fixed-capacity embedding storage. */
+    /** @brief Fixed-capacity pooling embedding (loop closure/debug). */
     std::array<float, kMaxEmbeddingDim> embedding{};
     /** @brief Number of valid embedding dimensions. */
     std::uint32_t embedding_dim{0};
+    /** @brief DeFM patch tokens; shared so ContextView copies stay cheap. */
+    std::shared_ptr<const std::vector<float>> tokens;
+    /** @brief Number of patch tokens. */
+    std::uint32_t token_count{0};
+    /** @brief Patch-token dimension. */
+    std::uint32_t token_dim{0};
     /** @brief Novelty at insertion, in [0,1]. */
     float novelty{0.0F};
     /** @brief Eviction importance at insertion. */

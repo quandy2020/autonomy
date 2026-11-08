@@ -1,0 +1,4 @@
+name: habitat_hm3d
+scene_root: ${VNT_PA_DATASET}/habitat/raw/scene_datasets/hm3d
+dataset_config: ${VNT_PA_DATASET}/habitat/raw/scene_datasets/hm3d/hm3d_annotated_basis.scene_dataset_config.json
+navmesh_suffix: .go2.navmesh

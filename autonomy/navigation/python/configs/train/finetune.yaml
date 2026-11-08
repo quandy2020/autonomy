@@ -1,0 +1,4 @@
+nproc: 1
+run_name: pan_finetune
+steps: 10000
+batch_scenes: 4

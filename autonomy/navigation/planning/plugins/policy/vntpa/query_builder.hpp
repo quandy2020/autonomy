@@ -16,7 +16,7 @@
 
 /**
  * @file query_builder.hpp
- * @brief Builds the pose-and-goal query token.
+ * @brief Builds raw query pose and goal inputs; RoPE lives in the ONNX graph.
  */
 
 #pragma once
@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "navigation/common/pose2d.hpp"
-#include "navigation/planning/plugins/policy/vntpa/pose_attention.hpp"
 #include "navigation/proto/navigation.pb.h"
 
 namespace navigation
@@ -37,18 +36,10 @@ namespace vntpa
 class QueryBuilder
 {
 public:
-    /** @brief Construct with the query feature dimension. */
-    explicit QueryBuilder(std::uint32_t output_dim = 64);
-
-    /** @brief Build the query token from the goal relative to the robot. */
+    /** @brief Build query pose (x, y, yaw) and goal (x, y). */
     bool Build(const common::Pose2D& current_pose, const GoalSpec& goal,
-               std::vector<float>* query, bool* has_goal);
-
-    /** @brief Configured output dimension. */
-    [[nodiscard]] std::uint32_t OutputDim() const;
-
-private:
-    PoseAttention pose_attention_;
+               std::vector<float>* query_pose, std::vector<float>* goal_xy,
+               bool* has_goal) const;
 };
 
 }  // namespace vntpa

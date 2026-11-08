@@ -81,7 +81,7 @@ common::StatusOr<NavigationIntent> Policy::Query(
     }
 
     ModelInputs inputs;
-    if (!preprocessor_->Build(depth_feature, current_pose, goal, context, &inputs))
+    if (!preprocessor_->Build(current_pose, goal, context, &inputs))
     {
         return common::Status::InvalidArgument("VNTPA preprocessor failed");
     }
@@ -98,14 +98,15 @@ common::StatusOr<NavigationIntent> Policy::Query(
     }
 
     std::vector<float> decoded;
-    if (!action_decoder_->Decode(raw_actions, chunk_length, &decoded))
+    std::vector<std::uint32_t> kinds;
+    if (!action_decoder_->Decode(raw_actions, chunk_length, &decoded, &kinds))
     {
         return common::Status::Internal("VNTPA action decoder failed");
     }
 
     NavigationIntent intent;
     if (!postprocessor_->Build(decoded, chunk_length, depth_feature.sequence(),
-                               depth_feature.stamp_ns(), intent.mutable_chunk()))
+                               depth_feature.stamp_ns(), intent.mutable_chunk(), &kinds))
     {
         return common::Status::Internal("VNTPA postprocessor failed");
     }

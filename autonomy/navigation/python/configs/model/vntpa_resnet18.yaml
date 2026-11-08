@@ -1,0 +1,6 @@
+name: vntpa_resnet18
+planner: conf/models/vntpa_resnet18.onnx
+defm: conf/models/defm_resnet18.onnx
+context_size: 64
+token_count: 256
+token_dim: 512
