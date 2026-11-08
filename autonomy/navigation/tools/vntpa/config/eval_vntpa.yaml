@@ -1,0 +1,8 @@
+data:
+  token_count: 256
+  token_dim: 384
+  context_size: 32
+  pose_dim: 64
+  chunk_length: 8
+eval:
+  batch_size: 16

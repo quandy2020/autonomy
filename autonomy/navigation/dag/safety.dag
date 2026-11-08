@@ -1,0 +1,12 @@
+# Safety process: three-stage chain, sole /cmd_vel writer (50 Hz, 20 ms).
+module_config {
+  module_library: "libnavigation_safety_component.so"
+  timer_components {
+    class_name: "navigation::safety::SafetyComponent"
+    config {
+      name: "safety"
+      config_file_path: "navigation/conf/safety.pb.txt"
+      interval: 20
+    }
+  }
+}

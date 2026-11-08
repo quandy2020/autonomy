@@ -1,0 +1,208 @@
+/*
+ * Copyright 2026 The Navigation Authors (navigation)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package navigation.config;
+
+import "navigation/proto/navigation.proto";
+import "navigation/proto/plugins.proto";
+
+enum KinematicType
+{
+    KINEMATIC_TYPE_UNSPECIFIED = 0;
+    KINEMATIC_TYPE_DIFFERENTIAL = 1;
+    KINEMATIC_TYPE_OMNIDIRECTIONAL = 2;
+    KINEMATIC_TYPE_ACKERMANN = 3;
+    KINEMATIC_TYPE_LEGGED = 4;
+}
+
+message PlatformProfile
+{
+    KinematicType kinematic_type = 1;
+    double max_linear_mps = 2;
+    double max_lateral_mps = 3;
+    double max_angular_radps = 4;
+    double max_acceleration_mps2 = 5;
+    double max_jerk_mps3 = 6;
+    double max_lateral_acceleration_mps2 = 7;
+    double footprint_radius = 8;
+    double wheelbase = 9;
+    double max_steering_rad = 10;
+    double camera_height = 11;
+    double camera_pitch_rad = 12;
+    double camera_to_base_x = 13;
+    double camera_to_base_y = 14;
+    reserved 100 to 199;
+}
+
+message ScenarioOptions
+{
+    string default_scenario = 1;
+    repeated string available_scenarios = 2;
+    reserved 100 to 199;
+}
+
+message PolicyOptions
+{
+    string name = 1;
+    oneof options
+    {
+        navigation.plugins.VntpaPolicyOptions vntpa = 2;
+        navigation.plugins.VintPolicyOptions vint = 3;
+        navigation.plugins.NomadPolicyOptions nomad = 4;
+    }
+    reserved 100 to 199;
+}
+
+message ReflexOptions
+{
+    string name = 1;
+    oneof options
+    {
+        navigation.plugins.ReactiveAvoiderOptions reactive_avoider = 2;
+        navigation.plugins.VelocitySamplerOptions velocity_sampler = 3;
+    }
+    reserved 100 to 199;
+}
+
+message MemoryOptions
+{
+    string name = 1;
+    oneof options
+    {
+        navigation.plugins.PoseIndexedMemoryOptions pose_indexed = 2;
+        navigation.plugins.FrameQueueMemoryOptions frame_queue = 3;
+        navigation.plugins.SingleFrameMemoryOptions single_frame = 4;
+    }
+    reserved 100 to 199;
+}
+
+message RuleOptions
+{
+    repeated string enabled_rules = 1;
+    reserved 100 to 199;
+}
+
+message BehaviorOptions
+{
+    bool enabled = 1;
+    string tree = 2;
+    double tick_rate_hz = 3;
+    uint32 max_recovery_attempts = 4;
+    reserved 100 to 199;
+}
+
+message LimitsOptions
+{
+    double max_pose_jump = 1;
+    double max_yaw_jump_rad = 2;
+    uint32 max_consecutive_rejects = 3;
+    uint32 max_hold_ms = 4;
+    uint32 intent_timeout_ms = 5;
+    reserved 100 to 199;
+}
+
+message DebugOptions
+{
+    uint32 log_level = 1;
+    bool publish_debug_markers = 2;
+    bool synchronous_policy_for_test = 3;
+    reserved 100 to 199;
+}
+
+message PerceptionOptions
+{
+    double min_valid_ratio = 1;
+    double max_range = 2;
+    double uncertainty_slowdown_threshold = 3;
+    double uncertainty_reject_threshold = 4;
+    bool enable_attention_debug = 5;
+    string model_path = 6;
+    string manifest_path = 7;
+    string input_name = 8;
+    reserved 100 to 199;
+}
+
+message NavigationConfig
+{
+    string platform_profile = 1;
+    ScenarioOptions scenario = 2;
+    PolicyOptions policy = 3;
+    ReflexOptions reflex = 4;
+    MemoryOptions memory = 5;
+    RuleOptions rule = 6;
+    BehaviorOptions behavior = 7;
+    LimitsOptions limits = 8;
+    DebugOptions debug = 9;
+    PerceptionOptions perception = 10;
+    navigation.GoalSpec initial_goal = 11;
+    reserved 100 to 199;
+}
+
+message SafetyChainOptions
+{
+    double reflex_priority_ratio = 1;
+    double max_acceleration_mps2 = 2;
+    double max_jerk_mps3 = 3;
+    double ttc_reaction_time_s = 4;
+    double ttc_safety_margin_s = 5;
+    double cbf_alpha = 6;
+    uint32 watchdog_deadline_ms = 7;
+    uint32 aeb_sample_count = 8;
+    double min_clearance = 9;
+    uint32 max_hold_ms = 10;
+    reserved 100 to 199;
+}
+
+message SafetyConfig
+{
+    string platform_profile = 1;
+    ReflexOptions reflex = 2;
+    SafetyChainOptions chain = 3;
+    reserved 100 to 199;
+}
+
+message GuardianConfig
+{
+    uint32 heartbeat_timeout_ms = 1;
+    uint32 heartbeat_fatal_ms = 2;
+    uint32 diagnostics_rate_hz = 3;
+    bool allow_reflex_only = 4;
+    reserved 100 to 199;
+}
+
+message TensorSpec
+{
+    string name = 1;
+    repeated int64 shape = 2;
+    string dtype = 3;
+}
+
+message ModelManifest
+{
+    string name = 1;
+    string path = 2;
+    string sha256 = 3;
+    string opset = 4;
+    string precision = 5;
+    repeated TensorSpec inputs = 6;
+    repeated TensorSpec outputs = 7;
+    repeated float mean = 8;
+    repeated float std = 9;
+    uint32 embedding_dim = 10;
+    uint32 token_count = 11;
+}

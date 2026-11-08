@@ -1,0 +1,86 @@
+/*
+ * Copyright 2026 The Navigation Authors (navigation)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package navigation.lifecycle;
+
+enum ModuleState
+{
+    MODULE_STATE_UNSPECIFIED = 0;
+    MODULE_STATE_STARTING = 1;
+    MODULE_STATE_READY = 2;
+    MODULE_STATE_DEGRADED = 3;
+    MODULE_STATE_FAILED = 4;
+    MODULE_STATE_STOPPED = 5;
+}
+
+enum FaultClass
+{
+    FAULT_CLASS_UNSPECIFIED = 0;
+    FAULT_CLASS_TRANSIENT = 1;
+    FAULT_CLASS_PERSISTENT = 2;
+    FAULT_CLASS_FATAL = 3;
+}
+
+enum DiagnosticLevel
+{
+    DIAGNOSTIC_LEVEL_INFO = 0;
+    DIAGNOSTIC_LEVEL_WARN = 1;
+    DIAGNOSTIC_LEVEL_ERROR = 2;
+    DIAGNOSTIC_LEVEL_FATAL = 3;
+}
+
+/** @brief Degradation mode published by guardian. */
+enum DegradationMode
+{
+    DEGRADATION_MODE_UNSPECIFIED = 0;
+    DEGRADATION_MODE_NORMAL = 1;
+    DEGRADATION_MODE_REFLEX_ONLY = 2;
+    DEGRADATION_MODE_SAFE_STOP = 3;
+    DEGRADATION_MODE_MANUAL = 4;
+}
+
+message Heartbeat
+{
+    string module = 1;
+    uint64 sequence = 2;
+    int64 stamp_ns = 3;
+    ModuleState state = 4;
+    string mode = 5;
+    string detail = 6;
+}
+
+message DiagnosticReport
+{
+    string module = 1;
+    uint32 code = 2;
+    DiagnosticLevel level = 3;
+    FaultClass fault_class = 4;
+    string message = 5;
+    map<string, string> attributes = 6;
+    int64 stamp_ns = 7;
+    uint64 sequence = 8;
+}
+
+message Degradation
+{
+    DegradationMode from = 1;
+    DegradationMode to = 2;
+    string reason = 3;
+    int64 stamp_ns = 4;
+    uint64 sequence = 5;
+}

@@ -1,0 +1,26 @@
+# Safety process configuration (v2).
+platform_profile: "differential_drive"
+
+reflex {
+  name: "reactive_avoider"
+  reactive_avoider {
+    near_field_range: 2.0
+    reaction_time_ms: 30.0
+    safety_margin: 0.3
+    fov_rad: 1.57
+    candidate_count: 32
+  }
+}
+
+chain {
+  reflex_priority_ratio: 0.2
+  max_acceleration_mps2: 1.0
+  max_jerk_mps3: 5.0
+  ttc_reaction_time_s: 0.15
+  ttc_safety_margin_s: 0.1
+  cbf_alpha: 2.0
+  watchdog_deadline_ms: 50
+  aeb_sample_count: 45
+  min_clearance: 0.05
+  max_hold_ms: 200
+}

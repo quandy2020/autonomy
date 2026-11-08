@@ -1,0 +1,14 @@
+kinematic_type: KINEMATIC_TYPE_ACKERMANN
+max_linear_mps: 0.8
+max_lateral_mps: 0.0
+max_angular_radps: 0.8
+max_acceleration_mps2: 0.6
+max_jerk_mps3: 1.5
+max_lateral_acceleration_mps2: 0.5
+footprint_radius: 0.4
+wheelbase: 1.1
+max_steering_rad: 0.6
+camera_height: 0.2
+camera_pitch_rad: 0.0
+camera_to_base_x: 0.2
+camera_to_base_y: 0.0

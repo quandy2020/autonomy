@@ -1,0 +1,12 @@
+# Guardian process: heartbeats, fault classification, degradation (2 Hz).
+module_config {
+  module_library: "libnavigation_guardian_component.so"
+  timer_components {
+    class_name: "navigation::guardian::GuardianComponent"
+    config {
+      name: "guardian"
+      config_file_path: "navigation/conf/guardian.pb.txt"
+      interval: 500
+    }
+  }
+}

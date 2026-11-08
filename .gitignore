@@ -125,3 +125,9 @@ config/perception/base/moge_ckpt/
 config/perception/fathom/*.engine
 config/perception/fathom/*.plan
 config/perception/fathom/*.onnx
+
+# Navigation model weights (~83 MB each; export/fetch locally, do not commit)
+autonomy/navigation/conf/models/*.pth
+autonomy/navigation/conf/models/*.onnx
+autonomy/navigation/conf/models/*.engine
+autonomy/navigation/conf/models/*.plan

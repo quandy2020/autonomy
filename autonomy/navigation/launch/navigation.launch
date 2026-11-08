@@ -1,0 +1,18 @@
+<!-- Navigation + safety + guardian processes (v2). -->
+<autolink>
+  <module>
+    <name>navigation</name>
+    <dag_conf>navigation/dag/navigation.dag</dag_conf>
+    <process_name>navigation</process_name>
+  </module>
+  <module>
+    <name>safety</name>
+    <dag_conf>navigation/dag/safety.dag</dag_conf>
+    <process_name>safety</process_name>
+  </module>
+  <module>
+    <name>guardian</name>
+    <dag_conf>navigation/dag/guardian.dag</dag_conf>
+    <process_name>guardian</process_name>
+  </module>
+</autolink>

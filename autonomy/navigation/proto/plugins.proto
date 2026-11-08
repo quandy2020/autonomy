@@ -1,0 +1,113 @@
+/*
+ * Copyright 2026 The Navigation Authors (navigation)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package navigation.plugins;
+
+message VntpaPolicyOptions
+{
+    string model_path = 1;
+    reserved 2;  // was model_sha256; manifest owns integrity
+    uint32 action_chunk_length = 3;
+    uint32 execute_length = 4;
+    double decision_rate_hz = 5;
+    double action_dt_s = 6;
+    uint32 context_size_k = 7;
+    string depth_input_name = 8;
+    string pose_input_name = 9;
+    string context_input_name = 10;
+    string context_pose_input_name = 11;
+    string context_mask_input_name = 12;
+    string output_name = 13;
+    uint32 pose_input_dim = 14;
+    string execution_provider = 15;
+    int32 device_id = 16;
+    string precision = 17;
+    bool enable_reachability_adjuster = 18;
+    double reach_min = 19;
+    double reach_max = 20;
+    reserved 100 to 199;
+}
+
+message VintPolicyOptions
+{
+    string model_path = 1;
+    reserved 2;  // was model_sha256; manifest owns integrity
+    string tokenizer_path = 3;
+    uint32 max_instruction_tokens = 4;
+    string image_input_name = 5;
+    string text_input_name = 6;
+    string output_name = 7;
+    uint32 action_chunk_length = 8;
+    double action_dt_s = 9;
+    reserved 100 to 199;
+}
+
+message NomadPolicyOptions
+{
+    string model_path = 1;
+    reserved 2;  // was model_sha256; manifest owns integrity
+    uint32 diffusion_steps = 3;
+    uint32 num_samples = 4;
+    uint32 horizon = 5;
+    double temperature = 6;
+    uint32 action_chunk_length = 7;
+    double action_dt_s = 8;
+    reserved 100 to 199;
+}
+
+message ReactiveAvoiderOptions
+{
+    double near_field_range = 1;
+    double reaction_time_ms = 2;
+    double safety_margin = 3;
+    double fov_rad = 4;
+    uint32 candidate_count = 5;
+    reserved 100 to 199;
+}
+
+message VelocitySamplerOptions
+{
+    double horizon_s = 1;
+    uint32 sample_count = 2;
+    double max_acceleration_mps2 = 3;
+    double safety_margin = 4;
+    reserved 100 to 199;
+}
+
+message PoseIndexedMemoryOptions
+{
+    uint32 max_entries = 1;
+    double novelty_threshold_eta = 2;
+    double voxel_resolution = 3;
+    uint32 voxel_direction_bins = 4;
+    double query_radius = 5;
+    double min_insert_interval_s = 6;
+    reserved 100 to 199;
+}
+
+message FrameQueueMemoryOptions
+{
+    uint32 capacity = 1;
+    uint32 stride = 2;
+    reserved 100 to 199;
+}
+
+message SingleFrameMemoryOptions
+{
+    reserved 100 to 199;
+}

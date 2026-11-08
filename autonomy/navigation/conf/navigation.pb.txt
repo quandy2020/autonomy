@@ -1,0 +1,95 @@
+# Navigation runtime configuration (v2).
+platform_profile: "differential_drive"
+
+scenario {
+  default_scenario: "destination"
+  available_scenarios: ["destination", "exploration", "following", "coverage"]
+}
+
+policy {
+  name: "simulation"
+  vntpa {
+    model_path: "conf/models/vntpa.onnx"
+    action_chunk_length: 8
+    execute_length: 2
+    decision_rate_hz: 5.0
+    action_dt_s: 0.1
+    context_size_k: 32
+    depth_input_name: "depth_feature"
+    pose_input_name: "query_token"
+    context_input_name: "context"
+    context_pose_input_name: "context_pose"
+    context_mask_input_name: "context_mask"
+    output_name: "action_chunk"
+    pose_input_dim: 64
+    execution_provider: "cuda"
+    device_id: 0
+    precision: "fp16"
+    enable_reachability_adjuster: false
+  }
+}
+
+reflex {
+  name: "reactive_avoider"
+  reactive_avoider {
+    near_field_range: 2.0
+    reaction_time_ms: 30.0
+    safety_margin: 0.3
+    fov_rad: 1.57
+    candidate_count: 32
+  }
+}
+
+memory {
+  name: "pose_indexed"
+  pose_indexed {
+    max_entries: 5000
+    novelty_threshold_eta: 0.08
+    voxel_resolution: 0.1
+    voxel_direction_bins: 16
+    query_radius: 2.0
+    min_insert_interval_s: 0.2
+  }
+}
+
+rule {
+  enabled_rules: ["speed_limit", "safety_chain", "forbidden_zone",
+                  "dynamic_obstacle", "pedestrian"]
+}
+
+behavior {
+  enabled: true
+  tree: "navigate_with_recovery.xml"
+  tick_rate_hz: 10.0
+  max_recovery_attempts: 3
+}
+
+limits {
+  max_pose_jump: 0.5
+  max_yaw_jump_rad: 0.52
+  max_consecutive_rejects: 3
+  max_hold_ms: 200
+  intent_timeout_ms: 400
+}
+
+debug {
+  log_level: 1
+  publish_debug_markers: false
+  synchronous_policy_for_test: false
+}
+
+perception {
+  min_valid_ratio: 0.15
+  max_range: 8.0
+  uncertainty_slowdown_threshold: 0.6
+  uncertainty_reject_threshold: 0.85
+  enable_attention_debug: false
+  model_path: "conf/models/defm_vit_s14.onnx"
+  manifest_path: "conf/models/defm.pb.txt"
+  input_name: "depth"
+}
+
+# Simulation demo: start exploring immediately. Publish /navigation/goal to override.
+initial_goal {
+  type: TYPE_EXPLORATION
+}

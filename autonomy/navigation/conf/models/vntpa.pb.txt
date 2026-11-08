@@ -1,0 +1,39 @@
+name: "vntpa"
+path: "conf/models/vntpa.onnx"
+sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+opset: "17"
+precision: "fp16"
+inputs {
+  name: "depth_feature"
+  shape: [1, 256, 384]
+  dtype: "float32"
+}
+inputs {
+  name: "query_token"
+  shape: [1, 384]
+  dtype: "float32"
+}
+inputs {
+  name: "context"
+  shape: [1, 32, 384]
+  dtype: "float32"
+}
+inputs {
+  name: "context_pose"
+  shape: [1, 32, 64]
+  dtype: "float32"
+}
+inputs {
+  name: "context_mask"
+  shape: [1, 32]
+  dtype: "bool"
+}
+outputs {
+  name: "action_chunk"
+  shape: [1, 8, 3]
+  dtype: "float32"
+}
+mean: [0.5, 0.5, 0.5]
+std: [0.5, 0.5, 0.5]
+embedding_dim: 384
+token_count: 256

@@ -1,0 +1,14 @@
+kinematic_type: KINEMATIC_TYPE_LEGGED
+max_linear_mps: 0.4
+max_lateral_mps: 0.25
+max_angular_radps: 0.9
+max_acceleration_mps2: 0.5
+max_jerk_mps3: 1.5
+max_lateral_acceleration_mps2: 0.4
+footprint_radius: 0.35
+wheelbase: 0.0
+max_steering_rad: 0.0
+camera_height: 0.3
+camera_pitch_rad: 0.0
+camera_to_base_x: 0.15
+camera_to_base_y: 0.0
