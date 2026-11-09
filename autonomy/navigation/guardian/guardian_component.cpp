@@ -16,64 +16,66 @@
 
 #include "navigation/guardian/guardian_component.hpp"
 
+#include "autolink/component/component.hpp"
+
 #include <chrono>
 #include <vector>
 
 #include "navigation/common/configuration_loader.hpp"
 
-
-namespace navigation
-{
-namespace guardian
-{
+namespace navigation {
+namespace guardian {
 
 GuardianComponent::GuardianComponent() = default;
 
-GuardianComponent::~GuardianComponent()
-{
+GuardianComponent::~GuardianComponent() {
     Clear();
 }
 
-bool GuardianComponent::Init()
-{
+bool GuardianComponent::Init() {
     config::GuardianConfig configuration;
     if (!common::LoadTextProto(ConfigFilePath(), &configuration).Ok() ||
-        !supervisor_.Configure(configuration))
-    {
+        !supervisor_.Configure(configuration)) {
         return false;
     }
-    navigation_reader_ = node_->CreateReader<lifecycle::Heartbeat>("/navigation/heartbeat");
-    safety_reader_ = node_->CreateReader<lifecycle::Heartbeat>("/safety/heartbeat");
-    behavior_reader_ = node_->CreateReader<lifecycle::Heartbeat>("/behavior/heartbeat");
+    navigation_reader_ =
+        node_->CreateReader<lifecycle::Heartbeat>("/navigation/heartbeat");
+    safety_reader_ =
+        node_->CreateReader<lifecycle::Heartbeat>("/safety/heartbeat");
+    behavior_reader_ =
+        node_->CreateReader<lifecycle::Heartbeat>("/behavior/heartbeat");
     degradation_writer_ =
         node_->CreateWriter<lifecycle::Degradation>("/guardian/degradation");
-    heartbeat_writer_ = node_->CreateWriter<lifecycle::Heartbeat>("/guardian/heartbeat");
+    heartbeat_writer_ =
+        node_->CreateWriter<lifecycle::Heartbeat>("/guardian/heartbeat");
     return navigation_reader_ != nullptr && safety_reader_ != nullptr &&
            behavior_reader_ != nullptr && degradation_writer_ != nullptr &&
            heartbeat_writer_ != nullptr;
 }
 
-bool GuardianComponent::Proc()
-{
-    const std::int64_t now_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(
-        std::chrono::steady_clock::now().time_since_epoch())
-        .count();
+bool GuardianComponent::Proc() {
+    navigation_reader_->Observe();
+    safety_reader_->Observe();
+    behavior_reader_->Observe();
+    const std::int64_t now_ns =
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            std::chrono::steady_clock::now().time_since_epoch())
+            .count();
     std::vector<lifecycle::Heartbeat> heartbeats;
-    if (const auto heartbeat = navigation_reader_->GetLatestObserved(); heartbeat != nullptr)
-    {
+    if (const auto heartbeat = navigation_reader_->GetLatestObserved();
+        heartbeat != nullptr) {
         heartbeats.push_back(*heartbeat);
     }
-    if (const auto heartbeat = safety_reader_->GetLatestObserved(); heartbeat != nullptr)
-    {
+    if (const auto heartbeat = safety_reader_->GetLatestObserved();
+        heartbeat != nullptr) {
         heartbeats.push_back(*heartbeat);
     }
-    if (const auto heartbeat = behavior_reader_->GetLatestObserved(); heartbeat != nullptr)
-    {
+    if (const auto heartbeat = behavior_reader_->GetLatestObserved();
+        heartbeat != nullptr) {
         heartbeats.push_back(*heartbeat);
     }
     const auto next = supervisor_.Evaluate(heartbeats, now_ns);
-    if (next != mode_)
-    {
+    if (next != mode_) {
         lifecycle::Degradation degradation;
         degradation.set_from(mode_);
         degradation.set_to(next);
@@ -92,8 +94,14 @@ bool GuardianComponent::Proc()
     return true;
 }
 
-void GuardianComponent::Clear()
-{
+void GuardianComponent::Clear() {
+    autolink::TimerComponent::Clear();
+    if (navigation_reader_ != nullptr)
+        navigation_reader_->Shutdown();
+    if (safety_reader_ != nullptr)
+        safety_reader_->Shutdown();
+    if (behavior_reader_ != nullptr)
+        behavior_reader_->Shutdown();
     navigation_reader_.reset();
     safety_reader_.reset();
     behavior_reader_.reset();

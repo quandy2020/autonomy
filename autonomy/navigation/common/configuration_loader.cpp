@@ -66,7 +66,15 @@ std::string ResolveConfigPath(const std::string& path)
     {
         return path;
     }
-    return autonomy::common::JoinPaths(std::string(root), path);
+    const std::string joined =
+        autonomy::common::JoinPaths(std::string(root), path);
+    const bool cwd_exists = std::filesystem::exists(path);
+    const bool joined_exists = std::filesystem::exists(joined);
+    if (cwd_exists && !joined_exists)
+    {
+        return path;
+    }
+    return joined;
 }
 
 Status ParseTextProto(const std::string& text, google::protobuf::Message* message)

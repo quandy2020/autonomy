@@ -39,7 +39,7 @@ struct ContextTensors
 {
     /** @brief K * embedding_dim features. */
     std::vector<float> embeddings;
-    /** @brief K * 3 raw keyframe poses (x, y, yaw). */
+    /** @brief K * 3 Habitat keyframe poses (x, z, yaw). */
     std::vector<float> poses;
     /** @brief K * P * D keyframe patch tokens. */
     std::vector<float> tokens;
@@ -60,9 +60,16 @@ public:
     ContextBuilder(std::uint32_t k, std::uint32_t embedding_dim,
                    std::uint32_t pose_dim);
 
-    /** @brief Build context tensors from a memory view. */
+    /**
+     * @brief Build context tensors from a memory view.
+     *
+     * @param[in] live_tokens Optional current-view tokens prepended as slot 0.
+     */
     bool Build(const memory::ContextView& view, const common::Pose2D& current_pose,
-               ContextTensors* tensors) const;
+               ContextTensors* tensors,
+               const std::vector<float>* live_tokens = nullptr,
+               std::uint32_t live_token_count = 0,
+               std::uint32_t live_token_dim = 0) const;
 
 private:
     /** @brief Context capacity. */

@@ -8,6 +8,28 @@ scenario {
 
 policy {
   name: "simulation"
+  exploration {
+    clearance_m: 0.4
+    max_range_m: 6.0
+    no_progress_timeout_s: 8.0
+    target_timeout_s: 45.0
+    max_history_entries: 64
+    history_ttl_s: 120.0
+    log_transitions: true
+  }
+  # Depth-only FrontierNet frontier source for TYPE_EXPLORATION goals.
+  frontiernet {
+    enabled: true
+    manifest_path: "conf/models/frontiernet_defm.pb.txt"
+    df_normalizer: 10.0
+    df_threshold: 0.5
+    max_range: 6.0
+    min_gain: 0.0
+    min_cluster_pixels: 12
+    target_distance: 2.0
+    inference_period_ms: 500
+    log_frontiers: true
+  }
   vntpa {
     model_path: "conf/models/vntpa.onnx"
     action_chunk_length: 8
@@ -70,6 +92,10 @@ behavior {
   tree: "navigate_with_recovery.xml"
   tick_rate_hz: 10.0
   max_recovery_attempts: 3
+  no_progress_timeout_s: 8.0
+  recovery_lateral_distance_m: 2.0
+  recovery_forward_distance_m: 2.0
+  recovery_phase_timeout_s: 25.0
 }
 
 limits {

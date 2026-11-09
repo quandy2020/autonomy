@@ -115,6 +115,35 @@ message NavigationStatus
     bool goal_reached = 6;
     bool degraded = 7;
     string reason = 8;
+    // Identity changes on process restart and every goal handover.
+    string session_id = 9;
+    uint64 goal_epoch = 10;
+    bool has_active_goal = 11;
+    RecoveryState recovery_state = 12;
+    uint32 recovery_count = 13;
+    bool pose_valid = 14;
+    int64 steady_stamp_ns = 15;
+}
+
+enum RecoveryState
+{
+    RECOVERY_IDLE = 0;
+    RECOVERY_REQUIRED = 1;
+    RECOVERY_RUNNING = 2;
+    RECOVERY_SUCCEEDED = 3;
+    RECOVERY_FAILED = 4;
+}
+
+/** @brief Behavior request, valid only for the named navigation goal epoch. */
+message BehaviorRequest
+{
+    enum Kind { RECOVER = 0; FAIL_GOAL = 1; }
+    Kind kind = 1;
+    string session_id = 2;
+    uint64 goal_epoch = 3;
+    uint32 expected_recovery_count = 4;
+    string reason = 5;
+    int64 steady_stamp_ns = 6;
 }
 
 /** @brief One stored keyframe as exposed to diagnostics and persistence. */

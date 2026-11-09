@@ -19,6 +19,18 @@ from __future__ import annotations
 import numpy as np
 
 
+def to_habitat(pose: np.ndarray) -> np.ndarray:
+    """ROS ``(x, y, yaw)`` to Habitat ``(x, z, yaw)`` for pose RoPE."""
+    pose = np.asarray(pose, dtype=np.float32).reshape(-1)
+    return np.array([-pose[1], -pose[0], pose[2]], dtype=np.float32)
+
+
+def goal_to_habitat(goal: np.ndarray) -> np.ndarray:
+    """ROS ``(x, y)`` goal to Habitat ``(x, z)``."""
+    goal = np.asarray(goal, dtype=np.float32).reshape(-1)
+    return np.array([-goal[1], -goal[0]], dtype=np.float32)
+
+
 def relative(pose: np.ndarray, reference: np.ndarray) -> np.ndarray:
     """Return planar relative pose ``(dx, dy, dyaw)``."""
     pose = np.asarray(pose, dtype=np.float32)

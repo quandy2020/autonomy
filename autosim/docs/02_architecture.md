@@ -31,6 +31,7 @@ autosim/
 │   └── hunav/            # HuNav Agents 编解码 + /compute_agents (Autolink)
 ├── bridge/               # Autolink I/O + 传感采样
 │   # Bridge · Messages · Clock · Teleop · Sensors · cameras · stitch
+│   # topdown · chase
 ├── robot/                # plant · profiles · urdf · policy/
 └── dataset/              # LeRobot v2.1 采集
 ```

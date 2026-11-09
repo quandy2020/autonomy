@@ -32,7 +32,7 @@ from .expert import (chunk_targets_from_state, chunk_targets_from_trajectory, sa
                      sample_goal)
 
 EVAL_SEED = 0                           # the one context draw every evaluation uses
-TOUR_GLOB = os.path.join("0*", "seed*.h5")  # a tour's store under the root: <scene id>/seed*.h5
+TOUR_GLOB = os.path.join("*", "seed*.h5")  # <scene id>/seed*.h5 (HM3D, MP3D, Gibson)
 PAD_TARGET = -100                       # targets at padded queries; F.cross_entropy's ignore_index
 _COVERAGE_SPEC = json.loads(COVERAGE.to_json())
 

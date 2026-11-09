@@ -9,7 +9,7 @@ habitat:
   backend: habitat
   mode: slam
 
-  path: /workspace/autonomy/src/vyrNrziPKCB/vyrNrziPKCB.glb
+  path: /workspace/autonomy/src/jtcxE69GiFV/jtcxE69GiFV.glb
   spawn: [-4.0, 0.18, 0.0]
   gpu: 0
 
@@ -139,7 +139,7 @@ habitat:
     frame: map
     rate_hz: 1.0
     ply:
-      source: /workspace/autonomy/src/vyrNrziPKCB/vyrNrziPKCB_semantic.ply
+      source: /workspace/autonomy/src/jtcxE69GiFV/jtcxE69GiFV_semantic.ply
       channel: /overall/map
       # ~2.9M verts after grid z-band; stride keeps SHM under 32 MiB.
       stride: 5

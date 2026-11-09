@@ -45,7 +45,11 @@ memory::KeyframeFilterOptions ToFilterOptions(
 }  // namespace
 
 PoseIndexedMemory::PoseIndexedMemory(plugins::PoseIndexedMemoryOptions options)
-    : filter_(ToFilterOptions(options))
+    : filter_(ToFilterOptions(options)),
+      coverage_gate_(static_cast<int>(options.coverage_gate_eta() > 0
+                                          ? options.coverage_gate_eta()
+                                          : 10)),
+      coverage_eta_(options.coverage_gate_eta())
 {
 }
 
@@ -54,6 +58,27 @@ common::Status PoseIndexedMemory::Insert(const memory::Keyframe& keyframe)
     memory::Keyframe stored = keyframe;
     stored.epoch = epoch_;
     bool accepted = false;
+    if (!stored.coverage_lookup.empty() || !stored.coverage_claims.empty())
+    {
+        memory::CoverageFrame frame;
+        frame.lookup = stored.coverage_lookup;
+        frame.claims = stored.coverage_claims;
+        frame.neighbors = stored.coverage_neighbors;
+        if (frame.neighbors > 0)
+        {
+            frame.patches = static_cast<int>(frame.lookup.size()) / frame.neighbors;
+        }
+        const bool keep = coverage_gate_.Offer(frame, filter_.Size() == 0);
+        if (!keep)
+        {
+            return common::Status{};
+        }
+        if (!filter_.Store(stored, &accepted))
+        {
+            return common::Status::InvalidArgument("invalid keyframe");
+        }
+        return common::Status{};
+    }
     if (!filter_.TryAccept(stored, &accepted))
     {
         return common::Status::InvalidArgument("invalid keyframe");
@@ -96,6 +121,7 @@ std::size_t PoseIndexedMemory::Size() const
 void PoseIndexedMemory::Reset(bool keep_pose_index)
 {
     filter_.Reset();
+    coverage_gate_.Reset();
     if (!keep_pose_index)
     {
         ++epoch_;

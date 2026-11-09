@@ -35,10 +35,26 @@
 
 | 症状 | 处理 |
 |------|------|
-| 无 `/map` | `mode: nav`、`map.enabled/publish: true`；Isaac 需旁路 `rooms.json` |
-| `/overall/map` 只有墙线 | 旧逻辑；应走 USD Mesh 采样（见 `stage.sample_mesh_cloud`） |
+| 无 `/map` | `mode: nav`、`map.enabled/publish: true`；Isaac 需旁路 `rooms.json`。`slam` 下 OccupancyGrid 由 Atlas 发，Autosim 不建 writer |
+| 无 `/overall/map` | `map.enabled/publish: true` 且 `map.ply.channel` 非空；`slam` 下仍可发 |
+| `/overall/map` 显示不全（Habitat） | 优先设 `map.ply.source` 为 `*_semantic.ply`；环视 ray 会被墙遮挡且受 `range_max` 截断 |
+| `/overall/map` 只有墙线（Isaac） | 旧逻辑；应走 USD Mesh 采样（见 `stage.sample_mesh_cloud`） |
+| `/overall/map` 整帧消失 | 点数 × `point_step` 可能超过 Autolink SHM 32 MiB → 增大 `stride` |
+| Autoviz 点云稀疏 | 提高 PointCloud2 **Max Points**（≥ 发布点数）；配合 `stride` |
 | `/scan` 与家具形状对不齐 | Isaac 需把 USD 家具刻进占用栅格（`mark_elevated_obstacles`）；Autoviz Fixed Frame=`map`；`nav` 下发 `map→odom` |
 | 点云过大卡顿 | 增大 `map.ply.stride`；Autoviz Decimate |
+
+---
+
+## 3b. Chase / 机器人外观
+
+| 症状 | 处理 |
+|------|------|
+| 无 `/camera/chase/image_raw` | `sensors.chase.enabled: true`；重启 sim 后才注册 Habitat 传感器 |
+| chase 里看不到机身 | 需配置 `robot.urdf`；chase 会自动 instance；确认 PLY/URDF 路径可解析 |
+| 机身朝向偏 90° | URDF 同步应为 `Ry(yaw)*Rx(−π/2)`，不要再用 agent 的 `yaw−π/2` |
+| 机身太远 / 太近 | 调 `sensors.chase.distance_m` / `height_m`（TurtleBot 建议约 1.0 / 0.85） |
+| 自车 RGB 被机身挡住 | chase 应只在 `render_chase` 时 show mesh；若长期可见查 `set_articulated_visible` |
 
 ---
 

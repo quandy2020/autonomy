@@ -1,21 +1,16 @@
 #!/usr/bin/env bash
-# Build navigation on Linux with autolink components and Engine adapters.
-# Usage: tools/build_linux.sh <automsgs-build-dir> [build-dir]
+# Build the autonomy umbrella and run its navigation tests in a colcon workspace.
+# Usage: tools/build_linux.sh [workspace-dir] [jobs]
 set -euo pipefail
 
-AUTOMSGS_BUILD_DIR="${1:?usage: tools/build_linux.sh <automsgs-build-dir> [build-dir]}"
-BUILD_DIR="${2:-build-linux}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="${1:-$(cd -- "${SCRIPT_DIR}/../../../../.." && pwd)}"
+BUILD_JOBS="${2:-8}"
 
-cmake -S . -B "${BUILD_DIR}" -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DNAVIGATION_BUILD_TESTS=ON \
-  -DNAVIGATION_WITH_AUTOLINK=ON \
-  -DNAVIGATION_WITH_ENGINE=ON \
-  -DNAVIGATION_AUTOMSGS_BUILD_DIR="${AUTOMSGS_BUILD_DIR}"
+cd "${WORKSPACE_DIR}"
+colcon build --packages-up-to autonomy \
+  --cmake-args -DNAVIGATION_BUILD_TESTS=ON
+ctest --test-dir build/autonomy/autonomy/navigation \
+  --output-on-failure --no-tests=error -j "${BUILD_JOBS}"
 
-cmake --build "${BUILD_DIR}" -j"$(nproc)"
-ctest --test-dir "${BUILD_DIR}" --output-on-failure
-
-echo "Linux build complete: ${BUILD_DIR}"
-echo "Register Engine plugins before creating the runner:"
-echo "  navigation::planning::RegisterEnginePlugins();"
+echo "Navigation build and tests complete: ${WORKSPACE_DIR}"

@@ -20,3 +20,5 @@ from vntpa.models.query import query
 def test_query_shapes():
     pose, goal = query(np.zeros(3), np.array([1.0, 2.0]))
     assert pose.shape == (1, 3) and goal.shape == (1, 2)
+    assert np.allclose(pose, [[0.0, 0.0, 0.0]])
+    assert np.allclose(goal, [[-2.0, -1.0]])

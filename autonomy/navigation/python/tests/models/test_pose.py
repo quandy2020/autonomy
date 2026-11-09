@@ -14,9 +14,14 @@
 
 import numpy as np
 
-from vntpa.models.pose import relative
+from vntpa.models.pose import goal_to_habitat, relative, to_habitat
 
 
 def test_relative_rotation():
     delta = relative(np.array([1.0, 0.0, np.pi / 2]), np.zeros(3))
     assert np.allclose(delta, [0.0, -1.0, np.pi / 2], atol=1e-5)
+
+
+def test_ros_to_habitat():
+    assert np.allclose(to_habitat(np.array([1.0, 0.0, 0.0])), [0.0, -1.0, 0.0])
+    assert np.allclose(goal_to_habitat(np.array([1.0, 0.0])), [0.0, -1.0])

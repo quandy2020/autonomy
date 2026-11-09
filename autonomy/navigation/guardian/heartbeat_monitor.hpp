@@ -27,14 +27,11 @@
 
 #include "navigation/proto/lifecycle.pb.h"
 
-namespace navigation
-{
-namespace guardian
-{
+namespace navigation {
+namespace guardian {
 
 /** @brief Freshness snapshot for one module. */
-struct HeartbeatStatus
-{
+struct HeartbeatStatus {
     /** @brief True when at least one heartbeat was seen. */
     bool received{false};
     /** @brief True when age <= timeout. */
@@ -64,7 +61,10 @@ public:
      */
     void Configure(std::int64_t timeout_ms, std::int64_t fatal_ms);
 
-    /** @brief Record a heartbeat; false when the sequence is stale. */
+    /**
+     * @brief Record a heartbeat; reject cached/reordered publisher stamps.
+     * A fresh stamp may restart the sequence after the receive lease expires.
+     */
     bool Update(const lifecycle::Heartbeat& heartbeat, std::int64_t now_ns);
 
     /** @brief Check one module at a given time. */
@@ -76,10 +76,12 @@ public:
 
 private:
     /** @brief Per-module bookkeeping. */
-    struct Entry
-    {
+    struct Entry {
         /** @brief Last accepted heartbeat time. */
         std::int64_t last_ns{0};
+        /** @brief Last publisher stamp; cached/reordered heartbeats cannot
+         * renew. */
+        std::int64_t last_stamp_ns{0};
         /** @brief Last accepted sequence. */
         std::uint64_t last_sequence{0};
         /** @brief True after the first heartbeat. */

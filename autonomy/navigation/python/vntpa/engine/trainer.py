@@ -36,11 +36,12 @@ class TrainConfig:
     nproc: int = 1
 
     def build_command(self) -> List[str]:
-        """Return the torchrun command for this training job."""
+        """Return the single-node torch.distributed command for the paper trainer."""
         return [
             sys.executable,
             "-m",
-            "torchrun",
+            "torch.distributed.run",
+            "--standalone",
             f"--nproc_per_node={self.nproc}",
             "-m",
             "thirdparty.pan.planner.train",

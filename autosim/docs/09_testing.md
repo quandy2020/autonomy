@@ -52,10 +52,11 @@ ISAACLAB_PATH=/workspace/isaaclab \
 |----|------|
 | Fake sim + teleop | 机器人在 Autoviz 中移动 |
 | Isaac RGB / depth | 图像稳定；深度为伪彩而非乱闪 |
-| `/map` | 室内自由空间与墙体合理 |
-| `/overall/map` | 家具轮廓可见（USD 采样） |
+| `/map` | 室内自由空间与墙体合理（`nav`） |
+| `/overall/map` | Habitat：PLY `source` 楼层轮廓完整；Isaac：家具轮廓（USD 采样） |
+| `/camera/chase/image_raw` | 身后跟随；机身朝向与运动一致、距离合适 |
 | 穿墙 | `block_motion: true` 时位姿停在障碍外 |
-| `mode: slam` | 无 GT `/map`、无 `map→odom` |
+| `mode: slam` | 无 GT OccupancyGrid `/map`、无 `map→odom`；`publish: true` 时仍可有 `/overall/map` |
 
 ---
 

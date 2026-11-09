@@ -6,7 +6,12 @@ generated/
 
 # runtime artifacts
 data/
+dataset/
 checkpoints/
 pretrained/
 exports/
 logs/
+*.h5
+*.npz
+*.pt
+events.out.tfevents*

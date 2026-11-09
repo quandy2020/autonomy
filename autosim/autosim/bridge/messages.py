@@ -508,6 +508,21 @@ class Messages:
         return message
 
     @classmethod
+    @staticmethod
+    def planar_odometry_finite(
+        x: float,
+        y: float,
+        yaw: float,
+        linear: float = 0.0,
+        angular: float = 0.0,
+    ) -> bool:
+        """Return True when planar odometry scalars are all finite."""
+        return all(
+            math.isfinite(float(value))
+            for value in (x, y, yaw, linear, angular)
+        )
+
+    @classmethod
     def encode_odometry(
         cls,
         x: float,
@@ -537,7 +552,19 @@ class Messages:
 
         Returns:
             Populated :class:`Odometry`.
+
+        Raises:
+            ValueError: If any pose/twist scalar is non-finite (Atlas rejects
+                zero-norm quaternions and non-finite poses as invalid odom).
         """
+        if not cls.planar_odometry_finite(x, y, yaw, linear, angular):
+            raise ValueError(
+                "non-finite planar odometry "
+                f"(x={x!r}, y={y!r}, yaw={yaw!r}, "
+                f"linear={linear!r}, angular={angular!r})"
+            )
+        if not child_frame_id:
+            raise ValueError("odometry child_frame_id must be non-empty")
         message = Odometry()
         cls.set_header(message.header, stamp, frame_id)
         message.child_frame_id = child_frame_id

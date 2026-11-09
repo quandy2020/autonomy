@@ -58,7 +58,7 @@ bool KeyframeFilter::TryAccept(const Keyframe& keyframe, bool* accepted)
         return false;
     }
     *accepted = false;
-    if (keyframe.embedding_dim == 0)
+    if (keyframe.embedding_dim == 0 && keyframe.tokens == nullptr)
     {
         return false;
     }
@@ -143,6 +143,35 @@ double KeyframeFilter::Novelty(const Keyframe& keyframe) const
         best_similarity = std::max(best_similarity, similarity);
     }
     return best_similarity < -0.5 ? 1.0 : 1.0 - best_similarity;
+}
+
+bool KeyframeFilter::Store(const Keyframe& keyframe, bool* accepted)
+{
+    if (accepted == nullptr)
+    {
+        return false;
+    }
+    *accepted = false;
+    if (keyframe.embedding_dim == 0 && keyframe.tokens == nullptr)
+    {
+        return false;
+    }
+    if (entries_.size() >= options_.max_entries)
+    {
+        const auto victim = std::min_element(
+            entries_.begin(), entries_.end(), [](const Keyframe& lhs, const Keyframe& rhs) {
+                return lhs.importance < rhs.importance;
+            });
+        if (victim == entries_.end() || keyframe.importance < victim->importance)
+        {
+            return true;
+        }
+        entries_.erase(victim);
+    }
+    entries_.push_back(keyframe);
+    last_accept_s_ = static_cast<double>(keyframe.stamp_ns) * 1e-9;
+    *accepted = true;
+    return true;
 }
 
 }  // namespace memory

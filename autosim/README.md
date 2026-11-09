@@ -15,11 +15,11 @@
 | 01–02 | [概述](docs/01_overview.md) · [架构](docs/02_architecture.md) | 能力与数据流 |
 | 03–04 | [快速开始](docs/03_quickstart.md) · [后端](docs/04_backends.md) | 安装启动与三后端 |
 | 05–06 | [配置](docs/05_configuration.md) · [话题](docs/06_topics.md) | YAML 与 Autolink 通道 |
-| 07–08 | [Isaac](docs/07_isaac.md) · [地图与可视化](docs/08_map_and_viz.md) | USD / PhysX / Autoviz |
+| 07–08 | [Isaac](docs/07_isaac.md) · [地图与可视化](docs/08_map_and_viz.md) | USD / PhysX / Autoviz / chase |
 | 09–10 | [测试](docs/09_testing.md) · [排错](docs/10_troubleshooting.md) | pytest 与常见问题 |
 | 11 | [数据采集](docs/11_dataset.md) | LeRobot v2.1 模仿学习落盘 |
 | 12 | [HuNav Isaac](docs/12_hunav_isaac.md) | Autolink ComputeAgents / manager |
-| 13 | [Atlas 验证](docs/13_atlas_validation.md) | RGB-D + IMU、真值轨迹、稠密点云与栅格地图 |
+| 13 | [Atlas 验证](docs/13_atlas_validation.md) | RGB-D + IMU、`/overall/map`、chase、真值评测 |
 | 14 | [Habitat humanoids](docs/14_habitat_humanoids.md) | Habitat SMPL-X 动态人体（本地 `data/humanoids/`） |
 
 索引：[`docs/README.md`](docs/README.md)。
@@ -44,6 +44,7 @@
 | `habitat.backend` | 配置 | 说明 |
 |-------------------|------|------|
 | `habitat` | `config/default.yaml` | Habitat-Sim + GLB / MP3D |
+| ↳ Atlas | `config/atlas.yaml` | RGB-D + IMU；GT `/overall/map` + chase；Atlas 独占 `/map` |
 | ↳ 行人 | `config/habitat_people.yaml` | CPU SFM + 本地 SMPL-X 动态人体（`data/humanoids/`） |
 | `fake` | `config/fake.yaml` | 无引擎：差速 + RGBD raycast + scenario |
 | `isaac` | `config/isaac.yaml` | Isaac Sim + USD；PhysX、相机、真值地图、动态体（默认 turtlebot3） |
@@ -81,8 +82,13 @@ SMPL-X（`avatar` / `skin` 可配）。详见 [14](docs/14_habitat_humanoids.md)
 ## Atlas 验证（RGB-D + IMU）
 
 `config/atlas.yaml` 使用 Habitat 发布同步 RGB-D、IMU、TF、仿真时钟和
-`/gt/odometry`；Atlas 独占 `map -> odom`、稠密点云与占用栅格。启动前先
-确认没有其他 Atlas 或地图发布进程：
+`/gt/odometry`；Atlas 独占 `map -> odom`、稠密点云与占用栅格。同配置还发布：
+
+- `/overall/map`：场景旁 `*_semantic.ply` 的 GT 点云（`stride` 控制点数）
+- `/camera/chase/image_raw`：第三人称跟随；仅 chase 帧显示 URDF mesh
+
+Autoviz 用 `src/autonomy/autoviz/config/atlas.autoviz`（含 OverallMap 与
+Habitat Chase）。启动前先确认没有其他 Atlas 或地图发布进程：
 
 ```bash
 docker exec -it SpaceHero /bin/bash
@@ -178,7 +184,7 @@ Fake 后端只适合消息冒烟测试；ATE/RPE 和地图验收应使用带纹�
 | [`images/`](images/) | 演示动图 |
 | [`usd/`](usd/) | Isaac USD（大场景见 `usd/.gitignore`） |
 | [`data/humanoids/`](data/humanoids/) | Habitat SMPL-X 人体（`scripts/download_humanoids.py`） |
-| [`config/`](config/) | YAML（含 `habitat_people.yaml`、`scenarios/agents_*.yaml`） |
+| [`config/`](config/) | YAML（含 `atlas.yaml`、`habitat_people.yaml`、`scenarios/agents_*.yaml`） |
 | [`robot/`](robot/) | 机器人 URDF + meshes |
 | [`scripts/`](scripts/) | `run.sh`、`download_humanoids.py` 等 |
 | [`tests/`](tests/) | pytest |

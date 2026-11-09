@@ -69,6 +69,16 @@ public:
     bool Process(const automsgs::msgs::sensor_msgs::Image& image, std::vector<float>* chw,
                  DepthStats* stats) const;
 
+    /**
+     * @brief Decode a 32FC1 or 16UC1 depth image into metres.
+     *
+     * @param[in] image Depth image.
+     * @param[out] metres width * height values, row-major.
+     * @return false for unsupported encoding or malformed payload.
+     */
+    static bool Decode(const automsgs::msgs::sensor_msgs::Image& image,
+                       std::vector<float>* metres);
+
     /** @brief Return the configured square input side length. */
     [[nodiscard]] std::uint32_t InputSize() const;
 

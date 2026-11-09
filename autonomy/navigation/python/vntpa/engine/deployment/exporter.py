@@ -58,11 +58,14 @@ def main() -> None:
     parser.add_argument("--chunk", type=int, default=8)
     args = parser.parse_args()
 
+    from pathlib import Path
+
     from thirdparty.pan.planner.train import load_planner
 
     planner = load_planner(args.checkpoint)[0]
     planner.eval()
     wrapper = FixedPlanner(planner, args.context_size).eval()
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
 
     dummy = (
         torch.randn(args.context_size, args.token_count, args.token_dim),

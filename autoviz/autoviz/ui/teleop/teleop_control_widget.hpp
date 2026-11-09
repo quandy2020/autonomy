@@ -204,6 +204,14 @@ class TeleopControlWidget : public QWidget {
 
  protected:
   /**
+   * @brief Blocks window tool shortcuts (e.g. Select=`s`) while Arcade driving.
+   *
+   * @param event Generic Qt event.
+   * @return @c true if the event was handled.
+   */
+  bool event(QEvent* event) override;
+
+  /**
    * @brief Starts keyboard driving (WASD / arrows) when focused.
    *
    * @param event Key press event.

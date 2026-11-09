@@ -1,11 +1,20 @@
 # 04 · Navigation 最终方案 v2
 
+
+> 2026-11-09 实现补充：simulation 探索策略消费有效 OccupancyGrid，选择连通自由
+> frontier 成员，并用带 footprint 净空的四邻接 BFS 路径跟随；pose goal seek 和 VNTPA
+> 的记忆契约保持各自范围。探索目标有进展/绝对时限和容量受控的访问记忆。
+> 无 frontier 扫描后，已知地图等待更新，无地图才允许前向深度门控巡航。
+> 这里的栅格路径仅服务 simulation 探索，不宣称 VNTPA 学习策略已完成。
+
 > 状态：设计冻结候选（Design Freeze Candidate）
 > 版本：2.0.0
 > 工程根：`autonomy/navigation/`
 > 基线：v1「Component + Runner / VNTPA / 4 场景 / 3 DAG」
 > 本版说明：只收敛设计，不改实现、不要求构建。所有相对 v1 的修改均标注 **v2 变更**，
 > 汇总见附录 A。
+> 2026-11-09 实现补充：默认恢复树由 BehaviorComponent 执行，可独立进程部署；
+> 会话/目标版本与有限恢复契约以第 9 节及 [19](19-behavior-recovery-validation.md) 为准。
 
 ---
 
@@ -30,7 +39,7 @@ v1 的架构方向成立：薄 Component + 业务 Runner、无显式地图、位
 | C12 | `platform_profile` 内联与 `conf/platform/*` 重复；`safety_chain` 两处配置 | 平台配置单一来源（preset 文件），安全链归 `safety.pb.txt` | conf |
 | C13 | 模型二进制不入库（`conf/models/*.onnx`） | 只保留 manifest（sha256/shape/opset）；权重本地导出/制品库 | conf、tools |
 | C14 | 验收指标无量值、无参照平台 | 给出参照平台、分位指标和数值门槛 | 验收 |
-| C15 | guardian 读 `/behavior/heartbeat`，没有生产者 | behavior 在 navigation 进程内由 Runner tick，心跳由 Runner 发布 | behavior、runner |
+| C15 | guardian 读 `/behavior/heartbeat`，没有生产者 | BehaviorComponent 加载 XML 并发心跳；默认同 DAG，可拆成独立进程 | behavior、runner |
 | C16 | 单位、术语、失败语义不统一 | 统一 SI 后缀、失败关闭（fail-closed）、状态机命名 | 全部 |
 
 **结论**：v1 可以直接进入实现的前提是先落 C2/C3/C5/C9 四项，否则代码无法编译或无法部署。
@@ -129,7 +138,7 @@ v1 的架构方向成立：薄 Component + 业务 Runner、无显式地图、位
 | 异常策略 | 决策层不穿越边界；安全层 `-fno-exceptions` | 异常展开时间不可预测 |
 | 策略调用（v2） | 异步 worker + 动作块 | 推理延迟峰值远大于 66 ms tick |
 | 平面速度（v2） | 3-DOF `Twist2D` | 全向底盘需要侧向分量；差速强制 `vy=0` |
-| 行为层（v2） | 进程内，Runner tick | 保持 3 份 DAG，behavior 心跳由 Runner 发布 |
+| 行为层（当前） | BehaviorComponent Timer | 保持 3 份 DAG，BehaviorComponent 自身 tick/发心跳，可拆进程 |
 | 模型制品（v2） | manifest + 外置权重 | 避免二进制入库，支持 sha256 校验 |
 
 ---
@@ -223,7 +232,7 @@ SafetyStop > Reflex > CBF/AEB > Feasibility > Rule > Task/Stage > Policy > Chunk
 │          │                                                   │
 │          ▼                                                   │
 │  Runner（业务核心，不依赖 autolink）                          │
-│    encoder_ / memory_ / policy_ / chunk_blender_ / behavior_  │
+│    encoder / memory / policy / chunk_blender / recovery      │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -269,11 +278,12 @@ AUTOLINK_REGISTER_COMPONENT(navigation::NavigationComponent)
 | --- | --- | --- | --- | --- |
 | navigation | ObservationBuilderComponent | 消息驱动（depth） | ~15 Hz | 多传感器融合成 `Observation` |
 | navigation | NavigationComponent | 消息驱动（observation） | ~15 Hz | Runner 业务循环 |
+| navigation | BehaviorComponent | 定时器 | 100 ms（10 Hz） | 默认 XML、恢复/失败请求、自身心跳 |
 | safety | SafetyComponent | 定时器 | 20 ms（50 Hz） | 三级安全链、唯一 `/cmd_vel` 出口 |
 | guardian | GuardianComponent | 定时器 | 500 ms（2 Hz） | 心跳、故障分类、降级 |
 
 > v2 变更 C4：融合节点独立成组件，避免一个 `Component<Observation>` 绑 5 个通道的伪设计。
-> v2 变更 C15：behavior 不单独起进程，由 Runner 在 navigation 进程内 tick；心跳由 Runner 发布，
+> 当前 C15：BehaviorComponent 在默认 navigation DAG 中自身 tick/发心跳；验收可将其拆成独立 mainboard，
 > 因此仍然只有 3 份 DAG。
 
 ### 3.3 线程模型与调度
@@ -295,7 +305,7 @@ Tick (15 Hz, 66 ms):
   4. 若到决策周期且 worker 空闲：提交 (KeyframeBatch, GoalSpec, depth_feature, pose)
      （depth_feature 来自第 2 步，策略不再重复编码）
   5. 非阻塞取回 Intent；失败/超时保留上一 chunk
-  6. behavior.Tick()（≤ 1 ms）
+  6. 发布状态供独立 BehaviorComponent tick（耗时门限待测）
   7. scenario pipeline → chunk_blender.Consume(dt) → Twist2D
   8. 发布 cmd_vel_raw / status / heartbeat
 ```
@@ -732,6 +742,15 @@ message NavigationIntent
     float confidence = 9;                // [0, 1]
 }
 
+enum RecoveryState
+{
+    RECOVERY_IDLE = 0;
+    RECOVERY_REQUIRED = 1;
+    RECOVERY_RUNNING = 2;
+    RECOVERY_SUCCEEDED = 3;
+    RECOVERY_FAILED = 4;
+}
+
 message NavigationStatus
 {
     uint64 sequence = 1;
@@ -742,6 +761,24 @@ message NavigationStatus
     bool goal_reached = 6;
     bool degraded = 7;
     string reason = 8;
+    string session_id = 9;
+    uint64 goal_epoch = 10;
+    bool has_active_goal = 11;
+    RecoveryState recovery_state = 12;
+    uint32 recovery_count = 13;
+    bool pose_valid = 14;
+    int64 steady_stamp_ns = 15;
+}
+
+message BehaviorRequest
+{
+    enum Kind { RECOVER = 0; FAIL_GOAL = 1; }
+    Kind kind = 1;
+    string session_id = 2;
+    uint64 goal_epoch = 3;
+    uint32 expected_recovery_count = 4;
+    string reason = 5;
+    int64 steady_stamp_ns = 6;
 }
 
 message ContextEntry
@@ -2000,41 +2037,34 @@ private:
 
 - 采用 **BehaviorTree.CPP 4.x**；behavior 库链接 `BT::behaviortree_cpp`。
 - `BtEngine` 是薄封装：加载 XML、注册节点、tick、黑板（blackboard）；不实现调度器。
-- `BtEngineImplementation` 仍保留无树回退，仅用于未加载 XML 的测试/仿真；节点注册需要 BT。
+- `BtCppEngine` 加载 XML 并注册内建节点；`BtEngineImplementation` 保留为独立测试原语，默认组件加载失败不会使用它回退。
 - 树文件使用 BT.CPP v4 格式（`<root BTCPP_format="4">`）。
 
 ### 9.2 与 Runner 的关系
 
-- `Runner` 持有 `std::unique_ptr<BehaviorEngine> behavior_`，在 `Tick` 前调用 `behavior_->Tick(now)`。
-- BT 节点通过 `NavigationSession`（Runner 实现）操作导航会话，不直接访问 policy/memory。
-- behavior 心跳由 Runner 发布到 `/behavior/heartbeat`；guardian 读该通道（C15）。
-- behavior 失败不直接写 cmd；失败 → `RequestRecovery` 或 `ClearGoal`，由场景/安全链接管。
+BehaviorComponent 持有 BtCppEngine 与 BehaviorSession，默认 Timer 100 ms。
+Runner 持有 RecoveryManeuver，由 NavigationComponent 接收目标/行为请求后调用。
+默认 DAG 同进程；真实验收将 Behavior 拆成独立 mainboard，所有操作经 IPC。
+目标只由 NavigationComponent 接收，BT 的 StartNavigation 验证当前快照目标，
+不会重复提交/清空 Runner。Behavior 心跳由组件自己发布，不由 Runner 发布。
 
-### 9.3 黑板（blackboard） 键
+### 9.3 黑板与 IPC
 
-| 键 | 类型 | 写入方 | 读取方 |
-| --- | --- | --- | --- |
-| `node_context` | `NodeContext*` | Runner/behavior engine | 所有节点 |
-| `goal` | `GoalSpec` | StartNavigation / intent | 所有节点 |
-| `pose` | `Pose2D` | Runner | 健康检查、恢复 |
-| `pose_valid` | `bool` | Runner | CheckPoseHealth |
-| `safety_mode` | `string` | Runner（来自 safety 状态） | CheckSafetyIntervention |
-| `module_health` | `map<string,bool>` | Runner（心跳） | CheckModuleHealth |
-| `goal_reachable` | `bool` | CheckGoalReachable | Fallback |
-| `recovery_count` | `int` | RecoveryExecutor | 恢复策略 |
-| `operator_assist` | `bool` | RequestOperatorAssist | 顶层 Fallback |
+`node_context` 为 BtCppEngine 所有的 NodeContext*，由 BehaviorComponent 更新
+目标、位姿有效性、状态新鲜度与请求回调。`max_recovery_attempts` 为配置次数预算。
+BehaviorSession 读取 NavigationStatus 的会话、目标版本、恢复状态/次数；
+恢复/失败请求用 BehaviorRequest 经 `/navigation/behavior_request` 传回 Navigation。
+接收方拒绝不活跃目标、旧会话/目标版本、不匹配次数和超过 500 ms 的请求。
 
-### 9.4 节点
+### 9.4 默认恢复节点
 
-| 节点 | 类型 | 端口 | 语义 |
-| --- | --- | --- | --- |
-| `StartNavigation` | SyncAction | blackboard `node_context` | 调用 `SetGoal`；接受即 SUCCESS |
-| `CheckPoseHealth` | Condition | blackboard `node_context.pose_valid` | 位姿新鲜且非跳变 |
-| `CheckSafetyIntervention` | Condition | blackboard `node_context.safety_intervention` | 未接管才 SUCCESS |
-| `CheckModuleHealth` | Condition | blackboard `node_context.module_healthy` | 导航/安全/记忆均健康 |
-| `CheckGoalReachable` | Condition | blackboard `node_context.goal_reachable` | 不可达 → FAILURE |
-| `CheckRelocalization` | Condition | blackboard `node_context.relocalized` | 未重定位 → FAILURE |
-| `RequestOperatorAssist` | SyncAction | input `reason` | 发布求助；latch 防重复 |
+StartNavigation、CheckPoseHealth、CheckModuleHealth 沿用内建节点；
+WaitForGoalReached 根据目标到达返回 SUCCESS、无进度/失败返回 FAILURE，其他情况 RUNNING。
+RecoveryNode 有导航/恢复两个子节点，共享 Runner 已接受的次数预算；
+PipelineSequence 在下游执行时复查上游，失败时 halt 下游。
+RecoveryExecutor 请求并等待异步确认与动作结果，成功后恢复导航、失败可换侧重试。
+RequestOperatorAssist 在耗尽后锁存原因并请求终止目标，Action 返回 PATH_BLOCKED。
+原有安全/可达/重定位条件节点保留，但其未接入的任务链不在默认树验收范围内。
 
 ### 9.5 任务原语
 
@@ -2051,49 +2081,37 @@ private:
 
 ### 9.6 树
 
-**navigate_with_recovery.xml**
+默认 `navigate_with_recovery.xml` 实际执行如下：
 
 ```xml
-<root BTCPP_format="4">
+<root BTCPP_format="4" main_tree_to_execute="NavigateWithRecovery">
   <BehaviorTree ID="NavigateWithRecovery">
     <Fallback>
       <Sequence>
         <CheckPoseHealth/>
         <CheckModuleHealth/>
-        <StartNavigation goal="{goal}"/>
-        <CheckGoalReachable goal="{goal}"/>
-        <CheckSafetyIntervention/>
-        <SubTree ID="NavigateLoop" goal="{goal}"/>
-      </Sequence>
-      <Sequence>
-        <RecoveryAttributor/>
-        <RecoveryExecutor/>
+        <RecoveryNode number_of_retries="{max_recovery_attempts}">
+          <PipelineSequence>
+            <StartNavigation/>
+            <WaitForGoalReached timeout_s="600"/>
+          </PipelineSequence>
+          <RecoveryExecutor/>
+        </RecoveryNode>
       </Sequence>
       <RequestOperatorAssist reason="recovery_exhausted"/>
     </Fallback>
   </BehaviorTree>
-
-  <BehaviorTree ID="NavigateLoop">
-    <KeepRunningUntilFailure>
-      <Sequence>
-        <CheckSafetyIntervention/>
-        <WaitForGoalReached timeout_s="600"/>
-      </Sequence>
-    </KeepRunningUntilFailure>
-  </BehaviorTree>
 </root>
 ```
 
-> `RecoveryAttributor` / `RecoveryExecutor` 是 BT 节点，内部调用 planning 的
-> `RecoveryAttributor` / `RecoveryExecutor` 任务；节点只负责端口与状态映射。
-> `WaitForGoalReached` 是 StatefulActionNode：每个 tick 查询 `NavigationSession::IsGoalReached()`，
-> 未到达返回 RUNNING；超时/安全接管返回 FAILURE，触发 Fallback 进入恢复分支。
+Runner 的 steady 8 s 无进度触发 RECOVERY_REQUIRED；实际位姿驱动
+face_flank → flank → face_goal → advance，完成后恢复原始目标策略查询。
+配置距离默认各 2 m，阶段上限 25 s，恢复次数配置默认 3。
+恢复不跳过 Safety；Behavior 心跳过期时暂停恢复命令，取消/抢占清空状态。
+具体参数、协议、CBF 缓冲边界与真实验证见 [19](19-behavior-recovery-validation.md)。
 
-**navigate_with_relocalization.xml**：在 `CheckPoseHealth` 失败时进入 `RelocalizationTask`，
-成功重定位后重新 `StartNavigation`；失败两次 → 求助。
-
-**navigate_with_door.xml**：`CheckGoalReachable` 前插入 `DoorTask`；门未开则等待/求助，
-不把门当成 planner 的几何障碍。
+`navigate_with_relocalization.xml` 与 `navigate_with_door.xml` 为任务示例，
+完整组件联调/验收仍属 T-17，不视为可直接替换默认树的已验收功能。
 
 ### 9.7 意图
 
@@ -2202,9 +2220,9 @@ SafeStop ◄────────────────────┘
 插件、场景、规则参数全部内联在 `navigation.pb.txt` 的 `policy` / `scenario` / `rule` 段。
 不再维护 `conf/plugin/*`、`conf/scenario/*`、`conf/rule/*` 预设，避免同一参数两份来源。
 
-> 平台 preset 的查找路径为 `$NAVIGATION_CONF_DIR/platform/<name>.pb.txt`，缺省回退到
-> `share/navigation/conf/platform/`；`platform_profile` 只写短名（如 `differential_drive`），
-> 不写路径。
+> 当前平台 preset 的查找路径为 `$NAVIGATION_CONF_DIR/conf/platform/<name>.pb.txt`；
+> `NAVIGATION_CONF_DIR` 指向 navigation 资源根目录。未设置时相对于工作目录解析，
+> 不自动回退安装目录；部署时须显式设置。`platform_profile` 可写短名或配置文件路径。
 
 ### 11.2 校验
 
@@ -2296,7 +2314,8 @@ module_config {
 | 组件 | 写端 |
 | --- | --- |
 | ObservationBuilder | `/navigation/observation` |
-| Navigation | `/navigation/cmd_vel_raw`、`/navigation/status`、`/navigation/diagnostic`、`/navigation/heartbeat`、`/behavior/heartbeat` |
+| Navigation | `/navigation/cmd_vel_raw`、`/navigation/status`、`/navigation/diagnostic`、`/navigation/heartbeat` |
+| Behavior | `/navigation/behavior_request`、`/behavior/heartbeat` |
 | Safety | `/cmd_vel`、`/safety/status`、`/safety/heartbeat` |
 | Guardian | `/guardian/status`、`/guardian/degradation`、`/guardian/heartbeat` |
 
@@ -2424,7 +2443,7 @@ share/navigation/trees/*.xml
 3. **故障注入**：§10.5 六类，全部进入预期状态。
 4. **确定性**：固定随机种子，两次运行输出逐位一致。
 5. **配置矩阵**：4 种底盘 × 3 种策略 × 4 场景，启动成功率 100%，无代码改动。
-6. **Sanitizer**：ASan/UBSan/TSan 全量通过；`-Werror -std=c++17`。
+6. **Sanitizer**：ASan/UBSan/TSan 全量通过；`-Werror -std=c++20`（目标验收项，本轮未运行 sanitizer）。
 7. **延迟基准**：§12 表格全项达标。
 
 ### 13.3 数值验收
@@ -2489,7 +2508,7 @@ share/navigation/trees/*.xml
 | D2 | BT 引擎 | **BehaviorTree.CPP 4.x** | 自研最小执行器 |
 | D3 | 模型制品 | **外部制品库 + sha256**（C13） | Git LFS |
 | D4 | navigation.proto 包名 | **`navigation`**（C5） | 保留 `navigation.navigation` + 别名 |
-| D5 | behavior 进程 | **进程内**（C15） | 独立进程（需第 4 份 DAG） |
+| D5 | behavior 承载 | **BehaviorComponent**，默认同 DAG，可拆独立进程 | Runner 内置 tick |
 | D6 | 策略调用 | **异步 worker**（C9） | 同步（仅仿真/单测） |
 | D7 | CBF 求解 | **固定迭代投影梯度** | 外部 QP（Osqp/qpOASES） |
 
@@ -2531,14 +2550,15 @@ share/navigation/trees/*.xml
   由 `navigation::planning::vntpa` 命名空间隔离。
 - 成员初始化：`{nullptr}` / `{}` / `{0}`；禁止未初始化 POD。
 
-### 16.3 C++17 与禁用项
+### 16.3 C++20 工具链与接口约定
 
 - 强制使用：`std::optional`、`std::variant` + `std::visit`、`std::string_view`、
   `std::filesystem`、`if constexpr`、`std::shared_mutex`、`std::scoped_lock`、
   结构化绑定、折叠表达式、`inline constexpr`、`[[nodiscard]]`、`std::pmr`、`std::byte`、
   `std::clamp`、`std::apply`、`std::invoke`、`std::as_const`、
   `std::hardware_destructive_interference_size`。
-- 禁止 C++20：`std::span` → `ArrayView`；`std::jthread` → `JoinableThread`；
+- 当前 umbrella 构建使用 C++20；已有接口继续使用 `ArrayView`、`JoinableThread`：
+  `std::span` → `ArrayView`；`std::jthread` → `JoinableThread`；
   `std::format` → `fmt`；`[[likely]]` → `__builtin_expect` 宏。
 - 禁止：`std::regex` 热路径、`std::function` 热路径、RTTI（safety）、异常（safety）、
   `iostream`（库代码）、隐式 `double`/`float` 混算。
@@ -2728,7 +2748,7 @@ camera_to_base_y: 0.0
 | `/tf` | in | `tf2_msgs/TFMessage` | 50 Hz |
 | `/navigation/observation` | internal | `navigation.observation.Observation` | 15 Hz |
 | `/navigation/cmd_vel_raw` | internal | `geometry_msgs/Twist` | 15 Hz |
-| `/cmd_vel` | out | `geometry_msgs/Twist` | 50 Hz |
+| `/cmd_vel` | out | `geometry_msgs/TwistStamped` | 50 Hz |
 | `/navigation/status` | out | 自定义 | 15 Hz |
 | `/navigation/heartbeat` | out | `lifecycle.Heartbeat` | 15 Hz |
 | `/safety/heartbeat` | out | `lifecycle.Heartbeat` | 50 Hz |
@@ -2737,7 +2757,7 @@ camera_to_base_y: 0.0
 
 ## 附录 D：验收检查单
 
-- [ ] `-std=c++17 -Werror` 全量编译通过，无 C++20 特性。
+- [ ] `-std=c++20` 全量编译通过；全仓 `-Werror` 另行验收。
 - [ ] ASan/UBSan/TSan 通过。
 - [ ] 5 个 proto 生成、字段号与保留段检查通过。
 - [ ] 3 份 DAG 可被 autolink 加载，class_name 注册正确。
@@ -2754,3 +2774,7 @@ camera_to_base_y: 0.0
 **一句话**：v2 在不改变 v1 架构方向的前提下，补齐了进程入口、融合节点、动作混合器，
 修正了 proto 命名、DAG schema、Component 生命周期和异步推理模型，并把验收从“定性描述”
 收敛为可测量的契约。按 P0 先落 C2/C3/C5/C9，再进入实现。
+
+2026-11-09实现补充：基础`/tf` map→odom缓存与平面位姿合成已接入ObservationBuilder，
+尚未实现上文完整map→camera TF链/5 ms查询/时效性契约。动作块融合仅消费仍有效
+的重叠轨迹，不能复用已耗尽槽位；探索及构建回归证据见 [20](20-exploration-validation.md)。

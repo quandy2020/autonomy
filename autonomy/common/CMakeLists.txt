@@ -139,6 +139,15 @@ if(BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND)
   target_compile_definitions(autonomy_common PUBLIC AUTONOMY_HAS_ONNXRUNTIME)
   target_include_directories(autonomy_common SYSTEM PUBLIC ${OnnxRuntime_INCLUDE_DIRS})
   target_link_libraries(autonomy_common PUBLIC ${OnnxRuntime_LIBRARIES})
+  # Install-tree binaries use RUNPATH $ORIGIN/../lib. setup.bash puts that
+  # directory on LD_LIBRARY_PATH, which wins over the build-tree .deps RUNPATH
+  # on libautonomy_common.so, so the ONNX Runtime SONAME must live there.
+  get_filename_component(_ort_libdir "${OnnxRuntime_LIBRARY}" DIRECTORY)
+  install(DIRECTORY "${_ort_libdir}/"
+    DESTINATION lib
+    FILES_MATCHING
+      PATTERN "libonnxruntime.so*"
+      PATTERN "libonnxruntime_providers_shared.so")
 endif()
 if(BUILD_TENSORRT AND TensorRT_FOUND)
   target_compile_definitions(autonomy_common PUBLIC AUTONOMY_HAS_TENSORRT)

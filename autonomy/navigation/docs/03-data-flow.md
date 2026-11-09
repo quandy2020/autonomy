@@ -53,7 +53,8 @@ autosim
 | `/map` | autosim → nav | `map_msgs/OccupancyGrid` | 1 Hz | 探索前沿 |
 | `/navigation/observation` | nav 内部 | `navigation.observation.Observation` | depth 触发 (~30 Hz) | 融合快照 |
 | `/navigation/goal` | 外部 → nav | `navigation.GoalSpec` | 事件 | 目标 |
-| `/navigation/status` | nav → behavior | `navigation.NavigationStatus` | ~15 Hz | 状态 |
+| `/navigation/status` | nav → behavior | `navigation.NavigationStatus` | ~15 Hz | 会话/目标版本、恢复状态与次数、位姿有效性 |
+| `/navigation/behavior_request` | behavior → nav | `navigation.BehaviorRequest` | 按需，未确认时 5 Hz 重发 | 恢复或终止当前目标；会话/版本/次数/时间校验 |
 | `/navigation/heartbeat` | nav → guardian | `navigation.lifecycle.Heartbeat` | ~15 Hz | 心跳 |
 | `/navigation/cmd_vel_raw` | nav → safety | `geometry_msgs/Twist` | 每 Observation | 未安全校验 |
 | `/cmd_vel` | safety → autosim | `geometry_msgs/TwistStamped` | 50 Hz | 唯一执行出口 |
@@ -68,7 +69,8 @@ autosim
 1. depth 到达触发 `Proc`。
 2. 读取最新 `camera_info`、`odom`、`imu`、`map`。
 3. `ObservationBuilder::Build` 拷贝 depth/camera/odom/imu，写 validity。
-4. 拷贝 `map`（用于探索）。
+4. 拷贝 `map`；尺寸/数据长度、resolution、原点有限值和 frame 合法时置 `MAP_VALID=64`。
+   非法 map 保留字段但不置位，探索策略停车；消费者不能仅凭字段存在判定有效。
 5. 发布 `Observation`；`header` 取 depth 的 header。
 
 `validity` 位：
@@ -77,7 +79,7 @@ autosim
 - `CAMERA_INFO_VALID`
 - `ODOM_VALID`
 - `IMU_VALID`
-- `TF_VALID`（当前由 odom 是否存在近似）
+- `TF_VALID`（当前组件来自直接 map→odom 缓存；不是完整 TF 链及新鲜度认证）
 
 ## 4. Runner 决策流程
 
@@ -148,23 +150,24 @@ initial_goal {type: TYPE_EXPLORATION}
   -> ScenarioManager.Update(exploration)
   -> SimulationPolicy
        Observation.map -> FrontierDetectorTask
-       -> nearest frontier -> velocity chunk
-       no frontier -> forward + turn
+       -> reachable free frontier member -> known-free grid path -> velocity chunk
+       reached / steady timeout -> bounded visit history -> next frontier
+       no frontier -> odometry scan; valid map -> wait, no map -> depth-gated cruise
   -> Scenario -> cmd_vel_raw
 ```
 
 ## 6. 恢复流
 
-```text
-NavigationComponent 记录 last_progress
-  if pose goal && no distance improvement > 0.1 m for 8 s:
-      Runner.ClearGoal()
-      Runner.SetGoal(last_goal)
-```
+Runner 在 steady clock 上检测 pose 目标 8 s 无进度，清空异步结果/动作块，
+发布 `NavigationStatus.recovery_state=RECOVERY_REQUIRED`。
+BehaviorComponent 通过默认 XML 的 RecoveryNode/PipelineSequence 与 RecoveryExecutor
+请求执行，NavigationComponent 检查会话、目标版本、预期次数和 500 ms 请求年龄，
+再由 Runner 执行实测位姿控制的转向/绕行。成功后恢复原目标查询；失败切换尝试，
+耗尽时终止 Action，输出零速。
 
-- 恢复期间安全链持续生效。
-- 这是仿真级基础恢复；完整 BT 恢复（ClearGoal/Relocalize/Retry/GiveUp）在
-  `planning/tasks/recovery_*` 与 `behavior/` 中，尚未接入 component。
+恢复期间安全链持续生效；取消/抢占清空恢复，旧请求和推理不再有效。
+Behavior 状态/心跳使用 500 ms 租约，Safety 的 raw/depth 使用 200 ms 租约。
+完整协议、真实保留障碍证据与边界见 [19](19-behavior-recovery-validation.md)。
 
 ## 7. 安全链
 
@@ -187,7 +190,7 @@ candidate (cmd_vel_raw)
 | --- | --- |
 | autosim depth/odom/map | 仿真 `Header.stamp` |
 | Observation | depth header |
-| Safety 新鲜度 | 与 depth stamp 比较 |
+| Safety 新鲜度 | stamp 进展记录 steady 接收时间，超过 200 ms 停车 |
 | Runner `dt` | `steady_clock`（仿真/实时均可） |
 | Heartbeat | 到达时间由 guardian 记录，stamp 仅诊断 |
 
@@ -202,3 +205,11 @@ candidate (cmd_vel_raw)
 | policy 失败 | 无新 chunk，Blender 耗尽后零速 |
 | safety 超时/非法 | 零速 + emergency |
 | nav/safety heartbeat 丢失 | guardian REFLEX_ONLY/SAFE_STOP |
+
+### 地图坐标约束
+
+`FrontierDetectorTask` 支持栅格原点平移/平面旋转，目标和路径点在 `map` 系。
+Navigation从`Observation.odom`取位姿。组件缓存`/tf`中的直接map→odom，
+Builder按父子frame匹配将odom pose合成到map；输入已在map或父frame为空时保留原位姿。
+这项基础合成有平移回归，尚不覆盖完整TF链、缓存新鲜度、逆向查询或真实漂移/重定位。
+受控autosim使用无噪声里程计及对齐坐标，600 s探索及最终回归见 [20](20-exploration-validation.md)。

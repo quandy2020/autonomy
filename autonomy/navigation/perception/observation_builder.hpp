@@ -23,6 +23,7 @@
 
 #include <cstdint>
 
+#include "automsgs/msgs/geometry_msgs/transform_stamped.pb.h"
 #include "navigation/proto/observation.pb.h"
 
 namespace navigation
@@ -41,6 +42,10 @@ struct ObservationInputs
     const automsgs::msgs::nav_msgs::Odometry* odom{nullptr};
     /** @brief IMU sample; optional. */
     const automsgs::msgs::sensor_msgs::Imu* imu{nullptr};
+    /** @brief Optional occupancy grid; validated independently of depth. */
+    const automsgs::msgs::map_msgs::OccupancyGrid* map{nullptr};
+    /** @brief Latest ``map → odom`` from ``/tf``; used to express odom in map. */
+    const automsgs::msgs::geometry_msgs::TransformStamped* map_to_odom{nullptr};
     /** @brief Result of the TF lookup for this frame. */
     bool tf_valid{false};
 };

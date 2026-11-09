@@ -901,7 +901,12 @@ class Simulator:
         return self.scale_image(color, dst_h, dst_w)
 
     def align_chase_sensor(self, cfg: Mapping[str, Any]) -> None:
-        """Refresh chase mount (behind/above) in case YAML pitch/distance changed."""
+        """Keep the chase camera behind the agent in Habitat local space.
+
+        ``sensor.node`` is sometimes the scene-root camera, not an agent child.
+        Writing ``(0, height, distance)`` in that case pins the view in the
+        world and the Autoviz ``chase_link`` axes fly through the map.
+        """
         if self.session is None:
             return
         uuid = str(cfg.get("uuid") or CHASE_UUID)
@@ -919,13 +924,38 @@ class Simulator:
             return
         import magnum as mn
 
-        node.translation = mn.Vector3(
+        local = mn.Vector3(
             0.0, float(cfg["height_m"]), float(cfg["distance_m"])
         )
         pitch = math.radians(float(cfg.get("pitch_deg", -25.0)))
-        node.rotation = mn.Quaternion.rotation(
+        rotation = mn.Quaternion.rotation(
             mn.Rad(pitch), mn.Vector3(1.0, 0.0, 0.0)
         )
+        agent = self.session.get_agent(0)
+        agent_node = getattr(agent, "scene_node", None)
+        parent = getattr(node, "parent", None)
+        if agent_node is None or parent is agent_node:
+            node.translation = local
+            node.rotation = rotation
+            return
+        parent_T = agent_node.absolute_transformation()
+        world_p = parent_T.transform_point(local)
+        try:
+            world_r = mn.Quaternion.from_matrix(parent_T.rotation()) * rotation
+        except Exception:
+            world_r = rotation
+        if parent is None:
+            node.translation = world_p
+            node.rotation = world_r
+            return
+        pT = parent.absolute_transformation()
+        node.translation = pT.inverted().transform_point(world_p)
+        try:
+            node.rotation = (
+                mn.Quaternion.from_matrix(pT.rotation()).inverted() * world_r
+            )
+        except Exception:
+            node.rotation = world_r
 
     def render_chase(self) -> np.ndarray | None:
         """Return third-person RGB ``HxWx3 uint8``, or None if disabled / missing.

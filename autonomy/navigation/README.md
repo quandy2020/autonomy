@@ -1,6 +1,6 @@
 # Navigation
 
-C++17 端到端导航子模块：Component（autolink 薄入口）+ Runner（业务核心）。
+C++20 端到端导航子模块：Component（autolink 薄入口）+ Runner（业务核心）。
 无显式 costmap；VNTPA 用位姿索引关键帧作为环境表示；安全链与 guardian 独立进程。
 
 ## 文档
@@ -24,6 +24,10 @@ C++17 端到端导航子模块：Component（autolink 薄入口）+ Runner（业
 | [13-todo.md](docs/13-todo.md) | TODO、闭环分级与验收顺序 |
 | [14-config-reference.md](docs/14-config-reference.md) | 配置参数含义、调参、调试 |
 | [15-vntpa-alignment.md](docs/15-vntpa-alignment.md) | VNT-PA 对齐与优化清单 |
+| [16-linux-validation.md](docs/16-linux-validation.md) | SpaceHero 构建、模型与组件验收证据 |
+| [17-frontiernet.md](docs/17-frontiernet.md) | FrontierNet 式探索与 DeFM 编码器替换 |
+| [18-autosim-validation.md](docs/18-autosim-validation.md) | 真实 Habitat、多进程 Action、停车与故障恢复证据 |
+| [19-behavior-recovery-validation.md](docs/19-behavior-recovery-validation.md) | 默认 XML、真实自主脱困、取消/重建与耗尽验收 |
 
 ## Python
 
@@ -44,19 +48,15 @@ python/
 ## 快速开始
 
 ```sh
-cmake -S /path/to/autonomy -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DAUTONOMY_BUILD_NAVIGATION=ON \
-  -DBUILD_TEST=ON
-
-cmake --build build --target navigation
-ctest --test-dir build --output-on-failure
+cd /workspace/autonomy
+colcon build --packages-up-to autonomy --cmake-args -DNAVIGATION_BUILD_TESTS=ON
+ctest --test-dir build/autonomy/autonomy/navigation --output-on-failure --no-tests=error
 ```
 
 Linux autolink/component：
 
 ```sh
-tools/build_linux.sh /path/to/automsgs/build build-linux
+tools/build_linux.sh /workspace/autonomy 8
 ```
 
 ## 外部接口
@@ -67,10 +67,12 @@ tools/build_linux.sh /path/to/automsgs/build build-linux
 
 ## 当前状态
 
-- 上次已验证：**69/69 CTest**，ASan 通过，install 通过。
-- CMake 当前注册 **69** 个测试。
-- autosim 仿真链路已接线，待 Linux/autolink 实编验证。
-- VNTPA planner 权重未发布；`conf/models/` 已有 DeFM ViT-S/14（pth + ONNX）。
+- 五个 Linux 组件、导航测试与 DeFM C++ ORT 后端已实际构建。
+- 2026-11-09 SpaceHero：完整 colcon 构建与 76/76 导航 CTest 通过，最新安装与仿真证据见 [19](docs/19-behavior-recovery-validation.md)。
+- 当前验证结果见 [16-linux-validation.md](docs/16-linux-validation.md)；本轮未运行 ASan/TSan。
+- 真实 Habitat 九项场景检查与独立进程 kill/重启通过，见 [19](docs/19-behavior-recovery-validation.md)；基础验收历史见 [18](docs/18-autosim-validation.md)。
+- 默认行为树已接入保留障碍的自主脱困，见 [19](docs/19-behavior-recovery-validation.md)；长期探索仍待推进。
+- VNTPA planner 权重尚缺；DeFM CPU C++/Python ORT 数值验证已通过。
 
 ## 目录
 
@@ -103,5 +105,5 @@ tools/build_linux.sh /path/to/automsgs/build build-linux
 
 - navigation 只写 `/navigation/cmd_vel_raw`；safety 是唯一 `/cmd_vel` 出口。
 - `/cmd_vel` 为 `TwistStamped`，与 autosim 一致。
-- 所有时间戳为会话纳秒；Safety 使用 depth stamp 做新鲜度。
+- 输出 header 使用 depth 时间；Safety 按 depth stamp 进展和每次 raw 指令接收记录 steady 租约，200 ms 断流进入紧急零速；实际停车包含执行器减速。心跳使用 steady clock。
 - 配置切换策略/底盘/场景不改代码。

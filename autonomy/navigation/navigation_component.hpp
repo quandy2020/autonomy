@@ -24,17 +24,18 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <optional>
 
 #include "autolink/action/simple_action_server.hpp"
 #include "autolink/component/component.hpp"
 #include "automsgs/actions/nav_actions.pb.h"
+#include "automsgs/msgs/geometry_msgs/pose_stamped.pb.h"
 #include "autonomy/common/macros.hpp"
-#include "navigation/runner.hpp"
 #include "navigation/proto/lifecycle.pb.h"
 #include "navigation/proto/observation.pb.h"
+#include "navigation/runner.hpp"
 
-namespace navigation
-{
+namespace navigation {
 
 /**
  * @brief Thin autolink Component; delegates all logic to Runner.
@@ -45,7 +46,8 @@ namespace navigation
  *
  * @see Runner
  */
-class NavigationComponent final : public autolink::Component<observation::Observation>
+class NavigationComponent final
+    : public autolink::Component<observation::Observation>
 {
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS_NOT_COPYABLE(NavigationComponent)
@@ -70,6 +72,7 @@ protected:
 private:
     /** @brief Execute one accepted navigate_to_pose goal. */
     void RunNavigateToPose();
+    NavigationStatus MakeStatus(std::int64_t steady_ns, bool pose_valid) const;
 
     /**
      * @brief Forward one Observation to Runner::Tick and publish cmd_vel_raw.
@@ -77,7 +80,8 @@ private:
      * @param[in] observation Fused observation from the observation_builder.
      * @return false on null input or writer failure.
      */
-    bool Proc(const std::shared_ptr<observation::Observation>& observation) override;
+    bool Proc(
+        const std::shared_ptr<observation::Observation>& observation) override;
 
     /** @brief Business core; null until Init succeeds. */
     std::unique_ptr<Runner> runner_{nullptr};
@@ -86,20 +90,34 @@ private:
         command_writer_{nullptr};
     /** @brief /navigation/goal reader. */
     std::shared_ptr<autolink::Reader<GoalSpec>> goal_reader_{nullptr};
+    /** @brief Autoviz 2D Goal Pose publishes PoseStamped on /goal_pose. */
+    std::shared_ptr<
+        autolink::Reader<automsgs::msgs::geometry_msgs::PoseStamped>>
+        pose_goal_reader_{nullptr};
+    std::shared_ptr<autolink::Reader<BehaviorRequest>> behavior_request_reader_;
+    std::shared_ptr<autolink::Reader<lifecycle::Heartbeat>>
+        behavior_heartbeat_reader_;
+    std::atomic<std::int64_t> behavior_received_ns_{0};
+    std::string session_id_, failure_reason_;
     /** @brief /navigation/status writer. */
     std::shared_ptr<autolink::Writer<NavigationStatus>> status_writer_{nullptr};
     /** @brief /navigation/heartbeat writer. */
-    std::shared_ptr<autolink::Writer<lifecycle::Heartbeat>> heartbeat_writer_{nullptr};
+    std::shared_ptr<autolink::Writer<lifecycle::Heartbeat>> heartbeat_writer_{
+        nullptr};
     /** @brief Last accepted goal. */
     GoalSpec goal_;
     /** @brief Last accepted goal sequence. */
     std::uint64_t goal_sequence_{0};
     /** @brief True once a goal has been accepted. */
     bool has_goal_{false};
-    /** @brief Best goal distance seen since the last progress reset. */
-    double best_distance_{1e9};
-    /** @brief Last progress time in nanoseconds. */
-    std::int64_t last_progress_ns_{0};
+    /** @brief Last topic goal seen; action goals must not replay a cached
+     * topic. */
+    std::optional<GoalSpec> last_topic_goal_;
+    /** @brief Last Autoviz /goal_pose sample applied as TYPE_POSE. */
+    std::optional<automsgs::msgs::geometry_msgs::PoseStamped> last_pose_goal_;
+    /** @brief Serializes goal ownership across observation and action threads.
+     */
+    std::mutex goal_state_mutex_;
     /** @brief Monotonic status sequence. */
     std::uint64_t status_sequence_{0};
     /** @brief Monotonic heartbeat sequence. */
@@ -116,6 +134,8 @@ private:
     mutable std::mutex action_pose_mutex_;
     /** @brief Latest map-frame pose. */
     common::Pose2D action_pose_;
+    /** @brief Latest sensor timestamp for feedback pose headers. */
+    std::int64_t action_pose_stamp_ns_{0};
 };
 
 }  // namespace navigation

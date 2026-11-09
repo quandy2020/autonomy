@@ -4,12 +4,21 @@
 深度、IMU、TF、时钟和真值；Atlas 负责 `map -> odom`、轨迹、稠密点云与
 占用栅格。不要同时启动其他发布 `map -> odom` 或 `/map` 的模块。
 
-`map.publish: true` 时 Autosim 从场景旁的 `*_semantic.ply` 发布 GT
-`/overall/map`（可视化对照；`stride` 控制点数以免超过 Autolink SHM 上限）。
-OccupancyGrid `/map` 在 `mode: slam` 下保持关闭，避免与 Atlas 抢占。
-Autoviz 配置见 `autoviz/config/atlas.autoviz`（含 OverallMap、Habitat Chase
-`/camera/chase/image_raw`）。`sensors.chase.enabled: true` 时仿真会在身后加载
-URDF mesh，仅 chase 渲染可见，不影响自车 RGB-D。
+| 相关 | 链接 |
+|------|------|
+| 话题 | [06](06_topics.md) |
+| 地图 / chase / Autoviz | [08](08_map_and_viz.md) |
+| 排错 | [10](10_troubleshooting.md) |
+
+## 仿真侧额外可视化
+
+| 话题 | 说明 |
+|------|------|
+| `/overall/map` | `map.publish: true` 时从场景旁 `*_semantic.ply` 发布 GT 点云；`stride` 控制点数（SHM ≤ 32 MiB） |
+| `/camera/chase/image_raw` | 第三人称跟随；自动 instance URDF，仅 chase 帧可见，不挡自车 RGB-D |
+| OccupancyGrid `/map` | `mode: slam` 下 **不** 由 Autosim 发布（Atlas 独占） |
+
+Autoviz：`src/autonomy/autoviz/config/atlas.autoviz`（OverallMap + Habitat Chase）。
 
 ## 编译
 
@@ -61,6 +70,15 @@ CONFIG=src/autonomy/autosim/config/atlas.yaml \
 
 先启动仿真和 Atlas，再启动 teleop；保持该终端具有交互式 TTY 焦点。
 
+可选 Autoviz（同一宿主机 / 容器）：
+
+```bash
+# 在已 source install 的终端
+autoviz --config src/autonomy/autoviz/config/atlas.autoviz
+```
+
+Fixed Frame = `map`；面板含 Habitat Chase、OverallMap、Atlas 轨迹与特征图。
+
 ## 输入与输出
 
 Atlas 输入：
@@ -69,7 +87,7 @@ Atlas 输入：
 - `/camera/depth/image_raw`：`32FC1` 米，与 RGB 同时间戳
 - `/imu`：200 Hz，`imu_link`
 - `/gt/odometry`：`map -> base_link` 真值
-- `/tf`、`/tf_static`：含 `base_link -> camera_link -> camera_optical_frame`
+- `/tf`、`/tf_static`：含 `base_link -> camera_link -> camera_optical_frame`；`/tf_static` 戳为 `(0,0)`（无时效），避免 Habitat 卡顿时 Atlas 因静态边年龄 >100 ms 跳过 `map→odom`
 
 主要输出：
 

@@ -28,14 +28,12 @@
 #include "navigation/common/status.hpp"
 #include "navigation/common/twist2d.hpp"
 
-namespace navigation
-{
-namespace common
-{
+namespace navigation {
+namespace common {
 
-/** @brief Platform-specific actuator command; only the control boundary uses it. */
-struct ActuatorCommand
-{
+/** @brief Platform-specific actuator command; only the control boundary uses
+ * it. */
+struct ActuatorCommand {
     /** @brief Left wheel/leg speed in m/s. */
     double left_mps{0.0};
     /** @brief Right wheel/leg speed in m/s. */
@@ -66,8 +64,8 @@ public:
      * @param[out] clamped Feasible velocity on success.
      * @return false on invalid input.
      */
-    virtual bool Clamp(const Twist2D& desired, const Twist2D& measured, double dt_s,
-                       Twist2D* clamped) const = 0;
+    virtual bool Clamp(const Twist2D& desired, const Twist2D& measured,
+                       double dt_s, Twist2D* clamped) const = 0;
 
     /**
      * @brief Maximum feasible speed at a path curvature.
@@ -82,15 +80,21 @@ public:
      * @param[in] command Planar velocity.
      * @param[out] out Actuator command on success.
      */
-    virtual bool ToActuatorCommand(const Twist2D& command, ActuatorCommand* out) const = 0;
+    virtual bool ToActuatorCommand(const Twist2D& command,
+                                   ActuatorCommand* out) const = 0;
 
     /** @brief Return the immutable profile used by this model. */
     virtual const PlatformProfile& Profile() const = 0;
 };
 
+/** @brief Clamp speed and chassis geometry without acceleration limiting. */
+bool ApplyVelocityLimits(const PlatformProfile& profile, const Twist2D& desired,
+                         Twist2D* target);
+
 /** @brief Shared kinematic clamping used by the concrete models. */
-bool ApplyKinematicLimits(const PlatformProfile& profile, const Twist2D& desired,
-                          const Twist2D& measured, double dt_s, Twist2D* clamped);
+bool ApplyKinematicLimits(const PlatformProfile& profile,
+                          const Twist2D& desired, const Twist2D& measured,
+                          double dt_s, Twist2D* clamped);
 
 /**
  * @brief Load a PlatformProfile from a protobuf text file.

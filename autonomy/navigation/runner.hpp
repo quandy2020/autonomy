@@ -11,6 +11,7 @@
 
 #include <condition_variable>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -25,12 +26,12 @@
 #include "navigation/planning/chunk_blender.hpp"
 #include "navigation/planning/interface/policy_interface.hpp"
 #include "navigation/planning/scenario_manager.hpp"
+#include "navigation/planning/tasks/recovery_maneuver.hpp"
 #include "navigation/proto/config.pb.h"
 #include "navigation/proto/navigation.pb.h"
 #include "navigation/proto/observation.pb.h"
 
-namespace navigation
-{
+namespace navigation {
 
 /**
  * @brief Business core: observation -> memory -> policy -> chunk -> command.
@@ -42,8 +43,8 @@ namespace navigation
  * discarded by sequence number.
  *
  * @par Threading
- * Start/Tick/Stop and goal setters are called from the navigation tick thread.
- * The policy worker calls only PolicyInterface::Query.
+ * Pipeline operations are serialized, including goal setters called from an
+ * action-server thread. The policy worker calls only PolicyInterface::Query.
  *
  * @par Ownership
  * Runner owns all injected dependencies and the policy worker thread.
@@ -57,8 +58,7 @@ public:
      * @details Used by tests and composition roots; every pointer may be
      * nullptr and is checked by Start().
      */
-    struct Dependencies
-    {
+    struct Dependencies {
         /** @brief Encodes Observation into DepthFeature; required. */
         std::unique_ptr<perception::ObservationEncoder> encoder{nullptr};
         /** @brief Pose-indexed context provider; required. */
@@ -69,6 +69,8 @@ public:
         std::unique_ptr<planning::ChunkBlender> blender{nullptr};
         /** @brief Optional scenario + rule pipeline applied after blending. */
         std::unique_ptr<planning::ScenarioManager> scenario{nullptr};
+        /** @brief Optional steady clock for deterministic control tests. */
+        std::function<std::int64_t()> steady_now_ns;
     };
 
     /**
@@ -91,7 +93,8 @@ public:
      * @param[in] configuration Navigation configuration.
      * @return Runner on success, or nullptr when a plugin is not registered.
      */
-    static std::unique_ptr<Runner> Create(const config::NavigationConfig& configuration);
+    static std::unique_ptr<Runner> Create(
+        const config::NavigationConfig& configuration);
 
     /**
      * @brief Start the policy worker.
@@ -110,9 +113,11 @@ public:
      * @return Command on success; nullopt when stopped, no goal, or invalid
      *         input. A nullopt must be treated as "hold zero" by the caller.
      */
-    std::optional<common::Twist2D> Tick(const observation::Observation& observation,
-                                       const common::Pose2D& current_pose,
-                                       const common::Twist2D& current_velocity);
+    std::optional<common::Twist2D> Tick(
+        const observation::Observation& observation,
+        const common::Pose2D& current_pose,
+        const common::Twist2D& current_velocity,
+        bool recovery_permitted = true);
 
     /**
      * @brief Stop the worker and clear the action chunk.
@@ -137,6 +142,13 @@ public:
     /** @brief Return whether the last Tick observed the goal tolerance. */
     [[nodiscard]] bool IsGoalReached() const;
 
+    bool RequestRecovery();
+    void FailGoal();
+    [[nodiscard]] bool IsGoalFailed() const;
+    [[nodiscard]] RecoveryState RecoveryStatus() const;
+    [[nodiscard]] std::uint32_t RecoveryCount() const;
+    [[nodiscard]] std::string RecoveryPhase() const;
+
     /**
      * @brief Reset spatial memory.
      *
@@ -150,8 +162,7 @@ public:
 
 private:
     /** @brief Work item handed to the policy worker. */
-    struct PolicyJob
-    {
+    struct PolicyJob {
         /** @brief Observation used for this inference. */
         observation::Observation observation;
         /** @brief Pre-encoded depth feature (reused memory feature). */
@@ -162,11 +173,11 @@ private:
         memory::ContextView context;
         /** @brief Monotonic job sequence. */
         std::uint64_t sequence{0};
+        std::uint64_t generation{0};
     };
 
     /** @brief Result produced by the policy worker. */
-    struct PolicyResult
-    {
+    struct PolicyResult {
         /** @brief Intent or error; stale results are discarded. */
         common::StatusOr<NavigationIntent> intent;
         /** @brief Sequence copied from the job. */
@@ -184,6 +195,9 @@ private:
      */
     bool TryTakeResult(PolicyResult* result);
 
+    /** @brief Drop queued/completed work and invalidate an in-flight query. */
+    void InvalidatePolicyWork();
+
     /**
      * @brief Submit the latest job when the decision period elapsed.
      *
@@ -191,7 +205,8 @@ private:
      */
     bool PostJobIfDue(const observation::Observation& observation,
                       const observation::DepthFeature& feature,
-                      const common::Pose2D& pose, std::int64_t now_ns, double dt_s);
+                      const common::Pose2D& pose, std::int64_t now_ns,
+                      double dt_s);
 
     /**
      * @brief Update the goal-reached latch from the current pose.
@@ -200,10 +215,18 @@ private:
      */
     void UpdateGoalReached(const common::Pose2D& pose);
 
+    std::int64_t SteadyNowNs() const;
+    void ResetRecovery();
+    void UpdateProgress(const common::Pose2D& pose, std::int64_t now_ns);
+
     /** @brief Configuration snapshot. */
     config::NavigationConfig configuration_;
     /** @brief Pipeline components owned by Runner. */
     Dependencies dependencies_;
+
+    /** @brief Serializes pipeline state across tick and action-server threads.
+     */
+    mutable std::mutex pipeline_mutex_;
 
     /** @brief Protects active_goal_ and goal_reached_. */
     mutable std::mutex goal_mutex_;
@@ -230,6 +253,8 @@ private:
     bool running_{false};
     /** @brief Next job sequence. */
     std::uint64_t next_sequence_{1};
+    /** @brief Oldest accepted job sequence, protected by worker_mutex_. */
+    std::uint64_t minimum_sequence_{1};
     /** @brief Policy worker; joins on destruction/Stop. */
     common::JoinableThread worker_;
 
@@ -239,6 +264,14 @@ private:
     std::int64_t last_decision_ns_{0};
     /** @brief Minimum interval between policy submissions, nanoseconds. */
     std::uint64_t decision_period_ns_{200000000};
+    planning::RecoveryManeuver recovery_;
+    RecoveryState recovery_state_{RECOVERY_IDLE};
+    std::uint32_t recovery_count_{0};
+    bool goal_failed_{false}, have_pose_{false};
+    common::Pose2D latest_pose_;
+    double best_progress_error_{1e9};
+    bool progress_is_yaw_{false};
+    std::int64_t last_progress_ns_{0};
 };
 
 }  // namespace navigation

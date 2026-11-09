@@ -33,6 +33,36 @@ $HM3D/val/
 $HM3D/hm3d_basis.scene_dataset_config.json
 ```
 
+## 1b. Matterport3D (MP3D)
+
+规划器不绑定 HM3D。Habitat-Sim 的 MP3D 同样可以采集/训练，场景目录是
+``<id>/<id>.glb`` 而不是 HM3D 的 ``*.basis.glb``。许可与下载见
+[Habitat datasets](https://github.com/facebookresearch/habitat-sim/blob/main/DATASETS.md)。
+
+```bash
+# SpaceHero 本机镜像：10 栋 MP3D 与 AutoSim 共用 /workspace/autonomy/src
+export MP3D=/workspace/autonomy/src
+export DATA=/workspace/autonomy/src/autonomy/autonomy/navigation/python/dataset/mp3d
+# 完整 Habitat MP3D：
+#   export MP3D=/data/scene_datasets/mp3d
+# 典型文件：
+#   $MP3D/mp3d.scene_dataset_config.json
+#   $MP3D/17DRP5sb8fy/17DRP5sb8fy.glb
+```
+
+```bash
+cd /workspace/autonomy/src/autonomy/autonomy/navigation/python
+PYTHONPATH=. /opt/venv/bin/python -m vntpa.cli.collect explore \
+  --scene-root "$MP3D" \
+  --dataset-config "$MP3D/mp3d.scene_dataset_config.json" \
+  --num-scenes 10 \
+  --seeds-per-scene 5 \
+  --out-root "$DATA/traj/train"
+```
+
+tokens / bank / train 与 HM3D 相同，只换 `$DATA` 路径。首次加载会按 Go2 半径烘焙
+``*.go2.navmesh``。MP3D 上的 SR 不能直接和论文 HM3D Table I 比。
+
 ## 2. 探索生成 tours
 
 ```bash
@@ -120,6 +150,8 @@ writer.close()
 
 ```bash
 python -m vntpa.cli.validate --root "$DATA/tokens/val"
+python -m vntpa.cli.analyze --tokens "$DATA/tokens/val" --bank "$DATA/banks/bank_val.npz" \
+  --tensorboard-dir logs/data/tb --out logs/data/val.json
 ```
 
 ## 6. 结构

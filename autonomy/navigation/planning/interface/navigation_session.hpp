@@ -26,10 +26,8 @@
 #include "navigation/proto/lifecycle.pb.h"
 #include "navigation/proto/navigation.pb.h"
 
-namespace navigation
-{
-namespace planning
-{
+namespace navigation {
+namespace planning {
 
 /**
  * @brief Control surface exposed to the behavior layer.
@@ -69,6 +67,15 @@ public:
 
     /** @brief Current module lifecycle state. */
     [[nodiscard]] virtual lifecycle::ModuleState State() const = 0;
+
+    /** @brief Recovery acknowledgement/outcome for the current goal. */
+    [[nodiscard]] virtual RecoveryState RecoveryStatus() const {
+        return RECOVERY_IDLE;
+    }
+    /** @brief Attempts already accepted by the navigation process. */
+    [[nodiscard]] virtual std::uint32_t RecoveryCount() const {
+        return 0;
+    }
 };
 
 }  // namespace planning

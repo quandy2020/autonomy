@@ -52,7 +52,7 @@ bool ChunkBlender::Push(const ActionChunk& chunk, std::int64_t now_ns)
     }
 
     std::size_t start = static_cast<std::size_t>(std::ceil(position_));
-    if (position_ <= 0.0 || start >= chunk_length_)
+    if (position_ <= 0.0 || !HasActions() || start >= chunk_length_)
     {
         position_ = 0.0;
         start = 0;
@@ -69,7 +69,9 @@ bool ChunkBlender::Push(const ActionChunk& chunk, std::int64_t now_ns)
             chunk.actions(static_cast<int>(index)).x(),
             chunk.actions(static_cast<int>(index)).y(),
             chunk.actions(static_cast<int>(index)).theta());
-        if (slot.valid)
+        // Reused storage beyond the old active horizon contains consumed
+        // actions. Only a real overlap may influence the incoming command.
+        if (slot.valid && start + index < chunk_length_)
         {
             slot.action.set_x(weight * incoming.x() + (1.0 - weight) * slot.action.x());
             slot.action.set_y(weight * incoming.y() + (1.0 - weight) * slot.action.y());

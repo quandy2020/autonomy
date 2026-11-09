@@ -44,7 +44,14 @@ public:
      */
     [[nodiscard]] std::vector<Waypoint> Detect(
         const automsgs::msgs::map_msgs::OccupancyGrid& grid,
-        const common::Pose2D& robot_pose, double max_range) const;
+        const common::Pose2D& robot_pose, double max_range,
+        double clearance_m = 0.4) const;
+
+    /** @brief Four-connected path through known free cells with wall clearance. */
+    [[nodiscard]] std::vector<Waypoint> PathTo(
+        const automsgs::msgs::map_msgs::OccupancyGrid& grid,
+        const common::Pose2D& robot_pose, const common::Pose2D& target,
+        double clearance_m = 0.4) const;
 };
 
 }  // namespace planning

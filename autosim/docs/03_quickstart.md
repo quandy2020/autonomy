@@ -56,6 +56,16 @@ CONFIG=src/autonomy/autosim/config/default.yaml \
 
 无网格时可开 `habitat.scenario.enabled` 生成过程场景（见包 README）。
 
+Atlas RGB-D + IMU 验证（含 `/overall/map`、chase）：
+
+```bash
+CONFIG=src/autonomy/autosim/config/atlas.yaml \
+  src/autonomy/autosim/scripts/run.sh sim
+# Autoviz: --config src/autonomy/autoviz/config/atlas.autoviz
+```
+
+完整四终端流程见 [13](13_atlas_validation.md)。
+
 ---
 
 ## 4. Isaac
@@ -88,8 +98,9 @@ ISAACLAB_PATH=/workspace/isaaclab \
 
 ## 5. 与 Autoviz
 
-1. 启动 sim（建议 `mode: nav`、`map.publish: true`）。
-2. 启动 `autoviz`，Fixed Frame = `map`。
-3. 订阅见 [06](06_topics.md) / [08](08_map_and_viz.md)。
+1. 启动 sim（建议 `map.publish: true`；Atlas 用 `atlas.yaml`）。
+2. 启动 `autoviz`，Fixed Frame = `map`（Atlas 可用 `atlas.autoviz`）。
+3. 订阅见 [06](06_topics.md) / [08](08_map_and_viz.md)
+   （含 `/overall/map`、`/camera/chase/image_raw`、`/camera/topdown/image_raw`）。
 
 演示动图：[`../images/isaac.gif`](../images/isaac.gif)。

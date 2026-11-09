@@ -50,11 +50,13 @@ vntpa-eval = "vntpa.cli.evaluate:main"
 vntpa-export = "vntpa.cli.export:main"
 vntpa-collect = "vntpa.cli.collect:main"
 vntpa-validate = "vntpa.cli.validate:main"
+vntpa-analyze = "vntpa.cli.analyze:main"
 vntpa-autosim = "vntpa.simulator.client:main"
+frontiernet = "frontiernet.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["vntpa*", "thirdparty*"]
+include = ["vntpa*", "frontiernet*", "thirdparty*"]
 
 [tool.ruff]
 line-length = 100
@@ -67,3 +69,4 @@ thirdparty.defm = ["configs/*.yaml"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+markers = ["slow: multi-second training smoke"]

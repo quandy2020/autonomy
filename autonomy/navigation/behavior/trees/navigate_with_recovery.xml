@@ -4,25 +4,15 @@
       <Sequence>
         <CheckPoseHealth/>
         <CheckModuleHealth/>
-        <StartNavigation/>
-        <CheckGoalReachable/>
-        <CheckSafetyIntervention/>
-        <SubTree ID="NavigateLoop"/>
-      </Sequence>
-      <Sequence>
-        <RecoveryAttributor/>
-        <RecoveryExecutor/>
+        <RecoveryNode number_of_retries="{max_recovery_attempts}">
+          <PipelineSequence>
+            <StartNavigation/>
+            <WaitForGoalReached timeout_s="600"/>
+          </PipelineSequence>
+          <RecoveryExecutor/>
+        </RecoveryNode>
       </Sequence>
       <RequestOperatorAssist reason="recovery_exhausted"/>
     </Fallback>
-  </BehaviorTree>
-
-  <BehaviorTree ID="NavigateLoop">
-    <KeepRunningUntilFailure>
-      <Sequence>
-        <CheckSafetyIntervention/>
-        <WaitForGoalReached timeout_s="600"/>
-      </Sequence>
-    </KeepRunningUntilFailure>
   </BehaviorTree>
 </root>

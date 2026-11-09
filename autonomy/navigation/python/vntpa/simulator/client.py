@@ -32,6 +32,7 @@ from vntpa.utils.config import AutosimConfig, DeployConfig, PlannerConfig
 from vntpa.data.dataset import ContextMemory
 from vntpa.models.encoder import OnnxDefmEncoder
 from vntpa.models.vntpa import OnnxPlanner
+from vntpa.models.pose import goal_to_habitat, to_habitat
 from vntpa.simulator.observation import (
     depth,
     make_twist_stamped,
@@ -122,11 +123,12 @@ class AutosimApp:
         encoded = self.defm.encode(self.depth_)
         stamp = time.time()
         self.last_encode_ = now
-        self.memory.add(encoded.tokens, self.pose_, stamp, encoded.pooled)
+        habitat_pose = to_habitat(self.pose_)
+        self.memory.add(encoded.tokens, habitat_pose, stamp, encoded.pooled)
         self.encoded_stamp_ = self.depth_stamp_
         if self.goal_ is None or self.queue_:
             return
-        result = self.planner.plan(self.pose_, self.goal_, self.memory)
+        result = self.planner.plan(habitat_pose, goal_to_habitat(self.goal_), self.memory)
         self.last_plan_ = now
         self.queue_ = deque(result.actions[: self.deploy.planner.execute_horizon])
         self.next_action_ = 0.0

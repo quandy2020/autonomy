@@ -18,9 +18,11 @@ from __future__ import annotations
 
 import numpy as np
 
+from vntpa.models.pose import goal_to_habitat, to_habitat
+
 
 def query(pose: np.ndarray, goal: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Return ``(query_pose[1,3], goal[1,2])`` as float32."""
-    query_pose = np.asarray(pose, dtype=np.float32).reshape(1, 3)
-    query_goal = np.asarray(goal, dtype=np.float32).reshape(1, 2)
+    """Return Habitat ``(query_pose[1,3], goal[1,2])`` from ROS planar inputs."""
+    query_pose = to_habitat(pose).reshape(1, 3)
+    query_goal = goal_to_habitat(goal).reshape(1, 2)
     return query_pose, query_goal

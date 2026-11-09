@@ -6,8 +6,7 @@
 #include "navigation/planning/tasks/speed_optimizer.hpp"
 #include "navigation/planning/tasks/trajectory_optimizer.hpp"
 
-int main()
-{
+int main() {
     using namespace navigation;  // NOLINT
 
     common::PlatformProfile profile;
@@ -23,8 +22,7 @@ int main()
     frame.command = navigation::common::MakeTwist2D(1.0, 0.2, 2.0);
     planning::SpeedOptimizer speed;
     if (!speed.Execute(frame).Ok() || frame.command.x() > 0.5 ||
-        frame.command.y() != 0.0)
-    {
+        frame.command.y() != 0.0) {
         std::cerr << "speed optimizer failed\n";
         return 1;
     }
@@ -38,16 +36,17 @@ int main()
     obstacle->set_radius(0.05);
     frame.reflex = &observation;
     planning::ObstacleAvoider avoider;
-    if (!avoider.Execute(frame).Ok() || std::abs(frame.command.theta()) > 1e-9)
-    {
+    // An obstacle to the left must slow the robot and steer it to the right.
+    if (!avoider.Execute(frame).Ok() || frame.command.theta() >= 0.0 ||
+        frame.command.theta() < -profile.max_angular_radps ||
+        frame.command.x() <= 0.0 || frame.command.x() >= 0.3) {
         std::cerr << "obstacle avoider failed\n";
         return 1;
     }
     auto* close = observation.add_obstacles();
     close->set_x(0.2);
     frame.command = navigation::common::MakeTwist2D(0.3, 0.0, 0.0);
-    if (avoider.Execute(frame).Ok() || frame.command.x() != 0.0)
-    {
+    if (avoider.Execute(frame).Ok() || frame.command.x() != 0.0) {
         std::cerr << "close obstacle failed\n";
         return 1;
     }
@@ -58,8 +57,7 @@ int main()
     optimizer.Execute(smooth);
     smooth.command = navigation::common::MakeTwist2D(0.0, 0.0, 0.0);
     optimizer.Execute(smooth);
-    if (std::abs(smooth.command.x() - 0.5) > 1e-9)
-    {
+    if (std::abs(smooth.command.x() - 0.5) > 1e-9) {
         std::cerr << "trajectory smoothing failed\n";
         return 1;
     }

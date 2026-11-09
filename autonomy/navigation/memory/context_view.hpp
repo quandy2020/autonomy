@@ -71,6 +71,12 @@ struct Keyframe
     std::uint32_t epoch{0};
     /** @brief Number of observations merged into this keyframe. */
     std::uint32_t observation_count{0};
+    /** @brief Coverage-gate lookup keys for this frame; empty when unused. */
+    std::vector<std::int64_t> coverage_lookup;
+    /** @brief Neighbour keys stored per patch in coverage_lookup. */
+    int coverage_neighbors{0};
+    /** @brief Coverage cells claimed if this frame is kept. */
+    std::vector<std::uint64_t> coverage_claims;
 };
 
 /** @brief Fixed-capacity immutable batch shared with the policy worker. */

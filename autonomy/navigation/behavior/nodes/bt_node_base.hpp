@@ -20,24 +20,21 @@
 #include "navigation/behavior/nodes/node_context.hpp"
 
 #undef BT_REGISTER_NODES
-#define BT_REGISTER_NODES(factory)                                             \
-    static void RegisterNavigationBtNodes(BT::BehaviorTreeFactory& factory);   \
-    namespace {                                                                \
-    struct NavigationBtRegistrar {                                             \
-        NavigationBtRegistrar()                                                \
-        {                                                                      \
-            ::navigation::behavior::AddBtNodeRegistrar(                        \
-                &RegisterNavigationBtNodes);                                   \
-        }                                                                      \
-    };                                                                         \
-    static const NavigationBtRegistrar navigation_bt_registrar;                \
-    }                                                                          \
+#define BT_REGISTER_NODES(factory)                                           \
+    static void RegisterNavigationBtNodes(BT::BehaviorTreeFactory& factory); \
+    namespace {                                                              \
+    struct NavigationBtRegistrar {                                           \
+        NavigationBtRegistrar() {                                            \
+            ::navigation::behavior::AddBtNodeRegistrar(                      \
+                &RegisterNavigationBtNodes);                                 \
+        }                                                                    \
+    };                                                                       \
+    static const NavigationBtRegistrar navigation_bt_registrar;              \
+    }                                                                        \
     static void RegisterNavigationBtNodes(BT::BehaviorTreeFactory& factory)
 
-namespace navigation
-{
-namespace behavior
-{
+namespace navigation {
+namespace behavior {
 
 /** @brief Immediate action returning SUCCESS/FAILURE. */
 class NavigationSyncAction : public BT::SyncActionNode
@@ -45,29 +42,28 @@ class NavigationSyncAction : public BT::SyncActionNode
 public:
     using BT::SyncActionNode::SyncActionNode;
 
-    static BT::PortsList providedPorts() { return {}; }
+    static BT::PortsList providedPorts() {
+        return {};
+    }
 
-    BT::NodeStatus tick() override
-    {
+    BT::NodeStatus tick() override {
         NodeContext* context = Context();
-        return context != nullptr ? OnExecute(*context) : BT::NodeStatus::FAILURE;
+        return context != nullptr ? OnExecute(*context)
+                                  : BT::NodeStatus::FAILURE;
     }
 
 protected:
     virtual BT::NodeStatus OnExecute(NodeContext& context) = 0;
 
-    NodeContext* Context() const
-    {
+    NodeContext* Context() const {
         NodeContext* context = nullptr;
         if (config().blackboard != nullptr &&
-            config().blackboard->get(keys::kContext, context))
-        {
+            config().blackboard->get(keys::kContext, context)) {
             return context;
         }
         return nullptr;
     }
 };
-
 
 /** @brief Stateful BT action with OnFirstTick/OnExecute/OnHalted hooks. */
 class NavigationStatefulAction : public BT::StatefulActionNode
@@ -75,31 +71,29 @@ class NavigationStatefulAction : public BT::StatefulActionNode
 public:
     using BT::StatefulActionNode::StatefulActionNode;
 
-    static BT::PortsList providedPorts() { return {}; }
-
-    BT::NodeStatus onStart() override
-    {
-        started_ = false;
-        NodeContext* context = Context();
-        if (context == nullptr)
-        {
-            return BT::NodeStatus::FAILURE;
-        }
-        return OnFirstTick(*context);
+    static BT::PortsList providedPorts() {
+        return {};
     }
 
-    BT::NodeStatus onRunning() override
-    {
+    BT::NodeStatus onStart() override {
+        started_ = false;
         NodeContext* context = Context();
-        if (context == nullptr)
-        {
+        if (context == nullptr) {
             return BT::NodeStatus::FAILURE;
         }
-        if (!started_)
-        {
+        const BT::NodeStatus status = OnFirstTick(*context);
+        started_ = status != BT::NodeStatus::RUNNING || LatchAfterFirstTick();
+        return status;
+    }
+
+    BT::NodeStatus onRunning() override {
+        NodeContext* context = Context();
+        if (context == nullptr) {
+            return BT::NodeStatus::FAILURE;
+        }
+        if (!started_) {
             const BT::NodeStatus status = OnFirstTick(*context);
-            if (status != BT::NodeStatus::RUNNING || LatchAfterFirstTick())
-            {
+            if (status != BT::NodeStatus::RUNNING || LatchAfterFirstTick()) {
                 started_ = true;
             }
             return status;
@@ -107,34 +101,33 @@ public:
         return OnExecute(*context);
     }
 
-    void onHalted() override
-    {
+    void onHalted() override {
         NodeContext* context = Context();
-        if (context != nullptr)
-        {
+        if (context != nullptr) {
             OnHalted(*context);
         }
     }
 
 protected:
-    virtual BT::NodeStatus OnFirstTick(NodeContext& context)
-    {
+    virtual BT::NodeStatus OnFirstTick(NodeContext& context) {
         (void)context;
         return BT::NodeStatus::RUNNING;
     }
 
     virtual BT::NodeStatus OnExecute(NodeContext& context) = 0;
 
-    virtual void OnHalted(NodeContext& context) { (void)context; }
+    virtual void OnHalted(NodeContext& context) {
+        (void)context;
+    }
 
-    virtual bool LatchAfterFirstTick() const { return true; }
+    virtual bool LatchAfterFirstTick() const {
+        return true;
+    }
 
-    NodeContext* Context() const
-    {
+    NodeContext* Context() const {
         NodeContext* context = nullptr;
         if (config().blackboard != nullptr &&
-            config().blackboard->get(keys::kContext, context))
-        {
+            config().blackboard->get(keys::kContext, context)) {
             return context;
         }
         return nullptr;
@@ -150,23 +143,23 @@ class NavigationCondition : public BT::ConditionNode
 public:
     using BT::ConditionNode::ConditionNode;
 
-    static BT::PortsList providedPorts() { return {}; }
+    static BT::PortsList providedPorts() {
+        return {};
+    }
 
-    BT::NodeStatus tick() override
-    {
+    BT::NodeStatus tick() override {
         NodeContext* context = Context();
-        return context != nullptr ? OnEvaluate(*context) : BT::NodeStatus::FAILURE;
+        return context != nullptr ? OnEvaluate(*context)
+                                  : BT::NodeStatus::FAILURE;
     }
 
 protected:
     virtual BT::NodeStatus OnEvaluate(const NodeContext& context) = 0;
 
-    NodeContext* Context() const
-    {
+    NodeContext* Context() const {
         NodeContext* context = nullptr;
         if (config().blackboard != nullptr &&
-            config().blackboard->get(keys::kContext, context))
-        {
+            config().blackboard->get(keys::kContext, context)) {
             return context;
         }
         return nullptr;

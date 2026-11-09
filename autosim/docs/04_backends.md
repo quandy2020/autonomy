@@ -30,11 +30,18 @@
 
 - 实现：`backends/habitat/simulator.py`（`Simulator`）。
 - 适合数据集回放与 navmesh 占据。
-- URDF 可挂载为 kinematic 关节体（视觉可隐藏以免遮挡相机）。
+- URDF：默认只解析外参 / TF / `/robot_description`（Autoviz RobotModel）。
+  `robot.instance: true` 或 `sensors.chase.enabled` 时挂 kinematic AO；
+  chase 仅在第三人称渲染时显示 mesh，自车 RGB-D 不被挡。
+- 可选相机：`sensors.topdown`（全局正交俯视）、`sensors.chase`（身后跟随）；
+  见 [08](08_map_and_viz.md)。
+- 真值点云：优先 `map.ply.source`（MP3D `*_semantic.ply`），否则环视 ray-cast。
 - 动态行人：CPU `Traffic` + 可选 TrackVLA 式 SMPL-X（`humanoids/`）；见 [14](14_habitat_humanoids.md)。配置：`config/habitat_people.yaml`。
+- Atlas 验证配置：`config/atlas.yaml`；步骤见 [13](13_atlas_validation.md)。
 
 | 文件 | 作用 |
 |------|------|
+| `simulator.py` | 场景、传感、URDF AO、topdown / chase |
 | `humanoids/assets.py` | 发现 URDF + motion pkl |
 | `humanoids/controller.py` | walk/stop gait |
 | `humanoids/actor.py` | 单人 kinematic AO |

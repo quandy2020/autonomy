@@ -112,6 +112,33 @@ def test_encode_odometry_frames():
     assert abs(message.pose.pose.pose.position.x - 1.0) < 1e-9
 
 
+def test_encode_odometry_rejects_non_finite():
+    import pytest
+
+    with pytest.raises(ValueError, match="non-finite"):
+        Messages.encode_odometry(
+            x=float("nan"),
+            y=0.0,
+            yaw=0.0,
+            linear=0.0,
+            angular=0.0,
+            stamp=(0, 0),
+            frame_id="odom",
+            child_frame_id="base_link",
+        )
+    with pytest.raises(ValueError, match="child_frame_id"):
+        Messages.encode_odometry(
+            x=0.0,
+            y=0.0,
+            yaw=0.0,
+            linear=0.0,
+            angular=0.0,
+            stamp=(0, 0),
+            frame_id="odom",
+            child_frame_id="",
+        )
+
+
 def test_optical_to_camera_link():
     optical = np.array([[1.0, 2.0, 3.0]], dtype=np.float32)
     link = Messages.optical_to_camera_link(optical)

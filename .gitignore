@@ -131,3 +131,6 @@ autonomy/navigation/conf/models/*.pth
 autonomy/navigation/conf/models/*.onnx
 autonomy/navigation/conf/models/*.engine
 autonomy/navigation/conf/models/*.plan
+
+# VNT-PA Habitat corpora and run dumps (multi-GB)
+autonomy/navigation/python/dataset/

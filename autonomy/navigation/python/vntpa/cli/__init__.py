@@ -42,6 +42,7 @@ from typing import Any, Sequence
 
 import numpy as np
 
+from vntpa.data.analyze import analyze
 from vntpa.data.dataset import validate_root
 from vntpa.engine.deployment.validator import inspect
 from vntpa.engine.model import VNT
@@ -120,28 +121,24 @@ def export(args: argparse.Namespace) -> int:
 
 
 def train(args: argparse.Namespace) -> int:
-    """Forward training flags to the vendored VNT-PA trainer.
+    """Dispatch to ``vntpa.cli.train`` (frozen-bank loop or paper DDP)."""
+    from vntpa.cli.train import main as train_main
 
-    TensorBoard and lifecycle options are consumed here; every remaining
-    argument is passed through to ``torchrun -m thirdparty.pan.planner.train``.
-    """
-    if args.tensorboard_dir:
-        args.trailing.extend(["--tensorboard-dir", args.tensorboard_dir])
-    start_hooks = []
-    end_hooks = []
-    if args.log:
-        start_hooks.append(build_jsonl_start_hook(args.log))
-        end_hooks.append(build_jsonl_end_hook(args.log))
-    if args.checkpoint_out:
-        end_hooks.append(
-            build_checkpoint_hook(args.checkpoint_in, args.checkpoint_out, args.manifest)
-        )
-    return VNT.train(
-        args.trailing,
-        nproc=args.nproc,
-        start_hooks=start_hooks,
-        end_hooks=end_hooks,
-    )
+    forwarded: list[str] = []
+    for name in (
+        "nproc",
+        "log",
+        "checkpoint_in",
+        "checkpoint_out",
+        "manifest",
+        "tensorboard_dir",
+    ):
+        value = getattr(args, name, None)
+        if value is None:
+            continue
+        forwarded.extend([f"--{name.replace('_', '-')}", str(value)])
+    forwarded.extend(getattr(args, "trailing", []) or [])
+    return train_main(forwarded)
 
 
 def validate(args: argparse.Namespace) -> int:
@@ -186,7 +183,16 @@ def models(args: argparse.Namespace) -> int:
 
 
 def dataset(args: argparse.Namespace) -> int:
-    """Validate HDF5 token stores and return non-zero on errors."""
+    """Validate HDF5 token stores, or analyze corpus statistics."""
+    if getattr(args, "analyze", False):
+        report = analyze(
+            args.root,
+            getattr(args, "bank", "") or "",
+            tensorboard_dir=getattr(args, "tensorboard_dir", None) or None,
+            out=getattr(args, "out", None) or None,
+        )
+        emit(asdict(report))
+        return 1 if report.errors and report.n_tours == 0 else 0
     report = validate_root(args.root)
     emit({"files": report.files, "errors": report.errors})
     return 0 if report.ok else 1
@@ -237,6 +243,7 @@ def info(args: argparse.Namespace) -> int:
                 "autosim",
                 "benchmark",
                 "dataset",
+                "analyze",
                 "models",
                 "info",
             ],
@@ -319,9 +326,38 @@ def add_models_parser(sub: Any) -> None:
 
 def add_dataset_parser(sub: Any) -> None:
     """Add the token-store validation command."""
-    parser = sub.add_parser("dataset", help="validate offline token stores")
+    parser = sub.add_parser("dataset", help="validate or analyze offline token stores")
     parser.add_argument("--root", required=True)
+    parser.add_argument("--analyze", action="store_true", help="write coverage/path/action stats")
+    parser.add_argument("--bank", default="", help="optional frozen bank npz")
+    parser.add_argument("--tensorboard-dir", default="")
+    parser.add_argument("--out", default="", help="JSON report path")
     parser.set_defaults(func=dataset)
+
+
+def add_analyze_parser(sub: Any) -> None:
+    """Add the corpus statistics command."""
+    parser = sub.add_parser("analyze", help="summarize tokens/banks to TensorBoard")
+    parser.add_argument("--tokens", default="")
+    parser.add_argument("--bank", default="")
+    parser.add_argument("--tensorboard-dir", default="")
+    parser.add_argument("--out", default="")
+    parser.set_defaults(func=_analyze)
+
+
+def _analyze(args: argparse.Namespace) -> int:
+    from vntpa.cli.analyze import main as analyze_main
+
+    forwarded: list[str] = []
+    if args.tokens:
+        forwarded.extend(["--tokens", args.tokens])
+    if args.bank:
+        forwarded.extend(["--bank", args.bank])
+    if args.tensorboard_dir:
+        forwarded.extend(["--tensorboard-dir", args.tensorboard_dir])
+    if args.out:
+        forwarded.extend(["--out", args.out])
+    return analyze_main(forwarded)
 
 
 def add_info_parser(sub: Any) -> None:
@@ -345,6 +381,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_benchmark_parser(sub)
     add_models_parser(sub)
     add_dataset_parser(sub)
+    add_analyze_parser(sub)
     add_info_parser(sub)
     return parser
 

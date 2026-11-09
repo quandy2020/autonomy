@@ -1,111 +1,88 @@
 # 07 · 构建与测试
 
-## 1. 依赖
+## 1. 当前构建环境
 
-- CMake ≥ 3.22
-- C++17
-- Protobuf ≥ 3.15（CONFIG）
-- automsgs（proto 生成/库）
-- Threads
-- BehaviorTree.CPP 4.x（behavior nodes）
-- Eigen3、glog（autonomy/common math/logging 头）
-- 可选：autolink（Component，Linux）
-- 可选：autonomy::common + ONNX Runtime / TensorRT（Engine）
+navigation 是 autonomy umbrella 工程的子模块，使用根工程提供的 autocmake、
+automsgs、autolink 与 autonomy_common。不能把 navigation 目录当作独立 CMake 工程。
 
-## 2. CMake 组织
+本轮验证环境为 Linux `SpaceHero` 容器，workspace 为 `/workspace/autonomy`，
+源码根目录为 `/workspace/autonomy/src/autonomy`。依赖包括 CMake ≥ 3.22、C++20、
+工程固定的 Protobuf 3.19.4、Threads、Eigen3、glog、OpenSSL Crypto 和 BehaviorTree.CPP 4.x。
+autolink 组件依赖 Linux；macOS 上的源码检查不能替代组件运行验证。
 
-navigation 是 autonomy 的子模块，`CMakeLists.txt` 只保留 134 行，根工程提供
-`autocmake_project()`、基础依赖和安装框架；navigation 自己使用：
-
-- `autocmake_find(behaviortree_cpp)`；
-- `autocmake_library()`：导航库、proto、组件；
-- `autocmake_binary()`：`navigation_goal_sender`；
-- `autocmake_install_share()`：conf / dag / launch。
-
-- `autocmake_library(navigation ...)`：一个导航库 + 兼容别名
-- `autocmake_library(navigation_proto ...)`：生成的 proto
-- autolink 组件与 goal sender
-- 测试、安装
-
-源码和测试都用 `file(GLOB_RECURSE ... CONFIGURE_DEPENDS)` 收集；新增 `.cpp`
-不需要改 `CMakeLists.txt`，测试文件自动注册为 CTest。
-
-## 3. 开发构建（macOS/Linux）
+## 2. colcon 构建与导航测试
 
 ```sh
-cmake -S /path/to/autonomy -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Debug \
-  -DAUTONOMY_BUILD_NAVIGATION=ON \
-  -DBUILD_TEST=ON
-
-cmake --build build --target navigation
-ctest --test-dir build --output-on-failure
+cd /workspace/autonomy
+colcon build --packages-up-to autonomy \
+  --cmake-args -DNAVIGATION_BUILD_TESTS=ON
+ctest --test-dir build/autonomy/autonomy/navigation \
+  --output-on-failure --no-tests=error -j 8
 ```
 
-- automsgs/autolink 由根工程内嵌，不需要单独构建目录。
-- proto import 名 `automsgs/msgs/...` 由 navigation CMake 建符号链接。
+`NAVIGATION_BUILD_TESTS=ON` 独立开启导航测试，不要求开启其他模块的 `BUILD_TEST`。
+新增 `*_test.cpp` 会自动注册；配置校验和组件集成测试由 CMake 显式注册。
 
-## 4. Linux + autolink + Engine
+也可从 navigation 目录执行：
 
 ```sh
-tools/build_linux.sh /path/to/automsgs/build build-linux
+tools/build_linux.sh /workspace/autonomy 8
 ```
 
-或：
+脚本默认从自己的位置推导 colcon workspace，第二个参数为 CTest 并发数。
+构建会执行 colcon 的安装步骤。当前测试结果与环境证据见
+[16-linux-validation.md](16-linux-validation.md)。
+
+## 3. ONNX Runtime 后端
+
+DeFM C++ 验证需要真正编入推理后端。仅 `BUILD_ONNXRUNTIME=ON` 不足以保证后端可用，
+还需 CMake 找到 C++ SDK。本轮使用 CPU SDK 1.23.2：
 
 ```sh
-cmake -S . -B build -G Ninja \
-  -DAUTONOMY_BUILD_NAVIGATION=ON
-cmake --build build --target navigation
-ctest --test-dir build --output-on-failure
+cd /workspace/autonomy
+colcon build --packages-up-to autonomy --cmake-args \
+  -DNAVIGATION_BUILD_TESTS=ON -DBUILD_ONNXRUNTIME=ON \
+  -DOnnxRuntime_ROOT=/workspace/autonomy/.deps/onnxruntime-linux-x64-1.23.2
 ```
 
-部署入口需在 `Runner::Create` 前注册：
+检查 `build/autonomy/CMakeCache.txt` 中的 `OnnxRuntime_INCLUDE_DIR` 与
+`OnnxRuntime_LIBRARY`，并运行模型验证工具确认。部署机器仍需提供相应共享库；
+本轮未制作包含全部依赖的独立发布包。
 
-```cpp
-navigation::planning::RegisterEnginePlugins();
-```
-
-仿真默认使用 `RegisterSimulationPlugins()`，不需要 Engine。
-
-## 5. 安装
+## 4. 配置与组件联调
 
 ```sh
-cmake --install build --prefix /opt/navigation
+build/autonomy/bin/navigation_configuration_validator \
+  src/autonomy/autonomy/navigation/conf
+ctest --test-dir build/autonomy/autonomy/navigation \
+  -R '^component_integration$' --output-on-failure
 ```
 
-安装头文件、库、`conf/`、`dag/`、`launch/`、`behavior/trees/`。
+集成测试解析 navigation/safety/guardian 三个 DAG，实例化五个具体组件。
+测试使用合成传感器和差速积分模型，在独立 IPC/挂载命名空间及独立 `/dev/shm`、`/tmp` 中
+启用 Autolink `MODE_REALITY` 的真实定时器与传输。包装脚本需要 Linux `unshare`、
+`mount` 及创建命名空间的权限；隔离失败会直接报错退出。
+它验证组件输入输出、Action、断流和心跳，不覆盖 mainboard 动态加载、独立进程通信、
+真实 autosim 碰撞或独立进程 kill。完整仿真流程见 [05-simulation.md](05-simulation.md)。
+
+`NavigationComponent` 当前注册并使用仿真插件。真实 VNTPA 部署还需权重和
+`RegisterEnginePlugins()` 入口接入，不能仅修改 policy 名称就视为部署成功。
+
+## 5. 安装与开发工具
+
+colcon 安装位置为 `install/autonomy`，包含组件库和 navigation 的 conf、dag、launch、
+behavior trees、docs。模型放在 `conf/models` 后随配置目录安装。
+`navigation_benchmark`、`navigation_configuration_validator`、
+`navigation_component_integration`、`navigation_defm_validator` 使用开发构建目录中的二进制。
+
+```sh
+build/autonomy/bin/navigation_benchmark
+```
+
+模型导出与数值验证命令见 [06-models.md](06-models.md)。
 
 ## 6. Sanitizer
 
-```sh
-cmake -S . -B build-asan -G Ninja -DNAVIGATION_SANITIZER=address ...
-cmake --build build-asan
-ASAN_OPTIONS=detect_leaks=0 ctest --test-dir build-asan
-```
-
-## 7. Benchmark
-
-```sh
-./build/navigation_benchmark
-```
-
-输出 VoxelGrid / KeyframeFilter / CBF / ChunkBlender P50/P99。
-
-## 8. 配置校验
-
-```sh
-./build/navigation_configuration_validator conf
-```
-
-## 9. 模型
-
-DeFM：
-
-```sh
-python tools/export_defm_onnx.py \
-  --checkpoint conf/models/defm_vit_s14.pth \
-  --defm-source /path/to/VNT-PA/third_party/defm
-```
-
-详见 [06-models.md](06-models.md)。
+本轮未运行 ASan/TSan，不将旧环境记录计入当前验收。
+`NAVIGATION_SANITIZER` 不是当前 CMake 提供的选项。后续需在独立构建目录设置编译和
+链接 sanitizer flags，并验证所有相关共享库，避免污染正常构建缓存。

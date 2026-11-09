@@ -22,6 +22,21 @@ from typing import Any, Mapping
 CHASE_UUID = "chase_rgb"
 
 
+def chase_body_mount(
+    cfg: Mapping[str, Any],
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """ROS ``base_link`` mount for the Habitat chase camera.
+
+    Habitat agent is Y-up / −Z forward, so the sensor lives at
+    ``(0, height, distance)``. REP-103 ``base_link`` is Z-up / +X forward:
+    the same camera is ``(−distance, 0, height)`` pitched about +Y.
+    """
+    distance_m = float(cfg.get("distance_m", 1.0))
+    height_m = float(cfg.get("height_m", 0.85))
+    pitch = math.radians(float(cfg.get("pitch_deg", -25.0)))
+    return (-distance_m, 0.0, height_m), (0.0, pitch, 0.0)
+
+
 def chase_spec(sensors: Mapping[str, Any] | None) -> dict[str, Any] | None:
     """Parse ``habitat.sensors.chase``; return None when disabled.
 

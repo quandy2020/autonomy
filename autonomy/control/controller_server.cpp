@@ -589,10 +589,6 @@ void ControllerServer::PublishZeroVelocity() {
     automsgs::msgs::geometry_msgs::TwistStamped zero;
     *zero.mutable_header()->mutable_stamp() = NowTime();
     zero.mutable_header()->set_frame_id( robot_base_frame_);
-    if (options_.publish_navigation_candidate()) {
-        zero.mutable_twist()->mutable_linear();
-        zero.mutable_twist()->mutable_angular();
-    }
     PublishVelocity(zero);
 }
 
@@ -676,8 +672,6 @@ void ControllerServer::ComputeAndPublishVelocity() {
     automsgs::msgs::geometry_msgs::TwistStamped cmd_vel;
     std::string message;
     uint32_t code = proto::CONTROLLER_RESULT_SUCCESS;
-    const auto candidate_stamp =
-        options_.publish_navigation_candidate() ? NowTime() : Time{};
 
     // PolicyController locks costmap internally for crop/collision and may
     // spend tens of ms in inference — avoid holding the map mutex across Run.
@@ -731,10 +725,6 @@ void ControllerServer::ComputeAndPublishVelocity() {
     }
 
     last_valid_cmd_time_ = NowTime();
-    if (options_.publish_navigation_candidate()) {
-        cmd_vel.mutable_header()->set_frame_id(robot_base_frame_);
-        *cmd_vel.mutable_header()->mutable_stamp() = candidate_stamp;
-    }
     if (cmd_vel.header().frame_id().empty()) {
         cmd_vel.mutable_header()->set_frame_id(robot_base_frame_);
     }

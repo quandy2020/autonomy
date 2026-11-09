@@ -4,8 +4,7 @@
 
 #include "navigation/common/twist2d_convert.hpp"
 
-int main()
-{
+int main() {
     using namespace navigation::common;  // NOLINT
 
     automsgs::msgs::geometry_msgs::Twist proto;
@@ -14,19 +13,17 @@ int main()
     proto.mutable_angular()->set_z(0.4);
 
     const Twist2D twist = FromProto(proto);
-    if (std::abs(twist.x() - 0.5) > 1e-12 ||
-        std::abs(twist.y() + 0.1) > 1e-12 ||
-        std::abs(twist.theta() - 0.4) > 1e-12)
-    {
+    // The planar alias stores float values, including after a round trip.
+    if (std::abs(twist.x() - 0.5) > 1e-6 || std::abs(twist.y() + 0.1) > 1e-6 ||
+        std::abs(twist.theta() - 0.4) > 1e-6) {
         std::cerr << "from proto failed\n";
         return 1;
     }
 
     automsgs::msgs::geometry_msgs::Twist round_trip;
     ToProto(twist, &round_trip);
-    if (std::abs(round_trip.linear().x() - 0.5) > 1e-12 ||
-        std::abs(round_trip.angular().z() - 0.4) > 1e-12)
-    {
+    if (std::abs(round_trip.linear().x() - 0.5) > 1e-6 ||
+        std::abs(round_trip.angular().z() - 0.4) > 1e-6) {
         std::cerr << "round trip failed\n";
         return 1;
     }

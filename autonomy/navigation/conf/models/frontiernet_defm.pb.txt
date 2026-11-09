@@ -1,0 +1,24 @@
+# FrontierNet DeFM encoder, exported by python/frontiernet/export_onnx.py
+name: "frontiernet_defm.pb"
+path: "conf/models/frontiernet_defm.onnx"
+sha256: "9f298a9f31f1b4b4829acf8ef933a0b382fe60082b746ff9ebd697c154821a84"
+opset: "17"
+backend: "onnx"
+precision: "fp32"
+inputs {
+  name: "depth"
+  shape: [1, 3, 224, 224]
+  dtype: "float32"
+}
+outputs {
+  name: "df"
+  shape: [1, 1, 224, 224]
+  dtype: "float32"
+}
+outputs {
+  name: "masks"
+  shape: [1, 11, 224, 224]
+  dtype: "float32"
+}
+mean: [0.248880, 0.495620, 0.492858]
+std: [0.139357, 0.271314, 0.297177]

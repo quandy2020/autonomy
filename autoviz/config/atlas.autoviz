@@ -191,10 +191,14 @@ Toolbar:
   - Select
   - FocusCamera
   - Measure
+  - NavGoal
 Tools:
   - Id: Interact
     Properties:
       client_id: autoviz
+  - Id: NavGoal
+    Properties:
+      topic: /goal_pose
 Views: ~
 Window:
   Height: 900

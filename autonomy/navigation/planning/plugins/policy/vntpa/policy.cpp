@@ -81,7 +81,8 @@ common::StatusOr<NavigationIntent> Policy::Query(
     }
 
     ModelInputs inputs;
-    if (!preprocessor_->Build(current_pose, goal, context, &inputs))
+    if (!preprocessor_->Build(current_pose, goal, context, &inputs, &depth_feature,
+                              !options_.disable_live_view()))
     {
         return common::Status::InvalidArgument("VNTPA preprocessor failed");
     }

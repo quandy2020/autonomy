@@ -139,12 +139,18 @@ echo $NAVIGATION_CONF_DIR
 
 ### 2.7 `behavior`
 
-| 字段 | 含义 | 消费方 |
-| --- | --- | --- |
-| `enabled` | 行为开关 | ⛔ 当前 BehaviorComponent 只发心跳 |
-| `tree` | BT XML | ⛔ 未加载 |
-| `tick_rate_hz` | tick 频率 | ⛔ |
-| `max_recovery_attempts` | 恢复次数 | ⛔ |
+`enabled` 启用默认 XML 与 Runner 无进度恢复；心跳仍由 BehaviorComponent 发布。
+`tree` 默认为 `navigate_with_recovery.xml`，相对文件名从
+`NAVIGATION_CONF_DIR/behavior/trees/` 解析，也可给绝对路径。
+`tick_rate_hz` 为树最大频率（默认配置 10 Hz），受组件 Timer 周期限制。
+`max_recovery_attempts` 默认配置 3，按当前目标已接受的恢复次数限制，重启
+Behavior 不重置预算。
+
+`no_progress_timeout_s` 未指定/非正时用 8 s，正常 pose 导航与恢复阶段均使用；
+`recovery_lateral_distance_m`、`recovery_forward_distance_m` 未指定/非正时各 2 m；
+`recovery_phase_timeout_s` 未指定/非正时用 25 s。
+Runner 以实测位置/朝向推进动作，命令经过 Safety，有限尝试耗尽后 Action 失败。
+真实差速场景结果与更多场景限制见 [19](19-behavior-recovery-validation.md)。
 
 ### 2.8 `limits`
 
@@ -335,8 +341,16 @@ initial_goal { type: TYPE_EXPLORATION }
 policy { name: "simulation" }
 ```
 
-探索前沿半径当前由代码固定（6 m），不在配置中；修改需改
-`simulation/policy.cpp`。
+`policy.exploration` 的零值使用默认：`clearance_m=0.4`、`max_range_m=6`、
+`no_progress_timeout_s=8`、`target_timeout_s=45`、`max_history_entries=64`、
+`history_ttl_s=120`。容量硬上限 1024，`log_transitions` 输出目标选择/扫描/放弃日志。
+Runner 将地图净空限制为至少 `platform.footprint_radius + 0.1 m`，不能用此配置缩小机器人。
+地图最多 1,000,000 格；细栅格所需膨胀半径超过 128 格时不规划。
+
+地图优先于 FrontierNet；无地图才使用模型候选。无 frontier 时先按 odom 累计扫描，
+有地图则等待地图更新，无地图且中心深度 ≥1 m 才缓慢前进。
+地图帧和策略输入pose必须对齐；当前组件可按直接map→odom将odom合成到map。
+该基础路径不等于完整TF缓存查询，时效性及真实SLAM漂移/重定位尚待验收。
 
 ### 8.4 切换到 VNTPA
 
@@ -376,3 +390,6 @@ policy {
 - platform `camera_*`（已解析，算法未用）
 
 这些是 TODO，不是“可调参数”；见 [13-todo.md](13-todo.md)。
+
+地图frontier的实现边界、真实深度栅格输入、600 s探索阶段与最终合并回归证据见
+[20-exploration-validation.md](20-exploration-validation.md)。

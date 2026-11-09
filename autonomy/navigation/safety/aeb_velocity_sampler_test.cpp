@@ -61,5 +61,17 @@ int main()
         std::cerr << "blocked sample should be empty\n";
         return 1;
     }
+    if (filter.IsSafe(navigation::common::MakeTwist2D(0, 0, .5), Obstacle(0.1)) ||
+        filter.IsSafe(navigation::common::MakeTwist2D(0, 0, 0), Obstacle(0))) {
+        std::cerr << "deep overlap or origin obstacle reported safe\n";
+        return 1;
+    }
+    // Contact recovery remains possible when retreat satisfies the barrier.
+    if (!filter.IsSafe(navigation::common::MakeTwist2D(-.3, 0, 0), Obstacle(.35))) return 1;
+    if (filter.Project(navigation::common::MakeTwist2D(0, 0, .5), Obstacle(.35)).has_value() ||
+        !filter.Project(navigation::common::MakeTwist2D(-.3, 0, 0), Obstacle(.35)).has_value()) {
+        std::cerr << "overlap projected blind reverse or rejected explicit retreat\n";
+        return 1;
+    }
     return 0;
 }

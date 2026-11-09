@@ -10,8 +10,11 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "autolink/component/component.hpp"
+#include "automsgs/msgs/geometry_msgs/transform_stamped.pb.h"
+#include "automsgs/msgs/tf2_msgs/tf_message.pb.h"
 #include "autonomy/common/macros.hpp"
 #include "navigation/perception/observation_builder.hpp"
 
@@ -63,6 +66,11 @@ private:
     /** @brief Occupancy grid reader. */
     std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::OccupancyGrid>>
         map_reader_{nullptr};
+    /** @brief Dynamic TF reader (``map → odom``). */
+    std::shared_ptr<autolink::Reader<automsgs::msgs::tf2_msgs::TFMessage>>
+        tf_reader_{nullptr};
+    /** @brief Last ``map → odom`` transform from ``/tf``. */
+    std::optional<automsgs::msgs::geometry_msgs::TransformStamped> map_to_odom_;
     /** @brief /navigation/observation writer. */
     std::shared_ptr<autolink::Writer<observation::Observation>>
         observation_writer_{nullptr};

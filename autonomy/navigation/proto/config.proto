@@ -56,6 +56,33 @@ message ScenarioOptions
     reserved 100 to 199;
 }
 
+message FrontierNetOptions
+{
+    bool enabled = 1;
+    string manifest_path = 2;
+    double df_normalizer = 3;
+    double df_threshold = 4;
+    double max_range = 5;
+    double min_gain = 6;
+    uint32 min_cluster_pixels = 7;
+    double target_distance = 8;
+    uint32 inference_period_ms = 9;
+    bool log_frontiers = 10;
+    reserved 100 to 199;
+}
+
+// Local exploration controller options. Zero selects the documented default.
+message ExplorationOptions
+{
+    double clearance_m = 1; // 0.4 m; Runner enforces >= platform radius + 0.1 m.
+    double max_range_m = 2; // 6 m.
+    double no_progress_timeout_s = 3; // 8 s, steady clock.
+    double target_timeout_s = 4; // 45 s absolute target budget.
+    uint32 max_history_entries = 5; // 64, hard upper bound 1024.
+    double history_ttl_s = 6; // 120 s.
+    bool log_transitions = 7;
+}
+
 message PolicyOptions
 {
     string name = 1;
@@ -65,6 +92,9 @@ message PolicyOptions
         navigation.plugins.VintPolicyOptions vint = 3;
         navigation.plugins.NomadPolicyOptions nomad = 4;
     }
+    // Depth-only frontier source used by the exploration goal.
+    FrontierNetOptions frontiernet = 20;
+    ExplorationOptions exploration = 21;
     reserved 100 to 199;
 }
 
@@ -103,6 +133,10 @@ message BehaviorOptions
     string tree = 2;
     double tick_rate_hz = 3;
     uint32 max_recovery_attempts = 4;
+    double no_progress_timeout_s = 5; // Default: 8 seconds.
+    double recovery_lateral_distance_m = 6; // Default: 2 metres.
+    double recovery_forward_distance_m = 7; // Default: 2 metres.
+    double recovery_phase_timeout_s = 8; // Default: 25 seconds.
     reserved 100 to 199;
 }
 

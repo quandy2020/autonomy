@@ -28,13 +28,15 @@ import subprocess
 import sys
 from typing import Sequence
 
-COLLECTION_TASKS = ("explore", "tokens", "bank")
+COLLECTION_TASKS = ("explore", "tokens", "bank", "synthetic")
 
 
 def command(task: str, arguments: Sequence[str]) -> list[str]:
     """Return the module command for one collection stage."""
     if task not in COLLECTION_TASKS:
         raise ValueError(f"unknown collection task: {task}")
+    if task == "synthetic":
+        return [sys.executable, "-m", "vntpa.data.synthetic", *arguments]
     return [sys.executable, "-m", f"thirdparty.pan.collection.{task}", *arguments]
 
 
@@ -49,10 +51,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "trailing", nargs=argparse.REMAINDER, help="flags forwarded to the selected stage"
     )
     args, unknown = parser.parse_known_args(argv)
-    return subprocess.run(
-        command(args.task, unknown + args.trailing),
-        check=False,
-    ).returncode
+    trailing = unknown + args.trailing
+    if trailing and trailing[0] == "--":
+        trailing = trailing[1:]
+    return subprocess.run(command(args.task, trailing), check=False).returncode
 
 
 if __name__ == "__main__":

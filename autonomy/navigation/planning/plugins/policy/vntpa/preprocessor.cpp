@@ -1,17 +1,5 @@
 /*
  * Copyright 2026 The Navigation Authors (navigation)
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
  */
 
 #include "navigation/planning/plugins/policy/vntpa/preprocessor.hpp"
@@ -30,7 +18,9 @@ Preprocessor::Preprocessor(std::uint32_t context_size, std::uint32_t embedding_d
 }
 
 bool Preprocessor::Build(const common::Pose2D& current_pose, const GoalSpec& goal,
-                         const memory::ContextView& context, ModelInputs* inputs)
+                         const memory::ContextView& context, ModelInputs* inputs,
+                         const observation::DepthFeature* live_feature,
+                         bool include_live_view)
 {
     if (inputs == nullptr)
     {
@@ -44,7 +34,22 @@ bool Preprocessor::Build(const common::Pose2D& current_pose, const GoalSpec& goa
         return false;
     }
     ContextTensors tensors;
-    if (!context_builder_.Build(context, current_pose, &tensors))
+    const std::vector<float>* live_tokens = nullptr;
+    std::vector<float> live_buffer;
+    std::uint32_t live_count = 0;
+    std::uint32_t live_dim = 0;
+    if (include_live_view && live_feature != nullptr && live_feature->token_count() > 0 &&
+        live_feature->token_dim() > 0 &&
+        static_cast<std::size_t>(live_feature->tokens_size()) >=
+            live_feature->token_count() * live_feature->token_dim())
+    {
+        live_buffer.assign(live_feature->tokens().begin(), live_feature->tokens().end());
+        live_tokens = &live_buffer;
+        live_count = live_feature->token_count();
+        live_dim = live_feature->token_dim();
+    }
+    if (!context_builder_.Build(context, current_pose, &tensors, live_tokens, live_count,
+                                live_dim))
     {
         return false;
     }

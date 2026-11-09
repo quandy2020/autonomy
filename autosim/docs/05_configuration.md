@@ -14,9 +14,12 @@
 | 文件 | 用途 |
 |------|------|
 | `default.yaml` | Habitat 主配置 |
+| `atlas.yaml` | Habitat Atlas 验证：RGB-D + IMU + chase + GT `/overall/map` |
+| `habitat_people.yaml` | Habitat + CPU 行人 / SMPL-X |
 | `fake.yaml` | 无引擎联调 |
 | `isaac.yaml` | Isaac + USD |
-| `slam.yaml` | `mode: slam`，GT 地图不发 |
+| `isaac_nav.yaml` | Isaac 导航 / SLAM 传感 |
+| `slam.yaml` | `mode: slam`，默认不发 GT OccupancyGrid |
 | `lio.yaml` / `lightning.yaml` | 开 3D 点云 + IMU，LIO 验证 |
 | `bev.yaml` | BEV 相关实验配置 |
 
@@ -33,7 +36,7 @@ habitat:
   path: usd/worlds/...    # 场景路径（相对 autosim/ 或绝对）
   spawn: [x, y, yaw]
   robot: { ... }
-  sensors: { lidar_2d, lidar_3d, camera, imu, odom }
+  sensors: { lidar_2d, lidar_3d, camera, topdown, chase, imu, odom }
   map: { enabled, publish, ply, grid }
   scenario: { enabled, ... }   # Fake / Habitat 过程场景
   isaac: { headless, physics } # 仅 Isaac
@@ -58,10 +61,15 @@ habitat:
 | `sensors.*.rate_hz` | 发布频率门控 |
 | `sensors.*.noise` | 高斯 σ；odom 为积分噪声 |
 | `map.enabled` | 是否构建真值地图 |
-| `map.publish` | 是否发布（slam 下强制 false） |
+| `map.publish` | 是否发布；`slam` 下仍可发 `/overall/map`，但 OccupancyGrid `/map` 与 `map→odom` 关闭 |
 | `map.grid.resolution` | OccupancyGrid 分辨率 |
+| `map.grid.z_min` / `z_max` | 高度带；加载 PLY 时也过滤 `/overall/map` |
 | `map.ply.channel` | 点云通道，如 `/overall/map` |
-| `map.ply.stride` | 发布端降采样步长 |
+| `map.ply.source` | 可选外部 PLY（MP3D `*_semantic.ply`）；优先于环视 ray-cast |
+| `map.ply.stride` | 发布端降采样步长（大 PLY 需 ≥5 以免超过 Autolink SHM 32 MiB） |
+| `sensors.topdown.*` | 全局正交俯视 RGB；见 [08](08_map_and_viz.md) |
+| `sensors.chase.*` | 第三人称跟随 RGB；开启后自动 instance URDF（仅 chase 帧可见） |
+| `robot.instance` | 强制在 Habitat 场景挂 URDF AO（默认 false；chase 会自动打开） |
 | `dataset.enabled` | 是否录制 LeRobot 数据集 |
 | `dataset.root` | 输出目录（含 `meta/` `data/` `videos/`） |
 | `dataset.fps` | 录制频率（可低于 `control_hz`） |

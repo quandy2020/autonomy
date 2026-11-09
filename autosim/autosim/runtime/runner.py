@@ -46,7 +46,7 @@ from autosim.bridge.clock import Clock
 from autosim.bridge.messages import Messages
 from autosim.bridge.sensors import Sensors
 from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
-from autosim.bridge.chase import chase_spec
+from autosim.bridge.chase import chase_body_mount, chase_spec
 from autosim.bridge.topdown import topdown_spec
 from autosim.dataset import DatasetCollector
 from autosim.robot import Robot
@@ -1423,6 +1423,17 @@ class Runner:
         if not self.odom.get("enabled", True):
             return
         ox, oy, oyaw = self.robot.update_odometry(x, y, yaw)
+        if not Messages.planar_odometry_finite(ox, oy, oyaw, linear, angular):
+            logger.warning(
+                "skipping /odom publish: non-finite pose/twist "
+                "(x=%r y=%r yaw=%r linear=%r angular=%r)",
+                ox,
+                oy,
+                oyaw,
+                linear,
+                angular,
+            )
+            return
         variance = float(self.odom.get("noise", 0.0)) ** 2
         self.bridge.publish(
             "odom",
@@ -1790,6 +1801,9 @@ class Runner:
         if publish_map_odom:
             dynamic.insert(0, map_odom)
         # map→odom is dynamic (tracks odom drift); never latch it on /tf_static.
+        # tf2/Atlas: stamp 0 marks a timeless static edge. Non-zero sim stamps
+        # age out (>100 ms) and Atlas skips map→odom as "invalid or stale TF".
+        static_stamp = (0, 0)
         mounts = []
         urdf = getattr(self.simulator, "urdf", None) if self.simulator is not None else None
         if urdf is None:
@@ -1799,7 +1813,7 @@ class Runner:
             frame = str(self.camera.get("frame") or "camera_link")
             mounts.append(
                 Messages.encode_transform(
-                    stamp, body_frame, frame, (0.0, 0.0, eye), 0.0
+                    static_stamp, body_frame, frame, (0.0, 0.0, eye), 0.0
                 )
             )
         elif urdf is not None:
@@ -1812,7 +1826,7 @@ class Runner:
                 )
                 mounts.append(
                     Messages.encode_transform(
-                        stamp,
+                        static_stamp,
                         parent,
                         child,
                         xyz,
@@ -1826,13 +1840,13 @@ class Runner:
                     eye = float(self.camera.get("sensor_height", 0.6))
                     mounts.append(
                         Messages.encode_transform(
-                            stamp, body_frame, cam_frame, (0.0, 0.0, eye), 0.0
+                            static_stamp, body_frame, cam_frame, (0.0, 0.0, eye), 0.0
                         )
                     )
         else:
             mounts.append(
                 Messages.encode_transform(
-                    stamp,
+                    static_stamp,
                     body_frame,
                     self.lidar_2d.get("frame", "laser_link"),
                     (0.0, 0.0, 0.2),
@@ -1844,7 +1858,7 @@ class Runner:
                 continue
             mounts.append(
                 Messages.encode_transform(
-                    stamp,
+                    static_stamp,
                     body_frame,
                     camera.frame,
                     (camera.x, camera.y, camera.z),
@@ -1857,7 +1871,7 @@ class Runner:
                 # ROS z-up: camera above base; pitch −π/2 looks at the floor.
                 mounts.append(
                     Messages.encode_transform(
-                        stamp,
+                        static_stamp,
                         body_frame,
                         td_frame,
                         (0.0, 0.0, float(self.topdown["height_m"])),
@@ -1867,19 +1881,13 @@ class Runner:
         if self.chase is not None:
             chase_frame = str(self.chase.get("frame") or "chase_link")
             if chase_frame not in urdf_links:
-                # ROS z-up: behind (−X) and above (+Z), pitched down toward robot.
-                pitch = math.radians(float(self.chase.get("pitch_deg", -25.0)))
-                mounts.append(
+                xyz, rpy = chase_body_mount(self.chase)
+                # Same stamp as odom→base so Autoviz lookup(map, chase_link)
+                # rides the chassis. Stamp-0 static was composed in the fixed
+                # frame when the parent chain dropped, so the axes flew.
+                dynamic.append(
                     Messages.encode_transform(
-                        stamp,
-                        body_frame,
-                        chase_frame,
-                        (
-                            -float(self.chase["distance_m"]),
-                            0.0,
-                            float(self.chase["height_m"]),
-                        ),
-                        rpy=(0.0, pitch, 0.0),
+                        stamp, body_frame, chase_frame, xyz, rpy=rpy
                     )
                 )
         # Dynamic and fixed edges must never have duplicate publishers. Static
@@ -1912,6 +1920,15 @@ class Runner:
         if not self.robot_cfg["truth"]["enabled"]:
             return
         tx, ty, tyaw = self.robot.ground_truth()
+        if not Messages.planar_odometry_finite(tx, ty, tyaw):
+            logger.warning(
+                "skipping ground-truth publish: non-finite pose "
+                "(x=%r y=%r yaw=%r)",
+                tx,
+                ty,
+                tyaw,
+            )
+            return
         self.bridge.publish(
             "gt_pose",
             Messages.encode_pose_stamped(tx, ty, tyaw, stamp, self.robot_cfg["map_frame"]),
@@ -1919,6 +1936,14 @@ class Runner:
         if "gt_odom" not in self.bridge.writers:
             return
         linear, angular = self.robot.velocity()
+        if not Messages.planar_odometry_finite(tx, ty, tyaw, linear, angular):
+            logger.warning(
+                "skipping /gt/odometry publish: non-finite twist "
+                "(linear=%r angular=%r)",
+                linear,
+                angular,
+            )
+            return
         ground_truth_odometry = Messages.encode_odometry(
             tx,
             ty,

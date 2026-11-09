@@ -36,7 +36,7 @@ namespace vntpa
 class QueryBuilder
 {
 public:
-    /** @brief Build query pose (x, y, yaw) and goal (x, y). */
+    /** @brief Build Habitat query pose (x, z, yaw) and goal (x, z). */
     bool Build(const common::Pose2D& current_pose, const GoalSpec& goal,
                std::vector<float>* query_pose, std::vector<float>* goal_xy,
                bool* has_goal) const;

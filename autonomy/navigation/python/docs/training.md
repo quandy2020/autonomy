@@ -72,19 +72,50 @@ torchrun --nproc_per_node=1 -m thirdparty.pan.planner.train ...
 
 ## 5. TensorBoard
 
+冻结-bank 训练默认写 `logs/<run-name>/tb`（`--tensorboard-dir` 可改；空字符串关闭）。
+
+Time series 首页如果全是单点，那是 `data/` / `bank/` 的 step=0 快照。曲线在 **`train/loss`、`val/ce`**。横轴选 **Step**，左侧只勾一个 run（不要勾带时间戳的 hparams 子目录）。从 jsonl 重建曲线：
+
 ```bash
-tensorboard --logdir logs/pan/tb --port 6006
+python -m vntpa.utils.tensorboard --jsonl logs/pan-mp3d/metrics.jsonl --out logs/pan-mp3d/curves
+tensorboard --logdir logs/pan-mp3d/curves --bind_all --port 6006
 ```
 
-记录：
+```bash
+python -m vntpa.cli.train --synthetic --tiny --run-name smoke --steps 20 --device cpu
+tensorboard --logdir logs/pan-mp3d/curves --bind_all --port 6006
+```
+
+训练标量：
 
 ```text
-train/loss
-train/acc_*
+setup/n_params, setup/n_train, setup/n_val
+train/loss, train/loss_raw, train/acc0, train/lr, train/sps, train/grad_norm
+train/kf_mean, train/live_targets
+val/ce, val/acc0, val/acc_slots_*
+```
+
+语料分析（采集后、训练前）：
+
+```bash
+python -m vntpa.cli.analyze \
+  --tokens "$DATA/tokens/train" \
+  --bank "$DATA/banks/bank_train.npz" \
+  --tensorboard-dir logs/data/tb \
+  --out logs/data/report.json
+```
+
+```text
+data/n_tours, data/frames/*, data/coverage_frac/*, data/path_length_m/*
+data/hist/frames, data/hist/coverage_frac, data/tours
+bank/n_rows, bank/geo0/*, bank/action_stop..action_turn_right, bank/pad_frac
+```
+
+论文 DDP 额外：
+
+```text
 train/step_ms
 train/data_wait_ms
-val/ce
-val/acc0..acc7
 val/entry_rank
 cl/success
 cl/spl

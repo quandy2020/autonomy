@@ -7,6 +7,7 @@
 #include <QAbstractSpinBox>
 #include <QCheckBox>
 #include <QDoubleSpinBox>
+#include <QEvent>
 #include <QFocusEvent>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -30,6 +31,24 @@ namespace {
 constexpr char kDanger[] = "#E11D48";
 constexpr char kDangerHover[] = "#BE123C";
 constexpr char kDangerPress[] = "#9F1239";
+
+/** Keys used for Arcade keyboard driving (must beat window tool shortcuts). */
+bool IsArcadeDriveKey(int key) {
+  switch (key) {
+    case Qt::Key_W:
+    case Qt::Key_A:
+    case Qt::Key_S:
+    case Qt::Key_D:
+    case Qt::Key_Up:
+    case Qt::Key_Down:
+    case Qt::Key_Left:
+    case Qt::Key_Right:
+    case Qt::Key_Space:
+      return true;
+    default:
+      return false;
+  }
+}
 
 /** Refined instrument readout — quiet chrome, crisp value hierarchy. */
 QWidget* MakeSpeedChip(const QString& title, const QString& tip,
@@ -225,6 +244,9 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   arcade_layout->setSpacing(0);
   arcade_joystick_ = new TeleopJoystickWidget(tr("OK"), arcade_frame_);
   arcade_joystick_->setAxes(TeleopStickAxes::kOmni);
+  // Keep focus on this widget so WASD reaches keyPressEvent (Select tool uses
+  // WindowShortcut `s` and would otherwise steal Key_S).
+  arcade_joystick_->setFocusPolicy(Qt::NoFocus);
   arcade_joystick_->setToolTip(tr("Drive — drag the ring · WASD / arrows"));
   arcade_layout->addWidget(arcade_joystick_, 1);
   root->addWidget(arcade_frame_, 1);
@@ -298,6 +320,9 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   });
 
   installEventFilter(this);
+  if (arcade_joystick_ != nullptr) {
+    arcade_joystick_->installEventFilter(this);
+  }
   updateSmartTeleopHint();
   applyModeUi();
 }
@@ -467,6 +492,20 @@ void TeleopControlWidget::updateArcadeFromKeyboard() {
   }
 }
 
+bool TeleopControlWidget::event(QEvent* event) {
+  // QShortcut (Select=`s`, …) is WindowShortcut; accept ShortcutOverride so the
+  // key reaches keyPressEvent instead of toggling the viewport tool.
+  if (event->type() == QEvent::ShortcutOverride &&
+      stick_mode_ == TeleopStickMode::kArcade) {
+    auto* key_event = static_cast<QKeyEvent*>(event);
+    if (IsArcadeDriveKey(key_event->key())) {
+      event->accept();
+      return true;
+    }
+  }
+  return QWidget::event(event);
+}
+
 void TeleopControlWidget::keyPressEvent(QKeyEvent* event) {
   if (stick_mode_ != TeleopStickMode::kArcade || event->isAutoRepeat()) {
     QWidget::keyPressEvent(event);
@@ -550,9 +589,33 @@ void TeleopControlWidget::focusInEvent(QFocusEvent* event) {
 }
 
 bool TeleopControlWidget::eventFilter(QObject* watched, QEvent* event) {
-  if (watched == this && event->type() == QEvent::MouseButtonPress &&
-      stick_mode_ == TeleopStickMode::kArcade) {
+  if (stick_mode_ == TeleopStickMode::kArcade &&
+      event->type() == QEvent::MouseButtonPress &&
+      (watched == this || watched == arcade_joystick_)) {
     setFocus(Qt::MouseFocusReason);
+  }
+  if (stick_mode_ == TeleopStickMode::kArcade && watched == arcade_joystick_) {
+    if (event->type() == QEvent::ShortcutOverride) {
+      auto* key_event = static_cast<QKeyEvent*>(event);
+      if (IsArcadeDriveKey(key_event->key())) {
+        event->accept();
+        return true;
+      }
+    }
+    if (event->type() == QEvent::KeyPress) {
+      auto* key_event = static_cast<QKeyEvent*>(event);
+      if (IsArcadeDriveKey(key_event->key())) {
+        keyPressEvent(key_event);
+        return true;
+      }
+    }
+    if (event->type() == QEvent::KeyRelease) {
+      auto* key_event = static_cast<QKeyEvent*>(event);
+      if (IsArcadeDriveKey(key_event->key())) {
+        keyReleaseEvent(key_event);
+        return true;
+      }
+    }
   }
   return QWidget::eventFilter(watched, event);
 }

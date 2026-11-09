@@ -24,6 +24,7 @@ from vntpa.data.dataset import ContextMemory
 from vntpa.engine.result import VNTResult
 from vntpa.models.encoder import OnnxDefmEncoder
 from vntpa.models.vntpa import OnnxPlanner
+from vntpa.models.pose import goal_to_habitat, to_habitat
 from vntpa.utils.config import DeployConfig
 
 
@@ -49,6 +50,8 @@ class Predictor:
     def predict(self, depth: np.ndarray, pose: np.ndarray, goal: np.ndarray) -> VNTResult:
         encoded = self.defm.encode(depth)
         self.step_ += 1
-        self.memory.add(encoded.tokens, pose, float(self.step_) * 0.2, encoded.pooled)
-        plan = self.planner.plan(pose, goal, self.memory)
+        habitat_pose = to_habitat(pose)
+        habitat_goal = goal_to_habitat(goal)
+        self.memory.add(encoded.tokens, habitat_pose, float(self.step_) * 0.2, encoded.pooled)
+        plan = self.planner.plan(habitat_pose, habitat_goal, self.memory)
         return VNTResult(plan.logits, plan.actions, plan.primitives, len(self.memory))

@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <memory>
 
 #include "autolink/component/timer_component.hpp"
@@ -28,12 +29,11 @@
 #include "automsgs/msgs/sensor_msgs/camera_info.pb.h"
 #include "autonomy/common/macros.hpp"
 #include "navigation/proto/lifecycle.pb.h"
+#include "navigation/safety/depth_freshness.hpp"
 #include "navigation/safety/safety_shield_implementation.hpp"
 
-namespace navigation
-{
-namespace safety
-{
+namespace navigation {
+namespace safety {
 
 class SafetyComponent final : public autolink::TimerComponent
 {
@@ -57,11 +57,17 @@ private:
 
     /** @brief Three-stage safety chain. */
     SafetyShieldImplementation shield_;
+    /** @brief Monotonic depth lease; cached images cannot renew it. */
+    DepthFreshness depth_freshness_;
+    /** @brief Receive time of the last raw command, including repeated values.
+     */
+    std::atomic<std::int64_t> command_received_ns_{0};
     /** @brief /navigation/cmd_vel_raw reader. */
     std::shared_ptr<autolink::Reader<automsgs::msgs::geometry_msgs::Twist>>
         command_reader_{nullptr};
     /** @brief /cmd_vel writer (autosim expects TwistStamped). */
-    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
+    std::shared_ptr<
+        autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
         command_writer_{nullptr};
     /** @brief Depth image reader. */
     std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::Image>>
@@ -73,7 +79,8 @@ private:
     std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::CameraInfo>>
         camera_info_reader_{nullptr};
     /** @brief /safety/heartbeat writer. */
-    std::shared_ptr<autolink::Writer<lifecycle::Heartbeat>> heartbeat_writer_{nullptr};
+    std::shared_ptr<autolink::Writer<lifecycle::Heartbeat>> heartbeat_writer_{
+        nullptr};
     /** @brief Monotonic heartbeat sequence. */
     std::uint64_t heartbeat_sequence_{0};
 };

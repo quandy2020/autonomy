@@ -16,6 +16,8 @@
 
 #include "navigation/planning/plugins/policy/vntpa/query_builder.hpp"
 
+#include "navigation/common/habitat_pose.hpp"
+
 namespace navigation
 {
 namespace planning
@@ -31,9 +33,10 @@ bool QueryBuilder::Build(const common::Pose2D& current_pose, const GoalSpec& goa
     {
         return false;
     }
-    query_pose->assign({static_cast<float>(current_pose.x()),
-                        static_cast<float>(current_pose.y()),
-                        static_cast<float>(current_pose.theta())});
+    const common::Pose2D habitat = common::RosToHabitat(current_pose);
+    query_pose->assign({static_cast<float>(habitat.x()),
+                        static_cast<float>(habitat.y()),
+                        static_cast<float>(habitat.theta())});
     *has_goal = goal.has_pose();
     if (!*has_goal)
     {
@@ -41,8 +44,12 @@ bool QueryBuilder::Build(const common::Pose2D& current_pose, const GoalSpec& goa
         return true;
     }
     const auto& position = goal.pose().pose().position();
-    goal_xy->assign({static_cast<float>(position.x()),
-                     static_cast<float>(position.y())});
+    common::Pose2D goal_pose;
+    goal_pose.set_x(position.x());
+    goal_pose.set_y(position.y());
+    const common::Pose2D habitat_goal = common::RosToHabitat(goal_pose);
+    goal_xy->assign({static_cast<float>(habitat_goal.x()),
+                     static_cast<float>(habitat_goal.y())});
     return true;
 }
 

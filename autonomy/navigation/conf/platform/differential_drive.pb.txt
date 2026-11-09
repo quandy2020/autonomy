@@ -5,7 +5,7 @@ max_angular_radps: 1.0
 max_acceleration_mps2: 0.8
 max_jerk_mps3: 2.0
 max_lateral_acceleration_mps2: 0.5
-footprint_radius: 0.3
+footprint_radius: 0.12
 wheelbase: 0.0
 max_steering_rad: 0.0
 camera_height: 0.18

@@ -30,6 +30,7 @@ from thirdparty.pan.planner.env import SIM_ACTIONS, agent_matrix, camera_matrix,
 from thirdparty.pan.util.constants import (FORWARD_STEP_M, HABITAT_DATA_ROOT, HM3D_SCENE_DATASET_CONFIG, REPO_ROOT,
                                    SENSOR_HEIGHT, SENSOR_HFOV_DEG, SENSOR_RES, TURN_STEP_DEG, Action)
 from thirdparty.pan.util.geometry import heading_from_quaternion, raster_cell
+from thirdparty.pan.util.scenes import scene_glb_path
 
 # a stub package entry skips frontier_exploration/__init__.py (habitat-lab and gym imports)
 _FE = sys.modules["thirdparty.frontier_exploration"] = types.ModuleType("thirdparty.frontier_exploration")
@@ -283,12 +284,6 @@ def explore_one(sim: habitat_sim.Simulator, scene_glb: str, seed: int, output_h5
 _WORKER_DONE = "__worker_done__"     # a worker's last message on the results queue
 
 
-def scene_glb_path(scene_root: str, scene_id: str) -> str:
-    """HM3D layout: <scene_root>/<id>/<short_id>.basis.glb, short_id = the id after its first dash."""
-    short = scene_id.split("-", 1)[-1]
-    return os.path.join(scene_root, scene_id, f"{short}.basis.glb")
-
-
 def scene_id_of(scene_glb: str) -> str:
     """The scene id of a `scene_glb_path`: its directory name."""
     return os.path.basename(os.path.dirname(scene_glb))
@@ -373,7 +368,8 @@ def run_parallel(scene_glbs: Sequence[str], scene_dataset_config: str, seeds_per
 # ---------------------------------------------------------------- CLI
 def main():
     import argparse
-    p = argparse.ArgumentParser(description="Collect exploration trajectories across HM3D scenes.")
+    p = argparse.ArgumentParser(
+        description="Collect exploration trajectories (HM3D, MP3D or any Habitat scene dataset).")
     p.add_argument("--scene-root", default=str(HABITAT_DATA_ROOT / "raw/scene_datasets/hm3d/minival"))
     p.add_argument("--dataset-config", default=str(HM3D_SCENE_DATASET_CONFIG))
     p.add_argument("--out-root", default=str(HABITAT_DATA_ROOT / "traj/exploration_v1"))
@@ -388,7 +384,7 @@ def main():
             if os.path.isdir(os.path.join(args.scene_root, d))]
     glbs = [g for g in (scene_glb_path(args.scene_root, d) for d in dirs) if os.path.exists(g)]
     print(f"using {min(len(glbs), args.num_scenes)} scenes (of {len(dirs)} dirs; "
-          f"{len(dirs) - len(glbs)} lack a basis.glb)")
+          f"{len(dirs) - len(glbs)} lack a .glb)")
     if args.gpu_ids:
         gpu_ids = [int(x) for x in args.gpu_ids.split(",")]
     else:

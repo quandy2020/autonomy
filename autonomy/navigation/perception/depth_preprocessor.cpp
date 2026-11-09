@@ -72,6 +72,16 @@ DepthPreprocessor::DepthPreprocessor(DepthPreprocessorOptions options)
 {
 }
 
+bool DepthPreprocessor::Decode(const automsgs::msgs::sensor_msgs::Image& image,
+                               std::vector<float>* metres)
+{
+    if (metres == nullptr)
+    {
+        return false;
+    }
+    return DecodeDepth(image, metres);
+}
+
 namespace
 {
 

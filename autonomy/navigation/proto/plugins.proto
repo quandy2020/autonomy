@@ -49,6 +49,7 @@ message VntpaPolicyOptions
     double turn_step_rad = 27;
     uint32 token_count = 28;
     uint32 token_dim = 29;
+    bool disable_live_view = 30;
     reserved 100 to 199;
 }
 
@@ -106,6 +107,7 @@ message PoseIndexedMemoryOptions
     uint32 voxel_direction_bins = 4;
     double query_radius = 5;
     double min_insert_interval_s = 6;
+    uint32 coverage_gate_eta = 7;
     reserved 100 to 199;
 }
 

@@ -27,14 +27,11 @@
 #include "navigation/planning/interface/navigation_session.hpp"
 #include "navigation/proto/navigation.pb.h"
 
-namespace navigation
-{
-namespace behavior
-{
+namespace navigation {
+namespace behavior {
 
 /** @brief Inputs shared by navigation behavior nodes. */
-struct NodeContext
-{
+struct NodeContext {
     /** @brief Navigation session; borrowed, may be null. */
     planning::NavigationSession* session{nullptr};
     /** @brief Goal to submit. */
@@ -53,6 +50,8 @@ struct NodeContext
     std::function<void(std::string_view)> request_assist;
     /** @brief Latch set after the first assistance request. */
     bool assist_requested{false};
+    /** @brief Current tick on the host's steady clock. */
+    std::int64_t now_ns{0};
 };
 
 }  // namespace behavior

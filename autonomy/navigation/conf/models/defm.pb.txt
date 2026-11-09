@@ -1,7 +1,7 @@
 # DeFM ViT-S/14 used by VNTPA (upstream leggedrobotics/defm).
 name: "defm"
 path: "conf/models/defm_vit_s14.onnx"
-sha256: "bea909a58f645bb3009348d6431e1ba9c9a824a1a76a51dcfaffd5cbc14dc7f4"
+sha256: "dafdb6557600a26e01e77c795262c0c880546765599ae2b62af5a52e34034dd2"
 opset: "17"
 backend: "onnx"
 precision: "fp32"

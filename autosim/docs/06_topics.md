@@ -45,6 +45,7 @@
 |------|------|
 | RGB / depth / CameraInfo | 同一 `header.stamp`（Runner 硬同步） |
 | `gt_pose` / `gt_odom` | 同一仿真周期和时间戳，平面 x/y/yaw 一致；Odometry 为 `map -> base_link`，并包含 `base_link_height` |
+| `/tf_static` | 时间戳固定为 `(0, 0)`（tf2 无时效静态边）；Atlas 对非零静态戳按 ≤100 ms 校验，Habitat 卡顿时否则会丢弃 `map→odom` |
 | Fixed Frame（Autoviz） | `nav` 下用 `map` |
 | 相机光学 | 深度点云可经 `optical_to_camera_link` 转到 `camera_link` |
 
@@ -55,6 +56,6 @@
 - `sensors.camera.enabled: false` 时不建 rgb/depth writer；可仅保留 `depth_points_channel`（Fake / Isaac 特例）。
 - `sensors.topdown.enabled: true` 时建 `topdown_rgb` / `topdown_info`（机载俯视 RGB）。
 - `sensors.chase.enabled: true` 时建 `chase_rgb` / `chase_info`（第三人称跟随；自动 instance URDF，仅 chase 帧可见）。
-- `map.enabled && map.publish`（且非 slam）才建 `map_grid` / `map_cloud`。
+- `map.enabled && map.publish` 时建 `map_cloud`（`/overall/map`）；`map_grid`（`/map`）仅在 `mode: nav` 下创建（`slam` 留给 Atlas / Cartographer）。
 - `lidar_3d.enabled` 才发 `/points`。
 - `robot.truth.enabled` 启用 `/gt/pose`；仅当 `robot.truth.odometry_channel` 非空时同时创建 `gt_odom` writer。

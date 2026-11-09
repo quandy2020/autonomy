@@ -16,6 +16,7 @@
 
 # --- dependencies ------------------------------------------------------------
 autocmake_find(behaviortree_cpp REQUIRED PRIVATE)
+find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 # --- sources -----------------------------------------------------------------
 file(GLOB_RECURSE NAVIGATION_SRCS CONFIGURE_DEPENDS
@@ -76,6 +77,7 @@ autocmake_library(navigation
     autonomy_common
     automsgs
     Threads::Threads
+    OpenSSL::Crypto
     BT::behaviortree_cpp)
 
 # --- components --------------------------------------------------------------
@@ -104,7 +106,9 @@ if(TARGET autolink)
 endif()
 
 # --- tests -------------------------------------------------------------------
-if(BUILD_TESTING)
+option(NAVIGATION_BUILD_TESTS "Build navigation tests" ${BUILD_TESTING})
+if(NAVIGATION_BUILD_TESTS)
+  enable_testing()
   file(GLOB_RECURSE NAVIGATION_TESTS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*_test.cpp")
   list(FILTER NAVIGATION_TESTS EXCLUDE REGEX "navigation_component_test\\.cpp$")
@@ -120,11 +124,24 @@ if(BUILD_TESTING)
   target_link_libraries(navigation_configuration_validator PRIVATE navigation)
   add_test(NAME configuration_validator
     COMMAND navigation_configuration_validator "${CMAKE_CURRENT_SOURCE_DIR}/conf")
+
+  if(TARGET navigation_component)
+    add_executable(navigation_component_integration tools/component_integration_main.cpp)
+    target_link_libraries(navigation_component_integration PRIVATE navigation autolink
+      navigation_observation_component navigation_component
+      navigation_behavior_component navigation_safety_component navigation_guardian_component)
+    add_test(NAME component_integration
+      COMMAND bash "${CMAKE_CURRENT_SOURCE_DIR}/tools/run_component_integration.sh"
+        $<TARGET_FILE:navigation_component_integration> "${CMAKE_CURRENT_SOURCE_DIR}")
+    set_tests_properties(component_integration PROPERTIES TIMEOUT 60 RUN_SERIAL TRUE)
+  endif()
 endif()
 
 # --- tools -------------------------------------------------------------------
 add_executable(navigation_benchmark tools/benchmark_main.cpp)
 target_link_libraries(navigation_benchmark PRIVATE navigation)
+add_executable(navigation_defm_validator tools/defm_validator_main.cpp)
+target_link_libraries(navigation_defm_validator PRIVATE navigation)
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(navigation
@@ -132,5 +149,8 @@ autocmake_install_share(navigation
   DAG
   LAUNCH)
 install(DIRECTORY behavior/trees DESTINATION "share/${PROJECT_NAME}/navigation")
+# Match the source resource layout used by BtCppEngine. Keep the existing
+# trees directory for consumers of the previous installed layout.
+install(DIRECTORY behavior/trees DESTINATION "share/${PROJECT_NAME}/navigation/behavior")
 install(FILES README.md DESTINATION "share/${PROJECT_NAME}/doc/navigation")
 install(DIRECTORY docs DESTINATION "share/${PROJECT_NAME}/doc/navigation")

@@ -21,13 +21,23 @@ import math
 import pytest
 
 from autosim.backends.habitat.simulator import Simulator
-from autosim.bridge.chase import chase_spec
+from autosim.bridge.chase import chase_body_mount, chase_spec
 
 
 def test_chase_spec_disabled_by_default():
     assert chase_spec(None) is None
     assert chase_spec({}) is None
     assert chase_spec({"chase": {"enabled": False}}) is None
+
+
+def test_chase_body_mount_is_behind_and_above_in_ros():
+    xyz, rpy = chase_body_mount(
+        {"distance_m": 1.0, "height_m": 0.85, "pitch_deg": -25.0}
+    )
+    assert xyz == (-1.0, 0.0, 0.85)
+    assert rpy[0] == 0.0
+    assert rpy[2] == 0.0
+    assert rpy[1] == pytest.approx(math.radians(-25.0))
 
 
 def test_chase_spec_auto_pitch():

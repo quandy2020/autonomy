@@ -26,9 +26,11 @@ int main()
     bool has_goal = false;
     if (!builder.Build(current, goal, &query, &goal_xy, &has_goal) ||
         !has_goal || query.size() != 3 || goal_xy.size() != 2 ||
-        std::abs(query[0] - 2.0F) > 1e-6F ||
+        std::abs(query[0] + 3.0F) > 1e-6F ||
+        std::abs(query[1] + 2.0F) > 1e-6F ||
         std::abs(query[2] - 0.5F) > 1e-6F ||
-        std::abs(goal_xy[0] - 1.0F) > 1e-6F)
+        std::abs(goal_xy[0] - 0.0F) > 1e-6F ||
+        std::abs(goal_xy[1] + 1.0F) > 1e-6F)
     {
         std::cerr << "build failed\n";
         return 1;

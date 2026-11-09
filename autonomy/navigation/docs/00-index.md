@@ -27,14 +27,17 @@
 | [13-todo.md](13-todo.md) | TODO、闭环分级与验收顺序 | 排期/验收 |
 | [14-config-reference.md](14-config-reference.md) | 配置参数含义、调参、调试命令 | 配置维护/联调 |
 | [15-vntpa-alignment.md](15-vntpa-alignment.md) | VNT-PA 对齐差异与优化清单 | VNTPA 开发 |
+| [16-linux-validation.md](16-linux-validation.md) | SpaceHero 构建、模型与组件验收证据 | Linux 验收 |
+| [17-frontiernet.md](17-frontiernet.md) | FrontierNet 式探索与 DeFM 编码器替换 | 探索/模型开发 |
+| [18-autosim-validation.md](18-autosim-validation.md) | 真实 Habitat、多进程 Action、停车与故障恢复证据 | 仿真验收 |
+| [19-behavior-recovery-validation.md](19-behavior-recovery-validation.md) | 默认 XML、真实自主脱困、取消/重建与耗尽验收 | 行为/仿真验收 |
 | [11-vntpa-training.md](11-vntpa-training.md) | VNTPA 离线训练/导出 | 模型训练 |
 
 ## 当前状态
 
-- 上次已验证：**69/69 CTest**，ASan 通过，install 通过。
-- CMake 当前注册 **69** 个测试（删除 `time_utils_test` 后的基线）。
-- autosim 仿真链路、`/navigate_to_pose` Action（cancel/抢占）已接线，待 Linux/autolink 实编验证。
-- VNTPA planner 权重未发布；`conf/models/` 已有 DeFM ViT-S/14。
+- Linux 五组件、导航测试与 DeFM C++ ORT 后端已实际构建，具体结果见 [16-linux-validation.md](16-linux-validation.md)。
+- 真实 Habitat 基础场景与独立进程 kill/重启已通过，见 [18-autosim-validation.md](18-autosim-validation.md)；默认 BT 脱困见 [19](19-behavior-recovery-validation.md)，长期探索仍待验收，本轮未跑 ASan/TSan。
+- VNTPA planner 权重尚缺；DeFM 已验证 hash、IO 和 CPU C++/Python ORT 数值一致性。
 
 ## 文档维护约定
 

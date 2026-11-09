@@ -24,6 +24,7 @@
 #include <cstdint>
 
 #include "navigation/memory/context_provider.hpp"
+#include "navigation/memory/coverage_gate.hpp"
 #include "navigation/memory/keyframe_filter.hpp"
 #include "navigation/proto/plugins.pb.h"
 
@@ -56,6 +57,8 @@ public:
 
 private:
     memory::KeyframeFilter filter_;
+    memory::CoverageGate coverage_gate_;
+    std::uint32_t coverage_eta_{0};
     std::uint32_t epoch_{1};
 };
 

@@ -29,6 +29,7 @@
 #include "navigation/planning/plugins/policy/vntpa/context_builder.hpp"
 #include "navigation/planning/plugins/policy/vntpa/query_builder.hpp"
 #include "navigation/proto/navigation.pb.h"
+#include "navigation/proto/observation.pb.h"
 
 namespace navigation
 {
@@ -46,9 +47,9 @@ struct ModelInputs
     std::vector<float> kf_pose;
     /** @brief K mask bytes; 1 means a valid keyframe. */
     std::vector<std::uint8_t> kf_valid;
-    /** @brief Query pose (x, y, yaw). */
+    /** @brief Query pose in Habitat (x, z, yaw). */
     std::vector<float> query_pose;
-    /** @brief Goal position (x, y). */
+    /** @brief Goal position in Habitat (x, z). */
     std::vector<float> goal;
     /** @brief Patch-token count per keyframe. */
     std::uint32_t token_count{0};
@@ -67,7 +68,9 @@ public:
 
     /** @brief Assemble keyframe tokens, poses, query and goal. */
     bool Build(const common::Pose2D& current_pose, const GoalSpec& goal,
-               const memory::ContextView& context, ModelInputs* inputs);
+               const memory::ContextView& context, ModelInputs* inputs,
+               const observation::DepthFeature* live_feature = nullptr,
+               bool include_live_view = true);
 
 private:
     /** @brief Query pose/goal builder. */

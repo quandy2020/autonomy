@@ -177,6 +177,10 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     }
     assert latest_edges == {("map", "odom"), ("odom", "base_footprint")}
     static_tf = runner.node.writers["/tf_static"].msgs[0]
+    assert all(
+        (item.header.stamp.sec, item.header.stamp.nanosec) == (0, 0)
+        for item in static_tf.transforms
+    ), "static TF must use timeless stamp (0,0) for Atlas TF age checks"
     edges = {
         (item.header.frame_id, item.child_frame_id): (
             item.transform.translation.x,
@@ -464,3 +468,54 @@ def test_subsample_points():
     assert subsampled.shape == (2, 3)
     np.testing.assert_allclose(subsampled[0], cloud[0])
     np.testing.assert_allclose(subsampled[1], cloud[2])
+
+
+def test_chase_link_is_dynamic_child_of_base_link(monkeypatch):
+    """chase_link must follow /tf odom, not a stamp-0 static edge in map."""
+    import autosim.runtime.runner as runner_module
+
+    monkeypatch.setattr(runner_module.time, "sleep", lambda seconds: None)
+    monkeypatch.setattr(
+        runner_module.SensorWorker,
+        "submit",
+        lambda self, fn, *args: fn(*args),
+    )
+
+    root = Path(__file__).resolve().parents[1]
+    settings = Config.load(root / "config" / "default.yaml")
+    settings.data["habitat"]["backend"] = "habitat"
+    settings.data["habitat"]["mode"] = "nav"
+    sensors = settings.data["habitat"]["sensors"]
+    sensors["lidar_2d"]["enabled"] = False
+    sensors["lidar_3d"]["enabled"] = False
+    sensors["camera"]["enabled"] = False
+    sensors["imu"]["enabled"] = False
+    sensors["chase"] = {
+        "enabled": True,
+        "distance_m": 1.0,
+        "height_m": 0.85,
+        "pitch_deg": -25.0,
+    }
+    settings.data["habitat"]["map"]["enabled"] = False
+    settings.data["habitat"]["robot"]["tf"]["enabled"] = True
+    settings.data["habitat"]["robot"]["clock"]["enabled"] = False
+    settings.data["habitat"]["robot"]["footprint"]["enabled"] = False
+
+    link = FakeLink()
+    simulator = FakeSimulator()
+    simulator.urdf = UrdfModel.load("robot/turtlebot3_burger/turtlebot3_burger.urdf")
+    runner = Runner(settings, max_steps=3, link=link, simulator=simulator)
+    runner.run()
+    latest = {
+        (item.header.frame_id, item.child_frame_id): item.transform.translation
+        for item in runner.node.writers["/tf"].msgs[-1].transforms
+    }
+    assert ("base_link", "chase_link") in latest
+    assert abs(latest[("base_link", "chase_link")].x + 1.0) < 1e-6
+    assert abs(latest[("base_link", "chase_link")].z - 0.85) < 1e-6
+    static_edges = {
+        (item.header.frame_id, item.child_frame_id)
+        for message in runner.node.writers["/tf_static"].msgs
+        for item in message.transforms
+    }
+    assert ("base_link", "chase_link") not in static_edges

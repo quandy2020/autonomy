@@ -27,10 +27,8 @@
 #include "autonomy/common/network/backend/engine.hpp"
 #include "navigation/perception/defm_model.hpp"
 
-namespace navigation
-{
-namespace perception
-{
+namespace navigation {
+namespace perception {
 
 /**
  * @brief DeFM backend on autonomy::common::network::Engine.
@@ -42,7 +40,8 @@ class EngineDefmModel final : public DefmModel
 {
 public:
     /** @brief Load the ONNX/TensorRT engine described by the manifest. */
-    bool Load(const config::ModelManifest& manifest, std::string* error) override;
+    bool Load(const config::ModelManifest& manifest,
+              std::string* error) override;
 
     /** @brief Run one forward pass through the Engine. */
     bool Run(const std::vector<float>& input, DefmOutput* output) override;
@@ -59,11 +58,15 @@ private:
     std::string tokens_output_;
     /** @brief Manifest output name for the pooled embedding. */
     std::string pooled_output_;
+    /** @brief Exact element counts from the validated static manifest. */
+    std::size_t input_count_{0};
+    std::size_t tokens_count_{0};
+    std::size_t pooled_count_{0};
 };
 
 /** @brief Factory used when a model manifest is available. */
-std::unique_ptr<DefmModel> CreateEngineDefmModel(const config::ModelManifest& manifest,
-                                                 std::string* error);
+std::unique_ptr<DefmModel> CreateEngineDefmModel(
+    const config::ModelManifest& manifest, std::string* error);
 
 }  // namespace perception
 }  // namespace navigation

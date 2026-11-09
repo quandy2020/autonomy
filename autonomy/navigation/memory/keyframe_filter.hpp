@@ -63,6 +63,14 @@ public:
      */
     bool TryAccept(const Keyframe& keyframe, bool* accepted);
 
+    /**
+     * @brief Store without cosine/interval gating (coverage gate already decided).
+     *
+     * @param[in] keyframe Candidate already accepted by CoverageGate.
+     * @param[out] accepted True when the keyframe was stored.
+     */
+    bool Store(const Keyframe& keyframe, bool* accepted);
+
     /** @brief Read-only view of stored keyframes. */
     [[nodiscard]] const std::vector<Keyframe>& Entries() const;
 

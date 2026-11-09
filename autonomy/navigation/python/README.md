@@ -65,19 +65,31 @@ python -m vntpa.cli.collect bank \
 
 ## 训练
 
+无 HM3D 时先跑冻结-bank 烟雾（tiny CPU planner）：
+
+```bash
+python -m vntpa.cli.train --synthetic --tiny --run-name smoke --steps 20 --device cpu
+```
+
+论文 30k 步（需要 token store + bank，或 `--distributed` 在线专家）：
+
 ```bash
 python -m vntpa.cli.train --nproc 1 \
   --tensorboard-dir logs/pan/tb \
   --run-name pan --accum 4 --wandb-project "" \
   --token-root "$DATA/tokens/train" \
+  --train-bank "$DATA/banks/bank_train.npz" \
   --val-token-root "$DATA/tokens/val" \
   --val-bank "$DATA/banks/bank_val.npz"
 ```
 
-TensorBoard：
+
+TensorBoard（默认 `logs/<run-name>/tb`，含 train/val 与语料统计）：
 
 ```bash
-tensorboard --logdir logs/pan/tb --port 6006
+tensorboard --logdir logs --port 6006
+python -m vntpa.cli.analyze --tokens "$DATA/tokens/train" --bank "$DATA/banks/bank_train.npz" \
+  --tensorboard-dir logs/data/tb --out logs/data/report.json
 ```
 
 恢复训练：

@@ -248,10 +248,22 @@ void FrameChrome::setupToolShortcuts() {
 
   const auto shouldIgnoreShortcut = []() {
     QWidget* focus = QApplication::focusWidget();
-    return focus != nullptr &&
-           (focus->inherits("QLineEdit") || focus->inherits("QPlainTextEdit") ||
-            focus->inherits("QTextEdit") || focus->inherits("QSpinBox") ||
-            focus->inherits("QDoubleSpinBox"));
+    if (focus == nullptr) {
+      return false;
+    }
+    if (focus->inherits("QLineEdit") || focus->inherits("QPlainTextEdit") ||
+        focus->inherits("QTextEdit") || focus->inherits("QSpinBox") ||
+        focus->inherits("QDoubleSpinBox")) {
+      return true;
+    }
+    // Teleop Arcade uses WASD; Select tool shortcut `s` must not steal Key_S.
+    for (QWidget* w = focus; w != nullptr; w = w->parentWidget()) {
+      if (w->objectName() == QLatin1String("TeleopControlContent") ||
+          w->inherits("TeleopControlWidget")) {
+        return true;
+      }
+    }
+    return false;
   };
 
   const common::ToolManager& tools = frame_->manager_->tools();

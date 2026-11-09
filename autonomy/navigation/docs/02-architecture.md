@@ -10,7 +10,7 @@
 `autonomy/navigation` 是 end-to-end 导航子模块，输入深度/里程计/IMU/地图，
 输出安全的速度指令。核心约束：
 
-- 不依赖显式 costmap；VNTPA 用位姿索引关键帧作为环境表示。
+- VNTPA 用位姿索引关键帧作为环境表示；simulation 策略可以消费已校验 OccupancyGrid，执行可达 frontier 搜索与空闲栅格路径跟随。
 - Component 只做 autolink 适配，业务逻辑全部在 `Runner` 与各库中，便于无框架单测。
 - 安全链独立进程、唯一 `/cmd_vel` 出口，编译期禁用异常/RTTI。
 - 所有插件通过 `PluginManager` 工厂注册，配置切换不重新编译。
@@ -29,7 +29,7 @@ navigation process
 │       ├── PolicyInterface worker (single-flight)
 │       ├── ChunkBlender
 │       └── ScenarioManager (scenario -> stage -> rules)
-└── BehaviorComponent             (10 Hz, heartbeat/behavior 入口)
+└── BehaviorComponent             (10 Hz, 默认 XML/恢复请求/heartbeat)
 
 safety process
 └── SafetyComponent               (50 Hz)
@@ -59,7 +59,7 @@ launch 见 `launch/*.launch`。
 | 记忆 | `memory/` | 体素、关键帧过滤、位姿索引、快照、漂移、语义图 | common |
 | 规划 | `planning/` | 插件接口、VNTPA/VINT/NOMAD、场景、任务、规则、Blender | common、perception、memory |
 | 安全 | `safety/` | 三级链、反射、CBF、AEB、可行性、看门狗 | common、planning 接口 |
-| 行为 | `behavior/` | BT 节点、任务原语、意图转换、回退引擎 | planning、memory、guardian |
+| 行为 | `behavior/` | 默认 XML、BT 节点、会话快照与恢复请求 | planning、memory、guardian |
 | 守护 | `guardian/` | 心跳、故障分类、降级、诊断 | common、lifecycle proto |
 | 入口 | `navigation_component.*` | autolink 薄适配 + Runner 装配 | 全部 |
 
@@ -79,7 +79,7 @@ launch 见 `launch/*.launch`。
 - `Runner::Create(config)` 通过 `PluginManager` 装配默认管线。
 - 生命周期：`Start()` → `Tick(observation, pose, velocity)` → `Stop()`。
 - `Tick` 不等待策略推理；worker 只接收最新 job（single-flight），结果按 sequence 丢弃过期项。
-- 线程：Tick/SetGoal/Stop 在导航线程；worker 只调用 `PolicyInterface::Query`。
+- 线程：Tick/SetGoal/Stop 在导航线程；worker 调用策略的 Query，并在工作版本变化时 Reset，以隔离取消/抢占前的策略缓存。
 
 ```text
 Tick:
@@ -155,8 +155,8 @@ Tick:
 
 ## 9. 已知边界
 
-- `BehaviorComponent` 当前只发布心跳；完整 BT 执行/恢复仍由 `behavior/` 回退引擎与
-  `NavigationComponent` 的 8 s 重试兜底。
+- `BehaviorComponent` 已加载默认 XML，通过受会话/目标/次数/新鲜度约束的请求驱动 Runner 局部恢复。
+  保留障碍绕行、取消/重建及耗尽终态已实测；复杂/动态场景与其他任务树见 [19](19-behavior-recovery-validation.md) 的边界。
 - 仿真策略是 goal-seek + frontier，不含全局路径规划。
 - Engine 适配器需要 `autonomy::common` + ONNX/TensorRT；默认仿真不启用。
 - autolink 仅 Linux；macOS 只能编译核心库/单测。

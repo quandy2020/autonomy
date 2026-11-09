@@ -23,8 +23,9 @@ AutoSim 把仿真世界（Habitat / Fake / Isaac）接到 **Autolink**：订阅 
 |------|------|
 | `habitat.*` | 配置根键（历史命名）；三种 backend 共用 |
 | `WorldBackend` | 引擎无关协议：`pose` / `step` / `color_depth` / `laser_ranges` … |
-| `nav` / `slam` | `habitat.mode`：是否发 GT `map→odom` 与 `/map` |
+| `nav` / `slam` | `habitat.mode`：`slam` 不发 GT `map→odom` 与 OccupancyGrid `/map`；`/overall/map` 仍可由 `map.publish` 控制 |
 | 真值地图 | 仿真侧 OccupancyGrid / 点云，非 SLAM 结果 |
+| chase | `sensors.chase`：第三人称跟随 RGB；可选显示 URDF mesh |
 | `images/` | 演示动图，如 Isaac + Autoviz |
 
 ---
@@ -34,7 +35,7 @@ AutoSim 把仿真世界（Habitat / Fake / Isaac）接到 **Autolink**：订阅 
 ```text
 autosim/
 ├── README.md           # 短入口 + 动图
-├── docs/               # 本目录（00–11）
+├── docs/               # 本目录（00–14）
 ├── config/             # YAML 配置真相
 ├── autosim/            # Python 包（runtime / backends / dataset / …）
 ├── datasets/           # 本地 LeRobot 输出（建议 gitignore）
@@ -56,5 +57,6 @@ autosim/
 | 第一次跑通 | [03](03_quickstart.md) → Fake → Autoviz [08](08_map_and_viz.md) |
 | 换后端 | [04](04_backends.md) → [05](05_configuration.md) |
 | Isaac 室内场景 | [07](07_isaac.md) → [10](10_troubleshooting.md) |
+| Atlas 验证 | [13](13_atlas_validation.md) → Autoviz `atlas.autoviz` |
 | 改发布话题 | [06](06_topics.md) → `autosim/runtime/runner.py` |
 | 加测试 | [09](09_testing.md) |
