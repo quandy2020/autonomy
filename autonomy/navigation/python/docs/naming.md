@@ -21,9 +21,11 @@ utils     配置与工具
 
 | 类型 | 规则 | 示例 |
 | --- | --- | --- |
-| 包/模块 | lower_snake_case | `query_builder.py` |
+| 包/模块 | lower_snake_case | `query.py` |
 | 类 | PascalCase | `OnnxPlanner` |
-| 函数 | lower_snake_case | `build_context` |
+| 函数 | 动词或 `verb_noun`；能单词语义明确时用单词 | `context`、`validate` |
+| 私有成员 | snake_case + 后缀下划线 | `twist_type_`、`frames_` |
+| 私有函数 | `verb_noun`，lower_snake_case，无前导下划线 | `tensor`、`weights` |
 | 常量 | UPPER_SNAKE_CASE | `DEFM_MEAN` |
 | 配置 | `<domain>_<variant>.yaml` | `vntpa_vit_s14.yaml` |
 | 模型 | `<family>_<backbone>` | `vntpa_vit_s14` |
@@ -31,6 +33,7 @@ utils     配置与工具
 
 ## 禁止
 
+- 变量/属性/函数使用前导下划线，例如 `self._twist_type`、`def _publish`；
 - 变量/字段 `_m` 后缀；
 - C++ 相对 include；
 - 隐式网络下载；

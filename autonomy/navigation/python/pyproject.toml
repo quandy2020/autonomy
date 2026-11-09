@@ -8,7 +8,7 @@ version = "1.0.0"
 description = "VNT-PA + DeFM training, ONNX deployment and autosim/autolink bridge"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = {text = "Apache-2.0"}
 keywords = ["robotics", "navigation", "vnt-pa", "defm", "onnx"]
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -46,11 +46,11 @@ Source = "https://github.com/quandy2020/autonomy/tree/main/autonomy/navigation/p
 [project.scripts]
 vntpa = "vntpa.cli:main"
 vntpa-train = "vntpa.cli.train:main"
-vntpa-eval = "vntpa.cli.eval:main"
+vntpa-eval = "vntpa.cli.evaluate:main"
 vntpa-export = "vntpa.cli.export:main"
 vntpa-collect = "vntpa.cli.collect:main"
 vntpa-validate = "vntpa.cli.validate:main"
-vntpa-autosim = "vntpa.runtime.sim.autosim_client:main"
+vntpa-autosim = "vntpa.simulator.client:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

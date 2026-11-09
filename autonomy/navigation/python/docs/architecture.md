@@ -1,88 +1,58 @@
-# 架构
+# Architecture
 
-`vntpa` 采用 flat layout，包目录 `vntpa/` 直接位于工程根。
-
-```text
-configs/
-   │
-   ▼
-vntpa.cli  ──────────────┐
-   │                     │
-   ▼                     ▼
-training / evaluation   runtime / models
-   │                     │
-   ▼                     ▼
-data  ◄──────────────  onnx / autosim
-```
-
-## 数据流
+`vntpa` follows the useful parts of the Ultralytics layout without copying
+its task-specific modules.
 
 ```text
-Habitat/HM3D
-  -> frontier exploration
-  -> tours (poses, depth)
-  -> DeFM tokens HDF5
-  -> planner bank (query, goal, action chunk)
-
-autosim depth
-  -> DeFM ONNX
-  -> keyframe context
-  -> VNT-PA ONNX
-  -> discrete action chunk
-  -> TwistStamped /cmd_vel
+vntpa/
+├── cfg/        # reserved for packaged defaults
+├── cli/        # command entry points
+├── data/       # datasets, transforms, context, collection
+├── engine/     # model, predictor, trainer, validator, exporter
+├── models/     # VNT-PA + DeFM network adapters
+├── simulator/  # autolink/autosim bridge
+└── utils/      # config, errors, logging, maths
 ```
 
-## 六个顶层子包
+## Ultralytics mapping
 
-| 子包 | 职责 |
-| --- | --- |
-| `data` | dataset、transforms、sampler、collate、collection |
-| `models` | DeFM encoder、VNT-PA planner、query/context/action/head |
-| `training` | trainer、losses、optimizer、checkpoint、callbacks、evaluation |
-| `runtime` | deployment、inference、sim/autolink |
-| `cli` | collect、train、eval、export、validate |
-| `utils` | config、errors、logging、seed、geometry、math、timer、visualization |
+| Ultralytics | vntpa | Purpose |
+| --- | --- | --- |
+| `ultralytics/engine/model.py` | `vntpa/engine/model.py` | `VNT` facade |
+| `engine/predictor.py` | `engine/predictor.py` | inference loop |
+| `engine/trainer.py` | `engine/trainer.py` | training |
+| `engine/validator.py` | `engine/validator.py` | evaluation result |
+| `engine/metrics.py` | `engine/metric.py` | success/SPL/benchmark |
+| `engine/exporter.py` | `engine/deployment/exporter.py` | ONNX export |
+| `engine/result.py` | `engine/result.py` | result object |
+| `cfg/default.yaml` | `configs/train/default.yaml` | defaults |
+| `data/` | `data/` | datasets/transforms |
+| `models/` | `models/` | network builders |
+| `utils/` | `utils/` | shared helpers |
 
-## 模型接口
+## Design rules
 
-DeFM：
+1. **One task facade**: `VNT` in `engine/model.py`.
+2. **Engine owns lifecycle**: predictor, trainer, validator, exporter.
+3. **Models own tensors**: encoder/planner/builders only.
+4. **Data owns storage**: dataset, transforms, memory, collection.
+5. **Utils has no engine dependency**.
+6. **Stateful classes only**: sessions, memory, autolink node, exporter wrapper.
+7. **Pure logic is functions**: metrics, transforms, hooks, config lookup.
+
+## Runtime flow
 
 ```text
-depth [1,3,224,224]
-  -> tokens [1,256,384]
-  -> pooled [1,384]
+depth -> data.transforms -> models.encoder -> engine.predictor
+                                         -> models.vntpa
+                                         -> engine.result
+                                         -> simulator action adapter -> /cmd_vel
 ```
 
-VNT-PA：
+## Training flow
 
 ```text
-kf_tokens  [64,256,384]
-kf_pose    [64,3]
-kf_valid   [64]
-query_pose [1,3]
-goal       [1,2]
-  -> logits [1,8,4]
+configs -> engine.trainer -> torchrun -> thirdparty.pan.planner.train
+                                  -> checkpoint hook
+                                  -> metrics / TensorBoard
 ```
-
-`kf_tokens` 是 padding 后的 K 帧；导出 wrapper 内部按 `kf_valid` 打包成上游要求的
-`(n_valid, P, D)`。
-
-## 对齐上游
-
-训练/数据代码 vendored 自
-[VNT-PA](https://github.com/beimingli0626/VNT-PA)：
-
-```text
-pan/collection/explore.py -> tours
-pan/collection/tokens.py  -> frozen DeFM token stores
-pan/collection/bank.py    -> evaluation bank
-pan/planner/train.py      -> DDP imitation training
-pan/planner/eval.py       -> closed-loop evaluation
-```
-
-本项目只增加：
-
-- 本地 DeFM 权重加载，不访问 Hugging Face；
-- 单 planner ONNX 导出/接口校验；
-- autosim/autolink bridge；
-- TensorBoard 日志。

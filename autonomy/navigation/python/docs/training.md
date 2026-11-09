@@ -43,7 +43,7 @@ export HM3D=/data/hm3d
 export DATA=/data/vntpa
 ```
 
-详细命令见 [data_collection.md](data_collection.md)。
+详细命令见 [collection.md](collection.md)。
 
 ## 4. 训练
 

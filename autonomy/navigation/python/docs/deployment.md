@@ -37,9 +37,9 @@ pooled [1,384]
 ## 3. 校验
 
 ```python
-from vntpa.runtime.deployment.onnx_validator import inspect_onnx
+from vntpa.engine.deployment.validator import inspect
 
-info = inspect_onnx("exports/vntpa.onnx")
+info = inspect("exports/vntpa.onnx")
 print(info.inputs)
 print(info.outputs)
 ```
@@ -51,7 +51,7 @@ print(info.outputs)
 ```python
 from vntpa import VNT
 
-model = VNT.from_pretrained(
+model = VNT.load(
     "exports/vntpa.onnx",
     "exports/defm_vit_s14.onnx",
 )
@@ -68,7 +68,7 @@ export PYTHONPATH=\
 /path/to/autonomy/build/autonomy/navigation/generated/python:\
 $PWD
 
-python -m vntpa.runtime.sim.autosim_client \
+python -m vntpa.simulator.client \
   --planner exports/vntpa.onnx \
   --defm exports/defm_vit_s14.onnx
 ```

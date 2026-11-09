@@ -1,3 +1,17 @@
+# Copyright 2026 The Navigation Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Configuration objects shared by training, deployment and autosim."""
 
 from __future__ import annotations
@@ -6,7 +20,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Tuple
 
-from .errors import InvalidConfigError
+from vntpa.utils.errors import InvalidConfigError
 
 
 @dataclass
@@ -25,7 +39,7 @@ class PlannerConfig:
     decision_rate_hz: float = 5.0
     providers: Tuple[str, ...] = ("CPUExecutionProvider",)
 
-    def validate(self) -> None:
+    def validate_config(self) -> None:
         checks = [
             (self.context_size > 0, "context_size must be positive"),
             (self.token_count > 0 and self.token_dim > 0, "token shape must be positive"),
@@ -76,7 +90,7 @@ class ProductConfig:
     autosim: AutosimConfig = field(default_factory=AutosimConfig)
 
 
-def load_product_config(path: str | Path) -> ProductConfig:
+def configure(path: str | Path) -> ProductConfig:
     """Load YAML into the typed product configuration.
 
     Paths are kept as written; callers may resolve them against their own
@@ -97,7 +111,7 @@ def load_product_config(path: str | Path) -> ProductConfig:
     return ProductConfig(deploy=deploy, autosim=autosim)
 
 
-def default_config_path() -> Path:
+def locate() -> Path:
     """Locate ``configs/train/default.yaml`` from cwd or the source checkout."""
     for base in (Path.cwd(), Path(__file__).resolve().parents[2]):
         candidate = base / "configs/train/default.yaml"
@@ -117,48 +131,58 @@ class ModelSpec:
     description: str = ""
 
 
-class ModelRegistry:
-    def __init__(self) -> None:
-        self._models: Dict[str, ModelSpec] = {}
-
-    def register(self, spec: ModelSpec) -> None:
-        self._models[spec.name] = spec
-
-    def get(self, name: str) -> ModelSpec | None:
-        return self._models.get(name)
-
-    def names(self) -> list[str]:
-        return sorted(self._models)
-
-    def resolve(self, name_or_path: str) -> ModelSpec:
-        spec = self.get(name_or_path)
-        if spec is not None:
-            return spec
-        path = Path(name_or_path)
-        if path.is_file():
-            default = self.get("vntpa-s14")
-            return ModelSpec(path.stem, str(path),
-                             default.defm_onnx if default else "")
-        raise KeyError(f"unknown model: {name_or_path}")
-
-    @classmethod
-    def from_yaml(cls, path: str | Path) -> "ModelRegistry":
-        import yaml
-
-        raw = yaml.safe_load(Path(path).read_text()) or {}
-        registry = cls()
-        for item in raw.get("models", []):
-            registry.register(ModelSpec(
-                name=item["name"], planner_onnx=item["planner"],
-                defm_onnx=item["defm"], task=item.get("task", "navigate"),
-                description=item.get("description", "")))
-        return registry
+MODELS: Dict[str, ModelSpec] = {}
 
 
-DEFAULT_REGISTRY = ModelRegistry()
-DEFAULT_REGISTRY.register(ModelSpec(
-    name="vntpa-s14",
-    planner_onnx="conf/models/vntpa.onnx",
-    defm_onnx="conf/models/defm_vit_s14.onnx",
-    description="VNT-PA ViT-S/14 planner + DeFM depth encoder",
-))
+def register(spec: ModelSpec) -> None:
+    """Register one local model pair."""
+    MODELS[spec.name] = spec
+
+
+def lookup(name: str) -> ModelSpec | None:
+    """Return a registered model or ``None``."""
+    return MODELS.get(name)
+
+
+def names() -> list[str]:
+    """Return registered model names in sorted order."""
+    return sorted(MODELS)
+
+
+def resolve(name_or_path: str) -> ModelSpec:
+    """Resolve a registry name or an ONNX path to a model pair."""
+    spec = lookup(name_or_path)
+    if spec is not None:
+        return spec
+    path = Path(name_or_path)
+    if path.is_file():
+        default = lookup("vntpa-s14")
+        return ModelSpec(path.stem, str(path), default.defm_onnx if default else "")
+    raise KeyError(f"unknown model: {name_or_path}")
+
+
+def registry(path: str | Path) -> None:
+    """Merge a YAML model list into :data:`MODELS`."""
+    import yaml
+
+    raw = yaml.safe_load(Path(path).read_text()) or {}
+    for item in raw.get("models", []):
+        register(
+            ModelSpec(
+                name=item["name"],
+                planner_onnx=item["planner"],
+                defm_onnx=item["defm"],
+                task=item.get("task", "navigate"),
+                description=item.get("description", ""),
+            )
+        )
+
+
+register(
+    ModelSpec(
+        name="vntpa-s14",
+        planner_onnx="conf/models/vntpa.onnx",
+        defm_onnx="conf/models/defm_vit_s14.onnx",
+        description="VNT-PA ViT-S/14 planner + DeFM depth encoder",
+    )
+)

@@ -1,122 +1,200 @@
-"""Unified `vntpa` command line, modeled after YOLO-style task commands."""
+# Copyright 2026 The Navigation Authors (duyongquan)
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+"""Command line entry points for the vntpa product.
+
+The root parser exposes the full task surface:
+
+    predict   one depth/pose/goal inference
+    train     delegate to the vendored VNT-PA trainer
+    val       delegate to the vendored VNT-PA evaluator
+    export    checkpoint -> ONNX
+    autosim   run the autolink bridge
+    benchmark latency measurement
+    models    list/inspect local ONNX artifacts
+    dataset   validate HDF5 token stores
+    info      package and environment diagnostics
+
+Task-specific modules under ``vntpa.cli`` are thin entry points for
+``python -m vntpa.cli.<task>`` and shell wrappers.
+"""
 
 from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+from dataclasses import asdict
 from pathlib import Path
+from typing import Any, Sequence
 
 import numpy as np
 
-from ..runtime.inference.predictor import VNT
-from ..utils.config import (
-    DEFAULT_REGISTRY,
+from vntpa.data.dataset import validate_root
+from vntpa.engine.deployment.validator import inspect
+from vntpa.engine.model import VNT
+from vntpa.engine.trainer import (
+    build_checkpoint_hook,
+    build_jsonl_end_hook,
+    build_jsonl_start_hook,
+)
+from vntpa.utils.config import (
+    lookup,
+    names,
     DeployConfig,
     PlannerConfig,
-    default_config_path,
-    load_product_config,
+    locate,
+    configure,
 )
-from ..data.dataset import validate_root
-from ..runtime.deployment.onnx_validator import inspect_onnx
-from ..training.trainer import CallbackList, CheckpointCallback, JsonlCallback
 
 
-def _predict(args: argparse.Namespace) -> int:
+def deploy(args: argparse.Namespace) -> DeployConfig:
+    """Build deployment settings from ``--config`` or explicit model paths.
+
+    ``--config`` owns all deployment fields; otherwise the CLI model paths and
+    provider selection are used.
+    """
+    if args.config:
+        return configure(args.config).deploy
+    if not args.model or not args.defm:
+        raise SystemExit("either --config or both --model and --defm are required")
+    providers = tuple(args.provider or ("CPUExecutionProvider",))
+    return DeployConfig(
+        planner_onnx=args.model,
+        defm_onnx=args.defm,
+        planner=PlannerConfig(context_size=args.context_size, providers=providers),
+        providers=providers,
+    )
+
+
+def inputs(args: argparse.Namespace) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Load the ``.npy`` depth map and normalize pose/goal arrays."""
     depth = np.load(args.depth)
     pose = np.asarray(args.pose, dtype=np.float32)
     goal = np.asarray(args.goal, dtype=np.float32)
-    if args.config:
-        deploy = load_product_config(args.config).deploy
-    else:
-        deploy = DeployConfig(
-            planner_onnx=args.model,
-            defm_onnx=args.defm,
-            planner=PlannerConfig(context_size=args.context_size,
-                                  providers=tuple(args.provider or ("CPUExecutionProvider",))),
-            providers=tuple(args.provider or ("CPUExecutionProvider",)))
-    api = VNT(deploy)
+    return depth, pose, goal
+
+
+def emit(payload: object, out: str | None = None) -> None:
+    """Print JSON and optionally write it to ``out``."""
+    text = json.dumps(payload, indent=2, default=str)
+    if out:
+        Path(out).write_text(text, encoding="utf-8")
+    print(text)
+
+
+def infer(args: argparse.Namespace) -> int:
+    """Run one DeFM + VNT-PA inference and print the decoded actions."""
+    depth, pose, goal = inputs(args)
+    api = VNT(deploy(args))
     result = api.predict(depth, pose, goal)
-    payload = {
-        "actions": [int(action) for action in result.actions],
-        "primitives": [
-            {"action": int(item.action), "distance": item.distance, "angle": item.angle}
-            for item in result.primitives
-        ],
-        "memory_size": result.memory_size,
-    }
-    if args.out:
-        Path(args.out).write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(json.dumps(payload, indent=2))
+    emit(
+        {
+            "actions": [int(action) for action in result.actions],
+            "primitives": [
+                {"action": int(item.action), "distance": item.distance, "angle": item.angle}
+                for item in result.primitives
+            ],
+            "memory_size": result.memory_size,
+        },
+        args.out,
+    )
     return 0
 
 
-def _export(args: argparse.Namespace) -> int:
-    return VNT.export(args.checkpoint, args.out, context_size=args.context_size,
-                      format=args.format)
+def export(args: argparse.Namespace) -> int:
+    """Export a VNT-PA checkpoint to ONNX and write its metadata sidecar."""
+    return VNT.export(args.checkpoint, args.out, context_size=args.context_size, format=args.format)
 
 
-def _train(args: argparse.Namespace) -> int:
+def train(args: argparse.Namespace) -> int:
+    """Forward training flags to the vendored VNT-PA trainer.
+
+    TensorBoard and lifecycle options are consumed here; every remaining
+    argument is passed through to ``torchrun -m thirdparty.pan.planner.train``.
+    """
     if args.tensorboard_dir:
         args.trailing.extend(["--tensorboard-dir", args.tensorboard_dir])
-    callbacks = []
+    start_hooks = []
+    end_hooks = []
     if args.log:
-        callbacks.append(JsonlCallback(args.log))
+        start_hooks.append(build_jsonl_start_hook(args.log))
+        end_hooks.append(build_jsonl_end_hook(args.log))
     if args.checkpoint_out:
-        callbacks.append(CheckpointCallback(
-            args.checkpoint_in, args.checkpoint_out, args.manifest))
-    return VNT.train(args.trailing, nproc=args.nproc,
-                     callbacks=CallbackList(callbacks) if callbacks else None)
+        end_hooks.append(
+            build_checkpoint_hook(args.checkpoint_in, args.checkpoint_out, args.manifest)
+        )
+    return VNT.train(
+        args.trailing,
+        nproc=args.nproc,
+        start_hooks=start_hooks,
+        end_hooks=end_hooks,
+    )
 
 
-def _val(args: argparse.Namespace) -> int:
-    return VNT.val(args.trailing)
+def validate(args: argparse.Namespace) -> int:
+    """Forward evaluation flags to the vendored VNT-PA evaluator."""
+    return VNT.validate(args.trailing)
 
 
-def _autosim(args: argparse.Namespace) -> int:
-    command = [sys.executable, "-m", "vntpa.runtime.sim.autosim_client", *args.trailing]
-    import subprocess
-
+def simulate(args: argparse.Namespace) -> int:
+    """Launch the autolink bridge as an isolated process."""
+    command = [sys.executable, "-m", "vntpa.simulator.client", *args.trailing]
     return subprocess.run(command, check=False).returncode
 
 
-def _benchmark(args: argparse.Namespace) -> int:
-    depth = np.load(args.depth)
-    pose = np.asarray(args.pose, dtype=np.float32)
-    goal = np.asarray(args.goal, dtype=np.float32)
-    deploy = load_product_config(args.config).deploy
-    api = VNT(deploy)
+def benchmark(args: argparse.Namespace) -> int:
+    """Measure predictor latency percentiles."""
+    depth, pose, goal = inputs(args)
+    api = VNT(deploy(args))
     report = api.benchmark(depth, pose, goal, warmup=args.warmup, runs=args.runs)
-    print(json.dumps(report.to_dict(), indent=2))
+    emit(report.dump())
     return 0
 
 
-def _models(args: argparse.Namespace) -> int:
+def models(args: argparse.Namespace) -> int:
+    """List registry entries or inspect one ONNX artifact."""
     if args.inspect:
-        info = inspect_onnx(args.inspect)
+        info = inspect(args.inspect)
         payload = {
             "path": info.path,
-            "inputs": {name: {"shape": list(spec.shape), "dtype": spec.dtype}
-                       for name, spec in info.inputs.items()},
-            "outputs": {name: {"shape": list(spec.shape), "dtype": spec.dtype}
-                        for name, spec in info.outputs.items()},
+            "inputs": {
+                name: {"shape": list(spec.shape), "dtype": spec.dtype}
+                for name, spec in info.inputs.items()
+            },
+            "outputs": {
+                name: {"shape": list(spec.shape), "dtype": spec.dtype}
+                for name, spec in info.outputs.items()
+            },
         }
     else:
-        payload = {name: DEFAULT_REGISTRY.get(name).__dict__
-                   for name in DEFAULT_REGISTRY.names()}
-    print(json.dumps(payload, indent=2, default=str))
+        payload = {name: asdict(lookup(name)) for name in names() if lookup(name) is not None}
+    emit(payload)
     return 0
 
 
-def _dataset(args: argparse.Namespace) -> int:
+def dataset(args: argparse.Namespace) -> int:
+    """Validate HDF5 token stores and return non-zero on errors."""
     report = validate_root(args.root)
-    print(json.dumps({"files": report.files, "errors": report.errors}, indent=2))
+    emit({"files": report.files, "errors": report.errors})
     return 0 if report.ok else 1
 
 
-def _environment_info() -> dict:
+def diagnose() -> dict[str, str]:
+    """Collect versions useful for bug reports."""
     import platform
-    import sys
     from importlib.metadata import PackageNotFoundError, version
 
     def installed(name: str) -> str:
@@ -128,97 +206,151 @@ def _environment_info() -> dict:
     return {
         "python": sys.version.split()[0],
         "platform": platform.platform(),
-        "numpy": installed("numpy"),
-        "onnxruntime": installed("onnxruntime"),
-        "protobuf": installed("protobuf"),
-        "vntpa": installed("vntpa"),
+        "numpy": version("numpy"),
+        "onnxruntime": version("onnxruntime"),
+        "protobuf": version("protobuf"),
+        "vntpa": version("vntpa"),
     }
 
 
-def _info(_args: argparse.Namespace) -> int:
+def info(args: argparse.Namespace) -> int:
+    """Print package, default config, task list and runtime versions."""
+    del args
     from importlib.metadata import PackageNotFoundError, version
 
-    from ..version import __version__
+    from vntpa.version import __version__
 
     try:
         package_version = version("vntpa")
     except PackageNotFoundError:
         package_version = __version__
-    print(json.dumps({
-        "name": "vntpa",
-        "version": package_version,
-        "default_config": str(default_config_path()),
-        "tasks": ["predict", "train", "val", "export", "autosim",
-                  "benchmark", "dataset", "models"],
-        "environment": _environment_info(),
-    }, indent=2))
+    emit(
+        {
+            "name": "vntpa",
+            "version": package_version,
+            "default_config": str(locate()),
+            "tasks": [
+                "predict",
+                "train",
+                "val",
+                "export",
+                "autosim",
+                "benchmark",
+                "dataset",
+                "models",
+                "info",
+            ],
+            "environment": diagnose(),
+        }
+    )
     return 0
 
 
+def add_predict_parser(sub: Any) -> None:
+    """Add the one-shot inference command."""
+    parser = sub.add_parser("predict", help="run one depth/pose/goal prediction")
+    parser.add_argument("--config", default=None, help="product YAML config")
+    parser.add_argument("--model", default=None, help="planner ONNX")
+    parser.add_argument("--defm", default=None, help="DeFM ONNX")
+    parser.add_argument("--depth", required=True, help=".npy metric depth (H, W)")
+    parser.add_argument("--pose", nargs=3, type=float, required=True, metavar=("X", "Y", "YAW"))
+    parser.add_argument("--goal", nargs=2, type=float, required=True, metavar=("X", "Y"))
+    parser.add_argument("--context-size", type=int, default=64)
+    parser.add_argument("--provider", action="append", default=[])
+    parser.add_argument("--out", default=None, help="optional JSON output path")
+    parser.set_defaults(func=infer)
+
+
+def add_export_parser(sub: Any) -> None:
+    """Add the ONNX export command."""
+    parser = sub.add_parser("export", help="export a checkpoint to ONNX")
+    parser.add_argument("--checkpoint", required=True)
+    parser.add_argument("--out", required=True)
+    parser.add_argument("--context-size", type=int, default=64)
+    parser.add_argument("--format", default="onnx", choices=["onnx"])
+    parser.set_defaults(func=export)
+
+
+def add_train_parser(sub: Any) -> None:
+    """Add the training command; unknown flags are forwarded to VNT-PA."""
+    parser = sub.add_parser("train", help="train via vendored VNT-PA")
+    parser.add_argument("--nproc", type=int, default=1)
+    parser.add_argument("--log", default=None, help="JSONL lifecycle log")
+    parser.add_argument("--checkpoint-in", default="logs/pan/checkpoints/final.pt")
+    parser.add_argument("--checkpoint-out", default=None)
+    parser.add_argument("--manifest", default=None)
+    parser.add_argument("--tensorboard-dir", default=None)
+    parser.add_argument("trailing", nargs=argparse.REMAINDER)
+    parser.set_defaults(func=train)
+
+
+def add_val_parser(sub: Any) -> None:
+    """Add the evaluation command."""
+    parser = sub.add_parser("val", help="evaluate via vendored VNT-PA")
+    parser.add_argument("trailing", nargs=argparse.REMAINDER)
+    parser.set_defaults(func=validate)
+
+
+def add_autosim_parser(sub: Any) -> None:
+    """Add the autolink bridge command."""
+    parser = sub.add_parser("autosim", help="run the autolink bridge")
+    parser.add_argument("trailing", nargs=argparse.REMAINDER)
+    parser.set_defaults(func=simulate)
+
+
+def add_benchmark_parser(sub: Any) -> None:
+    """Add the latency benchmark command."""
+    parser = sub.add_parser("benchmark", help="measure predictor latency")
+    parser.add_argument("--config", default=str(locate()))
+    parser.add_argument("--depth", required=True, help=".npy metric depth")
+    parser.add_argument("--pose", nargs=3, type=float, required=True)
+    parser.add_argument("--goal", nargs=2, type=float, required=True)
+    parser.add_argument("--warmup", type=int, default=3)
+    parser.add_argument("--runs", type=int, default=20)
+    parser.set_defaults(func=benchmark)
+
+
+def add_models_parser(sub: Any) -> None:
+    """Add the model registry inspection command."""
+    parser = sub.add_parser("models", help="list or inspect local models")
+    parser.add_argument("--inspect", default=None, help="ONNX path to inspect")
+    parser.set_defaults(func=models)
+
+
+def add_dataset_parser(sub: Any) -> None:
+    """Add the token-store validation command."""
+    parser = sub.add_parser("dataset", help="validate offline token stores")
+    parser.add_argument("--root", required=True)
+    parser.set_defaults(func=dataset)
+
+
+def add_info_parser(sub: Any) -> None:
+    """Add the environment diagnostics command."""
+    parser = sub.add_parser("info", help="print package/config information")
+    parser.set_defaults(func=info)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="vntpa")
+    """Build the complete ``vntpa`` command surface."""
+    parser = argparse.ArgumentParser(
+        prog="vntpa",
+        description="VNT-PA training, inference and deployment CLI",
+    )
     sub = parser.add_subparsers(dest="task", required=True)
-
-    predict = sub.add_parser("predict", help="run one depth/pose/goal prediction")
-    predict.add_argument("--model")
-    predict.add_argument("--defm")
-    predict.add_argument("--config")
-    predict.add_argument("--depth", required=True, help=".npy metric depth (H, W)")
-    predict.add_argument("--pose", nargs=3, type=float, required=True, metavar=("X", "Y", "YAW"))
-    predict.add_argument("--goal", nargs=2, type=float, required=True, metavar=("X", "Y"))
-    predict.add_argument("--context-size", type=int, default=64)
-    predict.add_argument("--provider", action="append", default=[])
-    predict.add_argument("--out", default=None)
-    predict.set_defaults(func=_predict)
-
-    export = sub.add_parser("export", help="export a checkpoint to ONNX")
-    export.add_argument("--checkpoint", required=True)
-    export.add_argument("--out", required=True)
-    export.add_argument("--context-size", type=int, default=64)
-    export.add_argument("--format", default="onnx", choices=["onnx"])
-    export.set_defaults(func=_export)
-
-    train = sub.add_parser("train", help="train via vendored VNT-PA")
-    train.add_argument("--nproc", type=int, default=1)
-    train.add_argument("--log", default=None, help="JSONL lifecycle log")
-    train.add_argument("--checkpoint-in", default="logs/pan/checkpoints/final.pt")
-    train.add_argument("--checkpoint-out", default=None)
-    train.add_argument("--manifest", default=None)
-    train.add_argument("--tensorboard-dir", default=None)
-    train.add_argument("trailing", nargs=argparse.REMAINDER)
-    train.set_defaults(func=_train)
-
-    val = sub.add_parser("val", help="evaluate via vendored VNT-PA")
-    val.add_argument("trailing", nargs=argparse.REMAINDER)
-    val.set_defaults(func=_val)
-
-    autosim = sub.add_parser("autosim", help="run the autolink bridge")
-    autosim.add_argument("trailing", nargs=argparse.REMAINDER)
-    autosim.set_defaults(func=_autosim)
-
-    benchmark = sub.add_parser("benchmark", help="measure predictor latency")
-    benchmark.add_argument("--config", default=str(default_config_path()))
-    benchmark.add_argument("--depth", required=True, help=".npy metric depth")
-    benchmark.add_argument("--pose", nargs=3, type=float, required=True)
-    benchmark.add_argument("--goal", nargs=2, type=float, required=True)
-    benchmark.add_argument("--warmup", type=int, default=3)
-    benchmark.add_argument("--runs", type=int, default=20)
-    benchmark.set_defaults(func=_benchmark)
-
-    models = sub.add_parser("models", help="list or inspect local models")
-    models.add_argument("--inspect", default=None)
-    models.set_defaults(func=_models)
-
-    dataset = sub.add_parser("dataset", help="validate offline token stores")
-    dataset.add_argument("--root", required=True)
-    dataset.set_defaults(func=_dataset)
-
-    info = sub.add_parser("info", help="print package/config information")
-    info.set_defaults(func=_info)
+    add_predict_parser(sub)
+    add_export_parser(sub)
+    add_train_parser(sub)
+    add_val_parser(sub)
+    add_autosim_parser(sub)
+    add_benchmark_parser(sub)
+    add_models_parser(sub)
+    add_dataset_parser(sub)
+    add_info_parser(sub)
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Sequence[str] | None = None) -> int:
+    """Parse arguments and dispatch to one task handler."""
     parser = build_parser()
     args, unknown = parser.parse_known_args(argv)
     if unknown and hasattr(args, "trailing"):

@@ -9,8 +9,8 @@ vntpa/                      # project root
 ├── vntpa/
 │   ├── data/               # dataset / transforms + collection/
 │   ├── models/             # encoder / vntpa / builders / heads
-│   ├── training/           # trainer / losses + evaluation/
-│   ├── runtime/            # deployment/ + inference/ + sim/
+│   ├── engine/             # trainer / validation / inference / deployment
+│   ├── simulator/          # autolink / autosim
 │   ├── cli/                # collect / train / eval / export / validate
 │   └── utils/              # config / errors / logging / geometry
 ├── configs/                # dataset / model / train / eval / export
@@ -68,7 +68,7 @@ python -m vntpa.cli.collect bank ...
 ## 评估
 
 ```bash
-python -m vntpa.cli.eval \
+python -m vntpa.cli.evaluate \
   --ckpt logs/pan/checkpoints/final.pt \
   --token-root $VNT_PA_DATASET/tokens/val \
   --bank $VNT_PA_DATASET/banks/bank_val.npz
@@ -80,7 +80,7 @@ TensorBoard：
 tensorboard --logdir logs/pan/tb --port 6006
 ```
 
-详细流程见 [docs/training.md](docs/training.md) 与 [docs/data_collection.md](docs/data_collection.md)。
+详细流程见 [docs/training.md](docs/training.md) 与 [docs/collection.md](docs/collection.md)。
 
 ## 导出
 
@@ -110,7 +110,7 @@ vntpa info   # version + runtime environment
 ```python
 from vntpa import VNT
 
-model = VNT.from_pretrained(
+model = VNT.load(
     "conf/models/vntpa.onnx", "conf/models/defm_vit_s14.onnx")
 result = model.predict(depth, pose, goal)
 print(result.actions)
@@ -134,7 +134,7 @@ export AUTOLINK_PYTHON=/path/to/autolink/autolink/python
 export NAVIGATION_PYTHON=/path/to/autonomy/build/autonomy/navigation/generated/python
 export PYTHONPATH=$AUTOMSGS_PYTHON:$AUTOLINK_PYTHON:$NAVIGATION_PYTHON:$PWD
 
-python -m vntpa.runtime.sim.autosim_client \
+python -m vntpa.simulator.client \
   --planner conf/models/vntpa.onnx \
   --defm conf/models/defm_vit_s14.onnx \
   --goal-topic /navigation/goal
@@ -160,7 +160,7 @@ PYTHONPATH=. pytest -q tests
 
 - [architecture.md](docs/architecture.md)
 - [training.md](docs/training.md)
-- [data_collection.md](docs/data_collection.md)
+- [collection.md](docs/collection.md)
 - [deployment.md](docs/deployment.md)
-- [autosim_validation.md](docs/autosim_validation.md)
+- [autosim.md](docs/autosim.md)
 - [naming.md](docs/naming.md)
