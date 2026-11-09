@@ -18,7 +18,7 @@ The root parser exposes the full task surface:
 
     predict   one depth/pose/goal inference
     train     delegate to the vendored VNT-PA trainer
-    val       delegate to the vendored VNT-PA evaluator
+    evaluate  delegate to the vendored VNT-PA evaluator
     export    checkpoint -> ONNX
     autosim   run the autolink bridge
     benchmark latency measurement
@@ -284,9 +284,9 @@ def add_train_parser(sub: Any) -> None:
     parser.set_defaults(func=train)
 
 
-def add_val_parser(sub: Any) -> None:
+def add_evaluate_parser(sub: Any) -> None:
     """Add the evaluation command."""
-    parser = sub.add_parser("val", help="evaluate via vendored VNT-PA")
+    parser = sub.add_parser("evaluate", help="evaluate via vendored VNT-PA")
     parser.add_argument("trailing", nargs=argparse.REMAINDER)
     parser.set_defaults(func=validate)
 
@@ -340,7 +340,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_predict_parser(sub)
     add_export_parser(sub)
     add_train_parser(sub)
-    add_val_parser(sub)
+    add_evaluate_parser(sub)
     add_autosim_parser(sub)
     add_benchmark_parser(sub)
     add_models_parser(sub)

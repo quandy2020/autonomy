@@ -9,12 +9,12 @@
 ## 子包
 
 ```text
-data      数据与采集
-models    模型与构建器
-training  训练与评估
-runtime   部署、推理、仿真
-cli       命令入口
-utils     配置与工具
+data       数据与采集
+models     模型与构建器
+engine     训练、评估、推理、部署
+simulator  autolink / autosim
+cli        命令入口
+utils      配置与工具
 ```
 
 ## 命名

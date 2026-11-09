@@ -5,7 +5,6 @@ its task-specific modules.
 
 ```text
 vntpa/
-├── cfg/        # reserved for packaged defaults
 ├── cli/        # command entry points
 ├── data/       # datasets, transforms, context, collection
 ├── engine/     # model, predictor, trainer, validator, exporter
@@ -43,7 +42,7 @@ vntpa/
 ## Runtime flow
 
 ```text
-depth -> data.transforms -> models.encoder -> engine.predictor
+depth -> data.transform -> models.encoder -> engine.predictor
                                          -> models.vntpa
                                          -> engine.result
                                          -> simulator action adapter -> /cmd_vel
