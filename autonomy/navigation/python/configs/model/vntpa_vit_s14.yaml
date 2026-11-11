@@ -1,6 +1,0 @@
-name: vntpa_vit_s14
-planner: conf/models/vntpa.onnx
-defm: conf/models/defm_vit_s14.onnx
-context_size: 64
-token_count: 256
-token_dim: 384

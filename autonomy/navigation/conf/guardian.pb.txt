@@ -1,5 +1,0 @@
-# Guardian process configuration (v2).
-heartbeat_timeout_ms: 200
-heartbeat_fatal_ms: 400
-diagnostics_rate_hz: 2
-allow_reflex_only: true

@@ -62,7 +62,7 @@
 
 | 症状 | 处理 |
 |------|------|
-| 机器人穿墙 | `isaac.physics.enabled` + `block_motion`；确认胶囊半径；场景需有 collider |
+| 机器人穿墙 | Habitat：`habitat.robot.block_motion: true`（navmesh `try_step` + occupancy）；Isaac：`isaac.physics.enabled` + `block_motion`；确认胶囊半径；场景需有 collider |
 | 完全动不了 | spawn 落在障碍内 → `set_pose(..., force=True)` 的 reset；或加大清空半径 / 改 spawn |
 | 家具掉落 / 飞出 | `freeze_scene: true` |
 | teleop 无响应 | 交互式 TTY 焦点；检查 `/cmd_vel` writer/reader |

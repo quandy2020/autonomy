@@ -663,7 +663,15 @@ class Runner:
             else:
                 self.simulator.set_pose(x, y, yaw)
         else:
+            start_x, start_y, _ = self.robot.pose()
             x, y, yaw = self.robot.step(dt=dt, t=self.clock.now() + dt)
+            constrain = getattr(self.simulator, "constrain_motion", None)
+            if callable(constrain):
+                x, y = constrain(start_x, start_y, x, y)
+                self.robot.x = float(x)
+                self.robot.y = float(y)
+                self.robot.odometry_x = float(x)
+                self.robot.odometry_y = float(y)
             # SLAM: keep wheel odom glued to GT so Habitat laser rays (cast at GT)
             # match odom→the URDF root TF used by localization / Autoviz.
             # Noisy odom with GT-cast scans rotates /scan on the map.

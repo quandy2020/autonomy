@@ -1,5 +1,0 @@
-name: autosim
-depth_topic: /camera/depth/image_raw
-odom_topic: /odom
-goal_topic: /navigation/goal
-cmd_topic: /cmd_vel

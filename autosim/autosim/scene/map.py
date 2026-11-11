@@ -419,6 +419,99 @@ class Map:
         grid[grid < 0] = 100
         return grid, resolution, ox, oy, width, height
 
+    def disc_occupied(
+        self,
+        x: float,
+        y: float,
+        radius: float = 0.12,
+        occupied_threshold: int = 50,
+    ) -> bool:
+        """True when the robot disc overlaps any occupied cell square."""
+        cached = self.cached_grid
+        if cached is None:
+            return False
+        grid, resolution, ox, oy, width, height = cached
+        if resolution <= 0.0 or width <= 0 or height <= 0:
+            return False
+        cells = np.asarray(grid)
+        reach = max(float(radius), 0.0)
+        px, py = float(x), float(y)
+        col0 = int(math.floor((px - reach - float(ox)) / resolution))
+        col1 = int(math.floor((px + reach - float(ox)) / resolution))
+        row0 = int(math.floor((py - reach - float(oy)) / resolution))
+        row1 = int(math.floor((py + reach - float(oy)) / resolution))
+        r2 = reach * reach
+        for row in range(row0, row1 + 1):
+            if row < 0 or row >= height:
+                continue
+            y0 = float(oy) + row * resolution
+            y1 = y0 + resolution
+            for col in range(col0, col1 + 1):
+                if col < 0 or col >= width:
+                    continue
+                if int(cells[row, col]) < int(occupied_threshold):
+                    continue
+                x0 = float(ox) + col * resolution
+                x1 = x0 + resolution
+                qx = min(max(px, x0), x1)
+                qy = min(max(py, y0), y1)
+                if (qx - px) ** 2 + (qy - py) ** 2 <= r2:
+                    return True
+        return False
+
+    def last_free_on_segment(
+        self,
+        start_x: float,
+        start_y: float,
+        end_x: float,
+        end_y: float,
+        radius: float = 0.12,
+    ) -> Tuple[float, float]:
+        """Farthest pose on the segment whose disc stays in free cells."""
+        sx, sy = float(start_x), float(start_y)
+        ex, ey = float(end_x), float(end_y)
+        start_hit = self.disc_occupied(sx, sy, radius=radius)
+        end_hit = self.disc_occupied(ex, ey, radius=radius)
+        if not start_hit and not end_hit:
+            return ex, ey
+        if start_hit and not end_hit:
+            return ex, ey
+        dx, dy = ex - sx, ey - sy
+        length = math.hypot(dx, dy)
+        cached = self.cached_grid
+        step = 0.02
+        if cached is not None:
+            resolution = float(cached[1])
+            if resolution > 0.0:
+                step = min(step, 0.5 * resolution)
+        if length <= 1e-6:
+            return (ex, ey) if not end_hit else (sx, sy)
+        count = max(1, int(math.ceil(length / step)))
+        last_x, last_y = sx, sy
+        for index in range(1, count + 1):
+            t = index / count
+            px = sx + t * dx
+            py = sy + t * dy
+            if self.disc_occupied(px, py, radius=radius):
+                return last_x, last_y
+            last_x, last_y = px, py
+        return last_x, last_y
+
+    def recover_from_occupied(
+        self, x: float, y: float, radius: float = 0.12
+    ) -> Tuple[float, float]:
+        """Nudge out of a wall if the current disc already overlaps occupancy."""
+        if not self.disc_occupied(x, y, radius=radius):
+            return float(x), float(y)
+        for dist in (0.05, 0.10, 0.15, 0.22, 0.30, 0.45, 0.60, 0.80):
+            for k in range(16):
+                ang = (2.0 * math.pi * k) / 16.0
+                nx = float(x) + dist * math.cos(ang)
+                ny = float(y) + dist * math.sin(ang)
+                if not self.disc_occupied(nx, ny, radius=radius):
+                    return nx, ny
+        return float(x), float(y)
+
     @staticmethod
     def occupancy_range(
         origin_x: float,

@@ -1,6 +1,0 @@
-name: vntpa_vit_b16
-planner: conf/models/vntpa_vit_b16.onnx
-defm: conf/models/defm_vit_b16.onnx
-context_size: 64
-token_count: 256
-token_dim: 768

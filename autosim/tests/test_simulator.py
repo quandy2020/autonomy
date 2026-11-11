@@ -68,6 +68,53 @@ def test_fake_laser_ranges_and_points():
     assert depth.shape == color.shape[:2]
 
 
+def test_constrain_motion_blocks_navmesh_and_occupancy():
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+
+    class Pathfinder:
+        is_loaded = True
+
+        def try_step(self, start, end):
+            del start, end
+            return (1.0, 0.0, 0.0)
+
+    class Session:
+        pathfinder = Pathfinder()
+
+    simulator.session = Session()
+    simulator.floor_y = 0.0
+    x, y = simulator.constrain_motion(0.0, 0.0, 4.0, 0.0)
+    assert x == pytest.approx(1.0)
+    assert y == pytest.approx(0.0)
+
+    simulator.session = None
+    from autosim.scene.map import Map
+
+    mapper = Map({"grid": {"resolution": 1.0, "z_min": 0.1, "z_max": 2.0}})
+    mapper.cached_grid = (
+        np.array([[0, 0, 100]], dtype=np.int8),
+        1.0,
+        0.0,
+        0.0,
+        3,
+        1,
+    )
+    simulator.map_builder = mapper
+    x, y = simulator.constrain_motion(0.5, 0.5, 2.5, 0.5)
+    assert x < 2.0
+    assert y == pytest.approx(0.5)
+    assert mapper.disc_occupied(x, y, radius=0.16) is False
+    simulator.block_motion = False
+    x, y = simulator.constrain_motion(0.5, 0.5, 2.5, 0.5)
+    assert x == pytest.approx(2.5)
+
+
 def test_simulator_has_no_mock_backend():
     simulator = Simulator(
         backend="minimal",

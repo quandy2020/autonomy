@@ -44,7 +44,7 @@ habitat:
     sync_hz: 30
     snap_navmesh: true
   # MP3D origin (0,0) often yields a flat semantic field; autosim may auto-relocate.
-  spawn: [-4.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
+  spawn: [-4.0, 1.0, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
   gpu: 0
 
   robot:
@@ -52,6 +52,8 @@ habitat:
     description_channel: /robot_description               # Autoviz RobotModel (when urdf set)
     max_linear: 0.5
     max_angular: 1.0
+    # Habitat has no PhysX; reject cmd_vel steps that leave the navmesh / map.
+    block_motion: true
     # First-order twist dynamics (m/s², rad/s²). 0 = unlimited (snap).
     max_linear_accel: 0.8
     max_linear_decel: 1.2

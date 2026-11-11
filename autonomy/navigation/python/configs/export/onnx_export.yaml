@@ -1,3 +1,0 @@
-format: onnx
-opset: 17
-context_size: 64

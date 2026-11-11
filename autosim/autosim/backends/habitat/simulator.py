@@ -78,6 +78,11 @@ class Simulator:
         self.urdf = self.load_urdf_model()
         self.traffic = None
         self.humanoid_sync = None
+        robot = self.settings.get("habitat", {}).get("robot", {})
+        self.block_motion = bool(robot.get("block_motion", True)) if isinstance(
+            robot, Mapping
+        ) else True
+        self.map_builder = None
 
         if open_session:
             self.open_habitat()
@@ -1305,6 +1310,68 @@ class Simulator:
         state.rotation = [qx, qy, qz, qw]
         agent.set_state(state, infer_sensor_states=True)
         self.sync_articulated(mn)
+
+    def constrain_motion(
+        self, start_x: float, start_y: float, end_x: float, end_y: float
+    ) -> Tuple[float, float]:
+        """Keep a planar step on the Habitat navmesh and occupancy grid.
+
+        Kinematic ``cmd_vel`` integration otherwise teleports through walls.
+        Yaw is unchanged: the robot may still turn in place when translation
+        is blocked.
+        """
+        if not self.block_motion:
+            return float(end_x), float(end_y)
+        sx, sy = float(start_x), float(start_y)
+        placed_x, placed_y = float(end_x), float(end_y)
+        pathfinder = None
+        if self.session is not None:
+            pathfinder = getattr(self.session, "pathfinder", None)
+        if pathfinder is not None and bool(getattr(pathfinder, "is_loaded", False)):
+            try_step = getattr(pathfinder, "try_step_no_sliding", None)
+            if not callable(try_step):
+                try_step = getattr(pathfinder, "try_step", None)
+            if callable(try_step):
+                start_h = (sx, float(self.floor_y), -sy)
+                end_h = (placed_x, float(self.floor_y), -placed_y)
+                hit = None
+                try:
+                    hit = try_step(start_h, end_h)
+                except Exception:
+                    try:
+                        import magnum as mn
+
+                        hit = try_step(
+                            mn.Vector3(*start_h), mn.Vector3(*end_h)
+                        )
+                    except Exception:
+                        hit = None
+                xyz = self.finite_xyz(hit)
+                if xyz is not None:
+                    placed_x, placed_y = float(xyz[0]), -float(xyz[2])
+                    if math.isfinite(float(xyz[1])):
+                        self.floor_y = float(xyz[1])
+                else:
+                    placed_x, placed_y = sx, sy
+        radius = 0.16
+        if self.urdf is not None:
+            poly = getattr(self.urdf, "footprint", ()) or ()
+            if poly:
+                radius = max(
+                    radius,
+                    max(math.hypot(float(px), float(py)) for px, py, *_ in poly),
+                )
+        mapper = self.map_builder
+        recover = getattr(mapper, "recover_from_occupied", None)
+        if callable(recover):
+            sx, sy = recover(sx, sy, radius=radius)
+        clip = getattr(mapper, "last_free_on_segment", None)
+        if callable(clip):
+            return clip(sx, sy, placed_x, placed_y, radius=radius)
+        occupied = getattr(mapper, "disc_occupied", None)
+        if callable(occupied) and occupied(placed_x, placed_y, radius=radius):
+            return sx, sy
+        return float(placed_x), float(placed_y)
 
     def laser_origin(self) -> Tuple[float, float, float]:
         """Habitat world origin for lidar rays (Y-up).

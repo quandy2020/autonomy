@@ -1,3 +1,0 @@
-arch: resnet50
-out_channels: 256
-

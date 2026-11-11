@@ -93,11 +93,6 @@ macro(autonomy_add_proto)
   # Gather .proto under enabled domains; drop legacy commsgs copies.
   set(_all "")
   foreach(_mod IN LISTS AUTONOMY_ENABLED_MODULES)
-    # Navigation owns navigation_proto and uses navigation/proto import paths.
-    # Generating these again here changes their names and duplicates messages.
-    if(_mod STREQUAL "navigation")
-      continue()
-    endif()
     file(GLOB_RECURSE _p "${PROJECT_SOURCE_DIR}/autonomy/${_mod}/*.proto")
     list(APPEND _all ${_p})
   endforeach()

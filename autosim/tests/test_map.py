@@ -18,6 +18,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from autosim.scene import Map
 
@@ -165,6 +166,40 @@ def test_occupancy_range_stops_at_first_wall():
     )
     assert distance is not None
     assert 1.5 <= distance <= 2.5
+
+
+def test_disc_occupied_detects_wall_cells():
+    builder = Map({"grid": {"resolution": 1.0, "z_min": 0.1, "z_max": 2.0}})
+    builder.cached_grid = (
+        np.array([[0, 0, 100]], dtype=np.int8),
+        1.0,
+        0.0,
+        0.0,
+        3,
+        1,
+    )
+    assert builder.disc_occupied(0.5, 0.5, radius=0.12) is False
+    assert builder.disc_occupied(2.5, 0.5, radius=0.12) is True
+    # Overlap the occupied square, not only its centre.
+    assert builder.disc_occupied(1.89, 0.5, radius=0.12) is True
+
+
+def test_last_free_on_segment_stops_before_wall():
+    builder = Map({"grid": {"resolution": 1.0, "z_min": 0.1, "z_max": 2.0}})
+    builder.cached_grid = (
+        np.array([[0, 0, 100]], dtype=np.int8),
+        1.0,
+        0.0,
+        0.0,
+        3,
+        1,
+    )
+    x, y = builder.last_free_on_segment(0.5, 0.5, 2.5, 0.5, radius=0.12)
+    assert x < 2.0
+    assert y == pytest.approx(0.5)
+    assert builder.disc_occupied(x, y, radius=0.12) is False
+    rx, ry = builder.recover_from_occupied(2.5, 0.5, radius=0.12)
+    assert builder.disc_occupied(rx, ry, radius=0.12) is False
 
 
 def test_clip_laser_ranges_blocks_through_wall_hits():

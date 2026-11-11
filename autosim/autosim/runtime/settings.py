@@ -510,6 +510,8 @@ class Config:
         cls.require_nonneg(
             robot.get("max_angular_accel", 0.0), "habitat.robot.max_angular_accel"
         )
+        if "block_motion" in robot and not isinstance(robot.get("block_motion"), bool):
+            raise ValueError("habitat.robot.block_motion must be a bool")
 
         sensors = habitat.get("sensors")
         if not isinstance(sensors, Mapping):
