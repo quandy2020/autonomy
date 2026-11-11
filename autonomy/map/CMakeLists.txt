@@ -108,5 +108,9 @@ autocmake_test(map.esdf_map_test
   SOURCES esdf/esdf_map_test.cpp
   DEPENDENCIES autonomy_map)
 
+autocmake_test(map.esdf_visualize_test
+  SOURCES esdf/esdf_visualize_test.cpp
+  DEPENDENCIES autonomy_map)
+
 # --- install -----------------------------------------------------------------
 autocmake_install_share(map CONF)

@@ -1,8 +1,22 @@
 /*
- * Copyright 2026 The Openbot Authors (duyongquan)
+ * Copyright 2026 The OpenRobotic Beginner Authors (duyongquan)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file esdf_map.cpp
+ * @brief ROS-free FIESTA incremental ESDF (implementation).
  */
 
 #include "autonomy/map/esdf/esdf_map.hpp"
@@ -18,254 +32,288 @@ namespace esdf {
 namespace {
 
 // Faces, edges, and two-step faces (FIESTA default 24-neighbourhood).
-const Eigen::Vector3i kDirs[] = {
+const Eigen::Vector3i kNeighborOffsets[] = {
     {-1, 0, 0},  {1, 0, 0},  {0, -1, 0}, {0, 1, 0},  {0, 0, -1}, {0, 0, 1},
     {-1, -1, 0}, {1, 1, 0},  {0, -1, -1}, {0, 1, 1}, {-1, 0, -1}, {1, 0, 1},
     {-1, 1, 0},  {1, -1, 0}, {0, -1, 1},  {0, 1, -1}, {1, 0, -1}, {-1, 0, 1},
     {-2, 0, 0},  {2, 0, 0},  {0, -2, 0}, {0, 2, 0},  {0, 0, -2}, {0, 0, 2},
 };
-constexpr int kNumDirs = static_cast<int>(sizeof(kDirs) / sizeof(kDirs[0]));
+constexpr int kNeighborCount =
+    static_cast<int>(sizeof(kNeighborOffsets) / sizeof(kNeighborOffsets[0]));
 
 }  // namespace
 
-double EsdfMap::Logit(double x) { return std::log(x / (1.0 - x)); }
+double EsdfMap::ProbabilityToLogOdds(double probability) {
+    return std::log(probability / (1.0 - probability));
+}
 
 EsdfMap::EsdfMap(Options options) : options_(std::move(options)) {
     origin_ = options_.origin;
-    resolution_inv_ = 1.0 / options_.resolution;
-    for (int i = 0; i < 3; ++i) {
-        grid_size_(i) =
-            static_cast<int>(std::ceil(options_.map_size(i) / options_.resolution));
+    inverse_resolution_ = 1.0 / options_.resolution;
+    for (int axis = 0; axis < 3; ++axis) {
+        grid_size_(axis) = static_cast<int>(
+            std::ceil(options_.map_size(axis) / options_.resolution));
     }
-    min_range_ = origin_;
-    max_range_ = origin_ + options_.map_size;
-    grid_size_yz_ = grid_size_(1) * grid_size_(2);
-    grid_total_size_ = grid_size_(0) * grid_size_yz_;
-    reserved_idx_4_undefined_ = grid_total_size_;
+    world_min_ = origin_;
+    world_max_ = origin_ + options_.map_size;
+    voxels_per_yz_plane_ = grid_size_(1) * grid_size_(2);
+    voxel_count_ = grid_size_(0) * voxels_per_yz_plane_;
+    undefined_voxel_index_ = voxel_count_;
     SetOriginalRange();
-    SetProbabilities(options_.p_hit, options_.p_miss, options_.p_min,
-                     options_.p_max, options_.p_occ);
+    SetProbabilities(options_.hit_probability, options_.miss_probability,
+                     options_.min_probability, options_.max_probability,
+                     options_.occupancy_probability);
 
-    occupancy_buffer_.assign(grid_total_size_, 0.0);
-    distance_buffer_.assign(grid_total_size_, static_cast<double>(kUndefined));
-    closest_obstacle_.assign(grid_total_size_,
-                             Eigen::Vector3i(kUndefined, kUndefined, kUndefined));
-    num_hit_.assign(grid_total_size_, 0);
-    num_miss_.assign(grid_total_size_, 0);
-    head_.assign(grid_total_size_ + 1, kUndefined);
-    prev_.assign(grid_total_size_, kUndefined);
-    next_.assign(grid_total_size_, kUndefined);
+    occupancy_buffer_.assign(voxel_count_, 0.0);
+    distance_buffer_.assign(voxel_count_, static_cast<double>(kUndefined));
+    closest_obstacle_.assign(
+        voxel_count_, Eigen::Vector3i(kUndefined, kUndefined, kUndefined));
+    hit_count_.assign(voxel_count_, 0);
+    observation_count_.assign(voxel_count_, 0);
+    obstacle_list_head_.assign(voxel_count_ + 1, kUndefined);
+    previous_list_index_.assign(voxel_count_, kUndefined);
+    next_list_index_.assign(voxel_count_, kUndefined);
 }
 
-void EsdfMap::SetProbabilities(double p_hit, double p_miss, double p_min,
-                               double p_max, double p_occ) {
-    prob_hit_log_ = Logit(p_hit);
-    prob_miss_log_ = Logit(p_miss);
-    clamp_min_log_ = Logit(p_min);
-    clamp_max_log_ = Logit(p_max);
-    min_occupancy_log_ = Logit(p_occ);
+void EsdfMap::SetProbabilities(double hit_probability, double miss_probability,
+                               double min_probability, double max_probability,
+                               double occupancy_probability) {
+    hit_log_odds_ = ProbabilityToLogOdds(hit_probability);
+    miss_log_odds_ = ProbabilityToLogOdds(miss_probability);
+    min_log_odds_ = ProbabilityToLogOdds(min_probability);
+    max_log_odds_ = ProbabilityToLogOdds(max_probability);
+    occupancy_log_odds_threshold_ = ProbabilityToLogOdds(occupancy_probability);
 }
 
-bool EsdfMap::Exist(int idx) const {
-    return occupancy_buffer_[idx] > min_occupancy_log_;
+bool EsdfMap::IsOccupied(int index) const {
+    return occupancy_buffer_[index] > occupancy_log_odds_threshold_;
 }
 
-bool EsdfMap::PosInMap(const Eigen::Vector3d& pos) const {
-    return pos(0) >= min_range_(0) && pos(1) >= min_range_(1) &&
-           pos(2) >= min_range_(2) && pos(0) <= max_range_(0) &&
-           pos(1) <= max_range_(1) && pos(2) <= max_range_(2);
+bool EsdfMap::PositionInMap(const Eigen::Vector3d& position) const {
+    return position(0) >= world_min_(0) && position(1) >= world_min_(1) &&
+           position(2) >= world_min_(2) && position(0) <= world_max_(0) &&
+           position(1) <= world_max_(1) && position(2) <= world_max_(2);
 }
 
-bool EsdfMap::VoxInRange(const Eigen::Vector3i& vox, bool current_vec) const {
-    const Eigen::Vector3i& lo = current_vec ? min_vec_ : last_min_vec_;
-    const Eigen::Vector3i& hi = current_vec ? max_vec_ : last_max_vec_;
-    return vox(0) >= lo(0) && vox(0) <= hi(0) && vox(1) >= lo(1) &&
-           vox(1) <= hi(1) && vox(2) >= lo(2) && vox(2) <= hi(2);
+bool EsdfMap::VoxelInRange(const Eigen::Vector3i& voxel,
+                           bool use_current_range) const {
+    const Eigen::Vector3i& lower =
+        use_current_range ? update_min_voxel_ : previous_update_min_voxel_;
+    const Eigen::Vector3i& upper =
+        use_current_range ? update_max_voxel_ : previous_update_max_voxel_;
+    return voxel(0) >= lower(0) && voxel(0) <= upper(0) && voxel(1) >= lower(1) &&
+           voxel(1) <= upper(1) && voxel(2) >= lower(2) && voxel(2) <= upper(2);
 }
 
-void EsdfMap::Pos2Vox(const Eigen::Vector3d& pos, Eigen::Vector3i* vox) const {
-    for (int i = 0; i < 3; ++i) {
-        (*vox)(i) = static_cast<int>(
-            std::floor((pos(i) - origin_(i)) / options_.resolution));
+void EsdfMap::PositionToVoxel(const Eigen::Vector3d& position,
+                              Eigen::Vector3i* voxel) const {
+    for (int axis = 0; axis < 3; ++axis) {
+        (*voxel)(axis) = static_cast<int>(
+            std::floor((position(axis) - origin_(axis)) / options_.resolution));
     }
 }
 
-void EsdfMap::Vox2Pos(const Eigen::Vector3i& vox, Eigen::Vector3d* pos) const {
-    for (int i = 0; i < 3; ++i) {
-        (*pos)(i) = (vox(i) + 0.5) * options_.resolution + origin_(i);
+void EsdfMap::VoxelToPosition(const Eigen::Vector3i& voxel,
+                              Eigen::Vector3d* position) const {
+    for (int axis = 0; axis < 3; ++axis) {
+        (*position)(axis) =
+            (voxel(axis) + 0.5) * options_.resolution + origin_(axis);
     }
 }
 
-int EsdfMap::Vox2Idx(const Eigen::Vector3i& vox) const {
-    if (vox(0) == kUndefined) {
-        return reserved_idx_4_undefined_;
+int EsdfMap::VoxelToIndex(const Eigen::Vector3i& voxel) const {
+    if (voxel(0) == kUndefined) {
+        return undefined_voxel_index_;
     }
-    return vox(0) * grid_size_yz_ + vox(1) * grid_size_(2) + vox(2);
+    return voxel(0) * voxels_per_yz_plane_ + voxel(1) * grid_size_(2) + voxel(2);
 }
 
-Eigen::Vector3i EsdfMap::Idx2Vox(int idx) const {
-    return {idx / grid_size_yz_, (idx % grid_size_yz_) / grid_size_(2),
-            idx % grid_size_(2)};
+Eigen::Vector3i EsdfMap::IndexToVoxel(int index) const {
+    return {index / voxels_per_yz_plane_,
+            (index % voxels_per_yz_plane_) / grid_size_(2),
+            index % grid_size_(2)};
 }
 
-double EsdfMap::Dist(const Eigen::Vector3i& a, const Eigen::Vector3i& b) const {
-    return (b - a).cast<double>().norm() * options_.resolution;
+double EsdfMap::DistanceBetweenVoxels(const Eigen::Vector3i& first,
+                                      const Eigen::Vector3i& second) const {
+    return (second - first).cast<double>().norm() * options_.resolution;
 }
 
-void EsdfMap::DeleteFromList(int link, int idx) {
-    if (prev_[idx] != kUndefined) {
-        next_[prev_[idx]] = next_[idx];
+void EsdfMap::DeleteFromList(int list_head_index, int index) {
+    if (previous_list_index_[index] != kUndefined) {
+        next_list_index_[previous_list_index_[index]] = next_list_index_[index];
     } else {
-        head_[link] = next_[idx];
+        obstacle_list_head_[list_head_index] = next_list_index_[index];
     }
-    if (next_[idx] != kUndefined) {
-        prev_[next_[idx]] = prev_[idx];
+    if (next_list_index_[index] != kUndefined) {
+        previous_list_index_[next_list_index_[index]] =
+            previous_list_index_[index];
     }
-    prev_[idx] = next_[idx] = kUndefined;
+    previous_list_index_[index] = next_list_index_[index] = kUndefined;
 }
 
-void EsdfMap::InsertIntoList(int link, int idx) {
-    if (head_[link] == kUndefined) {
-        head_[link] = idx;
+void EsdfMap::InsertIntoList(int list_head_index, int index) {
+    if (obstacle_list_head_[list_head_index] == kUndefined) {
+        obstacle_list_head_[list_head_index] = index;
     } else {
-        prev_[head_[link]] = idx;
-        next_[idx] = head_[link];
-        head_[link] = idx;
+        previous_list_index_[obstacle_list_head_[list_head_index]] = index;
+        next_list_index_[index] = obstacle_list_head_[list_head_index];
+        obstacle_list_head_[list_head_index] = index;
     }
 }
 
-int EsdfMap::SetOccupancy(const Eigen::Vector3d& pos, bool occupied) {
-    if (!PosInMap(pos)) {
+int EsdfMap::SetOccupancy(const Eigen::Vector3d& position, bool occupied) {
+    if (!PositionInMap(position)) {
         return kUndefined;
     }
-    Eigen::Vector3i vox;
-    Pos2Vox(pos, &vox);
-    return SetOccupancy(vox, occupied);
+    Eigen::Vector3i voxel;
+    PositionToVoxel(position, &voxel);
+    return SetOccupancy(voxel, occupied);
 }
 
-int EsdfMap::SetOccupancy(const Eigen::Vector3i& vox, bool occupied) {
-    const int idx = Vox2Idx(vox);
-    if (!VoxInRange(vox)) {
-        return idx;
+int EsdfMap::SetOccupancy(const Eigen::Vector3i& voxel, bool occupied) {
+    const int index = VoxelToIndex(voxel);
+    if (!VoxelInRange(voxel)) {
+        return index;
     }
-    num_miss_[idx]++;
-    num_hit_[idx] += occupied ? 1 : 0;
-    if (num_miss_[idx] == 1) {
-        occupancy_queue_.push(QueueElement{vox, 0.0});
+    observation_count_[index]++;
+    hit_count_[index] += occupied ? 1 : 0;
+    if (observation_count_[index] == 1) {
+        occupancy_queue_.push(QueueElement{voxel, 0.0});
     }
-    return idx;
+    return index;
 }
 
-int EsdfMap::GetOccupancy(const Eigen::Vector3d& pos) const {
-    if (!PosInMap(pos)) {
+int EsdfMap::GetOccupancy(const Eigen::Vector3d& position) const {
+    if (!PositionInMap(position)) {
         return kUndefined;
     }
-    Eigen::Vector3i vox;
-    Pos2Vox(pos, &vox);
-    return GetOccupancy(vox);
+    Eigen::Vector3i voxel;
+    PositionToVoxel(position, &voxel);
+    return GetOccupancy(voxel);
 }
 
-int EsdfMap::GetOccupancy(const Eigen::Vector3i& vox) const {
-    return Exist(Vox2Idx(vox)) ? 1 : 0;
+int EsdfMap::GetOccupancy(const Eigen::Vector3i& voxel) const {
+    return IsOccupied(VoxelToIndex(voxel)) ? 1 : 0;
 }
 
-double EsdfMap::GetDistance(const Eigen::Vector3d& pos) const {
-    if (!PosInMap(pos)) {
+double EsdfMap::GetDistance(const Eigen::Vector3d& position) const {
+    if (!PositionInMap(position)) {
         return static_cast<double>(kUndefined);
     }
-    Eigen::Vector3i vox;
-    Pos2Vox(pos, &vox);
-    return GetDistance(vox);
+    Eigen::Vector3i voxel;
+    PositionToVoxel(position, &voxel);
+    return GetDistance(voxel);
 }
 
-double EsdfMap::GetDistance(const Eigen::Vector3i& vox) const {
-    const double d = distance_buffer_[Vox2Idx(vox)];
-    return d < 0.0 ? static_cast<double>(kInfinity) : d;
+double EsdfMap::GetDistance(const Eigen::Vector3i& voxel) const {
+    const double distance = distance_buffer_[VoxelToIndex(voxel)];
+    return distance < 0.0 ? static_cast<double>(kInfinity) : distance;
 }
 
-double EsdfMap::StoredDistance(int idx) const {
-    const double d = distance_buffer_[idx];
-    return d < 0.0 ? static_cast<double>(kInfinity) : d;
+double EsdfMap::StoredDistance(int index) const {
+    const double distance = distance_buffer_[index];
+    return distance < 0.0 ? static_cast<double>(kInfinity) : distance;
 }
 
-double EsdfMap::GetDistanceWithGradient(const Eigen::Vector3d& pos,
-                                        Eigen::Vector3d* grad) const {
-    if (!PosInMap(pos) || grad == nullptr) {
+double EsdfMap::GetDistanceWithGradient(const Eigen::Vector3d& position,
+                                        Eigen::Vector3d* gradient) const {
+    if (!PositionInMap(position) || gradient == nullptr) {
         return -1.0;
     }
-    const Eigen::Vector3d pos_m =
-        pos - 0.5 * options_.resolution * Eigen::Vector3d::Ones();
-    Eigen::Vector3i idx;
-    Pos2Vox(pos_m, &idx);
-    Eigen::Vector3d idx_pos;
-    Vox2Pos(idx, &idx_pos);
-    const Eigen::Vector3d diff = (pos - idx_pos) * resolution_inv_;
+    const Eigen::Vector3d half_voxel_shifted_position =
+        position - 0.5 * options_.resolution * Eigen::Vector3d::Ones();
+    Eigen::Vector3i base_voxel;
+    PositionToVoxel(half_voxel_shifted_position, &base_voxel);
+    Eigen::Vector3d base_voxel_centre;
+    VoxelToPosition(base_voxel, &base_voxel_centre);
+    const Eigen::Vector3d interpolation_weight =
+        (position - base_voxel_centre) * inverse_resolution_;
 
-    double values[2][2][2];
-    for (int x = 0; x < 2; ++x) {
-        for (int y = 0; y < 2; ++y) {
-            for (int z = 0; z < 2; ++z) {
-                values[x][y][z] =
-                    GetDistance(Eigen::Vector3i(idx + Eigen::Vector3i(x, y, z)));
+    double corner_distance[2][2][2];
+    for (int offset_x = 0; offset_x < 2; ++offset_x) {
+        for (int offset_y = 0; offset_y < 2; ++offset_y) {
+            for (int offset_z = 0; offset_z < 2; ++offset_z) {
+                corner_distance[offset_x][offset_y][offset_z] = GetDistance(
+                    Eigen::Vector3i(base_voxel +
+                                    Eigen::Vector3i(offset_x, offset_y, offset_z)));
             }
         }
     }
-    const double v00 =
-        (1 - diff[0]) * values[0][0][0] + diff[0] * values[1][0][0];
-    const double v01 =
-        (1 - diff[0]) * values[0][0][1] + diff[0] * values[1][0][1];
-    const double v10 =
-        (1 - diff[0]) * values[0][1][0] + diff[0] * values[1][1][0];
-    const double v11 =
-        (1 - diff[0]) * values[0][1][1] + diff[0] * values[1][1][1];
-    const double v0 = (1 - diff[1]) * v00 + diff[1] * v10;
-    const double v1 = (1 - diff[1]) * v01 + diff[1] * v11;
-    const double dist = (1 - diff[2]) * v0 + diff[2] * v1;
+    const double interpolant_y0_z0 =
+        (1 - interpolation_weight[0]) * corner_distance[0][0][0] +
+        interpolation_weight[0] * corner_distance[1][0][0];
+    const double interpolant_y0_z1 =
+        (1 - interpolation_weight[0]) * corner_distance[0][0][1] +
+        interpolation_weight[0] * corner_distance[1][0][1];
+    const double interpolant_y1_z0 =
+        (1 - interpolation_weight[0]) * corner_distance[0][1][0] +
+        interpolation_weight[0] * corner_distance[1][1][0];
+    const double interpolant_y1_z1 =
+        (1 - interpolation_weight[0]) * corner_distance[0][1][1] +
+        interpolation_weight[0] * corner_distance[1][1][1];
+    const double interpolant_z0 =
+        (1 - interpolation_weight[1]) * interpolant_y0_z0 +
+        interpolation_weight[1] * interpolant_y1_z0;
+    const double interpolant_z1 =
+        (1 - interpolation_weight[1]) * interpolant_y0_z1 +
+        interpolation_weight[1] * interpolant_y1_z1;
+    const double interpolated_distance =
+        (1 - interpolation_weight[2]) * interpolant_z0 +
+        interpolation_weight[2] * interpolant_z1;
 
-    (*grad)[2] = (v1 - v0) * resolution_inv_;
-    (*grad)[1] =
-        ((1 - diff[2]) * (v10 - v00) + diff[2] * (v11 - v01)) * resolution_inv_;
-    (*grad)[0] = (1 - diff[2]) * (1 - diff[1]) *
-                     (values[1][0][0] - values[0][0][0]) +
-                 (1 - diff[2]) * diff[1] * (values[1][1][0] - values[0][1][0]) +
-                 diff[2] * (1 - diff[1]) * (values[1][0][1] - values[0][0][1]) +
-                 diff[2] * diff[1] * (values[1][1][1] - values[0][1][1]);
-    (*grad)[0] *= resolution_inv_;
-    return dist;
+    (*gradient)[2] = (interpolant_z1 - interpolant_z0) * inverse_resolution_;
+    (*gradient)[1] = ((1 - interpolation_weight[2]) *
+                          (interpolant_y1_z0 - interpolant_y0_z0) +
+                      interpolation_weight[2] *
+                          (interpolant_y1_z1 - interpolant_y0_z1)) *
+                     inverse_resolution_;
+    (*gradient)[0] =
+        (1 - interpolation_weight[2]) * (1 - interpolation_weight[1]) *
+            (corner_distance[1][0][0] - corner_distance[0][0][0]) +
+        (1 - interpolation_weight[2]) * interpolation_weight[1] *
+            (corner_distance[1][1][0] - corner_distance[0][1][0]) +
+        interpolation_weight[2] * (1 - interpolation_weight[1]) *
+            (corner_distance[1][0][1] - corner_distance[0][0][1]) +
+        interpolation_weight[2] * interpolation_weight[1] *
+            (corner_distance[1][1][1] - corner_distance[0][1][1]);
+    (*gradient)[0] *= inverse_resolution_;
+    return interpolated_distance;
 }
 
 bool EsdfMap::CheckUpdate() const { return !occupancy_queue_.empty(); }
 
-bool EsdfMap::UpdateOccupancy(bool global_map) {
+bool EsdfMap::UpdateOccupancy(bool reset_to_full_map) {
     while (!occupancy_queue_.empty()) {
-        const QueueElement xx = occupancy_queue_.front();
+        const QueueElement element = occupancy_queue_.front();
         occupancy_queue_.pop();
-        const int idx = Vox2Idx(xx.point);
-        const int occupy = Exist(idx);
+        const int index = VoxelToIndex(element.voxel);
+        const int previously_occupied = IsOccupied(index);
         const double log_odds_update =
-            (num_hit_[idx] >= num_miss_[idx] - num_hit_[idx] ? prob_hit_log_
-                                                             : prob_miss_log_);
-        num_hit_[idx] = num_miss_[idx] = 0;
-        if (distance_buffer_[idx] < 0.0) {
-            distance_buffer_[idx] = static_cast<double>(kInfinity);
-            InsertIntoList(reserved_idx_4_undefined_, idx);
+            (hit_count_[index] >= observation_count_[index] - hit_count_[index]
+                 ? hit_log_odds_
+                 : miss_log_odds_);
+        hit_count_[index] = observation_count_[index] = 0;
+        if (distance_buffer_[index] < 0.0) {
+            distance_buffer_[index] = static_cast<double>(kInfinity);
+            InsertIntoList(undefined_voxel_index_, index);
         }
-        if ((log_odds_update >= 0.0 && occupancy_buffer_[idx] >= clamp_max_log_) ||
-            (log_odds_update <= 0.0 && occupancy_buffer_[idx] <= clamp_min_log_)) {
+        if ((log_odds_update >= 0.0 && occupancy_buffer_[index] >= max_log_odds_) ||
+            (log_odds_update <= 0.0 && occupancy_buffer_[index] <= min_log_odds_)) {
             continue;
         }
-        if (!global_map && !VoxInRange(xx.point, false)) {
-            occupancy_buffer_[idx] = 0.0;
-            distance_buffer_[idx] = static_cast<double>(kInfinity);
+        if (!reset_to_full_map && !VoxelInRange(element.voxel, false)) {
+            occupancy_buffer_[index] = 0.0;
+            distance_buffer_[index] = static_cast<double>(kInfinity);
         }
-        occupancy_buffer_[idx] = std::min(
-            std::max(occupancy_buffer_[idx] + log_odds_update, clamp_min_log_),
-            clamp_max_log_);
-        if (Exist(idx) && !occupy) {
-            insert_queue_.push(QueueElement{xx.point, 0.0});
-        } else if (!Exist(idx) && occupy) {
+        occupancy_buffer_[index] = std::min(
+            std::max(occupancy_buffer_[index] + log_odds_update, min_log_odds_),
+            max_log_odds_);
+        if (IsOccupied(index) && !previously_occupied) {
+            insert_queue_.push(QueueElement{element.voxel, 0.0});
+        } else if (!IsOccupied(index) && previously_occupied) {
             delete_queue_.push(
-                QueueElement{xx.point, static_cast<double>(kInfinity)});
+                QueueElement{element.voxel, static_cast<double>(kInfinity)});
         }
     }
     return !insert_queue_.empty() || !delete_queue_.empty();
@@ -273,125 +321,136 @@ bool EsdfMap::UpdateOccupancy(bool global_map) {
 
 void EsdfMap::UpdateESDF() {
     while (!insert_queue_.empty()) {
-        const QueueElement xx = insert_queue_.front();
+        const QueueElement element = insert_queue_.front();
         insert_queue_.pop();
-        const int idx = Vox2Idx(xx.point);
-        if (!Exist(idx)) {
+        const int index = VoxelToIndex(element.voxel);
+        if (!IsOccupied(index)) {
             continue;
         }
-        DeleteFromList(Vox2Idx(closest_obstacle_[idx]), idx);
-        closest_obstacle_[idx] = xx.point;
-        distance_buffer_[idx] = 0.0;
-        InsertIntoList(idx, idx);
-        update_queue_.push(xx);
+        DeleteFromList(VoxelToIndex(closest_obstacle_[index]), index);
+        closest_obstacle_[index] = element.voxel;
+        distance_buffer_[index] = 0.0;
+        InsertIntoList(index, index);
+        update_queue_.push(element);
     }
     while (!delete_queue_.empty()) {
-        const QueueElement xx = delete_queue_.front();
+        const QueueElement element = delete_queue_.front();
         delete_queue_.pop();
-        const int idx = Vox2Idx(xx.point);
-        if (Exist(idx)) {
+        const int index = VoxelToIndex(element.voxel);
+        if (IsOccupied(index)) {
             continue;
         }
-        int next_obs_idx = kUndefined;
-        for (int obs_idx = head_[idx]; obs_idx != kUndefined;
-             obs_idx = next_obs_idx) {
-            closest_obstacle_[obs_idx] =
+        int next_occupied_index = kUndefined;
+        for (int occupied_index = obstacle_list_head_[index];
+             occupied_index != kUndefined; occupied_index = next_occupied_index) {
+            closest_obstacle_[occupied_index] =
                 Eigen::Vector3i(kUndefined, kUndefined, kUndefined);
-            const Eigen::Vector3i obs_vox = Idx2Vox(obs_idx);
+            const Eigen::Vector3i occupied_voxel = IndexToVoxel(occupied_index);
             double distance = static_cast<double>(kInfinity);
-            for (int d = 0; d < kNumDirs; ++d) {
-                const Eigen::Vector3i new_pos = obs_vox + kDirs[d];
-                const int new_pos_idx = Vox2Idx(new_pos);
-                if (VoxInRange(new_pos) &&
-                    closest_obstacle_[new_pos_idx](0) != kUndefined &&
-                    Exist(Vox2Idx(closest_obstacle_[new_pos_idx]))) {
-                    const double tmp = Dist(obs_vox, closest_obstacle_[new_pos_idx]);
-                    if (tmp < distance) {
-                        distance = tmp;
-                        closest_obstacle_[obs_idx] = closest_obstacle_[new_pos_idx];
+            for (int neighbor = 0; neighbor < kNeighborCount; ++neighbor) {
+                const Eigen::Vector3i neighbor_voxel =
+                    occupied_voxel + kNeighborOffsets[neighbor];
+                const int neighbor_index = VoxelToIndex(neighbor_voxel);
+                if (VoxelInRange(neighbor_voxel) &&
+                    closest_obstacle_[neighbor_index](0) != kUndefined &&
+                    IsOccupied(VoxelToIndex(closest_obstacle_[neighbor_index]))) {
+                    const double candidate = DistanceBetweenVoxels(
+                        occupied_voxel, closest_obstacle_[neighbor_index]);
+                    if (candidate < distance) {
+                        distance = candidate;
+                        closest_obstacle_[occupied_index] =
+                            closest_obstacle_[neighbor_index];
                     }
                     break;
                 }
             }
-            prev_[obs_idx] = kUndefined;
-            next_obs_idx = next_[obs_idx];
-            next_[obs_idx] = kUndefined;
-            distance_buffer_[obs_idx] = distance;
+            previous_list_index_[occupied_index] = kUndefined;
+            next_occupied_index = next_list_index_[occupied_index];
+            next_list_index_[occupied_index] = kUndefined;
+            distance_buffer_[occupied_index] = distance;
             if (distance < static_cast<double>(kInfinity)) {
-                update_queue_.push(QueueElement{obs_vox, distance});
+                update_queue_.push(QueueElement{occupied_voxel, distance});
             }
-            InsertIntoList(Vox2Idx(closest_obstacle_[obs_idx]), obs_idx);
+            InsertIntoList(VoxelToIndex(closest_obstacle_[occupied_index]),
+                           occupied_index);
         }
-        head_[idx] = kUndefined;
+        obstacle_list_head_[index] = kUndefined;
     }
 
     while (!update_queue_.empty()) {
-        const QueueElement xx = update_queue_.front();
+        const QueueElement element = update_queue_.front();
         update_queue_.pop();
-        const int idx = Vox2Idx(xx.point);
-        if (xx.distance != distance_buffer_[idx]) {
+        const int index = VoxelToIndex(element.voxel);
+        if (element.distance != distance_buffer_[index]) {
             continue;
         }
-        bool change = false;
-        for (int i = 0; i < kNumDirs; ++i) {
-            const Eigen::Vector3i new_pos = xx.point + kDirs[i];
-            if (!VoxInRange(new_pos)) {
+        bool distance_changed = false;
+        for (int neighbor = 0; neighbor < kNeighborCount; ++neighbor) {
+            const Eigen::Vector3i neighbor_voxel =
+                element.voxel + kNeighborOffsets[neighbor];
+            if (!VoxelInRange(neighbor_voxel)) {
                 continue;
             }
-            const int new_pos_idx = Vox2Idx(new_pos);
-            if (closest_obstacle_[new_pos_idx](0) == kUndefined) {
+            const int neighbor_index = VoxelToIndex(neighbor_voxel);
+            if (closest_obstacle_[neighbor_index](0) == kUndefined) {
                 continue;
             }
-            const double tmp = Dist(xx.point, closest_obstacle_[new_pos_idx]);
-            if (StoredDistance(idx) > tmp) {
-                distance_buffer_[idx] = tmp;
-                change = true;
-                DeleteFromList(Vox2Idx(closest_obstacle_[idx]), idx);
-                InsertIntoList(Vox2Idx(closest_obstacle_[new_pos_idx]), idx);
-                closest_obstacle_[idx] = closest_obstacle_[new_pos_idx];
+            const double candidate = DistanceBetweenVoxels(
+                element.voxel, closest_obstacle_[neighbor_index]);
+            if (StoredDistance(index) > candidate) {
+                distance_buffer_[index] = candidate;
+                distance_changed = true;
+                DeleteFromList(VoxelToIndex(closest_obstacle_[index]), index);
+                InsertIntoList(VoxelToIndex(closest_obstacle_[neighbor_index]),
+                               index);
+                closest_obstacle_[index] = closest_obstacle_[neighbor_index];
             }
         }
-        if (change) {
-            update_queue_.push(QueueElement{xx.point, distance_buffer_[idx]});
+        if (distance_changed) {
+            update_queue_.push(QueueElement{element.voxel, distance_buffer_[index]});
             continue;
         }
-        const int new_obs_idx = Vox2Idx(closest_obstacle_[idx]);
-        for (int d = 0; d < kNumDirs; ++d) {
-            const Eigen::Vector3i new_pos = xx.point + kDirs[d];
-            if (!VoxInRange(new_pos)) {
+        const int closest_obstacle_index = VoxelToIndex(closest_obstacle_[index]);
+        for (int neighbor = 0; neighbor < kNeighborCount; ++neighbor) {
+            const Eigen::Vector3i neighbor_voxel =
+                element.voxel + kNeighborOffsets[neighbor];
+            if (!VoxelInRange(neighbor_voxel)) {
                 continue;
             }
-            const int new_pos_id = Vox2Idx(new_pos);
-            const double tmp = Dist(new_pos, closest_obstacle_[idx]);
-            if (StoredDistance(new_pos_id) > tmp) {
-                distance_buffer_[new_pos_id] = tmp;
-                DeleteFromList(Vox2Idx(closest_obstacle_[new_pos_id]), new_pos_id);
-                InsertIntoList(new_obs_idx, new_pos_id);
-                closest_obstacle_[new_pos_id] = closest_obstacle_[idx];
-                update_queue_.push(QueueElement{new_pos, tmp});
+            const int neighbor_index = VoxelToIndex(neighbor_voxel);
+            const double candidate =
+                DistanceBetweenVoxels(neighbor_voxel, closest_obstacle_[index]);
+            if (StoredDistance(neighbor_index) > candidate) {
+                distance_buffer_[neighbor_index] = candidate;
+                DeleteFromList(VoxelToIndex(closest_obstacle_[neighbor_index]),
+                               neighbor_index);
+                InsertIntoList(closest_obstacle_index, neighbor_index);
+                closest_obstacle_[neighbor_index] = closest_obstacle_[index];
+                update_queue_.push(QueueElement{neighbor_voxel, candidate});
             }
         }
     }
 }
 
-void EsdfMap::SetUpdateRange(const Eigen::Vector3d& min_pos,
-                             const Eigen::Vector3d& max_pos, bool new_vec) {
-    Eigen::Vector3d lo = min_pos.cwiseMax(min_range_);
-    Eigen::Vector3d hi = max_pos.cwiseMin(max_range_);
-    if (new_vec) {
-        last_min_vec_ = min_vec_;
-        last_max_vec_ = max_vec_;
+void EsdfMap::SetUpdateRange(const Eigen::Vector3d& min_position,
+                             const Eigen::Vector3d& max_position,
+                             bool remember_previous_range) {
+    Eigen::Vector3d clamped_min = min_position.cwiseMax(world_min_);
+    Eigen::Vector3d clamped_max = max_position.cwiseMin(world_max_);
+    if (remember_previous_range) {
+        previous_update_min_voxel_ = update_min_voxel_;
+        previous_update_max_voxel_ = update_max_voxel_;
     }
-    Pos2Vox(lo, &min_vec_);
-    Pos2Vox(hi - Eigen::Vector3d::Constant(options_.resolution / 2.0),
-            &max_vec_);
+    PositionToVoxel(clamped_min, &update_min_voxel_);
+    PositionToVoxel(clamped_max - Eigen::Vector3d::Constant(options_.resolution / 2.0),
+                    &update_max_voxel_);
 }
 
 void EsdfMap::SetOriginalRange() {
-    min_vec_ << 0, 0, 0;
-    max_vec_ << grid_size_(0) - 1, grid_size_(1) - 1, grid_size_(2) - 1;
-    last_min_vec_ = min_vec_;
-    last_max_vec_ = max_vec_;
+    update_min_voxel_ << 0, 0, 0;
+    update_max_voxel_ << grid_size_(0) - 1, grid_size_(1) - 1, grid_size_(2) - 1;
+    previous_update_min_voxel_ = update_min_voxel_;
+    previous_update_max_voxel_ = update_max_voxel_;
 }
 
 void EsdfMap::IntegrateRay(const Eigen::Vector3d& origin,
@@ -409,17 +468,18 @@ void EsdfMap::IntegrateRay(const Eigen::Vector3d& origin,
     }
 
     std::vector<Eigen::Vector3d> voxels;
-    const double res = options_.resolution;
-    Raycast(origin / res, point / res, min_range_ / res, max_range_ / res,
-            &voxels);
-    const Eigen::Vector3d half(0.5, 0.5, 0.5);
-    for (int i = static_cast<int>(voxels.size()) - 2; i >= 0; --i) {
-        const Eigen::Vector3d world = (voxels[static_cast<std::size_t>(i)] + half) * res;
-        const double along = (world - origin).norm();
-        if (along < options_.min_ray_length) {
+    const double resolution = options_.resolution;
+    Raycast(origin / resolution, point / resolution, world_min_ / resolution,
+            world_max_ / resolution, &voxels);
+    const Eigen::Vector3d half_voxel(0.5, 0.5, 0.5);
+    for (int step = static_cast<int>(voxels.size()) - 2; step >= 0; --step) {
+        const Eigen::Vector3d world =
+            (voxels[static_cast<std::size_t>(step)] + half_voxel) * resolution;
+        const double along_ray = (world - origin).norm();
+        if (along_ray < options_.min_ray_length) {
             break;
         }
-        if (along > options_.max_ray_length) {
+        if (along_ray > options_.max_ray_length) {
             continue;
         }
         SetOccupancy(world, false);
@@ -439,16 +499,19 @@ void EsdfMap::IntegrateCloud(const Eigen::Vector3d& origin,
 
 std::vector<Eigen::Vector3d> EsdfMap::OccupiedPoints() const {
     std::vector<Eigen::Vector3d> points;
-    for (int x = min_vec_(0); x <= max_vec_(0); ++x) {
-        for (int y = min_vec_(1); y <= max_vec_(1); ++y) {
-            for (int z = min_vec_(2); z <= max_vec_(2); ++z) {
-                const Eigen::Vector3i vox(x, y, z);
-                if (!Exist(Vox2Idx(vox))) {
+    for (int voxel_x = update_min_voxel_(0); voxel_x <= update_max_voxel_(0);
+         ++voxel_x) {
+        for (int voxel_y = update_min_voxel_(1); voxel_y <= update_max_voxel_(1);
+             ++voxel_y) {
+            for (int voxel_z = update_min_voxel_(2); voxel_z <= update_max_voxel_(2);
+                 ++voxel_z) {
+                const Eigen::Vector3i voxel(voxel_x, voxel_y, voxel_z);
+                if (!IsOccupied(VoxelToIndex(voxel))) {
                     continue;
                 }
-                Eigen::Vector3d pos;
-                Vox2Pos(vox, &pos);
-                points.push_back(pos);
+                Eigen::Vector3d position;
+                VoxelToPosition(voxel, &position);
+                points.push_back(position);
             }
         }
     }
@@ -456,16 +519,21 @@ std::vector<Eigen::Vector3d> EsdfMap::OccupiedPoints() const {
 }
 
 bool EsdfMap::CheckConsistency() const {
-    for (int x = 0; x < grid_size_(0); ++x) {
-        for (int y = 0; y < grid_size_(1); ++y) {
-            for (int z = 0; z < grid_size_(2); ++z) {
-                const int vox = Vox2Idx(Eigen::Vector3i(x, y, z));
-                if ((prev_[vox] != kUndefined && next_[prev_[vox]] != vox) ||
-                    (next_[vox] != kUndefined && prev_[next_[vox]] != vox)) {
+    for (int voxel_x = 0; voxel_x < grid_size_(0); ++voxel_x) {
+        for (int voxel_y = 0; voxel_y < grid_size_(1); ++voxel_y) {
+            for (int voxel_z = 0; voxel_z < grid_size_(2); ++voxel_z) {
+                const int index =
+                    VoxelToIndex(Eigen::Vector3i(voxel_x, voxel_y, voxel_z));
+                if ((previous_list_index_[index] != kUndefined &&
+                     next_list_index_[previous_list_index_[index]] != index) ||
+                    (next_list_index_[index] != kUndefined &&
+                     previous_list_index_[next_list_index_[index]] != index)) {
                     return false;
                 }
-                if (prev_[vox] == kUndefined && distance_buffer_[vox] >= 0.0 &&
-                    head_[Vox2Idx(closest_obstacle_[vox])] != vox) {
+                if (previous_list_index_[index] == kUndefined &&
+                    distance_buffer_[index] >= 0.0 &&
+                    obstacle_list_head_[VoxelToIndex(closest_obstacle_[index])] !=
+                        index) {
                     return false;
                 }
             }
