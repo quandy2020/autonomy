@@ -99,5 +99,14 @@ target_compile_definitions(autonomy_map PUBLIC
   "EIGEN_FUNCTORS_PLUGIN=\"${_eigen_functors_plugin}\""
   "EIGEN_DENSEBASE_PLUGIN=\"${_eigen_densebase_plugin}\"")
 
+# --- tests -------------------------------------------------------------------
+# Root CMake keeps BUILD_TESTING cached OFF even when BUILD_TEST=ON.
+if(BUILD_TEST AND NOT BUILD_TESTING)
+  set(BUILD_TESTING ON)
+endif()
+autocmake_test(map.esdf_map_test
+  SOURCES esdf/esdf_map_test.cpp
+  DEPENDENCIES autonomy_map)
+
 # --- install -----------------------------------------------------------------
 autocmake_install_share(map CONF)
