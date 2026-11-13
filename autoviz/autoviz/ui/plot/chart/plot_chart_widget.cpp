@@ -73,6 +73,22 @@ qreal ResolveLineWidth(const QString& line_size) {
   return static_cast<qreal>(value);
 }
 
+/** First index with point.x >= x (points are sorted by x). */
+std::size_t LowerBoundByX(const std::deque<PlotPoint>& points, double x) {
+  const auto it = std::lower_bound(
+      points.begin(), points.end(), x,
+      [](const PlotPoint& point, double value) { return point.x < value; });
+  return static_cast<std::size_t>(std::distance(points.begin(), it));
+}
+
+/** First index with point.x > x. */
+std::size_t UpperBoundByX(const std::deque<PlotPoint>& points, double x) {
+  const auto it = std::upper_bound(
+      points.begin(), points.end(), x,
+      [](double value, const PlotPoint& point) { return value < point.x; });
+  return static_cast<std::size_t>(std::distance(points.begin(), it));
+}
+
 }  // namespace
 
 PlotChartWidget::PlotChartWidget(QWidget* parent) : QWidget(parent) {
@@ -617,21 +633,16 @@ std::optional<PlotChartWidget::HoverSample> PlotChartWidget::sampleAtX(
     return std::nullopt;
   }
 
-  HoverSample best;
-  bool found = false;
-  for (const PlotPoint& point : runtime.points) {
-    if (point.x > x) {
-      break;
-    }
-    best.y = point.y;
-    best.sample_x = point.x;
-    best.exact = std::abs(point.x - x) <= kExactSampleEpsilon;
-    found = true;
-  }
-
-  if (!found) {
+  // Last sample with sample.x <= x (points are monotonic in x).
+  const std::size_t upper = UpperBoundByX(runtime.points, x);
+  if (upper == 0) {
     return std::nullopt;
   }
+  const PlotPoint& point = runtime.points[upper - 1];
+  HoverSample best;
+  best.y = point.y;
+  best.sample_x = point.x;
+  best.exact = std::abs(point.x - x) <= kExactSampleEpsilon;
   return best;
 }
 
@@ -700,12 +711,28 @@ std::optional<PlotInspectPoint> PlotChartWidget::pickInspectPoint(
     const QPoint& pos, const AxisRange& range) const {
   PlotInspectPoint best;
   double best_dist = kInspectPickRadiusPx;
+  const std::optional<double> cursor_x = mapFromChartX(pos.x(), range);
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
     if (runtime_ptr == nullptr || !runtime_ptr->config.enabled) {
       continue;
     }
     const PlotSeriesRuntime& runtime = *runtime_ptr;
-    for (const PlotPoint& point : runtime.points) {
+    if (runtime.points.empty()) {
+      continue;
+    }
+    // Restrict to a narrow X band around the cursor (sorted points).
+    std::size_t begin = 0;
+    std::size_t end = runtime.points.size();
+    if (cursor_x.has_value()) {
+      const double x_pad =
+          (range.max_x - range.min_x) *
+          (kInspectPickRadiusPx /
+           static_cast<double>(std::max(1, chartRect().width())));
+      begin = LowerBoundByX(runtime.points, *cursor_x - x_pad);
+      end = UpperBoundByX(runtime.points, *cursor_x + x_pad);
+    }
+    for (std::size_t index = begin; index < end; ++index) {
+      const PlotPoint& point = runtime.points[index];
       const QPointF mapped =
           mapToChart(point.x, point.y, range, runtime.config.use_right_y);
       const double dist = QLineF(mapped, pos).length();
@@ -781,14 +808,22 @@ void PlotChartWidget::updateHoverFromMouse(const QPoint& pos) {
     return;
   }
 
+  const bool same_pixel_x = hover_active_ && hover_pos_.x() == pos.x();
+  const bool same_pixel = same_pixel_x && hover_pos_.y() == pos.y();
+  if (same_pixel) {
+    return;
+  }
+
   hover_active_ = true;
   hover_pos_ = pos;
   hover_x_ = *data_x;
-  tooltip_rows_ = buildTooltipRows(hover_x_);
+  if (!same_pixel_x) {
+    tooltip_rows_ = buildTooltipRows(hover_x_);
+    emit hoverStateChanged();
+  }
   if (interaction_mode_ == PlotInteractionMode::kSelect) {
     setCursor(Qt::CrossCursor);
   }
-  emit hoverStateChanged();
   update();
 }
 
@@ -869,9 +904,16 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
   QVector<HoverMarker> hover_markers;
 
   const double x_margin = (range.max_x - range.min_x) * 0.01;
+  const bool fast_interaction = dragging_ || pan_pending_ || brush_dragging_;
   const std::size_t bucket_count =
       static_cast<std::size_t>(std::max(8, chart.width()));
-  const std::size_t sample_budget = bucket_count * 2;
+  // One extrema-pair budget per pixel is enough; halve further while panning.
+  const std::size_t sample_budget =
+      fast_interaction ? bucket_count
+                       : static_cast<std::size_t>(std::max(
+                             std::size_t{8}, bucket_count + bucket_count / 2));
+  const std::size_t marker_budget =
+      static_cast<std::size_t>(std::max(32, chart.width() / 2));
 
   for (const PlotSeriesRuntime* runtime_ptr : series_) {
     if (runtime_ptr == nullptr) {
@@ -882,28 +924,22 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
       continue;
     }
 
-    paint_visible_.clear();
-    paint_visible_.reserve(runtime.points.size());
-    for (const PlotPoint& point : runtime.points) {
-      if (point.x < range.min_x - x_margin || point.x > range.max_x + x_margin) {
-        continue;
-      }
-      paint_visible_.push_back(point);
-    }
-    if (paint_visible_.empty()) {
+    const std::size_t begin =
+        LowerBoundByX(runtime.points, range.min_x - x_margin);
+    const std::size_t end =
+        UpperBoundByX(runtime.points, range.max_x + x_margin);
+    if (begin >= end) {
       continue;
     }
-
+    const std::size_t visible_count = end - begin;
     const bool use_right = runtime.config.use_right_y;
-    paint_mapped_.clear();
-    paint_mapped_.reserve(paint_visible_.size());
-    for (const PlotPoint& point : paint_visible_) {
-      paint_mapped_.push_back(mapToChart(point.x, point.y, range, use_right));
-    }
 
     const PlotSampleReduction reduced = ReducePlotSamples(
-        paint_mapped_.size(), sample_budget, bucket_count,
-        [this](std::size_t index) { return paint_mapped_[index]; });
+        visible_count, sample_budget, bucket_count,
+        [&](std::size_t index) {
+          const PlotPoint& point = runtime.points[begin + index];
+          return mapToChart(point.x, point.y, range, use_right);
+        });
 
     const PlotCurveStyle style = runtime.config.curve_style;
     const bool force_dots = style == PlotCurveStyle::kLinesAndDots;
@@ -912,8 +948,12 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
         reduced.samples.size() >= 2;
     const bool draw_steps = style == PlotCurveStyle::kSteps && draw_line;
     const bool draw_sticks = style == PlotCurveStyle::kSticks;
+    // Dense markers dominate pan cost; skip while interacting or over budget.
     const bool draw_markers =
-        runtime.config.show_points || force_dots || draw_sticks;
+        !fast_interaction &&
+        (draw_sticks || force_dots ||
+         (runtime.config.show_points &&
+          reduced.samples.size() <= marker_budget));
     const qreal line_width = ResolveLineWidth(runtime.config.line_size);
     const qreal marker_r =
         std::max(1.0, runtime.config.point_size > 0.0
@@ -935,25 +975,45 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
       pen.setCosmetic(true);
       painter.setPen(pen);
       painter.setBrush(Qt::NoBrush);
-      QPainterPath path;
-      bool started = false;
-      QPointF prev;
-      for (const ReducedPlotSample& sample : reduced.samples) {
-        if (sample.starts_new_run || !started) {
-          path.moveTo(sample.point);
-          started = true;
-          prev = sample.point;
-        } else if (draw_steps) {
-          path.lineTo(sample.point.x(), prev.y());
-          path.lineTo(sample.point);
-          prev = sample.point;
-        } else {
-          path.lineTo(sample.point);
-          prev = sample.point;
+      if (!draw_steps) {
+        paint_mapped_.clear();
+        paint_mapped_.reserve(reduced.samples.size());
+        bool flush_run = false;
+        auto flush_polyline = [&]() {
+          if (paint_mapped_.size() >= 2) {
+            painter.drawPolyline(paint_mapped_.data(),
+                                 static_cast<int>(paint_mapped_.size()));
+          } else if (paint_mapped_.size() == 1) {
+            painter.drawPoint(paint_mapped_.front());
+          }
+          paint_mapped_.clear();
+        };
+        for (const ReducedPlotSample& sample : reduced.samples) {
+          if (sample.starts_new_run && flush_run) {
+            flush_polyline();
+          }
+          paint_mapped_.push_back(sample.point);
+          flush_run = true;
         }
-      }
-      if (!path.isEmpty()) {
-        painter.drawPath(path);
+        flush_polyline();
+      } else {
+        QPainterPath path;
+        bool started = false;
+        QPointF prev;
+        for (const ReducedPlotSample& sample : reduced.samples) {
+          if (sample.starts_new_run || !started) {
+            path.moveTo(sample.point);
+            started = true;
+            prev = sample.point;
+          } else {
+            path.lineTo(sample.point.x(), prev.y());
+            path.lineTo(sample.point);
+            prev = sample.point;
+          }
+        }
+        if (!path.isEmpty()) {
+          painter.drawPath(path);
+        }
       }
     }
 
@@ -965,7 +1025,8 @@ void PlotChartWidget::drawSeries(QPainter& painter, const AxisRange& range,
       }
     }
 
-    if (hover_active_ && interaction_mode_ == PlotInteractionMode::kSelect) {
+    if (!fast_interaction && hover_active_ &&
+        interaction_mode_ == PlotInteractionMode::kSelect) {
       const std::optional<HoverSample> sample = sampleAtX(runtime, hover_x_);
       if (sample.has_value()) {
         hover_markers.push_back(HoverMarker{
@@ -1362,7 +1423,8 @@ void PlotChartWidget::drawTooltip(QPainter& painter) const {
 
 void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
   QPainter painter(this);
-  painter.setRenderHint(QPainter::Antialiasing, true);
+  const bool fast_interaction = dragging_ || pan_pending_ || brush_dragging_;
+  painter.setRenderHint(QPainter::Antialiasing, !fast_interaction);
 
   const AxisRange range = effectiveAxisRange();
   const QRect chart = chartRect();

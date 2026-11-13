@@ -130,7 +130,7 @@ struct PlotSeriesConfig {
   QString line_size = QStringLiteral("auto");  /**< Stroke width hint (@c auto or px). */
   PlotCurveStyle curve_style = PlotCurveStyle::kLines;  /**< Stroke style. */
   bool show_line = true;  /**< Draw connecting line (vs points / sticks only). */
-  bool show_points = true;  /**< Draw per-sample markers. */
+  bool show_points = false;  /**< Draw per-sample markers (off by default for dense series). */
   double point_size = 3.0;  /**< Marker radius in screen pixels. */
   double y_scale = 1.0;     /**< Multiply Y after modifiers / binary op. */
   double y_offset = 0.0;    /**< Add to Y after @ref y_scale. */

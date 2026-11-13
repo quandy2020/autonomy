@@ -103,7 +103,7 @@ PlotSeriesConfig ParseCurve(const QDomElement& curve) {
       ChildDouble(curve, QStringLiteral("curve_style"),
                   static_cast<double>(series.curve_style))));
   series.show_line = ChildBool(curve, QStringLiteral("show_line"), true);
-  series.show_points = ChildBool(curve, QStringLiteral("show_points"), true);
+  series.show_points = ChildBool(curve, QStringLiteral("show_points"), false);
   series.point_size = ChildDouble(curve, QStringLiteral("point_size"), 3.0);
   series.y_scale = ChildDouble(curve, QStringLiteral("y_scale"), 1.0);
   series.y_offset = ChildDouble(curve, QStringLiteral("y_offset"), 0.0);

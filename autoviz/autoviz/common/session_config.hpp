@@ -187,7 +187,7 @@ struct PlotSeriesPersistConfig {
   bool show_line = true;
 
   /** Whether to draw per-sample markers. */
-  bool show_points = true;
+  bool show_points = false;
 
   /** Marker radius in screen pixels. */
   double point_size = 3.0;

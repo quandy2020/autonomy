@@ -568,8 +568,7 @@ class PlotChartWidget : public QWidget {
   };
   std::vector<ViewSnapshot> view_history_;  /**< Zoom/pan undo stack. */
 
-  /** Reused each paint to avoid heap churn in drawSeries. */
-  mutable std::vector<PlotPoint> paint_visible_;
+  /** Reused each paint to avoid heap churn in drawSeries polylines. */
   mutable std::vector<QPointF> paint_mapped_;
 };
 
