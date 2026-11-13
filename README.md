@@ -19,35 +19,17 @@
 <p align="center">
   <a href="https://autonomy.readthedocs.io/en/latest/index.html">Documentation</a>
   ·
-  <a href="docs/source/02_Installation/00_guide.md">Install</a>
+  <a href="#build">Build</a>
   ·
-  <a href="docs/source/04_Running/02_quickstart.md">Quick Start</a>
+  <a href="#demo">Demo</a>
   ·
-  <a href="docs/source/01_Instructions/03_system_architecture.md">Architecture</a>
+  <a href="#architecture">Architecture</a>
+  ·
+  <a href="#guides">Guides</a>
 </p>
 
 <p align="center">
-  <a href="docs/source/01_Instructions/03_system_architecture.md">
-    <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
-  </a>
-</p>
-
-<p align="center">
-  <code>PERCEPTION</code>
-  ·
-  <code>LOCALIZATION</code>
-  ·
-  <code>MAPPING</code>
-  ·
-  <code>PLANNING</code>
-  ·
-  <code>CONTROL</code>
-  ·
-  <code>ORCHESTRATION</code>
-</p>
-
-<p align="center">
-  <img src="images/autonomy-cover.png" alt="Autonomy cover" width="100%"/>
+  <img src="images/autonomy-cover.jpg" alt="Autonomy" width="100%"/>
 </p>
 
 ---
@@ -72,10 +54,7 @@ Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. D
 - 🧭 **Navigation you can see.** Global plan, MPPI candidates, costmaps, goal rings, and cmd/odom plots in AutoViz.
 - 🧠 **Behavior-tree orchestration.** TaskServer + BT navigator for navigate-to-pose, recover, cancel.
 - 🎮 **Simulation & sensors.** AutoSim (Habitat · Fake · Isaac + PhysX) and AutoDriver for real hardware.
-- 👁️ **AutoViz.** Qt + Ogre panels for maps, paths, TF trails, cameras, and live plots.
-- 🚢 **Production oriented.** Docker images, Ansible playbooks, observability — x86_64 and ARM64 ready.
-- 📦 **Domain trim.** Build only what you need with CMake feature flags.
-- 🔗 **Bridge when you must.** Optional gRPC surface for external clients and tools.
+- 🚢 **Production oriented.** Docker, Ansible, observability — x86_64 and ARM64 ready.
 
 ---
 
@@ -109,9 +88,11 @@ Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. D
       <sub>Cartographer · Atlas · Argus (ESIKF)</sub>
     </td>
     <td align="center" width="50%" valign="top">
-      <img src="autosim/images/isaac.gif" alt="Isaac Sim + AutoViz" width="100%"/>
+      <a href="autosim/README.md">
+        <img src="autosim/images/isaac.png" alt="Isaac Sim + AutoViz" width="100%"/>
+      </a>
       <p>
-        <a href="autosim/README.md"><b>AutoSim</b></a>
+        <a href="autosim/README.md"><b>▶ AutoSim</b></a>
         ·
         <a href="autoviz/README.md">AutoViz</a>
       </p>
@@ -122,7 +103,7 @@ Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. D
 
 ---
 
-## Get started
+## Build
 
 Two ways in:
 
@@ -135,10 +116,6 @@ Autonomy is under active development. [Say so](https://github.com/quandy2020/aut
 
 - ✅ **Linux** · x86_64 and ARM64 (primary)
 - 🚧 **macOS / Windows** · AutoViz deploy scripts exist; full stack is Linux-first
-
----
-
-## Build from source
 
 Work from the **source root** (the directory with top-level `CMakeLists.txt`, `scripts/`, `docker/`). In a monorepo that is often `…/src/autonomy`.
 
@@ -206,19 +183,15 @@ See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/
 
 </details>
 
-<p align="center">
-  <a href="docs/source/01_Instructions/00_guide.md">Getting started</a>
-  ·
-  <a href="docs/source/04_Running/02_quickstart.md">Quick Run</a>
-  ·
-  <a href="docs/source/02_Installation/05_docker.md">Docker</a>
-  ·
-  <a href="cmake/README.md">CMake</a>
-</p>
-
 ---
 
 ## Architecture
+
+<p align="center">
+  <a href="docs/source/01_Instructions/03_system_architecture.md">
+    <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
+  </a>
+</p>
 
 <p align="center">
   <a href="docs/architecture/archify/autonomy-runtime.architecture.html">
@@ -245,16 +218,6 @@ See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/
   </tr>
 </table>
 
-<p align="center">
-  <a href="docs/architecture/archify/autonomy-runtime.architecture.html">Runtime</a>
-  ·
-  <a href="docs/architecture/archify/navigation-task.workflow.html">Navigation</a>
-  ·
-  <a href="docs/architecture/archify/person-following.dataflow.html">Following</a>
-  ·
-  <a href="docs/source/01_Instructions/03_system_architecture.md">System guide</a>
-</p>
-
 Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `control` (`cmd_vel`), with TF `map → odom → base_link`.
 
 ### Stack
@@ -275,11 +238,11 @@ Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `contro
 ## How to Contribute
 
 > [!IMPORTANT]
-> The best way to contribute is to build the stack, run a nav or SLAM bring-up, and say where it breaks or could be clearer.
+> The best way to contribute is to build the stack, run a nav or SLAM bring-up, and [say where it breaks](https://github.com/quandy2020/autonomy/issues) or could be clearer.
 >
 > Ready to write code? Start from [Getting started](docs/source/01_Instructions/00_guide.md) and [CMake](cmake/README.md). Prefer small, reviewable changes that match existing module boundaries (`autolink`, `automsgs`, `autonomy/*`, `autoviz`, …).
 >
-> Questions and demos live best next to the module READMEs linked below.
+> Questions and demos live best next to the module READMEs in [Guides](#guides).
 
 ---
 
@@ -315,13 +278,15 @@ Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `contro
     <a href="docs/source/16_Navigator/00_guide.md">Navigator</a> ·
     <a href="docs/source/18_Tools/08_datasets.md">Datasets</a> ·
     <a href="docs/source/19_FAQs/00_guide.md">FAQs</a> ·
+    <a href="docs/source/01_Instructions/03_system_architecture.md">Architecture</a> ·
+    <a href="cmake/README.md">CMake</a> ·
     <a href="https://autonomy.readthedocs.io/en/latest/index.html">readthedocs</a>
   </sub>
 </p>
 
 ---
 
-## Licence
+## License
 
 Autonomy is free software under [Apache-2.0](LICENSE).
 
