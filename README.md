@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="images/autonomy_architecture.svg" alt="Autonomy" width="96"/>
-</p>
-
 <h1 align="center">Autonomy</h1>
 
 <p align="center">
@@ -31,7 +27,9 @@
 </p>
 
 <p align="center">
-  <img src="images/autonomy-cover.png" alt="Autonomy cover" width="920"/>
+  <a href="docs/source/01_Instructions/03_system_architecture.md">
+    <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
+  </a>
 </p>
 
 <p align="center">
@@ -46,6 +44,10 @@
   <code>CONTROL</code>
   ·
   <code>ORCHESTRATION</code>
+</p>
+
+<p align="center">
+  <img src="images/autonomy-cover.png" alt="Autonomy cover" width="100%"/>
 </p>
 
 ---
@@ -81,7 +83,7 @@ Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. D
 
 <p align="center">
   <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/">
-    <img src="docs/assets/navigation/nav-1.png" alt="Navigation · AutoViz" width="920"/>
+    <img src="docs/assets/navigation/nav-1.png" alt="Navigation · AutoViz" width="100%"/>
   </a>
 </p>
 
@@ -220,7 +222,7 @@ See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/
 
 <p align="center">
   <a href="docs/architecture/archify/autonomy-runtime.architecture.html">
-    <img src="docs/architecture/archify/autonomy-runtime.architecture.gif" alt="Runtime architecture" width="920"/>
+    <img src="docs/architecture/archify/autonomy-runtime.architecture.gif" alt="Runtime architecture" width="100%"/>
   </a>
 </p>
 
