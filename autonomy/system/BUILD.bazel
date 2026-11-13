@@ -3,6 +3,7 @@ load(
     "autonomy_module_copts",
     "autonomy_cc_binary",
     "autonomy_cc_library",
+    "autonomy_cc_test",
 )
 
 package(default_visibility = ["//visibility:public"])
@@ -32,6 +33,29 @@ autonomy_cc_library(
         "monitor/voltage_monitor/voltage_monitor.cpp",
         "options.cpp",
         "ota/ota_agent.cpp",
+        "recorder/bt_attribution.cpp",
+        "recorder/clock.cpp",
+        "recorder/convert.cpp",
+        "recorder/episode.cpp",
+        "recorder/event_graph.cpp",
+        "recorder/hash_chain.cpp",
+        "recorder/mcap_writer.cpp",
+        "recorder/metrics.cpp",
+        "recorder/observation.cpp",
+        "recorder/pipeline.cpp",
+        "recorder/player.cpp",
+        "recorder/recorder.cpp",
+        "recorder/replay.cpp",
+        "recorder/rolling_buffer.cpp",
+        "recorder/root_cause.cpp",
+        "recorder/sidecar.cpp",
+        "recorder/signals.cpp",
+        "recorder/subscriber.cpp",
+        "recorder/safety_monitor.cpp",
+        "recorder/trigger.cpp",
+        "recorder/upload.cpp",
+        "recorder/value_tier.cpp",
+        "recorder/version_tuple.cpp",
         "safety/safety_latch.cpp",
     ],
     hdrs = [
@@ -61,6 +85,29 @@ autonomy_cc_library(
         "monitor/voltage_monitor/voltage_monitor.hpp",
         "options.hpp",
         "ota/ota_agent.hpp",
+        "recorder/bt_attribution.hpp",
+        "recorder/clock.hpp",
+        "recorder/convert.hpp",
+        "recorder/episode.hpp",
+        "recorder/event_graph.hpp",
+        "recorder/hash_chain.hpp",
+        "recorder/mcap_writer.hpp",
+        "recorder/metrics.hpp",
+        "recorder/observation.hpp",
+        "recorder/pipeline.hpp",
+        "recorder/player.hpp",
+        "recorder/recorder.hpp",
+        "recorder/replay.hpp",
+        "recorder/rolling_buffer.hpp",
+        "recorder/root_cause.hpp",
+        "recorder/sidecar.hpp",
+        "recorder/signals.hpp",
+        "recorder/subscriber.hpp",
+        "recorder/safety_monitor.hpp",
+        "recorder/trigger.hpp",
+        "recorder/upload.hpp",
+        "recorder/value_tier.hpp",
+        "recorder/version_tuple.hpp",
         "safety/safety_latch.hpp",
     ],
     copts = autonomy_module_copts("system"),
@@ -96,6 +143,25 @@ autonomy_cc_binary(
         ":autonomy_system",
         "@com_github_google_glog//:glog",
 
+    ],
+)
+
+autonomy_cc_binary(
+    name = "autonomy.recorder",
+    srcs = ["recorder/recorder_main.cpp"],
+    deps = [
+        ":autonomy_system",
+        "@com_github_google_glog//:glog",
+    ],
+)
+
+autonomy_cc_test(
+    name = "recorder_test",
+    size = "small",
+    srcs = ["recorder/recorder_test.cpp"],
+    deps = [
+        ":autonomy_system",
+        "@googletest//:gtest_main",
     ],
 )
 

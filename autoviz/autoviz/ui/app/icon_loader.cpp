@@ -81,6 +81,7 @@ QString MapPanelResourceBase(const QString& panel_id) {
       {"PanelChannelGraph", "panels/channel_graph"},
       {"PanelChannels", "panels/channels"},
       {"PanelRecord", "panels/data_source"},
+      {"PanelEvidence", "panels/data_source"},
       {"PanelStack", "panels/stack"},
       {"PanelTab", "panels/tab"},
   };
@@ -111,6 +112,7 @@ QString MapDockTypeIcon(const QString& dock_type_id) {
       {"ChannelsDock", "PanelRawMessages"},
       {"ChannelBrowserDock", "PanelChannels"},
       {"RecordDock", "PanelRecord"},
+      {"EvidenceDock", "PanelEvidence"},
       {"ServiceDock", "PanelService"},
       {"TeleopDock", "PanelTeleop"},
       {"ChannelGraphDock", "PanelChannelGraph"},

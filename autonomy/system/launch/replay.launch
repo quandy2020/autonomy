@@ -1,6 +1,8 @@
 <!--
   Offline replay (Mode A). No autodriver / chassis / control.
   export PACKAGE_DIR=... or RECORD_FILE=...
+  SIL from evidence MCAP: autonomy.recorder replay -i <episode>.mcap
+  Profiles: open_loop | mid_stack (--sensors-only) | sensor_in (--hil)
   export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
 -->
 <autolink>

@@ -9,8 +9,12 @@ mkdir -p "${OUT_DIR}/records"
 
 CHANNELS=(
   /tf /tf_static /odom /scan /imu /map /cmd_vel
+  /camera/image_raw /plan /behavior_tree/log
   /autonomy/task/teleop/goal /autonomy/task/teleop/feedback
-  /autonomy/task/navigation/goal /plan
+  /autonomy/task/navigation/goal /autonomy/task/navigation/feedback
+  /autonomy/task/localization/goal /autonomy/task/localization/feedback
+  /autonomy/task/mapping/goal /autonomy/task/charging/goal
+  /autonomy/task/tracking/goal /autonomy/task/exploration/goal
 )
 
 ARGS=()

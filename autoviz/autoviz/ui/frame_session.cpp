@@ -40,6 +40,7 @@
 #include <QMenuBar>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QUrl>
 #include <QPainter>
 #include <QPen>
 #include <QPointer>
@@ -99,6 +100,7 @@
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/record/record_panel.hpp"
+#include "autoviz/ui/evidence/evidence_panel.hpp"
 #include "autoviz/ui/inspector/selection_panel.hpp"
 #include "autoviz/ui/inspector/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree/panel.hpp"
@@ -925,6 +927,48 @@ void FrameSession::showRecordDropOverlay(bool visible) {
   }
 }
 
+bool FrameSession::handleEvidenceMime(const QMimeData* mime, bool drop) {
+  if (mime == nullptr || !mime->hasUrls()) {
+    return false;
+  }
+  QString path;
+  for (const QUrl& url : mime->urls()) {
+    if (!url.isLocalFile()) {
+      continue;
+    }
+    const QString candidate = url.toLocalFile();
+    if (candidate.endsWith(QLatin1String(".sidecar.json"))) {
+      path = candidate;
+      break;
+    }
+  }
+  if (path.isEmpty()) {
+    return false;
+  }
+  if (!drop) {
+    showRecordDropOverlay(true);
+    return true;
+  }
+  showRecordDropOverlay(false);
+  frame_->layout_->showPanelByObjectName(QStringLiteral("EvidenceDock"));
+  for (PanelDockWidget* dock : frame_->findChildren<PanelDockWidget*>()) {
+    if (dock == nullptr ||
+        frame_->panels_->panelTypeId(dock) != QLatin1String("EvidenceDock")) {
+      continue;
+    }
+    auto* panel = qobject_cast<EvidencePanel*>(dock->widget());
+    if (panel == nullptr) {
+      continue;
+    }
+    if (!panel->openSidecarFile(path)) {
+      QMessageBox::warning(frame_, frame_->tr("Evidence"),
+                           frame_->tr("Failed to parse sidecar:\n%1").arg(path));
+    }
+    break;
+  }
+  return true;
+}
+
 bool FrameSession::handleRecordMime(const QMimeData* mime, bool drop) {
   const QStringList paths = LocalRecordSourcePaths(mime);
   if (paths.isEmpty()) {
@@ -1021,14 +1065,16 @@ bool FrameSession::openRecordFile(const QString& path) {
 }
 
 void FrameSession::dragEnterEvent(QDragEnterEvent* event) {
-  if (handleRecordMime(event->mimeData(), false)) {
+  if (handleEvidenceMime(event->mimeData(), false) ||
+      handleRecordMime(event->mimeData(), false)) {
     event->acceptProposedAction();
     return;
   }
 }
 
 void FrameSession::dragMoveEvent(QDragMoveEvent* event) {
-  if (handleRecordMime(event->mimeData(), false)) {
+  if (handleEvidenceMime(event->mimeData(), false) ||
+      handleRecordMime(event->mimeData(), false)) {
     event->acceptProposedAction();
     return;
   }
@@ -1039,7 +1085,8 @@ void FrameSession::dragLeaveEvent(QDragLeaveEvent* event) {
 }
 
 void FrameSession::dropEvent(QDropEvent* event) {
-  if (handleRecordMime(event->mimeData(), true)) {
+  if (handleEvidenceMime(event->mimeData(), true) ||
+      handleRecordMime(event->mimeData(), true)) {
     event->acceptProposedAction();
     return;
   }
@@ -1057,7 +1104,8 @@ bool FrameSession::eventFilter(QObject* watched, QEvent* event) {
     case QEvent::DragEnter:
     case QEvent::DragMove: {
       auto* drag = static_cast<QDragMoveEvent*>(event);
-      if (handleRecordMime(drag->mimeData(), false)) {
+      if (handleEvidenceMime(drag->mimeData(), false) ||
+          handleRecordMime(drag->mimeData(), false)) {
         drag->acceptProposedAction();
         return true;
       }
@@ -1065,7 +1113,8 @@ bool FrameSession::eventFilter(QObject* watched, QEvent* event) {
     }
     case QEvent::Drop: {
       auto* drop = static_cast<QDropEvent*>(event);
-      if (handleRecordMime(drop->mimeData(), true)) {
+      if (handleEvidenceMime(drop->mimeData(), true) ||
+          handleRecordMime(drop->mimeData(), true)) {
         drop->acceptProposedAction();
         return true;
       }

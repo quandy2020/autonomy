@@ -1,0 +1,18 @@
+<!--
+  L4 independent safety monitor (latch-only).
+  Subscribes /cmd_vel; never publishes velocity. Over-limit → SafetyLatch
+  so monitor MRM zeros actuators. Does not start planning/control.
+
+  export PATH=$PWD/build/bin:$PATH
+  export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+  autolink_launch safety.launch
+-->
+<autolink>
+  <module>
+    <name>safety_monitor</name>
+    <type>binary</type>
+    <process_name>autonomy.recorder safety --conf=recorder.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

@@ -152,6 +152,7 @@ PanelMenuGroup PanelMenuGroupForType(const QString& type_id) {
       type_id == QLatin1String("TableDock") ||
       type_id == QLatin1String("ChannelsDock") ||
       type_id == QLatin1String("ChannelGraphDock") ||
+      type_id == QLatin1String("EvidenceDock") ||
       type_id == QLatin1String("TimeDock")) {
     return PanelMenuGroup::kDataObserve;
   }
@@ -171,7 +172,7 @@ int PanelMenuPreferredOrder(const QString& type_id) {
                                 "ViewsDock"};
   static const char* kData[] = {"RecordDock", "ChannelBrowserDock", "PlotDock",
                                 "TableDock", "ChannelsDock", "ChannelGraphDock",
-                                "TimeDock"};
+                                "EvidenceDock", "TimeDock"};
   static const char* kTools[] = {"SelectionDock", "Tools", "ToolPropertiesDock",
                                  "TfTreeDock", "OperatorToolsDock", "TeleopDock"};
   const auto find = [&](const char* const* list, int n) {
@@ -186,7 +187,7 @@ int PanelMenuPreferredOrder(const QString& type_id) {
     case PanelMenuGroup::kCoreViz:
       return find(kCore, 4);
     case PanelMenuGroup::kDataObserve:
-      return find(kData, 7);
+      return find(kData, 8);
     case PanelMenuGroup::kToolsFrames:
       return find(kTools, 6);
     case PanelMenuGroup::kOther:
@@ -753,6 +754,9 @@ QString detail::PanelsMenuDisplayTitle(const QString& type_id, const QString& fa
   }
   if (type_id == QLatin1String("RecordDock")) {
     return QCoreApplication::translate("autoviz::VisualizationFrame", "Record");
+  }
+  if (type_id == QLatin1String("EvidenceDock")) {
+    return QCoreApplication::translate("autoviz::VisualizationFrame", "Evidence");
   }
   if (type_id == QLatin1String("TimeDock")) {
     return QCoreApplication::translate("autoviz::VisualizationFrame", "Time");

@@ -236,6 +236,7 @@ class FrameSession {
    * @return @c true if the MIME contained an acceptable record payload.
    */
   bool handleRecordMime(const QMimeData* mime, bool drop);
+  bool handleEvidenceMime(const QMimeData* mime, bool drop);
 
   /**
    * @brief Tool / shortcut key handling forwarded from the frame.

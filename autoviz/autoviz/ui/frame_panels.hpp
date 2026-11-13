@@ -74,6 +74,7 @@ class ChannelsPanel;
 class RecordPanel;
 class PropertyInspectorPanel;
 class TfTreePanel;
+class EvidencePanel;
 namespace plot { class PlotPanel; }
 namespace image { class ImagePanel; }
 namespace teleop { class TeleopPanel; }
@@ -347,6 +348,13 @@ class FramePanels {
    * @return New dock hosting @ref TfTreePanel.
    */
   PanelDockWidget* createTfTreePanelDock(const QString& object_name = QString());
+
+  /**
+   * @brief Creates an Evidence triage panel dock (sidecar JSON).
+   * @param object_name Optional fixed @c objectName; empty → unique name.
+   * @return New dock hosting @ref EvidencePanel.
+   */
+  PanelDockWidget* createEvidencePanelDock(const QString& object_name = QString());
 
   /**
    * @brief Creates the aggregated operator tools panel dock.
@@ -650,6 +658,13 @@ class FramePanels {
    * @param panel TF tree content widget.
    */
   void wireTfTreePanel(PanelDockWidget* dock, TfTreePanel* panel);
+
+  /**
+   * @brief Connects Evidence panel title-bar signals.
+   * @param dock Host dock.
+   * @param panel Evidence content widget.
+   */
+  void wireEvidencePanel(PanelDockWidget* dock, EvidencePanel* panel);
 
   /**
    * @brief Connects Record panel signals (open file, title-bar actions).

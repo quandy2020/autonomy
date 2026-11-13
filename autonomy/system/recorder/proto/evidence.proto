@@ -1,0 +1,202 @@
+/*
+ * Copyright 2026 The OpenRobotic Beginner Authors (duyongquan)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+syntax = "proto3";
+
+package autonomy.system.recorder.proto;
+
+enum TimeSource {
+  TIME_SOURCE_UNSPECIFIED = 0;
+  TIME_SOURCE_SOFTWARE = 1;
+  TIME_SOURCE_PTP = 2;
+  TIME_SOURCE_GPTP = 3;
+}
+
+enum Priority {
+  PRIORITY_UNSPECIFIED = 0;
+  PRIORITY_P0 = 1;  // failure / safety
+  PRIORITY_P1 = 2;  // human takeover
+  PRIORITY_P2 = 3;  // low-confidence decision
+  PRIORITY_P3 = 4;  // success, stratified sample
+}
+
+enum TriggerKind {
+  TRIGGER_UNSPECIFIED = 0;
+  TRIGGER_ESTOP = 1;
+  TRIGGER_BT_RECOVER = 2;
+  TRIGGER_PATH_DEVIATE = 3;
+  TRIGGER_CHANNEL_TIMEOUT = 4;
+  TRIGGER_COST_SPIKE = 5;
+  TRIGGER_TASK_FAILURE = 6;
+  TRIGGER_TAKEOVER = 7;
+}
+
+enum NodeKind {
+  NODE_UNSPECIFIED = 0;
+  NODE_OBSERVATION = 1;
+  NODE_DECISION = 2;
+  NODE_ACTION = 3;
+  NODE_OUTCOME = 4;
+  NODE_FAILURE_SOURCE = 5;
+}
+
+enum ReplayMode {
+  REPLAY_UNSPECIFIED = 0;
+  REPLAY_FACTUAL = 1;
+  REPLAY_INTERVENTIONAL = 2;
+}
+
+message DualClock {
+  int64 monotonic_ns = 1;
+  int64 wall_utc_ns = 2;
+  TimeSource time_source = 3;
+}
+
+// Deterministic version quadruple. Any empty field → diagnostic queue.
+message VersionTuple {
+  string policy_version = 1;
+  string env_version = 2;
+  string git_sha = 3;
+  string seed = 4;
+}
+
+message EpisodeHeader {
+  string episode_id = 1;
+  VersionTuple version = 2;
+  DualClock start = 3;
+  DualClock end = 4;
+  bool admitted = 5;
+  repeated string missing_fields = 6;
+  string robot_id = 7;
+  Priority priority = 8;
+  string bt_root = 9;
+  TimeSource time_source = 10;
+}
+
+message TriggerEvent {
+  TriggerKind kind = 1;
+  DualClock clock = 2;
+  string detail = 3;
+  string evidence_node_id = 4;
+  string channel = 5;
+}
+
+message EvidenceNode {
+  string id = 1;
+  NodeKind kind = 2;
+  DualClock clock = 3;
+  string label = 4;
+  string channel = 5;
+  string bt_node = 6;
+}
+
+message EvidenceEdge {
+  string from_id = 1;
+  string to_id = 2;
+  string relation = 3;
+}
+
+message EventGraph {
+  repeated EvidenceNode nodes = 1;
+  repeated EvidenceEdge edges = 2;
+  string failure_source_id = 3;
+}
+
+message RootCauseCard {
+  string hypothesis_id = 1;
+  string evidence_node_id = 2;
+  string statement = 3;
+  double confidence = 4;
+  bool reroll_passed = 5;
+  double delta_fail_set = 6;
+  double delta_success_set = 7;
+}
+
+message Observation {
+  string observation_id = 1;
+  int64 start_monotonic_ns = 2;
+  int64 end_monotonic_ns = 3;
+  string description = 4;
+  repeated string evidence_node_ids = 5;
+  string bt_node = 6;
+}
+
+message SafetyEvent {
+  string event_id = 1;
+  DualClock clock = 2;
+  string kind = 3;
+  string episode_id = 4;
+  string bt_node = 5;
+  VersionTuple version = 6;
+  bytes prev_hash = 7;
+  bytes entry_hash = 8;
+}
+
+message ActionEvent {
+  uint32 sequence = 1;
+  string type = 2;
+  string target = 3;
+  string params = 4;
+  int64 monotonic_ns = 5;
+}
+
+message ReplayReport {
+  string episode_id = 1;
+  ReplayMode mode = 2;
+  bool bit_exact = 3;
+  double action_match = 4;
+  bool intervention_improved = 5;
+  bool valid = 6;
+  string reason = 7;
+}
+
+message SceneResult {
+  string scene_id = 1;
+  bool baseline_success = 2;
+  bool candidate_success = 3;
+}
+
+message BtFailure {
+  string node_name = 1;
+  string condition = 2;
+  string previous_status = 3;
+  string current_status = 4;
+  DualClock clock = 5;
+}
+
+message PublishGate {
+  bool history_regression_ok = 1;
+  bool root_cause_reroll_ok = 2;
+  bool attribution_coverage_ok = 3;
+  bool safety_ok = 4;
+  bool replay_ok = 5;
+  bool passed = 6;
+  string reason = 7;
+}
+
+message EpisodeSidecar {
+  EpisodeHeader header = 1;
+  repeated TriggerEvent triggers = 2;
+  EventGraph graph = 3;
+  repeated Observation observations = 4;
+  repeated RootCauseCard root_causes = 5;
+  BtFailure bt_failure = 6;
+  ReplayReport replay = 7;
+  PublishGate gate = 8;
+  repeated SafetyEvent safety_events = 9;
+  repeated ActionEvent recorded_actions = 10;
+  repeated ActionEvent replayed_actions = 11;
+}

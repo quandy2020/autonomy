@@ -19,17 +19,25 @@
 #   autonomy_system / autonomy::autonomy_system
 #   autonomy.monitor
 #   autonomy.ota
+#   autonomy.recorder          (AUTONOMY_BUILD_RECORDER)
 #
 # Toggle
 #   AUTONOMY_BUILD_SYSTEM
+#   AUTONOMY_BUILD_RECORDER
 #   BUILD_PROMETHEUS
 # -----------------------------------------------------------------------------
+
+option(AUTONOMY_BUILD_RECORDER
+  "Build autonomy.recorder bypass evidence process" ON)
 
 # --- sources -----------------------------------------------------------------
 file(GLOB_RECURSE AUTONOMY_SYSTEM_SRCS CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 list(FILTER AUTONOMY_SYSTEM_SRCS EXCLUDE REGEX "main\\.cpp$")
 list(FILTER AUTONOMY_SYSTEM_SRCS EXCLUDE REGEX "_test\\.cpp$")
+if(NOT AUTONOMY_BUILD_RECORDER)
+  list(FILTER AUTONOMY_SYSTEM_SRCS EXCLUDE REGEX "/recorder/")
+endif()
 
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_system
@@ -73,6 +81,23 @@ autocmake_binary(autonomy.ota
     glog::glog
     autonomy::cli11
 )
+
+if(AUTONOMY_BUILD_RECORDER)
+  autocmake_binary(autonomy.recorder
+    NO_EXPORT
+    SOURCES recorder/recorder_main.cpp
+    DEPENDENCIES
+      autonomy
+      glog::glog
+      autonomy::cli11
+  )
+  if(BUILD_TEST AND NOT BUILD_TESTING)
+    set(BUILD_TESTING ON)
+  endif()
+  autocmake_test(system.recorder_test
+    SOURCES recorder/recorder_test.cpp
+    DEPENDENCIES autonomy_system)
+endif()
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(system

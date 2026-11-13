@@ -94,6 +94,7 @@
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/record/record_panel.hpp"
+#include "autoviz/ui/evidence/evidence_panel.hpp"
 #include "autoviz/ui/inspector/selection_panel.hpp"
 #include "autoviz/ui/inspector/tool_properties_panel.hpp"
 #include "autoviz/ui/tf_tree/panel.hpp"
@@ -380,6 +381,7 @@ bool FramePanels::panelTypeSupportsMultiInstance(
          panel_type_id == QLatin1String("ChannelGraphDock") ||
          panel_type_id == QLatin1String("ServiceDock") ||
          panel_type_id == QLatin1String("TableDock") ||
+         panel_type_id == QLatin1String("EvidenceDock") ||
          panel_type_id == QLatin1String("ViewportDock");
 }
 
@@ -2027,6 +2029,43 @@ void FramePanels::wireTfTreePanel(PanelDockWidget* dock, TfTreePanel* panel) {
                    [this]() { frame_->session_->markConfigModified(); });
 }
 
+void FramePanels::wireEvidencePanel(PanelDockWidget* dock, EvidencePanel* panel) {
+  if (dock == nullptr || panel == nullptr) {
+    return;
+  }
+  QObject::connect(panel, &EvidencePanel::panelRemoveRequested, dock,
+                   &QDockWidget::close);
+  QObject::connect(panel, &EvidencePanel::panelExpandRequested, frame_,
+                   [this, dock]() { frame_->layout_->expandPanelDock(dock); });
+  QObject::connect(
+      panel, &EvidencePanel::panelSplitRequested, frame_,
+      [this, dock](Qt::Orientation orientation) {
+        frame_->layout_->onSplitActiveDock(dock, orientation);
+      });
+  QObject::connect(panel, &EvidencePanel::panelChangeRequested, frame_,
+                   [this, dock](const QString& object_name) {
+                     frame_->layout_->changePanelInDock(dock, object_name);
+                   });
+}
+
+PanelDockWidget* FramePanels::createEvidencePanelDock(const QString& object_name) {
+  const QString dock_name =
+      object_name.isEmpty()
+          ? uniquePanelObjectName(QStringLiteral("EvidenceDock"))
+          : object_name;
+  auto* dock = new PanelDockWidget(frame_->tr("Evidence"), frame_);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("EvidenceDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelEvidence")));
+  auto* panel = new EvidencePanel(frame_->manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  wireEvidencePanel(dock, panel);
+  frame_->layout_->configureMainPanelDock(dock);
+  registerPanelDock(dock);
+  return dock;
+}
+
 PanelDockWidget* FramePanels::createTfTreePanelDock(const QString& object_name) {
   const QString dock_name =
       object_name.isEmpty() ? uniquePanelObjectName(QStringLiteral("TfTreeDock"))
@@ -2439,6 +2478,9 @@ PanelDockWidget* FramePanels::duplicatePanelDock(
   }
   if (type == QLatin1String("TfTreeDock")) {
     return createTfTreePanelDock();
+  }
+  if (type == QLatin1String("EvidenceDock")) {
+    return createEvidencePanelDock();
   }
   if (type == QLatin1String("OperatorToolsDock")) {
     return createOperatorToolsPanelDock();

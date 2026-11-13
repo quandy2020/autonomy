@@ -43,6 +43,15 @@
     <respawn_limit>3</respawn_limit>
   </module>
 
+  <!-- recorder: bypass evidence capture; never joins the control graph -->
+  <module>
+    <name>recorder</name>
+    <type>binary</type>
+    <process_name>autonomy.recorder --conf=recorder.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+
   <!-- localization (Cartographer 2D; see localization.launch) -->
   <module>
     <name>localization</name>

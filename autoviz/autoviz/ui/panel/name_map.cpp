@@ -43,6 +43,7 @@ std::string MapPanelClassToObjectName(const std::string& class_or_name) {
       {"Views", "ViewsDock"},
       {"Time", "TimeDock"},
       {"Record", "RecordDock"},
+      {"Evidence", "EvidenceDock"},
       {"OperatorTools", "OperatorToolsDock"},
       {"OperatorTools", "OperatorToolsDock"},
   };

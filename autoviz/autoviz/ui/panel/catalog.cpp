@@ -34,6 +34,8 @@ const PanelCatalogEntry kPanelCatalog[] = {
      "Publish geometry_msgs/TwistStamped velocity commands (cmd_vel)"},
     {"ChannelGraphDock", "PanelChannelGraph", "Channel Graph",
      "Visualize Autolink node, channel, and service topology"},
+    {"EvidenceDock", "PanelEvidence", "Evidence",
+     "Episode sidecar triage: timeline, causal graph, BT, observations, overlay"},
     {"TfTreeDock", "PanelTransformTree", "Transforms",
      "Show the transform tree"},
     {"OperatorToolsDock", "PanelOperatorTools", "Operator Tools",

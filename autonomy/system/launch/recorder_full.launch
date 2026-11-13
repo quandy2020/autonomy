@@ -1,0 +1,17 @@
+<!--
+  Tester full-dump: one session episode, periodic MCAP flush, keep P2/P3.
+  Still BEST_EFFORT bypass. Pair with a running stack.
+
+  export PATH=$PWD/build/bin:$PATH
+  export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/system/launch
+  autolink_launch recorder_full.launch
+-->
+<autolink>
+  <module>
+    <name>recorder</name>
+    <type>binary</type>
+    <process_name>autonomy.recorder --conf=recorder.pb.txt --full-dump</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

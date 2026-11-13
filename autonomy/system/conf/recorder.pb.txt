@@ -1,0 +1,77 @@
+# autonomy.recorder — bypass evidence capture (L1).
+# Proto: autonomy/system/recorder/proto/recorder_options.proto
+# Channels match control/constants.hpp + task/common/names.hpp.
+# KEEP_LAST depth/queue 0 → heuristic (BEST_EFFORT; high-rate 32/64,
+# bulky 2/8; --full-dump raises bulky to 16).
+#
+# Tester full dump: autonomy.recorder --full-dump  or  full_dump: true
+
+output_dir: ""
+buffer_sec: 30
+full_dump: false
+flush_period_sec: 1.0
+localization_quality_floor: 0.3
+
+channels { name: "/odom" timeout_sec: 1.0 }
+channels { name: "/tf" timeout_sec: 1.0 }
+channels { name: "/tf_static" timeout_sec: 0 }
+channels { name: "/scan" timeout_sec: 1.0 }
+channels { name: "/imu" timeout_sec: 1.0 }
+channels { name: "/map" timeout_sec: 0 }
+channels { name: "/camera/image_raw" timeout_sec: 0 }
+channels { name: "/cmd_vel" timeout_sec: 1.0 }
+channels { name: "/navigation/cmd_vel_candidate" timeout_sec: 0 }
+channels { name: "/plan" timeout_sec: 0 }
+channels { name: "/behavior_tree/log" timeout_sec: 0 }
+channels { name: "/perception/lidar_bev" timeout_sec: 0 }
+channels { name: "/perception/policy_raw" timeout_sec: 0 }
+channels { name: "/perception/follow/grid" timeout_sec: 0 }
+channels { name: "/global_costmap" timeout_sec: 0 }
+channels { name: "/atlas/occupancy_grid" timeout_sec: 0 }
+channels { name: "/autonomy/task/navigation/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/navigation/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/teleop/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/teleop/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/localization/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/localization/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/mapping/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/mapping/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/charging/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/charging/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/tracking/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/tracking/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/exploration/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/exploration/feedback" timeout_sec: 0 }
+channels { name: "/autonomy/task/voice/goal" timeout_sec: 0 }
+channels { name: "/autonomy/task/voice/feedback" timeout_sec: 0 }
+channels { name: "/goal_pose" timeout_sec: 0 }
+
+bt_log_channel: "/behavior_tree/log"
+cmd_vel_channel: "/cmd_vel"
+odom_channel: "/odom"
+plan_channel: "/plan"
+cost_channel: ""
+teleop_goal_channel: "/autonomy/task/teleop/goal"
+p2_sample_rate: 0.5
+p3_sample_rate: 0.1
+path_deviate_m: 0.5
+cost_spike_sigma: 3.0
+
+# Fill via env AUTONOMY_POLICY_VERSION (else AUTONOMY_SOFTWARE_VERSION) /
+# AUTONOMY_ENV_VERSION / AUTONOMY_SEED or set here.
+# Missing any field of the quadruple → diagnostic queue.
+policy_version: ""
+env_version: ""
+seed: ""
+git_sha: ""
+robot_id: ""
+
+time_source: TIME_SOURCE_SOFTWARE
+action_match_threshold: 0.95
+attribution_coverage_floor: 0.8
+regression_delta_limit: 0.05
+require_version_tuple: true
+max_cmd_vx: 2.0
+max_cmd_wz: 2.0
+safety_chain_path: ""
+upload_dest: ""

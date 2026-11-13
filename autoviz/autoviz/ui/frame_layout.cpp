@@ -156,7 +156,8 @@ bool FrameLayout::isMainPanelPinnedToCenter(
          type == QLatin1String("ChannelBrowserDock") ||
          type == QLatin1String("ChannelsDock") ||
          type == QLatin1String("TfTreeDock") ||
-         type == QLatin1String("ChannelGraphDock");
+         type == QLatin1String("ChannelGraphDock") ||
+         type == QLatin1String("EvidenceDock");
 }
 
 bool FrameLayout::isAnyMainPanelFloating() const {
@@ -1010,6 +1011,8 @@ void FrameLayout::changePanelInDock(PanelDockWidget* source,
       frame_->panels_->teleop_dock_ = target;
     } else if (target_object_name == QLatin1String("TfTreeDock")) {
       target = frame_->panels_->createTfTreePanelDock();
+    } else if (target_object_name == QLatin1String("EvidenceDock")) {
+      target = frame_->panels_->createEvidencePanelDock();
     } else if (target_object_name == QLatin1String("OperatorToolsDock")) {
       target = frame_->panels_->createOperatorToolsPanelDock();
     } else if (target_object_name == QLatin1String("PublishDock")) {
@@ -1619,6 +1622,10 @@ void FrameLayout::showPanelByObjectName(const QString& object_name) {
   }
   if (dock == nullptr && object_name == QLatin1String("TfTreeDock")) {
     dock = frame_->panels_->createTfTreePanelDock(object_name);
+    addMainPanelDock(dock, Qt::LeftDockWidgetArea);
+  }
+  if (dock == nullptr && object_name == QLatin1String("EvidenceDock")) {
+    dock = frame_->panels_->createEvidencePanelDock(object_name);
     addMainPanelDock(dock, Qt::LeftDockWidgetArea);
   }
   if (dock == nullptr && object_name == QLatin1String("OperatorToolsDock")) {
