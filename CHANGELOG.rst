@@ -2,6 +2,18 @@
 Changelog for package autonomy
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+0.4.0 (2026-11-13)
+------------------
+* **Docs**
+
+  * Refresh top-level README to a Concat-style layout: architecture hero,
+    demos, merged Build path, Architecture workflows, and Guides.
+  * Use lightweight AutoSim / cover assets for GitHub README load time.
+* **Build / CMake**
+
+  * Bump ``version.json`` / package version to ``0.4.0``.
+  * Ignore control policy model artifacts under ``autonomy/control/conf/models/``.
+
 0.3.0 (2026-11-04)
 ------------------
 * **Architecture**

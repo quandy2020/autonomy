@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="version.json"><img src="https://img.shields.io/badge/version-0.3.0-2563EB" alt="Version"></a>
+  <a href="version.json"><img src="https://img.shields.io/badge/version-0.4.0-2563EB" alt="Version"></a>
   <a href="CMakeLists.txt"><img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white" alt="C++20"></a>
   <a href="docs/source/02_Installation/00_guide.md"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20ARM64-334155?logo=linux&logoColor=white" alt="Platform"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-0891B2" alt="License"></a>
@@ -29,7 +29,9 @@
 </p>
 
 <p align="center">
-  <img src="images/autonomy-cover.jpg" alt="Autonomy" width="100%"/>
+  <a href="docs/source/01_Instructions/03_system_architecture.md">
+    <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
+  </a>
 </p>
 
 ---
@@ -186,12 +188,6 @@ See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/
 ---
 
 ## Architecture
-
-<p align="center">
-  <a href="docs/source/01_Instructions/03_system_architecture.md">
-    <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
-  </a>
-</p>
 
 <p align="center">
   <a href="docs/architecture/archify/autonomy-runtime.architecture.html">
