@@ -430,6 +430,7 @@ void ControllerServer::Start() {
 void ControllerServer::Shutdown() {
     DetachAutolinkNode();
     cmd_vel_writer_.reset();
+    plan_clear_writer_.reset();
     odom_reader_.reset();
     scan_reader_.reset();
     image_reader_.reset();
@@ -746,6 +747,11 @@ void ControllerServer::UpdateGlobalPath() {
 }
 
 void ControllerServer::OnGoalExit() {
+    // Drop MPPI / controller overlays before clearing active plugin ids.
+    if (auto* controller = GetActiveController()) {
+        controller->Reset();
+    }
+
     follow_path_active_ = false;
     controllers_active_ = false;
     follow_path_is_closed_ = false;
@@ -759,6 +765,16 @@ void ControllerServer::OnGoalExit() {
     current_controller_.clear();
     current_goal_checker_.clear();
     current_progress_checker_.clear();
+    current_path_.mutable_poses()->Clear();
+
+    // Clear latched /plan in Autoviz (NavigationClient ignores empty paths).
+    if (plan_clear_writer_) {
+        automsgs::msgs::nav_msgs::Path empty;
+        empty.mutable_header()->set_frame_id(
+            global_frame_.empty() ? "map" : global_frame_);
+        *empty.mutable_header()->mutable_stamp() = NowTime();
+        plan_clear_writer_->Write(empty);
+    }
 
     if (publish_zero_velocity_) {
         PublishZeroVelocity();

@@ -723,13 +723,26 @@ void OgreSceneHost::popFrontDisplayPoints(const std::string& display_name,
 void OgreSceneHost::setDisplayBillboardStrip(const std::string& display_name,
                                              const std::vector<QVector3D>& points,
                                              const QColor& color, float line_width) {
+  if (points.size() < 2 || line_width <= 0.f) {
+    setDisplayColoredBillboardStrip(display_name, {}, {}, {});
+    return;
+  }
+  std::vector<QColor> colors(points.size(), color);
+  std::vector<float> widths(points.size(), line_width);
+  setDisplayColoredBillboardStrip(display_name, points, colors, widths);
+}
+
+void OgreSceneHost::setDisplayColoredBillboardStrip(
+    const std::string& display_name, const std::vector<QVector3D>& points,
+    const std::vector<QColor>& colors, const std::vector<float>& widths) {
   if (scene_manager_ == nullptr) {
     return;
   }
   displayNode(display_name);
   DisplayEntry& entry = displays_[display_name];
   destroyLines(entry);
-  if (points.size() < 2 || line_width <= 0.f) {
+  if (points.size() < 2 || colors.size() != points.size() ||
+      widths.size() != points.size()) {
     destroyBillboardLine(entry);
     return;
   }
@@ -738,13 +751,18 @@ void OgreSceneHost::setDisplayBillboardStrip(const std::string& display_name,
         std::make_unique<OgreBillboardLine>(scene_manager_, entry.node);
   }
   std::vector<Ogre::Vector3> ogre_points;
+  std::vector<Ogre::ColourValue> ogre_colors;
+  std::vector<float> ogre_widths;
   ogre_points.reserve(points.size());
-  for (const QVector3D& point : points) {
-    ogre_points.emplace_back(point.x(), point.y(), point.z());
+  ogre_colors.reserve(points.size());
+  ogre_widths.reserve(points.size());
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    ogre_points.emplace_back(points[i].x(), points[i].y(), points[i].z());
+    ogre_colors.emplace_back(colors[i].redF(), colors[i].greenF(),
+                             colors[i].blueF(), colors[i].alphaF());
+    ogre_widths.push_back(widths[i]);
   }
-  const Ogre::ColourValue ogre_color(color.redF(), color.greenF(), color.blueF(),
-                                     color.alphaF());
-  entry.billboard_line->setPolyline(ogre_points, ogre_color, line_width);
+  entry.billboard_line->setColoredPolyline(ogre_points, ogre_colors, ogre_widths);
   applyEntryVisibility(entry);
 }
 

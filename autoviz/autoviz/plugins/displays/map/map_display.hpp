@@ -118,6 +118,12 @@ class MapDisplay
    */
   void rebuildGeometry();
 
+  /** Regenerates colourized occupancy texture only. */
+  void rebuildTexture();
+
+  /** Recomputes fixed-frame quad corners (TF + origin) without recoloring. */
+  bool rebuildPose();
+
   /**
    * @brief Patches @c current_message_ with an OccupancyGridUpdate and
    *        rebuilds.
@@ -131,6 +137,10 @@ class MapDisplay
    */
   void clearGeometry();
 
+  /** FNV-1a over occupancy cells — skip identical republish flicker. */
+  static uint64_t HashOccupancyData(
+      const automsgs::msgs::map_msgs::OccupancyGrid& message);
+
   /** Colorized occupancy texture. */
   QImage image_;
 
@@ -142,10 +152,22 @@ class MapDisplay
   /** @c true when texture + corners are ready to draw. */
   bool has_geometry_ = false;
 
+  /** Coalesce OccupancyGrid rebuilds to at most once per draw. */
+  bool geometry_dirty_ = false;
+  bool texture_dirty_ = false;
+  bool pose_dirty_ = false;
+
   /** Textured-quad draw order (map=0, raw=1, costmap=2+). */
   int draw_order_ = 0;
   bool depth_write_ = false;
   bool depth_check_ = true;
+
+  float map_width_m_ = 0.f;
+  float map_height_m_ = 0.f;
+  uint64_t data_hash_ = 0;
+  uint32_t cached_width_ = 0;
+  uint32_t cached_height_ = 0;
+  float cached_resolution_ = 0.f;
 
   /** Latest full map (also target of incremental updates). */
   automsgs::msgs::map_msgs::OccupancyGrid current_message_;

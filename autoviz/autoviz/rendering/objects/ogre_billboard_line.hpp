@@ -130,6 +130,17 @@ class OgreBillboardLine : public OgreObject {
                    const Ogre::ColourValue& color, float width);
 
   /**
+   * @brief Replace contents with a polyline that has per-vertex colour/width.
+   *
+   * @param points Ordered polyline vertices.
+   * @param colors Per-vertex colours (@c colors.size() == points.size()).
+   * @param widths Per-vertex widths in meters (same size as @p points).
+   */
+  void setColoredPolyline(const std::vector<Ogre::Vector3>& points,
+                          const std::vector<Ogre::ColourValue>& colors,
+                          const std::vector<float>& widths);
+
+  /**
    * @brief Returns the owned scene node.
    * @return Scene node pointer.
    */

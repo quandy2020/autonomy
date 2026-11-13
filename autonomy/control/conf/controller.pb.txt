@@ -227,8 +227,9 @@ mppi_controller_options {
     critical_weight: 20
   }
   trajectory_visualizer {
-    time_step: 4
-    trajectory_step: 8
+    # Denser markers look dramatic in Autoviz; raise steps if FPS drops.
+    time_step: 3
+    trajectory_step: 5
   }
   velocity_deadband_critic {
     cost_weight: 35
@@ -249,7 +250,8 @@ mppi_controller_options {
   gamma: 0.015
   motion_model: "DiffDrive"
   batch_size: 2000
-  visualize: false
+  # Publishes /mppi_controller/{candidate_trajectories,optimal_path,transformed_global_plan}
+  visualize: true
   ax_max: 3
   ax_min: -3
   ay_max: 3

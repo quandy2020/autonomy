@@ -571,9 +571,10 @@ void DisplayRegistry::registerBuiltinTypes() {
       "TFTrajectory",
       [](const DisplayConfig& config) {
         return FinalizeDisplay(
-            std::make_unique<display::TFTrajectoryDisplay>(), config);
+            std::make_unique<display::TFTrajectoryDisplay>(config.channel),
+            config);
       },
-      [] { return MakeDefault("TFTrajectory", "TFTrajectory", ""); });
+      [] { return MakeDefault("TFTrajectory", "TFTrajectory", "/odom"); });
   registerType(
       "VideoCapture",
       [](const DisplayConfig& config) {

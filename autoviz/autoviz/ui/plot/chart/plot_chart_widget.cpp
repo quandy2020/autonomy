@@ -40,7 +40,7 @@ constexpr int kAxisRightWide = 56;
 constexpr int kAxisBottom = 56;
 constexpr double kExactSampleEpsilon = 1e-6;
 
-/** Header stamp (sec + nsec) → local calendar time for axis / tooltip. */
+/** Header stamp (sec + nsec) → local calendar time for tooltip / inspect. */
 QString FormatHeaderStampDateTime(double stamp_sec, bool two_line) {
   if (!std::isfinite(stamp_sec)) {
     return QStringLiteral("--");
@@ -55,6 +55,109 @@ QString FormatHeaderStampDateTime(double stamp_sec, bool two_line) {
     return dt.toString(QStringLiteral("yyyy-MM-dd\nHH:mm:ss.zzz"));
   }
   return dt.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"));
+}
+
+/** Nice major-tick step (seconds) for a visible time span. */
+double ChooseNiceTimeStep(double span_sec, int chart_width_px,
+                          bool short_labels) {
+  if (!(span_sec > 0.0) || !std::isfinite(span_sec)) {
+    return 1.0;
+  }
+  const double px_per_label = short_labels ? 72.0 : 100.0;
+  const double target_ticks = std::max(
+      2.0, static_cast<double>(std::max(1, chart_width_px)) / px_per_label);
+  const double raw = span_sec / target_ticks;
+  static constexpr double kSteps[] = {
+      1e-6,  2e-6,  5e-6,  1e-5,  2e-5,  5e-5,  1e-4,  2e-4,  5e-4,
+      0.001, 0.002, 0.005, 0.01,  0.02,  0.05,  0.1,   0.2,   0.5,
+      1.0,   2.0,   5.0,   10.0,  15.0,  30.0,  60.0,  120.0, 300.0,
+      600.0, 900.0, 1800.0, 3600.0, 7200.0, 10800.0, 21600.0, 43200.0,
+      86400.0, 172800.0, 604800.0};
+  for (double step : kSteps) {
+    if (step >= raw) {
+      return step;
+    }
+  }
+  return kSteps[sizeof(kSteps) / sizeof(kSteps[0]) - 1];
+}
+
+/**
+ * Axis tick label precision follows zoom: coarser windows drop ms / date noise;
+ * tight zooms keep ms (or µs) so adjacent ticks stay distinguishable.
+ */
+QString FormatTimestampAxisTick(double stamp_sec, double step_sec,
+                                double span_sec) {
+  if (!std::isfinite(stamp_sec)) {
+    return QStringLiteral("--");
+  }
+
+  const bool show_date = span_sec >= 120.0;
+  const qint64 msec = static_cast<qint64>(std::llround(stamp_sec * 1000.0));
+  const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msec, Qt::LocalTime);
+
+  if (step_sec >= 86400.0) {
+    return dt.isValid() ? dt.toString(QStringLiteral("yyyy-MM-dd"))
+                        : QString::number(stamp_sec, 'f', 0);
+  }
+
+  QString time;
+  if (step_sec >= 60.0) {
+    time = dt.isValid() ? dt.toString(QStringLiteral("HH:mm"))
+                        : QString::number(stamp_sec, 'f', 0);
+  } else if (step_sec >= 1.0) {
+    time = dt.isValid() ? dt.toString(QStringLiteral("HH:mm:ss"))
+                        : QString::number(stamp_sec, 'f', 0);
+  } else if (step_sec >= 0.001) {
+    time = dt.isValid() ? dt.toString(QStringLiteral("HH:mm:ss.zzz"))
+                        : QString::number(stamp_sec, 'f', 3);
+  } else {
+    // Sub-ms: HH:mm:ss + fractional seconds with enough digits.
+    int decimals = 6;
+    if (step_sec >= 1e-4) {
+      decimals = 4;
+    } else if (step_sec >= 1e-5) {
+      decimals = 5;
+    }
+    const double whole = std::floor(stamp_sec);
+    const QDateTime whole_dt = QDateTime::fromMSecsSinceEpoch(
+        static_cast<qint64>(std::llround(whole * 1000.0)), Qt::LocalTime);
+    const QString prefix = whole_dt.isValid()
+                               ? whole_dt.toString(QStringLiteral("HH:mm:ss"))
+                               : QString::number(whole, 'f', 0);
+    const QString fraction =
+        QString::number(stamp_sec - whole, 'f', decimals).mid(1);
+    time = prefix + fraction;
+  }
+
+  if (!show_date) {
+    return time;
+  }
+  const QString date = dt.isValid() ? dt.toString(QStringLiteral("yyyy-MM-dd"))
+                                    : QStringLiteral("--");
+  return date + QLatin1Char('\n') + time;
+}
+
+/** Snap visible [min,max] onto nice tick values for a step. */
+std::vector<double> BuildNiceTicks(double min_x, double max_x, double step) {
+  std::vector<double> ticks;
+  if (!(step > 0.0) || !(max_x > min_x) || !std::isfinite(step)) {
+    return ticks;
+  }
+  const double first = std::ceil(min_x / step - 1e-12) * step;
+  // Cap so a pathological step cannot flood the painter.
+  constexpr int kMaxTicks = 64;
+  ticks.reserve(static_cast<std::size_t>(
+      std::min(kMaxTicks, static_cast<int>((max_x - min_x) / step) + 3)));
+  for (double x = first; x <= max_x + step * 1e-9; x += step) {
+    if (!std::isfinite(x)) {
+      break;
+    }
+    ticks.push_back(x);
+    if (static_cast<int>(ticks.size()) >= kMaxTicks) {
+      break;
+    }
+  }
+  return ticks;
 }
 constexpr double kInspectPickRadiusPx = 10.0;
 constexpr int kPanDragThresholdPx = 4;
@@ -222,14 +325,14 @@ void PlotChartWidget::setInteractionMode(PlotInteractionMode mode) {
       setCursor(Qt::CrossCursor);
       break;
     case PlotInteractionMode::kInspect:
-      setCursor(Qt::PointingHandCursor);
+      setCursor(Qt::ArrowCursor);
       break;
     case PlotInteractionMode::kBrush:
       setCursor(Qt::IBeamCursor);
       break;
     case PlotInteractionMode::kSelect:
     default:
-      setCursor(hover_active_ ? Qt::CrossCursor : Qt::ArrowCursor);
+      setCursor(Qt::ArrowCursor);
       break;
   }
   if (mode != PlotInteractionMode::kInspect) {
@@ -370,7 +473,10 @@ void PlotChartWidget::beginPanGesture(const QPoint& pos, bool active_immediately
   dragging_ = active_immediately;
   if (dragging_) {
     pushViewHistory();
-    setCursor(Qt::ClosedHandCursor);
+    // Hand cursor only for the dedicated Pan tool; Select keeps the arrow.
+    if (interaction_mode_ == PlotInteractionMode::kPan) {
+      setCursor(Qt::ClosedHandCursor);
+    }
   }
 }
 
@@ -379,7 +485,9 @@ void PlotChartWidget::updatePanGesture(const QPoint& pos) {
     pan_pending_ = false;
     dragging_ = true;
     pushViewHistory();
-    setCursor(Qt::ClosedHandCursor);
+    if (interaction_mode_ == PlotInteractionMode::kPan) {
+      setCursor(Qt::ClosedHandCursor);
+    }
   }
   if (!dragging_) {
     return;
@@ -406,8 +514,9 @@ void PlotChartWidget::finishPanGesture(bool emit_sync) {
   pan_pending_ = false;
   if (interaction_mode_ == PlotInteractionMode::kPan) {
     setCursor(Qt::OpenHandCursor);
-  } else if (interaction_mode_ == PlotInteractionMode::kSelect && hover_active_) {
-    setCursor(Qt::CrossCursor);
+  } else if (interaction_mode_ == PlotInteractionMode::kSelect ||
+             interaction_mode_ == PlotInteractionMode::kInspect) {
+    setCursor(Qt::ArrowCursor);
   } else {
     unsetCursor();
   }
@@ -821,8 +930,9 @@ void PlotChartWidget::updateHoverFromMouse(const QPoint& pos) {
     tooltip_rows_ = buildTooltipRows(hover_x_);
     emit hoverStateChanged();
   }
-  if (interaction_mode_ == PlotInteractionMode::kSelect) {
-    setCursor(Qt::CrossCursor);
+  if (interaction_mode_ == PlotInteractionMode::kSelect ||
+      interaction_mode_ == PlotInteractionMode::kInspect) {
+    setCursor(Qt::ArrowCursor);
   }
   update();
 }
@@ -833,7 +943,8 @@ void PlotChartWidget::clearHover() {
   }
   hover_active_ = false;
   tooltip_rows_.clear();
-  if (interaction_mode_ == PlotInteractionMode::kSelect) {
+  if (interaction_mode_ == PlotInteractionMode::kSelect ||
+      interaction_mode_ == PlotInteractionMode::kInspect) {
     setCursor(Qt::ArrowCursor);
   }
   emit hoverStateChanged();
@@ -868,23 +979,52 @@ void PlotChartWidget::drawGrid(QPainter& painter, const AxisRange& range,
     }
   }
 
-  // Fewer ticks so yyyy-MM-dd / HH:mm:ss.zzz labels have room.
-  constexpr int kXTicks = 4;
   QFont axis_font = painter.font();
   axis_font.setPointSizeF(qMax(8.0, axis_font.pointSizeF() - 1.0));
   painter.setFont(axis_font);
-  for (int i = 0; i <= kXTicks; ++i) {
-    const double x =
-        range.min_x + (range.max_x - range.min_x) * i / static_cast<double>(kXTicks);
+
+  std::vector<double> x_ticks;
+  double time_step = 0.0;
+  const double x_span = range.max_x - range.min_x;
+  if (x_axis_mode_ == PlotXAxisMode::kTimestamp && x_span > 0.0) {
+    const bool short_labels = x_span < 120.0;
+    time_step = ChooseNiceTimeStep(x_span, chart.width(), short_labels);
+    x_ticks = BuildNiceTicks(range.min_x, range.max_x, time_step);
+  } else {
+    constexpr int kXTicks = 4;
+    x_ticks.reserve(static_cast<std::size_t>(kXTicks + 1));
+    for (int i = 0; i <= kXTicks; ++i) {
+      x_ticks.push_back(range.min_x +
+                        x_span * static_cast<double>(i) /
+                            static_cast<double>(kXTicks));
+    }
+  }
+
+  const int label_half_w = (x_axis_mode_ == PlotXAxisMode::kTimestamp &&
+                            x_span < 120.0)
+                               ? 40
+                               : 52;
+  const int label_h = (x_axis_mode_ == PlotXAxisMode::kTimestamp &&
+                       x_span >= 120.0)
+                          ? 36
+                          : 20;
+  for (double x : x_ticks) {
     const QPointF p = mapToChart(x, range.min_y, range, false);
     if (show_grid_) {
       painter.setPen(QColor(235, 235, 235));
-      painter.drawLine(QPointF(p.x(), chart.top()), QPointF(p.x(), chart.bottom()));
+      painter.drawLine(QPointF(p.x(), chart.top()),
+                       QPointF(p.x(), chart.bottom()));
     }
     painter.setPen(QColor(120, 120, 120));
-    painter.drawText(QRect(static_cast<int>(p.x()) - 52, chart.bottom() + 2, 104,
-                           36),
-                     Qt::AlignHCenter | Qt::AlignTop, formatXAxisValue(x));
+    QString label;
+    if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
+      label = FormatTimestampAxisTick(x, time_step, x_span);
+    } else {
+      label = formatXAxisValue(x);
+    }
+    painter.drawText(QRect(static_cast<int>(p.x()) - label_half_w,
+                           chart.bottom() + 2, label_half_w * 2, label_h),
+                     Qt::AlignHCenter | Qt::AlignTop, label);
   }
 }
 

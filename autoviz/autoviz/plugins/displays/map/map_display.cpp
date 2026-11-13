@@ -190,12 +190,14 @@ void MapDisplay::onUpdate() {
     const std::string decoded = integration::DecodeChannelPayload(*payload);
     if (update.ParseFromString(decoded) || update.ParseFromString(*payload)) {
       applyUpdate(update);
-      rebuildGeometry();
+      texture_dirty_ = true;
+      pose_dirty_ = true;
+      geometry_dirty_ = true;
     }
   }
-  // Latched /map often arrives before TF is ready; rebuildGeometry() then
-  // clears corners and never retries because no new OccupancyGrid is queued.
-  if (!has_geometry_) {
+  // Latched /map often arrives before TF is ready; retry pose every frame
+  // without recoloring the texture (avoids global-costmap flicker).
+  if (geometry_dirty_ || texture_dirty_ || pose_dirty_ || !has_geometry_) {
     rebuildGeometry();
   }
 }
@@ -204,7 +206,9 @@ void MapDisplay::onPropertyChanged(const std::string& /*key*/) {
   if (!has_full_map_) {
     return;
   }
-  rebuildGeometry();
+  texture_dirty_ = true;
+  pose_dirty_ = true;
+  geometry_dirty_ = true;
 }
 
 void MapDisplay::clearGeometry() {
@@ -217,14 +221,38 @@ void MapDisplay::clearGeometry() {
   draw_order_ = 0;
   depth_write_ = false;
   depth_check_ = true;
+  texture_dirty_ = false;
+  pose_dirty_ = false;
+  geometry_dirty_ = false;
+  data_hash_ = 0;
+  cached_width_ = 0;
+  cached_height_ = 0;
+  cached_resolution_ = 0.f;
+  map_width_m_ = 0.f;
+  map_height_m_ = 0.f;
 }
 
-void MapDisplay::rebuildGeometry() {
-  if (context_ == nullptr || !has_full_map_) {
-    clearGeometry();
-    return;
+uint64_t MapDisplay::HashOccupancyData(
+    const automsgs::msgs::map_msgs::OccupancyGrid& message) {
+  uint64_t hash = 14695981039346656037ull;
+  const auto& data = message.data();
+  for (int i = 0; i < data.size(); ++i) {
+    hash ^= static_cast<uint64_t>(static_cast<uint8_t>(data.Get(i)));
+    hash *= 1099511628211ull;
   }
+  hash ^= message.info().width();
+  hash *= 1099511628211ull;
+  hash ^= message.info().height();
+  hash *= 1099511628211ull;
+  const auto& origin = message.info().origin().position();
+  hash ^= static_cast<uint64_t>(origin.x() * 1000.0);
+  hash *= 1099511628211ull;
+  hash ^= static_cast<uint64_t>(origin.y() * 1000.0);
+  hash *= 1099511628211ull;
+  return hash;
+}
 
+void MapDisplay::rebuildTexture() {
   const auto& info = current_message_.info();
   const float resolution = info.resolution();
   const uint32_t width = info.width();
@@ -236,14 +264,6 @@ void MapDisplay::rebuildGeometry() {
     return;
   }
 
-  const auto& origin = info.origin();
-  const float ox = static_cast<float>(origin.position().x());
-  const float oy = static_cast<float>(origin.position().y());
-  const float oz = static_cast<float>(origin.position().z());
-  const auto& orientation = origin.orientation();
-
-  // Honor the Decimate property only — auto-forcing step≥2 on maps >120 made
-  // local costmaps look blocky (thick cyan/purple) vs RViz full resolution.
   const uint32_t step = static_cast<uint32_t>(std::max(
       1.0f, common::ParseFloatProperty(propertyValue("decimate", "1"), 1.f)));
   const uint32_t image_width = (width + step - 1) / step;
@@ -253,14 +273,13 @@ void MapDisplay::rebuildGeometry() {
     return;
   }
 
-  const float alpha =
-      std::clamp(common::ParseFloatProperty(propertyValue("alpha", "0.85"), 0.85f),
-                 0.f, 1.f);
+  const float alpha = std::clamp(
+      common::ParseFloatProperty(propertyValue("alpha", "0.85"), 0.85f), 0.f,
+      1.f);
   const std::string scheme = propertyValue("color_scheme", "map");
   QImage new_image(static_cast<int>(image_width),
                    static_cast<int>(image_height), QImage::Format_RGBA8888);
   new_image.fill(Qt::transparent);
-
   for (uint32_t by = 0, iy = 0; by < height; by += step, ++iy) {
     for (uint32_t bx = 0, ix = 0; bx < width; bx += step, ++ix) {
       const int32_t value =
@@ -271,31 +290,54 @@ void MapDisplay::rebuildGeometry() {
     }
   }
 
+  image_ = std::move(new_image);
+  cached_width_ = width;
+  cached_height_ = height;
+  cached_resolution_ = resolution;
+  map_width_m_ = static_cast<float>(width) * resolution;
+  map_height_m_ = static_cast<float>(height) * resolution;
+  texture_dirty_ = false;
+}
+
+bool MapDisplay::rebuildPose() {
+  if (context_ == nullptr || image_.isNull() || map_width_m_ <= 0.f) {
+    return false;
+  }
+
+  const auto& info = current_message_.info();
+  const auto& origin = info.origin();
+  const float ox = static_cast<float>(origin.position().x());
+  const float oy = static_cast<float>(origin.position().y());
+  const float oz = static_cast<float>(origin.position().z());
+  const auto& orientation = origin.orientation();
+
   const bool draw_behind =
       common::ParseBoolProperty(propertyValue("draw_behind", "true"), true);
-  // RViz-like heights: map on the ground, costmap a hair above. Anti-flicker
-  // comes from depth-write + draw_order / render queues — not a large Z lift.
-  float z_offset;
-  int draw_order;
-  bool depth_write;
-  bool depth_check = true;
+  const std::string scheme = propertyValue("color_scheme", "map");
   const std::string& ch = channel();
-  const bool local_costmap =
-      ch.find("local_costmap") != std::string::npos;
+  const bool local_costmap = ch.find("local_costmap") != std::string::npos;
+
+  float z_offset = 0.f;
+  int draw_order = 0;
+  bool depth_write = true;
+  bool depth_check = true;
   if (scheme == "costmap") {
-    // Local above global when both use the costmap palette.
-    draw_order = local_costmap ? 3 : 2;
-    z_offset = local_costmap ? (draw_behind ? 0.012f : 0.02f)
-                             : (draw_behind ? 0.008f : 0.015f);
-    depth_write = false;
+    if (local_costmap) {
+      draw_order = 3;
+      z_offset = draw_behind ? 0.08f : 0.12f;
+      depth_write = false;
+    } else {
+      // Global costmap: larger Z + depth write stops flicker vs /map.
+      draw_order = 2;
+      z_offset = draw_behind ? 0.04f : 0.06f;
+      depth_write = true;
+    }
   } else if (scheme == "raw") {
     draw_order = 1;
-    z_offset = draw_behind ? -0.004f : 0.004f;
-    depth_write = true;
+    z_offset = draw_behind ? -0.01f : 0.01f;
   } else {
     draw_order = 0;
-    z_offset = draw_behind ? -0.01f : 0.0f;
-    depth_write = true;
+    z_offset = draw_behind ? -0.02f : 0.0f;
   }
 
   QMatrix4x4 local_to_frame;
@@ -311,36 +353,56 @@ void MapDisplay::rebuildGeometry() {
   frame_to_fixed.setToIdentity();
   const bool use_timestamp =
       common::ParseBoolProperty(propertyValue("use_timestamp", "false"), false);
-  const auto lookup_time =
-      use_timestamp ? current_message_.header().stamp() : autoviz::commsgs::ZeroTime();
+  const auto lookup_time = use_timestamp ? current_message_.header().stamp()
+                                         : autoviz::commsgs::ZeroTime();
   const std::string frame = current_message_.header().frame_id().empty()
                                 ? context_->fixed_frame
                                 : current_message_.header().frame_id();
   if (frame != context_->fixed_frame) {
     try {
-      const auto tf =
-          context_->tf_buffer->lookupTransform(context_->fixed_frame, frame, lookup_time);
+      const auto tf = context_->tf_buffer->lookupTransform(
+          context_->fixed_frame, frame, lookup_time);
       frame_to_fixed = transformToMatrix(tf);
     } catch (...) {
-      // Keep the last good texture instead of blanking a frame (flicker).
-      return;
+      return false;
     }
   }
 
   const QMatrix4x4 total = frame_to_fixed * local_to_frame;
-  const float map_w = static_cast<float>(width) * resolution;
-  const float map_h = static_cast<float>(height) * resolution;
-  // Commit atomically so onDraw never sees a cleared mid-rebuild state.
-  image_ = std::move(new_image);
-  top_left_ = ApplyTransform(total, QVector3D(0.f, map_h, 0.f));
-  top_right_ = ApplyTransform(total, QVector3D(map_w, map_h, 0.f));
-  bottom_right_ = ApplyTransform(total, QVector3D(map_w, 0.f, 0.f));
+  top_left_ = ApplyTransform(total, QVector3D(0.f, map_height_m_, 0.f));
+  top_right_ =
+      ApplyTransform(total, QVector3D(map_width_m_, map_height_m_, 0.f));
+  bottom_right_ = ApplyTransform(total, QVector3D(map_width_m_, 0.f, 0.f));
   bottom_left_ = ApplyTransform(total, QVector3D(0.f, 0.f, 0.f));
   draw_order_ = draw_order;
   depth_write_ = depth_write;
   depth_check_ = depth_check;
-  has_geometry_ = true;
+  pose_dirty_ = false;
+  return true;
+}
 
+void MapDisplay::rebuildGeometry() {
+  if (context_ == nullptr || !has_full_map_) {
+    clearGeometry();
+    return;
+  }
+
+  if (texture_dirty_ || image_.isNull()) {
+    rebuildTexture();
+  }
+  if (image_.isNull()) {
+    return;
+  }
+
+  if (pose_dirty_ || !has_geometry_ || geometry_dirty_) {
+    if (!rebuildPose()) {
+      geometry_dirty_ = false;
+      return;
+    }
+  }
+
+  has_geometry_ = true;
+  geometry_dirty_ = false;
   if (context_->request_redraw) {
     context_->request_redraw();
   }
@@ -371,23 +433,43 @@ void MapDisplay::applyUpdate(
   if (update.has_header()) {
     *current_message_.mutable_header() = update.header();
   }
+  data_hash_ = 0;  // force texture refresh after patch
 }
 
 void MapDisplay::processMessage(
     const automsgs::msgs::map_msgs::OccupancyGrid& message) {
+  const uint64_t hash = HashOccupancyData(message);
+  const bool same_cells = has_full_map_ && hash == data_hash_ &&
+                          message.info().width() == cached_width_ &&
+                          message.info().height() == cached_height_ &&
+                          std::abs(message.info().resolution() -
+                                   cached_resolution_) < 1e-6f;
   current_message_ = message;
   has_full_map_ = true;
-  rebuildGeometry();
+  data_hash_ = hash;
+  if (same_cells) {
+    // Identical republish (common for global costmap): only refresh pose/TF.
+    pose_dirty_ = true;
+    geometry_dirty_ = true;
+  } else {
+    texture_dirty_ = true;
+    pose_dirty_ = true;
+    geometry_dirty_ = true;
+  }
 }
 
 void MapDisplay::clearReceivedData() {
   has_full_map_ = false;
   current_message_.Clear();
   update_queue_.clear();
+  geometry_dirty_ = false;
   clearGeometry();
 }
 
 void MapDisplay::onDraw(rendering::SceneOverlay& scene) {
+  if (geometry_dirty_ || texture_dirty_ || pose_dirty_) {
+    rebuildGeometry();
+  }
   if (!has_geometry_ || image_.isNull()) {
     return;
   }

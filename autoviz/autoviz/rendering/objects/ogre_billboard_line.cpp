@@ -5,6 +5,7 @@
 
 #include "autoviz/rendering/objects/ogre_billboard_line.hpp"
 
+#include <algorithm>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -211,19 +212,38 @@ void OgreBillboardLine::setPolyline(const std::vector<Ogre::Vector3>& points,
     clear();
     return;
   }
+  std::vector<Ogre::ColourValue> colors(points.size(), color);
+  std::vector<float> widths(points.size(), width);
+  setColoredPolyline(points, colors, widths);
+}
+
+void OgreBillboardLine::setColoredPolyline(
+    const std::vector<Ogre::Vector3>& points,
+    const std::vector<Ogre::ColourValue>& colors,
+    const std::vector<float>& widths) {
+  if (points.empty() || colors.size() != points.size() ||
+      widths.size() != points.size()) {
+    clear();
+    return;
+  }
   setNumLines(1);
   setMaxPointsPerLine(static_cast<uint32_t>(points.size()));
   clear();
-  setLineWidth(width);
-  setColor(color);
+  setLineWidth(widths.back());
+  setColor(colors.back());
+
+  // Always alpha-blend: per-vertex fade is the whole point of light trails.
+  // Using min_alpha near 1.0 would flip the material to SBT_REPLACE and kill
+  // the comet wake.
+  OgreMaterialManager::enableAlphaBlending(material_, 0.5f);
 
   current_line_ = 0;
-  for (const Ogre::Vector3& point : points) {
+  for (std::size_t i = 0; i < points.size(); ++i) {
     incrementChainContainerIfNecessary();
     Ogre::BillboardChain::Element element;
-    element.position = point;
-    element.width = width_;
-    element.colour = color_;
+    element.position = points[i];
+    element.width = std::max(0.001f, widths[i]);
+    element.colour = colors[i];
     chain_containers_[current_chain_container_]->addChainElement(
         current_line_ % chains_per_container_, element);
   }

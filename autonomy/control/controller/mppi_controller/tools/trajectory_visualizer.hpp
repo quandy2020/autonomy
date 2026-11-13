@@ -83,14 +83,25 @@
       * @param plan Plan to visualize
       */
      void visualize(const automsgs::msgs::nav_msgs::Path& plan);
+
+     /** True when at least one viz channel has a subscriber. */
+     [[nodiscard]] bool hasSubscribers() const;
  
      /**
       * @brief Reset object
       */
      void reset();
+
+     /**
+      * @brief Publish empty Path / DELETEALL markers so Autoviz drops latched
+      * candidate / optimal / transformed plan overlays when FollowPath exits.
+      */
+     void clearPublished();
  
  protected:
      std::string frame_id_;
+     /** Owned when Configure() has no Autolink node yet. */
+     std::shared_ptr<autolink::Node> owned_node_;
      std::shared_ptr<autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>>
          trajectories_publisher_;
      std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>

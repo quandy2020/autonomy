@@ -126,27 +126,43 @@ bool MarkerPointsInFixedFrame(
   }
   points->clear();
   points->reserve(static_cast<std::size_t>(marker.points_size()));
-  const auto zero_time = autoviz::commsgs::ZeroTime();
-  automsgs::msgs::geometry_msgs::TransformStamped tf;
-  bool have_tf = false;
-  if (context != nullptr && !marker.header().frame_id().empty()) {
-    try {
-      tf = context->tf_buffer->lookupTransform(context->fixed_frame,
-                                               marker.header().frame_id(),
-                                               zero_time);
-      have_tf = true;
-    } catch (...) {
-    }
+  if (marker.points_size() == 0) {
+    return false;
   }
+
+  const std::string& marker_frame = marker.header().frame_id();
+  const bool same_frame =
+      context == nullptr || marker_frame.empty() ||
+      marker_frame == context->fixed_frame;
+  if (same_frame) {
+    for (const auto& point : marker.points()) {
+      points->emplace_back(static_cast<float>(point.x()),
+                           static_cast<float>(point.y()),
+                           static_cast<float>(point.z()));
+    }
+    return true;
+  }
+
+  const auto zero_time = autoviz::commsgs::ZeroTime();
+  QMatrix4x4 matrix;
+  bool have_tf = false;
+  try {
+    const auto tf = context->tf_buffer->lookupTransform(
+        context->fixed_frame, marker_frame, zero_time);
+    matrix = transformToMatrix(tf);
+    have_tf = true;
+  } catch (...) {
+  }
+
   for (const auto& point : marker.points()) {
     QVector3D p(static_cast<float>(point.x()), static_cast<float>(point.y()),
                 static_cast<float>(point.z()));
     if (have_tf) {
-      p = transformPoint(tf, p);
+      p = matrix.map(p);
     }
     points->push_back(p);
   }
-  return !points->empty();
+  return true;
 }
 
 std::string propertyValue(const common::DisplayPropertyMap& properties,
@@ -369,11 +385,23 @@ void drawStoredMarkers(
     } else if (marker.type() == kLineStrip && marker.points_size() >= 2) {
       std::vector<QVector3D> points;
       if (MarkerPointsInFixedFrame(marker, context, &points)) {
+        const bool per_point_color =
+            marker.colors_size() > 0 &&
+            marker.colors_size() == marker.points_size();
         for (std::size_t i = 1; i < points.size(); ++i) {
+          QColor seg_color = color;
+          if (per_point_color) {
+            const auto& c = marker.colors(static_cast<int>(i));
+            seg_color = QColor::fromRgbF(
+                std::clamp(static_cast<float>(c.r()), 0.f, 1.f),
+                std::clamp(static_cast<float>(c.g()), 0.f, 1.f),
+                std::clamp(static_cast<float>(c.b()), 0.f, 1.f),
+                std::clamp(static_cast<float>(c.a()), 0.f, 1.f));
+          }
           if (use_ogre) {
-            ogre_lines.push_back({points[i - 1], points[i], color});
+            ogre_lines.push_back({points[i - 1], points[i], seg_color});
           } else {
-            scene.addLine(points[i - 1], points[i], color);
+            scene.addLine(points[i - 1], points[i], seg_color);
           }
         }
       }
@@ -391,9 +419,32 @@ void drawStoredMarkers(
     } else if (marker.type() == kPoints && marker.points_size() >= 1) {
       std::vector<QVector3D> points;
       if (MarkerPointsInFixedFrame(marker, context, &points)) {
+        const int color_count = marker.colors_size();
+        const bool per_point_color =
+            color_count > 0 && color_count == marker.points_size();
         if (use_ogre) {
-          for (const auto& point : points) {
-            ogre_points.push_back({point, color});
+          ogre_points.reserve(ogre_points.size() + points.size());
+          for (int i = 0; i < static_cast<int>(points.size()); ++i) {
+            QColor point_color = color;
+            if (per_point_color) {
+              const auto& c = marker.colors(i);
+              point_color = QColor::fromRgbF(
+                  std::clamp(static_cast<float>(c.r()), 0.f, 1.f),
+                  std::clamp(static_cast<float>(c.g()), 0.f, 1.f),
+                  std::clamp(static_cast<float>(c.b()), 0.f, 1.f),
+                  std::clamp(static_cast<float>(c.a()), 0.f, 1.f));
+            }
+            ogre_points.push_back({points[static_cast<size_t>(i)], point_color});
+          }
+        } else if (per_point_color) {
+          for (int i = 0; i < static_cast<int>(points.size()); ++i) {
+            const auto& c = marker.colors(i);
+            const QColor point_color = QColor::fromRgbF(
+                std::clamp(static_cast<float>(c.r()), 0.f, 1.f),
+                std::clamp(static_cast<float>(c.g()), 0.f, 1.f),
+                std::clamp(static_cast<float>(c.b()), 0.f, 1.f),
+                std::clamp(static_cast<float>(c.a()), 0.f, 1.f));
+            scene.addPoints({points[static_cast<size_t>(i)]}, point_color);
           }
         } else {
           scene.addPoints(points, color);

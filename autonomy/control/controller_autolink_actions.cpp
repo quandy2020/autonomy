@@ -101,6 +101,13 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
+    if (!plan_clear_writer_) {
+        // Same channel as PlannerServer::PublishPlan — empty Path is ignored by
+        // NavigationClient and clears Autoviz PathDisplay latch on goal exit.
+        plan_clear_writer_ =
+            node_->CreateWriter<automsgs::msgs::nav_msgs::Path>("/plan");
+    }
+
     if (!odom_reader_) {
         ControllerServer* self = this;
         odom_reader_ = node_->CreateReader<automsgs::msgs::nav_msgs::Odometry>(

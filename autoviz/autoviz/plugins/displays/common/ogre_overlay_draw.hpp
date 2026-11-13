@@ -82,6 +82,17 @@ bool drawBillboardStripOgreOrGl(common::DisplayContext* context,
                                 const QColor& color, float line_width);
 
 /**
+ * @brief Draws a camera-facing strip with per-vertex colour and width.
+ *
+ * Used for sci-fi motion trails (fade + taper). Falls back to uniform GL strip
+ * when Ogre is unavailable (uses average colour / width).
+ */
+bool drawColoredBillboardStripOgreOrGl(
+    common::DisplayContext* context, rendering::SceneOverlay& scene,
+    const std::string& display_name, const std::vector<QVector3D>& points,
+    const std::vector<QColor>& colors, const std::vector<float>& widths);
+
+/**
  * @brief Draws a shaft + cone arrow (RViz Arrow equivalent).
  *
  * @param context Display context.

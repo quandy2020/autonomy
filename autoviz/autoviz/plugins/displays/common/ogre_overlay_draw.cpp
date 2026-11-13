@@ -106,6 +106,42 @@ bool drawBillboardStripOgreOrGl(common::DisplayContext* context,
   return false;
 }
 
+bool drawColoredBillboardStripOgreOrGl(
+    common::DisplayContext* context, rendering::SceneOverlay& scene,
+    const std::string& display_name, const std::vector<QVector3D>& points,
+    const std::vector<QColor>& colors, const std::vector<float>& widths) {
+  if (context != nullptr && context->ogre_scene_host != nullptr) {
+    syncOgreDisplayVisibility(context, display_name);
+    context->ogre_scene_host->setDisplayColoredBillboardStrip(
+        display_name, points, colors, widths);
+    return true;
+  }
+
+  if (points.size() < 2 || colors.size() != points.size() ||
+      widths.size() != points.size()) {
+    return false;
+  }
+  float width_sum = 0.f;
+  int r = 0;
+  int g = 0;
+  int b = 0;
+  int a = 0;
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    width_sum += widths[i];
+    r += colors[i].red();
+    g += colors[i].green();
+    b += colors[i].blue();
+    a += colors[i].alpha();
+  }
+  const float inv = 1.f / static_cast<float>(points.size());
+  QColor avg(r / static_cast<int>(points.size()),
+             g / static_cast<int>(points.size()),
+             b / static_cast<int>(points.size()),
+             a / static_cast<int>(points.size()));
+  scene.addViewFacingPolylineStrip(points, width_sum * inv, avg);
+  return false;
+}
+
 bool drawVectorArrowOgreOrGl(common::DisplayContext* context,
                              rendering::SceneOverlay& scene,
                              const std::string& display_name,

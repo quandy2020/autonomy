@@ -225,6 +225,13 @@ class OgreSceneHost {
                                 const QColor& color, float line_width);
 
   /**
+   * @brief Camera-facing polyline with per-vertex colour and width (light trails).
+   */
+  void setDisplayColoredBillboardStrip(
+      const std::string& display_name, const std::vector<QVector3D>& points,
+      const std::vector<QColor>& colors, const std::vector<float>& widths);
+
+  /**
    * @brief Cloud-level pick handle for Ogre Pick pass 0.
    *
    * @param display_name Entry key.

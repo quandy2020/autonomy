@@ -266,6 +266,9 @@ protected:
 
     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>
         cmd_vel_writer_;
+    /** Clears latched Autoviz GlobalPlan overlays when FollowPath exits. */
+    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
+        plan_clear_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         costmap_writer_;
     std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>

@@ -48,6 +48,14 @@
      if (grid_map_) {
          optimizer_.setGridMapBuffer(grid_map_);
      }
+
+     if (visualize_) {
+         const std::string frame =
+             costmap_wrapper_ ? costmap_wrapper_->getGlobalFrameID() : "odom";
+         trajectory_visualizer_ =
+             std::make_unique<tools::TrajectoryVisualizer>(
+                 parent_node, name_, frame, &options_);
+     }
  
      AINFO << "Configured MPPI Controller: " << name_
            << " (visualize=" << (visualize_ ? "true" : "false") << ")";
@@ -61,6 +69,7 @@
  
  void MPPIController::Cleanup() {
      optimizer_.shutdown();
+     trajectory_visualizer_.reset();
      opt_traj_pub_.reset();
      AINFO << "Cleaned up MPPI Controller: " << name_.c_str();
  }
@@ -70,12 +79,19 @@
  }
  
  void MPPIController::Deactivate() {
+     if (trajectory_visualizer_) {
+         trajectory_visualizer_->clearPublished();
+     }
      AINFO << "Deactivated MPPI Controller: ", name_.c_str();
  }
  
  void MPPIController::Reset() {
      optimizer_.reset(
          false /*Don't reset zone-based speed limits between requests*/);
+     has_control_state_ = false;
+     if (trajectory_visualizer_) {
+         trajectory_visualizer_->clearPublished();
+     }
  }
  
  uint32 MPPIController::ComputeVelocityCommands(
@@ -125,7 +141,8 @@
      AINFO << "Control loop execution time: " << duration << " [ms]";
  #endif
 
-     if (visualize_ && trajectory_visualizer_.get()) {
+     if (visualize_ && trajectory_visualizer_ &&
+         trajectory_visualizer_->hasSubscribers()) {
          Eigen::ArrayXXf optimal_trajectory;
          Visualize(std::move(transformed_plan), cmd_vel.header().stamp(),
                    optimal_trajectory);
@@ -152,18 +169,19 @@
      automsgs::msgs::nav_msgs::Path transformed_plan,
      const automsgs::msgs::builtin_interfaces::Time& cmd_stamp,
      const Eigen::ArrayXXf& optimal_trajectory) {
-     if (trajectory_visualizer_) {
-         trajectory_visualizer_->add(optimizer_.getGeneratedTrajectories(),
-                                     "Candidate Trajectories");
-         if (optimal_trajectory.size() > 0) {
-             trajectory_visualizer_->add(optimal_trajectory,
-                                         "Optimal Trajectory", cmd_stamp);
-         } else {
-             trajectory_visualizer_->add(optimizer_.getOptimizedTrajectory(),
-                                         "Optimal Trajectory", cmd_stamp);
-         }
-         trajectory_visualizer_->visualize(std::move(transformed_plan));
+     if (!trajectory_visualizer_ || !trajectory_visualizer_->hasSubscribers()) {
+         return;
      }
+     trajectory_visualizer_->add(optimizer_.getGeneratedTrajectories(),
+                                 "Candidate Trajectories");
+     if (optimal_trajectory.size() > 0) {
+         trajectory_visualizer_->add(optimal_trajectory, "Optimal Trajectory",
+                                     cmd_stamp);
+     } else {
+         trajectory_visualizer_->add(optimizer_.getOptimizedTrajectory(),
+                                     "Optimal Trajectory", cmd_stamp);
+     }
+     trajectory_visualizer_->visualize(std::move(transformed_plan));
  }
  
 void MPPIController::SetPlan(const automsgs::msgs::nav_msgs::Path& path) {
