@@ -1,175 +1,146 @@
-<div align="center">
+<p align="center">
+  <img src="images/autonomy_architecture.svg" alt="Autonomy" width="96"/>
+</p>
 
-# AUTONOMY
+<h1 align="center">Autonomy</h1>
 
-**A modular intelligence framework for autonomous mobile robots**
+<p align="center">
+  <strong>A modular intelligence framework for autonomous mobile robots.</strong>
+</p>
 
-Modern C++ · Autolink RT · Behavior trees · *No ROS runtime required*
+<p align="center">
+  Modern C++ · Autolink RT · Behavior trees · No ROS runtime required
+</p>
 
-[![Version](https://img.shields.io/badge/Version-0.3.0-2563EB?style=for-the-badge)](version.json)
-[![C++](https://img.shields.io/badge/C%2B%2B-20-0F172A?style=for-the-badge&logo=cplusplus&logoColor=white)](CMakeLists.txt)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20ARM64-334155?style=for-the-badge&logo=linux&logoColor=white)](docs/source/02_Installation/00_guide.md)
-[![License](https://img.shields.io/badge/License-Apache--2.0-0891B2?style=for-the-badge)](LICENSE)
+<p align="center">
+  <a href="version.json"><img src="https://img.shields.io/badge/version-0.3.0-2563EB" alt="Version"></a>
+  <a href="CMakeLists.txt"><img src="https://img.shields.io/badge/C%2B%2B-20-00599C?logo=cplusplus&logoColor=white" alt="C++20"></a>
+  <a href="docs/source/02_Installation/00_guide.md"><img src="https://img.shields.io/badge/platform-Linux%20%7C%20ARM64-334155?logo=linux&logoColor=white" alt="Platform"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-0891B2" alt="License"></a>
+  <a href="https://autonomy.readthedocs.io/en/latest/index.html"><img src="https://img.shields.io/badge/docs-readthedocs-8CA1AF?logo=readthedocs&logoColor=white" alt="Docs"></a>
+</p>
 
-<br/>
+<p align="center">
+  <a href="https://autonomy.readthedocs.io/en/latest/index.html">Documentation</a>
+  ·
+  <a href="docs/source/02_Installation/00_guide.md">Install</a>
+  ·
+  <a href="docs/source/04_Running/02_quickstart.md">Quick Start</a>
+  ·
+  <a href="docs/source/01_Instructions/03_system_architecture.md">Architecture</a>
+</p>
 
-[Documentation](https://autonomy.readthedocs.io/en/latest/index.html)
-&nbsp;·&nbsp;
-[Install](docs/source/02_Installation/00_guide.md)
-&nbsp;·&nbsp;
-[Quick Start](docs/source/04_Running/02_quickstart.md)
-&nbsp;·&nbsp;
-[Architecture](docs/source/01_Instructions/03_system_architecture.md)
+<p align="center">
+  <img src="images/autonomy-cover.png" alt="Autonomy cover" width="920"/>
+</p>
 
-<br/>
-
-<img src="images/autonomy_architecture.png" alt="Autonomy Architecture" width="920"/>
-
-<br/>
-
-`PERCEPTION`&nbsp;&nbsp;`LOCALIZATION`&nbsp;&nbsp;`MAPPING`&nbsp;&nbsp;`PLANNING`&nbsp;&nbsp;`CONTROL`&nbsp;&nbsp;`ORCHESTRATION`
-
-</div>
-
-<br/>
-
-<table>
-  <tr>
-    <td align="center" width="33%">
-      <h3>Runtime Independent</h3>
-      <p>Node · Channel · Service · Action · Parameter<br/>without a ROS runtime dependency</p>
-    </td>
-    <td align="center" width="33%">
-      <h3>Modular by Design</h3>
-      <p>Stable plugins across algorithms,<br/>drivers, simulation, and visualization</p>
-    </td>
-    <td align="center" width="33%">
-      <h3>Production Oriented</h3>
-      <p>Docker · Ansible · observability<br/>x86_64 and ARM64 ready</p>
-    </td>
-  </tr>
-</table>
+<p align="center">
+  <code>PERCEPTION</code>
+  ·
+  <code>LOCALIZATION</code>
+  ·
+  <code>MAPPING</code>
+  ·
+  <code>PLANNING</code>
+  ·
+  <code>CONTROL</code>
+  ·
+  <code>ORCHESTRATION</code>
+</p>
 
 ---
 
-## Gallery
+## About
+
+Autonomy is an open-source stack for building and shipping autonomous mobile robots — localization, mapping, planning, control, task orchestration, simulation, and visualization — without depending on a ROS runtime.
+
+Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. Domains stay plugins. You can run the full stack, or trim it with `AUTONOMY_BUILD_*` / `BUILD_*` flags.
+
+**Good for:** indoor navigation demos, SLAM bring-up, MPPI / RPP control, Isaac + AutoViz simulation, and production Docker / Ansible deploys on x86_64 and ARM64.
+
+**Also for machines:** Protobuf messages (`automsgs`), optional gRPC bridge (`BUILD_GRPC`), and launch files that compose multi-process Goal → Task (BT) → Planning → Control.
+
+---
+
+## Highlights
+
+- 🚫 **No ROS runtime required.** Autolink carries Node · Channel · Service · Action · Parameter on SHM / RTPS.
+- 🧩 **Modular by design.** Stable plugins across algorithms, drivers, simulation, and visualization.
+- 🗺️ **Localization that scales.** Cartographer, Atlas-SLAM, and Argus (ESIKF) in one tree.
+- 🧭 **Navigation you can see.** Global plan, MPPI candidates, costmaps, goal rings, and cmd/odom plots in AutoViz.
+- 🧠 **Behavior-tree orchestration.** TaskServer + BT navigator for navigate-to-pose, recover, cancel.
+- 🎮 **Simulation & sensors.** AutoSim (Habitat · Fake · Isaac + PhysX) and AutoDriver for real hardware.
+- 👁️ **AutoViz.** Qt + Ogre panels for maps, paths, TF trails, cameras, and live plots.
+- 🚢 **Production oriented.** Docker images, Ansible playbooks, observability — x86_64 and ARM64 ready.
+- 📦 **Domain trim.** Build only what you need with CMake feature flags.
+- 🔗 **Bridge when you must.** Optional gRPC surface for external clients and tools.
+
+---
+
+## Demo
+
+<p align="center">
+  <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/">
+    <img src="docs/assets/navigation/nav-1.png" alt="Navigation · AutoViz" width="920"/>
+  </a>
+</p>
+
+<p align="center">
+  <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/"><b>▶ Navigation demo</b></a>
+  ·
+  <a href="docs/source/16_Navigator/04_navigate_to_pose.md">Guide</a>
+  ·
+  <a href="autoviz/README.md">AutoViz</a>
+</p>
 
 <table>
   <tr>
     <td align="center" width="50%" valign="top">
-      <h3>Localization · Atlas-SLAM</h3>
       <a href="https://www.bilibili.com/video/BV1qzxX62Ef2/">
-        <img src="docs/source/06_Localization/images/Atlas-SLAM.png" alt="Atlas-SLAM" width="100%"/>
+        <img src="docs/source/06_Localization/images/Atlas-SLAM-2azQ1b91cZZ.png" alt="Atlas-SLAM" width="100%"/>
       </a>
       <p>
-        <a href="https://www.bilibili.com/video/BV1qzxX62Ef2/"><b>▶ Atlas-SLAM demo</b></a>
-        &nbsp;·&nbsp;
+        <a href="https://www.bilibili.com/video/BV1qzxX62Ef2/"><b>▶ Atlas-SLAM</b></a>
+        ·
         <a href="autonomy/localization/README.md">Guide</a>
       </p>
       <sub>Cartographer · Atlas · Argus (ESIKF)</sub>
     </td>
     <td align="center" width="50%" valign="top">
-      <h3>Simulation · Isaac + AutoViz</h3>
       <img src="autosim/images/isaac.gif" alt="Isaac Sim + AutoViz" width="100%"/>
       <p>
         <a href="autosim/README.md"><b>AutoSim</b></a>
-        &nbsp;·&nbsp;
+        ·
         <a href="autoviz/README.md">AutoViz</a>
       </p>
       <sub>Habitat · Fake · Isaac Sim + PhysX</sub>
     </td>
   </tr>
-  <tr>
-    <td align="center" colspan="2" valign="top">
-      <h3>Navigation · AutoViz</h3>
-      <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/?spm_id_from=333.1387.homepage.video_card.click&vd_source=493d217d2625b309ca438456365d4b6c">
-        <img src="docs/assets/navigation/nav-1.png" alt="Navigation AutoViz demo" width="100%"/>
-      </a>
-      <p>
-        <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/?spm_id_from=333.1387.homepage.video_card.click&vd_source=493d217d2625b309ca438456365d4b6c"><b>▶ Navigation demo</b></a>
-        &nbsp;·&nbsp;
-        <a href="docs/source/16_Navigator/04_navigate_to_pose.md">Guide</a>
-        &nbsp;·&nbsp;
-        <a href="autoviz/README.md">AutoViz</a>
-      </p>
-      <sub>Plan · MPPI · costmap · goal rings · cmd/odom plots</sub>
-    </td>
-  </tr>
 </table>
 
 ---
 
-## Architecture
+## Get started
 
-<div align="center">
+Two ways in:
 
-<a href="docs/architecture/archify/autonomy-runtime.architecture.html">
-  <img src="docs/architecture/archify/autonomy-runtime.architecture.gif" alt="Runtime architecture" width="920"/>
-</a>
+1. **[Documentation](https://autonomy.readthedocs.io/en/latest/index.html)** — install, run, and architecture guides. Start here if you are new.
+2. **Docker quick path** below — clone, enter the container, build, launch.
 
-</div>
+Autonomy is under active development. [Say so](https://github.com/quandy2020/autonomy/issues) when you find an edge.
 
-<br/>
+**Platforms**
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <a href="docs/architecture/archify/navigation-task.workflow.html">
-        <img src="docs/architecture/archify/navigation-task.workflow.gif" alt="Navigation workflow" width="100%"/>
-      </a>
-      <br/>
-      <b>Navigation</b> — goal · plan · recover · cancel
-    </td>
-    <td align="center" width="50%">
-      <a href="docs/architecture/archify/person-following.dataflow.html">
-        <img src="docs/architecture/archify/person-following.dataflow.gif" alt="Person-following flow" width="100%"/>
-      </a>
-      <br/>
-      <b>Person-following</b> — RGB · track · path · control
-    </td>
-  </tr>
-</table>
-
-<p align="center">
-  <a href="docs/architecture/archify/autonomy-runtime.architecture.html">Runtime</a>
-  &nbsp;·&nbsp;
-  <a href="docs/architecture/archify/navigation-task.workflow.html">Navigation</a>
-  &nbsp;·&nbsp;
-  <a href="docs/architecture/archify/person-following.dataflow.html">Following</a>
-  &nbsp;·&nbsp;
-  <a href="docs/source/01_Instructions/03_system_architecture.md">System guide</a>
-</p>
+- ✅ **Linux** · x86_64 and ARM64 (primary)
+- 🚧 **macOS / Windows** · AutoViz deploy scripts exist; full stack is Linux-first
 
 ---
 
-## Stack
+## Build from source
 
-<table>
-  <tr>
-    <td width="25%"><b>Runtime</b><br/><code>autolink/</code><br/><sub>SHM · RTPS · Action</sub></td>
-    <td width="25%"><b>Messages</b><br/><code>automsgs/</code><br/><sub>Protobuf · codegen</sub></td>
-    <td width="25%"><b>Localization</b><br/><code>autonomy/localization/</code><br/><sub>Cartographer · Atlas · Argus</sub></td>
-    <td width="25%"><b>Perception</b><br/><code>autonomy/perception/</code><br/><sub>Base · Follow · costmap layers</sub></td>
-  </tr>
-  <tr>
-    <td><b>Map / Plan / Ctrl</b><br/><code>map · planning · control</code><br/><sub>Costmap · NavFn · RPP / MPPI</sub></td>
-    <td><b>Tasks</b><br/><code>autonomy/task/</code><br/><sub>BT navigator · TaskServer</sub></td>
-    <td><b>Bridge</b><br/><code>autonomy/bridge/</code><br/><sub>gRPC · <code>BUILD_GRPC</code></sub></td>
-    <td><b>HW / Sim / Viz</b><br/><code>autodriver · autosim · autoviz</code><br/><sub>Sensors · Isaac · Qt</sub></td>
-  </tr>
-</table>
+Work from the **source root** (the directory with top-level `CMakeLists.txt`, `scripts/`, `docker/`). In a monorepo that is often `…/src/autonomy`.
 
-Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `control` (`cmd_vel`), with TF `map → odom → base_link`. Domains can be trimmed via `AUTONOMY_BUILD_*` / `BUILD_*`.
-
----
-
-## Quick Start
-
-Work from the **source root** (directory with top-level `CMakeLists.txt`, `scripts/`, `docker/`). In a monorepo that is often `…/src/autonomy`.
-
-<table>
-  <tr>
-    <td width="50%" valign="top">
+You need a Linux host (or the project Docker image), CMake, Ninja, a C++20 compiler, and the dependencies installed by `scripts/install_dependencies.py`.
 
 **① Clone & enter Docker**
 
@@ -187,14 +158,10 @@ python3 docker/run_autonomy.py -p x86_64
 # python3 docker/run_autonomy.py -p x86_64 -n yes
 ```
 
-</td>
-    <td width="50%" valign="top">
-
-**② Build & launch stack**
+**② Build & launch**
 
 ```bash
 cd /workspace/autonomy   # inside container
-# host path if building outside Docker
 
 python3 scripts/install_dependencies.py --skip-installed
 cmake -S . -B build -G Ninja \
@@ -206,16 +173,11 @@ source scripts/setup_environment.bash
 autolink_launch autonomy.launch
 ```
 
-Nav-only smoke (planning + control + task):
+Nav-only smoke (planning + control + task — do **not** run together with `autonomy.launch`):
 
 ```bash
 autolink launch start task.launch
-# do not run together with autonomy.launch
 ```
-
-</td>
-  </tr>
-</table>
 
 <details>
 <summary><b>Argus localization</b> (autosim / Oxford Spires → <code>/imu</code> · <code>/points</code>)</summary>
@@ -238,22 +200,84 @@ export PYTHONPATH="/workspace/autonomy/src/autonomy:/workspace/autonomy/install/
   --rate 1.0
 ```
 
-
 See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/localization/README.md).
 
 </details>
 
 <p align="center">
   <a href="docs/source/01_Instructions/00_guide.md">Getting started</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="docs/source/04_Running/02_quickstart.md">Quick Run</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="docs/source/02_Installation/05_docker.md">Docker</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="cmake/README.md">CMake</a>
-  &nbsp;·&nbsp;
-  <a href="autonomy/localization/README.md">Localization</a>
 </p>
+
+---
+
+## Architecture
+
+<p align="center">
+  <a href="docs/architecture/archify/autonomy-runtime.architecture.html">
+    <img src="docs/architecture/archify/autonomy-runtime.architecture.gif" alt="Runtime architecture" width="920"/>
+  </a>
+</p>
+
+<table>
+  <tr>
+    <td align="center" width="50%">
+      <a href="docs/architecture/archify/navigation-task.workflow.html">
+        <img src="docs/architecture/archify/navigation-task.workflow.gif" alt="Navigation workflow" width="100%"/>
+      </a>
+      <br/>
+      <b>Navigation</b> — goal · plan · recover · cancel
+    </td>
+    <td align="center" width="50%">
+      <a href="docs/architecture/archify/person-following.dataflow.html">
+        <img src="docs/architecture/archify/person-following.dataflow.gif" alt="Person-following flow" width="100%"/>
+      </a>
+      <br/>
+      <b>Person-following</b> — RGB · track · path · control
+    </td>
+  </tr>
+</table>
+
+<p align="center">
+  <a href="docs/architecture/archify/autonomy-runtime.architecture.html">Runtime</a>
+  ·
+  <a href="docs/architecture/archify/navigation-task.workflow.html">Navigation</a>
+  ·
+  <a href="docs/architecture/archify/person-following.dataflow.html">Following</a>
+  ·
+  <a href="docs/source/01_Instructions/03_system_architecture.md">System guide</a>
+</p>
+
+Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `control` (`cmd_vel`), with TF `map → odom → base_link`.
+
+### Stack
+
+| Area | Path | Notes |
+|------|------|--------|
+| Runtime | `autolink/` | SHM · RTPS · Action |
+| Messages | `automsgs/` | Protobuf · codegen |
+| Localization | `autonomy/localization/` | Cartographer · Atlas · Argus |
+| Perception | `autonomy/perception/` | Base · Follow · costmap layers |
+| Map / Plan / Ctrl | `map` · `planning` · `control` | Costmap · NavFn · RPP / MPPI |
+| Tasks | `autonomy/task/` | BT navigator · TaskServer |
+| Bridge | `autonomy/bridge/` | gRPC · `BUILD_GRPC` |
+| HW / Sim / Viz | `autodriver` · `autosim` · `autoviz` | Sensors · Isaac · Qt |
+
+---
+
+## How to Contribute
+
+> [!IMPORTANT]
+> The best way to contribute is to build the stack, run a nav or SLAM bring-up, and say where it breaks or could be clearer.
+>
+> Ready to write code? Start from [Getting started](docs/source/01_Instructions/00_guide.md) and [CMake](cmake/README.md). Prefer small, reviewable changes that match existing module boundaries (`autolink`, `automsgs`, `autonomy/*`, `autoviz`, …).
+>
+> Questions and demos live best next to the module READMEs linked below.
 
 ---
 
@@ -261,19 +285,19 @@ See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/
 
 <p align="center">
   <a href="autolink/README.md">Autolink</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="automsgs/README.md">AutoMsgs</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="autonomy/localization/README.md">Localization</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="autonomy/bridge/README.md">Bridge</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="autodriver/README.md">AutoDriver</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="autosim/README.md">AutoSim</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="autoviz/README.md">AutoViz</a>
-  &nbsp;·&nbsp;
+  ·
   <a href="ansible/README.md">Ansible</a>
 </p>
 
@@ -295,12 +319,12 @@ See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/
 
 ---
 
-<div align="center">
+## Licence
 
-**Apache 2.0** · Inspired by Autoware · Cartographer · Navigation2 · ROS 2 · BehaviorTree.CPP
+Autonomy is free software under [Apache-2.0](LICENSE).
 
-<br/>
+Inspired by Autoware · Cartographer · Navigation2 · ROS 2 · BehaviorTree.CPP.
 
-*Autonomy — modular, observable, deployable robot intelligence*
-
-</div>
+<p align="center">
+  <em>Autonomy — modular, observable, deployable robot intelligence</em>
+</p>
