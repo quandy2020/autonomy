@@ -80,6 +80,7 @@ common::PlotPanelPersistConfig ToPersistConfig(const QString& object_name,
   persist.sync_group = config.sync_group.toStdString();
   persist.sync_y_axis = config.sync_y_axis;
   persist.sync_cursor = config.sync_cursor;
+  persist.show_legend = config.show_legend;
   persist.show_legend_values = config.show_legend_values;
   persist.settings_visible = config.settings_visible;
   persist.settings_width = config.settings_width;
@@ -118,6 +119,7 @@ PlotPanelConfig FromPersistConfig(const common::PlotPanelPersistConfig& persist)
   if (config.sync_with_other_plots && config.sync_group.trimmed().isEmpty()) {
     config.sync_group = QStringLiteral("default");
   }
+  config.show_legend = persist.show_legend;
   config.show_legend_values = persist.show_legend_values;
   config.settings_visible = persist.settings_visible;
   config.settings_width = persist.settings_width > 0 ? persist.settings_width : 300;

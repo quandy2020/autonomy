@@ -404,7 +404,10 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
                                     legend_widget_->isVisible());
     layout->insertWidget(6, legend_tool_button_);
     connect(legend_tool_button_, &QToolButton::toggled, this,
-            [this](bool checked) { setLegendVisible(checked); });
+            [this](bool checked) {
+              setLegendVisible(checked);
+              emit configChanged();
+            });
 
     layout->insertWidget(7, CreateTitleSeparator(tools.widget));
     pause_tool_button_ = CreatePlotTitleToolButton(
@@ -439,7 +442,9 @@ void PlotPanel::installTitleBarTools(PanelDockWidget* dock) {
   }
 
   setChartInteractionMode(PlotInteractionMode::kSelect);
-  setLegendVisible(false);
+  // Restore legend from config (default on). Forcing hide here made legends
+  // disappear after dock recreate / title-bar reinstall ("intermittent").
+  setLegendVisible(config_.show_legend);
   syncPauseToolState();
 }
 
@@ -616,6 +621,7 @@ void PlotPanel::updateLegendValues() {
 }
 
 void PlotPanel::setLegendVisible(bool visible) {
+  config_.show_legend = visible;
   if (legend_widget_ != nullptr) {
     legend_widget_->setVisible(visible);
     if (visible) {
@@ -629,12 +635,16 @@ void PlotPanel::updateLegendGeometry() {
   if (legend_widget_ == nullptr || chart_ == nullptr) {
     return;
   }
+  // Ensure series list is applied before sizing — empty sizeHint leaves a
+  // zero-height widget that looks like "legend missing".
+  legend_widget_->updateGeometry();
   legend_widget_->adjustSize();
   const QRect anchor = chart_->legendAnchorRect();
-  const QSize legend_size = legend_widget_->preferredSize();
+  const QSize legend_size = legend_widget_->preferredSize().expandedTo(QSize(120, 28));
   legend_widget_->setGeometry(anchor.left(), anchor.top(), legend_size.width(),
                               legend_size.height());
   legend_widget_->raise();
+  legend_widget_->update();
 }
 
 void PlotPanel::syncLegendToolState() {
@@ -762,7 +772,14 @@ void PlotPanel::applyConfigToUi() {
   if (legend_widget_ != nullptr) {
     legend_widget_->setSeries(series_view);
     updateLegendValues();
-    if (legend_widget_->isVisible()) {
+    // Keep overlay visibility aligned with persisted config after resubscribe /
+    // dock recreate — do not leave a hidden legend while series are plotting.
+    const bool want_legend = config_.show_legend;
+    if (legend_widget_->isVisible() != want_legend) {
+      legend_widget_->setVisible(want_legend);
+      syncLegendToolState();
+    }
+    if (want_legend) {
       updateLegendGeometry();
     }
   }

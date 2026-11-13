@@ -252,6 +252,9 @@ struct PlotPanelPersistConfig {
   /** Broadcast hover X as a shared vertical cursor. */
   bool sync_cursor = true;
 
+  /** Floating series legend overlay visibility. */
+  bool show_legend = true;
+
   /** Show numeric values in the legend. */
   bool show_legend_values = true;
 

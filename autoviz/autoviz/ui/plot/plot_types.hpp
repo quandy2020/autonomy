@@ -190,6 +190,7 @@ struct PlotPanelConfig {
   QString sync_group;
   bool sync_y_axis = false;   /**< Also broadcast left Y range within the group. */
   bool sync_cursor = true;    /**< Broadcast hover X as a shared vertical cursor. */
+  bool show_legend = true;  /**< Floating series legend overlay visibility. */
   bool show_legend_values = true;  /**< Show live values in the legend. */
   bool settings_visible = false;  /**< Settings pane visibility. */
   int settings_width = 300;  /**< Preferred settings width (pixels). */

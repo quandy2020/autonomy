@@ -452,6 +452,7 @@ PlotPanels:
     SettingsVisible: false
     SettingsWidth: 280
     ShowGrid: true
+    ShowLegend: true
     ShowLegendValues: true
     ShowReferenceTracker: false
     ShowReferenceY: false
@@ -524,6 +525,7 @@ PlotPanels:
     SettingsVisible: false
     SettingsWidth: 300
     ShowGrid: true
+    ShowLegend: true
     ShowLegendValues: true
     ShowReferenceTracker: false
     ShowReferenceY: false

@@ -542,8 +542,14 @@ QRect PlotChartWidget::addSeriesButtonRect() const {
 }
 
 QRect PlotChartWidget::legendAnchorRect() const {
-  const QRect button = addSeriesButtonRect();
-  return QRect(button.left(), button.bottom() + 8, 180, 120);
+  const QRect chart = chartRect();
+  // Prefer the top-left chart corner. When the empty-state "add series" chip is
+  // shown, park the legend just below it so the two do not overlap.
+  if (series_.empty()) {
+    const QRect button = addSeriesButtonRect();
+    return QRect(button.left(), button.bottom() + 8, 180, 120);
+  }
+  return QRect(chart.left() + 8, chart.top() + 8, 180, 120);
 }
 
 namespace {
@@ -1601,21 +1607,26 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.drawRect(zoom_rect_);
   }
 
-  const QRect add_button = addSeriesButtonRect();
-  painter.setPen(glass::Shell().border_light);
-  painter.setBrush(glass::Shell().card);
-  painter.drawRoundedRect(add_button, 4, 4);
-  painter.fillRect(QRect(add_button.left() + 10, add_button.top() + 10, 8, 8),
-                   glass::Shell().accent);
-  painter.setPen(QColor(60, 60, 60));
-  painter.drawText(add_button.adjusted(24, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft,
-                   tr("Click to add a series…"));
+  // Empty-state chip only — once series exist the floating legend owns this
+  // corner; always painting the chip made legends look "missing".
+  if (series_.empty()) {
+    const QRect add_button = addSeriesButtonRect();
+    painter.setPen(glass::Shell().border_light);
+    painter.setBrush(glass::Shell().card);
+    painter.drawRoundedRect(add_button, 4, 4);
+    painter.fillRect(QRect(add_button.left() + 10, add_button.top() + 10, 8, 8),
+                     glass::Shell().accent);
+    painter.setPen(QColor(60, 60, 60));
+    painter.drawText(add_button.adjusted(24, 0, -8, 0),
+                     Qt::AlignVCenter | Qt::AlignLeft,
+                     tr("Click to add a series…"));
+  }
 
   drawTooltip(painter);
 }
 
 void PlotChartWidget::mousePressEvent(QMouseEvent* event) {
-  if (event->button() == Qt::LeftButton &&
+  if (event->button() == Qt::LeftButton && series_.empty() &&
       addSeriesButtonRect().contains(event->pos())) {
     emit addSeriesRequested();
     return;

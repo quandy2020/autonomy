@@ -272,6 +272,7 @@ void ReadPlotPanelFromConfig(const Config& node,
   if (panel->sync_with_other_plots && panel->sync_group.empty()) {
     panel->sync_group = "default";
   }
+  node.mapGetBool("ShowLegend", &panel->show_legend);
   node.mapGetBool("ShowLegendValues", &panel->show_legend_values);
   node.mapGetBool("SettingsVisible", &panel->settings_visible);
   node.mapGetInt("SettingsWidth", &panel->settings_width);
@@ -1200,6 +1201,7 @@ void WritePlotPanelToConfig(const PlotPanelPersistConfig& panel, Config* node) {
   node->mapSetValue("SyncGroup", QString::fromStdString(panel.sync_group));
   node->mapSetValue("SyncYAxis", panel.sync_y_axis);
   node->mapSetValue("SyncCursor", panel.sync_cursor);
+  node->mapSetValue("ShowLegend", panel.show_legend);
   node->mapSetValue("ShowLegendValues", panel.show_legend_values);
   node->mapSetValue("SettingsVisible", panel.settings_visible);
   node->mapSetValue("SettingsWidth", panel.settings_width);
