@@ -79,6 +79,22 @@ Modern C++ · Autolink RT · Behavior trees · *No ROS runtime required*
       <sub>Habitat · Fake · Isaac Sim + PhysX</sub>
     </td>
   </tr>
+  <tr>
+    <td align="center" colspan="2" valign="top">
+      <h3>Navigation · AutoViz</h3>
+      <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/?spm_id_from=333.1387.homepage.video_card.click&vd_source=493d217d2625b309ca438456365d4b6c">
+        <img src="docs/assets/navigation/nav-1.png" alt="Navigation AutoViz demo" width="100%"/>
+      </a>
+      <p>
+        <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/?spm_id_from=333.1387.homepage.video_card.click&vd_source=493d217d2625b309ca438456365d4b6c"><b>▶ Navigation demo</b></a>
+        &nbsp;·&nbsp;
+        <a href="docs/source/16_Navigator/04_navigate_to_pose.md">Guide</a>
+        &nbsp;·&nbsp;
+        <a href="autoviz/README.md">AutoViz</a>
+      </p>
+      <sub>Plan · MPPI · costmap · goal rings · cmd/odom plots</sub>
+    </td>
+  </tr>
 </table>
 
 ---
