@@ -21,10 +21,11 @@
 
 #include "autonomy/system/recorder/sidecar.hpp"
 
-#include <filesystem>
 #include <fstream>
 
 #include "nlohmann/json.hpp"
+
+#include "autolink/common/file.hpp"
 
 namespace autonomy {
 namespace system {
@@ -127,12 +128,7 @@ bool WriteSidecarJson(const std::string& path,
                           {"clock", ClockJson(s.clock())}});
     }
     j["safety_events"] = safety;
-    std::ofstream out(path);
-    if (!out) {
-        return false;
-    }
-    out << j.dump(2) << '\n';
-    return true;
+    return autolink::common::SetStringToASCIIFile(j.dump(2) + "\n", path);
 }
 
 bool WriteReplayOverlay(const std::string& path,
@@ -146,12 +142,7 @@ bool WriteReplayOverlay(const std::string& path,
         {"valid", report.valid()},
         {"reason", report.reason()},
     };
-    std::ofstream out(path);
-    if (!out) {
-        return false;
-    }
-    out << j.dump(2) << '\n';
-    return true;
+    return autolink::common::SetStringToASCIIFile(j.dump(2) + "\n", path);
 }
 
 bool WriteManifest(const std::string& path, const proto::EpisodeHeader& header,

@@ -21,8 +21,7 @@
 
 #include "autonomy/system/recorder/version_tuple.hpp"
 
-#include <cstdlib>
-
+#include "autolink/common/environment.hpp"
 #include "autonomy/common/version.hpp"
 
 namespace autonomy {
@@ -31,11 +30,8 @@ namespace recorder {
 namespace {
 
 std::string EnvOr(const char* key, const std::string& fallback) {
-    if (const char* env = std::getenv(key);
-        env != nullptr && env[0] != '\0') {
-        return env;
-    }
-    return fallback;
+    const std::string env = autolink::common::GetEnv(key);
+    return env.empty() ? fallback : env;
 }
 
 std::string ParseGitSha(const std::string& configured) {

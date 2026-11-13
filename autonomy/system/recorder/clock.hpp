@@ -18,7 +18,7 @@
 
 /**
  * @file clock.hpp
- * @brief Dual clock: CLOCK_MONOTONIC + CLOCK_REALTIME into DualClock.
+ * @brief Dual clock: autolink::Time::MonoTime + Time::Now into DualClock.
  */
 
 #include "autonomy/system/recorder/proto/evidence.pb.h"
@@ -28,7 +28,7 @@ namespace system {
 namespace recorder {
 
 /**
- * @brief Sample CLOCK_MONOTONIC and CLOCK_REALTIME into DualClock.
+ * @brief Sample autolink::Time::MonoTime and Time::Now into DualClock.
  * @param [in] source: Time-source tag (software / PTP / …).
  * @return DualClock with monotonic_ns, wall_utc_ns, and time_source.
  */
@@ -36,14 +36,14 @@ proto::DualClock NowDualClock(proto::TimeSource source =
                                   proto::TIME_SOURCE_SOFTWARE);
 
 /**
- * @brief Build DualClock from a known monotonic stamp; one CLOCK_REALTIME read.
+ * @brief Build DualClock from a known monotonic stamp; one Time::Now() read.
  *
  * Use when the middleware already supplies `msg->timestamp` so the hot path
- * skips a second CLOCK_MONOTONIC syscall.
+ * skips a second MonoTime() call.
  *
  * @param [in] monotonic_ns: Monotonic timestamp in nanoseconds.
  * @param [in] source: Time-source tag.
- * @return DualClock; wall_utc_ns comes from CLOCK_REALTIME.
+ * @return DualClock; wall_utc_ns comes from autolink::Time::Now().
  */
 proto::DualClock DualClockFromMono(int64_t monotonic_ns,
                                    proto::TimeSource source =

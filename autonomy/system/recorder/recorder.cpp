@@ -22,12 +22,10 @@
 #include "autonomy/system/recorder/recorder.hpp"
 
 #include <cstddef>
-#include <cstdlib>
-#include <filesystem>
-#include <fstream>
 #include <optional>
 #include <unordered_map>
 
+#include "autolink/common/environment.hpp"
 #include "autolink/common/file.hpp"
 #include "autolink/common/log.hpp"
 #include "automsgs/msgs/nav_msgs/behavior_tree.pb.h"
@@ -43,8 +41,6 @@
 namespace autonomy {
 namespace system {
 namespace recorder {
-
-namespace fs = std::filesystem;
 
 namespace {
 
@@ -116,15 +112,7 @@ void ApplyDefaults(proto::RecorderOptions* opts) {
         opts->set_localization_quality_floor(0.3);
     }
     if (opts->output_dir().empty()) {
-        if (const char* env = std::getenv("AUTONOMY_RECORD_ROOT");
-            env != nullptr && env[0] != '\0') {
-            opts->set_output_dir(env);
-        } else if (const char* home = std::getenv("HOME");
-                   home != nullptr && home[0] != '\0') {
-            opts->set_output_dir(std::string(home) + "/.autonomy/records");
-        } else {
-            opts->set_output_dir("/tmp/autonomy/records");
-        }
+        opts->set_output_dir(DefaultRecordRoot());
     }
 }
 
@@ -159,6 +147,18 @@ std::optional<EpisodeState> MaybeParseBt(
 }
 
 }  // namespace
+
+std::string DefaultRecordRoot() {
+    const std::string root = autolink::common::GetEnv("AUTONOMY_RECORD_ROOT");
+    if (!root.empty()) {
+        return root;
+    }
+    const std::string home = autolink::common::GetEnv("HOME");
+    if (!home.empty()) {
+        return home + "/.autonomy/records";
+    }
+    return "/tmp/autonomy/records";
+}
 
 proto::RecorderOptions LoadRecorderOptions(const std::string& conf_file) {
     proto::RecorderOptions options;
@@ -199,10 +199,10 @@ bool Recorder::Configure(const proto::RecorderOptions& options) {
     buffer_ = std::make_unique<RollingBuffer>(window_ns);
     triggers_ = std::make_unique<TriggerEngine>(options_);
     chain_ = SafetyHashChain(options_.robot_id());
-    const fs::path chain_path =
-        fs::path(options_.output_dir()) / "safety" / "chain.bin";
-    if (fs::exists(chain_path)) {
-        chain_.Load(chain_path.string());
+    const std::string chain_path =
+        options_.output_dir() + "/safety/chain.bin";
+    if (autolink::common::PathExists(chain_path)) {
+        chain_.Load(chain_path);
     }
     return true;
 }
@@ -378,8 +378,7 @@ void Recorder::FlushLocked(const std::string& episode_id, bool close_episode,
     }
     auto header = MakeHeaderLocked(episode_id, closed);
     const std::string dir = OutputDir(header.admitted());
-    std::error_code ec;
-    fs::create_directories(dir, ec);
+    autolink::common::EnsureDirectory(dir);
     const std::string mcap_path = dir + "/" + episode_id + ".mcap";
     if (!writer_.is_open()) {
         if (!writer_.Open(mcap_path, header)) {
@@ -425,9 +424,9 @@ void Recorder::FlushLocked(const std::string& episode_id, bool close_episode,
     bundle.recorded_actions = actions_;
     bundle.bit_exact = false;
     bundle.safety_events = pending_safety_;
-    const fs::path metrics_dir = fs::path(options_.output_dir()) / "metrics";
-    fs::create_directories(metrics_dir, ec);
-    const std::string metrics_path = (metrics_dir / "episodes.jsonl").string();
+    const std::string metrics_dir = options_.output_dir() + "/metrics";
+    autolink::common::EnsureDirectory(metrics_dir);
+    const std::string metrics_path = metrics_dir + "/episodes.jsonl";
     bundle.history = LoadEpisodeMetrics(metrics_path);
     const auto sidecar = RunEvidencePipeline(
         bundle, options_.action_match_threshold(),
@@ -438,33 +437,30 @@ void Recorder::FlushLocked(const std::string& episode_id, bool close_episode,
         header.priority(), episode_id, header.bt_root(),
         options_.full_dump() ? 1.0 : options_.p2_sample_rate(),
         options_.full_dump() ? 1.0 : options_.p3_sample_rate());
-    {
-        std::ofstream out(dir + "/" + episode_id + ".sidecar.pb",
-                          std::ios::binary);
-        sidecar.SerializeToOstream(&out);
-    }
+    autolink::common::SetProtoToBinaryFile(
+        sidecar, dir + "/" + episode_id + ".sidecar.pb");
     WriteSidecarJson(dir + "/" + episode_id + ".sidecar.json", sidecar);
     WriteManifest(dir + "/" + episode_id + ".manifest.json", header, upload);
     WriteReplayOverlay(dir + "/" + episode_id + ".overlay.json",
                        sidecar.replay());
     AppendEpisodeMetric(metrics_path, MetricFromSidecar(sidecar));
-    const fs::path gate_dir = fs::path(options_.output_dir()) / "gate";
-    fs::create_directories(gate_dir, ec);
+    const std::string gate_dir = options_.output_dir() + "/gate";
+    autolink::common::EnsureDirectory(gate_dir);
     auto fleet = bundle.history;
     fleet.push_back(MetricFromSidecar(sidecar));
-    WriteGateSnapshot((gate_dir / "latest.json").string(), sidecar.gate(),
+    WriteGateSnapshot(gate_dir + "/latest.json", sidecar.gate(),
                       ComputeMetrics(fleet), episode_id);
     if (header.priority() == proto::PRIORITY_P0) {
-        if (const char* log_root = std::getenv("AUTONOMY_LOG_ROOT");
-            log_root != nullptr && log_root[0] != '\0') {
+        const std::string log_root = autolink::common::GetEnv("AUTONOMY_LOG_ROOT");
+        if (!log_root.empty()) {
             WriteHazardPointer(log_root, episode_id, mcap_path,
                                dir + "/" + episode_id + ".sidecar.json");
         }
     }
 
-    const fs::path safety_dir = fs::path(options_.output_dir()) / "safety";
-    fs::create_directories(safety_dir, ec);
-    chain_.Save((safety_dir / "chain.bin").string());
+    const std::string safety_dir = options_.output_dir() + "/safety";
+    autolink::common::EnsureDirectory(safety_dir);
+    chain_.Save(safety_dir + "/chain.bin");
 
     ++episode_count_;
     pending_triggers_.clear();

@@ -24,9 +24,10 @@
 #include <array>
 #include <cstdint>
 #include <cstring>
-#include <fstream>
 #include <sstream>
 #include <vector>
+
+#include "autolink/common/file.hpp"
 
 namespace autonomy {
 namespace system {
@@ -182,45 +183,25 @@ std::string SafetyHashChain::Seal() const {
 }
 
 bool SafetyHashChain::Save(const std::string& path) const {
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
-    if (!out) {
-        return false;
-    }
+    proto::SafetyEventChain chain;
+    chain.set_robot_id(robot_id_);
     for (const auto& e : events_) {
-        const std::string bytes = e.SerializeAsString();
-        const uint32_t n = static_cast<uint32_t>(bytes.size());
-        out.write(reinterpret_cast<const char*>(&n), sizeof(n));
-        out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+        *chain.add_events() = e;
     }
-    return static_cast<bool>(out);
+    return autolink::common::SetProtoToBinaryFile(chain, path);
 }
 
 bool SafetyHashChain::Load(const std::string& path) {
-    std::ifstream in(path, std::ios::binary);
-    if (!in) {
+    proto::SafetyEventChain chain;
+    if (!autolink::common::GetProtoFromBinaryFile(path, &chain)) {
         return false;
     }
-    std::vector<proto::SafetyEvent> loaded;
-    while (in) {
-        uint32_t n = 0;
-        in.read(reinterpret_cast<char*>(&n), sizeof(n));
-        if (in.gcount() != sizeof(n)) {
-            break;
-        }
-        std::string bytes(n, '\0');
-        in.read(bytes.data(), static_cast<std::streamsize>(n));
-        if (static_cast<uint32_t>(in.gcount()) != n) {
-            return false;
-        }
-        proto::SafetyEvent e;
-        if (!e.ParseFromString(bytes)) {
-            return false;
-        }
-        loaded.push_back(std::move(e));
-    }
+    std::vector<proto::SafetyEvent> loaded(chain.events().begin(),
+                                           chain.events().end());
     if (!Verify(loaded)) {
         return false;
     }
+    robot_id_ = chain.robot_id().empty() ? robot_id_ : chain.robot_id();
     events_ = std::move(loaded);
     prev_hash_ = events_.empty() ? std::string(32, '\0')
                                  : events_.back().entry_hash();

@@ -145,6 +145,11 @@ message SafetyEvent {
   bytes entry_hash = 8;
 }
 
+message SafetyEventChain {
+  string robot_id = 1;
+  repeated SafetyEvent events = 2;
+}
+
 message ActionEvent {
   uint32 sequence = 1;
   string type = 2;

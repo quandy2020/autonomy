@@ -22,19 +22,18 @@
 #include "autonomy/system/recorder/safety_monitor.hpp"
 
 #include <cmath>
-#include <cstdlib>
-#include <filesystem>
 #include <sstream>
 
 #include <glog/logging.h>
 
+#include "autolink/common/file.hpp"
 #include "autonomy/system/recorder/clock.hpp"
+#include "autonomy/system/recorder/recorder.hpp"
 #include "autonomy/system/recorder/version_tuple.hpp"
 
 namespace autonomy {
 namespace system {
 namespace recorder {
-namespace fs = std::filesystem;
 
 SafetyVerdict EvaluateCommand(const SafetyCheckInput& in) {
     if (in.latch_already) {
@@ -70,19 +69,11 @@ bool SafetyMonitor::Configure(const proto::RecorderOptions& options) {
     if (chain_path_.empty()) {
         std::string root = options_.output_dir();
         if (root.empty()) {
-            if (const char* env = std::getenv("AUTONOMY_RECORD_ROOT");
-                env != nullptr && env[0] != '\0') {
-                root = env;
-            } else if (const char* home = std::getenv("HOME");
-                       home != nullptr && home[0] != '\0') {
-                root = std::string(home) + "/.autonomy/records";
-            } else {
-                root = "/tmp/autonomy/records";
-            }
+            root = DefaultRecordRoot();
         }
         chain_path_ = root + "/safety/chain.bin";
     }
-    fs::create_directories(fs::path(chain_path_).parent_path());
+    autolink::common::EnsureDirectory(autolink::common::GetDirName(chain_path_));
     chain_ = SafetyHashChain(options_.robot_id());
     chain_.Load(chain_path_);
     return true;

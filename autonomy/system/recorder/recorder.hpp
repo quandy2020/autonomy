@@ -53,6 +53,12 @@ namespace recorder {
 proto::RecorderOptions LoadRecorderOptions(const std::string& conf_file);
 
 /**
+ * @brief Default record root: AUTONOMY_RECORD_ROOT, else $HOME/.autonomy/records.
+ * @return Directory path.
+ */
+std::string DefaultRecordRoot();
+
+/**
  * @brief Bypass capture node. Attach BEST_EFFORT readers; flush on trigger / period.
  *
  * HandleSample parses only channels whose SampleFlag bits are set. cmd_vel

@@ -16,36 +16,29 @@
 
 /**
  * @file clock.cpp
- * @brief DualClock from CLOCK_MONOTONIC + CLOCK_REALTIME.
+ * @brief DualClock from autolink::Time::MonoTime + Time::Now.
  */
 
 #include "autonomy/system/recorder/clock.hpp"
 
-#include <ctime>
+#include "autolink/time/time.hpp"
 
 namespace autonomy {
 namespace system {
 namespace recorder {
-namespace {
-
-int64_t ClockNs(clockid_t id) {
-    timespec ts{};
-    clock_gettime(id, &ts);
-    return static_cast<int64_t>(ts.tv_sec) * 1000000000LL +
-           static_cast<int64_t>(ts.tv_nsec);
-}
-
-}  // namespace
 
 proto::DualClock NowDualClock(proto::TimeSource source) {
-    return DualClockFromMono(ClockNs(CLOCK_MONOTONIC), source);
+    return DualClockFromMono(
+        static_cast<int64_t>(autolink::Time::MonoTime().ToNanosecond()),
+        source);
 }
 
 proto::DualClock DualClockFromMono(int64_t monotonic_ns,
                                    proto::TimeSource source) {
     proto::DualClock clock;
     clock.set_monotonic_ns(monotonic_ns);
-    clock.set_wall_utc_ns(ClockNs(CLOCK_REALTIME));
+    clock.set_wall_utc_ns(
+        static_cast<int64_t>(autolink::Time::Now().ToNanosecond()));
     clock.set_time_source(source);
     return clock;
 }
