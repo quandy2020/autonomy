@@ -90,20 +90,19 @@ class SegmentedControl::SegmentButton final : public QAbstractButton {
 
     QColor fill = Qt::transparent;
     QColor text_color = tokens.text_secondary;
-    QColor border = Qt::transparent;
     if (!isEnabled()) {
       text_color = tokens.disabled;
       if (isChecked()) {
-        fill = WithOpacity(tokens.surface_material, 0.7);
-        border = WithOpacity(tokens.border_subtle, 0.55);
+        fill = WithOpacity(tokens.surface_selected, 0.7);
+        text_color = WithOpacity(tokens.accent_text, 0.55);
       }
     } else if (isDown()) {
       fill = isChecked() ? tokens.surface_pressed : tokens.surface_material;
-      text_color = tokens.text;
+      text_color = isChecked() ? tokens.accent_text : tokens.text;
     } else if (isChecked()) {
-      fill = tokens.surface_raised;
-      text_color = tokens.text;
-      border = tokens.border_subtle;
+      // CapCut: soft gray plate + olive ink, no border.
+      fill = tokens.surface_selected;
+      text_color = tokens.accent_text;
     } else if (underMouse()) {
       fill = tokens.surface_hovered;
       text_color = tokens.text;
@@ -112,13 +111,7 @@ class SegmentedControl::SegmentButton final : public QAbstractButton {
     const QRectF bounds = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
     const qreal radius =
         qMin<qreal>(tokens.radius_small, bounds.height() * 0.5);
-    if (isChecked()) {
-      painter.setPen(Qt::NoPen);
-      painter.setBrush(
-          WithOpacity(tokens.shadow_ambient, tokens.is_dark ? 0.32 : 0.22));
-      painter.drawRoundedRect(bounds.translated(0.0, 1.0), radius, radius);
-    }
-    painter.setPen(QPen(border, 1.0));
+    painter.setPen(Qt::NoPen);
     painter.setBrush(fill);
     painter.drawRoundedRect(bounds, radius, radius);
 
@@ -129,17 +122,6 @@ class SegmentedControl::SegmentButton final : public QAbstractButton {
     painter.setFont(label_font);
     painter.setPen(text_color);
     painter.drawText(rect().adjusted(8, 0, -8, 0), Qt::AlignCenter, text());
-
-    if (hasFocus()) {
-      painter.setBrush(Qt::NoBrush);
-      painter.setPen(
-          QPen(tokens.focus_ring_outer, tokens.focus_ring_width + 2.0));
-      painter.drawRoundedRect(bounds.adjusted(2.0, 2.0, -2.0, -2.0),
-                              qMax(1.0, radius - 2.0), qMax(1.0, radius - 2.0));
-      painter.setPen(QPen(tokens.focus_ring, 1.5));
-      painter.drawRoundedRect(bounds.adjusted(1.0, 1.0, -1.0, -1.0),
-                              qMax(1.0, radius - 1.0), qMax(1.0, radius - 1.0));
-    }
   }
 
  private:

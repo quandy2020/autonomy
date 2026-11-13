@@ -525,7 +525,7 @@ $$
 | 折线重采样，并从未知区退回 | `GeometricPath` |
 | 第 4 步，走廊 | `SafeCorridor` |
 | 第 5–6 步，控制点 | `CubicControlPoint` |
-| 第 7 步，编码与求解 | `LayeredTrajectoryOptimizer`，`miqp::Solver` |
+| 第 7 步，编码与求解 | `LayeredTrajectoryOptimizer`，`common::math::miqp::Solver` |
 | 有走廊时走混合整数规划，否则走惩罚二次规划；采样与限幅 | `TrajectoryOptimizer` |
 | 第 8–9 步，以及航向、悬停 | `SandoPlanner`，`HoverMonitor`，`PositionSafety` |
 | 非正数选项的地面默认值 | `SandoDefaults` |
@@ -578,4 +578,4 @@ flowchart TD
 ## 14. 参考文献
 
 1. K. Kondo, J. Tordesillas, J. P. How. SANDO: Safe Autonomous Trajectory Planning for Dynamic Unknown Environments. arXiv:2604.07599, 2026.
-2. D. Arnström, A. Bemporad, D. Axehill. A Dual Active-Set Solver for Embedded Quadratic Programming Using Recursive LDL Updates. IEEE Transactions on Automatic Control, 2022. DAQP，本目录 `miqp/daqp`。
+2. D. Arnström, A. Bemporad, D. Axehill. A Dual Active-Set Solver for Embedded Quadratic Programming Using Recursive LDL Updates. IEEE Transactions on Automatic Control, 2022. DAQP，`autonomy/common/math/miqp`。

@@ -12,7 +12,7 @@ robot_base_frame: "base_link"
 
 # Default plugin ids (must exist in planning / control conf)
 default_planner_id: "navfn_planner"
-default_controller_id: "graceful_controller"
+default_controller_id: "mppi_controller"
 default_goal_checker_id: "goal_checker"
 default_smoother_id: "simple_smoother"
 goal_reached_tolerance: 0.1

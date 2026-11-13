@@ -119,6 +119,11 @@ class SceneOverlay {
     QImage image; /**< Source texture (CPU). */
     std::vector<TexturedVertex> vertices; /**< Triangle vertices. */
     TextureFilterMode filter_mode = TextureFilterMode::kLinear; /**< Filter. */
+    /** Higher draws later / above lower layers (map < costmap). */
+    int draw_order = 0;
+    /** Base /map writes depth so costmap can depth-test above it. */
+    bool depth_write = false;
+    bool depth_check = true;
   };
 
   /**
@@ -310,11 +315,17 @@ class SceneOverlay {
 
   /**
    * @brief Appends a textured quad (two triangles).
+   *
+   * @param draw_order Higher values render above lower ones (e.g. costmap > map).
+   * @param depth_write If true, writes depth (static /map under costmap).
+   * @param depth_check If true, tests depth (disable for forced overlay).
    */
   void addTexturedQuad(const QVector3D& top_left, const QVector3D& top_right,
                        const QVector3D& bottom_right,
                        const QVector3D& bottom_left, const QImage& image,
-                       TextureFilterMode filter_mode = TextureFilterMode::kLinear);
+                       TextureFilterMode filter_mode = TextureFilterMode::kLinear,
+                       int draw_order = 0, bool depth_write = false,
+                       bool depth_check = true);
 
   /**
    * @brief Screen-aligned quad (TEXT markers, billboards). Expanded at render time.

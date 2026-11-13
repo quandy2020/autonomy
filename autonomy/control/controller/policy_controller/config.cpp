@@ -10,6 +10,7 @@
 #include <google/protobuf/text_format.h>
 
 #include "autonomy/control/controller/policy_controller/diffusion.hpp"
+#include "autonomy/control/controller/policy_controller/sand_planner/options.hpp"
 
 namespace autonomy {
 namespace control {
@@ -95,13 +96,14 @@ bool ExpandObservationConfig(proto::PolicyConfig* proto, std::string* error) {
     const auto& config = proto->observation();
     const bool any = config.kinematic() || config.path() || config.costmap() ||
                      config.laser() || config.image() || config.point_cloud() ||
-                     config.lidar_bev() || config.raw();
+                     config.lidar_bev() || config.raw() || config.depth() ||
+                     config.goal() || config.previous_velocity();
     if (!any) {
         if (error != nullptr) {
             *error =
                 "observation has no enabled modality "
                 "(set kinematic/path/costmap/laser/image/point_cloud/"
-                "lidar_bev/raw to true)";
+                "lidar_bev/raw/depth/goal/previous_velocity to true)";
         }
         return false;
     }
@@ -163,6 +165,26 @@ bool ExpandObservationConfig(proto::PolicyConfig* proto, std::string* error) {
     MaybeExpand(config.raw(),
                 config.has_raw_input() ? &config.raw_input() : nullptr,
                 {proto::OBSERVATION_RAW, "observation_raw", {1, 1}, nullptr},
+                proto);
+    MaybeExpand(config.depth(),
+                config.has_depth_input() ? &config.depth_input() : nullptr,
+                {proto::OBSERVATION_DEPTH,
+                 "observation_depth",
+                 {1, 4, 168, 224},
+                 nullptr},
+                proto);
+    MaybeExpand(config.goal(),
+                config.has_goal_input() ? &config.goal_input() : nullptr,
+                {proto::OBSERVATION_GOAL, "observation_goal", {1, 3}, nullptr},
+                proto);
+    MaybeExpand(config.previous_velocity(),
+                config.has_previous_velocity_input()
+                    ? &config.previous_velocity_input()
+                    : nullptr,
+                {proto::OBSERVATION_PREVIOUS_VELOCITY,
+                 "observation_previous_velocity",
+                 {1, 3},
+                 nullptr},
                 proto);
     return true;
 }
@@ -226,9 +248,13 @@ bool PolicyConfig::LoadFromProto(const proto::PolicyConfig& proto,
     }
     out->proto_ = std::move(normalized);
     out->action_schema_ = std::move(schema);
+    out->effective_sand_planner_ = MakeEffectiveSandPlanner(out->proto_);
+    out->is_sand_planner_ =
+        out->action_schema_.type == proto::ACTION_SPACE_SAND_PLANNER;
     out->effective_diffusion_ = MakeEffectiveDiffusion(out->proto_);
     const auto mode = out->proto_.mode();
     out->is_diffusion_ =
+        out->is_sand_planner_ ||
         mode == proto::INFERENCE_DIFFUSION ||
         out->proto_.action().type() == proto::ACTION_SPACE_DIFFUSION_TWIST ||
         (mode == proto::INFERENCE_UNSPECIFIED && out->proto_.has_diffusion() &&

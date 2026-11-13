@@ -17,8 +17,12 @@
 
 #pragma once
 
+#include <functional>
+
 #include <QString>
 #include <QStringList>
+
+class QWidget;
 
 namespace autoviz {
 namespace common {
@@ -78,13 +82,18 @@ bool SplitPlotValuePath(const QString& combined, const QStringList& known_channe
                         QString* channel, QString* field_path);
 
 /**
- * @brief True when a numeric leaf field is selected (channel-only paths are invalid).
+ * @brief True when @p field_path is a numeric leaf on @p channel's schema.
  *
+ * Intermediate message paths and string fields return @c false.
+ *
+ * @param manager Visualization manager (resolves message type).
  * @param channel Channel name.
- * @param field_path Field path (must be non-empty and numeric).
+ * @param field_path Field path (must be a numeric scalar leaf).
  * @return Whether the pair is plottable as a series Y.
  */
-bool IsPlottablePlotValuePath(const QString& channel, const QString& field_path);
+bool IsPlottablePlotValuePath(common::VisualizationManager* manager,
+                              const QString& channel,
+                              const QString& field_path);
 
 /**
  * @brief All browsable plot paths across discovered channels.
@@ -132,6 +141,19 @@ std::string MessageTypeForChannel(common::VisualizationManager* manager,
  * @return Channel name list.
  */
 QStringList AllKnownChannels(common::VisualizationManager* manager);
+
+/**
+ * @brief Opens the searchable field picker and invokes @p on_pick on accept.
+ *
+ * @param parent Dialog parent / anchor.
+ * @param manager Visualization manager.
+ * @param on_pick Invoked with a numeric leaf path when the user confirms.
+ * @return @c true when a field was picked.
+ */
+bool PickPlotChannelField(
+    QWidget* parent, common::VisualizationManager* manager,
+    const std::function<void(const QString& channel, const QString& field_path)>&
+        on_pick);
 
 }  // namespace plot
 }  // namespace autoviz

@@ -68,8 +68,21 @@ void ObservationBuffer::SetImage(
     const automsgs::msgs::sensor_msgs::Image& image) {
     auto frame = std::make_shared<automsgs::msgs::sensor_msgs::Image>(image);
     std::lock_guard<std::mutex> lock(mutex_);
-    image_ = std::move(frame);
+    image_ = frame;
+    depth_history_.push_back(std::move(frame));
+    while (static_cast<int>(depth_history_.size()) > depth_history_capacity_) {
+        depth_history_.pop_front();
+    }
     MarkModality("observation_image");
+    MarkModality("observation_depth");
+}
+
+void ObservationBuffer::SetDepthHistoryCapacity(int capacity) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    depth_history_capacity_ = std::max(1, capacity);
+    while (static_cast<int>(depth_history_.size()) > depth_history_capacity_) {
+        depth_history_.pop_front();
+    }
 }
 
 void ObservationBuffer::SetPointCloud(
@@ -160,6 +173,7 @@ ObservationSnapshot ObservationBuffer::Snapshot() const {
     snapshot.path = path_;
     snapshot.laser_scan = laser_scan_;
     snapshot.image = image_;
+    snapshot.depth_history.assign(depth_history_.begin(), depth_history_.end());
     snapshot.point_cloud = point_cloud_;
     snapshot.lidar_bev = lidar_bev_;
     snapshot.raw_tensors = raw_tensors_;
@@ -195,6 +209,7 @@ void ObservationBuffer::Clear() {
     path_.reset();
     laser_scan_.reset();
     image_.reset();
+    depth_history_.clear();
     point_cloud_.reset();
     lidar_bev_.reset();
     raw_tensors_.clear();

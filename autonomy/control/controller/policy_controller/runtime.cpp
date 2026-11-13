@@ -12,6 +12,7 @@
 #include "autonomy/control/controller/policy_controller/action/space.hpp"
 #include "autonomy/control/controller/policy_controller/diffusion.hpp"
 #include "autonomy/control/controller/policy_controller/observation/encoder.hpp"
+#include "autonomy/control/controller/policy_controller/sand_planner/critic.hpp"
 
 namespace autonomy {
 namespace control {
@@ -131,6 +132,40 @@ bool PredictTwist(PolicyModel::ConstSharedPointer model,
     const auto infer_start = std::chrono::steady_clock::now();
 
     if (model->config().is_diffusion()) {
+        if (model->config().is_sand_planner()) {
+            std::vector<std::vector<float>> candidates;
+            if (!RunDiffusionCandidates(*model, buffers->inputs, &candidates,
+                                        error, budget)) {
+                if (budget != nullptr) {
+                    budget->infer_elapsed_ms =
+                        std::chrono::duration<double, std::milli>(
+                            std::chrono::steady_clock::now() - infer_start)
+                            .count();
+                }
+                return false;
+            }
+            if (budget != nullptr) {
+                budget->infer_elapsed_ms =
+                    std::chrono::duration<double, std::milli>(
+                        std::chrono::steady_clock::now() - infer_start)
+                        .count();
+            }
+            if (!candidates.empty()) {
+                buffers->action_sequence = candidates.front();
+            }
+            Eigen::Vector3d heading = Eigen::Vector3d::Zero();
+            if (!SelectSandPlannerTwist(
+                    candidates, snapshot,
+                    model->config().effective_sand_planner(), action, &heading,
+                    error)) {
+                return false;
+            }
+            const double speed =
+                model->config().effective_sand_planner().execute_speed();
+            buffers->previous_plan_heading = heading * speed;
+            buffers->has_previous_plan_heading = true;
+            return true;
+        }
         buffers->action_sequence.clear();
         if (!RunDiffusionInference(*model, buffers->inputs,
                                    &buffers->action_sequence, error, budget)) {

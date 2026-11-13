@@ -45,6 +45,17 @@ bool RunDiffusionInference(
     InferBudget* budget = nullptr);
 
 /**
+ * @brief Run @c Diffusion.candidates independent reverse processes.
+ *
+ * @p candidates size is 1 when the sidecar sets candidates <= 1 (Twist).
+ */
+bool RunDiffusionCandidates(
+    const PolicyModel& model,
+    const ::autonomy::common::network::FloatTensorMap& condition_inputs,
+    std::vector<std::vector<float>>* candidates, std::string* error = nullptr,
+    InferBudget* budget = nullptr);
+
+/**
  * @brief Fill defaults for diffusion options (called at config load).
  * @param proto Raw policy config proto.
  * @return Options with empty names / non-positive dims filled.

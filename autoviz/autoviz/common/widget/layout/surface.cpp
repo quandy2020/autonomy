@@ -151,12 +151,31 @@ void Surface::paintEvent(QPaintEvent* event) {
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing);
   const qreal elevation_inset = elevation_ == Elevation::kFlat ? 0.5 : 1.5;
-  const qreal shadow_offset = elevation_ == Elevation::kOverlay ? 2.0 : 1.0;
   QRectF surface_rect = QRectF(rect()).adjusted(
       elevation_inset, elevation_inset, -elevation_inset,
       -elevation_inset - (elevation_ == Elevation::kFlat ? 0.0 : 1.0));
 
-  if (elevation_ != Elevation::kFlat) {
+  // Flat chrome only — no ambient shadow / cool wash (read as double halo).
+  if (elevation_ == Elevation::kFlat) {
+    if (glass::ShellIsLiquid() && !selected_) {
+      const glass::ShellTokens shell = glass::Shell();
+      QColor plate = shell.glass_fill;
+      plate.setAlpha(255);
+      painter.setBrush(plate);
+      painter.setPen(QPen(shell.glass_rim, 1.0));
+      painter.drawRoundedRect(surface_rect, shell.control_radius,
+                              shell.control_radius);
+    } else {
+      painter.setBrush(fill);
+      const QColor outline =
+          !isEnabled() ? tokens.border_subtle
+                       : (selected_ ? tokens.accent : tokens.border_subtle);
+      painter.setPen(QPen(outline, selected_ ? 1.5 : 1.0));
+      painter.drawRoundedRect(surface_rect, tokens.radius_medium,
+                              tokens.radius_medium);
+    }
+  } else {
+    const qreal shadow_offset = elevation_ == Elevation::kOverlay ? 2.0 : 1.0;
     QColor shadow = tokens.shadow_ambient;
     if (elevation_ == Elevation::kRaised) {
       shadow.setAlpha(qRound(shadow.alpha() * 0.65));
@@ -165,25 +184,6 @@ void Surface::paintEvent(QPaintEvent* event) {
     painter.setBrush(shadow);
     painter.drawRoundedRect(surface_rect.translated(0.0, shadow_offset),
                             tokens.radius_medium, tokens.radius_medium);
-  }
-
-  // Liquid Glass: soft frosted plate instead of opaque white cards.
-  if (glass::ShellIsLiquid() && elevation_ == Elevation::kFlat &&
-      !selected_) {
-    const glass::ShellTokens shell = glass::Shell();
-    QColor plate = shell.glass_fill;
-    plate.setAlpha(qMax(200, plate.alpha()));
-    painter.setBrush(plate);
-    painter.setPen(QPen(shell.glass_rim, 1.0));
-    painter.drawRoundedRect(surface_rect, shell.control_radius,
-                            shell.control_radius);
-    QColor cool = shell.glass_cool;
-    cool.setAlpha(22);
-    painter.setBrush(cool);
-    painter.setPen(Qt::NoPen);
-    painter.drawRoundedRect(surface_rect, shell.control_radius,
-                            shell.control_radius);
-  } else {
     painter.setBrush(fill);
     const QColor outline =
         !isEnabled() ? tokens.border_subtle
@@ -193,13 +193,9 @@ void Surface::paintEvent(QPaintEvent* event) {
                             tokens.radius_medium);
   }
 
+  // One crisp focus stroke — never outer+inner double ring.
   if (interactive_ && hasFocus()) {
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(
-        QPen(tokens.focus_ring_outer, tokens.focus_ring_width + 2.0));
-    painter.drawRoundedRect(surface_rect.adjusted(2.0, 2.0, -2.0, -2.0),
-                            tokens.radius_medium - 2.0,
-                            tokens.radius_medium - 2.0);
     painter.setPen(QPen(tokens.focus_ring, 1.5));
     painter.drawRoundedRect(surface_rect.adjusted(1.0, 1.0, -1.0, -1.0),
                             tokens.radius_medium - 1.0,

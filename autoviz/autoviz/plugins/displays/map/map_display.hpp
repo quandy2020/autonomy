@@ -142,6 +142,11 @@ class MapDisplay
   /** @c true when texture + corners are ready to draw. */
   bool has_geometry_ = false;
 
+  /** Textured-quad draw order (map=0, raw=1, costmap=2+). */
+  int draw_order_ = 0;
+  bool depth_write_ = false;
+  bool depth_check_ = true;
+
   /** Latest full map (also target of incremental updates). */
   automsgs::msgs::map_msgs::OccupancyGrid current_message_;
 

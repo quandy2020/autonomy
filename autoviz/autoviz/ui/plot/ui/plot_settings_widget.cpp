@@ -58,7 +58,7 @@ bool ShouldDrillPlotValuePath(common::VisualizationManager* manager,
 bool IsCompletePlotValuePath(common::VisualizationManager* manager,
                              const QString& channel,
                              const QString& field_path) {
-  return IsPlottablePlotValuePath(channel, field_path) &&
+  return IsPlottablePlotValuePath(manager, channel, field_path) &&
          !ShouldDrillPlotValuePath(manager, channel, field_path);
 }
 
@@ -210,6 +210,8 @@ widget::SegmentedControl* MakeSegmentedToggle(
 
   auto* segments = new widget::SegmentedControl(parent);
   segments->SetTone(style::Tone::Frost);
+  // Match StyleCompactSettingsField (20px) — default SegmentedControl is ~32px.
+  segments->setFixedHeight(20);
   segments->setMinimumWidth(min_button_w * labels.size());
   for (const QString& label : labels) {
     segments->AddSegment(label);
@@ -763,6 +765,14 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   auto* header = new QHBoxLayout();
   header->setContentsMargins(0, 0, 0, 0);
   header->setSpacing(6);
+  auto* collapse_button = new QToolButton(card);
+  collapse_button->setObjectName(QStringLiteral("plot_series_collapse"));
+  collapse_button->setCheckable(true);
+  collapse_button->setChecked(true);
+  collapse_button->setArrowType(Qt::DownArrow);
+  collapse_button->setToolTip(tr("Expand / collapse series"));
+  collapse_button->setAutoRaise(true);
+  collapse_button->setFixedSize(20, 20);
   auto* color_swatch = MakeColorSwatch(series.color, card);
   auto* title_label = new QLabel(SeriesCardTitle(series.channel), card);
   title_label->setObjectName(QStringLiteral("plot_series_title"));
@@ -787,13 +797,16 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   remove_button->setToolTip(tr("Remove series"));
   remove_button->setAutoRaise(true);
   remove_button->setFixedSize(20, 20);
+  header->addWidget(collapse_button, 0, Qt::AlignVCenter);
   header->addWidget(color_swatch, 0, Qt::AlignVCenter);
   header->addWidget(title_label, 1);
   header->addWidget(visibility_button, 0, Qt::AlignVCenter);
   header->addWidget(remove_button, 0, Qt::AlignVCenter);
   card_layout->addLayout(header);
 
-  auto* form = new QFormLayout();
+  auto* body = new QWidget(card);
+  body->setObjectName(QStringLiteral("plot_series_body"));
+  auto* form = new QFormLayout(body);
   ApplyCompactForm(form);
 
   auto* value_box = new QWidget(card);
@@ -1019,7 +1032,14 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
   StyleCompactSettingsField(x_field_edit);
   form->addRow(MakeSettingsFormLabel(tr("X-value path"), card), x_field_edit);
 
-  card_layout->addLayout(form);
+  card_layout->addWidget(body);
+
+  connect(collapse_button, &QToolButton::toggled, card,
+          [collapse_button, body](bool expanded) {
+            body->setVisible(expanded);
+            collapse_button->setArrowType(expanded ? Qt::DownArrow
+                                                   : Qt::RightArrow);
+          });
 
   QLineEdit* value_line_edit = ValuePathLineEdit(value_combo);
 
@@ -1083,27 +1103,24 @@ QWidget* PlotSettingsWidget::buildSeriesEditor(int index,
       InstallPlotValuePathEditor(value_combo, manager_, commit_value_path);
   connect(channel_button, &QToolButton::clicked, card,
           [value_combo, value_line_edit, commit_value_path,
-           refresh_value_suggestions, channel_button, this]() {
-            QMenu menu(value_combo);
-            const QStringList channels = AllKnownChannels(manager_);
-            for (const QString& channel : channels) {
-              menu.addAction(
-                  channel, [value_combo, value_line_edit, commit_value_path,
-                            refresh_value_suggestions, channel]() {
-                    const QString next = channel + QLatin1Char('.');
-                    if (value_line_edit != nullptr) {
-                      value_line_edit->setText(next);
-                      value_line_edit->setCursorPosition(next.size());
-                      value_line_edit->setFocus();
-                    } else {
-                      value_combo->setEditText(next);
-                    }
-                    commit_value_path();
-                    refresh_value_suggestions();
-                  });
-            }
-            menu.exec(channel_button->mapToGlobal(
-                QPoint(0, channel_button->height())));
+           refresh_value_suggestions, this]() {
+            PickPlotChannelField(
+                this, manager_,
+                [value_combo, value_line_edit, commit_value_path,
+                 refresh_value_suggestions](const QString& channel,
+                                            const QString& field_path) {
+                  const QString next =
+                      CombinedPlotValuePath(channel, field_path);
+                  if (value_line_edit != nullptr) {
+                    value_line_edit->setText(next);
+                    value_line_edit->setCursorPosition(next.size());
+                    value_line_edit->setFocus();
+                  } else {
+                    value_combo->setEditText(next);
+                  }
+                  commit_value_path();
+                  refresh_value_suggestions();
+                });
           });
   connect(visibility_button, &QToolButton::toggled, card,
           [this, index, visibility_button](bool checked) {

@@ -38,6 +38,7 @@
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/std_msgs/header.pb.h>
+#include <Eigen/Core>
 
 #include "autonomy/control/proto/policy_controller.pb.h"
 
@@ -131,6 +132,11 @@ struct ObservationSnapshot {
      */
     std::shared_ptr<const automsgs::msgs::sensor_msgs::Image> image;
     /**
+     * @brief Recent depth frames, oldest first (SanD-Planner stack).
+     */
+    std::vector<std::shared_ptr<const automsgs::msgs::sensor_msgs::Image>>
+        depth_history;
+    /**
      * @brief Shared PointCloud2 frame.
      */
     std::shared_ptr<const automsgs::msgs::sensor_msgs::PointCloud2> point_cloud;
@@ -203,6 +209,18 @@ struct ObservationEncodeContext {
      * @brief Runtime cap on diffusion steps (<=0 → sidecar).
      */
     int max_diffusion_steps{0};
+    /**
+     * @brief Effective SanD-Planner knobs (depth stack / critic).
+     */
+    proto::SandPlanner sand_planner;
+    /**
+     * @brief Previous selected-plan velocity token (robot frame).
+     */
+    Eigen::Vector3d previous_plan_heading{Eigen::Vector3d::Zero()};
+    /**
+     * @brief Whether @ref previous_plan_heading was set on a prior tick.
+     */
+    bool has_previous_plan_heading{false};
 };
 
 /**
@@ -351,6 +369,18 @@ inline bool HasObservationModality(const ObservationSnapshot& snapshot,
                    !snapshot.laser_scan->ranges().empty();
         case proto::OBSERVATION_IMAGE:
             return snapshot.image != nullptr && !snapshot.image->data().empty();
+        case proto::OBSERVATION_DEPTH: {
+            if (!snapshot.depth_history.empty()) {
+                return snapshot.depth_history.back() != nullptr &&
+                       !snapshot.depth_history.back()->data().empty();
+            }
+            return snapshot.image != nullptr && !snapshot.image->data().empty();
+        }
+        case proto::OBSERVATION_GOAL:
+            return snapshot.pose.has_value() && snapshot.path != nullptr &&
+                   !snapshot.path->poses().empty();
+        case proto::OBSERVATION_PREVIOUS_VELOCITY:
+            return true;
         case proto::OBSERVATION_POINT_CLOUD:
             return snapshot.point_cloud != nullptr &&
                    !snapshot.point_cloud->data().empty();

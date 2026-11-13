@@ -138,10 +138,10 @@ QHash<QString, QString> tokens(Tone tone) {
   t.insert(QStringLiteral("{{dock-title}}"), glass::Hex(s.dock_title));
   t.insert(QStringLiteral("{{status}}"), glass::Hex(s.status_bar));
   t.insert(QStringLiteral("{{glass-bar}}"), glass::ShellGlassBarGradientCss());
-  t.insert(QStringLiteral("{{glass-fill}}"), glass::Rgba(s.glass_fill));
-  t.insert(QStringLiteral("{{glass-deep}}"), glass::Rgba(s.glass_fill_deep));
-  t.insert(QStringLiteral("{{glass-rim}}"), glass::Rgba(s.glass_rim));
-  t.insert(QStringLiteral("{{glass-cool}}"), glass::Rgba(s.glass_cool));
+  t.insert(QStringLiteral("{{glass-fill}}"), glass::Hex(s.glass_fill));
+  t.insert(QStringLiteral("{{glass-deep}}"), glass::Hex(s.glass_fill_deep));
+  t.insert(QStringLiteral("{{glass-rim}}"), glass::Hex(s.glass_rim));
+  t.insert(QStringLiteral("{{glass-cool}}"), glass::Hex(s.glass_cool));
   t.insert(QStringLiteral("{{r-panel}}"), QString::number(s.panel_radius));
   t.insert(QStringLiteral("{{r-title}}"), QString::number(s.title_radius));
   t.insert(QStringLiteral("{{r-ctrl}}"), QString::number(s.control_radius));
@@ -174,38 +174,31 @@ QHash<QString, QString> tokens(Tone tone) {
   QColor panel_bg = s.glass_fill;
   QColor panel_surface = s.glass_fill_deep;
   QColor panel_raised = s.base;
-  if (glass::ShellIsLiquid()) {
-    panel_bg.setAlpha(qMax(panel_bg.alpha(), 235));
-    panel_surface.setAlpha(qMax(panel_surface.alpha(), 245));
-    panel_raised.setAlpha(255);
-  } else if (glass::ShellIsDark()) {
-    panel_bg.setAlpha(qMax(panel_bg.alpha(), 230));
-    panel_surface.setAlpha(qMax(panel_surface.alpha(), 240));
+  panel_bg.setAlpha(255);
+  panel_surface.setAlpha(255);
+  panel_raised.setAlpha(255);
+  if (glass::ShellIsDark()) {
     panel_raised = s.card;
     panel_raised.setAlpha(255);
-  } else {
-    panel_bg.setAlpha(qMax(panel_bg.alpha(), 200));
-    panel_surface.setAlpha(qMax(panel_surface.alpha(), 220));
-    panel_raised.setAlpha(255);
   }
-  t.insert(QStringLiteral("{{panel-bg}}"), glass::Rgba(panel_bg));
-  t.insert(QStringLiteral("{{panel-surface}}"), glass::Rgba(panel_surface));
-  t.insert(QStringLiteral("{{panel-border}}"), glass::Rgba(s.glass_rim));
+  t.insert(QStringLiteral("{{panel-bg}}"), glass::Hex(panel_bg));
+  t.insert(QStringLiteral("{{panel-surface}}"), glass::Hex(panel_surface));
+  t.insert(QStringLiteral("{{panel-border}}"), glass::Hex(s.glass_rim));
   t.insert(QStringLiteral("{{panel-text}}"), glass::Hex(s.text));
   t.insert(QStringLiteral("{{panel-muted}}"), glass::Hex(s.secondary_text));
   t.insert(QStringLiteral("{{panel-accent}}"), glass::Hex(s.accent));
   t.insert(QStringLiteral("{{panel-accent-pressed}}"),
            glass::Hex(s.accent_pressed));
   t.insert(QStringLiteral("{{panel-surface-raised}}"),
-           glass::Rgba(panel_raised));
+           glass::Hex(panel_raised));
   // Legacy {{accent-teal}} now follows Shell accent so Liquid Glass (system
   // blue) and Light/Dark stay one palette — dual teal/blue chrome is gone.
   t.insert(QStringLiteral("{{accent-teal}}"), glass::Hex(s.accent));
   t.insert(QStringLiteral("{{accent-color}}"), glass::Hex(s.accent));
   t.insert(QStringLiteral("{{on-accent}}"), QStringLiteral("#FFFFFF"));
   QColor header = s.glass_fill_deep;
-  header.setAlpha(qMax(header.alpha(), 220));
-  t.insert(QStringLiteral("{{header-start}}"), glass::Rgba(header));
+  header.setAlpha(255);
+  t.insert(QStringLiteral("{{header-start}}"), glass::Hex(header));
   QColor editor = s.base;
   editor.setAlpha(255);
   t.insert(QStringLiteral("{{editor-bg}}"), glass::Rgba(editor));
@@ -250,11 +243,17 @@ QString sheet(const QString& path, const QHash<QString, QString>& extra) {
                     parts[0] + QLatin1Char('.') + parts[1]);
     }
   } else {
-    QString file = path;
-    if (!file.endsWith(QLatin1String(".qss"))) {
-      file += QStringLiteral(".qss");
+    // Nested panel section: plot/field_picker/ghost_button
+    // → @section plot.field_picker.ghost_button in panel.qss
+    const QString section_name = parts.join(QLatin1Char('.'));
+    css = Section(ReadFile(QStringLiteral("panel.qss")), section_name);
+    if (css.trimmed().isEmpty()) {
+      QString file = path;
+      if (!file.endsWith(QLatin1String(".qss"))) {
+        file += QStringLiteral(".qss");
+      }
+      css = ReadFile(file);
     }
-    css = ReadFile(file);
   }
 
   return Apply(std::move(css), extra);

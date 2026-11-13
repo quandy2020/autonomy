@@ -52,8 +52,14 @@ private:
     std::string ResolveTreeForGoal(
         const ::autonomy::task::proto::NavigationGoal& goal) const;
     bool EnsureNavigationClient();
+    void ApplyGoalToBlackboard(
+        const BT::Blackboard::Ptr& blackboard,
+        const ::autonomy::task::proto::NavigationGoal& goal);
+    bool RetargetRunningTree(const ::autonomy::task::proto::NavigationGoal& goal);
 
     std::optional<::autonomy::task::proto::NavigationGoal> active_goal_;
+    BT::Blackboard::Ptr live_blackboard_;
+    uint64_t replan_epoch_{0};
     float initial_distance_{-1.f};
     // Serialize START/CANCEL/preempt — cancel must not race a blocked START.
     mutable std::mutex goal_mutex_;

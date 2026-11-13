@@ -365,8 +365,12 @@ double ResolveTimestampSec(const PlotSeriesRuntime& runtime,
   return header_time.value_or(fallback);
 }
 
-void TrimSeriesPoints(PlotSeriesRuntime& runtime, PlotXAxisMode x_axis_mode,
-                      double x_window_sec, int max_points, double latest_x) {
+void TrimSeriesPoints(PlotSeriesRuntime& runtime, PlotXAxisMode /*x_axis_mode*/,
+                      double /*x_window_sec*/, int max_points,
+                      double /*latest_x*/) {
+  // Retain by max_points only. Visible "time range" is a view window — do not
+  // discard samples outside it, or pan/zoom-back and multi-plot history look
+  // like they were flushed.
   const int limit = std::max(100, max_points);
   while (static_cast<int>(runtime.points.size()) > limit) {
     runtime.points.pop_front();
@@ -375,20 +379,6 @@ void TrimSeriesPoints(PlotSeriesRuntime& runtime, PlotXAxisMode x_axis_mode,
     runtime.secondary_samples.pop_front();
   }
   while (static_cast<int>(runtime.x_samples.size()) > limit) {
-    runtime.x_samples.pop_front();
-  }
-  if (x_axis_mode != PlotXAxisMode::kTimestamp) {
-    return;
-  }
-  const double min_x = latest_x - x_window_sec;
-  while (!runtime.points.empty() && runtime.points.front().x < min_x) {
-    runtime.points.pop_front();
-  }
-  while (!runtime.secondary_samples.empty() &&
-         runtime.secondary_samples.front().x < min_x) {
-    runtime.secondary_samples.pop_front();
-  }
-  while (!runtime.x_samples.empty() && runtime.x_samples.front().x < min_x) {
     runtime.x_samples.pop_front();
   }
 }

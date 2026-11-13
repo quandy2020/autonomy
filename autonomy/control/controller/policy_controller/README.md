@@ -169,6 +169,9 @@ observation {
 | `point_cloud` | `observation_point_cloud` | `[1, 2048, 3]` | PointCloud2 → xyz 轻量打包 |
 | `lidar_bev` | `observation_lidar_bev` | `[1, 1, 200, 200]` | 预计算 BEV（`SetLidarBev`） |
 | `raw` | `observation_raw` | `[1, 1]` | 预计算张量（`SetRawTensor`，可多路用 `inputs[]`） |
+| `depth` | `observation_depth` | `[1, 4, 168, 224]` | 深度历史（米，16UC1 mm 或 32FC1） |
+| `goal` | `observation_goal` | `[1, 3]` | 路径终点相对机器人系 |
+| `previous_velocity` | `observation_previous_velocity` | `[1, 3]` | 上一拍选中曲线的速度 token |
 
 `path` 实际采样点数由运行参数 `path_points` 决定（默认 20 → 特征长度 40）。`costmap` / `laser` / `point_cloud` 同理由 `costmap_cells` / `laser_bins` / `point_cloud_points` 影响编码。
 
@@ -315,7 +318,8 @@ diffusion {
   sample: "sample"                 # 默认 sample
   timestep: "timestep"             # 默认 timestep
   prediction: "action"             # 空则用 action.name
-  prediction_type: DIFFUSION_PRED_SAMPLE  # 或 EPSILON
+  prediction_type: DIFFUSION_PRED_SAMPLE  # SAMPLE / EPSILON / VELOCITY
+  candidates: 1              # >1 时 SanD 独立采样 K 条再 critic 选
   execute_index: 0
   ddim: true
   ddim_eta: 0.0
@@ -333,6 +337,31 @@ diffusion {
 | 输出 | `action` 或 `noise` | SAMPLE(x0) 或 EPSILON |
 
 每控制拍循环 `steps` 次，再取 `execute_index` 映射为 Twist。
+
+### SanD-Planner（与 Twist 并存）
+
+官方 PyTorch `.pth` **不能**直接加载。用 [官方仓库](https://github.com/WangJinCheng1998/sandplanner) 的 `NoMax.pth` 导出单步 denoiser（权重放 `control/conf/models/`，不入库）：
+
+```bash
+python3 autonomy/control/controller/policy_controller/tools/export_sand_planner_onnx.py \
+  --source-root /tmp/sandplanner_src/sandplanner \
+  --checkpoint autonomy/control/conf/models/NoMax.pth \
+  --onnx autonomy/control/conf/models/sand_planner_nomax_denoiser_step.onnx
+```
+
+现有 `ACTION_SPACE_TWIST` / `ACTION_SPACE_DIFFUSION_TWIST` sidecar 行为不变。
+
+示例：[`conf/policy_config_sand_planner_example.pb.txt`](../../conf/policy_config_sand_planner_example.pb.txt)
+
+| 项 | 行为 |
+|----|------|
+| 观测 | 深度历史 `T×H×W` + 相对 goal + `v_prev`（首拍为零向量） |
+| 扩散头 | `DIFFUSION_PRED_VELOCITY`，`x0 = α x_t − σ v`（cosine，`α²+σ²=1`） |
+| 动作 | [`ClampedCubicBSpline`](../../../common/math/bspline.hpp) 控制点 `[N×3]`（`common::math`，每步强制 `Q0 = 0`）；critic 用 `Sample` + `ResamplePolylineArcLength` 得到弧长路点 |
+| 选择 | 每拍用 `map/esdf::EsdfMap` **建一次**局部图（深度反投影 → `IntegrateCloud`×2 → `UpdateOccupancy`/`UpdateESDF`），再 `GetDistance` 打分 `J_esdf + λ_len J_len + λ_goal J_goal` |
+| 执行 | 沿 `Q1` 方向以 `execute_speed` 发 Twist；`v_prev = execute_speed · Q1/‖Q1‖` |
+
+深度图走现有 `SetImage`：`16UC1` 按毫米、`32FC1` 按米；`ObservationBuffer` 维护环形历史。Critic 用最新一帧反投影点云，`IntegrateCloud` 两次后再 `UpdateOccupancy` / `UpdateESDF`（与两击占据一致）。
 
 ---
 

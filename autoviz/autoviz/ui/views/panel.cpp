@@ -183,15 +183,7 @@ void ViewsPanel::setupUi() {
   tree_->header()->resizeSection(kViewTreeColName, 168);
   StyleFrostedPanelTree(tree_, kViewTreeColName);
   tree_->setObjectName(QStringLiteral("ViewsPanel/PropertyTree"));
-  QPalette tree_pal = tree_->palette();
-  tree_pal.setBrush(QPalette::Base, Qt::transparent);
-  tree_pal.setBrush(QPalette::Window, Qt::transparent);
-  tree_pal.setBrush(QPalette::Highlight, Qt::transparent);
-  tree_pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
-  tree_pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
-  tree_pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-                    glass::ShellSelectionInk());
-  tree_->setPalette(tree_pal);
+  ApplyItemViewShellPalette(tree_);
   value_delegate_ = new ViewTreeDelegate(tree_);
   tree_->setItemDelegateForColumn(kViewTreeColValue, value_delegate_);
   tree_->setEditTriggers(QAbstractItemView::DoubleClicked |
@@ -213,20 +205,20 @@ void ViewsPanel::setupUi() {
   save_button->setObjectName(QStringLiteral("ViewsPanel/SaveButton"));
   save_button->setCursor(Qt::PointingHandCursor);
   save_button->setToolTip(tr("Save the current camera view"));
-  save_button->setStyleSheet(PanelPrimaryButtonStyle());
+  StylePanelButton(save_button, QStringLiteral("primary"));
 
   remove_button_ = new QPushButton(tr("Remove"), footer);
   remove_button_->setObjectName(QStringLiteral("ViewsPanel/RemoveButton"));
   remove_button_->setCursor(Qt::PointingHandCursor);
   remove_button_->setToolTip(tr("Remove the selected saved view"));
-  remove_button_->setStyleSheet(PanelGhostButtonStyle());
+  StylePanelButton(remove_button_, QStringLiteral("ghost"));
   remove_button_->setEnabled(false);
 
   rename_button_ = new QPushButton(tr("Rename"), footer);
   rename_button_->setObjectName(QStringLiteral("ViewsPanel/RenameButton"));
   rename_button_->setCursor(Qt::PointingHandCursor);
   rename_button_->setToolTip(tr("Rename the selected saved view"));
-  rename_button_->setStyleSheet(PanelGhostButtonStyle());
+  StylePanelButton(rename_button_, QStringLiteral("ghost"));
   rename_button_->setEnabled(false);
 
   button_row->addWidget(save_button);

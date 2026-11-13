@@ -96,32 +96,37 @@ void NavigationClient::OnPlan(
     ++plan_epoch_;
 }
 
-bool NavigationClient::WaitForPublishedPlan(
+bool NavigationClient::TryTakePublishedPlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     std::chrono::steady_clock::time_point not_before,
-    std::chrono::milliseconds timeout,
-    automsgs::msgs::nav_msgs::Path& path) const
+    automsgs::msgs::nav_msgs::Path& path, uint64_t min_epoch) const
 {
-    const auto deadline = std::chrono::steady_clock::now() + timeout;
     const double gx = goal.pose().position().x();
     const double gy = goal.pose().position().y();
-    while (std::chrono::steady_clock::now() < deadline) {
-        {
-            std::lock_guard<std::mutex> lock(plan_mutex_);
-            if (latest_plan_time_ >= not_before &&
-                !latest_plan_.poses().empty()) {
-                const auto& end = latest_plan_.poses(
-                    latest_plan_.poses_size() - 1).pose().position();
-                // Accept plans whose endpoint is near the requested goal.
-                if (std::hypot(end.x() - gx, end.y() - gy) < 0.75) {
-                    path = latest_plan_;
-                    return true;
-                }
-            }
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::lock_guard<std::mutex> lock(plan_mutex_);
+    if (latest_plan_.poses().empty()) {
+        return false;
     }
-    return false;
+    // min_epoch>0: wait for a *new* /plan (SmoothPath) so we do not pick up
+    // the unsmoothed ComputePath publish that just happened.
+    if (min_epoch > 0) {
+        if (plan_epoch_ <= min_epoch) {
+            return false;
+        }
+    } else {
+        const auto grace_before =
+            not_before - std::chrono::milliseconds(750);
+        if (latest_plan_time_ < grace_before) {
+            return false;
+        }
+    }
+    const auto& end =
+        latest_plan_.poses(latest_plan_.poses_size() - 1).pose().position();
+    if (std::hypot(end.x() - gx, end.y() - gy) >= 0.75) {
+        return false;
+    }
+    path = latest_plan_;
+    return true;
 }
 
 NavigationClient::Ptr NavigationClient::Create(std::shared_ptr<autolink::Node> node)
@@ -177,14 +182,25 @@ bool NavigationClient::ComputePathToPose(
 
     // Fire the planning action, but take the path from /plan. Successful
     // get_result often never completes (SHM), while PublishPlan always runs
-    // before SucceededCurrent.
+    // before SucceededCurrent. Failed plans abort immediately and never
+    // publish /plan — do not wait 10s for that.
+    const uint64_t generation = plan_wait_generation_.load();
     const auto sent_at = std::chrono::steady_clock::now();
     auto accept_future = compute_path_client_->AsyncSendGoal(remote_goal);
-    if (accept_future.wait_for(std::chrono::seconds(3)) !=
-        std::future_status::ready) {
-        SetError(error_code, error_message, kErrorRemoteCallFailed,
-                 "compute_path_to_pose accept timeout");
-        return false;
+    const auto accept_deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (accept_future.wait_for(std::chrono::milliseconds(20)) !=
+           std::future_status::ready) {
+        if (plan_wait_generation_.load() != generation) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     "compute_path_to_pose superseded");
+            return false;
+        }
+        if (std::chrono::steady_clock::now() >= accept_deadline) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     "compute_path_to_pose accept timeout");
+            return false;
+        }
     }
     const auto goal_handle = accept_future.get();
     if (!goal_handle) {
@@ -193,33 +209,51 @@ bool NavigationClient::ComputePathToPose(
         return false;
     }
 
-    if (WaitForPublishedPlan(goal, sent_at, std::chrono::seconds(10), path)) {
-        AINFO_EVERY(10) << "ComputePathToPose: using /plan (" << path.poses_size()
-                        << " poses)";
-        return true;
-    }
-
-    // Last chance: short poll of action result (abort paths are small and OK).
     auto result_future = goal_handle->AsyncGetResult();
-    if (result_future.wait_for(std::chrono::milliseconds(200)) ==
-        std::future_status::ready) {
-        try {
-            const auto wrapped = result_future.get();
-            if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
-                wrapped.result && !wrapped.result->path().poses().empty()) {
-                path = wrapped.result->path();
-                return true;
-            }
-            if (wrapped.result && !wrapped.result->error_msg().empty()) {
-                SetError(error_code, error_message, kErrorRemoteCallFailed,
-                         wrapped.result->error_msg());
-                return false;
-            }
-        } catch (const std::exception& ex) {
+    const auto plan_deadline = std::chrono::steady_clock::now() +
+                               std::chrono::milliseconds(1500);
+    while (std::chrono::steady_clock::now() < plan_deadline) {
+        if (plan_wait_generation_.load() != generation) {
             SetError(error_code, error_message, kErrorRemoteCallFailed,
-                     ex.what());
+                     "compute_path_to_pose superseded");
             return false;
         }
+        if (TryTakePublishedPlan(goal, sent_at, path)) {
+            AINFO_EVERY(10) << "ComputePathToPose: using /plan ("
+                            << path.poses_size() << " poses)";
+            return true;
+        }
+        if (result_future.wait_for(std::chrono::milliseconds(0)) ==
+            std::future_status::ready) {
+            try {
+                const auto wrapped = result_future.get();
+                if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
+                    wrapped.result && !wrapped.result->path().poses().empty()) {
+                    path = wrapped.result->path();
+                    return true;
+                }
+                // Abort/collision: keep polling /plan until the deadline so a
+                // PublishPlan that raced TerminateCurrent is not dropped.
+                if (TryTakePublishedPlan(goal, sent_at, path)) {
+                    AINFO_EVERY(10) << "ComputePathToPose: using /plan ("
+                                    << path.poses_size() << " poses)";
+                    return true;
+                }
+                if (wrapped.result && !wrapped.result->error_msg().empty()) {
+                    SetError(error_code, error_message, kErrorRemoteCallFailed,
+                             wrapped.result->error_msg());
+                    return false;
+                }
+                SetError(error_code, error_message, kErrorRemoteCallFailed,
+                         "compute_path_to_pose aborted");
+                return false;
+            } catch (const std::exception& ex) {
+                SetError(error_code, error_message, kErrorRemoteCallFailed,
+                         ex.what());
+                return false;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     SetError(error_code, error_message, kErrorRemoteCallFailed,
@@ -254,14 +288,24 @@ bool NavigationClient::ComputePathThroughPoses(
 
     // Same pattern as ComputePathToPose: accept via /plan (PublishPlan runs
     // before SucceededCurrent; get_result often stalls on large paths).
+    const uint64_t generation = plan_wait_generation_.load();
     const auto sent_at = std::chrono::steady_clock::now();
     auto accept_future =
         compute_through_poses_client_->AsyncSendGoal(remote_goal);
-    if (accept_future.wait_for(std::chrono::seconds(3)) !=
-        std::future_status::ready) {
-        SetError(error_code, error_message, kErrorRemoteCallFailed,
-                 "compute_path_through_poses accept timeout");
-        return false;
+    const auto accept_deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(3);
+    while (accept_future.wait_for(std::chrono::milliseconds(20)) !=
+           std::future_status::ready) {
+        if (plan_wait_generation_.load() != generation) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     "compute_path_through_poses superseded");
+            return false;
+        }
+        if (std::chrono::steady_clock::now() >= accept_deadline) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     "compute_path_through_poses accept timeout");
+            return false;
+        }
     }
     const auto goal_handle = accept_future.get();
     if (!goal_handle) {
@@ -270,33 +314,44 @@ bool NavigationClient::ComputePathThroughPoses(
         return false;
     }
 
-    if (WaitForPublishedPlan(goals.back(), sent_at, std::chrono::seconds(12),
-                             path)) {
-        AINFO_EVERY(10) << "ComputePathThroughPoses: using /plan ("
-                        << path.poses_size() << " poses)";
-        return true;
-    }
-
     auto result_future = goal_handle->AsyncGetResult();
-    if (result_future.wait_for(std::chrono::milliseconds(200)) ==
-        std::future_status::ready) {
-        try {
-            const auto wrapped = result_future.get();
-            if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
-                wrapped.result && !wrapped.result->path().poses().empty()) {
-                path = wrapped.result->path();
-                return true;
-            }
-            if (wrapped.result && !wrapped.result->error_msg().empty()) {
-                SetError(error_code, error_message, kErrorRemoteCallFailed,
-                         wrapped.result->error_msg());
-                return false;
-            }
-        } catch (const std::exception& ex) {
+    const auto plan_deadline = std::chrono::steady_clock::now() +
+                               std::chrono::milliseconds(1500);
+    while (std::chrono::steady_clock::now() < plan_deadline) {
+        if (plan_wait_generation_.load() != generation) {
             SetError(error_code, error_message, kErrorRemoteCallFailed,
-                     ex.what());
+                     "compute_path_through_poses superseded");
             return false;
         }
+        if (TryTakePublishedPlan(goals.back(), sent_at, path)) {
+            AINFO_EVERY(10) << "ComputePathThroughPoses: using /plan ("
+                            << path.poses_size() << " poses)";
+            return true;
+        }
+        if (result_future.wait_for(std::chrono::milliseconds(0)) ==
+            std::future_status::ready) {
+            try {
+                const auto wrapped = result_future.get();
+                if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
+                    wrapped.result && !wrapped.result->path().poses().empty()) {
+                    path = wrapped.result->path();
+                    return true;
+                }
+                if (wrapped.result && !wrapped.result->error_msg().empty()) {
+                    SetError(error_code, error_message, kErrorRemoteCallFailed,
+                             wrapped.result->error_msg());
+                    return false;
+                }
+                SetError(error_code, error_message, kErrorRemoteCallFailed,
+                         "compute_path_through_poses aborted");
+                return false;
+            } catch (const std::exception& ex) {
+                SetError(error_code, error_message, kErrorRemoteCallFailed,
+                         ex.what());
+                return false;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     SetError(error_code, error_message, kErrorRemoteCallFailed,
@@ -345,17 +400,52 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
     }
     remote_goal.set_check_for_collisions(check_for_collisions);
 
-    const auto wrapped = smooth_path_client_->SendGoalAndWait(
-        remote_goal, {}, std::chrono::seconds(3), std::chrono::seconds(5));
-    if (!wrapped || wrapped->code != autolink::action::ResultCode::SUCCEEDED ||
-        !wrapped->result) {
+    // Same /plan shortcut as ComputePath: get_result can stall on SHM.
+    // Do not SendGoalAndWait(5s) — that blocked RateController / FollowPath
+    // and made the global path look frozen behind the robot.
+    uint64_t epoch_before = 0;
+    {
+        std::lock_guard<std::mutex> lock(plan_mutex_);
+        epoch_before = plan_epoch_;
+    }
+    const uint64_t generation = plan_wait_generation_.load();
+    const auto sent_at = std::chrono::steady_clock::now();
+    auto accept_future = smooth_path_client_->AsyncSendGoal(remote_goal);
+    const auto accept_deadline =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(400);
+    while (accept_future.wait_for(std::chrono::milliseconds(10)) !=
+           std::future_status::ready) {
+        if (plan_wait_generation_.load() != generation ||
+            std::chrono::steady_clock::now() >= accept_deadline) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     "smooth_path accept timeout");
+            return false;
+        }
+    }
+    const auto goal_handle = accept_future.get();
+    if (!goal_handle) {
         SetError(error_code, error_message, kErrorRemoteCallFailed,
-                 "smooth_path remote call failed");
+                 "smooth_path goal rejected");
         return false;
     }
 
-    smoothed = wrapped->result->path();
-    return !smoothed.poses().empty();
+    const auto& end_pose = unsmoothed.poses(unsmoothed.poses_size() - 1);
+    const auto plan_deadline =
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(350);
+    while (std::chrono::steady_clock::now() < plan_deadline) {
+        if (plan_wait_generation_.load() != generation) {
+            SetError(error_code, error_message, kErrorRemoteCallFailed,
+                     "smooth_path superseded");
+            return false;
+        }
+        if (TryTakePublishedPlan(end_pose, sent_at, smoothed, epoch_before)) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    SetError(error_code, error_message, kErrorRemoteCallFailed,
+             "smooth_path produced no /plan");
+    return false;
 }
 
 bool NavigationClient::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
@@ -407,8 +497,17 @@ bool NavigationClient::TryGetDistanceToGoal(float* distance_to_goal) const
     return true;
 }
 
+void NavigationClient::CancelPlanning()
+{
+    // Interrupt in-flight ComputePath waits only. AsyncCancelAllGoals races
+    // the next send_goal and aborts the replacement 2D Goal before NavFn runs.
+    ++plan_wait_generation_;
+}
+
 void NavigationClient::CancelActiveMotion()
 {
+    CancelPlanning();
+
     // Best-effort only: never block the BT on cancel RPCs.
     const bool follow_busy = follow_session_.is_busy();
     try {

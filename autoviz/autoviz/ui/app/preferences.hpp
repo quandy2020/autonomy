@@ -51,6 +51,12 @@ struct AppUiPreferences {
    */
   QString theme_mode = QStringLiteral("light");
 
+  /**
+   * Optional accent override as @c #RRGGBB (Concat-style Appearance swatch).
+   * Empty means the theme's default accent.
+   */
+  QString accent_color;
+
   /** Start the main window maximized on launch. */
   bool start_maximized = true;
 
@@ -91,6 +97,16 @@ glass::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode);
  * @param app Application to restyle (typically @c qApp).
  */
 void ApplyUiThemeMode(const QString& theme_mode, QApplication& app);
+
+/**
+ * @brief Applies theme + optional accent override, then refreshes chrome.
+ *
+ * @param theme_mode Preference id (@c system / @c light / @c dark / @c liquid).
+ * @param accent_hex @c #RRGGBB accent, or empty for theme default.
+ * @param app Application to restyle.
+ */
+void ApplyUiTheme(const QString& theme_mode, const QString& accent_hex,
+                  QApplication& app);
 
 /**
  * @brief Resolves a shortcut by @p id (user override or default).

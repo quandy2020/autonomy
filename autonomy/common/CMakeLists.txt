@@ -96,6 +96,13 @@ if(AUTONOMY_VERSION_CPP)
   set_source_files_properties("${AUTONOMY_VERSION_CPP}" PROPERTIES GENERATED TRUE)
 endif()
 
+# DAQP sources compiled as C++ in autonomy::common::math::miqp.
+file(GLOB AUTONOMY_DAQP_SRCS CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/math/miqp/*.cpp")
+list(FILTER AUTONOMY_DAQP_SRCS EXCLUDE REGEX "/solver\\.cpp$")
+set_source_files_properties(${AUTONOMY_DAQP_SRCS} PROPERTIES
+  COMPILE_DEFINITIONS "PROFILING")
+
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_common
   SHARED
@@ -158,3 +165,14 @@ endif()
 if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
   target_link_libraries(autonomy_common PUBLIC ${IPOPT_LIBRARIES})
 endif()
+
+# Root CMake keeps BUILD_TESTING cached OFF even when BUILD_TEST=ON.
+if(BUILD_TEST AND NOT BUILD_TESTING)
+  set(BUILD_TESTING ON)
+endif()
+autocmake_test(common.math.bezier_test
+  SOURCES math/bezier_test.cpp
+  DEPENDENCIES autonomy_common)
+autocmake_test(common.math.bspline_test
+  SOURCES math/bspline_test.cpp
+  DEPENDENCIES autonomy_common)

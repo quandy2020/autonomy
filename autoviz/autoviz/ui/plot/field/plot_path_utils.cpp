@@ -4,13 +4,18 @@
 
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 
+#include <cstring>
 #include <map>
+#include <unordered_set>
 
 #include <QRegularExpression>
+#include <QWidget>
 
+#include "autolink/common/types.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/interaction/channel_manager.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"
+#include "autoviz/ui/plot/ui/plot_field_picker_dialog.hpp"
 
 #include "autoviz/commsgs/message_type_utils.hpp"
 
@@ -158,8 +163,18 @@ bool SplitPlotValuePath(const QString& combined, const QStringList& known_channe
   return false;
 }
 
-bool IsPlottablePlotValuePath(const QString& channel, const QString& field_path) {
-  return !channel.trimmed().isEmpty() && !field_path.trimmed().isEmpty();
+bool IsPlottablePlotValuePath(common::VisualizationManager* manager,
+                              const QString& channel,
+                              const QString& field_path) {
+  if (channel.trimmed().isEmpty() || field_path.trimmed().isEmpty()) {
+    return false;
+  }
+  const std::string message_type = MessageTypeForChannel(manager, channel);
+  if (message_type.empty()) {
+    return false;
+  }
+  const QStringList numeric = NumericFieldPathsForMessageType(message_type);
+  return numeric.contains(field_path);
 }
 
 std::string MessageTypeForChannel(common::VisualizationManager* manager,
@@ -199,12 +214,44 @@ std::string MessageTypeForChannel(common::VisualizationManager* manager,
   return fallback;
 }
 
+bool EndsWithChannel(const std::string& value, const char* suffix) {
+  const std::size_t n = std::strlen(suffix);
+  return value.size() >= n && value.compare(value.size() - n, n, suffix) == 0;
+}
+
+/** Hide Autolink service transport + Action protocol channels from plot pickers. */
+bool IsServiceOrActionChannel(const std::string& channel,
+                              const std::unordered_set<std::string>& /*all*/) {
+  if (EndsWithChannel(channel, ::autolink::SRV_CHANNEL_REQ_SUFFIX) ||
+      EndsWithChannel(channel, ::autolink::SRV_CHANNEL_RES_SUFFIX) ||
+      channel.find("__SRV__") != std::string::npos) {
+    return true;
+  }
+  // Action pub/sub topics (e.g. /navigate_to_pose/feedback,
+  // /autonomy/task/charging/feedback) — always hide for plot field picking.
+  if (EndsWithChannel(channel, "/feedback") ||
+      EndsWithChannel(channel, "/status")) {
+    return true;
+  }
+  return false;
+}
+
 QStringList AllKnownChannels(common::VisualizationManager* manager) {
   QStringList out;
-  if (manager != nullptr) {
-    for (const integration::ChannelInfo& info : manager->channels()) {
-      out.push_back(QString::fromStdString(info.channel_name));
+  if (manager == nullptr) {
+    return out;
+  }
+  const auto& infos = manager->channels();
+  std::unordered_set<std::string> all_names;
+  all_names.reserve(infos.size());
+  for (const integration::ChannelInfo& info : infos) {
+    all_names.insert(info.channel_name);
+  }
+  for (const integration::ChannelInfo& info : infos) {
+    if (IsServiceOrActionChannel(info.channel_name, all_names)) {
+      continue;
     }
+    out.push_back(QString::fromStdString(info.channel_name));
   }
   out.sort(Qt::CaseInsensitive);
   out.removeDuplicates();
@@ -354,6 +401,22 @@ QStringList AllPlotBrowsePaths(common::VisualizationManager* manager) {
   paths.sort(Qt::CaseInsensitive);
   paths.removeDuplicates();
   return paths;
+}
+
+bool PickPlotChannelField(
+    QWidget* parent, common::VisualizationManager* manager,
+    const std::function<void(const QString& channel, const QString& field_path)>&
+        on_pick) {
+  if (!on_pick) {
+    return false;
+  }
+  QString channel;
+  QString field_path;
+  if (!PlotFieldPickerDialog::pick(parent, manager, &channel, &field_path)) {
+    return false;
+  }
+  on_pick(channel, field_path);
+  return true;
 }
 
 }  // namespace plot

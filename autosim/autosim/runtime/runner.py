@@ -590,6 +590,9 @@ class Runner:
         Integration uses the real elapsed dt so TF/odom match ``cmd_vel`` even
         when a slow Habitat/camera tick overruns the nominal period.
         """
+        # Scene / backend init can take seconds after Clock was constructed.
+        # Re-anchor so /odom Header.stamp tracks wall time like Teleop cmd_vel.
+        self.clock.resync(time.time())
         period = 1.0 / float(self.robot_cfg["control_hz"])
         last = time.perf_counter() - period
         steps = 0

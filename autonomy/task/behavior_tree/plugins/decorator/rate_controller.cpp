@@ -14,6 +14,7 @@
 
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
+#include "behaviortree_cpp/blackboard.h"
 #include "behaviortree_cpp/decorator_node.h"
 
 namespace autonomy::task::plugins {
@@ -45,6 +46,7 @@ private:
     bool first_time_{true};
     bool got_success_{false};
     bool waiting_first_plan_{false};
+    int seen_goal_epoch_{0};
 
     static constexpr std::chrono::seconds kFirstPlanTimeout{30};
 
@@ -54,6 +56,15 @@ private:
         getInput("hz", hz);
         if (hz > 1e-3) {
             period_ = std::chrono::duration<double>(1.0 / hz);
+        }
+
+        int goal_epoch = 0;
+        if (config().blackboard &&
+            config().blackboard->get("goal_epoch", goal_epoch) &&
+            goal_epoch != seen_goal_epoch_) {
+            seen_goal_epoch_ = goal_epoch;
+            first_time_ = true;
+            waiting_first_plan_ = false;
         }
 
         const auto now = std::chrono::steady_clock::now();

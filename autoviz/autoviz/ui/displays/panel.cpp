@@ -617,15 +617,7 @@ void DisplaysPanel::setupUi() {
   // Bypass app QSS (::item/::branch) — live Argus refresh MetaCalls otherwise
   // SEGV in QCss::Selector::pseudoElement against a mutating property tree.
   DetachItemViewFromStyleSheets(tree_);
-  QPalette tree_pal = tree_->palette();
-  tree_pal.setBrush(QPalette::Base, Qt::transparent);
-  tree_pal.setBrush(QPalette::Window, Qt::transparent);
-  tree_pal.setBrush(QPalette::Highlight, Qt::transparent);
-  tree_pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
-  tree_pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
-  tree_pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-                    glass::ShellSelectionInk());
-  tree_->setPalette(tree_pal);
+  ApplyItemViewShellPalette(tree_);
 
   help_ = new QLabel(this);
   help_->setObjectName(QStringLiteral("DisplayPanel/Help"));
@@ -637,11 +629,12 @@ void DisplaysPanel::setupUi() {
   help_->setAttribute(Qt::WA_StyledBackground, true);
   help_->setStyleSheet(QString());
   {
+    const glass::ShellTokens shell = glass::Shell();
     QPalette pal = help_->palette();
-    pal.setColor(QPalette::WindowText, QColor(0x47, 0x55, 0x69));
-    pal.setColor(QPalette::Text, QColor(0x47, 0x55, 0x69));
-    pal.setBrush(QPalette::Window, QColor(255, 255, 255, 108));
-    pal.setBrush(QPalette::Base, QColor(255, 255, 255, 108));
+    pal.setColor(QPalette::WindowText, shell.secondary_text);
+    pal.setColor(QPalette::Text, shell.secondary_text);
+    pal.setBrush(QPalette::Window, shell.glass_fill);
+    pal.setBrush(QPalette::Base, shell.glass_fill);
     help_->setPalette(pal);
     help_->setAutoFillBackground(true);
   }
@@ -690,11 +683,10 @@ void DisplaysPanel::setupUi() {
   rename_button_->setEnabled(false);
   rename_button_->setCursor(Qt::PointingHandCursor);
 
-  add_button->setStyleSheet(PanelPrimaryButtonStyle());
-  const QString ghost = PanelGhostButtonStyle();
-  duplicate_button_->setStyleSheet(ghost);
-  remove_button_->setStyleSheet(ghost);
-  rename_button_->setStyleSheet(ghost);
+  StylePanelButton(add_button, QStringLiteral("primary"));
+  StylePanelButton(duplicate_button_, QStringLiteral("ghost"));
+  StylePanelButton(remove_button_, QStringLiteral("ghost"));
+  StylePanelButton(rename_button_, QStringLiteral("ghost"));
 
   button_layout->addWidget(add_button);
   button_layout->addWidget(duplicate_button_);

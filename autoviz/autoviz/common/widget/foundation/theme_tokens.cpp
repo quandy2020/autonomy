@@ -125,12 +125,12 @@ void DeriveDarkAppearance(ThemeTokens* tokens, style::Tone tone) {
   tokens->surface_raised = QColor(44, 44, 46);
   tokens->text = QColor(242, 242, 247);
   tokens->text_muted = QColor(174, 174, 178);
-  tokens->accent = QColor(10, 132, 255);
-  tokens->accent_pressed = QColor(0, 113, 227);
+  tokens->accent = QColor(0xA8, 0xC9, 0x4A);
+  tokens->accent_pressed = QColor(0x8F, 0xB0, 0x3A);
   tokens->on_accent = QColor(Qt::black);
-  tokens->accent_filled = QColor(0, 113, 227);
-  tokens->accent_filled_hovered = QColor(0, 110, 220);
-  tokens->accent_filled_pressed = QColor(0, 91, 181);
+  tokens->accent_filled = QColor(0x5B, 0x7A, 0x1E);
+  tokens->accent_filled_hovered = QColor(0x4A, 0x64, 0x18);
+  tokens->accent_filled_pressed = QColor(0x3D, 0x54, 0x14);
   tokens->on_accent_filled = QColor(Qt::white);
   tokens->border = QColor(72, 72, 74);
   tokens->info = tokens->accent;
@@ -178,8 +178,9 @@ void ResolveSemanticRoles(ThemeTokens* tokens, ThemeAppearance appearance) {
     tokens->surface_hovered = QColor(220, 220, 224);
     tokens->surface_pressed = QColor(209, 209, 214);
   }
+  // CapCut: selected controls use a neutral gray plate, olive ink separately.
   tokens->surface_selected =
-      Blend(tokens->accent, tokens->surface, tokens->is_dark ? 48 : 28);
+      tokens->is_dark ? QColor(0x3A, 0x3A, 0x3C) : QColor(0xE2, 0xE2, 0xE6);
   tokens->accent_text = EnsureContrast(tokens->accent, contrast_surface, 4.5);
 
   tokens->border_subtle =
@@ -237,9 +238,10 @@ void SeedFromShell(ThemeTokens* tokens, const glass::ShellTokens& shell,
   tokens->accent_pressed = shell.accent_pressed;
   tokens->on_accent = shell.selection_text;
   tokens->accent_filled = shell.accent;
-  tokens->accent_filled_hovered = shell.accent;
-  tokens->accent_filled_pressed = shell.accent_pressed;
+  tokens->accent_filled_hovered = shell.accent_pressed;
+  tokens->accent_filled_pressed = shell.accent_pressed.darker(110);
   tokens->on_accent_filled = QColor(Qt::white);
+  tokens->surface_selected = shell.selection_bg;
   tokens->border = shell.border;
   tokens->info = shell.accent;
   tokens->success = QColor(52, 199, 89);

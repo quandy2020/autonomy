@@ -68,12 +68,30 @@ ActionSchema ActionSchema::FromConfig(const proto::PolicyConfig& config,
             schema.action_dimension = diffusion.dim();
         }
         schema.execute_step_index = std::max(0, diffusion.execute_index());
-        if ((schema.type == proto::ACTION_SPACE_TWIST ||
+        if (schema.type != proto::ACTION_SPACE_SAND_PLANNER &&
+            (schema.type == proto::ACTION_SPACE_TWIST ||
              schema.type == proto::ACTION_SPACE_UNSPECIFIED) &&
             (config.mode() == proto::INFERENCE_DIFFUSION ||
              diffusion.steps() > 1)) {
             schema.type = proto::ACTION_SPACE_DIFFUSION_TWIST;
         }
+    }
+
+    if (schema.type == proto::ACTION_SPACE_SAND_PLANNER) {
+        if (schema.tensor_name.empty()) {
+            schema.tensor_name = "action";
+        }
+        if (schema.action_dimension <= 0) {
+            schema.action_dimension = 3;
+        }
+        if (schema.action_horizon <= 0) {
+            const int control_points = config.sand_planner().control_points();
+            schema.action_horizon = control_points > 0 ? control_points : 8;
+        }
+        if (schema.slots.empty()) {
+            schema.slots = {"x", "y", "z"};
+        }
+        return schema;
     }
 
     ApplyTwistDefaults(&schema);

@@ -8,6 +8,7 @@
 
 class QEvent;
 class QHideEvent;
+class QPaintEvent;
 class QPropertyAnimation;
 class QVBoxLayout;
 
@@ -42,6 +43,7 @@ class CollapsiblePanel final : public Surface {
  protected:
   void changeEvent(QEvent* event) override;
   void hideEvent(QHideEvent* event) override;
+  void paintEvent(QPaintEvent* event) override;
 
  private:
   void UpdateHeader();

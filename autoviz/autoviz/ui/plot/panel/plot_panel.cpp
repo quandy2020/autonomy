@@ -685,20 +685,30 @@ void PlotPanel::onToggleSettings(bool visible) {
 }
 
 void PlotPanel::onAddSeriesRequested() {
-  PlotSeriesConfig series;
-  series.label = PlotSettingsWidget::defaultSeriesLabel(config_.series.size());
-  series.color = nextSeriesColor();
-  ++color_cursor_;
-  config_.series.push_back(series);
+  if (PickPlotChannelField(
+          this, manager_,
+          [this](const QString& channel, const QString& field_path) {
+            handleSeriesDrop(channel, field_path);
+          })) {
+    return;
+  }
 
-  auto runtime = std::make_unique<PlotSeriesRuntime>();
-  runtime->config = series;
-  runtime_series_.push_back(std::move(runtime));
-  subscribeSeries(static_cast<int>(runtime_series_.size()) - 1);
-
-  applyConfigToUi();
-  syncSettingsWidgetFromConfig();
-  emit configChanged();
+  // Cancelled or no channels — open Settings for manual path entry.
+  if (config_.series.isEmpty()) {
+    PlotSeriesConfig series;
+    series.label = PlotSettingsWidget::defaultSeriesLabel(0);
+    series.color = nextSeriesColor();
+    ++color_cursor_;
+    config_.series.push_back(series);
+    auto runtime = std::make_unique<PlotSeriesRuntime>();
+    runtime->config = series;
+    runtime_series_.push_back(std::move(runtime));
+    subscribeSeries(0);
+    applyConfigToUi();
+    syncSettingsWidgetFromConfig();
+    emit configChanged();
+  }
+  setSettingsVisible(true);
 }
 
 void PlotPanel::onRemoveSeriesRequested(int index) {
@@ -840,6 +850,12 @@ void PlotPanel::subscribeSeries(int index) {
     return;
   }
   unsubscribeSeries(*runtime);
+  // Default MessageQueue depth is 1 (latest-only). Plot ticks at ~50ms; high-rate
+  // channels would drop history between ticks unless we buffer.
+  constexpr std::size_t kPlotQueueDepth = 512;
+  runtime->queue.setMaxDepth(kPlotQueueDepth);
+  runtime->secondary_queue.setMaxDepth(kPlotQueueDepth);
+  runtime->x_queue.setMaxDepth(kPlotQueueDepth);
   const std::string channel = runtime->config.channel.toStdString();
   if (channel.empty()) {
     return;

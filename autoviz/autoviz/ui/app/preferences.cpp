@@ -5,9 +5,11 @@
 #include "autoviz/ui/app/preferences.hpp"
 
 #include <QApplication>
+#include <QColor>
 #include <QSettings>
 
 #include "autoviz/ui/theme/application.hpp"
+#include "autoviz/ui/theme/glass.hpp"
 
 namespace autoviz {
 
@@ -38,6 +40,16 @@ AppUiPreferences LoadAppUiPreferences() {
       preferences.theme_mode != QLatin1String("liquid")) {
     preferences.theme_mode = QStringLiteral("light");
   }
+  preferences.accent_color =
+      settings.value(QStringLiteral("ui/accent_color")).toString().trimmed();
+  if (!preferences.accent_color.isEmpty()) {
+    const QColor parsed(preferences.accent_color);
+    if (!parsed.isValid()) {
+      preferences.accent_color.clear();
+    } else {
+      preferences.accent_color = parsed.name(QColor::HexRgb).toUpper();
+    }
+  }
   preferences.start_maximized =
       settings.value(QStringLiteral("ui/start_maximized"), true).toBool();
   preferences.viewport_hud_visible =
@@ -61,6 +73,7 @@ void SaveAppUiPreferences(const AppUiPreferences& preferences) {
   QSettings settings;
   settings.setValue(QStringLiteral("ui/language"), preferences.language_code);
   settings.setValue(QStringLiteral("ui/theme_mode"), preferences.theme_mode);
+  settings.setValue(QStringLiteral("ui/accent_color"), preferences.accent_color);
   settings.setValue(QStringLiteral("ui/start_maximized"), preferences.start_maximized);
   settings.setValue(QStringLiteral("ui/viewport_hud_visible"),
                     preferences.viewport_hud_visible);
@@ -91,7 +104,14 @@ glass::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode) {
 }
 
 void ApplyUiThemeMode(const QString& theme_mode, QApplication& app) {
+  ApplyUiTheme(theme_mode, LoadAppUiPreferences().accent_color, app);
+}
+
+void ApplyUiTheme(const QString& theme_mode, const QString& accent_hex,
+                  QApplication& app) {
   glass::SetShellAppearance(ShellAppearanceFromThemeMode(theme_mode));
+  const QColor accent(accent_hex);
+  glass::SetShellAccentOverride(accent.isValid() ? accent : QColor());
   ApplyAppTheme(app);
   RefreshAppThemeChrome(app);
 }

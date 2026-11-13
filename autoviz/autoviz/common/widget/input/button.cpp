@@ -222,19 +222,14 @@ void Button::paintEvent(QPaintEvent* event) {
                      text());
   }
 
-  if (hasFocus()) {
+  // Disclosure / subtle headers already sit inside a Surface — skip rings.
+  // Other buttons get a single focus stroke (no outer+inner double halo).
+  if (hasFocus() &&
+      !(variant_ == Variant::kSubtle && isCheckable())) {
     painter.setBrush(Qt::NoBrush);
-    painter.setPen(
-        QPen(tokens.focus_ring_outer, tokens.focus_ring_width + 2.0));
-    qreal inset = tokens.focus_ring_width + 0.5;
-    painter.drawRoundedRect(
-        QRectF(rect()).adjusted(inset, inset, -inset, -inset),
-        tokens.radius_small - 1, tokens.radius_small - 1);
     painter.setPen(QPen(tokens.focus_ring, 1.5));
-    inset = 2.0;
-    painter.drawRoundedRect(
-        QRectF(rect()).adjusted(inset, inset, -inset, -inset),
-        tokens.radius_small - 1, tokens.radius_small - 1);
+    painter.drawRoundedRect(QRectF(rect()).adjusted(2.0, 2.0, -2.0, -2.0),
+                            tokens.radius_small - 1, tokens.radius_small - 1);
   }
 }
 

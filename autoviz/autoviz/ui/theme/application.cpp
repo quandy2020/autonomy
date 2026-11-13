@@ -5,6 +5,8 @@
 #include "autoviz/ui/theme/application.hpp"
 
 #include <QAbstractButton>
+#include <QAbstractItemView>
+#include <QPushButton>
 #include <QApplication>
 #include <QCheckBox>
 #include <QFrame>
@@ -326,6 +328,17 @@ void RefreshAppThemeChrome(QApplication& app) {
       if (!ShouldSkipPanelShellBackground(widget)) {
         ApplyPanelShell(widget);
       }
+    } else if (qobject_cast<QAbstractItemView*>(widget) != nullptr) {
+      ApplyItemViewShellPalette(widget);
+    } else if (widget->property("autovizPanelButton").isValid()) {
+      if (auto* button = qobject_cast<QPushButton*>(widget)) {
+        RefreshPanelButtonStyle(button);
+      }
+    } else if (name == QLatin1String("DisplaysFrostedFooter")) {
+      widget->setStyleSheet(style::sheet(QStringLiteral("displays")));
+    } else if (name == QLatin1String("ViewsFrostedFooter")) {
+      widget->setStyleSheet(
+          style::sheet(QStringLiteral("views"), style::tokens()));
     } else if (qobject_cast<QCheckBox*>(widget) != nullptr ||
                qobject_cast<QRadioButton*>(widget) != nullptr) {
       widget->setPalette(app_pal);

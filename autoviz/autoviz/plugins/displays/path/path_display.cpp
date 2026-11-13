@@ -6,6 +6,8 @@
 
 #include <QColor>
 
+#include <algorithm>
+
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
@@ -50,6 +52,14 @@ LocalPathPose makePathPose(
 
 QVector3D rotateByQuaternion(const QQuaternion& q, const QVector3D& v) {
   return q.rotatedVector(v);
+}
+
+// Map draws at +0.02 (or -0.02 when Draw Behind). Lift the path so it stays
+// above the OccupancyGrid and keeps saturated color (no under-map washout).
+constexpr float kPathSurfaceLiftZ = 0.05f;
+
+QVector3D LiftPathPoint(const QVector3D& p) {
+  return QVector3D(p.x(), p.y(), p.z() + kPathSurfaceLiftZ);
 }
 
 }  // namespace
@@ -168,7 +178,7 @@ void PathDisplay::drawPathPolyline(
   std::vector<QVector3D> points;
   points.reserve(poses.size());
   for (const auto& pose : poses) {
-    points.push_back(pose.position);
+    points.push_back(LiftPathPoint(pose.position));
   }
   const std::string draw_name = name() + suffix;
   if (useBillboardLineStyle()) {
@@ -200,15 +210,16 @@ void PathDisplay::drawPoseMarkers(
     std::vector<LineSegment3D> segments;
     segments.reserve(poses.size() * 3);
     for (const auto& pose : poses) {
+      const QVector3D origin = LiftPathPoint(pose.position);
       const QVector3D x_end =
-          pose.position + rotateByQuaternion(pose.orientation, QVector3D(length, 0.f, 0.f));
+          origin + rotateByQuaternion(pose.orientation, QVector3D(length, 0.f, 0.f));
       const QVector3D y_end =
-          pose.position + rotateByQuaternion(pose.orientation, QVector3D(0.f, length, 0.f));
+          origin + rotateByQuaternion(pose.orientation, QVector3D(0.f, length, 0.f));
       const QVector3D z_end =
-          pose.position + rotateByQuaternion(pose.orientation, QVector3D(0.f, 0.f, length));
-      segments.push_back({pose.position, x_end, QColor(220, 60, 60)});
-      segments.push_back({pose.position, y_end, QColor(60, 220, 60)});
-      segments.push_back({pose.position, z_end, QColor(60, 120, 220)});
+          origin + rotateByQuaternion(pose.orientation, QVector3D(0.f, 0.f, length));
+      segments.push_back({origin, x_end, QColor(220, 60, 60)});
+      segments.push_back({origin, y_end, QColor(60, 220, 60)});
+      segments.push_back({origin, z_end, QColor(60, 120, 220)});
     }
     drawLineSegmentsOgreOrGl(context_, scene, name() + suffix + "/axes",
                              segments);
@@ -231,11 +242,12 @@ void PathDisplay::drawPoseMarkers(
         total_length > 0.f ? head_length / total_length : 0.2f;
     for (std::size_t i = 0; i < poses.size(); ++i) {
       const auto& pose = poses[i];
+      const QVector3D origin = LiftPathPoint(pose.position);
       const QVector3D direction =
           rotateByQuaternion(pose.orientation, QVector3D(total_length, 0.f, 0.f));
       drawArrowOgreOrGl(context_, scene,
                         name() + suffix + "/arrow/" + std::to_string(i),
-                        pose.position, pose.position + direction, arrow_color,
+                        origin, origin + direction, arrow_color,
                         head_fraction, shaft_diameter, head_diameter);
     }
   }
@@ -245,9 +257,10 @@ void PathDisplay::onDraw(rendering::SceneOverlay& scene) {
   QColor color =
       common::ParseColorProperty(propertyValue("color", "25;255;0"),
                                  QColor(25, 255, 0));
-  const float alpha =
-      common::ParseFloatProperty(propertyValue("alpha", "1.0"), 1.f);
-  color.setAlphaF(alpha);
+  const float alpha = std::clamp(
+      common::ParseFloatProperty(propertyValue("alpha", "1.0"), 1.f), 0.f, 1.f);
+  // Keep path ink saturated — translucent map cells wash out low-alpha greens.
+  color.setAlphaF(alpha < 0.85f ? alpha : 1.f);
   const float line_width =
       common::ParseFloatProperty(propertyValue("line_width", "0.03"), 0.03f);
 

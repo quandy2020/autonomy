@@ -4,11 +4,11 @@
 
 /**
  * @file settings_dialog.hpp
- * @brief macOS System Settings–style preferences dialog (sidebar + detail pages).
+ * @brief Concat-style preferences dialog (sidebar rail + detail pages).
  *
  * Edits visualization manager options (fixed frame, backend, FPS, background)
- * and @ref AppUiPreferences (language, shortcuts, dock visibility, HUD-related
- * flags). Accepted values are returned via @ref AppSettingsResult.
+ * and @ref AppUiPreferences (language, theme, accent, shortcuts, dock
+ * visibility). Accepted values are returned via @ref AppSettingsResult.
  *
  * @see FrameSession::onAppSettings()
  * @see AppUiPreferences
@@ -44,6 +44,10 @@ enum class TimeSyncMode;
 class VisualizationManager;
 }
 
+namespace widget {
+class SegmentedControl;
+}
+
 class ShortcutsEditorWidget;
 
 /**
@@ -67,21 +71,16 @@ struct AppSettingsResult {
   bool start_maximized = true;   /**< Launch maximized. */
   QString language_code;         /**< UI locale (empty = system). */
   QString theme_mode; /**< @c system / @c light / @c dark / @c liquid. */
+  QString accent_color; /**< Optional @c #RRGGBB accent override. */
   QHash<QString, QKeySequence> shortcuts; /**< Shortcut overrides. */
 };
 
 /**
  * @class AppSettingsDialog
- * @brief macOS System Settings–style preferences dialog (sidebar + detail pages).
+ * @brief Concat-style preferences: gray rail + grouped detail pages.
  *
- * ## Pages
- *
- * Typical categories: General (language, start maximized), Shortcuts,
- * Visualization (frame, backend, FPS, background), Layout (sidebars, plot
- * settings). Exact set follows the sidebar list built in the constructor.
- *
- * @note Does not apply changes until the dialog is accepted; callers read
- *       @ref resultValues().
+ * Appearance page uses a Dark / Light / Liquid segmented control and accent
+ * color swatches (live-preview; Cancel restores the prior theme).
  *
  * @see FrameSession::onAppSettings()
  * @see ShortcutsEditorWidget
@@ -90,127 +89,52 @@ class AppSettingsDialog : public QDialog {
   Q_OBJECT
 
  public:
-  /**
-   * @brief Builds the sidebar + stacked pages from @p manager state.
-   *
-   * @param manager Non-owning visualization manager (for TF frames, backend,
-   *        time sync). Must outlive the dialog.
-   * @param parent Parent widget (typically @ref VisualizationFrame).
-   */
   explicit AppSettingsDialog(common::VisualizationManager* manager,
                              QWidget* parent = nullptr);
 
-  /**
-   * @brief Collects current widget values into an @ref AppSettingsResult.
-   * @return Snapshot suitable for @ref FrameSession::applyUiPreferences().
-   */
   AppSettingsResult resultValues() const;
 
  private:
-  /**
-   * @brief Fills the fixed-frame combo from the manager's TF tree.
-   */
   void populateFrameList();
-
-  /**
-   * @brief Pushes @p color into the background button / preview / RGB spins.
-   * @param color Viewport background color.
-   */
   void syncBackgroundUiFromColor(const QColor& color);
-
-  /**
-   * @brief Builds a @c QColor from the RGB spin boxes (and button state).
-   * @return Current background color from the UI.
-   */
   QColor backgroundColorFromUi() const;
-
-  /**
-   * @brief Opens a color dialog and updates background widgets.
-   */
   void pickBackgroundColor();
-
-  /**
-   * @brief Switches the stacked detail page and updates the page title.
-   * @param index Sidebar row index.
-   */
   void showCategory(int index);
+  void setThemeMode(const QString& theme_mode);
+  void setAccentColor(const QString& accent_hex);
+  void applyLiveThemePreview();
+  void syncAccentSwatchSelection();
 
-  /**
-   * @brief Highlights the theme preview card matching @p theme_mode.
-   * @param theme_mode Preference id (@c light / @c dark / @c liquid / …).
-   */
-  void syncThemePreviewSelection(const QString& theme_mode);
-
-  /** Non-owning visualization manager. */
   common::VisualizationManager* manager_ = nullptr;
-
-  /** Category sidebar list. */
   QListWidget* sidebar_ = nullptr;
-
-  /** Detail pages stack. */
   QStackedWidget* pages_ = nullptr;
-
-  /** Title label above the active page. */
   QLabel* page_title_ = nullptr;
 
-  /** UI language combo. */
   QComboBox* language_combo_ = nullptr;
+  widget::SegmentedControl* theme_segments_ = nullptr;
+  QWidget* accent_host_ = nullptr;
+  QLabel* accent_name_label_ = nullptr;
+  QString theme_mode_ = QStringLiteral("light");
+  QString accent_color_;
+  QString preview_restore_theme_;
+  QString preview_restore_accent_;
 
-  /** App chrome theme combo (@c system / @c light / @c dark / @c liquid). */
-  QComboBox* theme_combo_ = nullptr;
-
-  /** Host for theme preview cards under the Theme combo. */
-  QWidget* theme_preview_host_ = nullptr;
-
-  /** Shortcut table editor. */
   ShortcutsEditorWidget* shortcuts_editor_ = nullptr;
-
-  /** Fixed TF frame combo. */
   QComboBox* fixed_frame_combo_ = nullptr;
-
-  /** TF transformer combo. */
   QComboBox* transformer_combo_ = nullptr;
-
-  /** Render backend combo. */
   QComboBox* render_backend_combo_ = nullptr;
-
-  /** Time sync mode combo. */
   QComboBox* time_sync_combo_ = nullptr;
-
-  /** Target FPS spin box. */
   QSpinBox* frame_rate_spin_ = nullptr;
-
-  /** Target FPS slider (mirrors spin). */
   QSlider* frame_rate_slider_ = nullptr;
-
-  /** Background color picker button. */
   QPushButton* background_button_ = nullptr;
-
-  /** Background color preview swatch. */
   QLabel* background_preview_ = nullptr;
-
-  /** Background red channel. */
   QSpinBox* background_r_spin_ = nullptr;
-
-  /** Background green channel. */
   QSpinBox* background_g_spin_ = nullptr;
-
-  /** Background blue channel. */
   QSpinBox* background_b_spin_ = nullptr;
-
-  /** Pause time / playback checkbox. */
   QCheckBox* time_paused_check_ = nullptr;
-
-  /** Show left sidebar checkbox. */
   QCheckBox* show_left_sidebar_check_ = nullptr;
-
-  /** Show right sidebar checkbox. */
   QCheckBox* show_right_sidebar_check_ = nullptr;
-
-  /** Show plot / panel settings checkbox. */
   QCheckBox* show_panel_settings_check_ = nullptr;
-
-  /** Start maximized checkbox. */
   QCheckBox* start_maximized_check_ = nullptr;
 };
 

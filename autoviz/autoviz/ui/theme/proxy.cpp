@@ -35,7 +35,7 @@ constexpr int kScrollBarExtent = 12;
 constexpr int kRegularControlHeight = 44;
 constexpr int kHeaderHeight = 32;
 constexpr int kIndicatorExtent = 20;
-constexpr qreal kControlRadius = 10.0;
+constexpr qreal kControlRadius = 6.0;  // CapCut-like selected tool radius.
 
 // Horizontal row (shortcuts are not shown):
 // | pad | icon | gap | check | gap | text | [submenu] | pad |
@@ -94,9 +94,11 @@ void PaintRoundedControlFrame(QPainter* painter, const QStyleOption& option,
     fill = BlendColor(text, fill, 14);
   }
   const bool focused = option.state.testFlag(QStyle::State_HasFocus);
-  const QColor border = focused ? PaletteColor(option, QPalette::Highlight)
-                                : PaletteColor(option, QPalette::Mid);
-  const qreal width = focused ? 2.0 : 1.0;
+  // Prefer Shell accent over palette Highlight (tree palettes often clear it).
+  const QColor border =
+      focused ? glass::Shell().accent : PaletteColor(option, QPalette::Mid);
+  // One thin focus stroke — never a fat ring that doubles with nested panels.
+  const qreal width = 1.0;
   const qreal inset = width * 0.5;
 
   painter->save();
@@ -122,30 +124,33 @@ void PaintPlainToolButtonFrame(QPainter* painter, const QStyleOption& option,
     return;
   }
 
+  // CapCut: soft gray plate when checked; neutral hover; no accent wash rim.
+  const glass::ShellTokens shell = glass::Shell();
+  const qreal radius = static_cast<qreal>(shell.control_radius);
   QColor fill = Qt::transparent;
   if (pressed) {
-    fill = PaletteColor(option, QPalette::Text);
-    fill.setAlpha(36);
+    fill = shell.hover_bg;
+    fill = fill.darker(108);
   } else if (selected) {
-    fill = PaletteColor(option, QPalette::Highlight);
-    fill.setAlpha(48);
+    fill = glass::ShellSelectionFill();
   } else if (hovered) {
-    fill = PaletteColor(option, QPalette::Text);
-    fill.setAlpha(18);
+    fill = glass::ShellHoverFill();
   }
 
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
   painter->setPen(Qt::NoPen);
   painter->setBrush(fill);
-  painter->drawRoundedRect(QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5),
-                           kControlRadius, kControlRadius);
-  if (focused) {
+  painter->drawRoundedRect(QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5), radius,
+                           radius);
+  if (focused && !selected) {
     painter->setBrush(Qt::NoBrush);
-    painter->setPen(QPen(PaletteColor(option, QPalette::Highlight), 2.0,
-                         Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    painter->drawRoundedRect(QRectF(rect).adjusted(2.0, 2.0, -2.0, -2.0),
-                             kControlRadius - 1.0, kControlRadius - 1.0);
+    QColor ring = shell.accent;
+    ring.setAlpha(120);
+    painter->setPen(
+        QPen(ring, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    painter->drawRoundedRect(QRectF(rect).adjusted(1.5, 1.5, -1.5, -1.5),
+                             radius - 1.0, radius - 1.0);
   }
   painter->restore();
 }
@@ -470,47 +475,12 @@ void PaintGlassMenuPanel(QPainter* painter, const QStyleOption& option) {
   // Use Shell tokens — menu palette Base/Window are forced transparent for
   // frameless corners and must not drive the fill (that painted solid black).
   QColor material = shell.glass_fill_deep;
-  material.setAlpha(dark ? 248 : (liquid ? 228 : 242));
+  material.setAlpha(255);
   painter->fillPath(path, material);
-
-  if (liquid) {
-    painter->fillPath(path, shell.glass_cool);
-    QLinearGradient cool(card.topRight(), card.bottomLeft());
-    cool.setColorAt(0.0, QColor(180, 220, 255, 30));
-    cool.setColorAt(0.5, QColor(255, 255, 255, 0));
-    cool.setColorAt(1.0, QColor(255, 200, 230, 16));
-    painter->fillPath(path, cool);
-  }
-
-  QColor sheen_start = dark ? QColor(255, 255, 255, 28) : shell.glass_sheen;
-  QColor sheen_end = sheen_start;
-  sheen_end.setAlpha(0);
-  QLinearGradient sheen(card.topLeft(),
-                        QPointF(card.left(), card.top() + (liquid ? 48.0 : 36.0)));
-  sheen.setColorAt(0.0, sheen_start);
-  sheen.setColorAt(1.0, sheen_end);
-  painter->fillPath(path, sheen);
-
-  if (liquid) {
-    painter->setBrush(Qt::NoBrush);
-    painter->setPen(QPen(QColor(255, 90, 120, 40), 1.0));
-    painter->drawRoundedRect(card.adjusted(1.0, 1.0, -0.5, -0.5), kRadius,
-                             kRadius);
-    painter->setPen(QPen(QColor(80, 180, 255, 46), 1.0));
-    painter->drawRoundedRect(card.adjusted(0.5, 0.5, -1.0, -1.0), kRadius,
-                             kRadius);
-  }
-
-  QColor highlight =
-      dark ? QColor(255, 255, 255, 38)
-           : (liquid ? QColor(255, 255, 255, 190) : QColor(255, 255, 255, 168));
-  painter->setPen(QPen(highlight, 1.0));
+  Q_UNUSED(dark);
+  painter->setBrush(Qt::NoBrush);
+  painter->setPen(QPen(shell.glass_rim, 1.0));
   painter->drawPath(path);
-  QColor border = shell.glass_rim;
-  border.setAlpha(dark ? 180 : (liquid ? 110 : 140));
-  painter->setPen(QPen(border, 1.0));
-  painter->drawRoundedRect(card.adjusted(1.0, 1.0, -1.0, -1.0), kRadius - 1.0,
-                           kRadius - 1.0);
   painter->restore();
 }
 
@@ -862,6 +832,17 @@ void ProxyStyle::drawPrimitive(PrimitiveElement element,
     return;
   }
   if (element == PE_PanelLineEdit && option != nullptr) {
+    // QSpinBox / editable QComboBox already paint CC_* frames. Drawing another
+    // rounded panel on the child QLineEdit is the Displays "double border".
+    const QWidget* parent =
+        widget != nullptr ? widget->parentWidget() : nullptr;
+    if (parent != nullptr &&
+        (qobject_cast<const QAbstractSpinBox*>(parent) != nullptr ||
+         qobject_cast<const QComboBox*>(parent) != nullptr)) {
+      painter->fillRect(option->rect,
+                        PaletteColor(*option, QPalette::Base));
+      return;
+    }
     PaintRoundedControlFrame(painter, *option, option->rect);
     return;
   }
@@ -969,7 +950,8 @@ void ProxyStyle::drawComplexControl(ComplexControl control,
     QColor foreground = PaletteColor(*tool, QPalette::ButtonText);
     if (button->autoRaise() && tool->state.testFlag(State_On) &&
         tool->state.testFlag(State_Enabled)) {
-      foreground = PaletteColor(*tool, QPalette::Highlight);
+      // CapCut: olive ink on soft gray plate (Highlight is the plate fill).
+      foreground = glass::ShellSelectionInk();
     }
     if (tool->features.testFlag(QStyleOptionToolButton::Arrow) &&
         tool->icon.isNull() && tool->text.isEmpty()) {

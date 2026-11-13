@@ -74,6 +74,9 @@ CONFIG=src/autonomy/autosim/config/isaac.yaml \
 
 # 遥控（另终端，需 TTY 焦点）
 src/autonomy/autosim/scripts/run.sh teleop
+
+# 停止当前实例（读 /tmp/autosim.lock，不需要 Python）
+src/autonomy/autosim/scripts/run.sh stop
 ```
 
 Habitat 行人：平面运动走 `scenario.pedestrian`（agents YAML / SFM），外观为本地

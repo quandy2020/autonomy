@@ -195,7 +195,7 @@ QPushButton {
   font-size: 13px;
 }
 QPushButton:hover {
-  background: rgba(255,255,255,0.55);
+  background: #FFFFFF;
   color: {{accent}};
 }
 /* @end */
@@ -203,7 +203,7 @@ QPushButton:hover {
 /* @section add_display.segment_track */
 QFrame#CreateVizSegmentTrack {
   background: qlineargradient(x1:0,y1:0,x2:0,y2:1,
-    stop:0 rgba(241,245,249,0.90), stop:1 rgba(226,232,240,0.55));
+    stop:0 #F1F5F9, stop:1 #E2E8F0);
   border: 1px solid {{panel-border}};
   border-radius: 14px;
 }
@@ -238,7 +238,7 @@ QListWidget::item:selected { color: {{accent}}; font-weight: 600; }
 
 /* @section add_panel.ghost_button */
 QPushButton {
-  background: rgba(255,255,255,0.70);
+  background: #FFFFFF;
   color: {{accent-pressed}};
   border: 1.5px solid {{accent}};
   border-radius: 19px;
@@ -249,11 +249,11 @@ QPushButton {
   font-size: 13px;
 }
 QPushButton:hover {
-  background: rgba(255,255,255,0.92);
+  background: #FFFFFF;
   border-color: {{accent-soft}};
   color: {{accent}};
 }
-QPushButton:pressed { background: rgba(224,242,254,0.80); }
+QPushButton:pressed { background: #E0F2FE; }
 /* @end */
 
 /* @section add_panel.primary_button */
@@ -278,84 +278,108 @@ QPushButton:disabled {
 /* @end */
 
 /* @section app_settings */
+/* Concat-inspired settings: gray rail, milky detail, rounded group cards. */
 QDialog#AutovizAppSettingsDialog {
-  background: #F5F5F7;
+  background: #F4F4F6;
 }
 QListWidget#AutovizSettingsSidebar {
-  background: #ECEEF0;
+  background: #EBEBED;
   border: none;
-  border-right: 1px solid rgba(0,0,0,0.08);
+  border-right: 1px solid rgba(0,0,0,0.06);
   outline: none;
-  padding: 10px 8px;
+  padding: 14px 10px;
   font-size: 13px;
+  font-weight: 600;
 }
 QListWidget#AutovizSettingsSidebar::item {
-  height: 32px;
-  margin: 1px 0;
-  padding: 4px 10px;
-  border-radius: 8px;
-  color: #1D1D1F;
+  height: 36px;
+  margin: 2px 0;
+  padding: 6px 12px;
+  border-radius: 10px;
+  color: #3A3A3C;
 }
 QListWidget#AutovizSettingsSidebar::item:hover {
   background: rgba(0,0,0,0.05);
+  color: #1C1C1E;
 }
 QListWidget#AutovizSettingsSidebar::item:selected {
-  background: {{accent-soft}};
-  color: {{accent}};
+  background: rgba(0,0,0,0.10);
+  color: #1C1C1E;
 }
 QWidget#AutovizSettingsDetail {
-  background: #F5F5F7;
+  background: #F7F7F8;
 }
 QLabel#AutovizSettingsPageTitle {
-  font-size: 22px; font-weight: 700; color: #1D1D1F;
+  font-size: 24px; font-weight: 700; color: #1C1C1E;
   background: transparent; border: none; padding: 0;
 }
 QFrame#AutovizSettingsGroup {
   background: #FFFFFF;
   border: 1px solid rgba(0,0,0,0.06);
-  border-radius: 10px;
+  border-radius: 14px;
 }
 QLabel#AutovizSettingsRowLabel {
-  color: #1D1D1F; font-size: 13px;
+  color: #1C1C1E; font-size: 13px; font-weight: 500;
   background: transparent; border: none;
 }
+QLabel#AutovizSettingsAccentName {
+  color: #636366; font-size: 12px; font-weight: 600;
+  background: transparent; border: none; padding-left: 4px;
+}
 QLabel#AutovizSettingsHint {
-  color: #86868B; font-size: 11px;
+  color: #8E8E93; font-size: 11px;
   background: transparent; border: none;
 }
 QFrame#AutovizSettingsFooter {
-  background: #F5F5F7;
+  background: #F7F7F8;
   border: none;
-  border-top: 1px solid rgba(0,0,0,0.08);
+  border-top: 1px solid rgba(0,0,0,0.06);
+}
+QToolButton#AutovizAccentCustom {
+  background: #F2F2F7;
+  color: #636366;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  padding: 0;
+}
+QToolButton#AutovizAccentCustom:hover {
+  background: {{accent-soft}};
+  color: {{accent}};
+  border-color: {{accent-a28}};
 }
 QCheckBox {
-  color: #1D1D1F; font-size: 13px;
+  color: #1C1C1E; font-size: 13px;
   spacing: 8px; background: transparent; border: none;
 }
 QComboBox, QSpinBox, QLineEdit {
-  background: #FFFFFF;
-  color: #1D1D1F;
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 6px;
-  padding: 4px 8px;
-  min-height: 24px;
+  background: #F2F2F7;
+  color: #1C1C1E;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 10px;
+  padding: 5px 10px;
+  min-height: 28px;
+  min-width: 140px;
 }
 QComboBox:focus, QSpinBox:focus, QLineEdit:focus {
-  border: 1px solid {{accent-teal}};
+  border: 1.5px solid {{accent}};
+  background: #FFFFFF;
 }
 QPushButton {
   background: #FFFFFF;
-  color: #1D1D1F;
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 6px;
-  padding: 5px 12px;
+  color: #1C1C1E;
+  border: 1px solid rgba(0,0,0,0.10);
+  border-radius: 10px;
+  padding: 6px 14px;
   font-size: 13px;
+  font-weight: 600;
 }
-QPushButton:hover { background: #F5F5F7; }
+QPushButton:hover { background: #F2F2F7; color: {{accent}}; }
 QPushButton:default {
-  background: {{accent-teal}}; color: #FFFFFF; border-color: {{accent-teal}}; font-weight: 600;
+  background: {{accent}}; color: #FFFFFF; border-color: {{accent}}; font-weight: 700;
 }
-QPushButton:default:hover { background: {{accent}}; }
+QPushButton:default:hover { background: {{accent-pressed}}; border-color: {{accent-pressed}}; }
 QSlider::groove:horizontal {
   height: 4px; background: rgba(0,0,0,0.10); border-radius: 2px;
 }
@@ -368,7 +392,7 @@ QSlider::handle:horizontal {
 
 /* @section change_panel */
 QWidget {
-  background: rgba(247,250,249,0.96);
+  background: #F7FAF9;
   color: {{text}};
   border-radius: 10px;
 }
@@ -390,7 +414,7 @@ QToolButton:checked {
 
 /* @section channel_graph.dialog_close */
 QPushButton {
-  color: {{text}}; background: rgba(255,255,255,0.88);
+  color: {{text}}; background: #FFFFFF;
   border: 1px solid {{glass-rim}}; border-radius: 10px;
   padding: 5px 14px; font-size: 12px; font-weight: 600;
   outline: none;
@@ -436,7 +460,7 @@ padding: 4px 10px; font-size: 11px; font-weight: 700;
 
 /* @section channel_graph.metric_chip */
 QFrame#PropertyMetricChip {
-  background: rgba(255,255,255,0.78);
+  background: #FFFFFF;
   border: 1px solid {{glass-rim}};
   border-radius: 12px;
 }
@@ -475,7 +499,7 @@ QFrame#ChannelGraphPropertyHeader {
 
 /* @section channel_graph.section_card */
 QFrame#PropertySectionCard {
-  background: rgba(255,255,255,0.72);
+  background: #FFFFFF;
   border: 1px solid {{glass-rim}};
   border-radius: 12px;
 }
@@ -556,7 +580,7 @@ QHeaderView::section {
 
 /* @section displays.frosted_footer */
 QFrame#DisplaysFrostedFooter {
-  background: rgba(255,255,255,0.55);
+  background: #FFFFFF;
   border: none;
   border-top: 1px solid {{panel-border}};
 }
@@ -569,16 +593,16 @@ QSplitter { background: transparent; }
 
 /* @section image.compact_pick_button */
 QPushButton {
-  background: rgba(255,255,255,0.70); color: {{accent-pressed}};
+  background: #FFFFFF; color: {{accent-pressed}};
   border: 1px solid {{accent}}; border-radius: 6px;
   padding: 0 6px; min-height: 0; max-height: 20px;
   font-weight: 600; font-size: 11px;
 }
 QPushButton:hover {
-  background: rgba(255,255,255,0.92); color: {{accent}};
+  background: #FFFFFF; color: {{accent}};
   border-color: {{accent-soft}};
 }
-QPushButton:pressed { background: rgba(224,242,254,0.80); }
+QPushButton:pressed { background: #E0F2FE; }
 /* @end */
 
 /* @section image.overlay_card */
@@ -612,8 +636,8 @@ QWidget#ImageFloatingChrome QToolButton:hover {
   border-color: {{accent-a70}};
 }
 QWidget#ImageFloatingChrome QToolButton:checked {
-  background: rgba(204,251,241,120);
-  border-color: {{accent}};
+  background: {{sel-bg}};
+  border-color: transparent;
   color: {{accent}};
 }
 QWidget#ImageFloatingChrome QLabel {
@@ -693,6 +717,167 @@ QPushButton {
 QPushButton:hover { background: {{accent}}; }
 /* @end */
 
+/* @section plot.field_picker.title */
+QLabel {
+  background: transparent;
+  color: {{text}};
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+  padding: 0;
+  margin: 0;
+}
+/* @end */
+
+/* @section plot.field_picker.caption */
+QLabel {
+  background: transparent;
+  color: {{panel-muted}};
+  font-size: 10px;
+  font-weight: 600;
+  padding: 0;
+}
+/* @end */
+
+/* @section plot.field_picker.path */
+QLabel {
+  background: {{sel-bg}};
+  color: {{accent}};
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+/* @end */
+
+/* @section plot.field_picker.rail_caption */
+QLabel {
+  background: transparent;
+  color: {{panel-muted}};
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 0 2px 1px 2px;
+}
+/* @end */
+
+/* @section plot.field_picker.line_edit */
+QLineEdit {
+  background: #FFFFFF;
+  color: {{text}};
+  border: 1px solid {{border}};
+  border-radius: 4px;
+  padding: 0 24px 0 8px;
+  min-height: 26px;
+  max-height: 26px;
+  font-size: 11px;
+  font-weight: 500;
+  selection-background-color: {{sel-bg}};
+}
+QLineEdit:focus {
+  border: 1.5px solid {{accent}};
+  background: #FFFFFF;
+}
+/* @end */
+
+/* @section plot.field_picker.channel_list */
+QListWidget {
+  background: transparent;
+  color: {{text}};
+  border: none;
+  outline: none;
+  padding: 0;
+  font-size: 11px;
+  show-decoration-selected: 0;
+}
+QListWidget::item {
+  padding: 0;
+  min-height: 22px;
+  max-height: 22px;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+QListWidget::item:hover,
+QListWidget::item:selected {
+  background: transparent;
+}
+/* @end */
+
+/* @section plot.field_picker.field_list */
+QListWidget {
+  background: transparent;
+  color: {{text}};
+  border: none;
+  outline: none;
+  padding: 0;
+  font-size: 11px;
+  show-decoration-selected: 0;
+}
+QListWidget::item {
+  padding: 0;
+  min-height: 22px;
+  max-height: 22px;
+  border: none;
+  outline: none;
+  background: transparent;
+}
+QListWidget::item:hover,
+QListWidget::item:selected {
+  background: transparent;
+}
+/* @end */
+
+/* @section plot.field_picker.ghost_button */
+QPushButton {
+  background: #FFFFFF;
+  color: #1C1C1E;
+  border: 1px solid #C6C6C8;
+  border-radius: 4px;
+  padding: 0 12px;
+  min-height: 28px;
+  max-height: 28px;
+  font-weight: 600;
+  font-size: 11px;
+  outline: none;
+}
+QPushButton:hover {
+  background: {{hover}};
+  border-color: transparent;
+  color: {{accent}};
+}
+QPushButton:pressed {
+  background: {{sel-bg}};
+}
+/* @end */
+
+/* @section plot.field_picker.primary_button */
+QPushButton {
+  background: {{accent}};
+  color: #FFFFFF;
+  border: 1px solid {{accent}};
+  border-radius: 4px;
+  padding: 0 12px;
+  min-height: 28px;
+  max-height: 28px;
+  font-weight: 700;
+  font-size: 11px;
+  outline: none;
+}
+QPushButton:hover {
+  background: {{accent-pressed}};
+  border-color: {{accent-pressed}};
+  color: #FFFFFF;
+}
+QPushButton:disabled {
+  background: #E8E8ED;
+  color: #8E8E93;
+  border-color: #D1D1D6;
+}
+/* @end */
+
 /* @section plot.color_swatch */
 background:{{color}}; border:1px solid palette(mid); border-radius:2px;
 /* @end */
@@ -708,10 +893,10 @@ QWidget#plot_segmented_toggle QPushButton {
   min-height: 18px; max-height: 18px;
 }
 QWidget#plot_segmented_toggle QPushButton:checked {
-  background: {{accent}}; color: #FFFFFF; font-weight: 700;
+  background: {{sel-bg}}; color: {{accent}}; font-weight: 700;
 }
 QWidget#plot_segmented_toggle QPushButton:hover {
-  background: rgba(255,255,255,0.55); color: {{accent}};
+  background: {{hover}}; color: {{accent}};
 }
 /* @end */
 
@@ -888,7 +1073,7 @@ QPushButton:disabled {
 
 /* @section publish.toolbar_combo */
 QComboBox {
-  background: rgba(255,255,255,0.88); color: {{text}};
+  background: #FFFFFF; color: {{text}};
   border: 1px solid {{glass-rim}}; border-radius: 10px;
   padding: 2px 8px; min-height: 28px; max-height: 32px;
   font-size: 12px;
@@ -919,7 +1104,7 @@ QComboBox QAbstractItemView {
 
 /* @section publish.toolbar_spin */
 QDoubleSpinBox {
-  background: rgba(255,255,255,0.88); color: {{text}};
+  background: #FFFFFF; color: {{text}};
   border: 1px solid {{glass-rim}}; border-radius: 10px;
   padding: 2px 6px; min-height: 28px; max-height: 32px;
   font-size: 12px;
@@ -1072,7 +1257,7 @@ QPushButton:pressed { background: #9F1239; border-color: #9F1239; }
 
 /* @section teleop.header */
 QFrame#TeleopHeader {
-  background: rgba(255,255,255,0.72);
+  background: #FFFFFF;
   border: 1px solid {{border}};
   border-radius: 14px;
 }
@@ -1101,10 +1286,10 @@ QToolButton {
   padding: 6px 10px; font-weight: 700; font-size: 11px;
 }
 QToolButton:checked {
-  background: {{accent}}; color: white;
+  background: {{sel-bg}}; color: {{accent}};
 }
 QToolButton:hover {
-  background: {{accent-a10}}; color: {{accent}};
+  background: {{hover}}; color: {{accent}};
 }
 /* @end */
 

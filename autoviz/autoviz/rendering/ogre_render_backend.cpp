@@ -232,8 +232,10 @@ void UploadTexturedBatches(
     // clockwise cull then drops the whole OccupancyGrid when viewing top-down.
     pass->setCullingMode(Ogre::CULL_NONE);
     pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
-    pass->setDepthWriteEnabled(false);
-    pass->setDepthCheckEnabled(true);
+    // /map writes depth; costmap (higher Z, later queue) depth-tests above it.
+    // Both depth-write-off caused white free cells to composite-fight cyan/purple.
+    pass->setDepthWriteEnabled(batch.depth_write);
+    pass->setDepthCheckEnabled(batch.depth_check);
     pass->setVertexColourTracking(Ogre::TVC_DIFFUSE);
     if (pass->getNumTextureUnitStates() > 0) {
       Ogre::TextureUnitState* unit = pass->getTextureUnitState(0);
@@ -246,6 +248,13 @@ void UploadTexturedBatches(
 
     Ogre::ManualObject* object = scene->createManualObject(base_name + "MO");
     object->setCastShadows(false);
+    // Separate queue groups so Ogre's transparent distance-sort cannot swap
+    // nearly-coplanar /map and costmap (cyan↔purple flicker). Higher
+    // draw_order → later queue → always covers lower layers.
+    const int queue_offset = std::clamp(batch.draw_order, 0, 8);
+    object->setRenderQueueGroupAndPriority(
+        static_cast<Ogre::uint8>(Ogre::RENDER_QUEUE_MAIN + queue_offset),
+        static_cast<Ogre::ushort>(batch.draw_order));
     object->begin(mat_name, Ogre::RenderOperation::OT_TRIANGLE_LIST);
     for (const auto& vertex : batch.vertices) {
       object->position(vertex.position.x(), vertex.position.y(),

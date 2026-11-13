@@ -41,6 +41,26 @@ void SampleGaussian(std::vector<float>* data, std::mt19937* rng) {
 
 proto::Diffusion MakeEffectiveDiffusion(const proto::PolicyConfig& proto) {
     proto::Diffusion options = proto.diffusion();
+    const bool sand_planner =
+        proto.action().type() == proto::ACTION_SPACE_SAND_PLANNER;
+    if (sand_planner) {
+        if (options.steps() <= 0) {
+            options.set_steps(8);
+        }
+        if (options.horizon() <= 0) {
+            const int control_points = proto.sand_planner().control_points();
+            options.set_horizon(control_points > 0 ? control_points : 8);
+        }
+        if (options.dim() <= 0) {
+            options.set_dim(3);
+        }
+        if (options.prediction_type() == proto::DIFFUSION_PRED_UNSPECIFIED) {
+            options.set_prediction_type(proto::DIFFUSION_PRED_VELOCITY);
+        }
+        if (options.candidates() <= 0) {
+            options.set_candidates(8);
+        }
+    }
     if (options.steps() <= 0) {
         options.set_steps(1);
     }
@@ -71,6 +91,9 @@ proto::Diffusion MakeEffectiveDiffusion(const proto::PolicyConfig& proto) {
     }
     if (options.execute_index() < 0) {
         options.set_execute_index(0);
+    }
+    if (options.candidates() <= 0) {
+        options.set_candidates(1);
     }
     return options;
 }
@@ -103,6 +126,13 @@ void DdimUpdate(const std::vector<float>& prediction,
             epsilon[i] = prediction[i];
             x0[i] = (current[i] - sqrt_one_minus_alpha_bar_t * epsilon[i]) /
                     std::max(1e-6f, sqrt_alpha_bar_t);
+        }
+    } else if (prediction_type == proto::DIFFUSION_PRED_VELOCITY) {
+        for (std::size_t i = 0; i < n; ++i) {
+            x0[i] = sqrt_alpha_bar_t * current[i] -
+                    sqrt_one_minus_alpha_bar_t * prediction[i];
+            epsilon[i] = sqrt_one_minus_alpha_bar_t * current[i] +
+                         sqrt_alpha_bar_t * prediction[i];
         }
     } else {
         for (std::size_t i = 0; i < n; ++i) {
@@ -168,9 +198,22 @@ bool RunDiffusionInference(
         return false;
     }
 
+    const bool pin_origin =
+        config.is_sand_planner() ||
+        config.action_schema().type == proto::ACTION_SPACE_SAND_PLANNER;
+    auto pin_origin_control_point = [pin_origin](std::vector<float>* sample) {
+        if (!pin_origin || sample == nullptr || sample->size() < 3) {
+            return;
+        }
+        (*sample)[0] = 0.0f;
+        (*sample)[1] = 0.0f;
+        (*sample)[2] = 0.0f;
+    };
+
     thread_local std::mt19937 rng{std::random_device{}()};
     std::vector<float> sample(sequence_size, 0.0f);
     SampleGaussian(&sample, &rng);
+    pin_origin_control_point(&sample);
 
     // Build working map once; only refresh sample/timestep each step.
     ::autonomy::common::network::FloatTensorMap inputs = condition_inputs;
@@ -233,16 +276,27 @@ bool RunDiffusionInference(
                     sample[i] = (sample[i] - sqrt_one_minus * prediction[i]) /
                                 std::max(1e-6f, sqrt_alpha);
                 }
+            } else if (diffusion.prediction_type() ==
+                       proto::DIFFUSION_PRED_VELOCITY) {
+                const float alpha_bar_t = AlphaBar(t_norm);
+                const float sqrt_alpha = std::sqrt(alpha_bar_t);
+                const float sqrt_one_minus = std::sqrt(1.0f - alpha_bar_t);
+                for (std::size_t i = 0; i < sequence_size; ++i) {
+                    sample[i] = sqrt_alpha * sample[i] -
+                                sqrt_one_minus * prediction[i];
+                }
             } else {
                 sample.swap(prediction);
             }
+            pin_origin_control_point(&sample);
             break;
         }
 
         const float t_prev_norm = static_cast<float>(reverse_index - 1) /
                                   static_cast<float>(iterations - 1);
         if (diffusion.ddim() ||
-            diffusion.prediction_type() == proto::DIFFUSION_PRED_EPSILON) {
+            diffusion.prediction_type() == proto::DIFFUSION_PRED_EPSILON ||
+            diffusion.prediction_type() == proto::DIFFUSION_PRED_VELOCITY) {
             DdimUpdate(prediction, sample, AlphaBar(t_norm),
                        AlphaBar(t_prev_norm), diffusion.ddim_eta(),
                        diffusion.prediction_type(), &next, &rng);
@@ -250,9 +304,32 @@ bool RunDiffusionInference(
         } else {
             sample.swap(prediction);
         }
+        pin_origin_control_point(&sample);
     }
 
     *action_sequence = std::move(sample);
+    return true;
+}
+
+bool RunDiffusionCandidates(
+    const PolicyModel& model,
+    const ::autonomy::common::network::FloatTensorMap& condition_inputs,
+    std::vector<std::vector<float>>* candidates, std::string* error,
+    InferBudget* budget) {
+    if (candidates == nullptr) {
+        return false;
+    }
+    candidates->clear();
+    const int count = std::max(1, model.config().effective_diffusion().candidates());
+    candidates->reserve(static_cast<std::size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        std::vector<float> sequence;
+        if (!RunDiffusionInference(model, condition_inputs, &sequence, error,
+                                   budget)) {
+            return false;
+        }
+        candidates->push_back(std::move(sequence));
+    }
     return true;
 }
 

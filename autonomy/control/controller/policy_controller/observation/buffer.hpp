@@ -9,6 +9,7 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -47,6 +48,12 @@ public:
     void SetPath(const automsgs::msgs::nav_msgs::Path& path);
     void SetLaserScan(const automsgs::msgs::sensor_msgs::LaserScan& laser_scan);
     void SetImage(const automsgs::msgs::sensor_msgs::Image& image);
+
+    /**
+     * @brief Ring size for SanD-Planner depth history (oldest dropped first).
+     * @param capacity Frames kept; values below 1 are treated as 1.
+     */
+    void SetDepthHistoryCapacity(int capacity);
     void SetPointCloud(
         const automsgs::msgs::sensor_msgs::PointCloud2& point_cloud);
 
@@ -82,6 +89,9 @@ private:
     std::shared_ptr<const automsgs::msgs::nav_msgs::Path> path_;
     std::shared_ptr<const automsgs::msgs::sensor_msgs::LaserScan> laser_scan_;
     std::shared_ptr<const automsgs::msgs::sensor_msgs::Image> image_;
+    std::deque<std::shared_ptr<const automsgs::msgs::sensor_msgs::Image>>
+        depth_history_;
+    int depth_history_capacity_{4};
     std::shared_ptr<const automsgs::msgs::sensor_msgs::PointCloud2> point_cloud_;
     std::shared_ptr<const TensorFrame> lidar_bev_;
     std::unordered_map<std::string, std::shared_ptr<const TensorFrame>>

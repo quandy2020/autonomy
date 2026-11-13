@@ -2397,11 +2397,9 @@ PanelDockWidget* FramePanels::duplicatePanelDock(
         QString(), /*create_render_window=*/false);
   }
   if (type == QLatin1String("PlotDock")) {
+    // Split opens a blank Plot — do not clone the parent's series / samples.
     PanelDockWidget* dock = createPlotPanelDock();
-    auto* src_panel = qobject_cast<plot::PlotPanel*>(source->widget());
-    auto* dst_panel = qobject_cast<plot::PlotPanel*>(dock->widget());
-    if (src_panel != nullptr && dst_panel != nullptr) {
-      dst_panel->cloneConfigFrom(src_panel->config());
+    if (auto* dst_panel = qobject_cast<plot::PlotPanel*>(dock->widget())) {
       updatePlotDockTitle(dock, dst_panel);
       setActivePlotPanel(dst_panel);
     }

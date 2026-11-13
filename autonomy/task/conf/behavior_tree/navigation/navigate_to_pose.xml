@@ -1,7 +1,7 @@
 <!--
   Navigate-to-pose:
-  - Replan at 1 Hz while FollowPath runs
-  - Path via /plan (action get_result may stall); no SmoothPath
+  - Replan at 5 Hz while FollowPath runs
+  - Path via /plan, then SmoothPath (simple_smoother) on the global path
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -21,13 +21,25 @@
               selected_planner="{selected_planner}"
               default_planner="{default_planner_id}"
               topic_name="planner_selector"/>
-            <RateController hz="0.5">
-              <ComputePathToPose
-                goal="{goal}"
-                path="{path}"
-                planner_id="{selected_planner}"
-                error_code_id="{compute_path_error_code}"
-                error_msg="{compute_path_error_msg}"/>
+            <SmootherSelector
+              selected_smoother="{selected_smoother}"
+              default_smoother="{default_smoother_id}"
+              topic_name="smoother_selector"/>
+            <RateController hz="5.0">
+              <Sequence name="PlanAndSmooth">
+                <ComputePathToPose
+                  goal="{goal}"
+                  path="{path}"
+                  planner_id="{selected_planner}"
+                  error_code_id="{compute_path_error_code}"
+                  error_msg="{compute_path_error_msg}"/>
+                <SmoothPath
+                  unsmoothed_path="{path}"
+                  smoothed_path="{path}"
+                  smoother_id="{selected_smoother}"
+                  max_smoothing_duration="0.15"
+                  check_for_collisions="false"/>
+              </Sequence>
             </RateController>
             <FollowPath
               path="{path}"

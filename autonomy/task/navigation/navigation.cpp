@@ -29,7 +29,7 @@ namespace {
 constexpr char kGlobalFrame[] = "map";
 constexpr char kRobotBaseFrame[] = "base_link";
 constexpr char kDefaultPlannerId[] = "navfn_planner";
-constexpr char kDefaultControllerId[] = "graceful_controller";
+constexpr char kDefaultControllerId[] = "mppi_controller";
 constexpr char kDefaultSmootherId[] = "simple_smoother";
 constexpr double kDefaultGoalReachedTol = 0.10;
 constexpr float kMaxReportedDistance = 100.f;
@@ -61,32 +61,13 @@ bool NavigationTask::OnTreeInitialize(
     return EnsureNavigationClient();
 }
 
-void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
+void NavigationTask::ApplyGoalToBlackboard(
+    const BT::Blackboard::Ptr& blackboard,
+    const task_proto::NavigationGoal& goal)
 {
     if (!blackboard) {
         return;
     }
-
-    if (navigation()) {
-        blackboard->set(navigation::kNavigationClientBlackboardKey,
-                        navigation());
-    }
-
-    blackboard->set("global_frame", std::string(kGlobalFrame));
-    blackboard->set("robot_base_frame", std::string(kRobotBaseFrame));
-    blackboard->set("default_planner_id", std::string(kDefaultPlannerId));
-    blackboard->set("default_controller_id", std::string(kDefaultControllerId));
-    blackboard->set("default_smoother_id", std::string(kDefaultSmootherId));
-    blackboard->set("goal_reached_tol", kDefaultGoalReachedTol);
-    // navigate_to_pose.xml: InitialPoseReceived / TimeExpired defaults
-    blackboard->set("initial_pose_received", true);
-    blackboard->set("local_survival_timeout", 120.0);
-
-    if (!active_goal_.has_value()) {
-        return;
-    }
-
-    const auto& goal = *active_goal_;
     if (goal.has_plugins()) {
         if (!goal.plugins().planner_id().empty()) {
             blackboard->set("default_planner_id", goal.plugins().planner_id());
@@ -104,9 +85,61 @@ void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
     }
     blackboard->set("goals", goals);
     blackboard->set("number_of_goals", static_cast<int>(goals.size()));
-
     if (!goals.empty()) {
         blackboard->set("goal", goals.back());
+    }
+}
+
+bool NavigationTask::RetargetRunningTree(const task_proto::NavigationGoal& goal)
+{
+    if (!runner() || !runner()->IsRunning()) {
+        return false;
+    }
+    const auto tree = ResolveTreeForGoal(goal);
+    if (tree.empty() || runner()->active_tree() != tree) {
+        return false;
+    }
+
+    active_goal_ = goal;
+    initial_distance_ = -1.f;
+    ApplyGoalToBlackboard(live_blackboard_, goal);
+    if (live_blackboard_) {
+        live_blackboard_->set("goal_epoch", static_cast<int>(++replan_epoch_));
+    }
+    if (navigation()) {
+        navigation()->CancelPlanning();
+    }
+    SetLifecycle(TaskLifecycle::kRunning);
+    SetProgress(progress_.progress(), "retarget:" + tree);
+    AINFO << "NavigationTask: retargeted in-place " << tree
+          << " goals=" << goal.goals_size();
+    return true;
+}
+
+void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
+{
+    if (!blackboard) {
+        return;
+    }
+    live_blackboard_ = blackboard;
+
+    if (navigation()) {
+        blackboard->set(navigation::kNavigationClientBlackboardKey,
+                        navigation());
+    }
+
+    blackboard->set("global_frame", std::string(kGlobalFrame));
+    blackboard->set("robot_base_frame", std::string(kRobotBaseFrame));
+    blackboard->set("default_planner_id", std::string(kDefaultPlannerId));
+    blackboard->set("default_controller_id", std::string(kDefaultControllerId));
+    blackboard->set("default_smoother_id", std::string(kDefaultSmootherId));
+    blackboard->set("goal_reached_tol", kDefaultGoalReachedTol);
+    blackboard->set("initial_pose_received", true);
+    blackboard->set("local_survival_timeout", 120.0);
+    blackboard->set("goal_epoch", static_cast<int>(replan_epoch_));
+
+    if (active_goal_.has_value()) {
+        ApplyGoalToBlackboard(blackboard, *active_goal_);
     }
 }
 
@@ -187,6 +220,9 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         const bool preempting =
             Lifecycle() == TaskLifecycle::kRunning ||
             Lifecycle() == TaskLifecycle::kPaused;
+        if (preempting && RetargetRunningTree(goal)) {
+            return true;
+        }
         if (preempting) {
             AINFO << "NavigationTask: preempting active navigation with new "
                      "goal";
@@ -197,12 +233,8 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         if (navigation()) {
             navigation()->CancelActiveMotion();
         }
-        StopTree();
-        std::this_thread::sleep_for(std::chrono::milliseconds(
-            preempting ? 80 : 20));
-        if (navigation()) {
-            navigation()->CancelActiveMotion();
-        }
+        // Do not StopTree()/join: ComputePath can block the worker; Run()
+        // detaches the previous worker. CancelPlanning already aborted waits.
 
         if (epoch != goal_epoch_.load()) {
             AINFO << "NavigationTask: start superseded before BT launch";

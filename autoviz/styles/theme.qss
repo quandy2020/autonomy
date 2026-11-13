@@ -51,20 +51,20 @@ QToolBar#AutovizToolBar QToolButton {
   color: {{muted}};
 }
 QToolButton:hover {
-  background: rgba(148,163,184,0.14);
-  border-color: rgba(148,163,184,0.22);
-  color: {{accent-pressed}};
+  background: {{hover}};
+  border-color: transparent;
+  color: {{accent}};
 }
 QToolButton:pressed {
-  background: rgba(148,163,184,0.22);
+  background: {{sel-bg}};
 }
 QToolButton:checked {
-  background: {{accent-a14}};
-  color: {{accent-pressed}};
-  border-color: {{accent-a32}};
+  background: {{sel-bg}};
+  color: {{accent}};
+  border-color: transparent;
 }
 QToolButton:checked:hover {
-  background: {{accent-a20}};
+  background: {{sel-bg}};
 }
 QToolButton:disabled { color: {{disabled}}; }
 QToolButton#AutovizToolbarChromeButton,
@@ -116,7 +116,7 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit, QPlainTextEdit {
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus,
 QTextEdit:focus, QPlainTextEdit:focus {
   border: 1px solid {{accent-soft}};
-  background: rgba(255,255,255,0.92);
+  background: #FFFFFF;
 }
 QComboBox QAbstractItemView {
   background: rgba(255,255,255,0.96);
@@ -209,11 +209,11 @@ QToolTip {
   border-radius: 8px;
 }
 #{{id-title-tools}} QToolButton:hover {
-  background: rgba(255,255,255,0.55); border-color: {{glass-rim}};
+  background: {{hover}}; border-color: transparent;
 }
 #{{id-title-tools}} QToolButton:checked {
-  background: rgba(125,211,252,0.28); color: {{accent}};
-  border-color: rgba(125,211,252,0.55);
+  background: {{sel-bg}}; color: {{accent}};
+  border-color: transparent;
 }
 #{{id-hint}} {
   color: {{muted}}; font-size: 11px;

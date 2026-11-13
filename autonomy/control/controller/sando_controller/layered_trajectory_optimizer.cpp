@@ -29,13 +29,15 @@
 #include <limits>
 #include <utility>
 
+#include "autonomy/common/math/miqp/solver.hpp"
 #include "autonomy/control/controller/sando_controller/cubic_control_point.hpp"
-#include "autonomy/control/controller/sando_controller/miqp/solver.hpp"
 
 namespace autonomy {
 namespace control {
 namespace controller {
 namespace sando_controller {
+
+namespace miqp = ::autonomy::common::math::miqp;
 
 bool LayeredTrajectoryOptimizer::Optimize(const TrajRequest& request, std::vector<Piece>* pieces) const {
   pieces->clear();

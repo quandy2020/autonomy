@@ -8,6 +8,8 @@
 #include <QEasingCurve>
 #include <QEvent>
 #include <QHideEvent>
+#include <QPaintEvent>
+#include <QPainter>
 #include <QPropertyAnimation>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
@@ -42,6 +44,7 @@ CollapsiblePanel::CollapsiblePanel(QWidget* parent)
   header_button_->SetTone(tone());
   header_button_->setCheckable(true);
   header_button_->setChecked(true);
+  header_button_->setFocusPolicy(Qt::ClickFocus);
   header_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   header_button_->setAccessibleName(tr("Section"));
   QFont header_font = header_button_->font();
@@ -154,6 +157,20 @@ void CollapsiblePanel::hideEvent(QHideEvent* event) {
   animation_->stop();
   FinishTransition();
   Surface::hideEvent(event);
+}
+
+void CollapsiblePanel::paintEvent(QPaintEvent* /*event*/) {
+  // One flat plate + one rim — avoids Surface Liquid wash / focus double halo
+  // around Series and other settings section headers.
+  const ThemeTokens& tokens = GetThemeTokens(this, tone());
+  QPainter painter(this);
+  painter.setRenderHint(QPainter::Antialiasing, true);
+  QColor fill = tokens.surface;
+  fill.setAlpha(255);
+  painter.setBrush(fill);
+  painter.setPen(QPen(tokens.border_subtle, 1.0));
+  painter.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5),
+                          tokens.radius_medium, tokens.radius_medium);
 }
 
 void CollapsiblePanel::UpdateHeader() {

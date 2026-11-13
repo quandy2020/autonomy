@@ -44,18 +44,9 @@ class GlassWell : public QWidget {
     const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
     QPainterPath path;
     path.addRoundedRect(card, 14.0, 14.0);
-    painter.fillPath(path, QColor(255, 255, 255, 72));
-    QLinearGradient sheen(card.topLeft(),
-                          QPointF(card.left(), card.top() + 48.0));
-    sheen.setColorAt(0.0, QColor(255, 255, 255, 110));
-    sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-    painter.fillPath(path, sheen);
-    painter.setPen(QPen(QColor(255, 255, 255, 160), 1.0));
+    painter.fillPath(path, QColor(255, 255, 255));
+    painter.setPen(QPen(glass::Shell().glass_rim, 1.0));
     painter.drawPath(path);
-    QColor rim = glass::Shell().glass_rim;
-    rim.setAlpha(90);
-    painter.setPen(QPen(rim, 1.0));
-    painter.drawRoundedRect(card.adjusted(1.0, 1.0, -1.0, -1.0), 13.0, 13.0);
   }
 };
 
@@ -201,24 +192,9 @@ void AddPanelDialog::paintEvent(QPaintEvent* /*event*/) {
     painter.fillPath(glow, QColor(15, 23, 42, 4 + (8 - i)));
   }
 
-  painter.fillPath(card, QColor(252, 253, 253, 228));
-  QLinearGradient wash(outer.topLeft(), outer.bottomRight());
-  wash.setColorAt(0.0, QColor(255, 255, 255, 70));
-  wash.setColorAt(0.45, QColor(245, 252, 250, 28));
-  wash.setColorAt(1.0, QColor(241, 245, 249, 40));
-  painter.fillPath(card, wash);
-
-  QLinearGradient sheen(outer.topLeft(),
-                        QPointF(outer.left(), outer.top() + outer.height() * 0.38));
-  sheen.setColorAt(0.0, QColor(255, 255, 255, 150));
-  sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-  painter.fillPath(card, sheen);
-
-  painter.setPen(QPen(QColor(255, 255, 255, 200), 1.2));
+  painter.fillPath(card, QColor(252, 253, 253));
+  painter.setPen(QPen(QColor(198, 198, 200), 1.0));
   painter.drawPath(card);
-  painter.setPen(QPen(QColor(203, 213, 225, 110), 1.0));
-  painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0), kCardRadius - 1.0,
-                          kCardRadius - 1.0);
 }
 
 void AddPanelDialog::mousePressEvent(QMouseEvent* event) {

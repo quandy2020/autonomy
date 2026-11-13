@@ -1399,6 +1399,7 @@ void FrameSession::applyUiPreferences(const AppSettingsResult& settings,
   ui_preferences.theme_mode = settings.theme_mode.isEmpty()
                                   ? QStringLiteral("light")
                                   : settings.theme_mode;
+  ui_preferences.accent_color = settings.accent_color;
   ui_preferences.start_maximized = settings.start_maximized;
   ui_preferences.viewport_hud_visible = previous_ui.viewport_hud_visible;
   ui_preferences.shortcuts = settings.shortcuts;
@@ -1409,7 +1410,7 @@ void FrameSession::applyUiPreferences(const AppSettingsResult& settings,
   }
 
   if (QApplication* app = qobject_cast<QApplication*>(QApplication::instance())) {
-    ApplyUiThemeMode(ui_preferences.theme_mode, *app);
+    ApplyUiTheme(ui_preferences.theme_mode, ui_preferences.accent_color, *app);
     // ApplyUiThemeMode already RefreshAppThemeChrome; also force menu/tool QSS.
     if (frame_->chrome_ != nullptr) {
       frame_->chrome_->refreshShellChrome();

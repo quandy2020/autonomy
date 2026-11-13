@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <mutex>
@@ -107,6 +108,12 @@ public:
 
     void CancelActiveMotion();
 
+    /**
+     * Abort an in-flight ComputePath wait so a new 2D Goal can replan without
+     * waiting for /plan (failed plans never publish /plan).
+     */
+    void CancelPlanning();
+
     common::TaskActionClient<navigation_actions::FollowPathAction>& follow_path_client()
     {
         return *follow_path_client_;
@@ -174,13 +181,13 @@ private:
     automsgs::msgs::nav_msgs::Path latest_plan_;
     std::chrono::steady_clock::time_point latest_plan_time_{};
     uint64_t plan_epoch_{0};
+    std::atomic<uint64_t> plan_wait_generation_{0};
 
     void OnPlan(const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan);
-    bool WaitForPublishedPlan(
+    bool TryTakePublishedPlan(
         const automsgs::msgs::geometry_msgs::PoseStamped& goal,
         std::chrono::steady_clock::time_point not_before,
-        std::chrono::milliseconds timeout,
-        automsgs::msgs::nav_msgs::Path& path) const;
+        automsgs::msgs::nav_msgs::Path& path, uint64_t min_epoch = 0) const;
 };
 
 }  // namespace navigation

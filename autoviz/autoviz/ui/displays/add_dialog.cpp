@@ -172,17 +172,9 @@ class GlassWell : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 14.0, 14.0);
 
-    painter.fillPath(path, QColor(255, 255, 255, 72));
-    QLinearGradient sheen(card.topLeft(),
-                          QPointF(card.left(), card.top() + 48.0));
-    sheen.setColorAt(0.0, QColor(255, 255, 255, 110));
-    sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-    painter.fillPath(path, sheen);
-
-    painter.setPen(QPen(QColor(255, 255, 255, 160), 1.0));
+    painter.fillPath(path, QColor(255, 255, 255));
+    painter.setPen(QPen(QColor(198, 198, 200), 1.0));
     painter.drawPath(path);
-    painter.setPen(QPen(QColor(203, 213, 225, 90), 1.0));
-    painter.drawRoundedRect(card.adjusted(1.0, 1.0, -1.0, -1.0), 13.0, 13.0);
   }
 };
 
@@ -201,22 +193,9 @@ class GlassFooterBar : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 16.0, 16.0);
 
-    QColor plate = glass::Shell().glass_fill;
-    plate.setAlpha(96);
-    painter.fillPath(path, plate);
-    QLinearGradient wash(card.topLeft(), card.bottomLeft());
-    wash.setColorAt(0.0, QColor(255, 255, 255, 130));
-    QColor wash_end = glass::Shell().alternate_base;
-    wash_end.setAlpha(70);
-    wash.setColorAt(1.0, wash_end);
-    painter.fillPath(path, wash);
-
-    QColor rim = glass::Shell().glass_rim;
-    rim.setAlpha(120);
-    painter.setPen(QPen(rim, 1.0));
+    painter.fillPath(path, glass::Shell().glass_fill_deep);
+    painter.setPen(QPen(glass::Shell().glass_rim, 1.0));
     painter.drawPath(path);
-    painter.setPen(QPen(QColor(255, 255, 255, 180), 1.0));
-    painter.drawRoundedRect(card.adjusted(1.0, 1.0, -1.0, -1.0), 15.0, 15.0);
   }
 };
 
@@ -599,34 +578,10 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
 
   const glass::ShellTokens shell = glass::Shell();
   QColor plate = shell.glass_fill_deep;
-  plate.setAlpha(232);
+  plate.setAlpha(255);
   painter.fillPath(card, plate);
-
-  QLinearGradient wash(outer.topLeft(), outer.bottomRight());
-  wash.setColorAt(0.0, QColor(255, 255, 255, 70));
-  QColor cool = shell.glass_cool;
-  cool.setAlpha(28);
-  wash.setColorAt(0.45, cool);
-  QColor end = shell.alternate_base;
-  end.setAlpha(40);
-  wash.setColorAt(1.0, end);
-  painter.fillPath(card, wash);
-
-  QLinearGradient sheen(
-      outer.topLeft(),
-      QPointF(outer.left(), outer.top() + outer.height() * 0.38));
-  sheen.setColorAt(0.0, QColor(255, 255, 255, 150));
-  sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-  painter.fillPath(card, sheen);
-
-  // Inner highlight rim + outer soft edge.
-  painter.setPen(QPen(QColor(255, 255, 255, 200), 1.2));
+  painter.setPen(QPen(shell.glass_rim, 1.0));
   painter.drawPath(card);
-  QColor rim = shell.glass_rim;
-  rim.setAlpha(qMin(rim.alpha(), 120));
-  painter.setPen(QPen(rim, 1.0));
-  painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0),
-                          kCardRadius - 1.0, kCardRadius - 1.0);
 }
 
 void AddDisplayDialog::mousePressEvent(QMouseEvent* event) {

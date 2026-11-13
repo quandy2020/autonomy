@@ -446,7 +446,7 @@ navigator_options {
   }
   default_planner_id: "navfn_planner"
   enable_autolink_action_servers: true
-  default_controller_id: "graceful_controller"
+  default_controller_id: "mppi_controller"
   plugin_lib_names: "autonomy_behavior_tree_action_back_up_action"
   plugin_lib_names: "autonomy_behavior_tree_action_back_up_cancel_node"
   plugin_lib_names: "autonomy_behavior_tree_action_clear_costmap_service"

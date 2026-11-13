@@ -12,6 +12,7 @@
 #include <QAction>
 #include <QApplication>
 #include <QClipboard>
+#include <QDateTime>
 #include <QEnterEvent>
 #include <QKeyEvent>
 #include <QLineF>
@@ -36,8 +37,25 @@ constexpr int kAxisLeft = 56;
 constexpr int kAxisTop = 16;
 constexpr int kAxisRight = 16;
 constexpr int kAxisRightWide = 56;
-constexpr int kAxisBottom = 48;
+constexpr int kAxisBottom = 56;
 constexpr double kExactSampleEpsilon = 1e-6;
+
+/** Header stamp (sec + nsec) → local calendar time for axis / tooltip. */
+QString FormatHeaderStampDateTime(double stamp_sec, bool two_line) {
+  if (!std::isfinite(stamp_sec)) {
+    return QStringLiteral("--");
+  }
+  const qint64 msec =
+      static_cast<qint64>(std::llround(stamp_sec * 1000.0));
+  const QDateTime dt = QDateTime::fromMSecsSinceEpoch(msec, Qt::LocalTime);
+  if (!dt.isValid()) {
+    return QString::number(stamp_sec, 'f', 3);
+  }
+  if (two_line) {
+    return dt.toString(QStringLiteral("yyyy-MM-dd\nHH:mm:ss.zzz"));
+  }
+  return dt.toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"));
+}
 constexpr double kInspectPickRadiusPx = 10.0;
 constexpr int kPanDragThresholdPx = 4;
 constexpr qreal kDefaultLineWidth = 2.0;
@@ -619,12 +637,8 @@ std::optional<PlotChartWidget::HoverSample> PlotChartWidget::sampleAtX(
 
 QString PlotChartWidget::formatXAxisValue(double x) const {
   if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
-    // Elapsed seconds from the left edge of the visible window (0 → forward).
-    const double origin = view_override_active_
-                              ? view_min_x_
-                              : (reference_time_sec_ - x_window_sec_);
-    const double rel = x - origin;
-    return QString::number(rel, 'f', 1);
+    // Message header.stamp as calendar time (two-line for the bottom axis).
+    return FormatHeaderStampDateTime(x, /*two_line=*/true);
   }
   if (x_axis_mode_ == PlotXAxisMode::kIndex) {
     return QString::number(qRound64(x));
@@ -634,11 +648,8 @@ QString PlotChartWidget::formatXAxisValue(double x) const {
 
 QString PlotChartWidget::formatTooltipXValue(double x) const {
   if (x_axis_mode_ == PlotXAxisMode::kTimestamp) {
-    const double origin = view_override_active_
-                              ? view_min_x_
-                              : (reference_time_sec_ - x_window_sec_);
-    const double rel = x - origin;
-    return tr("Time: %1 s").arg(QString::number(rel, 'f', 3));
+    return tr("Time: %1").arg(
+        FormatHeaderStampDateTime(x, /*two_line=*/false));
   }
   if (x_axis_mode_ == PlotXAxisMode::kIndex) {
     return tr("Index: %1").arg(qRound64(x));
@@ -822,16 +833,22 @@ void PlotChartWidget::drawGrid(QPainter& painter, const AxisRange& range,
     }
   }
 
-  for (int i = 0; i <= 6; ++i) {
-    const double x = range.min_x + (range.max_x - range.min_x) * i / 6.0;
+  // Fewer ticks so yyyy-MM-dd / HH:mm:ss.zzz labels have room.
+  constexpr int kXTicks = 4;
+  QFont axis_font = painter.font();
+  axis_font.setPointSizeF(qMax(8.0, axis_font.pointSizeF() - 1.0));
+  painter.setFont(axis_font);
+  for (int i = 0; i <= kXTicks; ++i) {
+    const double x =
+        range.min_x + (range.max_x - range.min_x) * i / static_cast<double>(kXTicks);
     const QPointF p = mapToChart(x, range.min_y, range, false);
     if (show_grid_) {
       painter.setPen(QColor(235, 235, 235));
       painter.drawLine(QPointF(p.x(), chart.top()), QPointF(p.x(), chart.bottom()));
     }
     painter.setPen(QColor(120, 120, 120));
-    painter.drawText(QRect(static_cast<int>(p.x()) - 24, chart.bottom() + 4, 48,
-                           16),
+    painter.drawText(QRect(static_cast<int>(p.x()) - 52, chart.bottom() + 2, 104,
+                           36),
                      Qt::AlignHCenter | Qt::AlignTop, formatXAxisValue(x));
   }
 }
@@ -1390,7 +1407,7 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
                    glass::Shell().accent);
   painter.setPen(QColor(60, 60, 60));
   painter.drawText(add_button.adjusted(24, 0, -8, 0), Qt::AlignVCenter | Qt::AlignLeft,
-                   tr("Click to add a series"));
+                   tr("Click to add a series…"));
 
   drawTooltip(painter);
 }

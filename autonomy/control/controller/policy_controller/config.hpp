@@ -75,6 +75,16 @@ public:
     const proto::Diffusion& effective_diffusion() const {
         return effective_diffusion_;
     }
+    /**
+     * @brief Cached: whether this policy is SanD-Planner generate-and-select.
+     */
+    bool is_sand_planner() const { return is_sand_planner_; }
+    /**
+     * @brief Cached SanD-Planner options with defaults filled in.
+     */
+    const proto::SandPlanner& effective_sand_planner() const {
+        return effective_sand_planner_;
+    }
 
     /**
      * @brief Map engine fields to @c ::autonomy::common::network::InferenceOptions.
@@ -94,7 +104,9 @@ private:
     proto::PolicyConfig proto_;
     ActionSchema action_schema_;
     bool is_diffusion_{false};
+    bool is_sand_planner_{false};
     proto::Diffusion effective_diffusion_;
+    proto::SandPlanner effective_sand_planner_;
 };
 
 }  // namespace policy_controller

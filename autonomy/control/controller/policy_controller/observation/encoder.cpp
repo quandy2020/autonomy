@@ -9,6 +9,7 @@
 #include <string>
 
 #include "autonomy/control/controller/policy_controller/observation/costmap_encoder.hpp"
+#include "autonomy/control/controller/policy_controller/observation/depth_encoder.hpp"
 #include "autonomy/control/controller/policy_controller/observation/image_encoder.hpp"
 #include "autonomy/control/controller/policy_controller/observation/kinematic_encoder.hpp"
 #include "autonomy/control/controller/policy_controller/observation/laser_scan_encoder.hpp"
@@ -63,6 +64,16 @@ double ModalityStamp(const ObservationSnapshot& snapshot,
             return snapshot.image != nullptr
                        ? HeaderStampSeconds(snapshot.image->header())
                        : 0.0;
+        case proto::OBSERVATION_DEPTH: {
+            if (!snapshot.depth_history.empty() &&
+                snapshot.depth_history.back() != nullptr) {
+                return HeaderStampSeconds(
+                    snapshot.depth_history.back()->header());
+            }
+            return snapshot.image != nullptr
+                       ? HeaderStampSeconds(snapshot.image->header())
+                       : 0.0;
+        }
         case proto::OBSERVATION_POINT_CLOUD:
             return snapshot.point_cloud != nullptr
                        ? HeaderStampSeconds(snapshot.point_cloud->header())
@@ -114,6 +125,17 @@ std::size_t ExpectedElements(const proto::ObservationInput& input,
             return 200 * 200;
         case proto::OBSERVATION_RAW:
             return 1;
+        case proto::OBSERVATION_DEPTH: {
+            const int history = std::max(1, context.sand_planner.depth_history());
+            const int height = std::max(1, context.sand_planner.depth_height());
+            const int width = std::max(1, context.sand_planner.depth_width());
+            return static_cast<std::size_t>(history) *
+                   static_cast<std::size_t>(height) *
+                   static_cast<std::size_t>(width);
+        }
+        case proto::OBSERVATION_GOAL:
+        case proto::OBSERVATION_PREVIOUS_VELOCITY:
+            return 3;
         default:
             return 1;
     }
@@ -137,6 +159,12 @@ const char* DefaultModalityName(proto::ObservationModality modality) {
             return "observation_lidar_bev";
         case proto::OBSERVATION_RAW:
             return "observation_raw";
+        case proto::OBSERVATION_DEPTH:
+            return "observation_depth";
+        case proto::OBSERVATION_GOAL:
+            return "observation_goal";
+        case proto::OBSERVATION_PREVIOUS_VELOCITY:
+            return "observation_previous_velocity";
         default:
             return "";
     }
@@ -201,6 +229,7 @@ bool PassesTimeChecks(const ObservationSnapshot& snapshot,
         if (age > context.max_observation_age_sec &&
             (input.modality() == proto::OBSERVATION_LASER ||
              input.modality() == proto::OBSERVATION_IMAGE ||
+             input.modality() == proto::OBSERVATION_DEPTH ||
              input.modality() == proto::OBSERVATION_POINT_CLOUD ||
              input.modality() == proto::OBSERVATION_LIDAR_BEV ||
              input.modality() == proto::OBSERVATION_RAW)) {
@@ -247,6 +276,16 @@ bool EncodeOne(const ObservationSnapshot& snapshot,
             break;
         case proto::OBSERVATION_RAW:
             ok = EncodeRawTensor(snapshot, input, output, error);
+            break;
+        case proto::OBSERVATION_DEPTH:
+            ok = EncodeDepth(snapshot, input, context.sand_planner, output,
+                             error);
+            break;
+        case proto::OBSERVATION_GOAL:
+            ok = EncodeGoal(snapshot, input, output, error);
+            break;
+        case proto::OBSERVATION_PREVIOUS_VELOCITY:
+            ok = EncodePreviousVelocity(context, input, output, error);
             break;
         default:
             if (error != nullptr) {

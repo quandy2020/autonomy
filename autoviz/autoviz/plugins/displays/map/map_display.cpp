@@ -66,14 +66,16 @@ const Palette& MapPalette() {
 const Palette& CostmapPalette() {
   static const Palette kPalette = [] {
     Palette palette{};
+    // Match RViz costmap palette (bright). Darkness came from over-muting +
+    // stacking /map and local costmap at the same Z (blend-order flicker).
     SetPaletteColor(&palette, 0, 0, 0, 0, 0);
     for (unsigned char i = 1; i <= 98; ++i) {
       const unsigned char v = static_cast<unsigned char>((255 * i) / 100);
       SetPaletteColor(&palette, i, v, 0, static_cast<unsigned char>(255 - v),
                       255);
     }
-    SetPaletteColor(&palette, 99, 0, 255, 255, 255);    // cyan
-    SetPaletteColor(&palette, 100, 255, 0, 255, 255);  // purple / lethal
+    SetPaletteColor(&palette, 99, 0, 255, 255, 255);    // inscribed cyan
+    SetPaletteColor(&palette, 100, 255, 0, 255, 255);   // lethal purple
     FillIllegalPositive(&palette);
     FillIllegalNegative(&palette);
     SetPaletteColor(&palette, 255, 0x70, 0x89, 0x86, 255);
@@ -150,10 +152,10 @@ MapDisplay::MapDisplay(std::string channel)
 }
 
 std::vector<common::DisplayPropertySpec> MapDisplay::propertySpecs() const {
-  return {{"alpha", "Alpha", "0.7"},
+  return {{"alpha", "Alpha", "0.85"},
           {"color_scheme", "Color Scheme", "map", {"map", "costmap", "raw"}},
           {"use_timestamp", "Use Timestamp", "false"},
-          {"draw_behind", "Draw Behind", "false"},
+          {"draw_behind", "Draw Behind", "true"},
           {"decimate", "Decimate", "1"}};
 }
 
@@ -212,11 +214,14 @@ void MapDisplay::clearGeometry() {
   bottom_right_ = QVector3D();
   bottom_left_ = QVector3D();
   has_geometry_ = false;
+  draw_order_ = 0;
+  depth_write_ = false;
+  depth_check_ = true;
 }
 
 void MapDisplay::rebuildGeometry() {
-  clearGeometry();
   if (context_ == nullptr || !has_full_map_) {
+    clearGeometry();
     return;
   }
 
@@ -227,6 +232,7 @@ void MapDisplay::rebuildGeometry() {
   if (width == 0 || height == 0 || resolution <= 0.f ||
       static_cast<int>(current_message_.data_size()) <
           static_cast<int>(width * height)) {
+    clearGeometry();
     return;
   }
 
@@ -236,37 +242,61 @@ void MapDisplay::rebuildGeometry() {
   const float oz = static_cast<float>(origin.position().z());
   const auto& orientation = origin.orientation();
 
-  const uint32_t decimate_prop = static_cast<uint32_t>(std::max(
+  // Honor the Decimate property only — auto-forcing step≥2 on maps >120 made
+  // local costmaps look blocky (thick cyan/purple) vs RViz full resolution.
+  const uint32_t step = static_cast<uint32_t>(std::max(
       1.0f, common::ParseFloatProperty(propertyValue("decimate", "1"), 1.f)));
-  const uint32_t step =
-      (width > 120 || height > 120) ? std::max(2u, decimate_prop) : decimate_prop;
   const uint32_t image_width = (width + step - 1) / step;
   const uint32_t image_height = (height + step - 1) / step;
   if (image_width == 0 || image_height == 0) {
+    clearGeometry();
     return;
   }
 
   const float alpha =
-      std::clamp(common::ParseFloatProperty(propertyValue("alpha", "0.7"), 0.7f),
+      std::clamp(common::ParseFloatProperty(propertyValue("alpha", "0.85"), 0.85f),
                  0.f, 1.f);
   const std::string scheme = propertyValue("color_scheme", "map");
-  image_ = QImage(static_cast<int>(image_width), static_cast<int>(image_height),
-                  QImage::Format_RGBA8888);
-  image_.fill(Qt::transparent);
+  QImage new_image(static_cast<int>(image_width),
+                   static_cast<int>(image_height), QImage::Format_RGBA8888);
+  new_image.fill(Qt::transparent);
 
   for (uint32_t by = 0, iy = 0; by < height; by += step, ++iy) {
     for (uint32_t bx = 0, ix = 0; bx < width; bx += step, ++ix) {
       const int32_t value =
           AggregateBlock(current_message_, width, height, bx, by, step);
-      image_.setPixelColor(static_cast<int>(ix),
-                           static_cast<int>(image_height - 1 - iy),
-                           ColorForScheme(scheme, value, alpha));
+      new_image.setPixelColor(static_cast<int>(ix),
+                              static_cast<int>(image_height - 1 - iy),
+                              ColorForScheme(scheme, value, alpha));
     }
   }
 
   const bool draw_behind =
-      common::ParseBoolProperty(propertyValue("draw_behind", "false"), false);
-  const float z_offset = draw_behind ? -0.02f : 0.02f;
+      common::ParseBoolProperty(propertyValue("draw_behind", "true"), true);
+  // RViz-like heights: map on the ground, costmap a hair above. Anti-flicker
+  // comes from depth-write + draw_order / render queues — not a large Z lift.
+  float z_offset;
+  int draw_order;
+  bool depth_write;
+  bool depth_check = true;
+  const std::string& ch = channel();
+  const bool local_costmap =
+      ch.find("local_costmap") != std::string::npos;
+  if (scheme == "costmap") {
+    // Local above global when both use the costmap palette.
+    draw_order = local_costmap ? 3 : 2;
+    z_offset = local_costmap ? (draw_behind ? 0.012f : 0.02f)
+                             : (draw_behind ? 0.008f : 0.015f);
+    depth_write = false;
+  } else if (scheme == "raw") {
+    draw_order = 1;
+    z_offset = draw_behind ? -0.004f : 0.004f;
+    depth_write = true;
+  } else {
+    draw_order = 0;
+    z_offset = draw_behind ? -0.01f : 0.0f;
+    depth_write = true;
+  }
 
   QMatrix4x4 local_to_frame;
   local_to_frame.setToIdentity();
@@ -292,7 +322,7 @@ void MapDisplay::rebuildGeometry() {
           context_->tf_buffer->lookupTransform(context_->fixed_frame, frame, lookup_time);
       frame_to_fixed = transformToMatrix(tf);
     } catch (...) {
-      clearGeometry();
+      // Keep the last good texture instead of blanking a frame (flicker).
       return;
     }
   }
@@ -300,10 +330,15 @@ void MapDisplay::rebuildGeometry() {
   const QMatrix4x4 total = frame_to_fixed * local_to_frame;
   const float map_w = static_cast<float>(width) * resolution;
   const float map_h = static_cast<float>(height) * resolution;
+  // Commit atomically so onDraw never sees a cleared mid-rebuild state.
+  image_ = std::move(new_image);
   top_left_ = ApplyTransform(total, QVector3D(0.f, map_h, 0.f));
   top_right_ = ApplyTransform(total, QVector3D(map_w, map_h, 0.f));
   bottom_right_ = ApplyTransform(total, QVector3D(map_w, 0.f, 0.f));
   bottom_left_ = ApplyTransform(total, QVector3D(0.f, 0.f, 0.f));
+  draw_order_ = draw_order;
+  depth_write_ = depth_write;
+  depth_check_ = depth_check;
   has_geometry_ = true;
 
   if (context_->request_redraw) {
@@ -357,7 +392,8 @@ void MapDisplay::onDraw(rendering::SceneOverlay& scene) {
     return;
   }
   scene.addTexturedQuad(top_left_, top_right_, bottom_right_, bottom_left_, image_,
-                        rendering::SceneOverlay::TextureFilterMode::kNearest);
+                        rendering::SceneOverlay::TextureFilterMode::kNearest,
+                        draw_order_, depth_write_, depth_check_);
 }
 
 }  // namespace display

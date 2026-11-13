@@ -18,6 +18,28 @@ namespace {
 
 // Default light — avoids solid-black chrome when the desktop is dark.
 ShellAppearance g_appearance = ShellAppearance::kLight;
+QColor g_accent_override;  // invalid ⇒ use appearance defaults
+
+void ApplyAccentOverride(ShellTokens& tokens) {
+  if (!g_accent_override.isValid()) {
+    return;
+  }
+  QColor accent = g_accent_override;
+  accent.setAlpha(255);
+  tokens.accent = accent;
+  tokens.accent_pressed = accent.darker(118);
+  tokens.link = accent.darker(110);
+  tokens.selection_text = accent;
+  // CapCut-style: selected tools keep a neutral gray plate; only ink follows
+  // the accent override (not a tinted blue/green wash).
+  if (ShellIsDark()) {
+    tokens.accent_soft = QColor(0x3A, 0x3A, 0x3C);
+    tokens.selection_bg = QColor(0x3A, 0x3A, 0x3C);
+  } else {
+    tokens.accent_soft = QColor(0xE2, 0xE2, 0xE6);
+    tokens.selection_bg = QColor(0xE2, 0xE2, 0xE6);
+  }
+}
 
 bool SystemPrefersDark() {
   if (QGuiApplication::instance() == nullptr) {
@@ -44,12 +66,13 @@ ShellTokens DarkShellTokens() {
   tokens.secondary_text = QColor(0xAE, 0xAE, 0xB2);
   tokens.button = QColor(0x3A, 0x3A, 0x3C);
   tokens.button_text = QColor(0xF2, 0xF2, 0xF7);
-  tokens.accent = QColor(0x0A, 0x84, 0xFF);
-  tokens.accent_pressed = QColor(0x00, 0x71, 0xE3);
-  tokens.accent_soft = QColor(0x1B, 0x3A, 0x5A);
-  tokens.selection_bg = QColor(0x1B, 0x3A, 0x5A);
-  tokens.selection_text = QColor(0xF2, 0xF2, 0xF7);
-  tokens.link = QColor(0x40, 0x9C, 0xFF);
+  tokens.accent = QColor(0xA8, 0xC9, 0x4A);
+  tokens.accent_pressed = QColor(0x8F, 0xB0, 0x3A);
+  tokens.accent_soft = QColor(0x3A, 0x3A, 0x3C);
+  tokens.selection_bg = QColor(0x3A, 0x3A, 0x3C);
+  tokens.selection_text = QColor(0xA8, 0xC9, 0x4A);
+  tokens.link = QColor(0xA8, 0xC9, 0x4A);
+  tokens.control_radius = 6;
   tokens.border = QColor(0x48, 0x48, 0x4A);
   tokens.border_light = QColor(0x38, 0x38, 0x3A);
   tokens.tooltip_base = QColor(0x2C, 0x2C, 0x2E);
@@ -59,11 +82,11 @@ ShellTokens DarkShellTokens() {
   tokens.hover_bg = QColor(0x3A, 0x3A, 0x3C);
   tokens.dock_title = QColor(0x1C, 0x1C, 0x1E);
   tokens.status_bar = QColor(0x1C, 0x1C, 0x1E);
-  tokens.glass_fill = QColor(44, 44, 46, 224);
-  tokens.glass_fill_deep = QColor(28, 28, 30, 245);
-  tokens.glass_cool = QColor(10, 132, 255, 18);
-  tokens.glass_sheen = QColor(255, 255, 255, 20);
-  tokens.glass_rim = QColor(84, 84, 88, 120);
+  tokens.glass_fill = QColor(0x2C, 0x2C, 0x2E);
+  tokens.glass_fill_deep = QColor(0x1C, 0x1C, 0x1E);
+  tokens.glass_cool = QColor(0x2C, 0x2C, 0x2E);
+  tokens.glass_sheen = QColor(0x2C, 0x2C, 0x2E);
+  tokens.glass_rim = QColor(0x48, 0x48, 0x4A);
   return tokens;
 }
 
@@ -86,12 +109,12 @@ ShellTokens LiquidShellTokens() {
   tokens.secondary_text = QColor(0x5A, 0x64, 0x78);
   tokens.button = QColor(0xE4, 0xEB, 0xF6);
   tokens.button_text = QColor(0x1A, 0x1A, 0x2E);
-  tokens.accent = QColor(0x00, 0x7A, 0xFF);
-  tokens.accent_pressed = QColor(0x00, 0x5F, 0xD6);
-  tokens.accent_soft = QColor(0xD6, 0xE8, 0xFF);
-  tokens.selection_bg = QColor(0xD6, 0xE8, 0xFF);
-  tokens.selection_text = QColor(0x1A, 0x1A, 0x2E);
-  tokens.link = QColor(0x00, 0x66, 0xCC);
+  tokens.accent = QColor(0x5B, 0x7A, 0x1E);
+  tokens.accent_pressed = QColor(0x4A, 0x64, 0x18);
+  tokens.accent_soft = QColor(0xE2, 0xE2, 0xE6);
+  tokens.selection_bg = QColor(0xE2, 0xE2, 0xE6);
+  tokens.selection_text = QColor(0x5B, 0x7A, 0x1E);
+  tokens.link = QColor(0x5B, 0x7A, 0x1E);
   tokens.border = QColor(0x9A, 0xA8, 0xBC);
   tokens.border_light = QColor(0xC8, 0xD2, 0xE0);
   tokens.tooltip_base = QColor(0xFB, 0xFC, 0xFF);
@@ -101,15 +124,15 @@ ShellTokens LiquidShellTokens() {
   tokens.hover_bg = QColor(0xD8, 0xE4, 0xF4);
   tokens.dock_title = QColor(0xEE, 0xF3, 0xFA);
   tokens.status_bar = QColor(0xEE, 0xF3, 0xFA);
-  // Frosted fill (bright diffusion) + ClearGlass cool wash — mostly opaque.
-  tokens.glass_fill = QColor(255, 255, 255, 228);
-  tokens.glass_fill_deep = QColor(248, 250, 255, 245);
-  tokens.glass_cool = QColor(120, 180, 255, 28);
-  tokens.glass_sheen = QColor(255, 255, 255, 180);
-  tokens.glass_rim = QColor(170, 185, 205, 160);
+  // Opaque Liquid chrome — no frosted bleed-through.
+  tokens.glass_fill = QColor(0xEE, 0xF3, 0xFA);
+  tokens.glass_fill_deep = QColor(0xFB, 0xFC, 0xFF);
+  tokens.glass_cool = QColor(0xEE, 0xF3, 0xFA);
+  tokens.glass_sheen = QColor(0xFF, 0xFF, 0xFF);
+  tokens.glass_rim = QColor(0x9A, 0xA8, 0xBC);
   tokens.panel_radius = 18;
   tokens.title_radius = 14;
-  tokens.control_radius = 12;
+  tokens.control_radius = 6;
   return tokens;
 }
 
@@ -136,13 +159,45 @@ bool ShellIsDark() {
 
 bool ShellIsLiquid() { return g_appearance == ShellAppearance::kLiquid; }
 
+void SetShellAccentOverride(const QColor& accent) {
+  g_accent_override = accent.isValid() ? accent : QColor();
+}
+
+QColor ShellAccentOverride() { return g_accent_override; }
+
 OverlayTokens Overlay() { return OverlayTokens{}; }
 
+void ForceOpaqueShellMaterials(ShellTokens& tokens) {
+  tokens.glass_fill.setAlpha(255);
+  tokens.glass_fill_deep.setAlpha(255);
+  tokens.glass_cool.setAlpha(255);
+  tokens.glass_sheen.setAlpha(255);
+  tokens.glass_rim.setAlpha(255);
+  tokens.window.setAlpha(255);
+  tokens.base.setAlpha(255);
+  tokens.card.setAlpha(255);
+  tokens.button.setAlpha(255);
+  tokens.toolbar_bg.setAlpha(255);
+  tokens.dock_title.setAlpha(255);
+  tokens.status_bar.setAlpha(255);
+  tokens.alternate_base.setAlpha(255);
+  tokens.hover_bg.setAlpha(255);
+  tokens.border.setAlpha(255);
+  tokens.border_light.setAlpha(255);
+}
+
 ShellTokens Shell() {
+  ShellTokens tokens;
   if (ShellIsLiquid()) {
-    return LiquidShellTokens();
+    tokens = LiquidShellTokens();
+  } else if (ShellIsDark()) {
+    tokens = DarkShellTokens();
+  } else {
+    tokens = ShellTokens{};
   }
-  return ShellIsDark() ? DarkShellTokens() : ShellTokens{};
+  ApplyAccentOverride(tokens);
+  ForceOpaqueShellMaterials(tokens);
+  return tokens;
 }
 
 QString Hex(const QColor& c) { return c.name(QColor::HexRgb); }
@@ -157,12 +212,8 @@ QString Rgba(const QColor& c) {
 
 QString ShellGlassBarGradientCss() {
   const ShellTokens t = Shell();
-  QColor leading = t.glass_fill_deep;
-  leading.setAlpha(qMax(leading.alpha(), 245));
-  return QStringLiteral(
-             "qlineargradient(x1:0,y1:0,x2:0,y2:1,"
-             "stop:0 %1, stop:0.35 %2, stop:1 %3)")
-      .arg(Rgba(leading), Rgba(t.glass_fill_deep), Rgba(t.glass_fill));
+  // Flat opaque plate — no translucent gradient wash.
+  return Hex(t.glass_fill_deep);
 }
 
 QString ShellWindowWashCss() {
@@ -173,11 +224,11 @@ QString ShellWindowWashCss() {
       .arg(Hex(t.window), Hex(t.alternate_base), Hex(t.base));
 }
 
-QString ShellCssBg() { return Rgba(Shell().glass_fill); }
+QString ShellCssBg() { return Hex(Shell().glass_fill); }
 
-QString ShellCssSurface() { return Rgba(Shell().glass_fill_deep); }
+QString ShellCssSurface() { return Hex(Shell().glass_fill_deep); }
 
-QString ShellCssBorder() { return Rgba(Shell().glass_rim); }
+QString ShellCssBorder() { return Hex(Shell().glass_rim); }
 
 QString ShellCssText() { return Hex(Shell().text); }
 
@@ -218,12 +269,12 @@ QString ShellToolBarStyleSheet(bool object_scoped) {
   const QString muted = Hex(t.secondary_text);
   const QString rim = Rgba(t.glass_rim);
   const QString accent = Hex(t.accent);
-  const QString accent_pressed = Hex(t.accent_pressed);
-  QColor hover = ShellIsLiquid() ? t.accent_soft : t.hover_bg;
-  hover.setAlpha(ShellIsDark() ? 255 : 160);
-  QColor checked = t.accent_soft;
-  checked.setAlpha(ShellIsDark() ? 255 : 200);
-  const int radius = ShellIsLiquid() ? 8 : 5;
+  // CapCut: soft gray selected plate + olive ink, no border.
+  QColor hover = t.hover_bg;
+  hover.setAlpha(255);
+  QColor checked = t.selection_bg;
+  checked.setAlpha(255);
+  const int radius = t.control_radius;
   const QString root =
       object_scoped ? QStringLiteral("QToolBar#AutovizToolBar")
                     : QStringLiteral("QToolBar#AutovizToolBar, QToolBar");
@@ -232,15 +283,16 @@ QString ShellToolBarStyleSheet(bool object_scoped) {
                     : QStringLiteral("QToolBar QToolButton");
   // Chain .arg — multi-arg overload caps at 9 replacements.
   return QStringLiteral(
-             "%1 { background: %2; spacing: 2px; padding: 3px 8px; "
+             "%1 { background: %2; spacing: 4px; padding: 4px 8px; "
              "border: none; border-bottom: 1px solid %3; }"
              "%4 { color: %5; background: transparent; "
              "border: 1px solid transparent; border-radius: %6px; "
-             "padding: 3px 6px; }"
+             "padding: 4px 6px; }"
              "%4:hover { background: %7; color: %8; }"
-             "%4:checked { background: %9; color: %10; }")
+             "%4:checked { background: %9; color: %10; "
+             "border-color: transparent; }")
       .arg(root, plate, rim, btn, muted, QString::number(radius))
-      .arg(Rgba(hover), accent, Rgba(checked), accent_pressed);
+      .arg(Hex(hover), accent, Hex(checked), accent);
 }
 
 QString ShellStatusBarStyleSheet() {
@@ -253,78 +305,39 @@ QString ShellStatusBarStyleSheet() {
 
 void PaintShellGlass(QPainter& painter, const QRectF& rect, qreal radius) {
   const ShellTokens t = Shell();
-  const bool liquid = ShellIsLiquid();
   painter.setRenderHint(QPainter::Antialiasing, true);
 
   const QRectF card = rect.adjusted(0.5, 0.5, -0.5, -0.5);
   QPainterPath path;
   path.addRoundedRect(card, radius, radius);
 
+  // Solid opaque plate — no frosted / sheen / chromatic washes.
   painter.fillPath(path, t.glass_fill_deep);
-
-  QColor body_end = t.glass_fill;
-  body_end.setAlpha(qMin(body_end.alpha(), liquid ? 90 : 120));
-  QLinearGradient body(card.topLeft(), card.bottomLeft());
-  body.setColorAt(0.0, t.glass_fill);
-  body.setColorAt(1.0, body_end);
-  painter.fillPath(path, body);
-
-  painter.fillPath(path, t.glass_cool);
-
-  if (liquid) {
-    // ClearGlass-style cool refraction wash (diagonal).
-    QColor cool_b = QColor(180, 220, 255, 28);
-    QLinearGradient cool(card.topRight(), card.bottomLeft());
-    cool.setColorAt(0.0, cool_b);
-    cool.setColorAt(0.55, QColor(255, 255, 255, 0));
-    cool.setColorAt(1.0, QColor(255, 200, 230, 18));
-    painter.fillPath(path, cool);
-  }
-
-  QColor sheen_end = t.glass_sheen;
-  sheen_end.setAlpha(0);
-  QLinearGradient sheen(
-      card.topLeft(),
-      QPointF(card.left(), card.top() + card.height() * (liquid ? 0.55 : 0.45)));
-  sheen.setColorAt(0.0, t.glass_sheen);
-  sheen.setColorAt(1.0, sheen_end);
-  painter.fillPath(path, sheen);
-
-  if (liquid) {
-    // Chromatic aberration rim (qt-liquid-glass Material::Chromatic cue).
-    painter.setBrush(Qt::NoBrush);
-    painter.setPen(QPen(QColor(255, 90, 120, 42), 1.0));
-    painter.drawRoundedRect(card.adjusted(1.0, 1.0, -0.5, -0.5), radius,
-                            radius);
-    painter.setPen(QPen(QColor(80, 180, 255, 48), 1.0));
-    painter.drawRoundedRect(card.adjusted(0.5, 0.5, -1.0, -1.0), radius,
-                            radius);
-  }
-
   painter.setPen(QPen(t.glass_rim, 1.0));
   painter.setBrush(Qt::NoBrush);
   painter.drawPath(path);
 }
 
-QColor ShellSelectionFill(int alpha) {
-  QColor fill = Shell().accent;
-  fill.setAlpha(qBound(0, alpha, 255));
+QColor ShellSelectionFill(int /*alpha*/) {
+  // Opaque soft plate — translucent accent+AA looked like a blurry halo.
+  QColor fill = Shell().selection_bg;
+  if (!fill.isValid() || fill.alpha() == 0) {
+    fill = Shell().accent_soft;
+  }
+  fill.setAlpha(255);
   return fill;
 }
 
-QColor ShellHoverFill(int alpha) {
-  QColor fill = ShellIsLiquid() ? Shell().accent_soft : Shell().hover_bg;
-  if (fill.alpha() == 255) {
-    fill.setAlpha(qBound(0, alpha, 255));
-  } else {
-    fill.setAlpha(qBound(0, qMin(fill.alpha(), alpha), 255));
-  }
+QColor ShellHoverFill(int /*alpha*/) {
+  QColor fill = Shell().hover_bg;
+  fill.setAlpha(255);
   return fill;
 }
 
 QColor ShellSelectionInk() {
-  // Prefer pressed accent (darker) so selected labels stay readable on soft fill.
-  return Shell().accent_pressed;
+  // CapCut: selected glyphs use the olive accent on the gray plate.
+  return Shell().selection_text.isValid() ? Shell().selection_text
+                                         : Shell().accent;
 }
 
 }  // namespace glass

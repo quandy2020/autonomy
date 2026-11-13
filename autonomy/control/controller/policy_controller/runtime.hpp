@@ -15,6 +15,7 @@
 #include <vector>
 
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
+#include <Eigen/Core>
 
 #include "autonomy/common/network/common/tensor.hpp"
 #include "autonomy/control/controller/policy_controller/model.hpp"
@@ -32,6 +33,11 @@ struct PolicyRuntimeBuffers {
     ::autonomy::common::network::FloatTensorMap inputs;
     ::autonomy::common::network::FloatTensorMap outputs;
     std::vector<float> action_sequence;
+    /**
+     * @brief Previous selected-plan velocity (SanD v_prev); robot frame.
+     */
+    Eigen::Vector3d previous_plan_heading{Eigen::Vector3d::Zero()};
+    bool has_previous_plan_heading{false};
 };
 
 /**

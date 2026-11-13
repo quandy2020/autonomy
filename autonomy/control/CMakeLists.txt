@@ -32,16 +32,6 @@ file(GLOB_RECURSE AUTONOMY_CONTROL_SRCS CONFIGURE_DEPENDS
 list(FILTER AUTONOMY_CONTROL_SRCS EXCLUDE REGEX "main\\.cpp$")
 list(FILTER AUTONOMY_CONTROL_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
-# Vendored DAQP (C) used by sando MIQP.
-file(GLOB AUTONOMY_DAQP_SRCS CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/controller/sando_controller/miqp/daqp/src/*.c")
-set(AUTONOMY_DAQP_INCLUDE
-  "${CMAKE_CURRENT_SOURCE_DIR}/controller/sando_controller/miqp/daqp/include")
-set_source_files_properties(${AUTONOMY_DAQP_SRCS} PROPERTIES
-  COMPILE_DEFINITIONS "PROFILING"
-  INCLUDE_DIRECTORIES "${AUTONOMY_DAQP_INCLUDE}")
-list(APPEND AUTONOMY_CONTROL_SRCS ${AUTONOMY_DAQP_SRCS})
-
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_control
   SHARED
@@ -63,8 +53,6 @@ if(Ipopt_FOUND AND NOT TARGET Ipopt::Ipopt)
   target_link_libraries(autonomy_control PUBLIC ${IPOPT_LIBRARIES})
 endif()
 
-target_include_directories(autonomy_control PRIVATE "${AUTONOMY_DAQP_INCLUDE}")
-
 # --- binary ------------------------------------------------------------------
 autocmake_binary(autonomy.control
   NO_EXPORT
@@ -76,6 +64,10 @@ autocmake_binary(autonomy.control
 )
 
 # --- tests -------------------------------------------------------------------
+# Root CMake keeps BUILD_TESTING cached OFF even when BUILD_TEST=ON.
+if(BUILD_TEST AND NOT BUILD_TESTING)
+  set(BUILD_TESTING ON)
+endif()
 autocmake_test(control.policy_action_schema_test
   SOURCES controller/policy_controller/action_schema_test.cpp
   DEPENDENCIES autonomy_control)
@@ -87,6 +79,9 @@ autocmake_test(control.policy_path_encoder_test
   DEPENDENCIES autonomy_control)
 autocmake_test(control.policy_frame_align_test
   SOURCES controller/policy_controller/frame_align_test.cpp
+  DEPENDENCIES autonomy_control)
+autocmake_test(control.policy_sand_planner_test
+  SOURCES controller/policy_controller/sand_planner_test.cpp
   DEPENDENCIES autonomy_control)
 
 # --- install -----------------------------------------------------------------

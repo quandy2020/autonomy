@@ -43,6 +43,7 @@
 #include "autonomy/control/controller/policy_controller/observation/buffer.hpp"
 #include "autonomy/control/controller/policy_controller/observation/frame_align.hpp"
 #include "autonomy/control/controller/policy_controller/runtime.hpp"
+#include "autonomy/control/controller/policy_controller/sand_planner/options.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/control/proto/policy_controller.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
@@ -99,6 +100,7 @@ public:
             return false;
         }
         RefreshSafetyLimits();
+        RefreshSandPlanner();
         return true;
     }
 
@@ -112,6 +114,7 @@ public:
             return false;
         }
         RefreshSafetyLimits();
+        RefreshSandPlanner();
         return true;
     }
 
@@ -124,6 +127,7 @@ public:
                                            const std::string& error) {
                 if (ok) {
                     RefreshSafetyLimits();
+                    RefreshSandPlanner();
                 }
                 if (done) {
                     done(ok, error);
@@ -205,6 +209,10 @@ public:
         runtime_buffers_.inputs.clear();
         runtime_buffers_.outputs.clear();
         runtime_buffers_.action_sequence.clear();
+        runtime_buffers_.previous_plan_heading = Eigen::Vector3d::Zero();
+        runtime_buffers_.has_previous_plan_heading = false;
+        encode_context_.has_previous_plan_heading = false;
+        encode_context_.previous_plan_heading = Eigen::Vector3d::Zero();
         diagnostics_ = PolicyDiagnostics{};
         last_tick_ = std::chrono::steady_clock::now();
     }
@@ -260,6 +268,7 @@ public:
             return RecordFailure("No active PolicyModel", command_velocity,
                                  message, false);
         }
+        RefreshSandPlanner();
 
         ObservationSnapshot raw = observation_buffer_.Snapshot();
         ObservationSnapshot snapshot;
@@ -270,6 +279,11 @@ public:
             diagnostics_.frame_align_fail = true;
             return RecordFailure(error, command_velocity, message, false);
         }
+
+        encode_context_.has_previous_plan_heading =
+            runtime_buffers_.has_previous_plan_heading;
+        encode_context_.previous_plan_heading =
+            runtime_buffers_.previous_plan_heading;
 
         InferBudget budget;
         budget.timeout_sec = options_.infer_timeout();
@@ -340,6 +354,16 @@ public:
     const PolicyDiagnostics& diagnostics() const { return diagnostics_; }
 
 private:
+    void RefreshSandPlanner() {
+        auto model = policy_manager_.Active();
+        if (!model) {
+            return;
+        }
+        encode_context_.sand_planner = model->config().effective_sand_planner();
+        observation_buffer_.SetDepthHistoryCapacity(
+            encode_context_.sand_planner.depth_history());
+    }
+
     void RefreshSafetyLimits() {
         proto::TwistLimits limits;
         auto model = policy_manager_.Active();

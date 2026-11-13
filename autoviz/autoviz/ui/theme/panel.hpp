@@ -260,6 +260,29 @@ void StyleFilterLineEdit(QLineEdit* edit);
 void DetachItemViewFromStyleSheets(QWidget* widget);
 
 /**
+ * @brief Item-view palette: transparent selection (delegate paints) + Shell ink.
+ *
+ * Always refreshes Text/WindowText from the current Shell so Dark/Light switches
+ * do not leave light-theme dark labels on a dark panel.
+ *
+ * @param widget Tree, list, table, or their viewport.
+ */
+void ApplyItemViewShellPalette(QWidget* widget);
+
+/**
+ * @brief Marks a panel footer button so theme refresh can re-token its QSS.
+ * @param button Push button.
+ * @param role "primary" or "ghost".
+ */
+void StylePanelButton(QPushButton* button, const QString& role);
+
+/**
+ * @brief Re-applies StylePanelButton QSS from the button's role property.
+ * @param button Previously marked push button.
+ */
+void RefreshPanelButtonStyle(QPushButton* button);
+
+/**
  * @brief Applies standard panel tree styling.
  * @param tree Tree or tree-like widget.
  */

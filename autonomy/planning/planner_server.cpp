@@ -401,18 +401,30 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
 }
 
 void PlannerServer::WaitForCostmap() {
+    if (costmap_wrapper_ == nullptr) {
+        return;
+    }
+    // Static /map at 1 Hz and a briefly stale obstacle layer must not block
+    // ComputePath. If a grid exists, plan immediately with the last map.
+    if (costmap_wrapper_->getCostmap() != nullptr &&
+        costmap_wrapper_->getCostmap()->getSizeInCellsX() > 0) {
+        return;
+    }
     const double timeout_sec = options_.costmap_update_timeout();
     const auto waiting_start = std::chrono::steady_clock::now();
 
-    while (costmap_wrapper_ && !costmap_wrapper_->isCurrent()) {
-        if (timeout_sec > 0.0) {
-            const auto elapsed =
-                std::chrono::duration<double>(std::chrono::steady_clock::now() - waiting_start)
-                    .count();
-            if (elapsed > timeout_sec) {
-                throw common::PlannerTimedOut(
-                    "Costmap timed out waiting for update");
-            }
+    while (!costmap_wrapper_->isCurrent()) {
+        if (costmap_wrapper_->getCostmap() != nullptr &&
+            costmap_wrapper_->getCostmap()->getSizeInCellsX() > 0) {
+            return;
+        }
+        const double elapsed =
+            std::chrono::duration<double>(std::chrono::steady_clock::now() -
+                                          waiting_start)
+                .count();
+        if (timeout_sec > 0.0 && elapsed > timeout_sec) {
+            throw common::PlannerTimedOut(
+                "Costmap timed out waiting for update");
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }

@@ -445,7 +445,7 @@ navigator_options {
   }
   default_planner_id: "navfn_planner"
   global_frame: "map"
-  default_controller_id: "graceful_controller"
+  default_controller_id: "mppi_controller"
   plugin_lib_path: ""
   default_goal_checker_id: "goal_checker"
   bt_loop_duration: 10

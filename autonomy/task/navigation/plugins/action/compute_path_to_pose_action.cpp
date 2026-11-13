@@ -2,6 +2,8 @@
  * Copyright 2026 The Openbot Authors
  */
 
+#include <cmath>
+
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
 #include "autonomy/task/navigation/plugins/plugin_utils.hpp"
@@ -46,12 +48,17 @@ protected:
             // / thrashing RecoveryNode on transient costmap collisions.
             automsgs::msgs::nav_msgs::Path existing;
             if (getInput("path", existing) && !existing.poses().empty()) {
-                AWARN_EVERY(20)
-                    << "ComputePath failed (" << error_message
-                    << "); keeping previous path (" << existing.poses_size()
-                    << " poses)";
-                ClearErrorPorts(*this);
-                return BT::NodeStatus::SUCCESS;
+                const auto& end =
+                    existing.poses(existing.poses_size() - 1).pose().position();
+                if (std::hypot(end.x() - goal.pose().position().x(),
+                               end.y() - goal.pose().position().y()) < 0.75) {
+                    AWARN_EVERY(20)
+                        << "ComputePath failed (" << error_message
+                        << "); keeping previous path (" << existing.poses_size()
+                        << " poses)";
+                    ClearErrorPorts(*this);
+                    return BT::NodeStatus::SUCCESS;
+                }
             }
             SetErrorPorts(*this, error_code, error_message);
             return BT::NodeStatus::FAILURE;

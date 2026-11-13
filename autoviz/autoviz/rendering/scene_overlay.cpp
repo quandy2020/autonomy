@@ -14,6 +14,7 @@
 #include "autoviz/common/selection_handler.hpp"
 #include "autoviz/rendering/ogre_resource_config.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <string>
 
@@ -529,13 +530,18 @@ void SceneOverlay::addTexturedQuad(const QVector3D& top_left,
                                    const QVector3D& bottom_right,
                                    const QVector3D& bottom_left,
                                    const QImage& image,
-                                   TextureFilterMode filter_mode) {
+                                   TextureFilterMode filter_mode,
+                                   int draw_order, bool depth_write,
+                                   bool depth_check) {
   if (image.isNull()) {
     return;
   }
   TexturedBatch batch;
   batch.image = image.convertToFormat(QImage::Format_RGBA8888);
   batch.filter_mode = filter_mode;
+  batch.draw_order = draw_order;
+  batch.depth_write = depth_write;
+  batch.depth_check = depth_check;
   // CCW when viewed from +Z so top-down cameras (looking toward -Z) see the
   // front face. Matches REP-103 map plane (XY, Z up).
   batch.vertices = {
@@ -632,6 +638,25 @@ std::vector<SceneOverlay::TexturedBatch> SceneOverlay::expandedTexturedBatches(
     }
   }
   appendPointSpriteBatch(view, &batches);
+  // draw_order first (map under costmap), then Z. Avoids translucent
+  // /map↔costmap blend swaps when layers are nearly coplanar.
+  std::stable_sort(batches.begin(), batches.end(),
+                   [](const TexturedBatch& a, const TexturedBatch& b) {
+                     if (a.draw_order != b.draw_order) {
+                       return a.draw_order < b.draw_order;
+                     }
+                     auto avg_z = [](const TexturedBatch& batch) {
+                       if (batch.vertices.empty()) {
+                         return 0.f;
+                       }
+                       float sum = 0.f;
+                       for (const TexturedVertex& v : batch.vertices) {
+                         sum += v.position.z();
+                       }
+                       return sum / static_cast<float>(batch.vertices.size());
+                     };
+                     return avg_z(a) < avg_z(b);
+                   });
   return batches;
 }
 
@@ -939,7 +964,6 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
   QOpenGLExtraFunctions* gl_extra =
       QOpenGLContext::currentContext()->extraFunctions();
   gl->glEnable(0x0B71);  // GL_DEPTH_TEST
-  gl->glDepthMask(0x0001);
   gl->glEnable(0x0BE2);  // GL_BLEND
   gl_extra->glBlendFuncSeparate(0x0302, 0x0303, 0, 1);
   gl->glUseProgram(textured_program_);
@@ -949,6 +973,13 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
   for (const auto& batch : batches) {
     if (batch.vertices.empty() || batch.image.isNull()) {
       continue;
+    }
+    // /map depth_write; costmap stays depth-write off above it.
+    gl->glDepthMask(batch.depth_write ? 0x0001 : 0x0000);
+    if (batch.depth_check) {
+      gl->glEnable(0x0B71);
+    } else {
+      gl->glDisable(0x0B71);
     }
     gl_extra->glBindVertexArray(textured_vao_);
     gl_extra->glBindBuffer(0x8892, textured_vbo_);
@@ -985,6 +1016,7 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
     gl_extra->glDeleteTextures(1, &texture);
   }
   gl_extra->glBindVertexArray(0);
+  gl->glDepthMask(0x0001);
   gl->glDisable(0x0BE2);  // GL_BLEND
 }
 

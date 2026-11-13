@@ -49,6 +49,19 @@ class Clock:
         """
         return self.time
 
+    def resync(self, wall_sec: float) -> None:
+        """Re-anchor the clock to a wall-clock time.
+
+        Call after heavy init (scene load, etc.) so ``Header.stamp`` stays
+        aligned with ``TimeNow()`` publishers such as Teleop ``/cmd_vel``.
+        Without this, stamps lag wall time by the init duration and Plot
+        overlays look permanently shifted.
+
+        Args:
+            wall_sec: Absolute wall time in seconds (typically ``time.time()``).
+        """
+        self.time = float(wall_sec)
+
     def stamp(self) -> tuple[int, int]:
         """Split the current time into seconds and nanoseconds for ``Header.stamp``.
 

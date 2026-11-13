@@ -65,21 +65,28 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
       }
       painter->save();
       painter->setRenderHint(QPainter::Antialiasing, true);
-      QPainterPath path;
-      path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 8.0, 8.0);
-      painter->fillPath(path, selected ? glass::ShellSelectionFill()
-                                       : glass::ShellHoverFill());
+      painter->setPen(Qt::NoPen);
+      painter->setBrush(selected ? glass::ShellSelectionFill()
+                                 : glass::ShellHoverFill());
+      painter->drawRoundedRect(QRectF(row).adjusted(0.5, 0.5, -0.5, -0.5), 6.0,
+                               6.0);
       painter->restore();
     }
 
+    // Kill focus/QSS second plate; keep icon+text via style with flags cleared.
     opt.state.setFlag(QStyle::State_Selected, false);
     opt.state.setFlag(QStyle::State_MouseOver, false);
+    opt.state.setFlag(QStyle::State_HasFocus, false);
     opt.backgroundBrush = Qt::NoBrush;
-    if (selected) {
-      const QColor ink = glass::ShellSelectionInk();
+    opt.showDecorationSelected = false;
+    {
+      const QColor ink =
+          selected ? glass::ShellSelectionInk() : glass::Shell().text;
       opt.palette.setColor(QPalette::Text, ink);
       opt.palette.setColor(QPalette::WindowText, ink);
-      opt.font.setWeight(QFont::DemiBold);
+      if (selected) {
+        opt.font.setWeight(QFont::DemiBold);
+      }
     }
     QStyledItemDelegate::paint(painter, opt, index);
   }
@@ -87,21 +94,6 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
  private:
   int name_column_ = 0;
 };
-
-void ApplyTransparentSelectionPalette(QWidget* widget) {
-  if (widget == nullptr) {
-    return;
-  }
-  QPalette pal = widget->palette();
-  pal.setBrush(QPalette::Base, Qt::transparent);
-  pal.setBrush(QPalette::Window, Qt::transparent);
-  pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
-  pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-               glass::ShellSelectionInk());
-  widget->setPalette(pal);
-}
 
 class SettingsPolishFilter : public QObject {
  public:
@@ -121,6 +113,53 @@ class SettingsPolishFilter : public QObject {
 };
 
 }  // namespace
+
+void ApplyItemViewShellPalette(QWidget* widget) {
+  if (widget == nullptr) {
+    return;
+  }
+  const glass::ShellTokens shell = glass::Shell();
+  QPalette pal = widget->palette();
+  pal.setBrush(QPalette::Base, Qt::transparent);
+  pal.setBrush(QPalette::Window, Qt::transparent);
+  pal.setColor(QPalette::Text, shell.text);
+  pal.setColor(QPalette::WindowText, shell.window_text);
+  pal.setColor(QPalette::ButtonText, shell.button_text);
+  pal.setColor(QPalette::BrightText, shell.text);
+  pal.setColor(QPalette::PlaceholderText, shell.secondary_text);
+  pal.setColor(QPalette::Link, shell.link);
+  pal.setBrush(QPalette::Highlight, Qt::transparent);
+  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
+  pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
+  pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
+               glass::ShellSelectionInk());
+  widget->setPalette(pal);
+  if (auto* view = qobject_cast<QAbstractItemView*>(widget)) {
+    if (QWidget* viewport = view->viewport()) {
+      viewport->setPalette(pal);
+    }
+  }
+}
+
+void StylePanelButton(QPushButton* button, const QString& role) {
+  if (button == nullptr || role.isEmpty()) {
+    return;
+  }
+  button->setProperty("autovizPanelButton", role);
+  RefreshPanelButtonStyle(button);
+}
+
+void RefreshPanelButtonStyle(QPushButton* button) {
+  if (button == nullptr) {
+    return;
+  }
+  const QString role = button->property("autovizPanelButton").toString();
+  if (role == QLatin1String("primary")) {
+    button->setStyleSheet(PanelPrimaryButtonStyle());
+  } else if (role == QLatin1String("ghost")) {
+    button->setStyleSheet(PanelGhostButtonStyle());
+  }
+}
 
 QString SettingsWidgetBackgroundStyle() {
   return style::sheet(QStringLiteral("chrome/settings"), style::tokens());
@@ -463,7 +502,7 @@ void StylePanelTree(QWidget* tree) {
   }
   tree->setObjectName(QString::fromLatin1(AppThemeIds::kPanelTree));
   DetachItemViewFromStyleSheets(tree);
-  ApplyTransparentSelectionPalette(tree);
+  ApplyItemViewShellPalette(tree);
 }
 
 void StyleFrostedPanelTree(QAbstractItemView* tree, int name_column) {
@@ -479,7 +518,7 @@ void StyleFrostedPanelTree(QAbstractItemView* tree, int name_column) {
     tree->viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
   }
   DetachItemViewFromStyleSheets(tree);
-  ApplyTransparentSelectionPalette(tree);
+  ApplyItemViewShellPalette(tree);
   tree->setItemDelegateForColumn(
       name_column, new ContinuousNameColumnDelegate(name_column, tree));
 }
@@ -496,7 +535,7 @@ void StyleFrostedPanelList(QAbstractItemView* list) {
     list->viewport()->setAttribute(Qt::WA_TranslucentBackground, true);
   }
   DetachItemViewFromStyleSheets(list);
-  ApplyTransparentSelectionPalette(list);
+  ApplyItemViewShellPalette(list);
   list->setItemDelegate(new ContinuousNameColumnDelegate(0, list));
 }
 
@@ -508,33 +547,10 @@ void PaintPanelFrostedCard(QPainter& painter, const QRect& rect, qreal radius) {
   card.addRoundedRect(outer, radius, radius);
 
   const glass::ShellTokens s = glass::Shell();
-  QColor plate = s.glass_fill_deep;
-  plate.setAlpha(228);
-  painter.fillPath(card, plate);
-  QLinearGradient wash(outer.topLeft(), outer.bottomRight());
-  wash.setColorAt(0.0, QColor(255, 255, 255, 70));
-  QColor cool = s.glass_cool;
-  cool.setAlpha(28);
-  wash.setColorAt(0.45, cool);
-  QColor end = s.alternate_base;
-  end.setAlpha(40);
-  wash.setColorAt(1.0, end);
-  painter.fillPath(card, wash);
-
-  QLinearGradient sheen(
-      outer.topLeft(),
-      QPointF(outer.left(), outer.top() + outer.height() * 0.35));
-  sheen.setColorAt(0.0, QColor(255, 255, 255, 140));
-  sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-  painter.fillPath(card, sheen);
-
-  painter.setPen(QPen(QColor(255, 255, 255, 200), 1.2));
+  painter.fillPath(card, s.glass_fill_deep);
+  painter.setPen(QPen(s.glass_rim, 1.0));
+  painter.setBrush(Qt::NoBrush);
   painter.drawPath(card);
-  QColor rim = s.glass_rim;
-  rim.setAlpha(qMin(rim.alpha(), 110));
-  painter.setPen(QPen(rim, 1.0));
-  painter.drawRoundedRect(outer.adjusted(1.0, 1.0, -1.0, -1.0), radius - 1.0,
-                          radius - 1.0);
 }
 
 void ApplyPanelToolbarChrome(QFrame* toolbar) {

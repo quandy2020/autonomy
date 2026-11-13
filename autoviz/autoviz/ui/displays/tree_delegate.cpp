@@ -16,6 +16,7 @@
 #include <QCheckBox>
 #include <QColorDialog>
 #include <QComboBox>
+#include <QAbstractSpinBox>
 #include <QDoubleSpinBox>
 #include <QFileDialog>
 #include <QFont>
@@ -93,6 +94,38 @@ class CompactDoubleSpinBox : public QDoubleSpinBox {
     return ok ? v : value();
   }
 };
+
+
+void StyleTreeCellEditor(QWidget* editor) {
+  if (editor == nullptr) {
+    return;
+  }
+  // Single outer rim via ProxyStyle; kill nested LineEdit / stylesheet borders.
+  editor->setStyleSheet(
+      QStringLiteral(
+          "QAbstractSpinBox, QComboBox, QLineEdit {"
+          "  border: 1px solid %1; border-radius: 6px; outline: none;"
+          "  background: %2; color: %3; padding: 0 4px;"
+          "}"
+          "QAbstractSpinBox:focus, QComboBox:focus, QLineEdit:focus {"
+          "  border: 1px solid %4; outline: none;"
+          "}"
+          "QAbstractSpinBox QLineEdit, QComboBox QLineEdit {"
+          "  border: none; outline: none; background: transparent; padding: 0;"
+          "}"
+          "QAbstractSpinBox QLineEdit:focus, QComboBox QLineEdit:focus {"
+          "  border: none; outline: none;"
+          "}")
+          .arg(glass::Hex(glass::Shell().border),
+               glass::Hex(glass::Shell().base),
+               glass::Hex(glass::Shell().text),
+               glass::Hex(glass::Shell().accent)));
+  if (auto* spin = qobject_cast<QAbstractSpinBox*>(editor)) {
+    spin->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
+    spin->setFrame(true);
+  }
+}
+
 
 QColor ColorFromPropertyText(const QString& text) {
   return common::ParseColorProperty(text.toStdString(), QColor(128, 128, 128));
@@ -215,7 +248,7 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
   const bool selected = opt.state.testFlag(QStyle::State_Selected);
   const bool hovered = opt.state.testFlag(QStyle::State_MouseOver);
 
-  // One continuous pill across the whole row (matches Create visualization).
+  // Single flat row plate only — never CE_ItemViewItem/focus (second plate).
   if (selected || hovered) {
     QRect row = opt.rect;
     if (const auto* view = qobject_cast<const QAbstractItemView*>(opt.widget)) {
@@ -224,30 +257,19 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
     }
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
-    QPainterPath path;
-    path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 8.0, 8.0);
-    if (selected) {
-      painter->fillPath(path, glass::ShellSelectionFill());
-    } else {
-      painter->fillPath(path, glass::ShellHoverFill());
-    }
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(selected ? glass::ShellSelectionFill()
+                               : glass::ShellHoverFill());
+    painter->drawRoundedRect(QRectF(row).adjusted(0.5, 0.5, -0.5, -0.5), 6.0,
+                             6.0);
     painter->restore();
-  }
-
-  opt.state.setFlag(QStyle::State_Selected, false);
-  opt.state.setFlag(QStyle::State_MouseOver, false);
-  opt.backgroundBrush = Qt::NoBrush;
-  if (selected) {
-    const QColor ink = glass::ShellSelectionInk();
-    opt.palette.setColor(QPalette::Text, ink);
-    opt.palette.setColor(QPalette::WindowText, ink);
-    opt.font.setWeight(QFont::DemiBold);
   }
 
   const auto kind = static_cast<DisplayTreeItemKind>(
       index.data(kDisplayTreeRoleKind).toInt());
   const bool draggable = kind == DisplayTreeItemKind::kDisplay ||
                          kind == DisplayTreeItemKind::kDisplayChild;
+  QRect content = opt.rect;
 
   if (draggable) {
     painter->save();
@@ -259,8 +281,8 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
       grip.setAlpha(selected ? 160 : 255);
       painter->setBrush(grip);
     }
-    const int cx = opt.rect.left() + 5;
-    const int cy = opt.rect.center().y();
+    const int cx = content.left() + 5;
+    const int cy = content.center().y();
     for (int row = 0; row < 3; ++row) {
       for (int col = 0; col < 2; ++col) {
         painter->drawEllipse(QPointF(cx + col * 4.0, cy - 4.0 + row * 4.0), 1.6,
@@ -268,7 +290,7 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
       }
     }
     painter->restore();
-    opt.rect = opt.rect.adjusted(kTreeDragGripWidth, 0, 0, 0);
+    content = content.adjusted(kTreeDragGripWidth, 0, 0, 0);
   }
 
   // Class / status icons: drawPixmap from a process cache — never QTreeWidgetItem
@@ -292,14 +314,27 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
   }
 
   if (!glyph.isNull()) {
-    const int y = opt.rect.center().y() - kTreeIconLogical / 2;
-    painter->drawPixmap(opt.rect.left(), y, kTreeIconLogical, kTreeIconLogical,
+    const int y = content.center().y() - kTreeIconLogical / 2;
+    painter->drawPixmap(content.left(), y, kTreeIconLogical, kTreeIconLogical,
                         glyph);
-    opt.rect =
-        opt.rect.adjusted(kTreeIconLogical + kTreeIconGap, 0, 0, 0);
+    content = content.adjusted(kTreeIconLogical + kTreeIconGap, 0, 0, 0);
   }
 
-  QStyledItemDelegate::paint(painter, opt, index);
+  QFont font = opt.font;
+  if (selected) {
+    font.setWeight(QFont::DemiBold);
+  }
+  painter->save();
+  painter->setFont(font);
+  painter->setPen(selected ? glass::ShellSelectionInk()
+                           : glass::Shell().text);
+  const QString label = index.data(Qt::DisplayRole).toString();
+  painter->drawText(
+      content.adjusted(2, 0, -2, 0),
+      Qt::AlignVCenter | Qt::AlignLeft | Qt::TextSingleLine,
+      QFontMetrics(font).elidedText(label, Qt::ElideRight,
+                                    qMax(0, content.width() - 4)));
+  painter->restore();
 }
 
 QSize DisplayNameTreeDelegate::sizeHint(const QStyleOptionViewItem& option,
@@ -336,16 +371,23 @@ void DisplayTreeDelegate::paint(QPainter* painter,
       index.internalPointer() == nullptr || DisplayTreePaintBlocked(option)) {
     return;
   }
-  // Name column paints the full-row selection pill; value column stays clear.
+  // Name column paints the only row plate; value column must not add focus/QSS.
   QStyleOptionViewItem cleared = option;
   cleared.state.setFlag(QStyle::State_Selected, false);
   cleared.state.setFlag(QStyle::State_MouseOver, false);
+  cleared.state.setFlag(QStyle::State_HasFocus, false);
   cleared.backgroundBrush = Qt::NoBrush;
+  cleared.showDecorationSelected = false;
   // Never paint item decoration icons — QIcon on QTreeWidgetItem has SEGV'd
   // (actualSize / scaledPixmap recursion) under live Autolink.
   cleared.features.setFlag(QStyleOptionViewItem::HasDecoration, false);
   cleared.icon = QIcon();
 
+  {
+    const QColor ink = glass::Shell().text;
+    cleared.palette.setColor(QPalette::Text, ink);
+    cleared.palette.setColor(QPalette::WindowText, ink);
+  }
   if (index.column() != kDisplayTreeColValue) {
     QStyledItemDelegate::paint(painter, cleared, index);
     return;
@@ -365,6 +407,9 @@ void DisplayTreeDelegate::paint(QPainter* painter,
   opt.icon = QIcon();
   opt.state.setFlag(QStyle::State_Selected, false);
   opt.state.setFlag(QStyle::State_MouseOver, false);
+  opt.state.setFlag(QStyle::State_HasFocus, false);
+  opt.backgroundBrush = Qt::NoBrush;
+  opt.showDecorationSelected = false;
   const QString color_text = opt.text;
   opt.text.clear();
   opt.icon = QIcon();
@@ -386,7 +431,7 @@ void DisplayTreeDelegate::paint(QPainter* painter,
   text_rect.setLeft(swatch_rect.right() + 6);
   painter->setPen(option.state.testFlag(QStyle::State_Selected)
                       ? glass::ShellSelectionInk()
-                      : opt.palette.color(QPalette::Text));
+                      : glass::Shell().text);
   painter->drawText(text_rect, Qt::AlignVCenter | Qt::AlignLeft, rgb_text);
   painter->restore();
 }
@@ -422,6 +467,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
     combo->setEditable(true);
     combo->addItems(channels_);
     combo->setCurrentText(current);
+    StyleTreeCellEditor(combo);
     return combo;
   }
 
@@ -442,6 +488,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
     options.removeDuplicates();
     combo->addItems(options);
     combo->setCurrentText(current);
+    StyleTreeCellEditor(combo);
     return combo;
   }
 
@@ -454,6 +501,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
     spin->setDecimals(0);
     spin->setRange(1, 1000);
     spin->setValue(current.toDouble());
+    StyleTreeCellEditor(spin);
     return spin;
   }
 
@@ -475,6 +523,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
       if (found >= 0) {
         combo->setCurrentIndex(found);
       }
+      StyleTreeCellEditor(combo);
       return combo;
     }
 
@@ -498,6 +547,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
           emit edit->editingFinished();
         }
       });
+      StyleTreeCellEditor(edit);
       return row;
     }
 
@@ -506,6 +556,7 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
       spin->setRange(0, 100000);
       spin->setSingleStep(1);
       spin->setValue(current.toInt());
+      StyleTreeCellEditor(spin);
       return spin;
     }
 
@@ -516,12 +567,14 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
       spin->setRange(-1e6, 1e6);
       spin->setSingleStep(0.1);
       spin->setValue(current.toFloat());
+      StyleTreeCellEditor(spin);
       return spin;
     }
   }
 
   auto* edit = new QLineEdit(parent);
   edit->setText(current);
+  StyleTreeCellEditor(edit);
   return edit;
 }
 

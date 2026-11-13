@@ -1,6 +1,7 @@
 # Copyright 2026 The Openbot Authors (duyongquan)
 #
 # Habitat backend default: Habitat-Sim + MP3D/GLB scene resources.
+# Explicit nav profile (same stack): config/nav.yaml
 # Procedural / no-Habitat world → config/fake.yaml
 #
 #   src/autonomy/autosim/scripts/run.sh sim

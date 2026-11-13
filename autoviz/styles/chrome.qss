@@ -128,12 +128,12 @@ QToolButton:pressed {
   background: palette(mid);
 }
 QToolButton:checked {
-  background: palette(highlight);
-  color: palette(highlighted-text);
-  border-color: palette(highlight);
+  background: {{sel-bg}};
+  color: {{accent}};
+  border-color: transparent;
 }
 QToolButton:checked:hover {
-  background: palette(highlight);
+  background: {{sel-bg}};
 }
 QToolButton::menu-indicator {
   image: none;
@@ -233,11 +233,11 @@ QFrame#AutovizViewportToolGroup QToolButton {
 }
 QFrame#AutovizViewportToolGroup QToolButton:hover {
   background: {{hover-bg}};
-  border: 1px solid {{hover-border}};
+  border: 1px solid transparent;
 }
 QFrame#AutovizViewportToolGroup QToolButton:checked {
   background: {{on-bg}};
-  border: 1px solid {{on-border}};
+  border: 1px solid transparent;
   color: {{on-color}};
 }
 QFrame#AutovizViewportToolGroup QToolButton:pressed {

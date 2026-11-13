@@ -30,6 +30,12 @@ enum ObservationModality {
   OBSERVATION_POINT_CLOUD = 7;
   // Precomputed lidar BEV grid injected via SetLidarBev.
   OBSERVATION_LIDAR_BEV = 8;
+  // Depth image stack (SanD-Planner): latest frames packed NCHW metres.
+  OBSERVATION_DEPTH = 9;
+  // Relative 3D point goal in the robot frame (SanD-Planner g_t).
+  OBSERVATION_GOAL = 10;
+  // Previous-plan heading token (SanD-Planner v_prev).
+  OBSERVATION_PREVIOUS_VELOCITY = 11;
 }
 
 // Action space (decoded to geometry_msgs/Twist).
@@ -39,6 +45,9 @@ enum ActionSpace {
   reserved 2;  // was ACKERMANN
   // Flattened [horizon * dim], decoded at execute_index.
   ACTION_SPACE_DIFFUSION_TWIST = 3;
+  // SanD-Planner: diffusion over clamped cubic B-spline control points,
+  // then ESDF critic → Twist along the selected curve.
+  ACTION_SPACE_SAND_PLANNER = 4;
 }
 
 // How the policy graph is invoked each control tick.
@@ -51,8 +60,9 @@ enum InferenceMode {
 // Denoiser prediction head.
 enum DiffusionPrediction {
   DIFFUSION_PRED_UNSPECIFIED = 0;
-  DIFFUSION_PRED_SAMPLE = 1;   // predicts x0 / clean action
-  DIFFUSION_PRED_EPSILON = 2;  // predicts noise
+  DIFFUSION_PRED_SAMPLE = 1;    // predicts x0 / clean action
+  DIFFUSION_PRED_EPSILON = 2;   // predicts noise
+  DIFFUSION_PRED_VELOCITY = 3;  // v-prediction (SanD-Planner)
 }
 
 // One denoising-step export:
@@ -70,6 +80,8 @@ message Diffusion {
   bool ddim = 9;
   float ddim_eta = 10;
   float timestep_scale = 11;
+  // Independent reverse processes per tick (SanD K candidates). <=1 → one.
+  int32 candidates = 12;
 }
 
 message TensorNorm {
@@ -105,6 +117,9 @@ message Observation {
   bool lidar_bev = 12;
   // Enable one or more RAW slots; declare names via raw_input / inputs[].
   bool raw = 13;
+  bool depth = 17;
+  bool goal = 19;
+  bool previous_velocity = 21;
 
   optional ObservationInput kinematic_input = 6;
   optional ObservationInput path_input = 7;
@@ -116,6 +131,44 @@ message Observation {
   // When raw=true: default name "observation_raw". Prefer inputs[] for
   // multiple RAW tensors.
   optional ObservationInput raw_input = 16;
+  optional ObservationInput depth_input = 18;
+  optional ObservationInput goal_input = 20;
+  optional ObservationInput previous_velocity_input = 22;
+}
+
+// Runtime extras for ACTION_SPACE_SAND_PLANNER (paper IV-B / IV-D).
+message SandPlanner {
+  int32 control_points = 1;     // N, default 8
+  int32 waypoint_count = 2;     // M arc-length samples, default 32
+  int32 depth_history = 3;      // frames in the depth stack, default 4
+  int32 depth_height = 4;       // default 168
+  int32 depth_width = 5;        // default 224
+  float source_width = 6;       // camera width used to scale fx (default 640)
+  float source_height = 7;      // camera height used to scale fy (default 480)
+  float focal_x = 8;            // px at source resolution (default 389.55)
+  float focal_y = 9;
+  float principal_x = 10;       // px at source resolution (default 320)
+  float principal_y = 11;       // default 240
+  float max_depth = 12;         // metres, default 10
+  float safety_margin = 13;     // d_safe metres, default 0.4
+  float discount = 14;          // gamma in (0,1), default 0.9
+  float lambda_safety = 15;     // default 1
+  float lambda_length = 16;     // default 0.1
+  float lambda_goal = 17;       // default 1
+  float execute_speed = 18;     // m/s along the selected spline, default 0.5
+  int32 pixel_stride = 19;      // ESDF unprojection stride, default 4
+  bool depth_optical_frame = 20;  // z-forward camera → robot x-forward
+  // Local map::esdf::EsdfMap geometry in the robot frame (metres).
+  // Defaults match official SanD inference (~5 m forward, 4 m lateral, 3 m vertical).
+  float esdf_resolution = 21;
+  float esdf_origin_x = 22;
+  float esdf_origin_y = 23;
+  float esdf_origin_z = 24;
+  float esdf_size_x = 25;
+  float esdf_size_y = 26;
+  float esdf_size_z = 27;
+  float preferred_clearance = 28;  // extra cost when distance > this (default 0.6)
+  int32 clearance_samples = 29;    // ESDF query budget per candidate (default 40)
 }
 
 // Advanced multi-head output entry. Prefer Action for single-head.
@@ -174,6 +227,7 @@ message PolicyConfig {
   InferenceMode mode = 8;
   Diffusion diffusion = 9;
   Observation observation = 10;
+  SandPlanner sand_planner = 11;
 }
 
 // Behavior when a required modality is briefly unavailable.

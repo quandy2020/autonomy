@@ -1,7 +1,7 @@
 <!--
   Multi-waypoint navigation:
   - Drop passed + in-collision goals before each replan
-  - Stitch remaining free goals in order; follow at 0.5 Hz replan
+  - Stitch remaining free goals in order; SmoothPath then follow at 5 Hz replan
 -->
 <root BTCPP_format="4" main_tree_to_execute="MainTree">
   <BehaviorTree ID="MainTree">
@@ -17,9 +17,9 @@
           topic_name="planner_selector"/>
         <SmootherSelector
           selected_smoother="{selected_smoother}"
-          default_smoother="simple_smoother"
+          default_smoother="{default_smoother_id}"
           topic_name="smoother_selector"/>
-        <RateController hz="0.5">
+        <RateController hz="5.0">
           <Sequence name="PruneAndPlanThroughPoses">
             <RemovePassedGoals
               input_goals="{goals}"
@@ -37,6 +37,12 @@
               path="{path}"
               planner_id="{selected_planner}"
               error_code_id="{compute_path_through_poses_error_code}"/>
+            <SmoothPath
+              unsmoothed_path="{path}"
+              smoothed_path="{path}"
+              smoother_id="{selected_smoother}"
+              max_smoothing_duration="0.15"
+              check_for_collisions="false"/>
           </Sequence>
         </RateController>
         <FollowPath

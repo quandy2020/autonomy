@@ -133,24 +133,27 @@ void TaskServer::Bind() {
                         std::lock_guard<std::mutex> lock(goal_pose_mutex_);
                         pending_goal_pose_ = *pose;
                     }
-                    // Single worker applies the latest pose; rapid clicks coalesce.
+                    // Single worker applies the latest pose after a quiet
+                    // window so Autoviz click-drag / rapid 2D Goal clicks do
+                    // not start then immediately preempt the same BT.
                     if (goal_pose_worker_busy_.exchange(true)) {
                         return;
                     }
                     std::thread([this]() {
+                        constexpr auto kSettle = std::chrono::milliseconds(50);
+                        auto take_pending =
+                            [this]()
+                            -> std::optional<
+                                ::automsgs::msgs::geometry_msgs::PoseStamped> {
+                            std::lock_guard<std::mutex> lock(goal_pose_mutex_);
+                            auto pose = pending_goal_pose_;
+                            pending_goal_pose_.reset();
+                            return pose;
+                        };
                         for (;;) {
-                            std::optional<
-                                ::automsgs::msgs::geometry_msgs::PoseStamped>
-                                pose;
-                            {
-                                std::lock_guard<std::mutex> lock(
-                                    goal_pose_mutex_);
-                                pose = pending_goal_pose_;
-                                pending_goal_pose_.reset();
-                            }
+                            auto pose = take_pending();
                             if (!pose) {
                                 goal_pose_worker_busy_.store(false);
-                                // A click may have arrived after we cleared.
                                 std::lock_guard<std::mutex> lock(
                                     goal_pose_mutex_);
                                 if (pending_goal_pose_ &&
@@ -159,10 +162,30 @@ void TaskServer::Bind() {
                                 }
                                 return;
                             }
+                            auto quiet_since =
+                                std::chrono::steady_clock::now();
+                            for (;;) {
+                                std::this_thread::sleep_for(
+                                    std::chrono::milliseconds(30));
+                                if (auto newer = take_pending()) {
+                                    pose = std::move(newer);
+                                    quiet_since =
+                                        std::chrono::steady_clock::now();
+                                    continue;
+                                }
+                                if (std::chrono::steady_clock::now() -
+                                        quiet_since >=
+                                    kSettle) {
+                                    break;
+                                }
+                            }
                             proto::NavigationGoal goal;
                             goal.set_command(proto::NAV_CMD_START);
                             goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
                             *goal.add_goals() = *pose;
+                            AINFO << "TaskServer: /goal_pose settled ("
+                                  << pose->pose().position().x() << ", "
+                                  << pose->pose().position().y() << ")";
                             if (!Submit(goal)) {
                                 AWARN << "TaskServer: /goal_pose submit failed "
                                          "(preempt/start)";

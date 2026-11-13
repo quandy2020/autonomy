@@ -479,11 +479,11 @@ bool ControllerServer::FindControllerId(const std::string& c_name,
                                         std::string& current_controller) {
     auto resolve_alias = [&](const std::string& name) -> std::string {
         if (name == "FollowPath" || name == "follow_path" || name.empty()) {
-            if (controllers_.count("graceful_controller") > 0) {
-                return "graceful_controller";
-            }
             if (controllers_.count("mppi_controller") > 0) {
                 return "mppi_controller";
+            }
+            if (controllers_.count("graceful_controller") > 0) {
+                return "graceful_controller";
             }
             return controller_ids_.empty() ? std::string()
                                            : controller_ids_.front();

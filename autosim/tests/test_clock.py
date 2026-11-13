@@ -30,3 +30,13 @@ def test_stamp_rolls_seconds():
     sec, nanosec = clock.stamp()
     assert sec == 1
     assert nanosec == 500_000_000
+
+
+def test_resync_replaces_time():
+    clock = Clock(start_sec=0.0)
+    clock.tick(12.5)
+    clock.resync(1_700_000_000.25)
+    assert abs(clock.now() - 1_700_000_000.25) < 1e-9
+    sec, nanosec = clock.stamp()
+    assert sec == 1_700_000_000
+    assert nanosec == 250_000_000

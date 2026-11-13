@@ -64,7 +64,8 @@ int main(int argc, char** argv) {
 
   const autoviz::AppUiPreferences ui_preferences = autoviz::LoadAppUiPreferences();
   autoviz::InstallAppTranslations(app, ui_preferences.language_code);
-  autoviz::ApplyUiThemeMode(ui_preferences.theme_mode, app);
+  autoviz::ApplyUiTheme(ui_preferences.theme_mode, ui_preferences.accent_color,
+                        app);
 
   QCommandLineParser parser;
   parser.setApplicationDescription(

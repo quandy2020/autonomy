@@ -67,6 +67,19 @@ bool ShellIsDark();
 bool ShellIsLiquid();
 
 /**
+ * @brief Overrides @ref ShellTokens::accent (and derived soft/pressed/link).
+ *
+ * Pass an invalid @c QColor to clear and restore the appearance defaults.
+ * Used by Settings → Appearance accent swatches (Concat-style).
+ */
+void SetShellAccentOverride(const QColor& accent);
+
+/**
+ * @brief Current accent override, or an invalid color when unset.
+ */
+QColor ShellAccentOverride();
+
+/**
  * @struct OverlayTokens
  * @brief Dark navy frosted-glass colors for 3D viewport overlays.
  *
@@ -79,9 +92,9 @@ struct OverlayTokens {
   QColor cool_b{125, 211, 252, 6};           /**< Cool cyan wash B. */
   QColor sheen{224, 242, 254, 16};           /**< Top-edge sheen. */
   QColor rim{186, 230, 253, 45};             /**< Outer rim stroke. */
-  QColor accent{0x7D, 0xD3, 0xFC};           /**< Accent #7DD3FC. */
-  QColor accent_mid{0x93, 0xC5, 0xFD};       /**< Mid accent #93C5FD. */
-  QColor accent_soft{0xBA, 0xE6, 0xFD};      /**< Soft accent #BAE6FD. */
+  QColor accent{0xA8, 0xC9, 0x4A};           /**< Olive tool accent. */
+  QColor accent_mid{0x8F, 0xB0, 0x3A};       /**< Mid olive. */
+  QColor accent_soft{0xE2, 0xE2, 0xE6};      /**< Soft selected plate. */
   QColor title{186, 230, 253, 150};          /**< Dial / label title. */
   QColor value{240, 249, 255, 220};          /**< Active numeric value. */
   QColor value_idle{186, 230, 253, 90};      /**< Idle / zero value. */
@@ -89,12 +102,13 @@ struct OverlayTokens {
   QColor track{186, 230, 253, 42};           /**< Dial track. */
   QColor icon{0xE0, 0xF2, 0xFE};             /**< Toolbar icon idle. */
   QColor icon_hover{0xF0, 0xF9, 0xFF};       /**< Toolbar icon hover. */
-  QColor icon_on{0x7D, 0xD3, 0xFC};          /**< Toolbar icon checked. */
+  QColor icon_on{0xA8, 0xC9, 0x4A};          /**< Toolbar icon checked (olive). */
   QColor divider{186, 230, 253, 70};         /**< Group divider. */
-  QColor button_hover_bg{125, 211, 252, 18}; /**< Button hover fill. */
-  QColor button_hover_border{186, 230, 253, 40}; /**< Button hover border. */
-  QColor button_on_bg{56, 189, 248, 28};         /**< Button checked fill. */
-  QColor button_on_border{125, 211, 252, 70};    /**< Button checked border. */
+  QColor button_hover_bg{255, 255, 255, 18}; /**< Button hover fill. */
+  QColor button_hover_border{255, 255, 255, 28}; /**< Button hover border. */
+  /** CapCut-style: soft plate, no hard rim when checked. */
+  QColor button_on_bg{226, 226, 230, 48};        /**< Button checked fill. */
+  QColor button_on_border{226, 226, 230, 0};     /**< No checked border. */
   int radius = 14;         /**< Card corner radius (px). */
   int toolbar_radius = 16; /**< Floating toolbar radius (px). */
 };
@@ -117,31 +131,33 @@ struct ShellTokens {
   QColor secondary_text{0x63, 0x63, 0x66}; /**< Secondary label. */
   QColor button{0xE5, 0xE5, 0xEA};         /**< Secondary fill. */
   QColor button_text{0x1C, 0x1C, 0x1E};    /**< Button label. */
-  QColor accent{0x00, 0x7A, 0xFF};         /**< System blue. */
-  QColor accent_pressed{0x00, 0x62, 0xCC}; /**< Pressed system blue. */
-  QColor accent_soft{0xD9, 0xEC, 0xFF};    /**< Tinted selection fill. */
-  QColor selection_bg{0xD9, 0xEC, 0xFF};   /**< Selection background. */
-  QColor selection_text{0x1C, 0x1C, 0x1E}; /**< Selection text. */
-  QColor link{0x00, 0x66, 0xCC};           /**< Accessible link blue. */
+  /** CapCut tool accent — selected icons / checked ink. */
+  QColor accent{0x5B, 0x7A, 0x1E};         /**< Olive selected ink. */
+  QColor accent_pressed{0x4A, 0x64, 0x18}; /**< Pressed olive. */
+  /** Soft selected plate (neutral gray, not accent wash). */
+  QColor accent_soft{0xE2, 0xE2, 0xE6};    /**< Selected tool fill. */
+  QColor selection_bg{0xE2, 0xE2, 0xE6};   /**< Selection / checked fill. */
+  QColor selection_text{0x5B, 0x7A, 0x1E}; /**< Selection ink (olive). */
+  QColor link{0x5B, 0x7A, 0x1E};           /**< Link matches accent. */
   QColor border{0xC6, 0xC6, 0xC8};         /**< Opaque separator. */
   QColor border_light{0xE5, 0xE5, 0xEA};   /**< Secondary separator. */
   QColor tooltip_base{0xFF, 0xFF, 0xFF};   /**< Tooltip background. */
   QColor tooltip_text{0x1C, 0x1C, 0x1E};   /**< Tooltip text. */
   QColor disabled_text{0x8E, 0x8E, 0x93};  /**< Tertiary label. */
   QColor toolbar_bg{0xF2, 0xF2, 0xF7};     /**< Toolbar background. */
-  QColor hover_bg{0xE5, 0xE5, 0xEA};       /**< Neutral hover fill. */
+  QColor hover_bg{0xE8, 0xE8, 0xEC};       /**< Neutral hover fill. */
   QColor dock_title{0xF2, 0xF2, 0xF7};     /**< Dock title bar. */
   QColor status_bar{0xF2, 0xF2, 0xF7};     /**< Status bar. */
 
   /** Simulated iOS material for platforms without native vibrancy. */
-  QColor glass_fill{255, 255, 255, 224};      /**< Primary material fill. */
-  QColor glass_fill_deep{255, 255, 255, 245}; /**< Opaque fallback fill. */
-  QColor glass_cool{242, 242, 247, 28};       /**< Neutral material wash. */
-  QColor glass_sheen{255, 255, 255, 150};     /**< Top-edge highlight. */
-  QColor glass_rim{198, 198, 200, 100};       /**< Material separator. */
+  QColor glass_fill{0xF5, 0xF5, 0xF7};        /**< Primary material fill (opaque). */
+  QColor glass_fill_deep{0xFF, 0xFF, 0xFF};   /**< Deep / card fill (opaque). */
+  QColor glass_cool{0xF2, 0xF2, 0xF7};        /**< Neutral wash (opaque, unused). */
+  QColor glass_sheen{0xFF, 0xFF, 0xFF};       /**< Top-edge highlight (opaque). */
+  QColor glass_rim{0xC6, 0xC6, 0xC8};         /**< Material separator (opaque). */
   int panel_radius = 16;                      /**< Panel card radius (px). */
   int title_radius = 12;                      /**< Title bar radius (px). */
-  int control_radius = 10;                    /**< Control radius (px). */
+  int control_radius = 6;                     /**< CapCut-like control radius. */
 };
 
 /**
@@ -227,13 +243,14 @@ QString ShellStatusBarStyleSheet();
 void PaintShellGlass(QPainter& painter, const QRectF& rect, qreal radius);
 
 /**
- * @brief Soft accent wash for selected list/tree rows (Liquid / Light / Dark).
- * @param alpha Fill alpha 0–255 (default matches legacy teal pill).
+ * @brief Opaque accent plate for selected list/tree rows.
+ * @param alpha Ignored (kept for API compatibility); fill is always opaque.
  */
 QColor ShellSelectionFill(int alpha = 78);
 
 /**
- * @brief Soft accent wash for hovered list/tree rows.
+ * @brief Opaque hover plate for list/tree rows.
+ * @param alpha Ignored (kept for API compatibility); fill is always opaque.
  */
 QColor ShellHoverFill(int alpha = 56);
 

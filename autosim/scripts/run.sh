@@ -6,6 +6,81 @@ AUTOSIM="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 AUTONOMY="$(cd "${AUTOSIM}/.." && pwd)"
 ROOT="$(cd "${AUTONOMY}/../.." && pwd)"
 
+# stop does not need Isaac/Habitat Python or autolink bindings.
+stop_autosim() {
+  local lock="${AUTOSIM_INSTANCE_LOCK_PATH:-/tmp/autosim.lock}"
+  local -a pids=()
+  local pid kid
+
+  if [[ -f "${lock}" ]]; then
+    pid="$(
+      sed -n 's/.*"pid"[[:space:]]*:[[:space:]]*\([0-9][0-9]*\).*/\1/p' "${lock}" \
+        | head -n 1
+    )"
+    if [[ -n "${pid}" ]]; then
+      pids+=("${pid}")
+    fi
+  fi
+
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] && pids+=("${pid}")
+  done < <(pgrep -f '[Pp]ython[^ ]* -m autosim' 2>/dev/null || true)
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] && pids+=("${pid}")
+  done < <(pgrep -f 'autosim\.bridge\.teleop' 2>/dev/null || true)
+
+  local -A seen=()
+  local -a unique=()
+  for pid in "${pids[@]}"; do
+    [[ -n "${seen[$pid]:-}" ]] && continue
+    [[ "${pid}" == "$$" || "${pid}" == "$PPID" ]] && continue
+    [[ -d "/proc/${pid}" ]] || continue
+    seen[$pid]=1
+    unique+=("${pid}")
+    while IFS= read -r kid; do
+      [[ -n "${kid}" ]] || continue
+      [[ -n "${seen[$kid]:-}" ]] && continue
+      seen[$kid]=1
+      unique+=("${kid}")
+    done < <(pgrep -P "${pid}" 2>/dev/null || true)
+  done
+
+  if ((${#unique[@]} == 0)); then
+    echo "[autosim] stop: not running"
+    return 0
+  fi
+
+  echo "[autosim] stop: sending TERM to ${unique[*]}"
+  kill -TERM "${unique[@]}" 2>/dev/null || true
+  local deadline=$((SECONDS + 5))
+  while ((SECONDS < deadline)); do
+    local alive=0
+    for pid in "${unique[@]}"; do
+      if [[ -d "/proc/${pid}" ]]; then
+        alive=1
+        break
+      fi
+    done
+    if ((alive == 0)); then
+      break
+    fi
+    sleep 0.2
+  done
+  for pid in "${unique[@]}"; do
+    if [[ -d "/proc/${pid}" ]]; then
+      echo "[autosim] stop: KILL ${pid}"
+      kill -KILL "${pid}" 2>/dev/null || true
+    fi
+  done
+  echo "[autosim] stop: done"
+}
+
+MODE="${1:-sim}"
+if [[ "${MODE}" == "stop" ]]; then
+  stop_autosim
+  exit 0
+fi
+
 export AUTONOMY_ROOT="${AUTONOMY_ROOT:-${ROOT}}"
 if [[ -d "${ROOT}/build/autonomy" ]]; then
   export AUTONOMY_BUILD_DIR="${AUTONOMY_BUILD_DIR:-${ROOT}/build/autonomy}"
@@ -159,8 +234,6 @@ WORKSPACE="${AUTONOMY_ROOT:-${ROOT}}"
 export GLOG_log_dir="${GLOG_log_dir:-${WORKSPACE}}"
 cd "${WORKSPACE}"
 
-MODE="${1:-sim}"
-
 case "$MODE" in
   sim|bridge)
     exec "${PY}" -m autosim --config "$CONFIG"
@@ -176,9 +249,10 @@ case "$MODE" in
     exec "${PY}" -c "from autosim.bridge.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
     ;;
   *)
-    echo "usage: $0 [sim|telop|teleop|both]" >&2
+    echo "usage: $0 [sim|telop|teleop|both|stop]" >&2
     echo "  CONFIG=config/default.yaml $0 sim" >&2
     echo "  CONFIG=config/isaac.yaml ISAACLAB_PATH=/workspace/isaaclab $0 sim" >&2
+    echo "  $0 stop" >&2
     exit 1
     ;;
 esac

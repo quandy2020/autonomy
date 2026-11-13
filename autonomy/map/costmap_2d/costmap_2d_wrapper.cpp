@@ -961,21 +961,22 @@ bool Costmap2DWrapper::snapshotOccupancyGrid(
     grid.mutable_data()->Clear();
     grid.mutable_data()->Reserve(total_size);
 
+    // Match nav2 costmap_2d_publisher cost_translation_table_ so RViz / Autoviz
+    // costmap palettes (0 free, 1..98 blue→red, 99 cyan, 100 purple) align.
     for (unsigned int i = 0; i < total_size; ++i) {
         const unsigned char cost = costmap_data[i];
         int8_t occ_value;
         if (cost == NO_INFORMATION) {
             occ_value = utils::OCC_GRID_UNKNOWN;
         } else if (cost == LETHAL_OBSTACLE) {
-            occ_value = utils::OCC_GRID_OCCUPIED;
+            occ_value = utils::OCC_GRID_OCCUPIED;  // 100
         } else if (cost == INSCRIBED_INFLATED_OBSTACLE) {
-            // Keep Nav2-compatible reserved value for inscribed inflated
-            // obstacles so RViz/Foxglove palettes look familiar.
             occ_value = static_cast<int8_t>(99);
+        } else if (cost == 0) {
+            occ_value = utils::OCC_GRID_FREE;
         } else {
-            // Nav2-compatible compression for 0..252 -> 0..98.
-            occ_value = static_cast<int8_t>(
-                std::lround(static_cast<double>(cost) * 98.0 / 252.0));
+            // 1..252 → 1..98 (inclusive), same as nav2 publisher.
+            occ_value = static_cast<int8_t>(1 + (97 * (cost - 1)) / 251);
         }
         grid.mutable_data()->Add(occ_value);
     }
