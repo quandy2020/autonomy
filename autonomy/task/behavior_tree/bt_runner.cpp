@@ -101,6 +101,9 @@ void BtRunner::WorkerLoop()
         AERROR << "BtRunner: failed to load tree " << active_tree_ << ": "
                << ex.what();
         state_.store(BtRunState::kFailed);
+        if (hooks_ != nullptr) {
+            hooks_->OnTick();
+        }
         running_.store(false);
         return;
     }
@@ -121,6 +124,9 @@ void BtRunner::WorkerLoop()
     state_.store(RunTree(&tree, hooks_, loop_period, status_logger.get()));
     if (status_logger) {
         status_logger->flush();
+    }
+    if (hooks_ != nullptr) {
+        hooks_->OnTick();
     }
     running_.store(false);
 }

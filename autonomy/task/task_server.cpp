@@ -119,7 +119,7 @@ void TaskServer::Bind() {
                     // never block intentional preemption to a new pose.
                     if (last_goal_pose_time_.time_since_epoch().count() > 0 &&
                         now - last_goal_pose_time_ <
-                            std::chrono::milliseconds(120) &&
+                            std::chrono::milliseconds(250) &&
                         std::hypot(x - last_goal_pose_x_, y - last_goal_pose_y_) <
                             0.05) {
                         return;

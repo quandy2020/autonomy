@@ -431,7 +431,7 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
 
     const auto& end_pose = unsmoothed.poses(unsmoothed.poses_size() - 1);
     const auto plan_deadline =
-        std::chrono::steady_clock::now() + std::chrono::milliseconds(350);
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(180);
     while (std::chrono::steady_clock::now() < plan_deadline) {
         if (plan_wait_generation_.load() != generation) {
             SetError(error_code, error_message, kErrorRemoteCallFailed,
@@ -443,9 +443,10 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    SetError(error_code, error_message, kErrorRemoteCallFailed,
-             "smooth_path produced no /plan");
-    return false;
+    // Smoother kept the ComputePath polyline (no second /plan). Reuse it so
+    // FollowPath can start without a 350ms abort that looked like a flash.
+    smoothed = unsmoothed;
+    return true;
 }
 
 bool NavigationClient::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,

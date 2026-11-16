@@ -466,7 +466,10 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
 
             // Cancel: terminate. Preempt: just exit — SimpleActionServer::Work
             // will AcceptPendingGoal and re-enter execute for the new path.
-            self->OnGoalExit();
+            // Do not clear /plan on preempt: the next execute already has a
+            // path; emptying the overlay is the one-frame Autoviz flash.
+            const bool preempt = server->IsPreemptRequested();
+            self->OnGoalExit(/*clear_visual_plan=*/!preempt);
             self->PublishZeroVelocity();
             if (server->IsCancelRequested()) {
                 auto result =
@@ -474,7 +477,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 result->set_error_code(err_proto::CONTROL_UNKNOWN);
                 result->set_error_msg("FollowPath canceled");
                 server->TerminateCurrent(result);
-            } else if (server->IsPreemptRequested()) {
+            } else if (preempt) {
                 AINFO_EVERY(5) << "FollowPath preempted; switching to pending goal";
             } else {
                 auto result =

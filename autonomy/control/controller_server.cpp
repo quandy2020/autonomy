@@ -746,7 +746,7 @@ void ControllerServer::UpdateGlobalPath() {
     }
 }
 
-void ControllerServer::OnGoalExit() {
+void ControllerServer::OnGoalExit(bool clear_visual_plan) {
     // Drop MPPI / controller overlays before clearing active plugin ids.
     if (auto* controller = GetActiveController()) {
         controller->Reset();
@@ -767,8 +767,9 @@ void ControllerServer::OnGoalExit() {
     current_progress_checker_.clear();
     current_path_.mutable_poses()->Clear();
 
-    // Clear latched /plan in Autoviz (NavigationClient ignores empty paths).
-    if (plan_clear_writer_) {
+    // Clear latched /plan only when the follow is actually over. Preempt
+    // (new path, same goal) must not publish empty — that flashes Autoviz.
+    if (clear_visual_plan && plan_clear_writer_) {
         automsgs::msgs::nav_msgs::Path empty;
         empty.mutable_header()->set_frame_id(
             global_frame_.empty() ? "map" : global_frame_);

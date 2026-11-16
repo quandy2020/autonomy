@@ -192,10 +192,14 @@ void SimpleSmoother::SmoothImpl(automsgs::msgs::nav_msgs::Path& path,
 
             float cost = 0.0;
             if (costmap) {
-                costmap->worldToMap(GetFieldByDim(new_path.poses(i), 0),
-                                    GetFieldByDim(new_path.poses(i), 1), mx,
-                                    my);
-                cost = static_cast<float>(costmap->getCost(mx, my));
+                if (!costmap->worldToMap(GetFieldByDim(new_path.poses(i), 0),
+                                         GetFieldByDim(new_path.poses(i), 1),
+                                         mx, my)) {
+                    cost = static_cast<float>(
+                        map::costmap_2d::LETHAL_OBSTACLE);
+                } else {
+                    cost = static_cast<float>(costmap->getCost(mx, my));
+                }
             }
 
             if (cost > map::costmap_2d::MAX_NON_OBSTACLE &&

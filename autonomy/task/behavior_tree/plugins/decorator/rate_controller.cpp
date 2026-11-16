@@ -65,9 +65,18 @@ private:
             seen_goal_epoch_ = goal_epoch;
             first_time_ = true;
             waiting_first_plan_ = false;
+            // New 2D Goal: do not keep SUCCESS from the previous path or
+            // FollowPath continues tracking the old endpoint.
+            got_success_ = false;
         }
 
         const auto now = std::chrono::steady_clock::now();
+        // One global plan per 2D Goal. Re-ticking ComputePath immediately
+        // after SUCCESS republishes /plan (and FollowPath preempt may publish
+        // an empty /plan), which flashes the overlay once.
+        if (got_success_ && !first_time_) {
+            return BT::NodeStatus::SUCCESS;
+        }
         if (!first_time_ && (now - last_time_) < period_) {
             // Between replan ticks: pipeline must stay alive so FollowPath
             // keeps running. If we still have no first plan, stay RUNNING.

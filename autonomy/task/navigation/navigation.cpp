@@ -19,6 +19,7 @@
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
 
@@ -105,8 +106,11 @@ bool NavigationTask::RetargetRunningTree(const task_proto::NavigationGoal& goal)
     ApplyGoalToBlackboard(live_blackboard_, goal);
     if (live_blackboard_) {
         live_blackboard_->set("goal_epoch", static_cast<int>(++replan_epoch_));
+        live_blackboard_->set("path", automsgs::msgs::nav_msgs::Path{});
     }
     if (navigation()) {
+        // Only abort in-flight ComputePath waits. CancelActiveMotion also
+        // CancelAll on the planner and aborts the replacement 2D Goal.
         navigation()->CancelPlanning();
     }
     SetLifecycle(TaskLifecycle::kRunning);

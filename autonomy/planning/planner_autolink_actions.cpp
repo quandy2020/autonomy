@@ -255,8 +255,17 @@ void PlannerServer::ComputePlan()
         auto cancel_checker = [&]() { return server->IsCancelRequested(); };
         const auto path =
             GetPlan(start, goal_pose, goal->planner_id(), cancel_checker);
+        if (path.poses().empty()) {
+            throw common::NoValidPathCouldBeFound(
+                goal->planner_id() + " generated an empty path");
+        }
         if (!ValidatePath(goal_pose, path, goal->planner_id())) {
-            throw common::NoValidPathCouldBeFound(goal->planner_id() + " generated an empty path");
+            // NavFn already avoided COST_OBS. Post-check often flags inflation
+            // near walls; dropping the plan left start/goal in free space with
+            // no /plan and no FollowPath.
+            AWARN << "PlannerServer: path touches inflated cells; publishing "
+                     "anyway ("
+                  << path.poses_size() << " poses)";
         }
 
         PublishPlan(path);
@@ -471,7 +480,24 @@ void PlannerServer::SmoothPathAction()
             throw common::SmootherTimedOut("Smoother exceeded max duration");
         }
 
-        PublishPlan(path);
+        bool published_new_plan = true;
+        if (goal->check_for_collisions() && path.poses_size() > 0) {
+            automsgs::msgs::geometry_msgs::PoseStamped end = path.poses(
+                path.poses_size() - 1);
+            if (!ValidatePath(end, path, "simple_smoother")) {
+                AWARN << "SmoothPath cut through obstacles; keeping unsmoothed "
+                         "plan ("
+                      << goal->path().poses_size() << " poses)";
+                path = goal->path();
+                published_new_plan = false;
+            }
+        }
+
+        // ComputePath already published this polyline. Republishing the same
+        // (or a rejected-smooth copy) makes Autoviz redraw once — a flash.
+        if (published_new_plan) {
+            PublishPlan(path);
+        }
 
         const auto elapsed = std::chrono::steady_clock::now() - start_time;
         const double duration_sec =

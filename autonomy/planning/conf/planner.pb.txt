@@ -78,7 +78,7 @@ costmap {
         data_type: "LaserScan"
         marking: true
         clearing: true
-        raytrace_max_range: 3
+        raytrace_max_range: 8
       }
     }
     enabled: true
@@ -102,12 +102,12 @@ costmap {
   }
   enabled: true
   inflation_layer {
-    cost_scaling_factor: 3
+    cost_scaling_factor: 12
     enabled: true
     inflate_unknown: false
     plugin: "libautonomy_map_layers_inflation_layer.so"
     inflate_around_unknown: false
-    inflation_radius: 0.2
+    inflation_radius: 0.26
   }
   frame_id: "map"
   resolution: 0.05

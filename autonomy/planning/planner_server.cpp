@@ -465,10 +465,9 @@ bool PlannerServer::ValidatePath(
         return false;
     }
 
-    // Reject only lethal cells. Inscribed (253) is the circular footprint of
-    // the robot center on the inflation edge — still often traversable after
-    // NavFn plans through it; treating it as blocked made free corridors look
-    // unplannable for through-poses (and some to-pose goals).
+    // Lethal (254) only. Inscribed inflation (253) is the robot's own
+    // footprint on the corridor edge — rejecting it dropped valid free-space
+    // plans (start and goal both in gray) and aborted /compute_path_to_pose.
     if (!IsPathValid(path, map::costmap_2d::LETHAL_OBSTACLE,
                      /*consider_unknown_as_obstacle=*/false)) {
         AWARN_EVERY(10) << "Planning algorithm " << planner_id
@@ -526,6 +525,11 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
 
     for (size_t i = closest_point_index; i < path.poses_size(); ++i) {
         const auto& position = path.poses(i).pose().position();
+        const float dist_from_robot = static_cast<float>(utils::EuclideanDistance(
+            current_point, position));
+        if (dist_from_robot < 0.40f) {
+            continue;
+        }
         if (use_radius) {
             if (costmap_->worldToMap(position.x(), position.y(), mx, my)) {
                 cost = costmap_->getCost(mx, my);

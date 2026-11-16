@@ -53,6 +53,11 @@ private:
                     current_child_idx_ = 0;
                     return BT::NodeStatus::FAILURE;
                 case BT::NodeStatus::RUNNING:
+                    // RateController waiting on a new goal must halt FollowPath
+                    // so MPPI does not keep the previous endpoint.
+                    for (size_t j = i + 1; j < children_count; ++j) {
+                        ControlNode::haltChild(j);
+                    }
                     return BT::NodeStatus::RUNNING;
                 case BT::NodeStatus::SUCCESS:
                     if (i != current_child_idx_) {

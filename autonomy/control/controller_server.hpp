@@ -180,9 +180,11 @@ protected:
     void UpdateGlobalPath();
 
     /**
-     * @brief Called on goal exit
+     * @brief Called on goal exit.
+     * @param clear_visual_plan When false (FollowPath preempt), keep /plan
+     *        so Autoviz does not flash an empty overlay between paths.
      */
-    void OnGoalExit();
+    void OnGoalExit(bool clear_visual_plan = true);
 
     /**
      * @brief Checks if goal is reached
