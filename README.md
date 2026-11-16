@@ -62,15 +62,28 @@ Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. D
 
 ## Demo
 
-<p align="center">
-  <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/">
-    <img src="docs/assets/navigation/nav-1.png" alt="Navigation · AutoViz" width="100%"/>
-  </a>
-</p>
+<table>
+  <tr>
+    <td align="center" width="50%" valign="top">
+      <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/">
+        <img src="docs/assets/navigation/nav-1.png" alt="Navigation · AutoViz" width="100%"/>
+      </a>
+      <p>
+        <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/"><b>▶ Navigation demo</b></a>
+      </p>
+    </td>
+    <td align="center" width="50%" valign="top">
+      <a href="https://www.bilibili.com/video/BV11bsA67EcP/?spm_id_from=333.1387.homepage.video_card.click">
+        <img src="docs/assets/navigation/nav-2.png" alt="Navigation · RGB / semantic / depth / occupancy / costmap" width="100%"/>
+      </a>
+      <p>
+        <a href="https://www.bilibili.com/video/BV11bsA67EcP/?spm_id_from=333.1387.homepage.video_card.click"><b>▶ Navigation (sensors + map)</b></a>
+      </p>
+    </td>
+  </tr>
+</table>
 
 <p align="center">
-  <a href="https://www.bilibili.com/video/BV1wnWe6cEDX/"><b>▶ Navigation demo</b></a>
-  ·
   <a href="docs/source/16_Navigator/04_navigate_to_pose.md">Guide</a>
   ·
   <a href="autoviz/README.md">AutoViz</a>
