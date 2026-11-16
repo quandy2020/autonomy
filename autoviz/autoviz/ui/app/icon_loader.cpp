@@ -150,6 +150,8 @@ QString MapPanelTitleIcon(const QString& role) {
       {"viewport.recenter_frame", "viewport/recenter"},
       {"panel.close", "panel/close"},
       {"panel.expand", "panel/expand"},
+      {"panel.float", "panel/float"},
+      {"panel.content_only", "panel/content_only"},
       {"panel.more", "panel/more"},
       {"panel.settings", "panel/settings"},
       {"panel.split_right", "dock/right"},

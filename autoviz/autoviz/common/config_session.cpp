@@ -1305,6 +1305,7 @@ void ReadImagePanelFromConfig(const Config& node,
   }
   node.mapGetBool("EnableUndistort", &panel->enable_undistort);
   node.mapGetBool("SettingsVisible", &panel->settings_visible);
+  node.mapGetBool("ContentOnlyDisplay", &panel->content_only_display);
   panel->overlays.clear();
   Config overlays = node.mapGetChild("Overlays");
   for (int i = 0; i < overlays.listLength(); ++i) {
@@ -1357,6 +1358,7 @@ void WriteImagePanelToConfig(const ImagePanelPersistConfig& panel, Config* node)
                     QString::fromStdString(panel.hover_publish_channel));
   node->mapSetValue("EnableUndistort", panel.enable_undistort);
   node->mapSetValue("SettingsVisible", panel.settings_visible);
+  node->mapSetValue("ContentOnlyDisplay", panel.content_only_display);
   if (!panel.overlays.empty()) {
     Config overlays = node->mapMakeChild("Overlays");
     for (const auto& overlay : panel.overlays) {

@@ -71,6 +71,8 @@ struct ViewportPanelEntry {
   ViewportHudOverlay* hud_overlay = nullptr;            /**< Top-left HUD. */
   QToolButton* expand_button = nullptr;   /**< Title-bar expand toggle. */
   QToolButton* settings_button = nullptr; /**< Title-bar settings toggle. */
+  QToolButton* float_button = nullptr;    /**< Title-bar free-float toggle. */
+  QToolButton* content_only_button = nullptr; /**< Hide chrome while floating. */
 
   /**
    * Per-split tool (Select / Measure / Interact); not shared across 3D panels.

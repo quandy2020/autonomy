@@ -35,6 +35,27 @@ QString Apply(QString css, const QHash<QString, QString>& map) {
   return ScrubUnresolved(std::move(css));
 }
 
+/** Solid tooltip fill — see @ref toolTipSheet(). Kept free of {{tokens}} so
+ *  ScrubUnresolved cannot turn the background into "transparent". */
+QString BuildOpaqueToolTipCss() {
+  const glass::ShellTokens& s = glass::Shell();
+  QColor bg = s.tooltip_base;
+  bg.setAlpha(255);
+  QColor fg = s.tooltip_text;
+  fg.setAlpha(255);
+  QColor border = s.border;
+  border.setAlpha(255);
+  // No border-radius: on X11/Wayland rounded QToolTip often paints no fill.
+  return QStringLiteral(
+             "\nQToolTip {\n"
+             "  background-color: %1;\n"
+             "  color: %2;\n"
+             "  border: 1px solid %3;\n"
+             "  padding: 4px 8px;\n"
+             "}\n")
+      .arg(glass::Hex(bg), glass::Hex(fg), glass::Hex(border));
+}
+
 QString Section(const QString& css, const QString& name) {
   const QString begin = QStringLiteral("/* @section %1 */").arg(name);
   const int start = css.indexOf(begin);
@@ -211,6 +232,8 @@ QHash<QString, QString> tokens(Tone tone) {
   return t;
 }
 
+QString toolTipSheet() { return BuildOpaqueToolTipCss(); }
+
 QString sheet(const QString& path) {
   return sheet(path, tokens(Tone::Shell));
 }
@@ -256,7 +279,9 @@ QString sheet(const QString& path, const QHash<QString, QString>& extra) {
     }
   }
 
-  return Apply(std::move(css), extra);
+  // Local sheets with transparent QToolButton backgrounds otherwise leave
+  // QToolTip with a clear fill (unreadable over 3D View / dark panels).
+  return Apply(std::move(css), extra) + BuildOpaqueToolTipCss();
 }
 
 QString type(Role role, int size_px, int weight, bool italic, const QString& extra) {

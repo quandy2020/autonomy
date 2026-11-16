@@ -50,6 +50,7 @@ common::ImagePanelPersistConfig ToPersistConfig(const QString& object_name,
   persist.hover_publish_channel = config.hover_publish_channel.toStdString();
   persist.enable_undistort = config.enable_undistort;
   persist.settings_visible = config.settings_visible;
+  persist.content_only_display = config.content_only_display;
   persist.overlays.reserve(config.overlays.size());
   for (const ImageOverlayConfig& overlay : config.overlays) {
     persist.overlays.push_back(ToPersistOverlay(overlay));
@@ -90,6 +91,7 @@ ImagePanelConfig FromPersistConfig(const common::ImagePanelPersistConfig& persis
   config.hover_publish_channel = QString::fromStdString(persist.hover_publish_channel);
   config.enable_undistort = persist.enable_undistort;
   config.settings_visible = persist.settings_visible;
+  config.content_only_display = persist.content_only_display;
   config.overlays.reserve(persist.overlays.size());
   for (const common::ImageOverlayPersistConfig& overlay : persist.overlays) {
     config.overlays.push_back(FromPersistOverlay(overlay));

@@ -121,6 +121,16 @@ class ImageViewWidget : public QWidget {
   void setHud(const ImageViewHud& hud);
 
   /**
+   * @brief Shows or hides the top channel / FPS HUD overlay.
+   *
+   * @param visible @c false hides title/meta (content-only float).
+   */
+  void setHudVisible(bool visible);
+
+  /** @return Whether the top HUD is drawn. */
+  bool isHudVisible() const { return hud_visible_; }
+
+  /**
    * @brief Renders the current view (frame + annotations) into an image.
    *
    * @param with_annotations When @c false, exports the frame only.
@@ -210,6 +220,11 @@ class ImageViewWidget : public QWidget {
    * @param roi Axis-aligned ROI in image pixels (may be empty when cleared).
    */
   void roiChanged(QRect roi);
+
+  /**
+   * @brief Emitted on primary-button double-click (panel may toggle chrome).
+   */
+  void viewDoubleClicked();
 
  protected:
   /**
@@ -338,6 +353,7 @@ class ImageViewWidget : public QWidget {
   bool panning_ = false;       /**< Middle-button drag pan in progress. */
   QPoint last_pan_pos_;        /**< Last cursor pos during pan. */
   ImageViewHud hud_;          /**< Top status lines. */
+  bool hud_visible_ = true;   /**< When false, top HUD is not painted. */
   bool probe_valid_ = false;   /**< Cursor over a valid image pixel. */
   QPoint probe_pixel_;         /**< Image-pixel under cursor. */
   QString probe_text_;         /**< Formatted probe readout. */

@@ -979,7 +979,19 @@ bool ViewController::pickGroundPoint(int pixel_x, int pixel_y, int viewport_widt
                &direction)) {
     return false;
   }
-  return IntersectGroundPlane(origin, direction, hit);
+  if (IntersectGroundPlane(origin, direction, hit)) {
+    return true;
+  }
+  // 3D orbit: z = 0 may be behind the camera; fall back to the focal plane.
+  if (std::abs(direction.z()) < 1e-6f) {
+    return false;
+  }
+  const float t = (target_.z() - origin.z()) / direction.z();
+  if (t < 0.f) {
+    return false;
+  }
+  *hit = origin + direction * t;
+  return true;
 }
 
 void ViewController::appendFocalShape(SceneOverlay* overlay) const {

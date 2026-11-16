@@ -16,6 +16,7 @@
 #include "autoviz/plugins/displays/marker/marker_draw_utils.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 #include "autoviz/plugins/tools/common/publish_tool_utils.hpp"
+#include "autoviz/plugins/tools/goal_pose/goal_common.hpp"
 
 namespace autoviz {
 namespace tools {
@@ -245,9 +246,51 @@ void InteractTool::showMarkerMenu(const display::InteractiveMarkerPick& pick,
   active_pick_.reset();
 }
 
-bool InteractTool::mousePressEvent(QMouseEvent* event) {
+bool InteractTool::tryPublishDisplayedNavGoal(int pixel_x, int pixel_y) {
   if (context() == nullptr || context()->view_controller == nullptr ||
-      registry_ == nullptr || display_context_ == nullptr) {
+      context()->autolink_node == nullptr || !GoalUpdater.hasLastGoal()) {
+    return false;
+  }
+  QVector3D hit;
+  bool got_hit = context()->view_controller->pickGroundPoint(
+      pixel_x, pixel_y, context()->viewport_width, context()->viewport_height,
+      &hit);
+  if (!got_hit && context()->gpu_depth_pick) {
+    got_hit = context()->gpu_depth_pick(pixel_x, pixel_y, &hit);
+  }
+  if (!got_hit) {
+    return false;
+  }
+  const double dx = static_cast<double>(hit.x()) - GoalUpdater.lastX();
+  const double dy = static_cast<double>(hit.y()) - GoalUpdater.lastY();
+  // TargetVisualizer outer ring is 0.75 m; allow a little slack for the hub.
+  if ((dx * dx + dy * dy) > (0.90 * 0.90)) {
+    return false;
+  }
+  const QVector3D goal(static_cast<float>(GoalUpdater.lastX()),
+                       static_cast<float>(GoalUpdater.lastY()), 0.f);
+  const bool ok = PublishNavigationGoal(
+      context()->autolink_node, "/goal_pose", goal,
+      static_cast<float>(GoalUpdater.lastTheta()),
+      GoalUpdater.lastFrame().toStdString());
+  if (ok && context()->set_status) {
+    context()->set_status(
+        QStringLiteral("Re-sent navigation goal at (%1, %2)")
+            .arg(goal.x(), 0, 'f', 2)
+            .arg(goal.y(), 0, 'f', 2));
+  }
+  return ok;
+}
+
+bool InteractTool::mousePressEvent(QMouseEvent* event) {
+  if (context() == nullptr || context()->view_controller == nullptr) {
+    return false;
+  }
+
+  if (registry_ == nullptr || display_context_ == nullptr) {
+    if (event->button() == Qt::LeftButton) {
+      return tryPublishDisplayedNavGoal(event->pos().x(), event->pos().y());
+    }
     return false;
   }
 
@@ -270,6 +313,9 @@ bool InteractTool::mousePressEvent(QMouseEvent* event) {
     updateHighlight(nullptr, false);
     if (context()->request_redraw) {
       context()->request_redraw();
+    }
+    if (event->button() == Qt::LeftButton) {
+      return tryPublishDisplayedNavGoal(event->pos().x(), event->pos().y());
     }
     return false;
   }

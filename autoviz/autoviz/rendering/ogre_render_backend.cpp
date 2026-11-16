@@ -631,6 +631,18 @@ void OgreRenderBackend::setWindowVisible(bool visible) {
   }
 }
 
+void OgreRenderBackend::notifyWindowMovedOrResized() {
+  if (impl_ == nullptr || impl_->render_window == nullptr) {
+    return;
+  }
+  if (host_ != nullptr) {
+    impl_->render_window->resize(
+        static_cast<unsigned>(std::max(1, host_->width())),
+        static_cast<unsigned>(std::max(1, host_->height())));
+  }
+  impl_->render_window->windowMovedOrResized();
+}
+
 bool OgreRenderBackend::pickDepthAt(int pixel_x, int pixel_y, int viewport_width,
                                     int viewport_height,
                                     const QMatrix4x4& view,

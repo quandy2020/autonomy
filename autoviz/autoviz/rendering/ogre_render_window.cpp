@@ -9,6 +9,7 @@
 #include <QHideEvent>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QMoveEvent>
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QShowEvent>
@@ -59,6 +60,13 @@ void OgreRenderWindow::setViewInteractionCallbacks(
 void OgreRenderWindow::resizeEvent(QResizeEvent* event) {
   QWidget::resizeEvent(event);
   ogre_backend_.resize(event->size().width(), event->size().height());
+}
+
+void OgreRenderWindow::moveEvent(QMoveEvent* event) {
+  QWidget::moveEvent(event);
+  // Relative-to-parent moves (splitter / layout). Top-level shell moves are
+  // handled via notifyParentWindowMoved() from the float-shell filter.
+  ogre_backend_.notifyWindowMovedOrResized();
 }
 
 void OgreRenderWindow::paintEvent(QPaintEvent* /*event*/) {

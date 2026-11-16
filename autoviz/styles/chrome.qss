@@ -112,6 +112,13 @@ QCheckBox {
 
 /* @section title_tools */
 /* shell/title_tools */
+/* Explicit tooltip rule: transparent QToolButton fill must not leak into tips. */
+QToolTip {
+  background-color: palette(toolTipBase);
+  color: palette(toolTipText);
+  border: 1px solid palette(mid);
+  padding: 4px 8px;
+}
 QToolButton {
   border: 1px solid transparent;
   margin: 0 1px;
@@ -219,6 +226,12 @@ QTextBrowser {
 
 /* --- from app/viewport_tool_group.qss --- */
 /* app/viewport_tool_group */
+QToolTip {
+  background-color: palette(toolTipBase);
+  color: palette(toolTipText);
+  border: 1px solid palette(mid);
+  padding: 4px 8px;
+}
 QFrame#AutovizViewportToolGroup {
   background: transparent;
   border: none;

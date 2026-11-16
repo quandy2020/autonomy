@@ -138,6 +138,33 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
   title_bar_->installEventFilter(this);
 }
 
+void PanelDockWidget::setTitleBarVisible(bool visible) {
+  if (title_bar_ == nullptr) {
+    return;
+  }
+  if (visible) {
+    if (title_bar_placeholder_ != nullptr &&
+        titleBarWidget() == title_bar_placeholder_) {
+      setTitleBarWidget(title_bar_);
+    }
+    title_bar_->show();
+    title_bar_->setFixedHeight(28);
+    return;
+  }
+  if (title_bar_placeholder_ == nullptr) {
+    title_bar_placeholder_ = new QWidget(this);
+    title_bar_placeholder_->setFixedHeight(0);
+    title_bar_placeholder_->setMaximumHeight(0);
+  }
+  title_bar_->hide();
+  setTitleBarWidget(title_bar_placeholder_);
+}
+
+bool PanelDockWidget::isTitleBarVisible() const {
+  return title_bar_ != nullptr && title_bar_->isVisible() &&
+         titleBarWidget() == title_bar_;
+}
+
 void PanelDockWidget::setTitleBarTools(QWidget* tools) {
   if (title_tools_host_ == nullptr) {
     return;
@@ -357,6 +384,67 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
     return true;
   }
 
+  const bool free_float = property("intentionalFloat").toBool();
+
+  // Free-float window: never call QDockWidget::eventFilter for title-bar mouse
+  // traffic — Qt's dock drag would fight our move() and snap into other docks.
+  if (free_float && watched == title_bar_) {
+    switch (event->type()) {
+      case QEvent::MouseButtonPress: {
+        emit activated();
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::LeftButton) {
+          if (QWidget* child = title_bar_->childAt(mouse->position().toPoint())) {
+            if (qobject_cast<QToolButton*>(child) != nullptr ||
+                child == title_tools_host_ ||
+                (title_tools_host_ != nullptr &&
+                 title_tools_host_->isAncestorOf(child))) {
+              title_press_active_ = false;
+              return false;
+            }
+          }
+          title_press_active_ = true;
+          title_drag_active_ = false;
+          title_press_pos_ = mouse->position().toPoint();
+        }
+        return false;
+      }
+      case QEvent::MouseMove: {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (!(mouse->buttons() & Qt::LeftButton) || !title_press_active_) {
+          return false;
+        }
+        if (!title_drag_active_) {
+          const QPoint delta = mouse->position().toPoint() - title_press_pos_;
+          if (delta.manhattanLength() < QApplication::startDragDistance()) {
+            return false;
+          }
+          title_drag_active_ = true;
+        }
+        // Intentional float may live inside a top-level shell QMainWindow —
+        // move that window, not the dock child. No titleDragMoved/Finished:
+        // free-float must not mosaic-snap while hovering other panels.
+        if (QWidget* top = window()) {
+          top->raise();
+          top->move(mouse->globalPosition().toPoint() - title_press_pos_);
+        }
+        return true;
+      }
+      case QEvent::MouseButtonRelease: {
+        auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::LeftButton) {
+          title_press_active_ = false;
+          title_drag_active_ = false;
+        }
+        return false;
+      }
+      case QEvent::MouseButtonDblClick:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   // Let QDockWidget finish drag/drop (吸附) before we clear drag state —
   // ending early reparents mid-drop and can SIGSEGV / cancel snap.
   const bool qt_handled = QDockWidget::eventFilter(watched, event);
@@ -467,6 +555,13 @@ void PanelDockWidget::endTitleDrag(const QPoint& global_pos) {
 }
 
 void PanelDockWidget::closeEvent(QCloseEvent* event) {
+  // setParent / addDockWidget / setFloating during intentional float can
+  // synthesize a QCloseEvent; accepting it runs FramePanels::closed and
+  // destroys the 3D View. Ignore closes while the float transition is armed.
+  if (property("floatTransition").toBool()) {
+    event->ignore();
+    return;
+  }
   endTitleDrag(QCursor::pos());
   // Mark before QDockWidget::closeEvent so visibilityChanged(false) does not
   // synchronously tear the mosaic (removePanel/reparent) under this stack —

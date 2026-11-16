@@ -107,6 +107,14 @@ class OgreRenderBackend {
   void setWindowVisible(bool visible);
 
   /**
+   * @brief Syncs the external GLX/HWND after the host top-level window moved.
+   *
+   * Child widgets do not get @c QMoveEvent when only the shell window moves;
+   * callers must invoke this or the surface stays behind / goes transparent.
+   */
+  void notifyWindowMovedOrResized();
+
+  /**
    * @brief Tears down Ogre objects owned by this backend.
    */
   void shutdown();

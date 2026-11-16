@@ -177,6 +177,12 @@ void PathDisplay::processMessage(
   if (context_ == nullptr) {
     return;
   }
+  // Controller FollowPath preempt used to publish an empty /plan to "clear
+  // the latch". That blanks the overlay for one frame after a successful
+  // plan. Keep the last real path; hide_when_arrived still drops it at goal.
+  if (message.poses_size() < 2) {
+    return;
+  }
 
   const int buffer_length =
       std::max(1, common::ParseIntProperty(propertyValue("buffer_length", "1"), 1));

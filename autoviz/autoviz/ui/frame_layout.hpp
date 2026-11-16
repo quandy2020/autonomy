@@ -24,6 +24,7 @@
 #include <optional>
 #include <string>
 
+#include <QByteArray>
 #include <QHash>
 #include <QList>
 #include <QObject>
@@ -284,6 +285,75 @@ class FrameLayout {
   void expandPanelDock(PanelDockWidget* dock);
 
   /**
+   * @brief Toggles a main panel between floating window and mosaic dock.
+   *
+   * First click undocks and floats the panel (mosaic snapshot saved). Second
+   * click restores the prior mosaic layout so the panel returns to its old
+   * slot. While intentionally floating, the panel is a free top-level window
+   * (drag by title bar, resize by edges / size grip) and does not snap back
+   * into the mosaic on drop.
+   *
+   * @param dock Main panel dock (Image / Plot / …).
+   */
+  void toggleFloatMainPanel(PanelDockWidget* dock);
+
+  /**
+   * @brief Applies or clears free-float window chrome (resize grip, min size).
+   *
+   * @param dock Main panel dock.
+   * @param enabled @c true when entering intentional float mode.
+   */
+  void setIntentionalFloatChrome(PanelDockWidget* dock, bool enabled);
+
+  /**
+   * @brief Hosts @p dock in a top-level @c QMainWindow shell (visible float).
+   *
+   * Avoids @c QDockWidget::setFloating, which leaves center panels invisible
+   * when they were never added via @c QMainWindow::addDockWidget.
+   *
+   * @param dock Main panel dock already removed from the mosaic.
+   * @param geom Desired shell geometry in global coordinates.
+   */
+  void attachIntentionalFloatShell(PanelDockWidget* dock, const QRect& geom);
+
+  /**
+   * @brief Removes @p dock from its float shell (if any) and deletes the shell.
+   * @param dock Dock that may own a @c floatShellWidget property.
+   */
+  void detachIntentionalFloatShell(PanelDockWidget* dock);
+
+  /**
+   * @brief Tries to snap an intentional free-float dock back into the mosaic.
+   *
+   * Tears down the float shell / chrome when the cursor is over a valid drop
+   * target, then runs the same edge-drop path as a title-bar redock.
+   *
+   * @param dock Intentionally floating main panel.
+   * @param global_pos Cursor at mouse release.
+   * @return @c true when the dock was accepted into the mosaic.
+   */
+  bool tryRedockIntentionalFloat(PanelDockWidget* dock,
+                                 const QPoint& global_pos);
+
+  /**
+   * @brief Toggles chrome-less (content-only) mode on an intentionally floated
+   *        Image or 3D View dock.
+   *
+   * @param dock Floating main-panel dock.
+   * @param enabled @c true to hide title bar / borders; @c false to restore.
+   * @param title Hover-bar title (panel / channel name).
+   */
+  void setContentOnlyFloat(PanelDockWidget* dock, bool enabled,
+                           const QString& title = {});
+
+  /**
+   * @brief Convenience toggle for @ref setContentOnlyFloat().
+   *
+   * @param dock Floating Image or 3D View dock.
+   */
+  void toggleContentOnlyFloat(PanelDockWidget* dock);
+
+  /**
    * @brief Implementation of hide/show for a dock area.
    *
    * @param area Left or right dock area.
@@ -464,6 +534,12 @@ class FrameLayout {
 
   /** Mosaic splitter snapshot taken before expand (exact layout restore). */
   QByteArray pre_expand_mosaic_layout_;
+
+  /**
+   * Mosaic snapshots keyed by dock objectName, taken before a title-bar float
+   * so redock can restore the original leaf position.
+   */
+  QHash<QString, QByteArray> pre_float_mosaic_layout_;
 
   /** Re-entrancy guard while @ref tileCenterPanels() runs. */
   bool center_tiling_ = false;

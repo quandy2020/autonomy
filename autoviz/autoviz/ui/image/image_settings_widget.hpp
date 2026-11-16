@@ -181,6 +181,7 @@ class ImageSettingsWidget : public QWidget {
   QComboBox* calibration_combo_ = nullptr;    /**< CameraInfo channel. */
   QCheckBox* strict_sync_check_ = nullptr;    /**< Strict time sync with overlays. */
   QCheckBox* undistort_check_ = nullptr;      /**< Enable lens undistortion. */
+  QCheckBox* content_only_check_ = nullptr;   /**< Content-only while floating. */
   QCheckBox* flip_h_check_ = nullptr;         /**< Flip horizontal. */
   QCheckBox* flip_v_check_ = nullptr;         /**< Flip vertical. */
   QComboBox* rotation_combo_ = nullptr;       /**< Discrete rotation. */

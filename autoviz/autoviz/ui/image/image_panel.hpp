@@ -49,9 +49,12 @@
 class QButtonGroup;
 class QDragEnterEvent;
 class QDoubleSpinBox;
+class QEvent;
 class QFocusEvent;
 class QImage;
+class QKeyEvent;
 class QLabel;
+class QObject;
 class QScrollArea;
 class QTimer;
 class QToolButton;
@@ -186,6 +189,23 @@ class ImagePanel : public QWidget {
   void setExpandButtonChecked(bool checked);
 
   /**
+   * @brief Syncs the title-bar Float button checked state.
+   *
+   * @param checked @c true when the host dock is floating.
+   */
+  void setFloatButtonChecked(bool checked);
+
+  /**
+   * @brief Syncs the title-bar content-only button and panel chrome.
+   *
+   * @param enabled @c true when the floating dock is chrome-less.
+   */
+  void setContentOnlyMode(bool enabled);
+
+  /** @return @c true when content-only float mode is active. */
+  bool isContentOnlyMode() const { return content_only_mode_; }
+
+  /**
    * @brief Refreshes channel combo contents in the settings widget.
    */
   void refreshSettingsChannels();
@@ -261,6 +281,23 @@ class ImagePanel : public QWidget {
   void panelExpandRequested();
 
   /**
+   * @brief Request floating / redocking this panel.
+   */
+  void panelFloatRequested();
+
+  /**
+   * @brief Request toggling chrome-less content-only float mode.
+   */
+  void panelContentOnlyRequested();
+
+  /**
+   * @brief Request setting content-only float mode to an explicit value.
+   *
+   * @param enabled @c true for chrome-less; @c false to restore chrome.
+   */
+  void panelContentOnlySetRequested(bool enabled);
+
+  /**
    * @brief Request changing the panel type by object name.
    *
    * @param object_name Target panel type object name.
@@ -274,6 +311,22 @@ class ImagePanel : public QWidget {
    * @param event Focus-in event.
    */
   void focusInEvent(QFocusEvent* event) override;
+
+  /**
+   * @brief Esc exits content-only float mode when active.
+   *
+   * @param event Key event.
+   */
+  void keyPressEvent(QKeyEvent* event) override;
+
+  /**
+   * @brief Content-only HUD reveal on mouse idle over the view.
+   *
+   * @param watched Filtered object.
+   * @param event Event under consideration.
+   * @return @c false (never consumes).
+   */
+  bool eventFilter(QObject* watched, QEvent* event) override;
 
   /**
    * @brief Accepts channel / series drag payloads for image channels.
@@ -576,8 +629,26 @@ class ImagePanel : public QWidget {
   /** Dock title-bar Settings button (weak). */
   QPointer<QToolButton> settings_button_;
 
+  /** Dock title-bar Float / redock button (weak). */
+  QPointer<QToolButton> float_button_;
+
+  /** Dock title-bar content-only (pure image) button (weak). */
+  QPointer<QToolButton> content_only_button_;
+
   /** Dock title-bar Expand button (weak). */
   QPointer<QToolButton> expand_button_;
+
+  /** Host dock (weak) for float / content-only state queries. */
+  QPointer<PanelDockWidget> host_dock_;
+
+  /** Chrome-less floating mode (title / border / analysis hidden). */
+  bool content_only_mode_ = false;
+
+  /** Idle timer before briefly revealing HUD in content-only mode. */
+  QTimer* hud_reveal_timer_ = nullptr;
+
+  /** Timer to hide HUD again after a brief reveal. */
+  QTimer* hud_hide_timer_ = nullptr;
 
   /** Main image subscription id (@c 0 = none). */
   integration::ChannelReaderRegistry::SubscriptionId main_subscription_id_ = 0;

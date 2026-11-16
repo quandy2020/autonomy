@@ -110,6 +110,14 @@ void ImageViewWidget::setHud(const ImageViewHud& hud) {
   update();
 }
 
+void ImageViewWidget::setHudVisible(bool visible) {
+  if (hud_visible_ == visible) {
+    return;
+  }
+  hud_visible_ = visible;
+  update();
+}
+
 void ImageViewWidget::setTool(ImageViewTool tool) {
   if (tool_ == tool) {
     return;
@@ -412,22 +420,25 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
   }
 
   // Top HUD.
-  int hud_y = 8;
-  auto draw_hud_line = [&](const QString& line) {
-    if (line.isEmpty()) {
-      return;
-    }
-    const QFontMetrics metrics(painter.font());
-    const QRect text_rect = metrics.boundingRect(line);
-    const QRect bg(6, hud_y - 2, text_rect.width() + 10, text_rect.height() + 4);
-    painter.fillRect(bg, QColor(0, 0, 0, 140));
-    painter.setPen(Qt::white);
-    painter.drawText(QRect(10, hud_y, width() - 20, text_rect.height() + 2),
-                     Qt::AlignLeft | Qt::AlignVCenter, line);
-    hud_y += text_rect.height() + 6;
-  };
-  draw_hud_line(hud_.title);
-  draw_hud_line(hud_.meta);
+  if (hud_visible_) {
+    int hud_y = 8;
+    auto draw_hud_line = [&](const QString& line) {
+      if (line.isEmpty()) {
+        return;
+      }
+      const QFontMetrics metrics(painter.font());
+      const QRect text_rect = metrics.boundingRect(line);
+      const QRect bg(6, hud_y - 2, text_rect.width() + 10,
+                     text_rect.height() + 4);
+      painter.fillRect(bg, QColor(0, 0, 0, 140));
+      painter.setPen(Qt::white);
+      painter.drawText(QRect(10, hud_y, width() - 20, text_rect.height() + 2),
+                       Qt::AlignLeft | Qt::AlignVCenter, line);
+      hud_y += text_rect.height() + 6;
+    };
+    draw_hud_line(hud_.title);
+    draw_hud_line(hud_.meta);
+  }
 
   // Bottom readouts: analysis then probe.
   int bottom_y = height() - 12;
@@ -598,7 +609,7 @@ void ImageViewWidget::mouseReleaseEvent(QMouseEvent* event) {
 
 void ImageViewWidget::mouseDoubleClickEvent(QMouseEvent* event) {
   if (event->button() == Qt::LeftButton) {
-    resetView();
+    emit viewDoubleClicked();
   }
   QWidget::mouseDoubleClickEvent(event);
 }

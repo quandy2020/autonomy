@@ -71,6 +71,7 @@
 #include "autoviz/ui/app/preferences.hpp"
 #include "autoviz/ui/theme/application.hpp"
 #include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/app/translation.hpp"
 #include "autoviz/ui/panel/catalog.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
@@ -428,8 +429,9 @@ void FrameChrome::refreshShellChrome() {
     pal.setColor(QPalette::ButtonText, shell.window_text);
     pal.setColor(QPalette::Text, shell.text);
     menu_bar->setPalette(pal);
-    // Explicit sheet — global theme.qss is not installed (SEGV guard).
-    menu_bar->setStyleSheet(glass::ShellMenuBarStyleSheet());
+    // Explicit sheet — full theme.qss is not installed (SEGV guard).
+    menu_bar->setStyleSheet(glass::ShellMenuBarStyleSheet() +
+                            style::toolTipSheet());
     menu_bar->update();
   }
   if (tool_bar_ != nullptr) {
@@ -438,11 +440,13 @@ void FrameChrome::refreshShellChrome() {
     pal.setColor(QPalette::ButtonText, shell.secondary_text);
     pal.setColor(QPalette::Text, shell.text);
     tool_bar_->setPalette(pal);
-    tool_bar_->setStyleSheet(glass::ShellToolBarStyleSheet(true));
+    tool_bar_->setStyleSheet(glass::ShellToolBarStyleSheet(true) +
+                             style::toolTipSheet());
     tool_bar_->update();
   }
   if (frame_->statusBar() != nullptr) {
-    frame_->statusBar()->setStyleSheet(glass::ShellStatusBarStyleSheet());
+    frame_->statusBar()->setStyleSheet(glass::ShellStatusBarStyleSheet() +
+                                       style::toolTipSheet());
     frame_->statusBar()->update();
   }
   frame_->update();

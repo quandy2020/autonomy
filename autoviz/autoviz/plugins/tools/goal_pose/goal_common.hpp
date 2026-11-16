@@ -17,7 +17,16 @@
 
 #pragma once
 
+#include <memory>
+#include <string>
+
+#include <QVector3D>
+
 #include "autoviz/plugins/tools/goal_pose/goal_pose_updater.hpp"
+
+namespace autolink {
+class Node;
+}
 
 namespace autoviz {
 namespace tools {
@@ -31,6 +40,18 @@ namespace tools {
  * @see GoalPoseUpdater::updateGoal
  */
 extern GoalPoseUpdater GoalUpdater;
+
+/**
+ * @brief Publishes a PoseStamped navigation goal on @p channel (default /goal_pose).
+ *
+ * Also records the pose on @ref GoalUpdater. Retries shortly so TaskServer's
+ * SHM reader can join after Autoviz creates the writer on the first click.
+ *
+ * @return @c true if at least one Write succeeded.
+ */
+bool PublishNavigationGoal(
+    const std::shared_ptr<::autolink::Node>& node, const std::string& channel,
+    const QVector3D& position, float yaw, const std::string& frame);
 
 }  // namespace tools
 }  // namespace autoviz

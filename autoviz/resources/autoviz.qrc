@@ -102,7 +102,9 @@
     <file>icons/menu/xy_orbit.svg</file>
     <file>icons/panel/close.svg</file>
     <file>icons/panel/collapse.svg</file>
+    <file>icons/panel/content_only.svg</file>
     <file>icons/panel/expand.svg</file>
+    <file>icons/panel/float.svg</file>
     <file>icons/panel/gauge.svg</file>
     <file>icons/panel/inspect.svg</file>
     <file>icons/panel/more.svg</file>

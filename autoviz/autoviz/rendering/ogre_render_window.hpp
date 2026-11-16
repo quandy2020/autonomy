@@ -90,6 +90,14 @@ class OgreRenderWindow : public QWidget {
   void showNativeSurface() { ogre_backend_.setWindowVisible(true); }
 
   /**
+   * @brief Syncs the external GL surface after a parent top-level window move.
+   *
+   * @c QWidget::moveEvent is not delivered to children when only the shell
+   * window moves — float-shell drag must call this explicitly.
+   */
+  void notifyParentWindowMoved() { ogre_backend_.notifyWindowMovedOrResized(); }
+
+  /**
    * @brief Returns the owned camera controller.
    * @return Mutable @ref ViewController reference.
    */
@@ -208,6 +216,7 @@ class OgreRenderWindow : public QWidget {
 
  protected:
   void resizeEvent(QResizeEvent* event) override;
+  void moveEvent(QMoveEvent* event) override;
   void paintEvent(QPaintEvent* event) override;
   void showEvent(QShowEvent* event) override;
   void hideEvent(QHideEvent* event) override;

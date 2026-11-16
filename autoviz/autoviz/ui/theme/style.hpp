@@ -98,6 +98,18 @@ QString sheet(const QString& path, Tone tone);
 QString sheet(const QString& path, const QHash<QString, QString>& extra);
 
 /**
+ * @brief Opaque @c QToolTip rules (no alpha / no border-radius).
+ *
+ * Local chrome sheets often set @c background: transparent on tool buttons;
+ * without an explicit tooltip rule those hints paint with a clear fill and
+ * become unreadable over dark viewports. Appended by @ref sheet() and applied
+ * on @c QApplication in @ref ApplyAppTheme().
+ *
+ * @return Standalone QSS fragment for @c QToolTip.
+ */
+QString toolTipSheet();
+
+/**
  * @brief Builds inline label QSS from a @ref Role.
  *
  * @param role Color role.

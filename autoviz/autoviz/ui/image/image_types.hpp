@@ -103,6 +103,11 @@ struct ImagePanelConfig {
   QStringList marker_channels;              /**< Marker projection channels. */
   QStringList point_cloud_channels;         /**< PointCloud2 projection channels. */
   bool settings_visible = false;            /**< Settings pane visibility. */
+  /**
+   * Prefer chrome-less content-only appearance while the panel is floating.
+   * When true, floating enters content-only; unchecking restores chrome.
+   */
+  bool content_only_display = false;
 };
 
 }  // namespace image

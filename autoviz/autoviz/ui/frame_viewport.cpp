@@ -66,6 +66,7 @@
 #include "autoviz/ui/app/translation.hpp"
 #include "autoviz/ui/panel/catalog.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/content_only_float.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/theme/panel.hpp"
@@ -229,32 +230,47 @@ void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
     entry.layout->addWidget(entry.hud_overlay, 0, 0,
                             Qt::AlignLeft | Qt::AlignTop);
   }
-  if (entry.dock != nullptr && entry.dock->isVisible()) {
-    if (entry.host != nullptr) {
-      entry.host->updateGeometry();
-      // Pin the WA_NativeWindow to the post-split host rect before mapping.
-      // Otherwise the pre-split full-width GLX surface covers the sibling pane
-      // and the UI looks like "only one 3D View".
-      if (entry.host->width() >= 2 && entry.host->height() >= 2) {
-        entry.widget->setGeometry(entry.host->rect());
-      }
+  // Free-float / intentionalFloat docks may still be mapping (isVisible false
+  // briefly). Prefer requestedVisible + intentionalFloat so GL is not left
+  // parked on the main frame after undock — which looks like the 3D View
+  // "disappeared".
+  const bool should_show =
+      entry.dock != nullptr &&
+      (entry.dock->isVisible() || entry.dock->requestedVisible() ||
+       entry.dock->isFloating() ||
+       entry.dock->property("intentionalFloat").toBool());
+  if (!should_show) {
+    return;
+  }
+  if (entry.host != nullptr) {
+    entry.host->show();
+    entry.host->updateGeometry();
+    // Pin the WA_NativeWindow to the post-split / floated host rect before
+    // mapping. Otherwise a stale full-width GLX surface covers siblings, or a
+    // 0×0 host after undock leaves the float looking empty.
+    if (entry.host->width() >= 2 && entry.host->height() >= 2) {
+      entry.widget->setGeometry(entry.host->rect());
+    } else if (entry.dock != nullptr && entry.dock->width() >= 2 &&
+               entry.dock->height() >= 2) {
+      entry.host->resize(entry.dock->size());
+      entry.widget->setGeometry(entry.host->rect());
     }
-    entry.widget->show();
-    entry.widget->raise();
-    entry.widget->updateGeometry();
-    if (!reveal_held_) {
-      (void)entry.widget->winId();
-      if (entry.ogre_viewport != nullptr) {
-        // Undo hideNativeSurface / park so the GLX window paints again.
-        entry.ogre_viewport->showNativeSurface();
-      }
-      // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
-      // while sibling docks may still be mid-reparent; requestViewportUpdate()
-      // would call objectName() on a disposed dock and SIGSEGV.
-      entry.widget->update();
-    } else if (entry.ogre_viewport != nullptr) {
-      entry.ogre_viewport->hideNativeSurface();
+  }
+  entry.widget->show();
+  entry.widget->raise();
+  entry.widget->updateGeometry();
+  if (!reveal_held_) {
+    (void)entry.widget->winId();
+    if (entry.ogre_viewport != nullptr) {
+      // Undo hideNativeSurface / park so the GLX window paints again.
+      entry.ogre_viewport->showNativeSurface();
     }
+    // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
+    // while sibling docks may still be mid-reparent; requestViewportUpdate()
+    // would call objectName() on a disposed dock and SIGSEGV.
+    entry.widget->update();
+  } else if (entry.ogre_viewport != nullptr) {
+    entry.ogre_viewport->hideNativeSurface();
   }
 }
 
@@ -921,7 +937,72 @@ void FrameViewport::syncViewportTitleBarToolsForEntry(
     entry.settings_button->setChecked(views_in_sidebar && frame_->panels_->views_dock_->isVisible());
     entry.settings_button->blockSignals(false);
   }
+  if (entry.float_button != nullptr && entry.dock != nullptr) {
+    const bool floating =
+        entry.dock->isFloating() ||
+        entry.dock->property("intentionalFloat").toBool();
+    entry.float_button->blockSignals(true);
+    entry.float_button->setChecked(floating);
+    entry.float_button->setToolTip(floating ? frame_->tr("Dock panel")
+                                            : frame_->tr("Float panel"));
+    entry.float_button->blockSignals(false);
+    if (entry.content_only_button != nullptr) {
+      entry.content_only_button->setEnabled(floating);
+      if (!floating) {
+        entry.content_only_button->blockSignals(true);
+        entry.content_only_button->setChecked(false);
+        entry.content_only_button->blockSignals(false);
+      }
+    }
+  }
   syncViewportFloatingToolbarForEntry(entry);
+}
+
+void FrameViewport::setViewportFloatButtonChecked(PanelDockWidget* dock,
+                                                  bool checked) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr || entry->float_button == nullptr) {
+    return;
+  }
+  entry->float_button->blockSignals(true);
+  entry->float_button->setChecked(checked);
+  entry->float_button->setToolTip(checked ? frame_->tr("Dock panel")
+                                          : frame_->tr("Float panel"));
+  entry->float_button->blockSignals(false);
+  if (entry->content_only_button != nullptr) {
+    entry->content_only_button->setEnabled(checked);
+    if (!checked) {
+      entry->content_only_button->blockSignals(true);
+      entry->content_only_button->setChecked(false);
+      entry->content_only_button->blockSignals(false);
+    }
+  }
+}
+
+void FrameViewport::setViewportContentOnlyButtonChecked(PanelDockWidget* dock,
+                                                        bool enabled) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr || entry->content_only_button == nullptr) {
+    return;
+  }
+  entry->content_only_button->blockSignals(true);
+  entry->content_only_button->setChecked(enabled);
+  entry->content_only_button->setToolTip(
+      enabled ? frame_->tr("Show title bar")
+              : frame_->tr("Content-only (hide chrome)"));
+  entry->content_only_button->blockSignals(false);
+}
+
+void FrameViewport::setViewportFloatingToolbarVisible(PanelDockWidget* dock,
+                                                      bool visible) {
+  ViewportPanelEntry* entry = viewportEntryForDock(dock);
+  if (entry == nullptr || entry->floating_toolbar == nullptr) {
+    return;
+  }
+  entry->floating_toolbar->setVisible(visible);
+  if (visible) {
+    entry->floating_toolbar->raise();
+  }
 }
 
 void FrameViewport::syncViewportFloatingToolbarForEntry(
@@ -1168,6 +1249,65 @@ void FrameViewport::installViewportTitleBarToolsForEntry(
       CreatePanelTitleBarTools(dock, callbacks, options);
   entry.settings_button = tools.settings_button;
   entry.expand_button = tools.expand_button;
+
+  // Free-float + content-only (same path as Image): no mosaic snap while floating.
+  entry.float_button = nullptr;
+  entry.content_only_button = nullptr;
+  if (tools.widget != nullptr) {
+    entry.float_button = CreateTitleToolButton(
+        tools.widget, IconLoader::panelTitleIcon(QStringLiteral("panel.float")),
+        frame_->tr("Float panel"), true);
+    const bool floating = dock->isFloating() ||
+                          dock->property("intentionalFloat").toBool();
+    entry.float_button->setChecked(floating);
+    entry.float_button->setToolTip(floating ? frame_->tr("Dock panel")
+                                            : frame_->tr("Float panel"));
+
+    entry.content_only_button = CreateTitleToolButton(
+        tools.widget,
+        IconLoader::panelTitleIcon(QStringLiteral("panel.content_only")),
+        frame_->tr("Content-only (hide chrome)"), true);
+    entry.content_only_button->setEnabled(floating);
+    entry.content_only_button->setChecked(IsContentOnlyFloat(dock));
+
+    if (auto* layout = qobject_cast<QHBoxLayout*>(tools.widget->layout())) {
+      int insert_at = layout->count();
+      if (entry.expand_button != nullptr) {
+        const int expand_index = layout->indexOf(entry.expand_button);
+        if (expand_index >= 0) {
+          insert_at = expand_index;
+        }
+      }
+      layout->insertWidget(insert_at, entry.float_button);
+      layout->insertWidget(insert_at + 1, entry.content_only_button);
+    }
+    QObject::connect(entry.float_button, &QToolButton::clicked, frame_,
+                     [this, dock]() {
+                       frame_->layout_->toggleFloatMainPanel(dock);
+                     });
+    QObject::connect(entry.content_only_button, &QToolButton::clicked, frame_,
+                     [this, dock]() {
+                       if (dock == nullptr ||
+                           !dock->property("intentionalFloat").toBool()) {
+                         return;
+                       }
+                       const QString title =
+                           dock->windowTitle().isEmpty()
+                               ? frame_->tr("3D View")
+                               : dock->windowTitle();
+                       frame_->layout_->setContentOnlyFloat(
+                           dock, !IsContentOnlyFloat(dock), title);
+                     });
+    QObject::connect(dock, &QDockWidget::topLevelChanged, frame_,
+                     [this, dock](bool floating) {
+                       setViewportFloatButtonChecked(
+                           dock,
+                           floating ||
+                               (dock != nullptr &&
+                                dock->property("intentionalFloat").toBool()));
+                     });
+  }
+
   dock->setTitleBarTools(tools.widget);
   syncViewportTitleBarToolsForEntry(entry);
 }

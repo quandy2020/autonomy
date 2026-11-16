@@ -148,8 +148,36 @@ bool GoalPoseTool::pickGround(int x, int y, QVector3D* hit) const {
       hit == nullptr) {
     return false;
   }
-  return context()->view_controller->pickGroundPoint(
-      x, y, context()->viewport_width, context()->viewport_height, hit);
+  if (context()->view_controller->pickGroundPoint(
+          x, y, context()->viewport_width, context()->viewport_height, hit)) {
+    hit->setZ(0.f);
+    return true;
+  }
+  if (context()->gpu_depth_pick) {
+    QVector3D world;
+    if (context()->gpu_depth_pick(x, y, &world)) {
+      *hit = QVector3D(world.x(), world.y(), 0.f);
+      return true;
+    }
+  }
+  QVector3D origin;
+  QVector3D direction;
+  if (!context()->view_controller->pickRay(
+          x, y, context()->viewport_width, context()->viewport_height, &origin,
+          &direction)) {
+    return false;
+  }
+  if (std::abs(direction.z()) < 1e-6f) {
+    return false;
+  }
+  const float plane_z = context()->view_controller->target().z();
+  const float t = (plane_z - origin.z()) / direction.z();
+  if (t < 0.f) {
+    return false;
+  }
+  const QVector3D p = origin + direction * t;
+  *hit = QVector3D(p.x(), p.y(), 0.f);
+  return true;
 }
 
 float GoalPoseTool::calculateAngle(const QVector3D& cursor,
@@ -171,7 +199,7 @@ bool GoalPoseTool::mousePressEvent(QMouseEvent* event) {
 
   QVector3D hit;
   if (!pickGround(event->pos().x(), event->pos().y(), &hit)) {
-    return true;
+    return false;
   }
 
   arrow_position_ = hit;

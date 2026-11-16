@@ -49,8 +49,21 @@ class GoalPoseUpdater : public QObject {
    * @param frame TF frame id of the pose (typically the fixed frame).
    */
   void setGoal(double x, double y, double theta, const QString& frame) {
+    last_valid_ = true;
+    last_x_ = x;
+    last_y_ = y;
+    last_theta_ = theta;
+    last_frame_ = frame;
     emit updateGoal(x, y, theta, frame);
   }
+
+  /** @return True if @ref setGoal has been called at least once. */
+  bool hasLastGoal() const { return last_valid_; }
+
+  double lastX() const { return last_x_; }
+  double lastY() const { return last_y_; }
+  double lastTheta() const { return last_theta_; }
+  QString lastFrame() const { return last_frame_; }
 
  signals:
   /**
@@ -62,6 +75,13 @@ class GoalPoseUpdater : public QObject {
    * @param frame TF frame id of the pose.
    */
   void updateGoal(double x, double y, double theta, QString frame);
+
+ private:
+  bool last_valid_ = false;
+  double last_x_ = 0.0;
+  double last_y_ = 0.0;
+  double last_theta_ = 0.0;
+  QString last_frame_;
 };
 
 }  // namespace tools

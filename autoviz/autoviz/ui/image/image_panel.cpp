@@ -17,9 +17,11 @@
 #include <QDragEnterEvent>
 #include <QDoubleSpinBox>
 #include <QDropEvent>
+#include <QEvent>
 #include <QFileDialog>
 #include <QFocusEvent>
 #include <QFrame>
+#include <QKeyEvent>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -524,6 +526,43 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
       view_->setAnalysisText(text);
     }
   });
+  connect(view_, &ImageViewWidget::viewDoubleClicked, this, [this]() {
+    const bool floating =
+        host_dock_ != nullptr &&
+        (host_dock_->property("intentionalFloat").toBool() ||
+         host_dock_->isFloating());
+    if (floating) {
+      emit panelContentOnlyRequested();
+      return;
+    }
+    if (view_ != nullptr) {
+      view_->resetView();
+    }
+  });
+
+  hud_reveal_timer_ = new QTimer(this);
+  hud_reveal_timer_->setSingleShot(true);
+  hud_reveal_timer_->setInterval(800);
+  connect(hud_reveal_timer_, &QTimer::timeout, this, [this]() {
+    if (!content_only_mode_ || view_ == nullptr) {
+      return;
+    }
+    view_->setHudVisible(true);
+    if (hud_hide_timer_ != nullptr) {
+      hud_hide_timer_->start();
+    }
+  });
+  hud_hide_timer_ = new QTimer(this);
+  hud_hide_timer_->setSingleShot(true);
+  hud_hide_timer_->setInterval(2000);
+  connect(hud_hide_timer_, &QTimer::timeout, this, [this]() {
+    if (!content_only_mode_ || view_ == nullptr) {
+      return;
+    }
+    view_->setHudVisible(false);
+  });
+  view_->setMouseTracking(true);
+  view_->installEventFilter(this);
 
   frame_timer_ = new QTimer(this);
   frame_timer_->setTimerType(Qt::PreciseTimer);
@@ -550,6 +589,7 @@ void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
   if (dock == nullptr) {
     return;
   }
+  host_dock_ = dock;
   PanelContextMenuCallbacks callbacks;
   callbacks.current_object_name = QStringLiteral("ImageDock");
   callbacks.change_panel = [this](const QString& object_name) {
@@ -575,6 +615,49 @@ void ImagePanel::installTitleBarTools(PanelDockWidget* dock) {
       CreatePanelTitleBarTools(dock, callbacks, options);
   settings_button_ = tools.settings_button;
   expand_button_ = tools.expand_button;
+
+  // Float / content-only — Image-only title tools (insert before Expand).
+  if (tools.widget != nullptr) {
+    float_button_ = CreateTitleToolButton(
+        tools.widget, IconLoader::panelTitleIcon(QStringLiteral("panel.float")),
+        tr("Float panel"), true);
+    float_button_->setChecked(dock->isFloating() ||
+                              dock->property("intentionalFloat").toBool());
+    float_button_->setToolTip(float_button_->isChecked() ? tr("Dock panel")
+                                                         : tr("Float panel"));
+
+    content_only_button_ = CreateTitleToolButton(
+        tools.widget,
+        IconLoader::panelTitleIcon(QStringLiteral("panel.content_only")),
+        tr("Content-only (hide chrome)"), true);
+    content_only_button_->setEnabled(float_button_->isChecked());
+    content_only_button_->setChecked(false);
+
+    if (auto* layout = qobject_cast<QHBoxLayout*>(tools.widget->layout())) {
+      int insert_at = layout->count();
+      if (expand_button_ != nullptr) {
+        const int expand_index = layout->indexOf(expand_button_);
+        if (expand_index >= 0) {
+          insert_at = expand_index;
+        }
+      }
+      layout->insertWidget(insert_at, float_button_);
+      layout->insertWidget(insert_at + 1, content_only_button_);
+    }
+    QObject::connect(float_button_, &QToolButton::clicked, this, [this]() {
+      emit panelFloatRequested();
+    });
+    QObject::connect(content_only_button_, &QToolButton::clicked, this,
+                     [this]() { emit panelContentOnlyRequested(); });
+    QObject::connect(dock, &QDockWidget::topLevelChanged, this,
+                     [this](bool floating) {
+                       setFloatButtonChecked(
+                           floating ||
+                           (host_dock_ != nullptr &&
+                            host_dock_->property("intentionalFloat").toBool()));
+                     });
+  }
+
   dock->setTitleBarTools(tools.widget);
 }
 
@@ -637,8 +720,15 @@ void ImagePanel::cloneConfigFrom(const ImagePanelConfig& config) {
 }
 
 void ImagePanel::applySettings(const ImagePanelConfig& config) {
+  const bool want_content_only = config.content_only_display;
   setConfig(config);
   emit configChanged();
+  // General → Content-only display: apply immediately when already floating.
+  if (host_dock_ != nullptr &&
+      host_dock_->property("intentionalFloat").toBool() &&
+      want_content_only != content_only_mode_) {
+    emit panelContentOnlySetRequested(want_content_only);
+  }
 }
 
 void ImagePanel::applyConfigToUi() {
@@ -676,6 +766,63 @@ void ImagePanel::setExpandButtonChecked(bool checked) {
   expand_button_->blockSignals(false);
 }
 
+void ImagePanel::setFloatButtonChecked(bool checked) {
+  if (float_button_ == nullptr) {
+    return;
+  }
+  float_button_->blockSignals(true);
+  float_button_->setChecked(checked);
+  float_button_->setToolTip(checked ? tr("Dock panel") : tr("Float panel"));
+  float_button_->blockSignals(false);
+  if (content_only_button_ != nullptr) {
+    content_only_button_->setEnabled(checked);
+    if (!checked) {
+      content_only_button_->blockSignals(true);
+      content_only_button_->setChecked(false);
+      content_only_button_->blockSignals(false);
+      setContentOnlyMode(false);
+    }
+  }
+}
+
+void ImagePanel::setContentOnlyMode(bool enabled) {
+  content_only_mode_ = enabled;
+  if (config_.content_only_display != enabled) {
+    config_.content_only_display = enabled;
+    syncSettingsWidgetFromConfig();
+  }
+  if (content_only_button_ != nullptr) {
+    content_only_button_->blockSignals(true);
+    content_only_button_->setChecked(enabled);
+    content_only_button_->setToolTip(
+        enabled ? tr("Show chrome") : tr("Content-only (hide chrome)"));
+    content_only_button_->blockSignals(false);
+  }
+  if (enabled) {
+    setFloatingChromeVisible(false);
+    if (overlay_reveal_button_ != nullptr) {
+      overlay_reveal_button_->hide();
+    }
+    if (view_ != nullptr) {
+      view_->setHudVisible(false);
+    }
+  } else {
+    if (overlay_reveal_button_ != nullptr) {
+      overlay_reveal_button_->setVisible(!floating_chrome_visible_);
+    }
+    if (view_ != nullptr) {
+      view_->setHudVisible(true);
+    }
+    if (hud_reveal_timer_ != nullptr) {
+      hud_reveal_timer_->stop();
+    }
+    if (hud_hide_timer_ != nullptr) {
+      hud_hide_timer_->stop();
+    }
+  }
+  update();
+}
+
 void ImagePanel::refreshSettingsChannels() {
   if (settings_widget_ != nullptr) {
     settings_widget_->refreshChannelLists();
@@ -711,6 +858,47 @@ void ImagePanel::onToggleSettings(bool visible) {
 void ImagePanel::focusInEvent(QFocusEvent* event) {
   QWidget::focusInEvent(event);
   emit activated();
+}
+
+void ImagePanel::keyPressEvent(QKeyEvent* event) {
+  if (event->key() == Qt::Key_Escape && !event->modifiers() &&
+      content_only_mode_) {
+    emit panelContentOnlyRequested();
+    event->accept();
+    return;
+  }
+  QWidget::keyPressEvent(event);
+}
+
+bool ImagePanel::eventFilter(QObject* watched, QEvent* event) {
+  if (content_only_mode_ && watched == view_) {
+    switch (event->type()) {
+      case QEvent::MouseMove:
+      case QEvent::Enter:
+        if (hud_reveal_timer_ != nullptr) {
+          hud_reveal_timer_->start();
+        }
+        if (view_ != nullptr && view_->isHudVisible() &&
+            hud_hide_timer_ != nullptr) {
+          hud_hide_timer_->start();
+        }
+        break;
+      case QEvent::Leave:
+        if (hud_reveal_timer_ != nullptr) {
+          hud_reveal_timer_->stop();
+        }
+        if (hud_hide_timer_ != nullptr) {
+          hud_hide_timer_->stop();
+        }
+        if (view_ != nullptr) {
+          view_->setHudVisible(false);
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  return QWidget::eventFilter(watched, event);
 }
 
 void ImagePanel::dragEnterEvent(QDragEnterEvent* event) {

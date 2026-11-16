@@ -152,6 +152,11 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
   general_form->addRow(MakeFormLabel(tr("Undistort image"), general_body),
                        undistort_check_);
 
+  content_only_check_ = make_toggle(
+      tr("While floating, hide title bar and borders (content-only mode)"));
+  general_form->addRow(MakeFormLabel(tr("Content-only display"), general_body),
+                       content_only_check_);
+
   flip_h_check_ = make_toggle(tr("Flip image horizontally"));
   general_form->addRow(MakeFormLabel(tr("Flip horizontal"), general_body),
                        flip_h_check_);
@@ -308,6 +313,8 @@ ImageSettingsWidget::ImageSettingsWidget(common::VisualizationManager* manager,
   connect(strict_sync_check_, &QCheckBox::toggled, this,
           &ImageSettingsWidget::emitConfigChanged);
   connect(undistort_check_, &QCheckBox::toggled, this,
+          &ImageSettingsWidget::emitConfigChanged);
+  connect(content_only_check_, &QCheckBox::toggled, this,
           &ImageSettingsWidget::emitConfigChanged);
   connect(flip_h_check_, &QCheckBox::toggled, this,
           &ImageSettingsWidget::emitConfigChanged);
@@ -651,6 +658,8 @@ ImagePanelConfig ImageSettingsWidget::config() const {
   out.calibration_channel = calibration_combo_->currentText().trimmed();
   out.strict_time_sync = strict_sync_check_->isChecked();
   out.enable_undistort = undistort_check_->isChecked();
+  out.content_only_display =
+      content_only_check_ != nullptr && content_only_check_->isChecked();
   out.flip_horizontal = flip_h_check_->isChecked();
   out.flip_vertical = flip_v_check_->isChecked();
   out.rotation =
@@ -724,6 +733,7 @@ void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
   const QSignalBlocker b3(calibration_combo_);
   const QSignalBlocker b4(strict_sync_check_);
   const QSignalBlocker b5(undistort_check_);
+  const QSignalBlocker b5b(content_only_check_);
   const QSignalBlocker b6(flip_h_check_);
   const QSignalBlocker b7(flip_v_check_);
   const QSignalBlocker b8(rotation_combo_);
@@ -748,6 +758,9 @@ void ImageSettingsWidget::setConfig(const ImagePanelConfig& config) {
   calibration_combo_->setCurrentText(config_.calibration_channel);
   strict_sync_check_->setChecked(config_.strict_time_sync);
   undistort_check_->setChecked(config_.enable_undistort);
+  if (content_only_check_ != nullptr) {
+    content_only_check_->setChecked(config_.content_only_display);
+  }
   flip_h_check_->setChecked(config_.flip_horizontal);
   flip_v_check_->setChecked(config_.flip_vertical);
   rotation_combo_->setCurrentIndex(

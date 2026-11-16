@@ -69,6 +69,7 @@
 #include "autoviz/ui/app/translation.hpp"
 #include "autoviz/ui/panel/catalog.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
+#include "autoviz/ui/panel/content_only_float.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/theme/panel.hpp"
@@ -505,6 +506,10 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
     if (!frame_->layout_->isMainPanel(dock)) {
       return;
     }
+    // Button-floated panels stay free windows — no mosaic undock / snap.
+    if (dock->property("intentionalFloat").toBool()) {
+      return;
+    }
     ++frame_->layout_->center_dock_drag_count_;
     ++frame_->layout_->center_tile_epoch_;
     frame_->layout_->center_tile_pending_ = false;
@@ -517,12 +522,20 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
                      if (!frame_->layout_->isMainPanel(dock)) {
                        return;
                      }
+                     if (dock->property("intentionalFloat").toBool()) {
+                       return;
+                     }
                      frame_->layout_->updateMainPanelDropPreview(dock, global_pos);
                    });
   QObject::connect(
       dock, &PanelDockWidget::titleDragFinished, frame_,
       [this, dock](const QPoint& global_pos) {
         if (!frame_->layout_->isMainPanel(dock)) {
+          return;
+        }
+        if (dock->property("intentionalFloat").toBool()) {
+          // Free-float: stay above panels, never mosaic-吸附 on drop.
+          frame_->session_->markConfigModified();
           return;
         }
         if (frame_->layout_->center_dock_drag_count_ > 0) {
@@ -540,6 +553,18 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
     // Drag may have left retile suppressed; always clear on close.
     frame_->layout_->suppress_center_tile_ = false;
     frame_->layout_->center_dock_drag_count_ = 0;
+    frame_->layout_->pre_float_mosaic_layout_.remove(dock->objectName());
+    if (dock->property("intentionalFloat").toBool() ||
+        IsContentOnlyFloat(dock)) {
+      if (IsContentOnlyFloat(dock)) {
+        SetContentOnlyFloatChrome(dock, false);
+        if (auto* image = qobject_cast<image::ImagePanel*>(dock->widget())) {
+          image->setContentOnlyMode(false);
+        }
+      }
+      frame_->layout_->setIntentionalFloatChrome(dock, false);
+      frame_->layout_->detachIntentionalFloatShell(dock);
+    }
     if (QAction* toggle = dock->toggleViewAction()) {
       toggle->blockSignals(true);
       toggle->setChecked(false);
@@ -1629,6 +1654,40 @@ void FramePanels::wireImagePanel(PanelDockWidget* dock,
   QObject::connect(panel, &image::ImagePanel::panelRemoveRequested, dock,
           &QDockWidget::close);
   QObject::connect(panel, &image::ImagePanel::panelExpandRequested, frame_, [this, dock]() { frame_->layout_->expandPanelDock(dock); });
+  QObject::connect(panel, &image::ImagePanel::panelFloatRequested, frame_,
+                   [this, dock]() { frame_->layout_->toggleFloatMainPanel(dock); });
+  QObject::connect(
+      panel, &image::ImagePanel::panelContentOnlyRequested, frame_,
+      [this, dock, panel]() {
+        if (dock == nullptr || panel == nullptr) {
+          return;
+        }
+        if (!dock->property("intentionalFloat").toBool()) {
+          return;
+        }
+        const QString title = panel->config().title.trimmed().isEmpty()
+                                  ? panel->config().image_channel
+                                  : panel->config().title.trimmed();
+        if (IsContentOnlyFloat(dock)) {
+          frame_->layout_->setContentOnlyFloat(dock, false);
+        } else {
+          frame_->layout_->setContentOnlyFloat(dock, true, title);
+        }
+      });
+  QObject::connect(
+      panel, &image::ImagePanel::panelContentOnlySetRequested, frame_,
+      [this, dock, panel](bool enabled) {
+        if (dock == nullptr || panel == nullptr) {
+          return;
+        }
+        if (!dock->property("intentionalFloat").toBool()) {
+          return;
+        }
+        const QString title = panel->config().title.trimmed().isEmpty()
+                                  ? panel->config().image_channel
+                                  : panel->config().title.trimmed();
+        frame_->layout_->setContentOnlyFloat(dock, enabled, title);
+      });
   QObject::connect(panel, &image::ImagePanel::panelChangeRequested, frame_, [this, dock](const QString& object_name) {
             frame_->layout_->changePanelInDock(dock, object_name);
           });

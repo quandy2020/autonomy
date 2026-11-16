@@ -8,7 +8,6 @@
 #include "autoviz/plugins/tools/goal_pose/nav_goal_tool.hpp"
 
 #include "autoviz/plugins/tools/goal_pose/goal_common.hpp"
-#include "autoviz/plugins/tools/common/publish_tool_utils.hpp"
 
 namespace autoviz {
 namespace tools {
@@ -37,37 +36,16 @@ void NavGoalTool::onPoseSet(const QVector3D& position, float yaw) {
 
   const std::string frame = context()->fixed_frame;
   const QString frame_q = QString::fromStdString(frame);
-
-  // Nav2 GoalTool: notify panels (navigate_to_pose / waypoint accumulate).
-  GoalUpdater.setGoal(static_cast<double>(position.x()),
-                      static_cast<double>(position.y()),
-                      static_cast<double>(yaw), frame_q);
-
-  // RViz GoalTool: publish PoseStamped for autonomy::task TaskServer (/goal_pose).
   const std::string channel = publishChannel();
-  if (!ensureWriter(channel)) {
-    if (context()->set_status) {
-      context()->set_status(
-          QStringLiteral("Failed to publish goal on %1")
-              .arg(QString::fromStdString(channel)));
-    }
-    return;
-  }
 
-  automsgs::msgs::geometry_msgs::PoseStamped goal;
-  FillHeader(goal.mutable_header(), frame);
-  goal.mutable_pose()->mutable_position()->set_x(position.x());
-  goal.mutable_pose()->mutable_position()->set_y(position.y());
-  // Ground-plane goal; RViz GoalTool forces z = 0.
-  goal.mutable_pose()->mutable_position()->set_z(0.0);
-  SetYawQuaternion(goal.mutable_pose()->mutable_orientation(), yaw);
+  const bool ok = PublishNavigationGoal(context()->autolink_node, channel,
+                                        position, yaw, frame);
+  (void)ensureWriter(channel);
 
-  if (!writer_->Write(goal)) {
-    if (context()->set_status) {
-      context()->set_status(
-          QStringLiteral("Failed to publish goal on %1")
-              .arg(QString::fromStdString(channel)));
-    }
+  if (!ok && context()->set_status) {
+    context()->set_status(
+        QStringLiteral("Failed to publish goal on %1")
+            .arg(QString::fromStdString(channel)));
     return;
   }
 

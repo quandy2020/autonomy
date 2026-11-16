@@ -58,8 +58,12 @@ QPalette BuildPaletteFromShell(const glass::ShellTokens& t) {
   palette.setColor(QPalette::WindowText, t.window_text);
   palette.setColor(QPalette::Base, base);
   palette.setColor(QPalette::AlternateBase, t.alternate_base);
-  palette.setColor(QPalette::ToolTipBase, t.tooltip_base);
-  palette.setColor(QPalette::ToolTipText, t.tooltip_text);
+  QColor tip_base = t.tooltip_base;
+  tip_base.setAlpha(255);
+  QColor tip_text = t.tooltip_text;
+  tip_text.setAlpha(255);
+  palette.setColor(QPalette::ToolTipBase, tip_base);
+  palette.setColor(QPalette::ToolTipText, tip_text);
   palette.setColor(QPalette::Text, t.text);
   palette.setColor(QPalette::Button, button);
   palette.setColor(QPalette::ButtonText, t.button_text);
@@ -268,11 +272,13 @@ void ApplyAppTheme(QApplication& app) {
   app.setStyle(proxy);
   app.setPalette(BuildPaletteFromShell(theme));
   widget::InvalidateThemeTokens();
-  // Do not install the global theme.qss on QApplication. Under Qt 6.2 +
+  // Do not install the full theme.qss on QApplication. Under Qt 6.2 +
   // WA_NativeWindow Ogre + live Autolink, QCss::Selector::pseudoElement /
   // getOpaqueChildren SEGV during the first paints after RenderSystem ready.
   // Shell chrome uses Fusion+ProxyStyle+palette; panels keep local sheets.
-  app.setStyleSheet(QString());
+  // Keep a minimal opaque QToolTip sheet so hints stay readable when widgets
+  // have no local stylesheet (or inherit transparent tool-button fills).
+  app.setStyleSheet(style::toolTipSheet());
 }
 
 void RefreshAppThemeChrome(QApplication& app) {
@@ -280,6 +286,7 @@ void RefreshAppThemeChrome(QApplication& app) {
   const glass::ShellTokens shell = glass::Shell();
   const QPalette app_pal = BuildPaletteFromShell(shell);
   app.setPalette(app_pal);
+  app.setStyleSheet(style::toolTipSheet());
   if (auto* proxy = qobject_cast<ProxyStyle*>(app.style())) {
     proxy->setAccentColor(shell.accent);
     proxy->setSelectionBackground(shell.selection_bg);
@@ -310,7 +317,8 @@ void RefreshAppThemeChrome(QApplication& app) {
       pal.setColor(QPalette::ButtonText, shell.window_text);
       pal.setColor(QPalette::Text, shell.text);
       widget->setPalette(pal);
-      widget->setStyleSheet(glass::ShellMenuBarStyleSheet());
+      widget->setStyleSheet(glass::ShellMenuBarStyleSheet() +
+                            style::toolTipSheet());
     } else if (name == QLatin1String(AppThemeIds::kToolBar) ||
                qobject_cast<QToolBar*>(widget) != nullptr) {
       QPalette pal = app_pal;
@@ -318,9 +326,11 @@ void RefreshAppThemeChrome(QApplication& app) {
       pal.setColor(QPalette::ButtonText, shell.secondary_text);
       pal.setColor(QPalette::Text, shell.text);
       widget->setPalette(pal);
-      widget->setStyleSheet(glass::ShellToolBarStyleSheet(false));
+      widget->setStyleSheet(glass::ShellToolBarStyleSheet(false) +
+                            style::toolTipSheet());
     } else if (qobject_cast<QStatusBar*>(widget) != nullptr) {
-      widget->setStyleSheet(glass::ShellStatusBarStyleSheet());
+      widget->setStyleSheet(glass::ShellStatusBarStyleSheet() +
+                            style::toolTipSheet());
     } else if (name == QLatin1String(AppThemeIds::kPanelContent) ||
                name.endsWith(QLatin1String("Panel")) ||
                name.contains(QLatin1String("/"))) {

@@ -175,6 +175,14 @@ class InteractTool : public common::Tool {
   void updateHighlight(const display::InteractiveMarkerPick* pick, bool active,
                        bool ctrl_held = false);
 
+  /**
+   * @brief If the click is on the displayed 2D Goal rings, republish /goal_pose.
+   *
+   * After NavGoalTool reverts to Interact, clicking the target marker must
+   * still start / retarget navigation.
+   */
+  bool tryPublishDisplayedNavGoal(int pixel_x, int pixel_y);
+
   /** Non-owning interactive marker registry from ToolContext. */
   display::InteractiveMarkerRegistry* registry_ = nullptr;
 

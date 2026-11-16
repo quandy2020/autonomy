@@ -274,10 +274,31 @@ class FrameViewport {
   void installViewportHudOverlay(ViewportPanelEntry& entry);
 
   /**
-   * @brief Installs expand / settings title-bar tools for @p entry.
+   * @brief Installs expand / settings / float title-bar tools for @p entry.
    * @param entry Viewport entry whose dock title bar is updated.
    */
   void installViewportTitleBarToolsForEntry(ViewportPanelEntry& entry);
+
+  /**
+   * @brief Updates the title-bar float button checked state for @p dock.
+   * @param dock Viewport dock (no-op if not a registered 3D View).
+   * @param checked @c true while free-floating / intentionalFloat.
+   */
+  void setViewportFloatButtonChecked(PanelDockWidget* dock, bool checked);
+
+  /**
+   * @brief Syncs the title-bar content-only button for a floating 3D View.
+   * @param dock Viewport dock.
+   * @param enabled @c true while content-only chrome is active.
+   */
+  void setViewportContentOnlyButtonChecked(PanelDockWidget* dock, bool enabled);
+
+  /**
+   * @brief Shows or hides the floating tool strip for content-only mode.
+   * @param dock Viewport dock.
+   * @param visible @c false hides the right-edge toolbar (and keeps HUD).
+   */
+  void setViewportFloatingToolbarVisible(PanelDockWidget* dock, bool visible);
 
   /**
    * @brief Recenter-on-frame action from the floating toolbar.

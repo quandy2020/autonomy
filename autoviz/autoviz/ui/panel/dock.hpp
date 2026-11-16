@@ -100,6 +100,19 @@ class PanelDockWidget : public QDockWidget {
   void setTitleBarTools(QWidget* tools);
 
   /**
+   * @brief Shows or collapses the custom title bar (content-only float).
+   *
+   * When hidden, installs a zero-height placeholder title widget so Qt does not
+   * paint a native title strip.
+   *
+   * @param visible @c true to restore the glass title bar.
+   */
+  void setTitleBarVisible(bool visible);
+
+  /** @return @c true when the custom title bar is visible. */
+  bool isTitleBarVisible() const;
+
+  /**
    * @brief Lock dock height to title bar + fixed content (e.g. bottom Time bar).
    * @param height Content height in pixels (0 clears the lock).
    * @see enforceFixedHeight()
@@ -267,6 +280,9 @@ class PanelDockWidget : public QDockWidget {
 
   /** Custom title bar widget. */
   QWidget* title_bar_ = nullptr;
+
+  /** Zero-height placeholder used while the title bar is hidden. */
+  QWidget* title_bar_placeholder_ = nullptr;
 
   /** Title-bar icon label. */
   QLabel* icon_label_ = nullptr;

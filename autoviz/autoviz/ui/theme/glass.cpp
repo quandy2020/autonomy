@@ -184,6 +184,9 @@ void ForceOpaqueShellMaterials(ShellTokens& tokens) {
   tokens.hover_bg.setAlpha(255);
   tokens.border.setAlpha(255);
   tokens.border_light.setAlpha(255);
+  // Tooltips inherit transparent QToolButton sheets unless base/text stay opaque.
+  tokens.tooltip_base.setAlpha(255);
+  tokens.tooltip_text.setAlpha(255);
 }
 
 ShellTokens Shell() {

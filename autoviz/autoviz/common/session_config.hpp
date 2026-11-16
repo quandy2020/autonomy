@@ -525,6 +525,9 @@ struct ImagePanelPersistConfig {
 
   /** Whether the settings sidebar is visible. */
   bool settings_visible = false;
+
+  /** Prefer content-only (chrome-less) display while floating. */
+  bool content_only_display = false;
 };
 
 /**

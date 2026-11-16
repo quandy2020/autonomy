@@ -172,10 +172,12 @@ QDialogButtonBox { background: transparent; }
 QScrollArea { background: transparent; border: none; }
 QScrollArea > QWidget > QWidget { background: transparent; }
 
+/* Opaque fill only — rgba / border-radius make QToolTip paint clear on X11. */
 QToolTip {
-  background: rgba(255,255,255,0.94); color: {{text}};
-  border: 1px solid {{glass-rim}};
-  padding: 4px 8px; border-radius: 8px;
+  background-color: {{card}};
+  color: {{text}};
+  border: 1px solid {{border}};
+  padding: 4px 8px;
 }
 
 /* --- app/panel_ids.qss --- */
