@@ -21,9 +21,11 @@
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_display.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
 #include "autoviz/rendering/mesh_resource.hpp"
+#include "autoviz/rendering/ogre_scene_host.hpp"
 
 #include <algorithm>
 #include <functional>
+#include <map>
 #include <unordered_set>
 
 namespace autoviz {
@@ -225,6 +227,10 @@ void VisualizationManager::applySession(const SessionConfig& config) {
     }
     attachDisplay(std::move(display), entry.enabled);
   }
+  // Bind session displays to the already-open primary 3D View (if any).
+  if (active_viewport_bit_ != 0) {
+    claimOrphanDisplaysForViewport(active_viewport_bit_);
+  }
 
   redraw_callback_ = std::move(saved_redraw);
   syncDisplayContext();
@@ -253,8 +259,144 @@ void VisualizationManager::rebuildDisplayViews() {
   display_views_.clear();
   display_views_.reserve(displays_.size());
   for (auto& display : displays_) {
+    if (display == nullptr) {
+      continue;
+    }
+    // When a 3D View is active, Displays panel only lists that view's displays.
+    if (active_viewport_bit_ != 0 &&
+        !display->visibleInViewport(active_viewport_bit_)) {
+      continue;
+    }
     display_views_.push_back(display.get());
   }
+}
+
+uint32_t VisualizationManager::allocViewportBit() {
+  return viewport_bit_allocator_.allocBit();
+}
+
+void VisualizationManager::freeViewportBit(uint32_t bit) {
+  if (bit == 0) {
+    return;
+  }
+  viewport_bit_allocator_.freeBits(bit);
+  if (active_viewport_bit_ == bit) {
+    active_viewport_bit_ = 0;
+    display_context_.default_visibility_bit = 0x00000001u;
+  }
+}
+
+void VisualizationManager::setActiveViewportBit(uint32_t bit) {
+  active_viewport_bit_ = bit;
+  if (bit != 0) {
+    display_context_.default_visibility_bit = bit;
+  }
+  rebuildDisplayViews();
+}
+
+void VisualizationManager::claimOrphanDisplaysForViewport(uint32_t bit) {
+  if (bit == 0) {
+    return;
+  }
+  for (auto& display : displays_) {
+    if (display == nullptr) {
+      continue;
+    }
+    const uint32_t bits = display->visibilityBits();
+    // Unassigned (0) or legacy "visible everywhere" (all bits) → primary view.
+    if (bits == 0 || bits == 0xFFFFFFFFu) {
+      display->assignVisibilityBits(bit);
+    }
+  }
+  rebuildDisplayViews();
+}
+
+int VisualizationManager::seedViewportDisplaysFromPeer(uint32_t bit) {
+  if (bit == 0) {
+    return 0;
+  }
+  for (const auto& display : displays_) {
+    if (display != nullptr && display->visibleInViewport(bit)) {
+      return 0;  // Already has a tree — do not duplicate.
+    }
+  }
+
+  // Prefer cloning from the densest peer viewport (session primary).
+  std::map<uint32_t, int> counts;
+  for (const auto& display : displays_) {
+    if (display == nullptr) {
+      continue;
+    }
+    const uint32_t bits = display->visibilityBits();
+    if (bits == 0 || bits == 0xFFFFFFFFu || (bits & bit) != 0) {
+      continue;
+    }
+    // Single-bit owners only (ignore multi-bit edge cases).
+    if ((bits & (bits - 1)) == 0) {
+      ++counts[bits];
+    }
+  }
+  uint32_t source_bit = 0;
+  int best = 0;
+  for (const auto& entry : counts) {
+    if (entry.second > best) {
+      best = entry.second;
+      source_bit = entry.first;
+    }
+  }
+  if (source_bit == 0 || best == 0) {
+    return 0;
+  }
+
+  std::vector<DisplayConfig> configs;
+  configs.reserve(static_cast<std::size_t>(best));
+  for (const auto& display : displays_) {
+    if (display == nullptr || !display->visibleInViewport(source_bit)) {
+      continue;
+    }
+    DisplayConfig config;
+    config.type = display->typeId();
+    config.name = display->name();
+    config.channel = display->channel();
+    config.enabled = display->enabled();
+    config.properties = display->properties();
+    configs.push_back(std::move(config));
+  }
+  if (configs.empty()) {
+    return 0;
+  }
+
+  const uint32_t previous = active_viewport_bit_;
+  setActiveViewportBit(bit);
+  int added = 0;
+  for (const auto& config : configs) {
+    if (addDisplay(config)) {
+      ++added;
+    }
+  }
+  setActiveViewportBit(previous != 0 ? previous : bit);
+  return added;
+}
+
+void VisualizationManager::detachDisplaysFromViewport(uint32_t bit) {
+  if (bit == 0) {
+    return;
+  }
+  for (std::size_t i = 0; i < displays_.size();) {
+    auto& display = displays_[i];
+    if (display == nullptr) {
+      ++i;
+      continue;
+    }
+    display->unsetVisibilityBits(bit);
+    if (display->visibilityBits() == 0) {
+      display->setEnabled(false);
+      displays_.erase(displays_.begin() + static_cast<std::ptrdiff_t>(i));
+      continue;
+    }
+    ++i;
+  }
+  rebuildDisplayViews();
 }
 
 bool VisualizationManager::isDisplayInSubtree(
@@ -461,19 +603,71 @@ void VisualizationManager::update() {
   frame_manager_.update();
   pick_registry_.clear();
   handler_manager_.clear();
-  scene_overlay_.setPickRegistry(&pick_registry_);
-  scene_overlay_.setHandlerManager(&handler_manager_);
+  // Drain / update every display once. Drawing is per-viewport so split 3D
+  // Views do not inherit each other's overlay geometry.
   for (auto& display : displays_) {
-    display->update();
+    if (display != nullptr) {
+      display->update();
+    }
   }
-  scene_overlay_.clear();
-  for (auto& display : displays_) {
-    display->draw(scene_overlay_);
-  }
-  scene_overlay_.setPickSource(nullptr, nullptr);
-  tool_manager_.onDraw(scene_overlay_);
   display_context_.incrementFrameCount();
   updating_ = false;
+}
+
+void VisualizationManager::drawViewport(uint32_t viewport_bit,
+                                        rendering::SceneOverlay& overlay,
+                                        rendering::OgreSceneHost* ogre_host,
+                                        bool draw_tools) {
+  if (!initialized_ || viewport_bit == 0) {
+    return;
+  }
+  // Bind this pane's Ogre host for the draw pass. LaserScan / DepthCloud upload
+  // only to context->ogre_scene_host; using the "active" host for every pane
+  // made split views share the same cloud.
+  rendering::OgreSceneHost* previous_host = display_context_.ogre_scene_host;
+  display_context_.ogre_scene_host = ogre_host;
+
+  if (ogre_host != nullptr) {
+    // Drop geometry that belongs to other 3D Views (stale uploads). Walk groups
+    // so child LaserScan names are cleared, not only the Group folder name.
+    // Group membership uses the group's visibility bit (children often stay 0).
+    std::function<void(display::Display*, bool visible)> scrub;
+    scrub = [&](display::Display* display, bool visible) {
+      if (display == nullptr) {
+        return;
+      }
+      if (auto* group = dynamic_cast<display::DisplayGroup*>(display)) {
+        for (std::size_t i = 0; i < group->children().size(); ++i) {
+          scrub(group->child(i), visible);
+        }
+      }
+      if (!visible) {
+        ogre_host->removeDisplaysWithPrefix(display->name());
+      }
+    };
+    for (auto& display : displays_) {
+      if (display == nullptr) {
+        continue;
+      }
+      scrub(display.get(), display->visibleInViewport(viewport_bit));
+    }
+  }
+
+  overlay.setPickRegistry(&pick_registry_);
+  overlay.setHandlerManager(&handler_manager_);
+  overlay.clear();
+  for (auto& display : displays_) {
+    if (display == nullptr || !display->visibleInViewport(viewport_bit)) {
+      continue;
+    }
+    display->draw(overlay);
+  }
+  overlay.setPickSource(nullptr, nullptr);
+  if (draw_tools) {
+    tool_manager_.onDraw(overlay);
+  }
+
+  display_context_.ogre_scene_host = previous_host;
 }
 
 void VisualizationManager::refreshChannelList() {

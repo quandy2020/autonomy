@@ -196,6 +196,7 @@ void RenderSystem::ensureHeadlessRenderWindow() {
       false, &params);
   if (headless_window_ != nullptr) {
     headless_window_->setVisible(false);
+    // Never let Root::renderOneFrame touch the bootstrap surface.
     headless_window_->setAutoUpdated(false);
   }
 }
@@ -439,6 +440,8 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowHandle window_id,
 #if defined(OGRE_STEREO_ENABLE)
     if (window != nullptr && window->isStereoEnabled()) {
       stereo_supported_ = true;
+      // Same as non-stereo: paint owns the update (see below).
+      window->setAutoUpdated(false);
       return window;
     }
 #endif
@@ -451,6 +454,12 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowHandle window_id,
       "AvizRenderWindow" + Ogre::StringConverter::toString(window_counter++),
       width, height, false, &params);
   stereo_supported_ = false;
+  // Dual / split 3D Views: each paint must update only its own GLX surface.
+  // Auto-updated targets make Root::renderOneFrame redraw every sibling into
+  // the wrong context and leave one pane blank/white during Orbit drag.
+  if (window != nullptr) {
+    window->setAutoUpdated(false);
+  }
   return window;
 }
 

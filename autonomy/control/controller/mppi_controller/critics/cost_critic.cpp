@@ -129,16 +129,16 @@
          const double resolution = costmap->getCostmap()->getResolution();
          double inflation_radius = inflation_layer->getInflationRadius();
          if (inflation_radius < circum_radius) {
-             AERROR << "The inflation radius (" << inflation_radius
-                    << ") is smaller than the circumscribed radius ("
-                    << circum_radius << "). If this is an SE2-collision "
-                    << "checking plugin, it cannot use costmap potential field "
-                    << "to speed up collision checking by only checking the "
-                    << "full footprint when robot is within possibly-inscribed "
-                    << "radius of an obstacle. This may significantly slow "
-                    << "down planning times!";
+             AERROR_EVERY(200) << "The inflation radius (" << inflation_radius
+                               << ") is smaller than the circumscribed radius ("
+                               << circum_radius
+                               << "). Raise inflation_radius to at least "
+                               << circum_radius
+                               << " so CostCritic can use the potential field.";
              result = 0.0;
-             return result;
+             circumscribed_radius_ = static_cast<float>(circum_radius);
+             circumscribed_cost_ = 0.0f;
+             return circumscribed_cost_;
          }
          result = inflation_layer->computeCost(circum_radius / resolution);
      } else {

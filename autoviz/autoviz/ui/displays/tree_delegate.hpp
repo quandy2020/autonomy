@@ -116,6 +116,18 @@ constexpr int kDisplayTreeRoleTypeId = Qt::UserRole + 6;
 constexpr int kDisplayTreeRoleStatusLevel = Qt::UserRole + 7;
 
 /**
+ * @brief Qt::ItemDataRole storing the lower-cased default value used to detect
+ *        boolean property rows (@c "true" / @c "false").
+ */
+constexpr int kDisplayTreeRoleBoolDefault = Qt::UserRole + 10;
+
+/**
+ * @brief Qt::ItemDataRole storing newline-joined enum options for combo
+ *        editors (e.g. Map @c color_scheme, PointCloud2 @c color_transform).
+ */
+constexpr int kDisplayTreeRoleEnumOptions = Qt::UserRole + 11;
+
+/**
  * @brief Qt::ItemDataRole storing the property-factory kind (int) used by
  *        color / enum editors in @ref DisplayTreeDelegate.
  */

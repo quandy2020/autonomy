@@ -1,7 +1,8 @@
 /*
  * Copyright 2026 The Openbot Authors
  *
- * Nav2-style RateController: tick the child at most `hz` times per second.
+ * Nav2-style RateController: tick the child at most `hz` times per second so
+ * ComputePath republishes /plan from the live robot pose while FollowPath runs.
  * When skipped, returns SUCCESS so PipelineSequence can continue to FollowPath.
  * After the first successful child tick, later failures are soft (SUCCESS) so a
  * transient replan miss does not abort an active FollowPath.
@@ -71,12 +72,6 @@ private:
         }
 
         const auto now = std::chrono::steady_clock::now();
-        // One global plan per 2D Goal. Re-ticking ComputePath immediately
-        // after SUCCESS republishes /plan (and FollowPath preempt may publish
-        // an empty /plan), which flashes the overlay once.
-        if (got_success_ && !first_time_) {
-            return BT::NodeStatus::SUCCESS;
-        }
         if (!first_time_ && (now - last_time_) < period_) {
             // Between replan ticks: pipeline must stay alive so FollowPath
             // keeps running. If we still have no first plan, stay RUNNING.

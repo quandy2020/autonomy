@@ -83,12 +83,12 @@ costmap_2d_options {
     inflate_unknown: false
     plugin: "libautonomy_map_layers_inflation_layer.so"
     inflate_around_unknown: false
-    inflation_radius: 0.26
+    inflation_radius: 0.25
   }
   frame_id: "map"
   resolution: 0.05
-  width: 3
-  height: 3
+  width: 5
+  height: 5
 }
 
 # ---------- Goal / progress checkers (shared with BT) ----------
@@ -100,14 +100,14 @@ checker_options {
     xy_goal_tolerance: 0.1
   }
   progress_checker {
-    movement_time_allowance: 30
-    required_movement_radius: 0.15
+    movement_time_allowance: 8
+    required_movement_radius: 0.08
   }
 }
 
 # ---------- MPPI ----------
 mppi_controller_options {
-  vx_min: -0.35
+  vx_min: -0.15
   vy_max: 0.5
   wz_max: 2.2
   iteration_count: 2
@@ -130,7 +130,7 @@ mppi_controller_options {
     cost_weight: 6
     enabled: true
     critical_cost: 300
-    consider_footprint: false
+    consider_footprint: true
     collision_cost: 1000000
     near_goal_distance: 1
     trajectory_point_step: 2
@@ -143,7 +143,7 @@ mppi_controller_options {
     critical_weight: 12
     repulsion_weight: 0.6
     robot_radius_m: 0.16
-    enabled: true
+    enabled: false
     repulsion_radius_m: 0.30
     obstacle_threshold: 0.5
     obstacle_layer: "obstacle"
@@ -164,8 +164,8 @@ mppi_controller_options {
   }
   progress_checker {
     plugin: "nav2_controller::SimpleProgressChecker"
-    movement_time_allowance: 10
-    required_movement_radius: 0.5
+    movement_time_allowance: 8
+    required_movement_radius: 0.08
   }
   path_follow_critic {
     cost_weight: 8
@@ -184,7 +184,7 @@ mppi_controller_options {
     cost_power: 1
   }
   prefer_forward_critic {
-    cost_weight: 2
+    cost_weight: 12
     threshold_to_consider: 0.5
     enabled: true
     cost_power: 1
@@ -239,7 +239,7 @@ mppi_controller_options {
     enabled: false
     cost_power: 1
   }
-  vx_std: 0.18
+  vx_std: 0.25
   twirling_critic {
     twirling_cost_power: 1
     enabled: false
@@ -267,7 +267,7 @@ mppi_controller_options {
   sgf_order: 2
   vy_std: 0.2
   wz_std: 0.5
-  vx_max: 0.45
+  vx_max: 0.8
 }
 
 # ---------- Graceful (default for teleop/nav) ----------

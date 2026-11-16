@@ -19,7 +19,7 @@
           selected_smoother="{selected_smoother}"
           default_smoother="{default_smoother_id}"
           topic_name="smoother_selector"/>
-        <RateController hz="2.0">
+        <RateController hz="1.0">
           <Sequence name="PruneAndPlanThroughPoses">
             <RemovePassedGoals
               input_goals="{goals}"

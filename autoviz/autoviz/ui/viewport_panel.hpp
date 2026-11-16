@@ -18,11 +18,13 @@
 
 #pragma once
 
+#include <memory>
 #include <optional>
 #include <string>
 
 #include <QString>
 
+#include "autoviz/rendering/scene_overlay.hpp"
 #include "autoviz/rendering/view_controller.hpp"
 
 class QGridLayout;
@@ -67,6 +69,14 @@ struct ViewportPanelEntry {
   QGridLayout* layout = nullptr;    /**< Layout stacking GL + overlays. */
   QWidget* widget = nullptr;        /**< Render window's QWidget surface. */
   rendering::OgreRenderWindow* ogre_viewport = nullptr; /**< Ogre viewport. */
+  /**
+   * Per-view scene overlay (shared_ptr so QHash copies stay safe). Split 3D
+   * Views must not share the manager global overlay.
+   */
+  std::shared_ptr<rendering::SceneOverlay> scene_overlay =
+      std::make_shared<rendering::SceneOverlay>();
+  /** Visibility bit allocated for this view's Display ownership. */
+  uint32_t visibility_bit = 0;
   ViewportFloatingToolbar* floating_toolbar = nullptr;  /**< Right-edge tools. */
   ViewportHudOverlay* hud_overlay = nullptr;            /**< Top-left HUD. */
   QToolButton* expand_button = nullptr;   /**< Title-bar expand toggle. */

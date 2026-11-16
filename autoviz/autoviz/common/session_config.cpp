@@ -4,6 +4,7 @@
 
 #include "autoviz/common/session_config.hpp"
 
+#include <cctype>
 #include <fstream>
 
 #include <QString>
@@ -233,6 +234,13 @@ void ImportRvizDisplayProperties(const std::string& type,
   if (node["Color Transformer"]) {
     // Keep RViz2 transformer names (FlatColor / AxisColor / Intensity / RGB8 / RGBF32).
     (*props)["color_transform"] = node["Color Transformer"].as<std::string>();
+  }
+  if (node["Color Scheme"]) {
+    std::string scheme = node["Color Scheme"].as<std::string>();
+    for (char& c : scheme) {
+      c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    }
+    (*props)["color_scheme"] = scheme;
   }
   ImportRvizProperty(node, "Pose Style", "pose_style", props);
   if (node["Buffer Length"]) {

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <mutex>
 
 #include <Ogre.h>
 
@@ -29,6 +30,13 @@
 namespace autoviz {
 namespace rendering {
 namespace {
+
+// Ogre Root is process-wide; dual 3D View paintEvents must not interleave
+// makeCurrent / swap on separate GLX drawables.
+std::mutex& OgreRenderMutex() {
+  static std::mutex mutex;
+  return mutex;
+}
 
 Ogre::Vector3 ToOgre(const QVector3D& v) {
   return Ogre::Vector3(v.x(), v.y(), v.z());
@@ -489,7 +497,13 @@ void OgreRenderBackend::render(bool show_grid,
   if (!initialize()) {
     return;
   }
-  setWindowVisible(true);
+  // Show once when needed — do not windowMovedOrResized every paint. Rapid
+  // Orbit drag + dual panes used to thrash GLX and leave a sibling white.
+  if (impl_->render_window != nullptr && !impl_->render_window->isVisible()) {
+    setWindowVisible(true);
+  }
+
+  const std::lock_guard<std::mutex> render_lock(OgreRenderMutex());
 
   const QMatrix4x4 view = view_controller.viewMatrix();
   const QMatrix4x4 projection = view_controller.projectionMatrix(aspect_ratio);
@@ -604,7 +618,15 @@ void OgreRenderBackend::render(bool show_grid,
         impl_->background_color);
   }
 
-  RenderSystem::instance()->ogreRoot()->renderOneFrame();
+  // Update only this window. renderOneFrame() would redraw every auto-updated
+  // sibling (and used to, before setAutoUpdated(false)), corrupting dual panes
+  // when one view is Orbit-dragging.
+  Ogre::Root* root = RenderSystem::instance()->ogreRoot();
+  if (root != nullptr && impl_->render_window != nullptr) {
+    root->_fireFrameStarted();
+    impl_->render_window->update();
+    root->_fireFrameEnded();
+  }
 
   if (overlay != nullptr && overlay->hasPickGeometry() &&
       QOpenGLContext::currentContext() != nullptr) {
@@ -622,13 +644,23 @@ void OgreRenderBackend::setWindowVisible(bool visible) {
   if (impl_ == nullptr || impl_->render_window == nullptr) {
     return;
   }
+  const bool was_visible = impl_->render_window->isVisible();
   impl_->render_window->setVisible(visible);
-  if (visible && host_ != nullptr) {
-    impl_->render_window->resize(
-        static_cast<unsigned>(std::max(1, host_->width())),
-        static_cast<unsigned>(std::max(1, host_->height())));
-    impl_->render_window->windowMovedOrResized();
+  if (!visible || host_ == nullptr) {
+    return;
   }
+  const unsigned width =
+      static_cast<unsigned>(std::max(1, host_->width()));
+  const unsigned height =
+      static_cast<unsigned>(std::max(1, host_->height()));
+  // Skip redundant GLX remaps when already showing at the same size — those
+  // remaps flash a blank/white sibling during mouse-drag paint storms.
+  if (was_visible && impl_->render_window->getWidth() == width &&
+      impl_->render_window->getHeight() == height) {
+    return;
+  }
+  impl_->render_window->resize(width, height);
+  impl_->render_window->windowMovedOrResized();
 }
 
 void OgreRenderBackend::notifyWindowMovedOrResized() {

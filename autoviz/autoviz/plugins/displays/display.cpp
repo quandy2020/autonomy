@@ -40,6 +40,13 @@ void Display::setVisibilityBits(uint32_t bits) {
   }
 }
 
+void Display::assignVisibilityBits(uint32_t bits) {
+  visibility_bits_ = bits;
+  if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
+    context_->ogre_scene_host->setDisplayVisibilityBits(name(), visibility_bits_);
+  }
+}
+
 void Display::unsetVisibilityBits(uint32_t bits) {
   visibility_bits_ &= ~bits;
   if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
@@ -54,7 +61,8 @@ void Display::setEnabled(bool enabled) {
   enabled_ = enabled;
   if (enabled_) {
     if (context_ != nullptr) {
-      setVisibilityBits(context_->default_visibility_bit);
+      // Belong only to the active 3D View — do not OR onto legacy all-bits.
+      assignVisibilityBits(context_->default_visibility_bit);
     }
     onEnable();
     // TransformerGuard (and similar) may call setEnabled(false) re-entrantly

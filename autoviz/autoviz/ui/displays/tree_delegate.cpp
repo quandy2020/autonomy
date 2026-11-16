@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include <QApplication>
+#include <QAbstractItemDelegate>
 #include <QAbstractItemView>
 #include <QCheckBox>
 #include <QColorDialog>
@@ -506,24 +507,46 @@ QWidget* DisplayTreeDelegate::createEditor(QWidget* parent,
   }
 
   if (kind == DisplayTreeItemKind::kDisplayProperty) {
-    const QString default_lower = index.data(Qt::UserRole + 10).toString();
+    const QModelIndex meta = DisplayTreeNameColumnIndex(index);
+    const QString default_lower =
+        meta.data(kDisplayTreeRoleBoolDefault).toString();
     // Bool props use the tree's native value-column checkbox (not an editor).
     if (default_lower == QLatin1String("true") ||
         default_lower == QLatin1String("false")) {
       return nullptr;
     }
 
-    const QString options = index.data(Qt::UserRole + 11).toString();
+    // Prefer name-column metadata (always set); fall back to value column.
+    QString options = meta.data(kDisplayTreeRoleEnumOptions).toString();
+    if (options.isEmpty()) {
+      options = index.data(kDisplayTreeRoleEnumOptions).toString();
+    }
     if (!options.isEmpty()) {
       auto* combo = new QComboBox(parent);
-      for (const QString& option_name : options.split(QLatin1Char('\n'))) {
-        combo->addItem(option_name);
+      combo->setEditable(false);
+      QStringList option_names =
+          options.split(QLatin1Char('\n'), Qt::SkipEmptyParts);
+      if (!current.isEmpty() && option_names.indexOf(current) < 0) {
+        // Legacy / RViz values (e.g. "Axis", "Costmap") stay selectable.
+        option_names.push_front(current);
       }
+      combo->addItems(option_names);
       const int found = combo->findText(current);
       if (found >= 0) {
         combo->setCurrentIndex(found);
       }
       StyleTreeCellEditor(combo);
+      // Commit on pick: without this, OpenGL focus steal / Tool float shells
+      // often close the editor before setModelData runs (Map color_scheme,
+      // PointCloud2 color_transform look "stuck").
+      const auto* self = this;
+      QObject::connect(combo, QOverload<int>::of(&QComboBox::activated),
+                       combo, [self, combo](int) {
+                         emit const_cast<DisplayTreeDelegate*>(self)->commitData(
+                             combo);
+                         emit const_cast<DisplayTreeDelegate*>(self)->closeEditor(
+                             combo, QAbstractItemDelegate::NoHint);
+                       });
       return combo;
     }
 

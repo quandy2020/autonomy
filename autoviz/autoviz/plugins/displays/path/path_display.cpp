@@ -313,8 +313,20 @@ std::vector<PathDisplay::PathPose> PathDisplay::prunePosesBehindRobot(
   }
   // Keep a tiny look-back so the arrow under the robot is not clipped.
   const std::size_t start = closest > 0 ? closest - 1 : 0;
-  return std::vector<PathPose>(poses.begin() + static_cast<std::ptrdiff_t>(start),
-                               poses.end());
+  std::vector<PathPose> pruned(
+      poses.begin() + static_cast<std::ptrdiff_t>(start), poses.end());
+
+  // Latched /plan can lag the live base_link when replan is slow. If the
+  // nearest vertex is farther than ~robot diameter, splice the robot pose in
+  // as the new start so the overlay does not float away from the chassis.
+  constexpr float kAttachGapM = 0.45f;
+  if (!pruned.empty() && best > kAttachGapM * kAttachGapM) {
+    PathPose attach;
+    attach.position = robot;
+    attach.orientation = pruned.front().orientation;
+    pruned.insert(pruned.begin(), attach);
+  }
+  return pruned;
 }
 
 void PathDisplay::clearPathGeometry(rendering::SceneOverlay& scene,

@@ -107,7 +107,7 @@ planner_options {
       inflate_unknown: false
       plugin: "libautonomy_map_layers_inflation_layer.so"
       inflate_around_unknown: false
-      inflation_radius: 0.26
+      inflation_radius: 0.25
     }
     frame_id: "map"
     resolution: 0.05
@@ -199,7 +199,7 @@ controller_options {
       inflate_unknown: false
       plugin: "libautonomy_map_layers_inflation_layer.so"
       inflate_around_unknown: false
-      inflation_radius: 0.26
+      inflation_radius: 0.25
     }
     frame_id: "map"
     resolution: 0.05
@@ -219,7 +219,7 @@ controller_options {
     }
   }
   mppi_controller_options {
-    vx_min: -0.35
+    vx_min: -0.15
     vy_max: 0.5
     wz_max: 1.9
     iteration_count: 1
@@ -241,7 +241,7 @@ controller_options {
       cost_weight: 10
       enabled: true
       critical_cost: 300
-      consider_footprint: false
+      consider_footprint: true
       collision_cost: 1000000
       near_goal_distance: 1
       trajectory_point_step: 3
@@ -294,7 +294,7 @@ controller_options {
       cost_power: 1
     }
     prefer_forward_critic {
-      cost_weight: 5
+      cost_weight: 12
       threshold_to_consider: 0.5
       enabled: true
       cost_power: 1
@@ -329,7 +329,7 @@ controller_options {
       repulsion_weight: 1.5
       near_goal_distance: 0.5
       enabled: false
-      consider_footprint: false
+      consider_footprint: true
       collision_cost: 10000
       collision_margin_distance: 0.1
       cost_power: 1
@@ -376,7 +376,7 @@ controller_options {
     sgf_order: 2
     vy_std: 0.2
     wz_std: 0.4
-    vx_max: 0.5
+    vx_max: 0.8
   }
   graceful_controller_options {
     slowdown_radius: 1.5

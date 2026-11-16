@@ -18,7 +18,7 @@ ChannelsBrowser:
   ProbeEnabled: true
   TypeFilter: 0
 CurrentView:
-  Distance: 14.269590377807617
+  Distance: 13.07761001586914
   FarClipDistance: 1e+05
   FocalShapeFixedSize: true
   FocalShapeSize: 0.05000000074505806
@@ -31,134 +31,30 @@ CurrentView:
   InvertZAxis: false
   Name: Current
   NearClipDistance: 0.009999999776482582
-  Pitch: 1.399999976158142
+  Pitch: 0.8250000476837158
   Target:
-    X: -3.6294054985046387
-    Y: 1.5186899900436401
-    Z: 0.4550795555114746
+    X: -3.2714719772338867
+    Y: 2.100587844848633
+    Z: 2.2229835987091064
   Type: Orbit
-  Yaw: 7.855011463165283
+  Yaw: 9.904972076416016
 Displays:
-  - Channel: ""
-    Enabled: true
-    Name: Grid
-    Properties:
-      alpha: 0.12
-      cell_count: 50
-      cell_size: 1.0
-      color: 70;78;98
-      line_style: Lines
-      line_width: 0.015
-      normal_cell_count: 0
-      offset: 0;0;0
-      plane: XY
-      reference_frame: <Fixed Frame>
-    Type: Grid
-  - Channel: /map
-    Enabled: true
-    Name: OccupancyMap
-    Properties:
-      alpha: 0.55
-      color_scheme: map
-      decimate: 1
-      draw_behind: true
-      use_timestamp: false
-    Type: Map
-  - Channel: /global_costmap
-    Enabled: false
-    Name: GlobalCostmap
-    Properties:
-      alpha: 0.25
-      color_scheme: costmap
-      decimate: 2
-      draw_behind: true
-      use_timestamp: false
-    Type: Map
-  - Channel: /local_costmap
-    Enabled: true
-    Name: LocalCostmap
-    Properties:
-      alpha: 0.20
-      color_scheme: costmap
-      decimate: 1
-      draw_behind: false
-      use_timestamp: false
-    Type: Map
-  - Channel: /points
-    Enabled: false
-    Name: LidarCloud
-    Properties:
-      alpha: 0.55
-      autocompute_intensity_bounds: true
-      autocompute_value_bounds: true
-      axis: Z
-      axis_max: 10
-      axis_min: -10
-      channel_name: intensity
-      color: 255;255;255
-      color_transform: Axis
-      decay_time: 0
-      decimate: 4
-      intensity_max: 4096
-      intensity_min: 0
-      invert_rainbow: false
-      max_color: 255;255;255
-      max_points: 60000
-      min_color: 0;0;0
-      point_size: 2
-      point_world_size: 0.02
-      position_transform: XYZ
-      selectable: true
-      style: Points
-      use_fixed_frame: true
-      use_rainbow: true
-    Type: PointCloud2
-  - Channel: /plan
-    Enabled: true
-    Name: GlobalPlan
-    Properties:
-      alpha: 0.96
-      arrive_distance: 0.35
-      buffer_length: 1
-      color: 61;214;245
-      dash_length: 0.26
-      flow_arrow_size: 0.16
-      flow_arrow_spacing: 0.48
-      flow_speed: 1.05
-      gap_length: 0.11
-      hide_when_arrived: true
-      line_style: Billboards
-      line_width: 0.11
-      offset: 0;0;0
-      path_pattern: FlowDashed
-      pose_arrow_head_diameter: 0.3
-      pose_arrow_head_length: 0.2
-      pose_arrow_shaft_diameter: 0.1
-      pose_arrow_shaft_length: 0.1
-      pose_axes_length: 0.3
-      pose_axes_radius: 0.03
-      pose_color: 61;214;245
-      pose_style: None
-      prune_behind_robot: true
-      robot_frame: base_link
-      show_flow_arrows: true
-    Type: Path
   - Channel: /mppi_controller/transformed_global_plan
-    Enabled: true
+    Enabled: false
     Name: TransformedPlan
     Properties:
-      alpha: 0.28
+      alpha: 0.55
       arrive_distance: 0.35
       buffer_length: 1
-      color: 140;190;220
+      color: 255;217;61
       dash_length: 0.28
       flow_arrow_size: 0.12
       flow_arrow_spacing: 0.55
       flow_speed: 0.9
       gap_length: 0.18
       hide_when_arrived: true
-      line_style: Lines
-      line_width: 0.025
+      line_style: Billboards
+      line_width: 0.04
       offset: 0;0;0
       path_pattern: Solid
       pose_arrow_head_diameter: 0.3
@@ -167,26 +63,17 @@ Displays:
       pose_arrow_shaft_length: 0.1
       pose_axes_length: 0.3
       pose_axes_radius: 0.03
-      pose_color: 255;85;255
+      pose_color: 255;217;61
       pose_style: None
       prune_behind_robot: true
       robot_frame: base_link
-      show_flow_arrows: true
+      show_flow_arrows: false
     Type: Path
-  - Channel: /mppi_controller/candidate_trajectories
-    Enabled: true
-    Name: MppiCandidates
-    Properties:
-      color: 200;200;200
-      mesh_style: solid
-      point_size: 1.8
-      use_custom_color: false
-    Type: MarkerArray
   - Channel: /mppi_controller/optimal_path
     Enabled: true
     Name: OptimalTrajectory
     Properties:
-      alpha: 0.90
+      alpha: 0.95
       arrive_distance: 0.35
       buffer_length: 1
       color: 94;240;176
@@ -197,7 +84,7 @@ Displays:
       gap_length: 0.18
       hide_when_arrived: true
       line_style: Billboards
-      line_width: 0.08
+      line_width: 0.1
       offset: 0;0;0
       path_pattern: Solid
       pose_arrow_head_diameter: 0.3
@@ -206,11 +93,11 @@ Displays:
       pose_arrow_shaft_length: 0.1
       pose_axes_length: 0.3
       pose_axes_radius: 0.03
-      pose_color: 255;85;255
+      pose_color: 94;240;176
       pose_style: None
       prune_behind_robot: true
       robot_frame: base_link
-      show_flow_arrows: true
+      show_flow_arrows: false
     Type: Path
   - Channel: /joint_states
     Enabled: true
@@ -250,12 +137,12 @@ Displays:
     Enabled: true
     Name: SensorFov
     Properties:
-      alpha: 0.10
-      color: 120;175;230
+      alpha: 0.22
+      color: 0;229;255
       color_transform: Flat
       decay_time: 0
-      point_size: 1.5
-      style: Points
+      point_size: 2
+      style: Flat Squares
     Type: LaserScan
   - Channel: /odom
     Enabled: true
@@ -265,24 +152,12 @@ Displays:
       duration: 12.0
       frame: base_link
       glow_layers: 2
-      glow_width: 0.20
+      glow_width: 0.2
       line_color: 140;120;255
       line_width: 0.065
       min_distance: 0.025
-      z_lift: 0.10
+      z_lift: 0.1
     Type: TFTrajectory
-  - Channel: /odom
-    Enabled: false
-    Name: OdomHistory
-    Properties:
-      alpha: 0.55
-      angle_tolerance: 0.1
-      color: 94;240;176
-      keep: 40
-      position_tolerance: 0.1
-      shape: Arrow
-      show_velocity: true
-    Type: Odometry
   - Channel: /goal_pose
     Enabled: true
     Name: NavGoalRings
@@ -290,10 +165,10 @@ Displays:
       alpha: 1.0
       arrive_morph_sec: 0.85
       auto_clear: true
-      auto_clear_distance: 0.30
+      auto_clear_distance: 0.3
       axis_length: 0.25
       color: 255;180;84
-      heading_length: 0.40
+      heading_length: 0.4
       inner_radius: 0.32
       inner_width: 0.12
       outer_color: 255;210;140
@@ -304,24 +179,9 @@ Displays:
       show_axes: false
       show_heading: true
       success_color: 80;220;120
-      success_hold_sec: 1.40
+      success_hold_sec: 1.4
       z_lift: 0.16
     Type: TargetVisualizer
-  - Channel: ""
-    Enabled: false
-    Name: TF
-    Properties:
-      all_enabled: true
-      auto_scale: true
-      filter_blacklist: ""
-      filter_whitelist: ""
-      frame_timeout: 15.0
-      marker_scale: 1.0
-      show_arrows: false
-      show_axes: true
-      show_names: false
-      update_interval: 0
-    Type: TF
   - Channel: /camera/depth/points
     Enabled: true
     Name: points PointCloud2
@@ -343,7 +203,292 @@ Displays:
       max_color: 255;255;255
       max_points: 200000
       min_color: 0;0;0
-      point_size: 5
+      point_size: 3
+      point_world_size: 0.01
+      position_transform: XYZ
+      selectable: true
+      style: Points
+      use_fixed_frame: true
+      use_rainbow: true
+    Type: PointCloud2
+  - Channel: ""
+    Enabled: true
+    Name: Grid
+    Properties:
+      alpha: 0.12
+      cell_count: 50
+      cell_size: 1.0
+      color: 70;78;98
+      line_style: Lines
+      line_width: 0.015
+      normal_cell_count: 0
+      offset: 0;0;0
+      plane: XY
+      reference_frame: <Fixed Frame>
+    Type: Grid
+  - Channel: /map
+    Enabled: true
+    Name: OccupancyMap
+    Properties:
+      alpha: 0.55
+      color_scheme: map
+      decimate: 1
+      draw_behind: true
+      use_timestamp: false
+    Type: Map
+  - Channel: /global_costmap
+    Enabled: true
+    Name: GlobalCostmap
+    Properties:
+      alpha: 0.32
+      color_scheme: costmap
+      decimate: 2
+      draw_behind: true
+      use_timestamp: false
+    Type: Map
+  - Channel: /local_costmap
+    Enabled: true
+    Name: LocalCostmap
+    Properties:
+      alpha: 0.48
+      color_scheme: costmap
+      decimate: 1
+      draw_behind: false
+      use_timestamp: false
+    Type: Map
+  - Channel: /points
+    Enabled: true
+    Name: LidarCloud
+    Properties:
+      alpha: 0.85
+      autocompute_intensity_bounds: true
+      autocompute_value_bounds: true
+      axis: Z
+      axis_max: 10
+      axis_min: -10
+      channel_name: intensity
+      color: 255;255;255
+      color_transform: Intensity
+      decay_time: 0
+      decimate: 2
+      intensity_max: 4096
+      intensity_min: 0
+      invert_rainbow: false
+      max_color: 255;255;255
+      max_points: 120000
+      min_color: 0;0;0
+      point_size: 3
+      point_world_size: 0.03
+      position_transform: XYZ
+      selectable: true
+      style: Flat Squares
+      use_fixed_frame: true
+      use_rainbow: true
+    Type: PointCloud2
+  - Channel: /plan
+    Enabled: true
+    Name: GlobalPlan
+    Properties:
+      alpha: 0.96
+      arrive_distance: 0.35
+      buffer_length: 1
+      color: 61;214;245
+      dash_length: 0.26
+      flow_arrow_size: 0.16
+      flow_arrow_spacing: 0.48
+      flow_speed: 1.05
+      gap_length: 0.11
+      hide_when_arrived: true
+      line_style: Billboards
+      line_width: 0.11
+      offset: 0;0;0
+      path_pattern: FlowDashed
+      pose_arrow_head_diameter: 0.3
+      pose_arrow_head_length: 0.2
+      pose_arrow_shaft_diameter: 0.1
+      pose_arrow_shaft_length: 0.1
+      pose_axes_length: 0.3
+      pose_axes_radius: 0.03
+      pose_color: 61;214;245
+      pose_style: None
+      prune_behind_robot: true
+      robot_frame: base_link
+      show_flow_arrows: true
+    Type: Path
+  - Channel: /mppi_controller/transformed_global_plan
+    Enabled: true
+    Name: TransformedPlan
+    Properties:
+      alpha: 0.55
+      arrive_distance: 0.35
+      buffer_length: 1
+      color: 255;217;61
+      dash_length: 0.28
+      flow_arrow_size: 0.12
+      flow_arrow_spacing: 0.55
+      flow_speed: 0.9
+      gap_length: 0.18
+      hide_when_arrived: true
+      line_style: Billboards
+      line_width: 0.04
+      offset: 0;0;0
+      path_pattern: Solid
+      pose_arrow_head_diameter: 0.3
+      pose_arrow_head_length: 0.2
+      pose_arrow_shaft_diameter: 0.1
+      pose_arrow_shaft_length: 0.1
+      pose_axes_length: 0.3
+      pose_axes_radius: 0.03
+      pose_color: 255;217;61
+      pose_style: None
+      prune_behind_robot: true
+      robot_frame: base_link
+      show_flow_arrows: false
+    Type: Path
+  - Channel: /mppi_controller/candidate_trajectories
+    Enabled: true
+    Name: MppiCandidates
+    Properties:
+      color: 200;200;200
+      mesh_style: solid
+      point_size: 1.8
+      use_custom_color: false
+    Type: MarkerArray
+  - Channel: /mppi_controller/optimal_path
+    Enabled: true
+    Name: OptimalTrajectory
+    Properties:
+      alpha: 0.95
+      arrive_distance: 0.35
+      buffer_length: 1
+      color: 94;240;176
+      dash_length: 0.28
+      flow_arrow_size: 0.12
+      flow_arrow_spacing: 0.55
+      flow_speed: 0.9
+      gap_length: 0.18
+      hide_when_arrived: true
+      line_style: Billboards
+      line_width: 0.1
+      offset: 0;0;0
+      path_pattern: Solid
+      pose_arrow_head_diameter: 0.3
+      pose_arrow_head_length: 0.2
+      pose_arrow_shaft_diameter: 0.1
+      pose_arrow_shaft_length: 0.1
+      pose_axes_length: 0.3
+      pose_axes_radius: 0.03
+      pose_color: 94;240;176
+      pose_style: None
+      prune_behind_robot: true
+      robot_frame: base_link
+      show_flow_arrows: false
+    Type: Path
+  - Channel: /joint_states
+    Enabled: true
+    Name: RobotModel
+    Properties:
+      alpha: 1.0
+      collision_alpha: 0.35
+      collision_enabled: false
+      color: 180;180;180
+      description_channel: /robot_description
+      description_source: Topic
+      inertia_enabled: false
+      mass_enabled: false
+      root_link: ""
+      show_axes: false
+      show_collision: false
+      tf_prefix: ""
+      update_interval: 0
+      urdf_path: ""
+      use_urdf_materials: true
+      visual_enabled: true
+      visual_style: solid
+    Type: RobotModel
+  - Channel: /odom
+    Enabled: true
+    Name: RobotPose
+    Properties:
+      alpha: 1.0
+      angle_tolerance: 0.1
+      color: 107;168;255
+      keep: 1
+      position_tolerance: 0.1
+      shape: Arrow
+      show_velocity: true
+    Type: Odometry
+  - Channel: /scan
+    Enabled: true
+    Name: SensorFov
+    Properties:
+      alpha: 0.22
+      color: 0;229;255
+      color_transform: Flat
+      decay_time: 0
+      point_size: 2
+      style: Flat Squares
+    Type: LaserScan
+  - Channel: /odom
+    Enabled: true
+    Name: MotionTrail
+    Properties:
+      alpha: 0.95
+      duration: 12.0
+      frame: base_link
+      glow_layers: 2
+      glow_width: 0.2
+      line_color: 140;120;255
+      line_width: 0.065
+      min_distance: 0.025
+      z_lift: 0.1
+    Type: TFTrajectory
+  - Channel: /goal_pose
+    Enabled: true
+    Name: NavGoalRings
+    Properties:
+      alpha: 1.0
+      arrive_morph_sec: 0.85
+      auto_clear: true
+      auto_clear_distance: 0.3
+      axis_length: 0.25
+      color: 255;180;84
+      heading_length: 0.4
+      inner_radius: 0.32
+      inner_width: 0.12
+      outer_color: 255;210;140
+      outer_radius: 0.72
+      outer_width: 0.085
+      rings: 72
+      robot_frame: base_link
+      show_axes: false
+      show_heading: true
+      success_color: 80;220;120
+      success_hold_sec: 1.4
+      z_lift: 0.16
+    Type: TargetVisualizer
+  - Channel: /camera/depth/points
+    Enabled: true
+    Name: points PointCloud2
+    Properties:
+      alpha: 1.0
+      autocompute_intensity_bounds: true
+      autocompute_value_bounds: true
+      axis: Z
+      axis_max: 10
+      axis_min: -10
+      channel_name: intensity
+      color: 255;255;255
+      color_transform: AxisColor
+      decay_time: 0
+      decimate: 1
+      intensity_max: 4096
+      intensity_min: 0
+      invert_rainbow: false
+      max_color: 255;255;255
+      max_points: 200000
+      min_color: 0;0;0
+      point_size: 3
       point_world_size: 0.01
       position_transform: XYZ
       selectable: true
@@ -362,40 +507,78 @@ Global:
   Transformer: autoviz/AutolinkTf
   ViewController: Orbit
 ImagePanels:
-  - BackgroundColor: "#0a0a12"
+  - BackgroundColor: "#000000"
     CalibrationChannel: ""
     ClickPublishChannel: ""
     ColorMax: 255
     ColorMin: 0
     ColorMode: 0
+    ContentOnlyDisplay: false
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: /camera/chase/image_raw
+    LabelScale: 1
+    ObjectName: ImageDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Chase
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    ContentOnlyDisplay: false
     EnableUndistort: false
     FlipHorizontal: false
     FlipVertical: false
     HoverPublishChannel: ""
     ImageChannel: /camera/rgb/image_raw
     LabelScale: 1
-    ObjectName: ImageDock
+    ObjectName: ImageDock_2
     Rotation: 0
     SettingsVisible: false
     StrictTimeSync: false
-    Title: Camera
-  - BackgroundColor: "#0a0a12"
+    Title: RGB
+  - BackgroundColor: "#000000"
     CalibrationChannel: ""
     ClickPublishChannel: ""
     ColorMax: 255
     ColorMin: 0
     ColorMode: 0
+    ContentOnlyDisplay: false
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: /camera/semantic/image_raw
+    LabelScale: 1
+    ObjectName: ImageDock_3
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Semantic
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    ContentOnlyDisplay: false
     EnableUndistort: false
     FlipHorizontal: false
     FlipVertical: false
     HoverPublishChannel: ""
     ImageChannel: /camera/depth/image_raw
     LabelScale: 1
-    ObjectName: ImageDock_2
+    ObjectName: ImageDock_4
     Rotation: 0
     SettingsVisible: false
     StrictTimeSync: false
-    Title: Camera
+    Title: Depth
 PlotPanels:
   - KeepRatioXy: true
     LockAxisScales: false
@@ -405,11 +588,11 @@ PlotPanels:
     ReferenceTrackerSec: 0
     ReferenceY: 0
     Series:
-      - BinaryMaxDtSec: 0.1
+      - BinaryMaxDtSec: 0.10000000149011612
         BinaryOp: 0
         Channel: /cmd_vel
         ChannelPattern: ""
-        Color: "#3DD6F5"
+        Color: "#3dd6f5"
         CurveStyle: 0
         CustomTimestampPath: ""
         Enabled: true
@@ -427,11 +610,11 @@ PlotPanels:
         XFieldPath: ""
         YOffset: 0
         YScale: 1
-      - BinaryMaxDtSec: 0.1
+      - BinaryMaxDtSec: 0.10000000149011612
         BinaryOp: 0
         Channel: /odom
         ChannelPattern: ""
-        Color: "#FF5A5A"
+        Color: "#ff5a5a"
         CurveStyle: 0
         CustomTimestampPath: ""
         Enabled: true
@@ -469,79 +652,6 @@ PlotPanels:
     YMaxRight: 1
     YMin: 0
     YMinRight: 0
-  # Yaw rate lives on angular.z — planar robots keep linear.z == 0.
-  - KeepRatioXy: true
-    LockAxisScales: false
-    MaxPointsPerSeries: 20000
-    MessagePathMode: 1
-    ObjectName: PlotDock_2
-    ReferenceTrackerSec: 0
-    ReferenceY: 0
-    Series:
-      - BinaryMaxDtSec: 0.1
-        BinaryOp: 0
-        Channel: /cmd_vel
-        ChannelPattern: ""
-        Color: "#3DD6F5"
-        CurveStyle: 0
-        CustomTimestampPath: ""
-        Enabled: true
-        FieldPath: twist.angular.z
-        Label: cmd wz
-        LineSize: auto
-        PointSize: 3
-        SecondaryChannel: ""
-        SecondaryFieldPath: ""
-        ShowLine: true
-        ShowPoints: false
-        TimestampMode: 0
-        UseRightY: false
-        XChannel: ""
-        XFieldPath: ""
-        YOffset: 0
-        YScale: 1
-      - BinaryMaxDtSec: 0.1
-        BinaryOp: 0
-        Channel: /odom
-        ChannelPattern: ""
-        Color: "#FFB454"
-        CurveStyle: 0
-        CustomTimestampPath: ""
-        Enabled: true
-        FieldPath: twist.twist.angular.z
-        Label: odom wz
-        LineSize: auto
-        PointSize: 3
-        SecondaryChannel: ""
-        SecondaryFieldPath: ""
-        ShowLine: true
-        ShowPoints: false
-        TimestampMode: 0
-        UseRightY: false
-        XChannel: ""
-        XFieldPath: ""
-        YOffset: 0
-        YScale: 1
-    SettingsVisible: false
-    SettingsWidth: 300
-    ShowGrid: true
-    ShowLegend: true
-    ShowLegendValues: true
-    ShowReferenceTracker: false
-    ShowReferenceY: false
-    SyncCursor: true
-    SyncGroup: default
-    SyncWithOtherPlots: true
-    SyncYAxis: false
-    Title: Angular Z
-    XAxisMode: 0
-    XWindowSec: 12
-    YAutoScale: true
-    YAutoScaleRight: true
-    YMax: 1
-    YMaxRight: 1
-    YMin: -1
-    YMinRight: -1
 RawMessages:
   Channel: ""
   DiffHighlight: true
@@ -616,12 +726,13 @@ Views: ~
 Window:
   Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAQgAAAEUAAAn/AAAFnwAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
   Height: 1371
-  HideLeftDock: false
+  HideLeftDock: true
   HideRightDock: true
-  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3sibmFtZSI6IlZpZXdwb3J0RG9jayIsInR5cGUiOiJsZWFmIn0seyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2siLCJ0eXBlIjoibGVhZiJ9LHsibmFtZSI6IkltYWdlRG9ja18yIiwidHlwZSI6ImxlYWYifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbMzY4LDM2OV0sInR5cGUiOiJzcGxpdCJ9LHsiY2hpbGRyZW4iOlt7Im5hbWUiOiJQbG90RG9jayIsInR5cGUiOiJsZWFmIn0seyJuYW1lIjoiUGxvdERvY2tfMiIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOlszMTQsMzE0XSwidHlwZSI6InNwbGl0In1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls2MzUsNjM1XSwidHlwZSI6InNwbGl0In1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzE0MDUsNzQ0XSwidHlwZSI6InNwbGl0In19
+  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2siLCJ0eXBlIjoibGVhZiJ9LHsiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYyMSw2MjFdLCJ0eXBlIjoic3BsaXQifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjE5LDEyNDldLCJ0eXBlIjoic3BsaXQifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjEyLDE4NzVdLCJ0eXBlIjoic3BsaXQifSx7ImNoaWxkcmVuIjpbeyJuYW1lIjoiVmlld3BvcnREb2NrXzIiLCJ0eXBlIjoibGVhZiJ9LHsibmFtZSI6IlZpZXdwb3J0RG9ja18zIiwidHlwZSI6ImxlYWYifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbMTI0NCwxMjQzXSwidHlwZSI6InNwbGl0In1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0OTAsNzg4XSwidHlwZSI6InNwbGl0In19
   Panels:
     - Name: ViewportDock
-    - Name: DisplaysDock
+    - Collapsed: true
+      Name: DisplaysDock
     - Name: RecordDock
     - Name: SelectionDock
     - Name: ToolPropertiesDock
@@ -635,18 +746,21 @@ Window:
     - Name: TeleopDock
     - Name: ChannelGraphDock
     - Name: ImageDock_2
-    - Name: PlotDock_2
-    - Name: PropertiesDock
-  PlotSettingsVisible: true
-  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFMAAAE/fwCAAAAAfwAAABIAAAE/QAAALMBAAAV+gAAAAECAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAAD/////AAAAnQD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsBAAAAAP////8AAAB6AP///wAAAAEAAAEYAAAAAPwCAAAABfsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAAD/////AAAAyAD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABSQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAAAA/////wAAAe4A////AAAAAwAAAAAAAAAA/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAD/////AAAD5AD///8AAAhsAAAE/QAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAAHABBAHUAdABvAHYAaQB6AFQAbwBvAGwAQgBhAHIBAAAAAP////8AAAAAAAAAAA==
+    - Name: ImageDock_3
+    - Name: ImageDock_4
+    - Name: ViewportDock_2
+    - Name: ViewportDock_3
+    - Collapsed: true
+      Name: PropertiesDock
+  PlotSettingsVisible: false
+  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFMAAAFBfwCAAAAAfwAAABAAAAFBQAAAAAA////+v////8CAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAAAAAAD/////AAAA3QD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsAAAAAAP////8AAAB6AP///wAAAAEAAAEYAAAFBfwCAAAABfsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAAD/////AAAAyAD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABSQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawAAAABAAAABvgAAAIcA////+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawAAAAIEAAADQQAAAIYA////+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAAAA/////wAAAe4A////AAAAAwAAAAAAAAAA/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAD/////AAAD5AD///8AAAm+AAAFBQAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAAHABBAHUAdABvAHYAaQB6AFQAbwBvAGwAQgBhAHIBAAAAAP////8AAAAAAAAAAA==
   VisiblePanels:
-    - ViewportDock
-    - DisplaysDock
     - ImageDock
-    - PlotDock
     - ImageDock_2
-    - PlotDock_2
-    - PropertiesDock
+    - ImageDock_3
+    - ImageDock_4
+    - ViewportDock_2
+    - ViewportDock_3
   Width: 2494
   X: 66
   Y: 69

@@ -263,9 +263,9 @@ void PlannerServer::ComputePlan()
             // NavFn already avoided COST_OBS. Post-check often flags inflation
             // near walls; dropping the plan left start/goal in free space with
             // no /plan and no FollowPath.
-            AWARN << "PlannerServer: path touches inflated cells; publishing "
-                     "anyway ("
-                  << path.poses_size() << " poses)";
+            AWARN_EVERY(20) << "PlannerServer: path touches inflated cells; "
+                               "publishing anyway ("
+                            << path.poses_size() << " poses)";
         }
 
         PublishPlan(path);
@@ -485,9 +485,10 @@ void PlannerServer::SmoothPathAction()
             automsgs::msgs::geometry_msgs::PoseStamped end = path.poses(
                 path.poses_size() - 1);
             if (!ValidatePath(end, path, "simple_smoother")) {
-                AWARN << "SmoothPath cut through obstacles; keeping unsmoothed "
-                         "plan ("
-                      << goal->path().poses_size() << " poses)";
+                AWARN_EVERY(20)
+                    << "SmoothPath cut through obstacles; keeping unsmoothed "
+                       "plan ("
+                    << goal->path().poses_size() << " poses)";
                 path = goal->path();
                 published_new_plan = false;
             }

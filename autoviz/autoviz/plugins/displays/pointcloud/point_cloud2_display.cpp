@@ -77,7 +77,7 @@ std::vector<common::DisplayPropertySpec> PointCloud2Display::propertySpecs()
       {"decay_time", "Decay Time", "0"},
       {"position_transform", "Position Transformer", "XYZ", {"XYZ"}},
       {"color_transform", "Color Transformer", "Intensity",
-       {"Intensity", "RGB8", "RGBF32", "AxisColor", "FlatColor"}},
+       {"Intensity", "RGB8", "RGBF32", "AxisColor", "FlatColor", "Axis"}},
 
       // FlatColor
       {"color", "Color", "255;255;255", {}, common::DisplayPropertyKind::kColor,
@@ -134,6 +134,9 @@ void PointCloud2Display::processMessage(
   if (context_ == nullptr) {
     return;
   }
+
+  last_message_ = message;
+  has_last_message_ = true;
 
   try {
   // Honor the UI Decimate property. Max Points raises the effective step for
@@ -511,6 +514,8 @@ void PointCloud2Display::clearReceivedData() {
   batches_.clear();
   gpu_dirty_ = true;
   gpu_incremental_ok_ = false;
+  has_last_message_ = false;
+  last_message_.Clear();
   if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
     context_->ogre_scene_host->removeDisplay(name());
   }
@@ -524,6 +529,33 @@ void PointCloud2Display::onDisable() {
   if (context_ != nullptr && context_->ogre_scene_host != nullptr) {
     context_->ogre_scene_host->removeDisplay(name());
   }
+}
+
+void PointCloud2Display::reprocessLastMessage() {
+  if (!has_last_message_ || context_ == nullptr) {
+    gpu_dirty_ = true;
+    gpu_incremental_ok_ = false;
+    return;
+  }
+  // Decay history is invalid after a color/style transformer change.
+  batches_.clear();
+  gpu_incremental_ok_ = false;
+  processMessage(last_message_);
+}
+
+void PointCloud2Display::onPropertyChanged(const std::string& key) {
+  // Style / size only need a GPU rebuild from already-colored batches.
+  if (key == "style" || key == "point_size" || key == "point_world_size" ||
+      key == "selectable") {
+    gpu_dirty_ = true;
+    gpu_incremental_ok_ = false;
+    if (context_ != nullptr && context_->request_redraw) {
+      context_->request_redraw();
+    }
+    return;
+  }
+  // Color Transformer, channel, alpha, rainbow, bounds, decay, decimate, …
+  reprocessLastMessage();
 }
 
 void PointCloud2Display::onDraw(rendering::SceneOverlay& scene) {

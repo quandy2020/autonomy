@@ -32,6 +32,7 @@
 
 #include "autolink/node/node.hpp"
 #include "autoviz/transform/buffer.hpp"
+#include "autoviz/common/bit_allocator.hpp"
 #include "autoviz/common/session_config.hpp"
 #include "autoviz/common/selection_manager.hpp"
 #include "autoviz/common/selection_handler.hpp"
@@ -49,6 +50,9 @@
 #include "autoviz/transform/listener.hpp"
 
 namespace autoviz {
+namespace rendering {
+class OgreSceneHost;
+}
 namespace common {
 
 /**
@@ -122,11 +126,28 @@ class VisualizationManager {
   bool ok() const;
 
   /**
-   * @brief Per-frame update: time, channels, displays, tools, overlays.
+   * @brief Per-frame update: time, channels, and display @c update() hooks.
    *
-   * Sets @c updating_ while drawing to guard reentrancy.
+   * Does not draw into a scene overlay — call @ref drawViewport() per 3D View
+   * so each pane only receives displays that own its visibility bit.
+   *
+   * Sets @c updating_ while running to guard reentrancy.
    */
   void update();
+
+  /**
+   * @brief Draws displays visible under @p viewport_bit into @p overlay / host.
+   *
+   * Temporarily binds @p ogre_host on @ref DisplayContext so Ogre uploads
+   * (LaserScan, DepthCloud, …) go only to this 3D View — not the active pane.
+   *
+   * @param viewport_bit Bit allocated for one 3D View (@ref allocViewportBit).
+   * @param overlay Destination overlay for that view (GL fallback path).
+   * @param ogre_host This view's @c OgreSceneHost (may be @c nullptr).
+   * @param draw_tools When @c true, also draws the active tool (active view).
+   */
+  void drawViewport(uint32_t viewport_bit, rendering::SceneOverlay& overlay,
+                    rendering::OgreSceneHost* ogre_host, bool draw_tools);
 
   /**
    * @brief True while a display/tool draw pass is in progress (reentrancy guard).
@@ -135,10 +156,64 @@ class VisualizationManager {
   bool isUpdating() const { return updating_; }
 
   /**
-   * @brief Shared immediate-mode scene overlay.
+   * @brief Shared / active immediate-mode scene overlay (tools, active view).
    * @return Mutable overlay reference.
    */
   rendering::SceneOverlay& sceneOverlay() { return scene_overlay_; }
+
+  /**
+   * @brief Allocates a unique visibility bit for a 3D View instance.
+   * @return Power-of-two bit, or @c 0 if exhausted.
+   */
+  uint32_t allocViewportBit();
+
+  /**
+   * @brief Releases a previously allocated viewport visibility bit.
+   * @param bit Bit from @ref allocViewportBit().
+   */
+  void freeViewportBit(uint32_t bit);
+
+  /**
+   * @brief Sets which viewport the Displays panel / new displays target.
+   *
+   * Rebuilds @c display_views_ to only include displays owning @p bit.
+   *
+   * @param bit Active 3D View bit (@c 0 = show all / unset).
+   */
+  void setActiveViewportBit(uint32_t bit);
+
+  /**
+   * @brief Visibility bit of the 3D View currently edited in Displays.
+   */
+  uint32_t activeViewportBit() const { return active_viewport_bit_; }
+
+  /**
+   * @brief Assigns orphan displays (no bits / legacy all-bits) to @p bit.
+   *
+   * Used when the first 3D View is created so the primary pane keeps the
+   * session display tree; split children start empty.
+   *
+   * @param bit Destination viewport bit.
+   */
+  void claimOrphanDisplaysForViewport(uint32_t bit);
+
+  /**
+   * @brief Clones displays from an existing viewport into an empty @p bit.
+   *
+   * Session restore of multiple 3D Views (e.g. navigation.autoviz dual panes)
+   * uses this so each pane keeps the cool path/costmap/goal tree. Interactive
+   * Split still starts empty (caller skips this).
+   *
+   * @param bit Destination viewport bit (must not already own displays).
+   * @return Number of displays added.
+   */
+  int seedViewportDisplaysFromPeer(uint32_t bit);
+
+  /**
+   * @brief Removes @p bit from all displays; deletes displays that become empty.
+   * @param bit Viewport bit being destroyed.
+   */
+  void detachDisplaysFromViewport(uint32_t bit);
 
   /**
    * @brief Context passed to Display / Tool plugins.
@@ -927,6 +1002,8 @@ class VisualizationManager {
   autoviz::transform::Listener tf_listener_;
   rendering::SceneOverlay scene_overlay_;
   common::DisplayContext display_context_;
+  BitAllocator viewport_bit_allocator_;
+  uint32_t active_viewport_bit_ = 0;
   std::vector<std::unique_ptr<display::Display>> displays_;
   std::vector<display::Display*> display_views_;
   std::vector<integration::ChannelInfo> cached_channels_;

@@ -23,14 +23,40 @@ PointFieldInfo findField(
   return {};
 }
 
+bool IsPositionOrColorField(const std::string& name) {
+  return name == "x" || name == "y" || name == "z" || name == "rgb" ||
+         name == "rgba" || name == "r" || name == "g" || name == "b" ||
+         name == "a";
+}
+
 PointFieldInfo findIntensityField(
     const automsgs::msgs::sensor_msgs::PointCloud2& cloud,
     const std::string& channel) {
   PointFieldInfo field = findField(cloud, channel.c_str());
-  if (!field.valid && channel == "intensity") {
-    field = findField(cloud, "intensities");
+  if (field.valid) {
+    return field;
   }
-  return field;
+  // RViz-style fallbacks when Channel Name is missing on the wire.
+  static const char* kFallbacks[] = {
+      "intensity", "intensities", "reflectivity", "intensity_raw", "signal",
+      "range", "ring"};
+  for (const char* name : kFallbacks) {
+    if (channel == name) {
+      continue;
+    }
+    field = findField(cloud, name);
+    if (field.valid) {
+      return field;
+    }
+  }
+  // Last resort: first non-xyz / non-rgb numeric field (Ouster / custom clouds).
+  for (const auto& f : cloud.fields()) {
+    if (IsPositionOrColorField(f.name())) {
+      continue;
+    }
+    return {f.offset(), static_cast<uint8_t>(f.datatype()), true};
+  }
+  return {};
 }
 
 }  // namespace

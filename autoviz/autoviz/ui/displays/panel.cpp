@@ -977,8 +977,8 @@ void DisplaysPanel::populateDisplayProperties(QTreeWidgetItem* display_item,
       prop->setText(kDisplayTreeColValue, current_value);
       prop->setFlags(NameColumnFlags(false) | ValueColumnFlags(true));
     }
-    prop->setData(kDisplayTreeColName, Qt::UserRole + 10, default_lower);
-    prop->setData(kDisplayTreeColValue, Qt::UserRole + 10, default_lower);
+    prop->setData(kDisplayTreeColName, kDisplayTreeRoleBoolDefault, default_lower);
+    prop->setData(kDisplayTreeColValue, kDisplayTreeRoleBoolDefault, default_lower);
     prop->setData(kDisplayTreeColName, kDisplayTreeRolePropertyKind,
                   static_cast<int>(spec.kind));
     prop->setData(kDisplayTreeColValue, kDisplayTreeRolePropertyKind,
@@ -989,8 +989,8 @@ void DisplaysPanel::populateDisplayProperties(QTreeWidgetItem* display_item,
         options.push_back(QString::fromStdString(option));
       }
       const QString joined = options.join('\n');
-      prop->setData(kDisplayTreeColName, Qt::UserRole + 11, joined);
-      prop->setData(kDisplayTreeColValue, Qt::UserRole + 11, joined);
+      prop->setData(kDisplayTreeColName, kDisplayTreeRoleEnumOptions, joined);
+      prop->setData(kDisplayTreeColValue, kDisplayTreeRoleEnumOptions, joined);
     }
     if (!spec.visible_when_key.empty()) {
       const QString wk = QString::fromStdString(spec.visible_when_key);
@@ -1741,7 +1741,7 @@ void DisplaysPanel::onDisplayItemChanged(QTreeWidgetItem* item, int column) {
       column == kDisplayTreeColValue &&
       (item->flags() & Qt::ItemIsUserCheckable)) {
     const QString default_lower =
-        item->data(kDisplayTreeColName, Qt::UserRole + 10).toString();
+        item->data(kDisplayTreeColName, kDisplayTreeRoleBoolDefault).toString();
     if (default_lower == QLatin1String("true") ||
         default_lower == QLatin1String("false")) {
       const bool checked =

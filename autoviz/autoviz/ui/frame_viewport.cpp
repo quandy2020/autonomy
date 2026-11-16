@@ -147,6 +147,13 @@ void FrameViewport::setActiveViewportDock(PanelDockWidget* dock) {
       frame_->manager_->tools().setActiveTool(entry->local_tool_id);
       frame_->chrome_->syncToolbarToActiveTool();
     }
+    // Displays panel edits only this 3D View's display tree.
+    if (frame_->manager_ != nullptr && entry->visibility_bit != 0) {
+      frame_->manager_->setActiveViewportBit(entry->visibility_bit);
+      if (frame_->panels_->displays_panel_ != nullptr) {
+        frame_->panels_->displays_panel_->refresh();
+      }
+    }
   }
   if (frame_->panels_->views_panel_ != nullptr) {
     frame_->panels_->views_panel_->setViewController(activeViewController());
@@ -287,7 +294,11 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
       entry.host != nullptr ? entry.host : static_cast<QWidget*>(frame_);
   entry.ogre_viewport = new rendering::OgreRenderWindow(parent);
   entry.ogre_viewport->hide();
-  entry.ogre_viewport->setSceneOverlay(&frame_->manager_->sceneOverlay());
+  // Per-entry overlay — do not share the manager global overlay across splits.
+  if (entry.scene_overlay == nullptr) {
+    entry.scene_overlay = std::make_shared<rendering::SceneOverlay>();
+  }
+  entry.ogre_viewport->setSceneOverlay(entry.scene_overlay.get());
   entry.ogre_viewport->setToolManager(&frame_->manager_->tools());
   entry.widget = entry.ogre_viewport;
 
@@ -401,6 +412,11 @@ void FrameViewport::removeViewportPanel(PanelDockWidget* dock) {
     return;
   }
   ViewportPanelEntry entry = viewport_panels_.take(dock);
+  if (frame_->manager_ != nullptr && entry.visibility_bit != 0) {
+    frame_->manager_->detachDisplaysFromViewport(entry.visibility_bit);
+    frame_->manager_->freeViewportBit(entry.visibility_bit);
+    entry.visibility_bit = 0;
+  }
   destroyRenderWindowInEntry(entry);
 
   if (active_viewport_dock_ == dock) {
@@ -411,8 +427,16 @@ void FrameViewport::removeViewportPanel(PanelDockWidget* dock) {
                viewport_panels_.contains(viewport_dock_)) {
       active_viewport_dock_ = viewport_dock_;
     }
+    if (ViewportPanelEntry* next = activeViewportEntry()) {
+      if (frame_->manager_ != nullptr && next->visibility_bit != 0) {
+        frame_->manager_->setActiveViewportBit(next->visibility_bit);
+      }
+    }
     if (frame_->panels_->views_panel_ != nullptr) {
       frame_->panels_->views_panel_->setViewController(activeViewController());
+    }
+    if (frame_->panels_->displays_panel_ != nullptr) {
+      frame_->panels_->displays_panel_->refresh();
     }
   }
   // Keep viewport_dock_ on the canonical ViewportDock even when closed so the
@@ -453,6 +477,13 @@ void FrameViewport::wireViewportPanel(ViewportPanelEntry& entry) {
                        return;
                      }
                      ViewportPanelEntry taken = viewport_panels_.take(dock);
+                     if (frame_->manager_ != nullptr &&
+                         taken.visibility_bit != 0) {
+                       frame_->manager_->detachDisplaysFromViewport(
+                           taken.visibility_bit);
+                       frame_->manager_->freeViewportBit(taken.visibility_bit);
+                       taken.visibility_bit = 0;
+                     }
                      if (taken.widget != nullptr) {
                        taken.widget->hide();
                        taken.widget->setParent(nullptr);
@@ -465,6 +496,13 @@ void FrameViewport::wireViewportPanel(ViewportPanelEntry& entry) {
                            viewport_panels_.isEmpty()
                                ? nullptr
                                : viewport_panels_.begin().key();
+                       if (ViewportPanelEntry* next = activeViewportEntry()) {
+                         if (frame_->manager_ != nullptr &&
+                             next->visibility_bit != 0) {
+                           frame_->manager_->setActiveViewportBit(
+                               next->visibility_bit);
+                         }
+                       }
                      }
                      if (viewport_dock_ == dock) {
                        // Prefer the canonical dock over a Split duplicate.
@@ -591,6 +629,21 @@ PanelDockWidget* FrameViewport::createViewportPanelDock(
   entry.layout->setSpacing(0);
   dock->setContentWidget(entry.host);
 
+  // Independent Display ownership for this pane. First view claims session
+  // orphans; interactive Split starts empty. Session restore of extra 3D
+  // Views (create_render_window=false) clones the primary tree so dual-pane
+  // layouts keep the same cool nav displays.
+  if (frame_->manager_ != nullptr) {
+    entry.visibility_bit = frame_->manager_->allocViewportBit();
+    const bool first_viewport = viewport_panels_.isEmpty();
+    if (first_viewport && entry.visibility_bit != 0) {
+      frame_->manager_->claimOrphanDisplaysForViewport(entry.visibility_bit);
+      frame_->manager_->setActiveViewportBit(entry.visibility_bit);
+    } else if (!create_render_window && entry.visibility_bit != 0) {
+      frame_->manager_->seedViewportDisplaysFromPeer(entry.visibility_bit);
+    }
+  }
+
   // Session restore must not create native Ogre windows before the mosaic is
   // applied — reparenting a live GLX window during loadConfig SIGSEGVs in Qt
   // style/palette code on the next activate.
@@ -662,6 +715,19 @@ void FrameViewport::requestViewportUpdate() {
   syncToolContext();
   if (frame_->manager_ != nullptr) {
     frame_->manager_->update();
+    const ViewportPanelEntry* active_entry = activeViewportEntry();
+    forEachViewportPanel([this, active_entry](ViewportPanelEntry& entry) {
+      if (entry.visibility_bit == 0 || entry.scene_overlay == nullptr) {
+        return;
+      }
+      const bool is_active =
+          active_entry != nullptr && entry.dock == active_entry->dock;
+      rendering::OgreSceneHost* host =
+          entry.ogre_viewport != nullptr ? entry.ogre_viewport->ogreSceneHost()
+                                         : nullptr;
+      frame_->manager_->drawViewport(entry.visibility_bit, *entry.scene_overlay,
+                                     host, is_active);
+    });
   }
   forEachViewportPanel([](ViewportPanelEntry& entry) {
     if (entry.widget != nullptr) {
@@ -749,7 +815,11 @@ void FrameViewport::syncToolContext() {
   }
   common::ToolContext context;
   context.view_controller = activeViewController();
-  context.scene_overlay = &frame_->manager_->sceneOverlay();
+  if (active_entry != nullptr && active_entry->scene_overlay != nullptr) {
+    context.scene_overlay = active_entry->scene_overlay.get();
+  } else if (frame_->manager_ != nullptr) {
+    context.scene_overlay = &frame_->manager_->sceneOverlay();
+  }
   if (active_entry != nullptr) {
     // Never call QObject::objectName on a possibly-disposed dock pointer.
     if (!active_entry->object_name.isEmpty()) {
@@ -821,7 +891,11 @@ void FrameViewport::syncToolContext() {
   };
   context.autolink_node = frame_->manager_->autolinkNode();
   context.fixed_frame = frame_->manager_->fixedFrame();
-  context.scene_overlay = &frame_->manager_->sceneOverlay();
+  // Keep the active entry overlay set above — do not reset to the shared
+  // manager overlay (that would make tools/draw inherit the wrong pane).
+  if (context.scene_overlay == nullptr) {
+    context.scene_overlay = &frame_->manager_->sceneOverlay();
+  }
   context.display_context = &frame_->manager_->displayContext();
   context.selection_manager = &frame_->manager_->selectionManager();
   context.pick_registry = &frame_->manager_->pickRegistry();

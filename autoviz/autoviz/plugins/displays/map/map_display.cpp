@@ -9,7 +9,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdint>
+#include <string>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
@@ -112,10 +114,24 @@ QColor ApplyDisplayAlpha(QColor palette_color, float display_alpha) {
   return palette_color;
 }
 
+std::string NormalizeColorScheme(std::string scheme) {
+  for (char& c : scheme) {
+    c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+  }
+  if (scheme == "costmap") {
+    return "costmap";
+  }
+  if (scheme == "raw") {
+    return "raw";
+  }
+  return "map";
+}
+
 QColor ColorForScheme(const std::string& scheme, int32_t value, float alpha) {
-  const Palette& palette = (scheme == "costmap") ? CostmapPalette()
-                         : (scheme == "raw")     ? RawPalette()
-                                                 : MapPalette();
+  const std::string normalized = NormalizeColorScheme(scheme);
+  const Palette& palette = (normalized == "costmap") ? CostmapPalette()
+                         : (normalized == "raw")     ? RawPalette()
+                                                     : MapPalette();
   return ApplyDisplayAlpha(palette[OccupancyPaletteIndex(value)], alpha);
 }
 
@@ -276,7 +292,8 @@ void MapDisplay::rebuildTexture() {
   const float alpha = std::clamp(
       common::ParseFloatProperty(propertyValue("alpha", "0.85"), 0.85f), 0.f,
       1.f);
-  const std::string scheme = propertyValue("color_scheme", "map");
+  const std::string scheme =
+      NormalizeColorScheme(propertyValue("color_scheme", "map"));
   QImage new_image(static_cast<int>(image_width),
                    static_cast<int>(image_height), QImage::Format_RGBA8888);
   new_image.fill(Qt::transparent);
@@ -313,7 +330,8 @@ bool MapDisplay::rebuildPose() {
 
   const bool draw_behind =
       common::ParseBoolProperty(propertyValue("draw_behind", "true"), true);
-  const std::string scheme = propertyValue("color_scheme", "map");
+  const std::string scheme =
+      NormalizeColorScheme(propertyValue("color_scheme", "map"));
   const std::string& ch = channel();
   const bool local_costmap = ch.find("local_costmap") != std::string::npos;
 

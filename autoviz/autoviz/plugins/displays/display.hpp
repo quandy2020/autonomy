@@ -297,9 +297,19 @@ class Display {
    *
    * @param bits Bitmask to set on @c visibility_bits_.
    * @see unsetVisibilityBits()
+   * @see assignVisibilityBits()
    * @see visibilityBits()
    */
   void setVisibilityBits(uint32_t bits);
+
+  /**
+   * @brief Replaces the visibility mask (does not OR).
+   *
+   * Used so a display belongs only to the active 3D View when created.
+   *
+   * @param bits Exact bitmask to store.
+   */
+  void assignVisibilityBits(uint32_t bits);
 
   /**
    * @brief Clears visibility bits.
@@ -309,11 +319,18 @@ class Display {
   void unsetVisibilityBits(uint32_t bits);
 
   /**
-   * @brief Current visibility bitmask (default all bits set).
+   * @brief Current visibility bitmask (default 0 until enabled).
    *
    * @return @c visibility_bits_.
    */
   uint32_t visibilityBits() const { return visibility_bits_; }
+
+  /**
+   * @brief @c true when this display is visible in the viewport owning @p bit.
+   */
+  bool visibleInViewport(uint32_t bit) const {
+    return bit != 0 && (visibility_bits_ & bit) != 0;
+  }
 
  protected:
   /**
@@ -363,8 +380,11 @@ class Display {
   /** Reserved / legacy subscription flag (kept for RViz parity). */
   bool subscribed_ = false;
 
-  /** Multi-viewport visibility mask; default all bits set. */
-  uint32_t visibility_bits_ = 0xFFFFFFFFu;
+  /**
+   * Multi-viewport visibility mask. Starts at 0; @ref setEnabled assigns
+   * @c DisplayContext::default_visibility_bit for the active 3D View.
+   */
+  uint32_t visibility_bits_ = 0;
 
   /** Current status severity for the Displays tree. */
   DisplayStatusLevel status_level_ = DisplayStatusLevel::kOk;

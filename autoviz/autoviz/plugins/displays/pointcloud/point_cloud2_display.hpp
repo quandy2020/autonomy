@@ -70,6 +70,8 @@ class PointCloud2Display
 
   void onDisable() override;
 
+  void onPropertyChanged(const std::string& key) override;
+
   std::size_t messageQueueDepth() const override;
 
   void afterQueueProcessed() override;
@@ -93,6 +95,12 @@ class PointCloud2Display
   /** @brief Append one batch to the Ogre cloud (Decay Time &gt; 0). */
   void appendGpuBatch(std::vector<rendering::OgrePointCloud::Point>&& points);
 
+  /**
+   * @brief Re-run @ref processMessage on @c last_message_ after color/style
+   *        property edits (latched clouds otherwise stay flat-white).
+   */
+  void reprocessLastMessage();
+
   std::vector<PointBatch> batches_;
   /** True when Ogre buffers must be rebuilt from @c batches_. */
   bool gpu_dirty_ = false;
@@ -104,6 +112,9 @@ class PointCloud2Display
   rendering::PointCloudStyle last_style_ =
       rendering::PointCloudStyle::kPoints;
   float last_point_size_ = -1.f;
+  /** Latest cloud so Color Transformer / channel edits can recolor immediately. */
+  automsgs::msgs::sensor_msgs::PointCloud2 last_message_;
+  bool has_last_message_ = false;
 };
 
 }  // namespace display

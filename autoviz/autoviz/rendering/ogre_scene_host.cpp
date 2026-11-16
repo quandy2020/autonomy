@@ -645,6 +645,9 @@ void ApplyPointCloudStyle(OgrePointCloud* cloud, float point_size,
     cloud->setRenderMode(mode);
   }
   cloud->setDimensions(world_size, world_size, world_size);
+  // Per-point RGBA is baked into vertices (Intensity / AxisColor / RGB8).
+  // Keep global alpha at 1 and honor vertex alpha so coloring is visible.
+  cloud->setAlpha(1.0f, /*per_point_alpha=*/true);
 }
 
 }  // namespace

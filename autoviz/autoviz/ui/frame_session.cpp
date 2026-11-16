@@ -1189,10 +1189,29 @@ void FrameSession::onRenderTick() {
       static_cast<float>(std::min<qint64>(elapsed_ms, 100)) / 1000.f;
   frame_->viewport_->syncToolContext();
   frame_->manager_->update();
+  // Per-3D-View overlay draw — split panes must not share parent geometry.
+  const ViewportPanelEntry* active_entry =
+      frame_->viewport_->activeViewportEntry();
+  frame_->viewport_->forEachViewportPanel([this, active_entry](
+                                              ViewportPanelEntry& entry) {
+    if (entry.visibility_bit == 0 || entry.scene_overlay == nullptr) {
+      return;
+    }
+    const bool is_active =
+        active_entry != nullptr && entry.dock == active_entry->dock;
+    rendering::OgreSceneHost* host =
+        entry.ogre_viewport != nullptr ? entry.ogre_viewport->ogreSceneHost()
+                                       : nullptr;
+    frame_->manager_->drawViewport(entry.visibility_bit, *entry.scene_overlay,
+                                   host, is_active);
+    if (is_active) {
+      if (rendering::ViewController* controller =
+              frame_->viewport_->activeViewController()) {
+        controller->appendFocalShape(entry.scene_overlay.get());
+      }
+    }
+  });
   frame_->viewport_->viewportTick(delta_seconds);
-  if (rendering::ViewController* controller = frame_->viewport_->activeViewController()) {
-    controller->appendFocalShape(&frame_->manager_->sceneOverlay());
-  }
   frame_->panels_->tickVisibleImagePanels();
   frame_->chrome_->updateFps();
 }
