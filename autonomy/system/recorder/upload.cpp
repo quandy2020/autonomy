@@ -21,27 +21,21 @@
 
 #include "autonomy/system/recorder/upload.hpp"
 
-#include <filesystem>
-#include <fstream>
-#include <system_error>
-
 #include "nlohmann/json.hpp"
+
+#include "autolink/common/file.hpp"
 
 namespace autonomy {
 namespace system {
 namespace recorder {
-namespace fs = std::filesystem;
-
 namespace {
 
-void CopyIfExists(const fs::path& src, const fs::path& dest, int* copied,
+void CopyIfExists(const std::string& src, const std::string& dest, int* copied,
                   int* failed) {
-    std::error_code ec;
-    if (!fs::exists(src, ec)) {
+    if (!autolink::common::PathExists(src)) {
         return;
     }
-    fs::copy_file(src, dest, fs::copy_options::overwrite_existing, ec);
-    if (ec) {
+    if (!autolink::common::CopyFile(src, dest)) {
         ++*failed;
         return;
     }
@@ -59,31 +53,29 @@ bool UploadEpisodes(const std::string& src_dir, const std::string& dest_dir,
         out->reason = "empty path";
         return false;
     }
-    std::error_code ec;
-    if (!fs::exists(src_dir, ec) || !fs::is_directory(src_dir, ec)) {
+    if (!autolink::common::DirectoryExists(src_dir)) {
         out->reason = "source missing";
         return false;
     }
-    fs::create_directories(dest_dir, ec);
-    if (ec) {
+    if (!autolink::common::EnsureDirectory(dest_dir)) {
         out->reason = "dest create failed";
         return false;
     }
-    for (const auto& entry : fs::directory_iterator(src_dir, ec)) {
-        if (!entry.is_regular_file()) {
+    constexpr char kSuffix[] = ".manifest.json";
+    for (const auto& name :
+         autolink::common::ListSubPaths(src_dir, DT_REG)) {
+        if (name.size() < sizeof(kSuffix) - 1 ||
+            name.compare(name.size() - (sizeof(kSuffix) - 1),
+                         sizeof(kSuffix) - 1, kSuffix) != 0) {
             continue;
         }
-        const auto path = entry.path();
-        if (path.extension() != ".json" ||
-            path.stem().extension() != ".manifest") {
-            continue;
-        }
-        std::ifstream in(path);
-        if (!in) {
+        const std::string path = src_dir + "/" + name;
+        std::string content;
+        if (!autolink::common::GetContent(path, &content)) {
             ++out->failed;
             continue;
         }
-        auto j = nlohmann::json::parse(in, nullptr, false);
+        auto j = nlohmann::json::parse(content, nullptr, false);
         if (j.is_discarded()) {
             ++out->failed;
             continue;
@@ -92,28 +84,21 @@ bool UploadEpisodes(const std::string& src_dir, const std::string& dest_dir,
             ++out->skipped;
             continue;
         }
-        std::string stem = j.value("episode_id", path.stem().stem().string());
+        std::string stem = j.value("episode_id", "");
         if (stem.empty()) {
-            stem = path.stem().stem().string();
+            stem = name.substr(0, name.size() - (sizeof(kSuffix) - 1));
         }
-        const fs::path src = path.parent_path();
-        const fs::path dest = fs::path(dest_dir);
-        CopyIfExists(src / (stem + ".mcap"), dest / (stem + ".mcap"),
-                     &out->copied, &out->failed);
-        CopyIfExists(src / (stem + ".sidecar.pb"),
-                     dest / (stem + ".sidecar.pb"), &out->copied, &out->failed);
-        CopyIfExists(src / (stem + ".sidecar.json"),
-                     dest / (stem + ".sidecar.json"), &out->copied,
-                     &out->failed);
-        CopyIfExists(src / (stem + ".manifest.json"),
-                     dest / (stem + ".manifest.json"), &out->copied,
-                     &out->failed);
-        CopyIfExists(src / (stem + ".overlay.json"),
-                     dest / (stem + ".overlay.json"), &out->copied,
-                     &out->failed);
-        CopyIfExists(src / (stem + ".observations.jsonl"),
-                     dest / (stem + ".observations.jsonl"), &out->copied,
-                     &out->failed);
+        auto Copy = [&](const std::string& suffix) {
+            CopyIfExists(src_dir + "/" + stem + suffix,
+                         dest_dir + "/" + stem + suffix, &out->copied,
+                         &out->failed);
+        };
+        Copy(".mcap");
+        Copy(".sidecar.pb");
+        Copy(".sidecar.json");
+        Copy(".manifest.json");
+        Copy(".overlay.json");
+        Copy(".observations.jsonl");
     }
     out->reason = "ok";
     return out->failed == 0;

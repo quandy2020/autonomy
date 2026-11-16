@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package autonomy.perception.base.proto;
+
+import "automsgs/msgs/std_msgs/header.proto";
+import "automsgs/msgs/vision_msgs/detection3d_array.proto";
+import "automsgs/msgs/map_msgs/occupancy_grid.proto";
+import "automsgs/msgs/sensor_msgs/image.proto";
+
+// Masks follow the detection order on the matching segment topic.
+message InstanceMaskFrame {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated automsgs.msgs.sensor_msgs.Image masks = 2;
+}
+
+message Keypoint {
+  float x = 1;
+  float y = 2;
+  float score = 3;
+}
+
+message PersonKeypoints {
+  repeated Keypoint points = 1;
+}
+
+// One entry per detection in the matching pose Detection2DArray.
+message KeypointFrame {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated PersonKeypoints people = 2;
+}
+
+enum Backend {
+  BACKEND_UNSPECIFIED = 0;
+  BACKEND_ONNX = 1;
+  BACKEND_TENSORRT = 2;
+}
+
+enum TaskKind {
+  TASK_UNSPECIFIED = 0;
+  TASK_DETECT = 1;
+  TASK_SEGMENT = 2;
+  TASK_CLASSIFY = 3;
+  TASK_POSE = 4;
+  TASK_OBB = 5;
+  TASK_TRACK = 6;
+  TASK_DEPTH = 7;
+  TASK_SEMANTIC = 8;
+}
+
+// Monocular depth family loaded through the shared network engine.
+enum DepthBackend {
+  DEPTH_BACKEND_UNSPECIFIED = 0;
+  // MoGe-2 ONNX/TRT: image [1,3,H,W] RGB [0,1] →
+  // points / normal / mask / metric_scale. Depth is recovered in C++.
+  DEPTH_BACKEND_MOGE = 1;
+}
+
+// One YOLO26 / MoGe head: enable + engine path + publish topic (+ extras).
+enum ModelFamily {
+  MODEL_FAMILY_UNSPECIFIED = 0;
+  MODEL_FAMILY_YOLO = 1;
+  MODEL_FAMILY_SEG_FORMER = 2;
+  MODEL_FAMILY_SAM2 = 3;
+  MODEL_FAMILY_FLASHOCC = 4;
+  MODEL_FAMILY_MOGE = 5;
+  MODEL_FAMILY_BOXER = 6;
+  MODEL_FAMILY_RRCE = 7;
+}
+
+message ModelOptions {
+  string id = 1;
+  string path = 2;
+  Backend backend = 3;
+  uint32 input_width = 4;
+  uint32 input_height = 5;
+  ModelFamily family = 6;
+}
+
+message TaskOptions {
+  TaskKind kind = 1;
+  bool enable = 2;
+  string model_path = 3;
+  string topic = 4;
+  // Pose only: keypoint count of the exported graph.
+  uint32 num_keypoints = 5;
+  // Depth only.
+  DepthBackend depth_backend = 6;
+  // MoGe: mask < threshold → NaN depth. Default 0.5 when unset/0.
+  float moge_mask_threshold = 7;
+  // MoGe: optional known horizontal FOV in degrees. 0 recovers from points.
+  float moge_fov_x_deg = 8;
+  // Override both dimensions for a head with a different input shape.
+  uint32 input_width = 9;
+  uint32 input_height = 10;
+  string keypoints_topic = 11;
+  string instance_masks_topic = 12;
+  string model_id = 13;
+  // Tensor names in the bound model. Empty uses the adapter defaults.
+  string output_name = 14;
+  string mask_output_name = 15;
+}
+
+// YOLO26 is the shared visual backbone. Detect / segment / classify / pose /
+// OBB are exported graphs of that family. Track associates detections across
+// frames. Depth is an optional RGB-to-metric head on the same loader.
+//
+// Output wire types (automsgs only — no local message duplicates):
+//   detect/segment/pose/obb/track → vision_msgs.Detection2DArray
+//   classify                      → vision_msgs.Classification
+//   depth                         → sensor_msgs.Image (32FC1 metres)
+// Segment and pose optionally publish separate mask and keypoint frames.
+message BaseOptions {
+  string extends = 11;
+  optional bool enable_semantic = 12;
+  Backend backend = 1;
+  uint32 input_width = 2;
+  uint32 input_height = 3;
+  float confidence_threshold = 4;
+  float nms_iou_threshold = 5;
+  uint32 max_detections = 6;
+  // Class index order frozen by the exported task graphs.
+  repeated string class_names = 7;
+  string camera_frame = 8;
+
+  // Enabled heads. At most one entry per TaskKind; duplicates are rejected.
+  repeated TaskOptions tasks = 10;
+  repeated ModelOptions models = 13;
+}
+
+// Native object inference consumes prepared tensors from a synchronized frame.
+// The export defines tensor layout, preprocessing and pose convention.
+enum ObjectTensorType {
+  OBJECT_TENSOR_UNSPECIFIED = 0;
+  OBJECT_TENSOR_FLOAT32 = 1;
+  OBJECT_TENSOR_INT64 = 2;
+  OBJECT_TENSOR_INT32 = 3;
+  OBJECT_TENSOR_UINT8 = 4;
+}
+message ObjectTensor {
+  string name = 1;
+  ObjectTensorType type = 2;
+  bytes data = 3;
+}
+message RoomMapGeometry {
+  repeated double model_to_grid = 1;
+  double metres_per_cell = 2;
+  double origin_x = 3;
+  double origin_y = 4;
+  double yaw_rad = 5;
+}
+message RoomPoint {
+  double x = 1;
+  double y = 2;
+}
+message RoomObservation {
+  repeated RoomPoint contour = 1;
+  RoomPoint center = 2;
+  double width_m = 3;
+  double height_m = 4;
+  double yaw_rad = 5;
+  string room_id = 6;
+}
+message RoomSnapshot {
+  string frame_id = 1;
+  string map_revision = 2;
+  repeated RoomObservation rooms = 3;
+}
+message RoomMembership {
+  uint32 detection_index = 1;
+  string room_id = 2;
+}
+message ObjectInferenceRequest {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated ObjectTensor inputs = 2;
+  RoomMapGeometry room_map = 3;
+  // Alternative to prepared tensors for a single-stage RRCE graph.
+  automsgs.msgs.map_msgs.OccupancyGrid occupancy_grid = 4;
+  string map_revision = 5;
+  RoomSnapshot room_snapshot = 6;
+}
+message ObjectInferenceResponse {
+  automsgs.msgs.std_msgs.Header header = 1;
+  repeated ObjectTensor outputs = 2;
+  string error = 3;
+  repeated RoomObservation rooms = 4;
+  automsgs.msgs.vision_msgs.Detection3DArray detections_3d = 5;
+  repeated RoomMembership room_memberships = 6;
+  string map_revision = 7;
+}
+message BoxerDecodeOptions {
+  string boxes_output = 1;
+  string frame_id = 2;
+  repeated string class_names = 3;
+  float minimum_score = 4;
+}
+message ObjectGraphStage {
+  string id = 1;
+  string model_path = 2;
+  Backend backend = 3;
+  // Local graph input name -> request tensor or "earlier_stage.output".
+  map<string, string> inputs = 4;
+  repeated string outputs = 5;
+  ModelFamily family = 6;
+}
+message ObjectInferenceOptions {
+  string service = 1;
+  repeated ObjectGraphStage stages = 2;
+  BoxerDecodeOptions boxer_decode = 3;
+}

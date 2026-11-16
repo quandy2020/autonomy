@@ -39,3 +39,8 @@ path_step_m: 0.2
 path_max_poses: 40
 tf_timeout_sec: 0.2
 max_input_skew_sec: 0.15
+
+# To enable semantic fusion, set both fields below using the deployed model's
+# verified class mapping. Leave both unset for depth-only operation.
+# semantic_topic: "/perception/base/semantic"
+# semantic_obstacle_labels: <hazard class index 0–254>

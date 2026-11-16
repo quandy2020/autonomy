@@ -4,13 +4,11 @@
 #        or LoadModuleConf("perception", "perception.pb.txt")
 #
 # Exploration preset: perception_exploration.pb.txt / system/conf/exploration.pb.txt
-# Backend Lua (still used by explorers): exploration_*.lua in this conf/
 
 enabled: false
 enable_rgbd_exploration: false
 explorer_backend: "rgbd_tare"
 # Relative to this conf/ directory
-exploration_config: "exploration_rgbd_tare.lua"
 
 odom_topic: "/odom"
 depth_topic: "/camera/depth/image_raw"
@@ -30,3 +28,70 @@ exploration_progress_topic: "/exploration/progress"
 navigation_boundary_topic: "/exploration/navigation_boundary"
 terrain_map_topic: "/terrain_map"
 enable_exploration_nav_bridge: true
+
+engine {
+  # Base perception component — MoGe depth and person tracking.
+  # Proto: autonomy/perception base options
+  #
+  # Place TensorRT engine on disk and set model_path accordingly.
+
+  backend: BACKEND_TENSORRT
+  input_width: 518
+  input_height: 518
+  confidence_threshold: 0.25
+  nms_iou_threshold: 0.7
+  max_detections: 100
+  # Only COCO class index 0 (person) is exposed by this profile.
+  class_names: "person"
+  camera_frame: "camera_color_optical_frame"
+
+  models {
+    id: "moge"
+    family: MODEL_FAMILY_MOGE
+    path: "/workspace/autonomy/src/autonomy/autonomy/perception/conf/moge-2-vits-normal_518x518_fp16.engine"
+    input_width: 518
+    input_height: 518
+  }
+
+  models {
+    id: "person_detector"
+    family: MODEL_FAMILY_YOLO
+    path: "/workspace/autonomy/src/autonomy/autonomy/perception/conf/yolo26n-detect.engine"
+    input_width: 640
+    input_height: 640
+  }
+
+  models {
+    id: "semantic"
+    family: MODEL_FAMILY_SEG_FORMER
+    path: "/workspace/autonomy/src/autonomy/autonomy/perception/conf/segformer-b0.engine"
+    input_width: 512
+    input_height: 512
+  }
+
+  tasks {
+    kind: TASK_DEPTH
+    enable: true
+    # Update to your engine path (example placeholder).
+    model_id: "moge"
+    topic: "/perception/base/depth"
+    depth_backend: DEPTH_BACKEND_MOGE
+    moge_mask_threshold: 0.5
+    moge_fov_x_deg: 0   # 0 = estimate from camera_info / model
+  }
+
+  tasks {
+    kind: TASK_TRACK
+    enable: true
+    model_id: "person_detector"
+    topic: "/perception/base/tracks"
+  }
+
+  # Enable after exporting a robot-domain semantic model. See README for logits.
+  tasks {
+    kind: TASK_SEMANTIC
+    enable: false
+    model_id: "semantic"
+    topic: "/perception/base/semantic"
+  }
+}

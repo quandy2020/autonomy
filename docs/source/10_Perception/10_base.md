@@ -14,7 +14,7 @@
 | 跟踪 | `TASK_TRACK` | `/perception/base/tracks` |
 | 深度 | `TASK_DEPTH` | `/perception/base/depth` |
 
-MoGe 样例：`config/perception/base/base_depth_moge.pb.txt`。深度尺度：$(points.z + shift) * metric_scale$。
+MoGe 参数位于 `autonomy/perception/conf/perception.pb.txt` 的 `TASK_DEPTH` 段。仅运行深度时，关闭 `TASK_TRACK` 并按部署需要配置 perception DAG。深度尺度：$(points.z + shift) * metric_scale$。
 
 ```bash
 XFORMERS_DISABLED=1 python config/perception/base/export_moge_trt.py \

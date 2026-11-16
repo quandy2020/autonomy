@@ -26,8 +26,11 @@
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
+#include <sstream>
 
 #include "nlohmann/json.hpp"
+
+#include "autolink/common/file.hpp"
 
 namespace autonomy {
 namespace system {
@@ -167,10 +170,11 @@ bool AppendEpisodeMetric(const std::string& path, const EpisodeMetric& metric) {
 std::vector<EpisodeMetric> LoadEpisodeMetrics(const std::string& path,
                                               size_t max_n) {
     std::vector<EpisodeMetric> out;
-    std::ifstream in(path);
-    if (!in) {
+    std::string content;
+    if (!autolink::common::GetContent(path, &content) || content.empty()) {
         return out;
     }
+    std::istringstream in(content);
     std::string line;
     while (std::getline(in, line)) {
         if (line.empty()) {
@@ -216,12 +220,7 @@ bool WriteGateSnapshot(const std::string& path, const proto::PublishGate& gate,
           {"attribution_coverage", snap.attribution_coverage},
           {"p95_latency", snap.p95_latency}}},
     };
-    std::ofstream out(path);
-    if (!out) {
-        return false;
-    }
-    out << j.dump(2) << '\n';
-    return true;
+    return autolink::common::SetStringToASCIIFile(j.dump(2) + "\n", path);
 }
 
 }  // namespace recorder

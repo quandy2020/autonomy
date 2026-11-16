@@ -20,10 +20,8 @@
  */
 
 #include <atomic>
-#include <chrono>
 #include <cstdlib>
 #include <exception>
-#include <fstream>
 #include <string>
 #include <thread>
 #include <vector>
@@ -34,7 +32,9 @@
 #include "nlohmann/json.hpp"
 
 #include "autolink/autolink.hpp"
+#include "autolink/common/file.hpp"
 #include "autolink/state.hpp"
+#include "autolink/time/rate.hpp"
 #include "autonomy/common/cli_options.hpp"
 #include "autonomy/system/recorder/convert.hpp"
 #include "autonomy/system/recorder/observation.hpp"
@@ -75,9 +75,10 @@ int RunRecord(const std::string& conf, bool full_dump) {
               << " (bypass subscriber, does not join control)";
     std::atomic<bool> running{true};
     std::thread poller([&]() {
+        autolink::Rate rate(10.0);
         while (running.load()) {
             recorder.SpinOnce();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            rate.Sleep();
         }
     });
     autolink::WaitForShutdown();
@@ -122,14 +123,14 @@ int RunReplay(const std::string& mcap, double rate, bool hil,
 
 int RunGate(const std::string& records_dir) {
     const std::string path = records_dir + "/gate/latest.json";
-    std::ifstream in(path);
-    if (!in) {
+    std::string content;
+    if (!autolink::common::GetContent(path, &content)) {
         LOG(ERROR) << "gate snapshot missing: " << path;
         return EXIT_FAILURE;
     }
     nlohmann::json j;
     try {
-        in >> j;
+        j = nlohmann::json::parse(content);
     } catch (const std::exception& e) {
         LOG(ERROR) << "gate snapshot unreadable: " << e.what();
         return EXIT_FAILURE;
@@ -165,9 +166,10 @@ int RunSafety(const std::string& conf) {
                  "publish)";
     std::atomic<bool> running{true};
     std::thread poller([&]() {
+        autolink::Rate rate(10.0);
         while (running.load()) {
             monitor.SpinOnce();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            rate.Sleep();
         }
     });
     autolink::WaitForShutdown();
@@ -245,8 +247,7 @@ int RunObserve(const std::string& jsonl, const std::string& id,
 int RunPipeline(const std::string& sidecar_path, double match,
                 double coverage) {
     autonomy::system::recorder::proto::EpisodeSidecar sidecar;
-    std::ifstream in(sidecar_path, std::ios::binary);
-    if (!in || !sidecar.ParseFromIstream(&in)) {
+    if (!autolink::common::GetProtoFromBinaryFile(sidecar_path, &sidecar)) {
         LOG(ERROR) << "failed to read sidecar " << sidecar_path;
         return EXIT_FAILURE;
     }

@@ -18,7 +18,7 @@
 # Builds
 #   autonomy_perception / autonomy::autonomy_perception
 #   autonomy.perception
-#   base/ follow/   optional subdirs (base self-guards on infer SDKs)
+#   base_component / follow_component plugin targets
 #
 # Toggle
 #   AUTONOMY_BUILD_PERCEPTION
@@ -30,7 +30,7 @@ file(GLOB_RECURSE AUTONOMY_PERCEPTION_SRCS CONFIGURE_DEPENDS
   "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "main\\.cpp$")
 list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "_test\\.cpp$")
-list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/(base|follow)/")
+list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/(engine|inference|models|tasks|behaviors)/")
 
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_perception
@@ -72,11 +72,53 @@ autocmake_binary(autonomy.perception
     autonomy::cli11
 )
 
-add_subdirectory(base)
-add_subdirectory(follow)
+if((BUILD_ONNXRUNTIME AND OnnxRuntime_FOUND) OR (BUILD_TENSORRT AND TensorRT_FOUND))
+  autocmake_library(perception_inference SHARED NO_EXPORT
+    SOURCES inference/model_session.cpp inference/image_input.cpp inference/tensor_bundle.cpp
+    INCLUDES ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR}
+    DEPENDENCIES autonomy_common autonomy_proto
+      $<TARGET_NAME_IF_EXISTS:autonomy_opencv>)
+  autocmake_library(perception_core SHARED NO_EXPORT
+    SOURCES engine/engine_component.cpp engine/task_pipeline.cpp engine/options.cpp
+      engine/binding.cpp models/model_registry.cpp tasks/task_registry.cpp
+      models/yolo/yolo_model.cpp models/segformer/segformer_model.cpp
+      models/sam2/sam2_model.cpp models/flashocc/flashocc_model.cpp
+      models/boxer/boxer_model.cpp tasks/lifting/lifting_task.cpp
+      tasks/scene_graph/room_geometry.cpp tasks/scene_graph/room_attribution.cpp tasks/room_segmentation/room_segmentation_task.cpp
+      tasks/detection/detection_task.cpp tasks/instance_seg/instance_seg_task.cpp
+      tasks/semantic_seg/semantic_seg_task.cpp tasks/classification/classification_task.cpp
+      tasks/keypoint/keypoint_task.cpp tasks/obb/obb_task.cpp
+      behaviors/tracking/association.cpp tasks/depth/depth_task.cpp models/moge/moge_model.cpp
+    INCLUDES ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR}
+    PRIVATE_DEPENDENCIES perception_inference autonomy autolink automsgs)
+  autocmake_binary(autonomy.perception_object NO_EXPORT
+    SOURCES engine/object_inference_main.cpp
+    DEPENDENCIES perception_core autonomy_proto autolink)
+  set_target_properties(perception_core PROPERTIES OUTPUT_NAME "base_component")
+  if(BUILD_TEST OR BUILD_TESTING)
+    autocmake_test(autonomy.perception.base.component_test
+      SOURCES engine/engine_component_test.cpp engine/options_test.cpp
+      DEPENDENCIES perception_core)
+  endif()
+endif()
+
+autocmake_library(perception_behaviors SHARED NO_EXPORT
+  SOURCES behaviors/follow/follow_component.cpp behaviors/follow/options.cpp behaviors/follow/localizer.cpp
+    behaviors/follow/grid.cpp behaviors/follow/planner.cpp
+  INCLUDES ${PROJECT_SOURCE_DIR} ${PROJECT_BINARY_DIR}
+  PRIVATE_DEPENDENCIES autonomy autolink automsgs)
+
+set_target_properties(perception_behaviors PROPERTIES OUTPUT_NAME "follow_component")
+
+install(FILES data/boundary.ply DESTINATION share/${PROJECT_NAME}/perception/data)
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(perception
   CONF_PATTERN "*.pb.txt"
   DAG_PATTERN "*.dag"
   LAUNCH_PATTERN "*.launch")
+
+install(PROGRAMS tools/depth_completion.py tools/person_reid.py
+  DESTINATION share/${PROJECT_NAME}/perception/tools)
+install(FILES tools/demo_config.py tools/image_message.py
+  DESTINATION share/${PROJECT_NAME}/perception/tools)

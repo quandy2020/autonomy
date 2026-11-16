@@ -21,20 +21,17 @@
 
 #include "autonomy/system/recorder/convert.hpp"
 
-#include <filesystem>
-#include <fstream>
-#include <optional>
+#include <algorithm>
 
 #include "nlohmann/json.hpp"
 
+#include "autolink/common/file.hpp"
 #include "autonomy/system/recorder/mcap_writer.hpp"
 #include "autonomy/system/recorder/signals.hpp"
 
 namespace autonomy {
 namespace system {
 namespace recorder {
-
-namespace fs = std::filesystem;
 
 bool ConvertMcapToLeRobot(const std::string& mcap_path,
                           const std::string& out_dir, double fps) {
@@ -64,8 +61,10 @@ bool ConvertMcapToLeRobot(const std::string& mcap_path,
         return false;
     }
 
-    fs::create_directories(fs::path(out_dir) / "meta");
-    fs::create_directories(fs::path(out_dir) / "data" / "chunk-000");
+    const std::string meta_dir = out_dir + "/meta";
+    const std::string chunk_dir = out_dir + "/data/chunk-000";
+    autolink::common::EnsureDirectory(meta_dir);
+    autolink::common::EnsureDirectory(chunk_dir);
 
     nlohmann::json info = {
         {"codebase_version", "v2.1"},
@@ -84,25 +83,20 @@ bool ConvertMcapToLeRobot(const std::string& mcap_path,
           {"index", {{"dtype", "int64"}, {"shape", {1}}}},
           {"next.done", {{"dtype", "bool"}, {"shape", {1}}}}}},
     };
-    {
-        std::ofstream out(fs::path(out_dir) / "meta" / "info.json");
-        out << info.dump(2) << '\n';
-    }
+    autolink::common::SetStringToASCIIFile(info.dump(2) + "\n",
+                                           meta_dir + "/info.json");
     {
         nlohmann::json ep = {{"episode_index", 0},
                              {"length", static_cast<int>(actions.size())},
                              {"tasks", nlohmann::json::array({"navigate"})}};
-        std::ofstream out(fs::path(out_dir) / "meta" / "episodes.jsonl");
-        out << ep.dump() << '\n';
+        autolink::common::SetStringToASCIIFile(ep.dump() + "\n",
+                                               meta_dir + "/episodes.jsonl");
     }
-    {
-        std::ofstream tasks(fs::path(out_dir) / "meta" / "tasks.jsonl");
-        tasks << nlohmann::json({{"task_index", 0}, {"task", "navigate"}}).dump()
-              << '\n';
-    }
+    autolink::common::SetStringToASCIIFile(
+        nlohmann::json({{"task_index", 0}, {"task", "navigate"}}).dump() + "\n",
+        meta_dir + "/tasks.jsonl");
 
-    std::ofstream frames(fs::path(out_dir) / "data" / "chunk-000" /
-                         "episode_000000.jsonl");
+    std::string frames;
     size_t oi = 0;
     const int64_t t0 = actions.front().first;
     for (size_t i = 0; i < actions.size(); ++i) {
@@ -127,9 +121,11 @@ bool ConvertMcapToLeRobot(const std::string& mcap_path,
              {st.x(), st.y(), st.theta(), tw.linear().x(), tw.angular().z()}},
             {"action", {tw.linear().x(), tw.angular().z()}},
         };
-        frames << row.dump() << '\n';
+        frames += row.dump();
+        frames += '\n';
     }
-    return true;
+    return autolink::common::SetStringToASCIIFile(
+        frames, chunk_dir + "/episode_000000.jsonl");
 }
 
 }  // namespace recorder

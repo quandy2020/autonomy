@@ -2,12 +2,10 @@
 # Proto: autonomy/perception/proto/perception_options.proto
 # Used by: system/conf/exploration.pb.txt  /  --conf=exploration.pb.txt
 #
-# exploration_config points at Lua still required by the explorer backend.
 
 enabled: true
 enable_rgbd_exploration: true
 explorer_backend: "rgbd_tare"
-exploration_config: "exploration_rgbd_tare.lua"
 
 odom_topic: "/odom"
 depth_topic: "/camera/depth/image_raw"

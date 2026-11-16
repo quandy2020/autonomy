@@ -2,7 +2,7 @@
 
 跟人走、配 MPPI GridMap critic，或订阅 `/perception/follow/*`。
 
-`autonomy/perception/follow/`：订阅 base 的 **tracks + MoGe depth**，维护 2.5D `grid_map`，话题 `/perception/follow/grid` 给 MPPI；**不写** OccupancyGrid costmap。
+`autonomy/perception/behaviors/follow/`：订阅 base 的 **tracks + MoGe depth**，维护 2.5D `grid_map`，话题 `/perception/follow/grid` 给 MPPI；**不写** OccupancyGrid costmap。
 
 ```text
 /perception/base/tracks ─┐

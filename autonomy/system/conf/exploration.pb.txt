@@ -514,7 +514,6 @@ transform_options {
 
 # ---------- Perception ----------
 perception_options {
-  exploration_config: "exploration_rgbd_tare.lua"
   map_topic: "/exploration/map"
   odom_topic: "/odom"
   depth_topic: "/camera/depth/image_raw"

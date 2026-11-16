@@ -21,7 +21,7 @@
 
 #include "autonomy/system/recorder/sidecar.hpp"
 
-#include <fstream>
+#include <sstream>
 
 #include "nlohmann/json.hpp"
 
@@ -158,20 +158,16 @@ bool WriteManifest(const std::string& path, const proto::EpisodeHeader& header,
         {"bt_root", header.bt_root()},
         {"robot_id", header.robot_id()},
     };
-    std::ofstream out(path);
-    if (!out) {
-        return false;
-    }
-    out << j.dump(2) << '\n';
-    return true;
+    return autolink::common::SetStringToASCIIFile(j.dump(2) + "\n", path);
 }
 
 std::vector<proto::Observation> LoadObservationsJsonl(const std::string& path) {
     std::vector<proto::Observation> out;
-    std::ifstream in(path);
-    if (!in) {
+    std::string content;
+    if (!autolink::common::GetContent(path, &content) || content.empty()) {
         return out;
     }
+    std::istringstream in(content);
     std::string line;
     while (std::getline(in, line)) {
         if (line.empty()) {
@@ -204,11 +200,8 @@ bool WriteHazardPointer(const std::string& log_root,
     if (log_root.empty() || episode_id.empty()) {
         return false;
     }
-    namespace fs = std::filesystem;
-    const fs::path dir = fs::path(log_root) / "events" / ("recorder_" + episode_id);
-    std::error_code ec;
-    fs::create_directories(dir, ec);
-    if (ec) {
+    const std::string dir = log_root + "/events/recorder_" + episode_id;
+    if (!autolink::common::EnsureDirectory(dir)) {
         return false;
     }
     nlohmann::json j = {{"kind", "recorder_hazard"},
@@ -216,12 +209,8 @@ bool WriteHazardPointer(const std::string& log_root,
                         {"episode_id", episode_id},
                         {"mcap", mcap_path},
                         {"sidecar_json", sidecar_json}};
-    std::ofstream out(dir / "manifest.json");
-    if (!out) {
-        return false;
-    }
-    out << j.dump(2) << '\n';
-    return true;
+    return autolink::common::SetStringToASCIIFile(j.dump(2) + "\n",
+                                                  dir + "/manifest.json");
 }
 
 }  // namespace recorder

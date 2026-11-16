@@ -1,10 +1,10 @@
 <!--
   Copyright 2026 The Openbot Authors
 
-  Perception stack: Follow loadable component (+ optional Base / binary).
+  Perception stack: Base loadable component.
 
   Base requires ONNX Runtime or TensorRT at build time
-  (libbase_component.so). Leave commented when that DSO is absent.
+  (libbase_component.so) and the two weights configured in conf/perception.pb.txt.
 
   From src/autonomy (inside SpaceHero, cwd = /workspace/autonomy/src/autonomy):
     export PATH=/workspace/autonomy/build/autonomy/bin:$PATH
@@ -15,33 +15,11 @@
     autolink launch start perception.launch
 -->
 <autolink>
-  <!-- Enable only when /usr/local/lib/libbase_component.so exists (ONNX/TRT build). -->
-  <!--
-  <module>
-    <name>base</name>
-    <dag_conf>perception/base/dag/base.dag</dag_conf>
-    <process_name>base</process_name>
-    <exception_handler>respawn</exception_handler>
-    <respawn_limit>3</respawn_limit>
-  </module>
-  -->
-
-  <module>
-    <name>follow</name>
-    <dag_conf>perception/follow/dag/follow.dag</dag_conf>
-    <process_name>follow</process_name>
-    <exception_handler>respawn</exception_handler>
-    <respawn_limit>3</respawn_limit>
-  </module>
-
-  <!-- Optional exploration / map server; comment out if unused. -->
-  <!--
   <module>
     <name>perception</name>
-    <type>binary</type>
-    <process_name>autonomy.perception --conf=perception_exploration.pb.txt</process_name>
+    <dag_conf>perception/dag/perception.dag</dag_conf>
+    <process_name>perception</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
-  -->
 </autolink>

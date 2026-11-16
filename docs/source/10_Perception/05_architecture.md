@@ -19,7 +19,7 @@
 
 | 层 | 路径 | 职责 |
 |----|------|------|
-| 跟随 | `perception/follow/` | tracks + depth → GridMap → MPPI |
+| 跟随 | `perception/behaviors/follow/` | tracks + depth → GridMap → MPPI |
 | 视觉任务 | `perception/base/` | YOLO26 多任务 + MoGe 深度 |
 | 推理 | `common/network/` | ONNX / TensorRT |
 | 地图障碍 | `map/costmap_2d/layers/` | 激光/点云 → costmap |

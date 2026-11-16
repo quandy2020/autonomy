@@ -1,0 +1,9 @@
+<autolink>
+  <module>
+    <name>perception_behaviors</name>
+    <dag_conf>perception/dag/behaviors.dag</dag_conf>
+    <process_name>perception_behaviors</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

@@ -15,7 +15,7 @@
 - Follow 输出是 GridMap 话题，**不会**写入 OccupancyGrid。
 
 - **只要导航避障** → 只配 costmap，不必开 perception 进程。  
-- **要视觉话题** → base.pb.txt + base DAG。  
+- **要视觉话题** → perception.pb.txt 的 engine 段 + perception DAG。
 - **要跟人** → follow 配置 + MPPI GridMap critic。
 
 ### PerceptionOptions（proto，非 Base 任务表）

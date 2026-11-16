@@ -21,12 +21,11 @@
 
 #include "autonomy/system/recorder/player.hpp"
 
-#include <chrono>
 #include <string>
-#include <thread>
 #include <unordered_map>
 
 #include "autolink/common/log.hpp"
+#include "autolink/time/duration.hpp"
 #include "autolink/message/raw_message.hpp"
 #include "autolink/node/writer.hpp"
 #include "autonomy/system/recorder/mcap_writer.hpp"
@@ -132,7 +131,7 @@ bool PlayMcap(const std::shared_ptr<autolink::Node>& node,
                 static_cast<double>(m.log_time_ns - static_cast<uint64_t>(prev)) /
                 rate);
             if (dt_ns > 0) {
-                std::this_thread::sleep_for(std::chrono::nanoseconds(dt_ns));
+                autolink::Duration(dt_ns).Sleep();
             }
         }
         prev = static_cast<int64_t>(m.log_time_ns);

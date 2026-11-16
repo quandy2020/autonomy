@@ -527,7 +527,6 @@ perception_options {
   enabled: false
   explorer_backend: "rgbd_tare"
   enable_rgbd_exploration: false
-  exploration_config: "exploration_rgbd_tare.lua"
   depth_topic: "/camera/depth/image_raw"
   camera_info_topic: "/camera/depth/camera_info"
   camera_frame: "camera_depth_optical_frame"

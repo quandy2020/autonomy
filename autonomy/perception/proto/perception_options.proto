@@ -16,7 +16,10 @@ syntax = "proto3";
 
 package autonomy.perception.proto;
 
+import "autonomy/perception/proto/perception.proto";
+
 message PerceptionOptions {
+  .autonomy.perception.base.proto.BaseOptions engine = 27;
   bool enabled = 1;
   bool enable_rgbd_exploration = 2;
   string exploration_config = 3;
