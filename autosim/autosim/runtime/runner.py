@@ -251,6 +251,9 @@ class Runner:
         ensure = getattr(self.simulator, "ensure_semantic_spawn", None)
         if callable(ensure):
             ensure()
+        # Re-ground after semantic relocate so any scene keeps the agent on floor.
+        if callable(snap):
+            snap()
         self.robot.teleport(*self.simulator.pose())
         cam_noise = self.camera.get("noise") or {}
         self.sensors = Sensors(

@@ -1,0 +1,1258 @@
+/* Copyright 2026 The Openbot Authors. */
+#include "autonomy/task/exploration/exploration_session.hpp"
+
+#include <atomic>
+#include <condition_variable>
+#include <deque>
+#include <mutex>
+#include <set>
+#include <stdexcept>
+#include <thread>
+#include <variant>
+#include "autonomy/perception/data/observation_buffer.hpp"
+#include "autonomy/task/exploration/coverage/coverage_evaluator.hpp"
+#include "autonomy/task/exploration/frontier/frontier_extractor.hpp"
+
+namespace autonomy::task::exploration {
+class ExplorationSession::Impl {
+public:
+    struct PoseEvent {
+        Pose2d pose;
+        double stamp;
+        std::uint64_t epoch;
+        perception::SensorMask localization;
+    };
+    struct CancelEvent { RequestVersion version; };
+    struct PhaseCancelEvent { PhaseTicket ticket; };
+    struct ReturnCache { RequestVersion version; double length=0,traveled_distance=0; };
+    using Event = std::variant<MapReadView, PoseEvent, CoverageUnit, SessionCommand,
+                               CancelEvent, PhaseCancelEvent>;
+    struct Job {
+        RequestVersion version;
+        MapReadView map;
+        CoverageState coverage;
+        Pose2d pose, home;
+        perception::SensorMask sensors;
+        double now;
+        bool returning;
+        bool estimate_only, require_return;
+        double traveled_distance;
+        std::shared_ptr<std::atomic<bool>> canceled;
+        std::optional<ExplorationPhase> phase;
+        std::optional<ObservationGoal> selected_goal;
+    };
+    struct Planned {
+        RequestVersion version;
+        StrategyDecision decision;
+        std::optional<AdaptedObservationGoal> adapted;
+        MapReadView map;
+        bool returning = false, route_valid = false;
+        bool estimate_only=false,return_route_valid=false;
+        double return_length=0,return_from_goal=0,traveled_distance=0;
+        Pose2d origin;
+        std::optional<RouteMapEvidence> graph_evidence;
+        std::string error;
+        std::optional<ExplorationPhase> phase;
+    };
+
+    Impl(std::shared_ptr<ExplorationStrategy> strategy,
+         std::shared_ptr<const GoalPoseAdapter> adapter,
+         std::shared_ptr<const PathProvider> paths, ExplorationServices services,
+         ExplorationSessionOptions options)
+        : strategy_(std::move(strategy)), adapter_(std::move(adapter)),
+          paths_(std::move(paths)), services_(std::move(services)), options_(options),
+          health_(options.mode, options.health), completion_(options.completion_rounds) {
+        if (!strategy_ || !adapter_ || !paths_ || !services_.submit_navigation ||
+            !services_.poll_navigation || !services_.cancel_navigation ||
+            options.validated_controller_modes.empty())
+            throw std::invalid_argument("exploration requires planning and navigation services");
+        if (!options.maximum_events_per_tick || !options.maximum_observations_per_tick)
+            throw std::invalid_argument("exploration input processing budgets must be positive");
+        for (double value : {options.time_budget, options.distance_budget,
+             options.navigation_timeout, options.observation_timeout,
+             options.minimum_observation_time, options.position_tolerance,
+             options.yaw_tolerance, options.map_max_age, options.pose_max_age,
+             options.maximum_sensor_wait, options.planning_timeout,
+             options.map_operation_timeout, options.nominal_speed, options.blocked_retry_delay})
+            if (!std::isfinite(value) || value <= 0)
+                throw std::invalid_argument("invalid exploration timing or platform configuration");
+        if(!std::isfinite(options.nominal_angular_speed) || options.nominal_angular_speed<=0)
+            throw std::invalid_argument("invalid platform angular speed");
+        if((options.require_save || options.save_on_cancel) && !services_.cancel_mapping)
+            throw std::invalid_argument("mapping requests require versioned cancellation");
+        if (!std::isfinite(options.return_margin) || options.return_margin < 0 ||
+            !std::isfinite(options.frontier_observation_height))
+            throw std::invalid_argument("invalid exploration return or observation configuration");
+        worker_ = std::thread([this] { Work(); });
+    }
+
+    ~Impl() {
+        CancelPlanning();
+        {
+            std::lock_guard<std::mutex> lock(work_mutex_);
+            stopping_ = true;
+        }
+        work_ready_.notify_all();
+        if (worker_.joinable()) worker_.join();
+        CancelNavigation();
+        CancelMapOperation();
+    }
+
+    bool Enqueue(Event event) {
+        std::lock_guard<std::mutex> lock(events_mutex_);
+        auto& queue = std::holds_alternative<SessionCommand>(event) ||
+            std::holds_alternative<CancelEvent>(event) ||
+            std::holds_alternative<PhaseCancelEvent>(event) ? priority_events_ : events_;
+        if (queue.size() >= 128) return false;
+        queue.push_back(std::move(event));
+        return true;
+    }
+
+    void Start(const Pose2d& home, std::uint64_t epoch, double now) {
+        if (!opt::navigation::IsFinite(home) || !epoch || !std::isfinite(now))
+            throw std::invalid_argument("invalid exploration start");
+        if (snapshot_.state != ExplorationState::kIdle &&
+            snapshot_.state != ExplorationState::kFinished)
+            throw std::logic_error("exploration session already active");
+        CancelPlanning();
+        CancelNavigation();
+        CancelMapOperation();
+        if (execution_fault_) throw std::runtime_error("previous navigation cancellation was not confirmed");
+        {
+            std::lock_guard<std::mutex> lock(events_mutex_);
+            events_.clear();
+            priority_events_.clear();
+        }
+        {
+            std::lock_guard<std::mutex> lock(work_mutex_);
+            planned_results_.clear();
+        }
+        snapshot_ = {};
+        snapshot_.state = ExplorationState::kInitializing;
+        snapshot_.session_id = ++session_counter_;
+        started_ = last_now_ = now;
+        paused_time_ = 0;
+        wait_started_.reset();
+        paused_at_.reset();
+        owner_.reset();
+        map_.reset();
+        map_operation_.reset();
+        return_cache_.reset();
+        pose_history_.clear();
+        pose_history_.push_back({home,now,epoch,0});
+        view_evidence_.clear();view_started_.clear();current_view_=0;
+        paused_state_.reset();
+        pose_ = home_ = home;
+        home_valid_ = true;
+        pose_stamp_ = now;
+        pose_epoch_ = home_epoch_ = epoch;
+        localization_ = 0;
+        coverage_.Reset(epoch);
+        observations_.Reset(epoch);
+        observed_cut_ = {};
+        valid_observation_cut_ = {};
+        health_ = perception::SensorHealthMonitor(options_.mode, options_.health);
+        completion_.Reset();
+        confirmation_round_ = 0;
+        active_phase_.reset();
+        phase_history_.clear();
+        selected_version_.reset();
+        prepared_version_.reset();
+        resume_phase_ = false;
+        finishing_ = false;
+        recovery_count_ = 0;
+        selection_after_ = now;
+        Publish();
+    }
+
+    void CancelPlanning() {
+        if (planning_cancel_) planning_cancel_->store(true);
+        planning_.reset();
+        std::lock_guard<std::mutex> lock(work_mutex_);
+        if (queued_job_) queued_job_->canceled->store(true);
+        queued_job_.reset();
+    }
+
+    template <typename Callback>
+    void CancelService(const Callback& callback, const RequestVersion& version,
+                       const char* reason, bool motion) noexcept {
+        try {
+            if (callback) callback(version);
+        } catch (...) {
+            execution_fault_ = execution_fault_ || motion;
+            try { snapshot_.reason = reason; } catch (...) {}
+        }
+    }
+
+    void CancelNavigation() noexcept {
+        if (navigation_) {
+            const auto version = *navigation_;
+            navigation_.reset();
+            CancelService(services_.cancel_navigation, version,
+                          "navigation cancellation callback failed", true);
+        }
+    }
+
+    RequestVersion Version(double now, double duration) {
+        RequestVersion version;
+        version.session_id = snapshot_.session_id;
+        version.request_id = ++request_counter_;
+        version.goal_version = snapshot_.goal ? snapshot_.goal->intent.goal_version : 0;
+        version.map_epoch = map_ ? map_->map_epoch : pose_epoch_;
+        version.geometry_revision = map_ ? map_->geometry_revision : 0;
+        version.sensor_epoch = snapshot_.sensors.sensor_epoch;
+        version.coverage_revision = coverage_.revision();
+        version.valid_until = now + duration;
+        return version;
+    }
+
+    bool BtDriven() const { return options_.driver == ExplorationDriver::kBehaviorTree; }
+
+    void FinishPhase(PhaseStatus status, const std::string& reason) {
+        if (!active_phase_) return;
+        for (auto& result : phase_history_) {
+            if (result.ticket.SameRequest(*active_phase_)) {
+                result.status = status;
+                result.reason = reason;
+                break;
+            }
+        }
+        active_phase_.reset();
+        snapshot_.active_phase.reset();
+        resume_phase_ = false;
+    }
+
+    void CancelActivePhase(PhaseStatus status, const std::string& reason) {
+        if (!active_phase_) return;
+        const auto phase = active_phase_->phase;
+        CancelPlanning();
+        CancelNavigation();
+        if (phase == ExplorationPhase::kSave) CancelMapOperation();
+        if (phase == ExplorationPhase::kSelect || phase == ExplorationPhase::kAdapt) {
+            snapshot_.selection.reset();
+            selected_version_.reset();
+        }
+        if (phase != ExplorationPhase::kSave && phase != ExplorationPhase::kReturn) {
+            snapshot_.goal.reset();
+            prepared_version_.reset();
+        }
+        FinishPhase(status, reason);
+        if (snapshot_.state != ExplorationState::kPaused)
+            snapshot_.state = finishing_ ? ExplorationState::kFinishing : ExplorationState::kExploring;
+    }
+
+    void AfterReturn(double now) {
+        if (!BtDriven()) { BeginRefresh(now); return; }
+        FinishPhase(snapshot_.result.returned == ReturnOutcome::kReturned ?
+                    PhaseStatus::kSucceeded : PhaseStatus::kFailed,
+                    snapshot_.result.returned == ReturnOutcome::kReturned ?
+                    "return arrival confirmed" : "return failed");
+        snapshot_.state = ExplorationState::kFinishing;
+    }
+
+    std::optional<PhaseTicket> RequestPhase(ExplorationPhase phase, double now) {
+        if (!BtDriven() || active_phase_) return {};
+        if (!std::isfinite(now) || now < last_now_)
+            throw std::invalid_argument("phase requests require a monotonic clock");
+        if (!owner_) owner_ = std::this_thread::get_id();
+        if (*owner_ != std::this_thread::get_id())
+            throw std::logic_error("phase requests require the task owner thread");
+        double duration = options_.planning_timeout;
+        if (phase == ExplorationPhase::kObserve)
+            duration = (options_.navigation_timeout + options_.observation_timeout) *
+                std::max<std::size_t>(1, snapshot_.goal ? snapshot_.goal->intent.required_views.size() : 1);
+        else if (phase == ExplorationPhase::kReturn)
+            duration += options_.navigation_timeout;
+        else if (phase == ExplorationPhase::kSave)
+            duration = 2 * options_.map_operation_timeout;
+        const PhaseTicket ticket{Version(now, duration), phase};
+        active_phase_ = ticket;
+        snapshot_.active_phase = ticket;
+        phase_history_.push_back({ticket, PhaseStatus::kPending, {}});
+        if (phase_history_.size() > 32) phase_history_.pop_front();
+        auto finish = [&](PhaseStatus status, const char* reason) {
+            FinishPhase(status, reason);
+            Publish();
+            return std::optional<PhaseTicket>{ticket};
+        };
+        if ((phase == ExplorationPhase::kReturn &&
+             (!options_.require_return || snapshot_.result.returned == ReturnOutcome::kReturned)) ||
+            (phase == ExplorationPhase::kSave &&
+             (!options_.require_save || snapshot_.result.saved == MapSaveOutcome::kSaved))) {
+            if (phase == ExplorationPhase::kSave && finishing_)
+                snapshot_.state = ExplorationState::kFinished;
+            return finish(PhaseStatus::kSucceeded, "phase is disabled or already confirmed");
+        }
+        if (snapshot_.state == ExplorationState::kIdle ||
+            snapshot_.state == ExplorationState::kFinished)
+            return finish(PhaseStatus::kFailed, "session is not active");
+        if (snapshot_.state == ExplorationState::kPaused || !InputsDrained())
+            return finish(PhaseStatus::kRetryable, "session paused or input backlog pending");
+        if (phase != ExplorationPhase::kSave &&
+            (!snapshot_.sensors.ready || !PoseReady(now) || execution_fault_)) {
+            if (phase == ExplorationPhase::kReturn && finishing_) {
+                snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                return finish(PhaseStatus::kFailed, "return cannot execute without current motion evidence");
+            }
+            return finish(PhaseStatus::kRetryable, "current sensing, pose or execution is unavailable");
+        }
+        try {
+            switch (phase) {
+            case ExplorationPhase::kSelect:
+                if (finishing_ || now < selection_after_)
+                    return finish(PhaseStatus::kRetryable, "finishing or awaiting a bounded retry");
+                snapshot_.selection.reset(); snapshot_.goal.reset();
+                selected_version_.reset(); prepared_version_.reset();
+                QueuePlanning(now, false, false, phase);
+                break;
+            case ExplorationPhase::kAdapt:
+                if (finishing_ || !snapshot_.selection || !selected_version_ ||
+                    selected_version_->map_epoch != map_->map_epoch ||
+                    selected_version_->geometry_revision != map_->geometry_revision ||
+                    selected_version_->sensor_epoch != snapshot_.sensors.sensor_epoch ||
+                    selected_version_->coverage_revision != coverage_.revision())
+                    return finish(PhaseStatus::kInvalidated, "selected observation intent is no longer current");
+                QueuePlanning(now, false, false, phase);
+                break;
+            case ExplorationPhase::kObserve:
+                if (finishing_ || !snapshot_.goal || !prepared_version_ ||
+                    prepared_version_->map_epoch != map_->map_epoch ||
+                    prepared_version_->sensor_epoch != snapshot_.sensors.sensor_epoch ||
+                    (prepared_version_->geometry_revision != map_->geometry_revision &&
+                     (!services_.navigation_still_valid ||
+                      !services_.navigation_still_valid(*snapshot_.goal, pose_, *map_))))
+                    return finish(PhaseStatus::kInvalidated, "adapted observation pose is no longer valid");
+                view_evidence_.assign(snapshot_.goal->intent.required_views.size(), {});
+                view_started_.assign(view_evidence_.size(), {});
+                current_view_ = 0; snapshot_.observed_view_count = 0;
+                snapshot_.goal->execution_pose.yaw = snapshot_.goal->intent.required_views.front();
+                snapshot_.state = ExplorationState::kExploring;
+                SubmitNavigation(snapshot_.goal->execution_pose, now);
+                break;
+            case ExplorationPhase::kReturn:
+                if (!finishing_) return finish(PhaseStatus::kFailed, "exploration has not reached a finish outcome");
+                if (!home_valid_) {
+                    snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                    return finish(PhaseStatus::kFailed, "home alignment is unavailable");
+                }
+                if (At(home_)) {
+                    snapshot_.result.returned = ReturnOutcome::kReturned;
+                    AfterReturn(now);
+                } else QueuePlanning(now, true, false, phase);
+                break;
+            case ExplorationPhase::kSave:
+                if (!finishing_ || (options_.require_return &&
+                    snapshot_.result.returned == ReturnOutcome::kNotRequested))
+                    return finish(PhaseStatus::kFailed, "return outcome must precede required saving");
+                BeginRefresh(now);
+                break;
+            }
+        } catch (...) {
+            CancelActivePhase(PhaseStatus::kFailed, "phase service raised an exception");
+            snapshot_.reason = "phase service raised an exception";
+        }
+        Publish();
+        return ticket;
+    }
+
+    PhaseResult PhaseState(const PhaseTicket& ticket) const {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        for (const auto& result : published_phases_)
+            if (result.ticket.SameRequest(ticket)) return result;
+        return {ticket, PhaseStatus::kInvalidated, "phase ticket is unknown or belongs to an old session"};
+    }
+
+    void QueuePlanning(double now, bool returning = false, bool estimate_only = false,
+                       std::optional<ExplorationPhase> phase = {}) {
+        if (!map_) return;
+        planning_cancel_ = std::make_shared<std::atomic<bool>>(false);
+        planning_ = Version(now, options_.planning_timeout);
+        Job job{*planning_, *map_, coverage_, pose_, home_,
+                snapshot_.sensors.active_sensors, now, returning, estimate_only,
+                options_.require_return,snapshot_.traveled_distance,planning_cancel_,
+                phase, snapshot_.selection};
+        {
+            std::lock_guard<std::mutex> lock(work_mutex_);
+            queued_job_ = std::move(job);
+        }
+        work_ready_.notify_one();
+        if(!estimate_only)
+            snapshot_.state = returning ? ExplorationState::kReturning : ExplorationState::kReplanning;
+    }
+
+    void Work() {
+        for (;;) {
+            std::optional<Job> job;
+            {
+                std::unique_lock<std::mutex> lock(work_mutex_);
+                work_ready_.wait(lock, [this] { return stopping_ || queued_job_.has_value(); });
+                if (stopping_) return;
+                job = std::move(queued_job_);
+                queued_job_.reset();
+            }
+            Planned result;
+            result.version = job->version;
+            result.map = job->map;
+            result.returning = job->returning;
+            result.estimate_only=job->estimate_only;
+            result.phase = job->phase;
+            result.origin=job->pose;result.traveled_distance=job->traveled_distance;
+            auto canceled = [token = job->canceled] { return token->load(); };
+            try {
+                if (!canceled() && worker_session_ != job->version.session_id) {
+                    strategy_->Reset();
+                    worker_session_ = job->version.session_id;
+                }
+                if (!canceled() && services_.update_route_map) services_.update_route_map(job->map);
+                if (!canceled() && job->require_return) {
+                    const auto route = paths_->Route(job->pose, job->home, canceled);
+                    result.route_valid = route.success && route.map_epoch == job->map.map_epoch &&
+                                         route.geometry_revision == job->map.geometry_revision;
+                    result.return_route_valid=result.route_valid;
+                    result.return_length=route.length;
+                }
+                if (!canceled() && !job->returning && !job->estimate_only) {
+                    if (job->phase == ExplorationPhase::kAdapt)
+                        result.decision.goal = job->selected_goal;
+                    else
+                        result.decision = strategy_->Select(job->pose, job->home, job->map,
+                            job->coverage, job->sensors, job->now, canceled);
+                    if (result.decision.goal && !canceled() &&
+                        job->phase != ExplorationPhase::kSelect)
+                        result.adapted = adapter_->Adapt(*result.decision.goal, job->pose,
+                            job->map, job->coverage, job->sensors, canceled);
+                    if(result.adapted && job->require_return && !canceled()) {
+                        const auto route=paths_->Route(result.adapted->execution_pose,job->home,canceled);
+                        if(!route.success || route.map_epoch!=job->map.map_epoch ||
+                            route.geometry_revision!=job->map.geometry_revision)result.return_route_valid=false;
+                        result.return_from_goal=route.length;
+                    }
+                }
+                result.graph_evidence=paths_->Evidence();
+            } catch (const std::exception& error) {
+                result.error = error.what();
+            } catch (...) {
+                result.error = "non-standard exception from exploration worker service";
+            }
+            if (!canceled()) {
+                std::lock_guard<std::mutex> lock(work_mutex_);
+                if (planned_results_.size() < 8) planned_results_.push_back(std::move(result));
+            }
+        }
+    }
+
+    bool PoseReady(double now) const {
+        return map_ && pose_epoch_ == map_->map_epoch && localization_ &&
+               std::isfinite(pose_stamp_) && now >= pose_stamp_ &&
+               now - pose_stamp_ <= options_.pose_max_age &&
+               now >= map_->source_stamp && now - map_->source_stamp <= options_.map_max_age;
+    }
+
+    void CancelMapOperation() noexcept {
+        if (map_operation_) {
+            const auto version = *map_operation_;
+            map_operation_.reset();
+            CancelService(services_.cancel_mapping, version,
+                          "mapping cancellation callback failed", false);
+        }
+    }
+
+    void RevokeCompletion() {
+        completion_.Reset();
+        if(!snapshot_.completion_confirmed &&
+            snapshot_.result.exploration!=ExplorationOutcome::kCompleted)return;
+        CancelActivePhase(PhaseStatus::kInvalidated, "new work revoked the finish outcome");
+        CancelPlanning();CancelNavigation();CancelMapOperation();
+        snapshot_.completion_confirmed=false;
+        snapshot_.result={};finishing_=false;snapshot_.goal.reset();
+        if(snapshot_.state==ExplorationState::kPaused)paused_state_=ExplorationState::kExploring;
+        else snapshot_.state=ExplorationState::kExploring;
+    }
+
+    void ApplyMap(MapReadView next) {
+        if (!next.grid || !next.map_epoch || !std::isfinite(next.source_stamp)) return;
+        if (map_ && (next.map_epoch < map_->map_epoch ||
+            (next.map_epoch == map_->map_epoch &&
+             (next.geometry_revision < map_->geometry_revision ||
+              next.source_stamp < map_->source_stamp)))) return;
+        const bool changed = !map_ || map_->map_epoch != next.map_epoch ||
+                             map_->geometry_revision != next.geometry_revision;
+        const bool alignment = coverage_.epoch() != next.map_epoch;
+        if(changed){
+            RevokeCompletion();return_cache_.reset();
+            if (active_phase_ && (active_phase_->phase == ExplorationPhase::kSelect ||
+                active_phase_->phase == ExplorationPhase::kAdapt || alignment))
+                CancelActivePhase(PhaseStatus::kInvalidated, "map changed during the phase");
+            snapshot_.selection.reset(); selected_version_.reset();
+        }
+        if (alignment) {
+            CancelPlanning();
+            CancelNavigation();
+            coverage_.Reset(next.map_epoch);
+            observations_.Reset(next.map_epoch);
+            observed_cut_ = {};
+            valid_observation_cut_ = {};
+            pose_history_.clear();view_evidence_.clear();view_started_.clear();
+            health_ = perception::SensorHealthMonitor(options_.mode, options_.health);
+            completion_.Reset();
+            if (services_.reproject_pose) {
+                auto transformed = services_.reproject_pose(home_, home_epoch_, next.map_epoch);
+                home_valid_ = transformed && opt::navigation::IsFinite(*transformed);
+                if (home_valid_) home_ = *transformed;
+            } else home_valid_ = false;
+            home_epoch_ = next.map_epoch;
+            snapshot_.goal.reset();
+        }
+        map_ = std::move(next);
+        if (!changed) return;
+        CancelPlanning();
+        const auto frontiers = FrontierExtractor{}.Extract(*map_,
+            options_.frontier_observation_height, options_.allowed_region);
+        for (const auto& item : coverage_.units()) {
+            const auto& unit = item.second;
+            // A map cell becoming known does not replace actual ray evidence.
+            // Keep confirmed frontier records so in-flight goals can verify them.
+            if (unit.id.kind != CoverageKind::kFrontier &&
+                std::any_of(map_->dirty_regions.begin(), map_->dirty_regions.end(),
+                       [&](const auto& bounds) {
+                           return bounds.Contains({unit.center.x, unit.center.y, 0});
+                       })) coverage_.Invalidate(item.first);
+        }
+        for (auto unit : frontiers) coverage_.Upsert(std::move(unit));
+        snapshot_.live_frontiers = frontiers.size();
+        completion_.Reset();
+        if (snapshot_.goal &&
+            (!services_.navigation_still_valid ||
+             !services_.navigation_still_valid(*snapshot_.goal, pose_, *map_))) {
+            CancelNavigation();
+            snapshot_.goal.reset();
+            if (active_phase_ && active_phase_->phase == ExplorationPhase::kObserve)
+                CancelActivePhase(PhaseStatus::kInvalidated, "observation target failed map revalidation");
+        }
+        if (!finishing_ && snapshot_.state != ExplorationState::kPaused && !snapshot_.goal)
+            snapshot_.state = ExplorationState::kExploring;
+    }
+
+    void ApplyPose(const PoseEvent& event) {
+        if (!opt::navigation::IsFinite(event.pose) || !std::isfinite(event.stamp) ||
+            event.epoch < pose_epoch_ || (map_ && event.epoch < map_->map_epoch) ||
+            event.stamp < pose_stamp_) return;
+        if (event.epoch == pose_epoch_ && event.stamp > pose_stamp_)
+            snapshot_.traveled_distance += opt::navigation::Distance(pose_, event.pose);
+        if (event.epoch != pose_epoch_) pose_history_.clear();
+        pose_ = event.pose;
+        pose_epoch_ = event.epoch;
+        pose_stamp_ = event.stamp;
+        localization_ = event.localization & perception::Mask(options_.mode);
+        pose_history_.push_back(event);
+        if(pose_history_.size()>512)pose_history_.pop_front();
+    }
+
+    void Command(SessionCommand command, double now) {
+        if (snapshot_.state == ExplorationState::kFinished) return;
+        if (command == SessionCommand::kCancel) {
+            CancelActivePhase(PhaseStatus::kCanceled, "session canceled");
+            CancelPlanning();
+            CancelNavigation();
+            CancelMapOperation();
+            snapshot_.goal.reset();
+            snapshot_.result.exploration = ExplorationOutcome::kCanceled;
+            finishing_ = true;
+            if (options_.save_on_cancel) BeginRefresh(now);
+            else snapshot_.state = ExplorationState::kFinished;
+        } else if (command == SessionCommand::kPause) {
+            if (snapshot_.state == ExplorationState::kPaused) return;
+            CancelPlanning();
+            CancelNavigation();
+            paused_state_=snapshot_.state;
+            paused_at_ = now;
+            snapshot_.state = ExplorationState::kPaused;
+        } else if (command == SessionCommand::kResume && paused_at_) {
+            const double paused_duration = now - *paused_at_;
+            paused_time_ += paused_duration;
+            if (active_phase_) {
+                active_phase_->version.valid_until += paused_duration;
+                for (auto& result : phase_history_)
+                    if (result.ticket.SameRequest(*active_phase_)) result.ticket = *active_phase_;
+                resume_phase_ = true;
+            }
+            paused_at_.reset();
+            wait_started_.reset();
+            snapshot_.state=paused_state_.value_or(ExplorationState::kExploring);
+            paused_state_.reset();
+            if (snapshot_.state == ExplorationState::kObserving && current_view_ < view_evidence_.size()) {
+                // Paused time and queued rays acquired during the pause cannot
+                // satisfy the unfinished view's observation requirement.
+                arrived_at_ = now;
+                view_started_[current_view_].reset();
+                view_evidence_[current_view_].clear();
+            }
+            if(!active_phase_ && snapshot_.state!=ExplorationState::kSaving && snapshot_.state!=ExplorationState::kObserving) {
+                snapshot_.goal.reset();
+                snapshot_.state=finishing_?ExplorationState::kReturning:ExplorationState::kExploring;
+            }
+        }
+    }
+
+    std::optional<PoseEvent> PoseAt(double stamp) const {
+        if(pose_history_.empty())return {};
+        const auto upper=std::upper_bound(pose_history_.begin(),pose_history_.end(),stamp,
+            [](double time,const PoseEvent& event){return time<event.stamp;});
+        if(upper==pose_history_.begin())return {};
+        auto result=*std::prev(upper);
+        if(result.epoch!=pose_epoch_ || stamp-result.stamp>options_.pose_max_age)return {};
+        if(upper!=pose_history_.end() && upper->epoch==result.epoch && upper->stamp>result.stamp &&
+            upper->stamp-result.stamp<=options_.pose_max_age) {
+            const double fraction=(stamp-result.stamp)/(upper->stamp-result.stamp);
+            result.pose.x+=fraction*(upper->pose.x-result.pose.x);
+            result.pose.y+=fraction*(upper->pose.y-result.pose.y);
+            result.pose.yaw=opt::navigation::NormalizeAngle(result.pose.yaw+fraction*
+                opt::navigation::NormalizeAngle(upper->pose.yaw-result.pose.yaw));
+            result.localization &= upper->localization;
+        }
+        result.stamp=stamp;return result;
+    }
+
+    void RecordObservation(const perception::SensorObservation& observation,double now) {
+        if(snapshot_.state!=ExplorationState::kObserving || !snapshot_.goal ||
+            observation.valid_fraction<options_.health.minimum_valid_fraction ||
+            observation.scan_completeness<options_.health.minimum_completeness)return;
+        for(std::size_t index=0;index<snapshot_.goal->intent.required_views.size();++index) {
+            auto filtered=observation;filtered.rays.clear();
+            for(const auto& ray:observation.rays) {
+                if(ray.stamp<arrived_at_)continue;
+                const auto acquisition=PoseAt(ray.stamp);
+                if(!acquisition || !(acquisition->localization&perception::Mask(observation.sensor)) ||
+                    opt::navigation::Distance(acquisition->pose,snapshot_.goal->execution_pose)>
+                        options_.position_tolerance ||
+                    std::abs(opt::navigation::NormalizeAngle(acquisition->pose.yaw-
+                        snapshot_.goal->intent.required_views[index]))>options_.yaw_tolerance)continue;
+                filtered.rays.push_back(ray);
+                if(!view_started_[index])view_started_[index]=ray.stamp;
+            }
+            if(filtered.rays.empty())continue;
+            auto scratch=coverage_;
+            const auto measured=CoverageEvaluator{}.Apply(filtered,now,scratch);
+            for(const auto& evidence:measured.evidence) {
+                const auto sensor=evidence.sensor==perception::SensorKind::kLidar?0U:1U;
+                auto& quality=view_evidence_[index][evidence.id][sensor];
+                quality=std::max(quality,evidence.quality);
+            }
+        }
+    }
+
+    bool ViewObserved(std::size_t index,double now) const {
+        if(index>=view_evidence_.size() || !view_started_[index] ||
+            now-*view_started_[index]<options_.minimum_observation_time)return false;
+        for(const auto& id:snapshot_.goal->intent.required_coverage_units) {
+            const auto unit=coverage_.units().find(id);
+            const auto measured=view_evidence_[index].find(id);
+            if(unit==coverage_.units().end() || measured==view_evidence_[index].end())return false;
+            if(unit->second.required_sensors) {
+                for(unsigned sensor=0;sensor<2;++sensor)
+                    if((unit->second.required_sensors&(1U<<sensor)) &&
+                        measured->second[sensor]<unit->second.required_quality)return false;
+            } else if(std::max(measured->second[0],measured->second[1])<unit->second.required_quality)return false;
+        }
+        return true;
+    }
+
+    bool GoalObserved(double now) const {
+        if (!snapshot_.goal || now - arrived_at_ < options_.minimum_observation_time) return false;
+        if(snapshot_.goal->intent.required_coverage_units.empty() || view_evidence_.empty())return false;
+        for(std::size_t index=0;index<view_evidence_.size();++index)
+            if(!ViewObserved(index,now))return false;
+        return true;
+    }
+
+    bool At(const Pose2d& goal) const {
+        return opt::navigation::Distance(pose_, goal) <= options_.position_tolerance &&
+               std::abs(opt::navigation::NormalizeAngle(pose_.yaw - goal.yaw)) <= options_.yaw_tolerance;
+    }
+
+    void SubmitNavigation(const Pose2d& pose, double now) {
+        navigation_ = Version(now, options_.navigation_timeout);
+        if (!services_.submit_navigation(pose, *navigation_)) {
+            navigation_.reset();
+            if (finishing_) {
+                snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                AfterReturn(now);
+            } else Retry(now, "navigation submission rejected");
+        }
+    }
+
+    void Retry(double now, const std::string& reason) {
+        FinishPhase(PhaseStatus::kRetryable, reason);
+        CancelNavigation();
+        snapshot_.goal.reset();
+        snapshot_.reason = reason;
+        if (++recovery_count_ > options_.maximum_recoveries) {
+            BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
+            return;
+        }
+        selection_after_ = now + options_.blocked_retry_delay;
+        snapshot_.state = ExplorationState::kRecovering;
+    }
+
+    void BeginFinish(ExplorationOutcome outcome, double now) {
+        CancelActivePhase(PhaseStatus::kRetryable, "exploration reached a finish outcome");
+        CancelPlanning();
+        CancelNavigation();
+        snapshot_.result.exploration = outcome;
+        finishing_ = true;
+        snapshot_.goal.reset();
+        if (BtDriven()) {
+            snapshot_.state = ExplorationState::kFinishing;
+            return;
+        }
+        if (options_.require_return) {
+            if (execution_fault_ || !home_valid_ || !PoseReady(now) || !snapshot_.sensors.ready) {
+                snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                BeginRefresh(now);
+            } else if (At(home_)) {
+                snapshot_.result.returned = ReturnOutcome::kReturned;
+                BeginRefresh(now);
+            } else QueuePlanning(now, true);
+        } else BeginRefresh(now);
+    }
+
+    void BeginRefresh(double now) {
+        CancelPlanning();
+        if (!options_.require_save && !options_.save_on_cancel) {
+            snapshot_.state = ExplorationState::kFinished;
+            return;
+        }
+        map_operation_ = Version(now, options_.map_operation_timeout);
+        saving_map_ = false;
+        snapshot_.state = ExplorationState::kSaving;
+        if (!services_.request_map_refresh || !services_.poll_map_refresh ||
+            !services_.request_map_refresh(*map_operation_)) {
+            snapshot_.result.saved = MapSaveOutcome::kSaveFailed;
+            snapshot_.state = ExplorationState::kFinished;
+            map_operation_.reset();
+            FinishPhase(PhaseStatus::kFailed, "map refresh submission failed");
+        }
+    }
+
+    void PollMapOperation(double now) {
+        if (!map_operation_) return;
+        const auto reply = saving_map_ ?
+            (services_.poll_map_save ? services_.poll_map_save() : std::optional<MappingReply>{}) :
+            services_.poll_map_refresh();
+        if (reply && reply->version.SameRequest(*map_operation_) &&
+            now <= map_operation_->valid_until) {
+            if (!reply->success) {
+                snapshot_.result.saved = MapSaveOutcome::kSaveFailed;
+                snapshot_.state = ExplorationState::kFinished;
+                map_operation_.reset();
+                FinishPhase(PhaseStatus::kFailed, "mapping operation failed");
+            } else if (saving_map_) {
+                if (snapshot_.result.exploration == ExplorationOutcome::kCompleted &&
+                    (!FinalCompletionInputsValid(now) || !reply->fusion_confirmed ||
+                     !reply->fused_cut.Covers(observations_.accepted_cut()) ||
+                     map_operation_->map_epoch != map_->map_epoch ||
+                     map_operation_->geometry_revision != map_->geometry_revision ||
+                     map_operation_->sensor_epoch != snapshot_.sensors.sensor_epoch)) {
+                    snapshot_.result.exploration = ExplorationOutcome::kIncompleteObservation;
+                    snapshot_.completion_confirmed = false;
+                    snapshot_.reason = "saved map does not certify the latest healthy exploration evidence";
+                }
+                snapshot_.result.saved = MapSaveOutcome::kSaved;
+                snapshot_.state = ExplorationState::kFinished;
+                map_operation_.reset();
+                FinishPhase(PhaseStatus::kSucceeded, "map save acknowledged");
+            } else if (snapshot_.result.exploration == ExplorationOutcome::kCompleted &&
+                       (coverage_.PendingCount() || snapshot_.live_frontiers)) {
+                map_operation_.reset();
+                finishing_ = false;
+                completion_.Reset();
+                snapshot_.completion_confirmed = false;
+                snapshot_.state = ExplorationState::kExploring;
+                FinishPhase(PhaseStatus::kInvalidated, "new work appeared during refresh");
+            } else {
+                if(snapshot_.result.exploration==ExplorationOutcome::kCompleted &&
+                    (!FinalCompletionInputsValid(now) || !reply->fusion_confirmed ||
+                     !reply->fused_cut.Covers(observations_.accepted_cut()))) {
+                    snapshot_.result.exploration=ExplorationOutcome::kIncompleteObservation;
+                    snapshot_.completion_confirmed=false;
+                    snapshot_.reason="final map refresh has no verified observation fusion barrier";
+                }
+                map_operation_ = Version(now, options_.map_operation_timeout);
+                saving_map_ = true;
+                if (!services_.save_map || !services_.poll_map_save ||
+                    !services_.save_map(options_.map_name, *map_operation_)) {
+                    snapshot_.result.saved = MapSaveOutcome::kSaveFailed;
+                    snapshot_.state = ExplorationState::kFinished;
+                    map_operation_.reset();
+                    FinishPhase(PhaseStatus::kFailed, "map save submission failed");
+                }
+            }
+        } else if (now > map_operation_->valid_until) {
+            CancelMapOperation();
+            snapshot_.result.saved = MapSaveOutcome::kSaveFailed;
+            snapshot_.state = ExplorationState::kFinished;
+            map_operation_.reset();
+            FinishPhase(PhaseStatus::kFailed, "mapping operation deadline exceeded");
+        }
+    }
+
+    void ConsumePlan(double now) {
+        if (!InputsDrained()) return;
+        std::deque<Planned> results;
+        {
+            std::lock_guard<std::mutex> lock(work_mutex_);
+            results.swap(planned_results_);
+        }
+        for (auto& result : results) {
+            if (!planning_ || !result.version.SameRequest(*planning_)) continue;
+            if (!map_ || now > planning_->valid_until ||
+                result.version.map_epoch != map_->map_epoch ||
+                result.version.geometry_revision != map_->geometry_revision ||
+                result.version.sensor_epoch != snapshot_.sensors.sensor_epoch ||
+                (!result.returning && !result.estimate_only &&
+                 result.version.coverage_revision != coverage_.revision())) {
+                CancelPlanning();
+                FinishPhase(PhaseStatus::kInvalidated, "planning evidence or deadline changed");
+                continue;
+            }
+            planning_.reset();
+            if (!result.error.empty()) {
+                if(result.returning || finishing_) {
+                    snapshot_.result.returned=ReturnOutcome::kReturnFailed;AfterReturn(now);
+                } else Retry(now, result.error);
+                continue;
+            }
+            if(options_.require_return) {
+                if(result.return_route_valid)
+                    return_cache_=ReturnCache{result.version,result.return_length,result.traveled_distance};
+                else return_cache_.reset();
+            }
+            if (result.returning) {
+                if (result.route_valid) SubmitNavigation(home_, now);
+                else {
+                    snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                    AfterReturn(now);
+                }
+                continue;
+            }
+            if(result.estimate_only) {
+                if(!result.return_route_valid)BeginFinish(ExplorationOutcome::kIncompleteObservation,now);
+                continue;
+            }
+            if (result.phase == ExplorationPhase::kSelect && result.decision.goal) {
+                snapshot_.selection = std::move(result.decision.goal);
+                selected_version_ = result.version;
+                snapshot_.state = ExplorationState::kExploring;
+                FinishPhase(PhaseStatus::kSucceeded, "observation intent selected");
+                continue;
+            }
+            if (result.adapted) {
+                if(opt::navigation::Distance(result.origin,pose_)>options_.position_tolerance) {
+                    FinishPhase(PhaseStatus::kInvalidated, "robot moved during adaptation");
+                    continue;
+                }
+                if(options_.require_return && !result.return_route_valid) {
+                    BeginFinish(ExplorationOutcome::kIncompleteObservation,now);continue;
+                }
+                double turn=std::abs(opt::navigation::NormalizeAngle(
+                    result.adapted->intent.required_views.front()-pose_.yaw));
+                const auto& views=result.adapted->intent.required_views;
+                const auto view_count = views.size();
+                for(std::size_t i=1;i<views.size();++i)
+                    turn+=std::abs(opt::navigation::NormalizeAngle(views[i]-views[i-1]));
+                const double next_distance=result.adapted->route_length;
+                const double return_distance=options_.require_return?result.return_from_goal:0;
+                const double estimated_time=(next_distance+return_distance)/options_.nominal_speed+
+                    turn/options_.nominal_angular_speed+views.size()*options_.minimum_observation_time+
+                    (options_.require_return?options_.return_margin:0);
+                if(now-started_-paused_time_+estimated_time>=options_.time_budget ||
+                    snapshot_.traveled_distance+next_distance+return_distance>=options_.distance_budget) {
+                    BeginFinish(ExplorationOutcome::kPartialBudget,now);continue;
+                }
+                snapshot_.goal = std::move(result.adapted);
+                prepared_version_ = result.version;
+                if (result.phase == ExplorationPhase::kAdapt) {
+                    snapshot_.state = ExplorationState::kExploring;
+                    FinishPhase(PhaseStatus::kSucceeded, "adapted pose preserves observation requirements");
+                    continue;
+                }
+                snapshot_.goal->execution_pose.yaw=snapshot_.goal->intent.required_views.front();
+                view_evidence_.assign(view_count,{});view_started_.assign(view_count,{});
+                current_view_=0;snapshot_.observed_view_count=0;
+                snapshot_.state = ExplorationState::kExploring;
+                SubmitNavigation(snapshot_.goal->execution_pose, now);
+                continue;
+            }
+            if (result.decision.goal) {
+                Retry(now, "no adaptation preserves required observation coverage");
+                continue;
+            }
+            CompletionEvidence evidence;
+            evidence.map_epoch = map_->map_epoch;
+            evidence.geometry_revision = map_->geometry_revision;
+            evidence.map_watermark = map_->observation_watermark;
+            evidence.graph_watermark = result.graph_evidence?result.graph_evidence->watermark:0;
+            evidence.observation_watermark = observations_.watermark();
+            evidence.require_source_cuts = true;
+            evidence.mapping_synchronized = map_->mapping_synchronized;
+            evidence.map_cut = map_->observation_cut;
+            evidence.graph_cut = result.graph_evidence?result.graph_evidence->observation_cut:perception::ObservationCut{};
+            evidence.observation_cut = observations_.accepted_cut();
+            evidence.valid_observation_cut = valid_observation_cut_;
+            evidence.required_observation_sources = snapshot_.sensors.active_sensors;
+            for (const auto& item : coverage_.units())
+                evidence.required_observation_sources |= item.second.required_sensors;
+            evidence.mapping_synchronized=evidence.mapping_synchronized && result.graph_evidence &&
+                result.graph_evidence->map_epoch==map_->map_epoch &&
+                result.graph_evidence->geometry_revision==map_->geometry_revision;
+            evidence.sensing_healthy = snapshot_.sensors.ready;
+            evidence.localization_healthy = PoseReady(now);
+            {
+                std::lock_guard<std::mutex> lock(events_mutex_);
+                evidence.observation_queue_empty=events_.empty() && priority_events_.empty() &&
+                    observations_.Empty() &&
+                    observations_.processed_cut().Covers(observations_.accepted_cut());
+            }
+            evidence.pending_observations = coverage_.PendingCount();
+            evidence.reachable_frontiers = std::count_if(coverage_.units().begin(),coverage_.units().end(),
+                [](const auto& entry){return entry.first.kind==CoverageKind::kFrontier && entry.second.pending;});
+            evidence.unresolved_regions = result.decision.sampling_limited ? 1 : 0;
+            evidence.grid_fallback_checked = result.decision.grid_fallback_checked;
+            evidence.sweep_checked = result.decision.sweep_checked;
+            evidence.sweep_revision = map_->geometry_revision;
+            evidence.confirmation_round = ++confirmation_round_;
+            const auto verified = completion_.Evaluate(evidence);
+            snapshot_.reason = verified.reason;
+            snapshot_.state = ExplorationState::kVerifyingCompletion;
+            if (result.phase == ExplorationPhase::kSelect)
+                FinishPhase(PhaseStatus::kRetryable, verified.reason);
+            if (verified.complete) {
+                snapshot_.completion_confirmed = true;
+                BeginFinish(ExplorationOutcome::kCompleted, now);
+            } else if (coverage_.PendingCount() && result.decision.sweep_checked &&
+                       !result.decision.sampling_limited) {
+                Retry(now, "pending coverage has no confirmed reachable observation pose");
+            }
+        }
+    }
+
+    bool InputsDrained() const {
+        std::lock_guard<std::mutex> lock(events_mutex_);
+        return events_.empty() && priority_events_.empty() && observations_.Empty();
+    }
+
+    bool FinalCompletionInputsValid(double now) const {
+        return !execution_fault_ && snapshot_.sensors.ready && PoseReady(now) &&
+            InputsDrained() && !coverage_.PendingCount() && !snapshot_.live_frontiers &&
+            observations_.processed_cut().Covers(observations_.accepted_cut());
+    }
+
+    ExplorationSnapshot Tick(double now) {
+        if (!std::isfinite(now) || now < last_now_)
+            throw std::invalid_argument("exploration requires a monotonic clock");
+        if (!owner_) owner_ = std::this_thread::get_id();
+        if (*owner_ != std::this_thread::get_id())
+            throw std::logic_error("exploration Tick must have one owner thread");
+        try {
+            return TickOwner(now);
+        } catch (...) {
+            // Service exceptions must not escape the task owner or strand a
+            // motion request. Cancellation callbacks themselves cannot throw.
+            CancelPlanning(); CancelNavigation(); CancelMapOperation();
+            FinishPhase(PhaseStatus::kFailed, "exploration owner service raised an exception");
+            snapshot_.completion_confirmed = false;
+            snapshot_.result.exploration = ExplorationOutcome::kIncompleteObservation;
+            if (options_.require_return) snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+            if (options_.require_save) snapshot_.result.saved = MapSaveOutcome::kSaveFailed;
+            snapshot_.reason = "exploration owner service raised an exception";
+            snapshot_.state = ExplorationState::kFinished;
+            Publish();
+            return Snapshot();
+        }
+    }
+
+    ExplorationSnapshot TickOwner(double now) {
+        last_now_ = now;
+        if (snapshot_.state == ExplorationState::kIdle ||
+            snapshot_.state == ExplorationState::kFinished) return Snapshot();
+        std::deque<Event> events;
+        {
+            std::lock_guard<std::mutex> lock(events_mutex_);
+            for (std::size_t count = 0; count < options_.maximum_events_per_tick; ++count) {
+                auto& queue = !priority_events_.empty() ? priority_events_ : events_;
+                if (queue.empty()) break;
+                events.push_back(std::move(queue.front()));
+                queue.pop_front();
+            }
+        }
+        for (const auto& event : events) {
+            if (const auto* map = std::get_if<MapReadView>(&event)) ApplyMap(*map);
+            else if (const auto* pose = std::get_if<PoseEvent>(&event)) ApplyPose(*pose);
+            else if (const auto* unit = std::get_if<CoverageUnit>(&event)) {
+                const auto before=coverage_.revision();coverage_.Upsert(*unit);
+                if(before!=coverage_.revision())RevokeCompletion();
+            } else if(const auto* command=std::get_if<SessionCommand>(&event))Command(*command,now);
+            else if (const auto* phase = std::get_if<PhaseCancelEvent>(&event)) {
+                if (active_phase_ && active_phase_->SameRequest(phase->ticket))
+                    CancelActivePhase(PhaseStatus::kCanceled, "phase halted by its owner");
+            } else {
+                const auto& version=std::get<CancelEvent>(event).version;
+                if(navigation_ && navigation_->SameRequest(version)) {
+                    CancelNavigation();snapshot_.goal.reset();
+                    snapshot_.state=finishing_?ExplorationState::kReturning:ExplorationState::kExploring;
+                }
+                if(planning_ && planning_->SameRequest(version))CancelPlanning();
+                if(map_operation_ && map_operation_->SameRequest(version)) {
+                    CancelMapOperation();snapshot_.result.saved=MapSaveOutcome::kSaveFailed;
+                    snapshot_.state=ExplorationState::kFinished;
+                }
+            }
+            if(snapshot_.state==ExplorationState::kFinished)break;
+        }
+        if (snapshot_.state == ExplorationState::kFinished) { Publish(); return Snapshot(); }
+        if (snapshot_.state == ExplorationState::kPaused) { Publish(); return Snapshot(); }
+        for (const auto& observation : observations_.Drain(now, coverage_.epoch(),
+                                                        options_.maximum_observations_per_tick)) {
+            if (map_ && observation.frame_id != map_->frame_id) continue;
+            health_.Observe(observation);
+            observed_cut_.Include(observation.sensor, observation.sequence);
+            const auto acquisition = PoseAt(observation.stamp);
+            if (!observation.rays.empty() && acquisition &&
+                (acquisition->localization & perception::Mask(observation.sensor)) &&
+                observation.valid_fraction >= options_.health.minimum_valid_fraction &&
+                observation.scan_completeness >= options_.health.minimum_completeness)
+                valid_observation_cut_.Include(observation.sensor, observation.sequence);
+            CoverageEvaluator{}.Apply(observation, now, coverage_);
+            RecordObservation(observation,now);
+        }
+        snapshot_.sensors = health_.Evaluate(now, localization_, options_.validated_controller_modes);
+        snapshot_.pending_units = coverage_.PendingCount();
+        if (snapshot_.state == ExplorationState::kSaving) {
+            if (snapshot_.result.exploration == ExplorationOutcome::kCompleted &&
+                (!snapshot_.sensors.ready || !PoseReady(now))) {
+                snapshot_.result.exploration = ExplorationOutcome::kIncompleteObservation;
+                snapshot_.completion_confirmed = false;
+                snapshot_.reason = "localization or sensing became unavailable during map saving";
+            }
+            PollMapOperation(now);
+            Publish();
+            return Snapshot();
+        }
+        if (execution_fault_) {
+            BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
+            Publish(); return Snapshot();
+        }
+        if (!snapshot_.sensors.ready || !PoseReady(now)) {
+            CancelActivePhase(PhaseStatus::kRetryable, "sensor or localization unavailable");
+            CancelPlanning();
+            CancelNavigation();
+            snapshot_.state = ExplorationState::kWaitingForSensor;
+            if (!wait_started_) wait_started_ = now;
+            if (now - *wait_started_ > options_.maximum_sensor_wait)
+                BeginFinish(!localization_ ? ExplorationOutcome::kFailedLocalization :
+                            ExplorationOutcome::kIncompleteObservation, now);
+            Publish();
+            return Snapshot();
+        }
+        wait_started_.reset();
+        if (resume_phase_ && active_phase_) {
+            resume_phase_ = false;
+            const auto phase = active_phase_->phase;
+            if (phase == ExplorationPhase::kSelect || phase == ExplorationPhase::kAdapt)
+                QueuePlanning(now, false, false, phase);
+            else if (phase == ExplorationPhase::kObserve && snapshot_.goal) {
+                snapshot_.state = ExplorationState::kExploring;
+                SubmitNavigation(snapshot_.goal->execution_pose, now);
+            } else if (phase == ExplorationPhase::kReturn) {
+                if (At(home_)) {
+                    snapshot_.result.returned = ReturnOutcome::kReturned;
+                    AfterReturn(now);
+                } else QueuePlanning(now, true, false, phase);
+            }
+        }
+        if (active_phase_ && now > active_phase_->version.valid_until) {
+            const auto phase = active_phase_->phase;
+            CancelActivePhase(PhaseStatus::kFailed, "phase deadline exceeded");
+            if (phase == ExplorationPhase::kReturn)
+                snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+            else if (phase == ExplorationPhase::kSave)
+                snapshot_.result.saved = MapSaveOutcome::kSaveFailed;
+            snapshot_.reason = "phase deadline exceeded";
+        }
+        const double elapsed = now - started_ - paused_time_;
+        const bool return_known=return_cache_ && map_ &&
+            return_cache_->version.map_epoch==map_->map_epoch &&
+            return_cache_->version.geometry_revision==map_->geometry_revision &&
+            return_cache_->version.sensor_epoch==snapshot_.sensors.sensor_epoch;
+        // Re-tracing the measured executed path to a route anchor is a
+        // conservative route cost. Never substitute a straight line home.
+        const double return_distance=options_.require_return && return_known?
+            return_cache_->length+std::max(0.0,snapshot_.traveled_distance-return_cache_->traveled_distance):0;
+        const double return_reserve=options_.require_return && return_known?
+            options_.return_margin+return_distance/options_.nominal_speed:0;
+        if (!finishing_ && (elapsed + return_reserve >= options_.time_budget ||
+            snapshot_.traveled_distance + return_distance >= options_.distance_budget))
+            BeginFinish(ExplorationOutcome::kPartialBudget, now);
+        if(!finishing_ && options_.require_return && !home_valid_)
+            BeginFinish(ExplorationOutcome::kIncompleteObservation,now);
+        if(!finishing_ && options_.require_return && !return_known && navigation_ && !planning_)
+            QueuePlanning(now,false,true);
+        if (planning_ && now > planning_->valid_until) {
+            CancelPlanning();
+            if (finishing_) {
+                snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                AfterReturn(now);
+            } else Retry(now, "planning deadline exceeded");
+        }
+        ConsumePlan(now);
+        if (navigation_) {
+            const auto reply = services_.poll_navigation();
+            if (reply && reply->version.SameRequest(*navigation_) && now <= navigation_->valid_until) {
+                navigation_.reset();
+                if (finishing_) {
+                    snapshot_.result.returned = reply->success && At(home_) ?
+                        ReturnOutcome::kReturned : ReturnOutcome::kReturnFailed;
+                    AfterReturn(now);
+                } else if (reply->success && snapshot_.goal && At(snapshot_.goal->execution_pose)) {
+                    if(current_view_==0)arrived_at_ = now;
+                    snapshot_.state = ExplorationState::kObserving;
+                } else Retry(now, "navigation failed or arrival pose not confirmed");
+            } else if (now > navigation_->valid_until) {
+                if (finishing_) {
+                    CancelNavigation();
+                    snapshot_.result.returned = ReturnOutcome::kReturnFailed;
+                    AfterReturn(now);
+                } else Retry(now, "navigation deadline exceeded");
+            }
+        }
+        if (snapshot_.state == ExplorationState::kObserving) {
+            if (GoalObserved(now)) {
+                snapshot_.last_observed_goal_id=snapshot_.goal->intent.goal_id;
+                snapshot_.last_observed_goal_version=snapshot_.goal->intent.goal_version;
+                snapshot_.observed_view_count=view_evidence_.size();
+                snapshot_.goal.reset();
+                snapshot_.selection.reset();
+                prepared_version_.reset();
+                FinishPhase(PhaseStatus::kSucceeded, "required views and actual observations confirmed");
+                recovery_count_ = 0;
+                snapshot_.state = ExplorationState::kExploring;
+            } else if(current_view_+1<view_evidence_.size() && ViewObserved(current_view_,now)) {
+                ++current_view_;snapshot_.observed_view_count=current_view_;
+                snapshot_.goal->execution_pose.yaw=snapshot_.goal->intent.required_views[current_view_];
+                snapshot_.state=ExplorationState::kExploring;
+                SubmitNavigation(snapshot_.goal->execution_pose,now);
+            } else if (now - arrived_at_ > options_.observation_timeout)
+                Retry(now, "arrival did not realize required observation");
+        }
+        if (!BtDriven() && InputsDrained() && !planning_ && !navigation_ && now >= selection_after_ &&
+            snapshot_.state != ExplorationState::kObserving &&
+            snapshot_.state != ExplorationState::kSaving &&
+            snapshot_.state != ExplorationState::kFinished)
+            QueuePlanning(now, finishing_);
+        Publish();
+        return Snapshot();
+    }
+
+    void Publish() {
+        snapshot_.motion_ready = !execution_fault_ && snapshot_.sensors.ready &&
+            PoseReady(last_now_) && snapshot_.state != ExplorationState::kPaused &&
+            snapshot_.state != ExplorationState::kIdle &&
+            snapshot_.state != ExplorationState::kFinished;
+        snapshot_.active_request=navigation_?navigation_:(planning_?planning_:map_operation_);
+        snapshot_.active_phase = active_phase_;
+        snapshot_.finishing = finishing_;
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        published_ = snapshot_;
+        published_phases_ = phase_history_;
+    }
+    ExplorationSnapshot Snapshot() const {
+        std::lock_guard<std::mutex> lock(snapshot_mutex_);
+        return published_;
+    }
+
+    std::shared_ptr<ExplorationStrategy> strategy_;
+    std::shared_ptr<const GoalPoseAdapter> adapter_;
+    std::shared_ptr<const PathProvider> paths_;
+    ExplorationServices services_;
+    ExplorationSessionOptions options_;
+    perception::ObservationBuffer observations_;
+    perception::SensorHealthMonitor health_;
+    CompletionEvaluator completion_;
+    CoverageState coverage_;
+    perception::ObservationCut observed_cut_;
+    perception::ObservationCut valid_observation_cut_;
+    std::optional<MapReadView> map_;
+    Pose2d pose_, home_;
+    std::uint64_t pose_epoch_ = 0, home_epoch_ = 0;
+    perception::SensorMask localization_ = 0;
+    double pose_stamp_ = 0, started_ = 0, last_now_ = 0, paused_time_ = 0;
+    double arrived_at_ = 0, selection_after_ = 0;
+    std::optional<double> paused_at_, wait_started_;
+    std::optional<ExplorationState> paused_state_;
+    std::optional<ReturnCache> return_cache_;
+    std::deque<PoseEvent> pose_history_;
+    std::vector<std::map<CoverageId,std::array<double,2>>> view_evidence_;
+    std::vector<std::optional<double>> view_started_;
+    std::size_t current_view_=0;
+    bool home_valid_ = false, finishing_ = false, saving_map_ = false;
+    bool execution_fault_ = false;
+    unsigned recovery_count_ = 0;
+    std::uint64_t session_counter_ = 0, request_counter_ = 0, confirmation_round_ = 0;
+    std::uint64_t worker_session_ = 0;
+    std::optional<std::thread::id> owner_;
+    ExplorationSnapshot snapshot_, published_;
+    std::optional<RequestVersion> planning_, navigation_, map_operation_;
+    std::optional<RequestVersion> selected_version_, prepared_version_;
+    std::optional<PhaseTicket> active_phase_;
+    std::deque<PhaseResult> phase_history_, published_phases_;
+    bool resume_phase_ = false;
+    std::shared_ptr<std::atomic<bool>> planning_cancel_;
+    mutable std::mutex snapshot_mutex_;
+    mutable std::mutex events_mutex_;
+    std::mutex work_mutex_;
+    std::condition_variable work_ready_;
+    std::deque<Event> events_;
+    std::deque<Event> priority_events_;
+    std::optional<Job> queued_job_;
+    std::deque<Planned> planned_results_;
+    std::thread worker_;
+    bool stopping_ = false;
+};
+
+ExplorationSession::ExplorationSession(std::shared_ptr<ExplorationStrategy> strategy,
+    std::shared_ptr<const GoalPoseAdapter> adapter, std::shared_ptr<const PathProvider> paths,
+    ExplorationServices services, ExplorationSessionOptions options)
+    : impl_(std::make_unique<Impl>(std::move(strategy), std::move(adapter),
+                                  std::move(paths), std::move(services), options)) {}
+ExplorationSession::~ExplorationSession() = default;
+void ExplorationSession::Start(const Pose2d& home, std::uint64_t epoch, double now) {
+    impl_->Start(home, epoch, now);
+}
+bool ExplorationSession::PushMap(MapReadView map) { return impl_->Enqueue(std::move(map)); }
+bool ExplorationSession::PushPose(Pose2d pose, double stamp, std::uint64_t epoch,
+                                 perception::SensorMask localization) {
+    return impl_->Enqueue(Impl::PoseEvent{pose, stamp, epoch, localization});
+}
+bool ExplorationSession::PushObservation(perception::SensorObservation observation, double now) {
+    return impl_->observations_.Push(std::move(observation), now);
+}
+bool ExplorationSession::PushCoverageUnit(CoverageUnit unit) {
+    return impl_->Enqueue(std::move(unit));
+}
+bool ExplorationSession::PostCommand(SessionCommand command) { return impl_->Enqueue(command); }
+bool ExplorationSession::CancelRequest(const RequestVersion& version) {
+    return impl_->Enqueue(Impl::CancelEvent{version});
+}
+std::optional<PhaseTicket> ExplorationSession::RequestPhase(ExplorationPhase phase, double now) {
+    return impl_->RequestPhase(phase, now);
+}
+PhaseResult ExplorationSession::PhaseState(const PhaseTicket& ticket) const {
+    return impl_->PhaseState(ticket);
+}
+bool ExplorationSession::CancelPhase(const PhaseTicket& ticket) {
+    return impl_->Enqueue(Impl::PhaseCancelEvent{ticket});
+}
+ExplorationDriver ExplorationSession::driver() const { return impl_->options_.driver; }
+ExplorationSnapshot ExplorationSession::Tick(double now) { return impl_->Tick(now); }
+ExplorationSnapshot ExplorationSession::Snapshot() const { return impl_->Snapshot(); }
+}  // namespace autonomy::task::exploration

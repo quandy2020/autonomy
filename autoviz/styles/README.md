@@ -13,7 +13,7 @@ Five noun modules under `:/autoviz/styles/`. C++ API lives in `autoviz/ui/theme/
 | C++ (`ui/theme/`) | Role |
 |-------------------|------|
 | `style.hpp` | `style::sheet` / `type` / `mark` |
-| `glass.hpp` | Shell / Overlay tokens |
+| `tokens.hpp` | Fixed dark flat Shell / Overlay tokens |
 | `panel.hpp` | Panel chrome helpers + `AppThemeIds` |
 | `application.hpp` | `ApplyAppTheme` / menu prep |
 | `proxy.hpp` | `ProxyStyle` (Fusion proxy) |

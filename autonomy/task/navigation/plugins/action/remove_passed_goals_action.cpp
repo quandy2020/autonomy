@@ -13,6 +13,8 @@
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
+#include "autonomy/common/passed_waypoint.hpp"
 #include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
 #include "autonomy/transform/buffer.hpp"
 
@@ -63,6 +65,8 @@ public:
                 std::vector<automsgs::msgs::geometry_msgs::PoseStamped>>(
                 "output_goals"),
             BT::InputPort<double>("radius", 0.6, "m"),
+            BT::InputPort<double>("along_track", 0.35,
+                                  "m past a via toward the next via"),
             BT::InputPort<std::string>("global_frame", "map", ""),
             BT::InputPort<std::string>("robot_base_frame", "base_link", ""),
         };
@@ -77,9 +81,11 @@ protected:
         }
 
         double radius = 0.6;
+        double along_track = 0.35;
         std::string global_frame = "map";
         std::string robot_frame = "base_link";
         getInput("radius", radius);
+        getInput("along_track", along_track);
         getInput("global_frame", global_frame);
         getInput("robot_base_frame", robot_frame);
 
@@ -90,13 +96,16 @@ protected:
             return BT::NodeStatus::SUCCESS;
         }
 
-        const double r2 = radius * radius;
         size_t removed = 0;
-        while (!goals.empty()) {
-            const auto& p = goals.front().pose().position();
-            const double dx = p.x() - rx;
-            const double dy = p.y() - ry;
-            if ((dx * dx + dy * dy) > r2) {
+        // Keep the final pose until GoalReached. Prefix vias drop when the
+        // robot is inside radius OR has already progressed toward the next via
+        // (so a 0.25 Hz replan still skips points the robot drove past).
+        while (goals.size() > 1) {
+            const bool near = ::autonomy::common::WaypointWithinRadius(
+                goals.front(), rx, ry, radius);
+            const bool passed = ::autonomy::common::WaypointPassedToward(
+                goals.front(), goals[1], rx, ry, along_track);
+            if (!near && !passed) {
                 break;
             }
             goals.erase(goals.begin());
@@ -104,8 +113,9 @@ protected:
         }
 
         if (removed > 0) {
-            AINFO_EVERY(5) << "RemovePassedGoals: removed " << removed
-                           << " passed waypoint(s); remaining=" << goals.size();
+            AINFO << "nav prune passed n=" << removed
+                  << " remain=" << goals.size() << " xy="
+                  << ::autonomy::common::NavXY{rx, ry};
         }
 
         setOutput("output_goals", goals);

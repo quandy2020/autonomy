@@ -102,6 +102,15 @@ class _FakePathFinder:
         )
 
 
+def test_ground_relative_cloud_shifts_elevated_floor_to_zero():
+    cloud = np.array([[1.0, 2.0, 4.5], [0.0, 0.0, 4.5]], dtype=np.float32)
+    shifted = Map.ground_relative_cloud(cloud, 4.5)
+    np.testing.assert_allclose(shifted[:, 2], 0.0)
+    np.testing.assert_allclose(shifted[:, :2], cloud[:, :2])
+    unchanged = Map.ground_relative_cloud(cloud, 0.0)
+    np.testing.assert_array_equal(unchanged, cloud)
+
+
 def test_sample_prefers_navmesh_grid_when_available():
     from tests.fake_simulator import FakeSimulator
 

@@ -39,7 +39,7 @@
 #include "autoviz/ui/app/preferences.hpp"
 #include "autoviz/ui/app/shortcuts_editor.hpp"
 #include "autoviz/ui/theme/application.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -234,7 +234,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
       style::sheet(QStringLiteral("app_settings"), AppSettingsTokens()));
 
   const AppUiPreferences ui_prefs = LoadAppUiPreferences();
-  theme_mode_ = ui_prefs.theme_mode.isEmpty() ? QStringLiteral("light")
+  theme_mode_ = ui_prefs.theme_mode.isEmpty() ? QStringLiteral("dark")
                                               : ui_prefs.theme_mode;
   accent_color_ = ui_prefs.accent_color;
   preview_restore_theme_ = theme_mode_;
@@ -335,7 +335,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     pages_->addWidget(WrapPage(MakePageShell(pages_, group)));
   }
 
-  // Page 1: Appearance (Concat-style theme + accent)
+  // Page 1: Appearance (theme + accent)
   {
     auto* group = MakeGroup(pages_);
     auto* gl = qobject_cast<QVBoxLayout*>(group->layout());
@@ -346,7 +346,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     theme_segments_->setFixedHeight(34);
     theme_segments_->AddSegment(tr("Dark"), QStringLiteral("dark"));
     theme_segments_->AddSegment(tr("Light"), QStringLiteral("light"));
-    theme_segments_->AddSegment(tr("Liquid"), QStringLiteral("liquid"));
+    theme_segments_->AddSegment(tr("System"), QStringLiteral("system"));
     gl->addWidget(MakeRow(group, tr("Theme"), theme_segments_, false));
     gl->addWidget(MakeHairline(group));
 
@@ -370,7 +370,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     custom->setToolTip(tr("Custom accent color"));
     connect(custom, &QToolButton::clicked, this, [this]() {
       const QColor seed =
-          accent_color_.isEmpty() ? glass::Shell().accent : QColor(accent_color_);
+          accent_color_.isEmpty() ? theme::Shell().accent : QColor(accent_color_);
       const QColor chosen =
           QColorDialog::getColor(seed, this, tr("Accent color"));
       if (chosen.isValid()) {
@@ -605,15 +605,9 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     language_combo_->setCurrentIndex(language_index);
   }
 
-  // Map "system" → Light/Dark based on resolved preference for the segment UI.
-  QString segment_mode = theme_mode_;
-  if (segment_mode == QLatin1String("system")) {
-    segment_mode =
-        glass::ShellIsDark() ? QStringLiteral("dark") : QStringLiteral("light");
-  }
-  int theme_index = 1;  // Light
+  int theme_index = 0;  // Dark
   for (int i = 0; i < theme_segments_->count(); ++i) {
-    if (theme_segments_->segment_data(i).toString() == segment_mode) {
+    if (theme_segments_->segment_data(i).toString() == theme_mode_) {
       theme_index = i;
       break;
     }
@@ -758,7 +752,7 @@ AppSettingsResult AppSettingsDialog::resultValues() const {
     result.plot_settings_visible = show_panel_settings_check_->isChecked();
   }
   result.language_code = language_combo_->currentData().toString();
-  result.theme_mode = theme_mode_.isEmpty() ? QStringLiteral("light")
+  result.theme_mode = theme_mode_.isEmpty() ? QStringLiteral("dark")
                                             : theme_mode_;
   result.accent_color = accent_color_;
   result.start_maximized = start_maximized_check_->isChecked();

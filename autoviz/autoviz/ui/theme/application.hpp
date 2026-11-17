@@ -7,11 +7,11 @@
  * @brief Application-wide Fusion theme: palette, QSS, and menu chrome helpers.
  *
  * Entry point is @ref ApplyAppTheme(). Layering:
- *  1. @c QPalette — semantic colors (@ref glass::Shell)
+ *  1. @c QPalette — semantic colors (@ref theme::Shell)
  *  2. QSS — spacing, borders, panel @c #objectName rules
- *  3. Overlays — @ref glass::Overlay for 3D HUD / floating tools
+ *  3. Overlays — @ref theme::Overlay for 3D HUD / floating tools
  *
- * @see glass::ShellTokens
+ * @see theme::ShellTokens
  * @see ProxyStyle
  * @see AppThemeIds
  * @see style::sheet()
@@ -30,7 +30,7 @@ namespace autoviz {
 
 /**
  * @brief Qt Fusion highlight accent — frosted-glass Shell cyan.
- * @return Accent @c QColor (@ref glass::ShellTokens::accent).
+ * @return Accent @c QColor (@ref theme::ShellTokens::accent).
  */
 QColor AppThemeAccentColor();
 
@@ -42,7 +42,7 @@ QColor AppThemeSuggestedViewportBackground();
 
 /**
  * @brief Builds the cool-light @c QPalette used by @ref ApplyAppTheme().
- * @return Palette filled from @ref glass::Shell().
+ * @return Palette filled from @ref theme::Shell().
  */
 QPalette BuildThemePalette();
 
@@ -59,7 +59,7 @@ QPalette BuildThemePalette();
 void ApplyAppTheme(QApplication& app);
 
 /**
- * @brief Re-polishes open windows after @ref glass::SetShellAppearance().
+ * @brief Re-polishes open windows after accent / shell token changes.
  *
  * Refreshes menu/tool bar palettes and re-applies known chrome QSS so a
  * Light ↔ Dark switch takes effect without restarting.

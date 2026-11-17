@@ -21,7 +21,7 @@
 #include <QPainter>
 #include <QStyle>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/views/panel.hpp"
 
@@ -67,7 +67,7 @@ void ViewTreeDelegate::paint(QPainter* painter,
   cleared.backgroundBrush = Qt::NoBrush;
   cleared.showDecorationSelected = false;
   {
-    const QColor ink = glass::Shell().text;
+    const QColor ink = theme::Shell().text;
     cleared.palette.setColor(QPalette::Text, ink);
     cleared.palette.setColor(QPalette::WindowText, ink);
   }

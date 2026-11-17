@@ -8,7 +8,9 @@
 
 #include <chrono>
 #include <future>
+#include <functional>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <string>
 
@@ -51,6 +53,51 @@ public:
     std::shared_future<bool> AsyncCancelGoal(
         std::shared_ptr<GoalHandle> goal_handle);
     std::shared_future<bool> AsyncCancelAllGoals();
+    // Safe in a delayed goal-response callback: it does not retain the wrapper
+    // or dereference it after shutdown, and only cancels the specified UUID.
+    std::function<void(std::shared_ptr<GoalHandle>)> MakeGoalCancelCallback() const
+    {
+        const std::weak_ptr<AutolinkClient> transport = client_;
+        return [transport](std::shared_ptr<GoalHandle> goal) {
+            if (auto client = transport.lock(); client && goal) {
+                try { client->AsyncCancelGoal(std::move(goal)); } catch (...) {}
+            }
+        };
+    }
+
+    // Acceptance and cancellation share one lock. A flag plus future.ready()
+    // alone misses cancellation between the response callback and promise.set.
+    class GoalCancellation {
+    public:
+        explicit GoalCancellation(std::function<void(std::shared_ptr<GoalHandle>)> cancel)
+            : cancel_(std::move(cancel)) {}
+        void OnAccepted(std::shared_ptr<GoalHandle> goal) {
+            std::shared_ptr<GoalHandle> to_cancel;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                accepted_ = std::move(goal);
+                if (requested_ && accepted_ && !sent_) { sent_ = true; to_cancel = accepted_; }
+            }
+            if (to_cancel) cancel_(std::move(to_cancel));
+        }
+        void RequestCancel() {
+            std::shared_ptr<GoalHandle> to_cancel;
+            {
+                std::lock_guard<std::mutex> lock(mutex_);
+                requested_ = true;
+                if (accepted_ && !sent_) { sent_ = true; to_cancel = accepted_; }
+            }
+            if (to_cancel) cancel_(std::move(to_cancel));
+        }
+    private:
+        std::mutex mutex_;
+        bool requested_{false}, sent_{false};
+        std::shared_ptr<GoalHandle> accepted_;
+        const std::function<void(std::shared_ptr<GoalHandle>)> cancel_;
+    };
+    std::shared_ptr<GoalCancellation> MakeGoalCancellation() const {
+        return std::make_shared<GoalCancellation>(MakeGoalCancelCallback());
+    }
 
     std::optional<WrappedResult> SendGoalAndWait(
         const Goal& goal, const SendGoalOptions& options = SendGoalOptions(),

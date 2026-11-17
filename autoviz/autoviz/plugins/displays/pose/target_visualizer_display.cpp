@@ -74,6 +74,15 @@ void TargetVisualizerDisplay::onEnable() {
       [this](double x, double y, double theta, QString frame) {
         setGoalPose(x, y, theta, frame.toStdString());
       });
+  QObject::connect(
+      &tools::GoalUpdater, &tools::GoalPoseUpdater::goalCleared,
+      goal_bridge_.get(), [this]() {
+        clearReceivedData();
+        setStatusOk("Goal cleared");
+        if (context_ != nullptr && context_->request_redraw) {
+          context_->request_redraw();
+        }
+      });
 }
 
 void TargetVisualizerDisplay::onDisable() {

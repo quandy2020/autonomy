@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace image {
@@ -84,7 +84,7 @@ void ImageHistogramWidget::paintEvent(QPaintEvent* event) {
     const int bar_h = static_cast<int>(
         std::lround(static_cast<double>(histogram_.bins[static_cast<size_t>(i)]) /
                     peak * (h - 4)));
-    QColor bar = glass::Shell().accent;
+    QColor bar = theme::Shell().accent;
     bar.setAlpha(140);
     painter.fillRect(x0, h - bar_h, bar_w, bar_h, bar);
   }
@@ -93,7 +93,7 @@ void ImageHistogramWidget::paintEvent(QPaintEvent* event) {
   const int x_max = valueToX(range_max_);
   painter.fillRect(0, 0, x_min, h, QColor(15, 23, 42, 28));
   painter.fillRect(x_max, 0, w - x_max, h, QColor(15, 23, 42, 28));
-  painter.setPen(QPen(glass::Shell().accent, 2));
+  painter.setPen(QPen(theme::Shell().accent, 2));
   painter.drawLine(x_min, 0, x_min, h);
   painter.drawLine(x_max, 0, x_max, h);
 

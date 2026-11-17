@@ -21,7 +21,7 @@
 
 #include <cmath>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -31,8 +31,8 @@ namespace {
 constexpr int kLogicalIcon = 18;
 constexpr int kButton = 32;
 
-const glass::OverlayTokens& O() {
-  static const glass::OverlayTokens tokens = glass::Overlay();
+const theme::OverlayTokens& O() {
+  static const theme::OverlayTokens tokens = theme::Overlay();
   return tokens;
 }
 
@@ -71,7 +71,7 @@ QIcon LoadStrokeIcon(const QString& resource_path) {
         pm.setDevicePixelRatio(scale);
         return pm;
       };
-      const glass::OverlayTokens& g = O();
+      const theme::OverlayTokens& g = O();
       icon.addPixmap(make_pm(g.icon), QIcon::Normal, QIcon::Off);
       icon.addPixmap(make_pm(g.icon_hover), QIcon::Active, QIcon::Off);
       icon.addPixmap(make_pm(g.icon_on), QIcon::Normal, QIcon::On);
@@ -105,21 +105,22 @@ class GlassToolColumn : public QFrame {
  public:
   explicit GlassToolColumn(QWidget* parent = nullptr) : QFrame(parent) {
     setObjectName(QStringLiteral("AutovizMapToolGroup"));
-    setAttribute(Qt::WA_TranslucentBackground, true);
-    const glass::OverlayTokens& g = O();
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setAutoFillBackground(true);
+    const theme::OverlayTokens& g = O();
     QHash<QString, QString> tokens;
     tokens.insert(QStringLiteral("{{icon-color}}"),
-                  glass::Rgba(QColor(g.icon.red(), g.icon.green(), g.icon.blue(), 210)));
-    tokens.insert(QStringLiteral("{{hover-bg}}"), glass::Rgba(g.button_hover_bg));
-    tokens.insert(QStringLiteral("{{hover-border}}"), glass::Rgba(g.button_hover_border));
-    tokens.insert(QStringLiteral("{{on-bg}}"), glass::Rgba(g.button_on_bg));
-    tokens.insert(QStringLiteral("{{on-border}}"), glass::Rgba(g.button_on_border));
+                  theme::Rgba(QColor(g.icon.red(), g.icon.green(), g.icon.blue(), 210)));
+    tokens.insert(QStringLiteral("{{hover-bg}}"), theme::Rgba(g.button_hover_bg));
+    tokens.insert(QStringLiteral("{{hover-border}}"), theme::Rgba(g.button_hover_border));
+    tokens.insert(QStringLiteral("{{on-bg}}"), theme::Rgba(g.button_on_bg));
+    tokens.insert(QStringLiteral("{{on-border}}"), theme::Rgba(g.button_on_border));
     tokens.insert(QStringLiteral("{{on-color}}"),
-                  glass::Rgba(QColor(g.accent_soft.red(), g.accent_soft.green(),
+                  theme::Rgba(QColor(g.accent_soft.red(), g.accent_soft.green(),
                                      g.accent_soft.blue(), 245)));
     QColor pressed = g.accent;
     pressed.setAlpha(40);
-    tokens.insert(QStringLiteral("{{pressed-bg}}"), glass::Rgba(pressed));
+    tokens.insert(QStringLiteral("{{pressed-bg}}"), theme::Rgba(pressed));
     setStyleSheet(style::sheet(QStringLiteral("chrome/viewport"), tokens));
   }
 
@@ -127,24 +128,14 @@ class GlassToolColumn : public QFrame {
   void paintEvent(QPaintEvent* /*event*/) override {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    const glass::OverlayTokens& g = O();
+    const theme::OverlayTokens& g = O();
     const qreal radius = static_cast<qreal>(g.toolbar_radius);
     const QRectF card = QRectF(rect()).adjusted(1.0, 1.0, -1.0, -1.0);
     QPainterPath path;
     path.addRoundedRect(card, radius, radius);
     painter.fillPath(path, g.fill_deep);
-    QColor mid_fill = g.fill;
-    mid_fill.setAlpha(10);
-    QColor end_fill = g.accent;
-    end_fill.setAlpha(10);
-    QLinearGradient body(card.topLeft(), card.bottomRight());
-    body.setColorAt(0.0, g.cool_a);
-    body.setColorAt(0.55, mid_fill);
-    body.setColorAt(1.0, end_fill);
-    painter.fillPath(path, body);
-    QColor rim = g.rim;
-    rim.setAlpha(55);
-    painter.setPen(QPen(rim, 1.0));
+    painter.fillPath(path, g.cool_a);
+    painter.setPen(QPen(g.rim, 1.0));
     painter.drawPath(path);
   }
 };
@@ -162,7 +153,7 @@ QWidget* MakeDivider(QWidget* parent) {
   tokens.insert(QStringLiteral("{{div-r}}"), QString::number(div.red()));
   tokens.insert(QStringLiteral("{{div-g}}"), QString::number(div.green()));
   tokens.insert(QStringLiteral("{{div-b}}"), QString::number(div.blue()));
-  tokens.insert(QStringLiteral("{{div-mid}}"), glass::Rgba(div));
+  tokens.insert(QStringLiteral("{{div-mid}}"), theme::Rgba(div));
   line->setStyleSheet(style::sheet(QStringLiteral("chrome/viewport"), tokens));
   layout->addWidget(line);
   return wrap;
@@ -173,8 +164,9 @@ QWidget* MakeDivider(QWidget* parent) {
 MapToolbar::MapToolbar(QWidget* parent) : QWidget(parent) {
   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
   setAttribute(Qt::WA_TransparentForMouseEvents, false);
-  setAttribute(Qt::WA_AlwaysStackOnTop, true);
-  setAttribute(Qt::WA_TranslucentBackground, true);
+  setAttribute(Qt::WA_AlwaysStackOnTop, false);
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  setAutoFillBackground(true);
 
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(0, 0, 0, 0);

@@ -6,6 +6,7 @@
 
 #include "autonomy/control/controller_server.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <memory>
@@ -31,9 +32,12 @@
 #include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
 #include "autonomy/control/common/controller_exceptions.hpp"
 #include "autonomy/control/constants.hpp"
 #include "autonomy/control/controller/mppi_controller/controller.hpp"
+#include "autonomy/map/costmap_2d/cost_values.hpp"
+#include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/utils/geometry_utils.hpp"
 
 namespace autonomy {
@@ -72,6 +76,106 @@ std::chrono::nanoseconds ControlPeriod(double controller_frequency) {
     const double hz = controller_frequency > 0.0 ? controller_frequency : 20.0;
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
         std::chrono::duration<double>(1.0 / hz));
+}
+
+double PoseYaw(const automsgs::msgs::geometry_msgs::PoseStamped& pose) {
+    const auto& q = pose.pose().orientation();
+    const double n = q.x() * q.x() + q.y() * q.y() + q.z() * q.z() + q.w() * q.w();
+    if (n < 1e-12) {
+        return 0.0;
+    }
+    return std::atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
+                      n - 2.0 * (q.y() * q.y() + q.z() * q.z()));
+}
+
+void PublishBodyCmd(ControllerServer* self, double vx, double wz) {
+    automsgs::msgs::geometry_msgs::TwistStamped cmd;
+    *cmd.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
+    cmd.mutable_header()->set_frame_id("base_link");
+    cmd.mutable_twist()->mutable_linear()->set_x(vx);
+    cmd.mutable_twist()->mutable_angular()->set_z(wz);
+    self->PublishVelocity(cmd);
+}
+
+bool NearestFreeWorld(map::costmap_2d::Costmap2D* grid, double x, double y,
+                      double* ox, double* oy) {
+    if (grid == nullptr || ox == nullptr || oy == nullptr) {
+        return false;
+    }
+    unsigned int mx = 0;
+    unsigned int my = 0;
+    if (!grid->worldToMap(x, y, mx, my)) {
+        return false;
+    }
+    const int size_x = static_cast<int>(grid->getSizeInCellsX());
+    const int size_y = static_cast<int>(grid->getSizeInCellsY());
+    auto is_free = [&](int cx, int cy) {
+        if (cx < 0 || cy < 0 || cx >= size_x || cy >= size_y) {
+            return false;
+        }
+        return grid->getCost(static_cast<unsigned int>(cx),
+                             static_cast<unsigned int>(cy)) <
+               map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+    };
+    const double res = std::max(grid->getResolution(), 0.01);
+    const int max_r = std::max(1, static_cast<int>(std::ceil(1.5 / res)));
+    for (int r = 0; r <= max_r; ++r) {
+        for (int dx = -r; dx <= r; ++dx) {
+            for (int dy : {-r, r}) {
+                if (is_free(static_cast<int>(mx) + dx, static_cast<int>(my) + dy)) {
+                    grid->mapToWorld(
+                        static_cast<unsigned int>(static_cast<int>(mx) + dx),
+                        static_cast<unsigned int>(static_cast<int>(my) + dy),
+                        *ox, *oy);
+                    return true;
+                }
+            }
+        }
+        for (int dy = -r + 1; dy <= r - 1; ++dy) {
+            for (int dx : {-r, r}) {
+                if (is_free(static_cast<int>(mx) + dx, static_cast<int>(my) + dy)) {
+                    grid->mapToWorld(
+                        static_cast<unsigned int>(static_cast<int>(mx) + dx),
+                        static_cast<unsigned int>(static_cast<int>(my) + dy),
+                        *ox, *oy);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+// Drive toward the nearest free cell instead of always reversing in base_link.
+// Blind -vx walks into the wall when the robot is already in inflation.
+void PublishEscapeCmd(ControllerServer* self, double speed,
+                      const automsgs::msgs::geometry_msgs::PoseStamped& pose,
+                      map::costmap_2d::Costmap2D* grid) {
+    double vx = -std::abs(speed);
+    double wz = 0.0;
+    double fx = 0.0;
+    double fy = 0.0;
+    const double x = pose.pose().position().x();
+    const double y = pose.pose().position().y();
+    if (grid != nullptr && NearestFreeWorld(grid, x, y, &fx, &fy)) {
+        const double dx = fx - x;
+        const double dy = fy - y;
+        if (std::hypot(dx, dy) > 0.02) {
+            const double yaw = PoseYaw(pose);
+            const double c = std::cos(yaw);
+            const double s = std::sin(yaw);
+            const double body_x = c * dx + s * dy;
+            const double body_y = -s * dx + c * dy;
+            vx = (body_x >= 0.0) ? std::abs(speed) : -std::abs(speed);
+            const double heading = std::atan2(body_y, std::fabs(body_x) + 1e-3);
+            wz = std::clamp(heading * 2.0, -0.8, 0.8);
+            if (body_x < 0.0) {
+                wz = -wz;
+            }
+        }
+    }
+    PublishBodyCmd(self, vx, wz);
 }
 
 }  // namespace
@@ -361,6 +465,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
                 result->set_error_code(err_proto::CONTROL_INVALID_PATH);
+                self->PublishZeroVelocity();
                 server->TerminateCurrent(result);
                 return;
             }
@@ -371,8 +476,10 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             self->follow_progress_checker_id_ = goal->progress_checker_id();
 
             try {
-                self->ComputeControl();
-            } catch (const common::ControllerException& ex) {
+                const bool reuse = self->follow_path_active_;
+                self->ComputeControl(/*reset_plugins=*/!reuse);
+            } catch (const std::exception& ex) {
+                self->PublishZeroVelocity();
                 AWARN << "FollowPath setup failed: " << ex.what();
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
@@ -411,8 +518,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     auto result =
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::OK);
-                    self->OnGoalExit();
                     self->PublishZeroVelocity();
+                    self->OnGoalExit();
                     server->SucceededCurrent(result);
                     return;
                 }
@@ -425,8 +532,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::CONTROL_FAILED_TO_MAKE_PROGRESS);
                     result->set_error_msg(ex.what());
-                    self->OnGoalExit();
                     self->PublishZeroVelocity();
+                    self->OnGoalExit();
                     server->TerminateCurrent(result);
                     return;
                 } catch (const common::PatienceExceeded& ex) {
@@ -435,8 +542,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::CONTROL_PATIENCE_EXCEEDED);
                     result->set_error_msg(ex.what());
-                    self->OnGoalExit();
                     self->PublishZeroVelocity();
+                    self->OnGoalExit();
                     server->TerminateCurrent(result);
                     return;
                 } catch (const common::ControllerException& ex) {
@@ -445,8 +552,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::CONTROL_UNKNOWN);
                     result->set_error_msg(ex.what());
-                    self->OnGoalExit();
                     self->PublishZeroVelocity();
+                    self->OnGoalExit();
                     server->TerminateCurrent(result);
                     return;
                 } catch (const std::exception& ex) {
@@ -455,8 +562,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                         std::make_shared<nav_proto::FollowPathAction::Result>();
                     result->set_error_code(err_proto::CONTROL_UNKNOWN);
                     result->set_error_msg(ex.what());
-                    self->OnGoalExit();
                     self->PublishZeroVelocity();
+                    self->OnGoalExit();
                     server->TerminateCurrent(result);
                     return;
                 }
@@ -469,17 +576,21 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             // Do not clear /plan on preempt: the next execute already has a
             // path; emptying the overlay is the one-frame Autoviz flash.
             const bool preempt = server->IsPreemptRequested();
-            self->OnGoalExit(/*clear_visual_plan=*/!preempt);
-            self->PublishZeroVelocity();
             if (server->IsCancelRequested()) {
+                self->OnGoalExit(/*clear_visual_plan=*/true);
+                self->PublishZeroVelocity();
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
                 result->set_error_code(err_proto::CONTROL_UNKNOWN);
                 result->set_error_msg("FollowPath canceled");
                 server->TerminateCurrent(result);
             } else if (preempt) {
-                AINFO_EVERY(5) << "FollowPath preempted; switching to pending goal";
+                // Keep cmd_vel and MPPI state; the next execute only SetPlan.
+                AINFO << "nav follow path_update poses="
+                      << self->current_path_.poses_size();
             } else {
+                self->OnGoalExit(/*clear_visual_plan=*/true);
+                self->PublishZeroVelocity();
                 auto result =
                     std::make_shared<nav_proto::FollowPathAction::Result>();
                 result->set_error_code(err_proto::CONTROL_UNKNOWN);
@@ -495,6 +606,9 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 return;
             }
 
+            const double target = goal->target_yaw() != 0.f
+                                      ? static_cast<double>(goal->target_yaw())
+                                      : 0.6;
             const double allowance_sec =
                 goal->has_time_allowance()
                     ? automsgs::msgs::builtin_interfaces::DurationToSeconds(
@@ -502,23 +616,48 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     : 10.0;
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::duration<double>(allowance_sec);
+            automsgs::msgs::geometry_msgs::PoseStamped start_pose;
+            const bool have_start = self->GetRobotPose(start_pose);
+            const double start_yaw = have_start ? PoseYaw(start_pose) : 0.0;
+            const double sign = target >= 0.0 ? 1.0 : -1.0;
+            const auto started = std::chrono::steady_clock::now();
+            AINFO << "nav recover spin yaw=" << target;
 
             while (autolink::OK()) {
                 if (server->IsCancelRequested()) {
+                    self->PublishZeroVelocity();
                     auto result = std::make_shared<nav_proto::SpinAction::Result>();
                     result->set_error_code(err_proto::SPIN_ERROR);
                     server->TerminateCurrent(result);
                     return;
                 }
-                if (std::chrono::steady_clock::now() >= deadline) {
+                automsgs::msgs::geometry_msgs::PoseStamped pose;
+                double turned = 0.0;
+                if (self->GetRobotPose(pose) && have_start) {
+                    turned = std::abs(std::remainder(PoseYaw(pose) - start_yaw,
+                                                     2.0 * std::acos(-1.0)));
+                } else {
+                    const double elapsed = std::chrono::duration<double>(
+                                               std::chrono::steady_clock::now() -
+                                               started)
+                                               .count();
+                    turned = elapsed * 0.6;
+                }
+                if (turned >= std::abs(target) ||
+                    std::chrono::steady_clock::now() >= deadline) {
+                    self->PublishZeroVelocity();
                     auto result = std::make_shared<nav_proto::SpinAction::Result>();
                     result->set_error_code(err_proto::OK);
                     server->SucceededCurrent(result);
                     return;
                 }
+                const double remaining = std::abs(target) - turned;
+                const double wz = sign * std::clamp(remaining * 2.0, 0.25, 0.8);
+                PublishBodyCmd(self, 0.0, wz);
                 std::this_thread::sleep_for(
                     ControlPeriod(self->controller_frequency_));
             }
+            self->PublishZeroVelocity();
         });
 
     autolink_actions_->backup = std::make_shared<BackUpServer>(
@@ -529,37 +668,86 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 return;
             }
 
-            const double speed = goal->speed() > 0.f ? goal->speed() : 0.1f;
+            const double speed = goal->speed() > 0.f ? goal->speed() : 0.15;
             const double dist =
                 goal->has_target()
                     ? std::hypot(goal->target().x(), goal->target().y())
-                    : 0.3;
+                    : 0.35;
             const double allowance_sec =
                 goal->has_time_allowance()
                     ? automsgs::msgs::builtin_interfaces::DurationToSeconds(
                           goal->time_allowance())
-                    : std::max(10.0, dist / speed);
+                    : std::max(4.0, dist / std::max(speed, 0.05) + 1.0);
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::duration<double>(allowance_sec);
+            automsgs::msgs::geometry_msgs::PoseStamped start_pose;
+            const bool have_start = self->GetRobotPose(start_pose);
+            const auto started = std::chrono::steady_clock::now();
+            double free_x = 0.0;
+            double free_y = 0.0;
+            bool have_free = false;
+            if (have_start && self->costmap_wrapper_ &&
+                self->costmap_wrapper_->getCostmap()) {
+                have_free = NearestFreeWorld(
+                    self->costmap_wrapper_->getCostmap(),
+                    start_pose.pose().position().x(),
+                    start_pose.pose().position().y(), &free_x, &free_y);
+            }
+            if (have_free) {
+                AINFO << "nav recover backup dist=" << dist << " speed=" << speed
+                      << " toward="
+                      << ::autonomy::common::NavXY{free_x, free_y};
+            } else {
+                AINFO << "nav recover backup dist=" << dist << " speed=" << speed
+                      << " toward=reverse";
+            }
 
             while (autolink::OK()) {
                 if (server->IsCancelRequested()) {
+                    self->PublishZeroVelocity();
                     auto result =
                         std::make_shared<nav_proto::BackUpAction::Result>();
                     result->set_error_code(err_proto::BACK_UP_ERROR);
                     server->TerminateCurrent(result);
                     return;
                 }
-                if (std::chrono::steady_clock::now() >= deadline) {
+                double traveled = 0.0;
+                automsgs::msgs::geometry_msgs::PoseStamped pose;
+                if (self->GetRobotPose(pose) && have_start) {
+                    traveled = std::hypot(
+                        pose.pose().position().x() -
+                            start_pose.pose().position().x(),
+                        pose.pose().position().y() -
+                            start_pose.pose().position().y());
+                } else {
+                    traveled = std::chrono::duration<double>(
+                                   std::chrono::steady_clock::now() - started)
+                                   .count() *
+                               speed;
+                }
+                if (traveled >= dist ||
+                    std::chrono::steady_clock::now() >= deadline) {
+                    self->PublishZeroVelocity();
                     auto result =
                         std::make_shared<nav_proto::BackUpAction::Result>();
                     result->set_error_code(err_proto::OK);
                     server->SucceededCurrent(result);
                     return;
                 }
+                if (self->GetRobotPose(pose)) {
+                    auto* grid =
+                        (self->costmap_wrapper_ &&
+                         self->costmap_wrapper_->getCostmap())
+                            ? self->costmap_wrapper_->getCostmap()
+                            : nullptr;
+                    PublishEscapeCmd(self, speed, pose, grid);
+                } else {
+                    PublishBodyCmd(self, -speed, 0.0);
+                }
                 std::this_thread::sleep_for(
                     ControlPeriod(self->controller_frequency_));
             }
+            self->PublishZeroVelocity();
         });
 
     autolink_actions_->wait = std::make_shared<WaitServer>(

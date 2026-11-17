@@ -177,10 +177,15 @@ void PathDisplay::processMessage(
   if (context_ == nullptr) {
     return;
   }
-  // Controller FollowPath preempt used to publish an empty /plan to "clear
-  // the latch". That blanks the overlay for one frame after a successful
-  // plan. Keep the last real path; hide_when_arrived still drops it at goal.
+  // Empty /plan is the cancel / goal-exit latch clear (ControllerServer
+  // OnGoalExit, Navigation panel Cancel). Preempt no longer publishes empty,
+  // so this does not flash between replans.
   if (message.poses_size() < 2) {
+    clearReceivedData();
+    if (context_->request_redraw) {
+      context_->request_redraw();
+    }
+    setStatusOk("Path cleared");
     return;
   }
 

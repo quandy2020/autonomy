@@ -21,7 +21,6 @@
 #include "autoviz/plugins/displays/common/ogre_colored_points_draw.hpp"
 #include "autoviz/plugins/displays/common/ogre_mesh_draw.hpp"
 #include "autoviz/plugins/displays/common/ogre_entity_draw.hpp"
-#include "autoviz/plugins/displays/common/ogre_label_draw.hpp"
 #include "autoviz/plugins/displays/common/primitive_mesh.hpp"
 #include "autoviz/plugins/displays/common/transform_utils.hpp"
 #include "autoviz/rendering/text_raster_utils.hpp"
@@ -300,7 +299,6 @@ void drawStoredMarkers(
   // FlatNoLightingAlpha; Entity CULL_CLOCKWISE hides rings after rotation).
   std::vector<ColoredMeshInstance> ogre_entity_meshes;
   std::vector<ColoredMeshInstance> ogre_manual_meshes;
-  std::vector<TextLabelInstance> ogre_labels;
   const bool use_ogre = context != nullptr && context->ogre_scene_host != nullptr;
 
   auto appendArrowLines = [&ogre_lines](const QVector3D& start, const QVector3D& end,
@@ -361,11 +359,17 @@ void drawStoredMarkers(
               static_cast<float>(marker.scale().z()) / distance, 0.f, 1.f);
         }
       } else {
-        start = transform.map(QVector3D(0.f, 0.f, 0.f));
-        end = transform.map(QVector3D(1.f, 0.f, 0.f));
+        // RViz pose+scale Arrow: length = scale.x, shaft diameter = scale.y,
+        // head ~23% of length, head diameter ≈ 2 * scale.z.
+        const QMatrix4x4 pose_tf =
+            markerPoseTransformInFixedFrame(marker, context);
+        const float length =
+            std::max(0.01f, static_cast<float>(marker.scale().x()));
+        start = pose_tf.map(QVector3D(0.f, 0.f, 0.f));
+        end = pose_tf.map(QVector3D(length, 0.f, 0.f));
         shaft_d = std::max(0.01f, static_cast<float>(marker.scale().y()));
-        head_d = std::max(0.01f, static_cast<float>(marker.scale().z()));
-        head_fraction = 0.2f;
+        head_d = std::max(0.01f, 2.f * static_cast<float>(marker.scale().z()));
+        head_fraction = 0.23f;
       }
       if (use_ogre && solid) {
         // Prefer ManualObject so translucent IM arrows keep FlatNoLightingAlpha.
@@ -457,7 +461,12 @@ void drawStoredMarkers(
         DrawMarkerList(scene, points, marker.type(), marker, color, solid);
       }
     } else if (marker.type() == kTextViewFacing) {
-      const QVector3D center = transform.map(QVector3D(0.f, 0.f, 0.f));
+      // Pose only — RViz TEXT_VIEW_FACING ignores scale on position. The
+      // scaled MarkerTransform would still map origin correctly, but keep
+      // the RViz contract explicit.
+      const QVector3D center =
+          markerPoseTransformInFixedFrame(marker, context)
+              .map(QVector3D(0.f, 0.f, 0.f));
       const float text_height =
           marker.scale().z() > 0.f ? static_cast<float>(marker.scale().z())
                                    : 0.2f;
@@ -466,19 +475,11 @@ void drawStoredMarkers(
       if (label.isEmpty()) {
         const float half_extent = std::max(0.04f, text_height * 0.5f);
         scene.addViewFacingQuad(center, half_extent, color);
-      } else if (use_ogre) {
-        TextLabelInstance text_label;
-        text_label.text = label.toStdString();
-        text_label.position = center;
-        text_label.color = color;
-        text_label.char_height = text_height;
-        if (marker.scale().x() > 0.f) {
-          text_label.space_width = static_cast<float>(marker.scale().x());
-        }
-        ogre_labels.push_back(std::move(text_label));
       } else {
+        // Rasterized view-facing quads match TF names. Ogre MovableText
+        // silently drops labels when "Liberation Sans" is not loaded.
         const int pixel_height =
-            static_cast<int>(std::clamp(text_height * 120.f, 16.f, 128.f));
+            static_cast<int>(std::clamp(text_height * 160.f, 28.f, 192.f));
         const QImage label_image =
             rendering::RasterizeTextLabel(label, color, pixel_height);
         if (label_image.isNull()) {
@@ -488,9 +489,8 @@ void drawStoredMarkers(
             static_cast<float>(label_image.width()) /
             static_cast<float>(std::max(1, label_image.height()));
         const float half_height = text_height * 0.5f;
-        const float half_width = half_height * aspect;
-        scene.addViewFacingTexturedQuad(center, half_width, half_height,
-                                        label_image);
+        scene.addViewFacingTexturedQuad(center, half_height * aspect,
+                                        half_height, label_image);
       }
     } else if ((marker.type() == kMeshResource || marker.type() == kTriangleList) &&
                stored.has_mesh) {
@@ -530,7 +530,6 @@ void drawStoredMarkers(
                                 rendering::PointCloudStyle::kSquares, ogre_points,
                                 false);
     }
-    drawLabelsOgreOrGl(context, scene, display_prefix + "/labels", ogre_labels);
   }
 }
 

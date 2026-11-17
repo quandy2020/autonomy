@@ -631,6 +631,21 @@ void VisualizationManager::drawViewport(uint32_t viewport_bit,
     // Drop geometry that belongs to other 3D Views (stale uploads). Walk groups
     // so child LaserScan names are cleared, not only the Group folder name.
     // Group membership uses the group's visibility bit (children often stay 0).
+    //
+    // Dual-pane sessions clone displays with the SAME name ("points PointCloud2").
+    // Scrubbing a foreign clone by name must not wipe this pane's clone — that
+    // caused depth / lidar clouds to flicker every frame across 3D Views.
+    auto nameStillNeededHere = [this, viewport_bit](const std::string& name) {
+      for (const auto& other : displays_) {
+        if (other == nullptr || other->name() != name) {
+          continue;
+        }
+        if (other->visibleInViewport(viewport_bit)) {
+          return true;
+        }
+      }
+      return false;
+    };
     std::function<void(display::Display*, bool visible)> scrub;
     scrub = [&](display::Display* display, bool visible) {
       if (display == nullptr) {
@@ -641,7 +656,7 @@ void VisualizationManager::drawViewport(uint32_t viewport_bit,
           scrub(group->child(i), visible);
         }
       }
-      if (!visible) {
+      if (!visible && !nameStillNeededHere(display->name())) {
         ogre_host->removeDisplaysWithPrefix(display->name());
       }
     };

@@ -179,6 +179,9 @@ class Map:
         ply_cfg = self.settings.get("ply") or {}
         source_path = str(ply_cfg.get("source") or "").strip()
         self.cloud_rgb: Optional[np.ndarray] = None
+        # ROS TF keeps base_footprint at z≈0; shift cloud so the current Habitat
+        # floor (any scene elevation) lines up with the robot in Autoviz.
+        floor_offset = float(getattr(simulator, "floor_y", 0.0) or 0.0)
         if source_path:
             loaded = self.load_ply_file(source_path)
             if loaded is not None:
@@ -217,14 +220,16 @@ class Map:
                         (converted[:, 1] >= bounds[1][0]) & (converted[:, 1] <= bounds[1][1]) &
                         (converted[:, 2] >= bounds[2][0]) & (converted[:, 2] <= bounds[2][1])
                     )
-                # 4. Optional z-height filter.  Priority: ply.z_min/ply.z_max >
-                #    grid.z_min/grid.z_max > no filter (publish all floors).
+                # 4. Optional z-height filter relative to the current Habitat floor
+                #    so the same z_min/z_max works on elevated scenes.
+                #    Priority: ply.z_min/ply.z_max > grid.z_min/grid.z_max.
                 ply_cfg_inner = self.settings.get("ply") or {}
                 grid_config = self.settings.get("grid") or {}
                 z_min = ply_cfg_inner.get("z_min", grid_config.get("z_min"))
                 z_max = ply_cfg_inner.get("z_max", grid_config.get("z_max"))
                 if z_min is not None and z_max is not None:
-                    z_mask = (converted[:, 2] >= float(z_min)) & (converted[:, 2] <= float(z_max))
+                    z_rel = converted[:, 2] - floor_offset
+                    z_mask = (z_rel >= float(z_min)) & (z_rel <= float(z_max))
                 else:
                     z_mask = np.ones(len(converted), dtype=bool)
                 mask = finite_mask & coarse_mask & outlier_mask & z_mask
@@ -235,6 +240,8 @@ class Map:
                 cloud = self.sample_ply_cloud(simulator, origin_xy)
         else:
             cloud = self.sample_ply_cloud(simulator, origin_xy)
+
+        cloud = self.ground_relative_cloud(cloud, floor_offset)
 
         grid_cfg = self.settings["grid"]
         navmesh_grid = self.project_grid_from_navmesh(simulator, grid_cfg)
@@ -251,6 +258,25 @@ class Map:
         self.cached_cloud = cloud
         self.cached_grid = (grid, resolution, ox, oy, width, height)
         return cloud, grid, resolution, ox, oy, width, height
+
+    @staticmethod
+    def ground_relative_cloud(
+        cloud: np.ndarray, floor_offset: float
+    ) -> np.ndarray:
+        """Shift cloud z so the current Habitat floor sits at ROS z≈0.
+
+        Autoviz TF keeps ``base_footprint`` on the plane z=0. Absolute Habitat
+        Y would leave the robot floating under elevated floors; subtract
+        ``floor_y`` once after sampling / PLY load.
+        """
+        points = np.asarray(cloud, dtype=np.float32)
+        if points.size == 0 or abs(float(floor_offset)) < 1e-9:
+            return points
+        if points.ndim != 2 or points.shape[1] < 3:
+            return points
+        out = points.copy()
+        out[:, 2] = out[:, 2] - float(floor_offset)
+        return out
 
     @staticmethod
     def sample_scenario(
@@ -503,7 +529,7 @@ class Map:
         """Nudge out of a wall if the current disc already overlaps occupancy."""
         if not self.disc_occupied(x, y, radius=radius):
             return float(x), float(y)
-        for dist in (0.05, 0.10, 0.15, 0.22, 0.30, 0.45, 0.60, 0.80):
+        for dist in (0.05, 0.10, 0.15, 0.22, 0.30, 0.45, 0.60, 0.80, 1.10, 1.50):
             for k in range(16):
                 ang = (2.0 * math.pi * k) / 16.0
                 nx = float(x) + dist * math.cos(ang)

@@ -36,7 +36,7 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/widget/input/segmented_control.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -80,13 +80,13 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
       path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 8.0, 8.0);
       if (selected) {
         QLinearGradient fill(row.topLeft(), row.topRight());
-        fill.setColorAt(0.0, glass::ShellSelectionFill(78));
-        QColor end = glass::Shell().accent_soft;
+        fill.setColorAt(0.0, theme::ShellSelectionFill(78));
+        QColor end = theme::Shell().accent_soft;
         end.setAlpha(62);
         fill.setColorAt(1.0, end);
         painter->fillPath(path, fill);
       } else {
-        painter->fillPath(path, glass::ShellHoverFill());
+        painter->fillPath(path, theme::ShellHoverFill());
       }
       painter->restore();
     }
@@ -128,8 +128,8 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
         path_font.setWeight(QFont::DemiBold);
       }
       const QColor ink =
-          selected ? glass::ShellSelectionInk() : glass::Shell().text;
-      const QColor muted = glass::Shell().secondary_text;
+          selected ? theme::ShellSelectionInk() : theme::Shell().text;
+      const QColor muted = theme::Shell().secondary_text;
       painter->setFont(path_font);
       painter->setPen(ink);
       painter->drawText(
@@ -137,7 +137,7 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
           QFontMetrics(path_font).elidedText(channel, Qt::ElideMiddle,
                                              path_rect.width()));
       painter->setFont(type_font);
-      painter->setPen(selected ? glass::Shell().accent : muted);
+      painter->setPen(selected ? theme::Shell().accent : muted);
       painter->drawText(type_rect, Qt::AlignVCenter | Qt::AlignRight, type);
       painter->restore();
       return;
@@ -148,7 +148,7 @@ class ContinuousRowDelegate : public QStyledItemDelegate {
     opt.state.setFlag(QStyle::State_MouseOver, false);
     opt.backgroundBrush = Qt::NoBrush;
     if (selected) {
-      const QColor ink = glass::ShellSelectionInk();
+      const QColor ink = theme::ShellSelectionInk();
       opt.palette.setColor(QPalette::Text, ink);
       opt.palette.setColor(QPalette::WindowText, ink);
       opt.font.setWeight(QFont::DemiBold);
@@ -193,8 +193,8 @@ class GlassFooterBar : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 16.0, 16.0);
 
-    painter.fillPath(path, glass::Shell().glass_fill_deep);
-    painter.setPen(QPen(glass::Shell().glass_rim, 1.0));
+    painter.fillPath(path, theme::Shell().panel_surface);
+    painter.setPen(QPen(theme::Shell().panel_border, 1.0));
     painter.drawPath(path);
   }
 };
@@ -358,10 +358,10 @@ void ApplyFrostedTree(QTreeWidget* tree, bool flat_list) {
   // Kill native selection strip (branch vs item) — only the delegate paints.
   QPalette pal = tree->palette();
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
+  pal.setBrush(QPalette::HighlightedText, theme::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-               glass::ShellSelectionInk());
+               theme::ShellSelectionInk());
   tree->setPalette(pal);
 
   tree->setItemDelegate(new ContinuousRowDelegate(tree));
@@ -576,11 +576,11 @@ void AddDisplayDialog::paintEvent(QPaintEvent* /*event*/) {
     painter.fillPath(glow, QColor(15, 23, 42, 4 + (8 - i)));
   }
 
-  const glass::ShellTokens shell = glass::Shell();
-  QColor plate = shell.glass_fill_deep;
+  const theme::ShellTokens shell = theme::Shell();
+  QColor plate = shell.panel_surface;
   plate.setAlpha(255);
   painter.fillPath(card, plate);
-  painter.setPen(QPen(shell.glass_rim, 1.0));
+  painter.setPen(QPen(shell.panel_border, 1.0));
   painter.drawPath(card);
 }
 

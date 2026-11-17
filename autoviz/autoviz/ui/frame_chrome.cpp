@@ -70,7 +70,7 @@
 #include "autoviz/ui/app/settings_dialog.hpp"
 #include "autoviz/ui/app/preferences.hpp"
 #include "autoviz/ui/theme/application.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/app/translation.hpp"
 #include "autoviz/ui/panel/catalog.hpp"
@@ -91,6 +91,7 @@
 #include "autoviz/ui/image/image_config_io.hpp"
 #include "autoviz/ui/plot/panel/plot_panel.hpp"
 #include "autoviz/ui/teleop/teleop_panel.hpp"
+#include "autoviz/ui/navigation/navigation_panel.hpp"
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/inspector/selection_panel.hpp"
@@ -102,7 +103,6 @@
 #include "autoviz/ui/service/service_panel.hpp"
 #include "autoviz/ui/time/panel.hpp"
 #include "autoviz/ui/panel/name_map.hpp"
-#include "autoviz/ui/viewport_toolbar.hpp"
 #include "autoviz/ui/viewport_hud.hpp"
 #include "autoviz/ui/views/panel.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
@@ -162,7 +162,8 @@ PanelMenuGroup PanelMenuGroupForType(const QString& type_id) {
       type_id == QLatin1String("ToolPropertiesDock") ||
       type_id == QLatin1String("TfTreeDock") ||
       type_id == QLatin1String("OperatorToolsDock") ||
-      type_id == QLatin1String("TeleopDock")) {
+      type_id == QLatin1String("TeleopDock") ||
+      type_id == QLatin1String("NavigationDock")) {
     return PanelMenuGroup::kToolsFrames;
   }
   return PanelMenuGroup::kOther;
@@ -175,7 +176,8 @@ int PanelMenuPreferredOrder(const QString& type_id) {
                                 "TableDock", "ChannelsDock", "ChannelGraphDock",
                                 "EvidenceDock", "TimeDock"};
   static const char* kTools[] = {"SelectionDock", "Tools", "ToolPropertiesDock",
-                                 "TfTreeDock", "OperatorToolsDock", "TeleopDock"};
+                                 "TfTreeDock", "OperatorToolsDock", "TeleopDock",
+                                 "NavigationDock"};
   const auto find = [&](const char* const* list, int n) {
     for (int i = 0; i < n; ++i) {
       if (type_id == QLatin1String(list[i])) {
@@ -190,7 +192,7 @@ int PanelMenuPreferredOrder(const QString& type_id) {
     case PanelMenuGroup::kDataObserve:
       return find(kData, 8);
     case PanelMenuGroup::kToolsFrames:
-      return find(kTools, 6);
+      return find(kTools, 7);
     case PanelMenuGroup::kOther:
     default:
       return 100;
@@ -422,7 +424,7 @@ void FrameChrome::configureMenuBar() {
 }
 
 void FrameChrome::refreshShellChrome() {
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   if (QMenuBar* menu_bar = frame_->menuBar()) {
     QPalette pal = frame_->palette();
     pal.setColor(QPalette::WindowText, shell.window_text);
@@ -430,7 +432,7 @@ void FrameChrome::refreshShellChrome() {
     pal.setColor(QPalette::Text, shell.text);
     menu_bar->setPalette(pal);
     // Explicit sheet — full theme.qss is not installed (SEGV guard).
-    menu_bar->setStyleSheet(glass::ShellMenuBarStyleSheet() +
+    menu_bar->setStyleSheet(theme::ShellMenuBarStyleSheet() +
                             style::toolTipSheet());
     menu_bar->update();
   }
@@ -440,12 +442,12 @@ void FrameChrome::refreshShellChrome() {
     pal.setColor(QPalette::ButtonText, shell.secondary_text);
     pal.setColor(QPalette::Text, shell.text);
     tool_bar_->setPalette(pal);
-    tool_bar_->setStyleSheet(glass::ShellToolBarStyleSheet(true) +
+    tool_bar_->setStyleSheet(theme::ShellToolBarStyleSheet(true) +
                              style::toolTipSheet());
     tool_bar_->update();
   }
   if (frame_->statusBar() != nullptr) {
-    frame_->statusBar()->setStyleSheet(glass::ShellStatusBarStyleSheet() +
+    frame_->statusBar()->setStyleSheet(theme::ShellStatusBarStyleSheet() +
                                        style::toolTipSheet());
     frame_->statusBar()->update();
   }
@@ -794,6 +796,10 @@ QString detail::PanelsMenuDisplayTitle(const QString& type_id, const QString& fa
   }
   if (type_id == QLatin1String("TeleopDock")) {
     return QCoreApplication::translate("autoviz::VisualizationFrame", "Teleop");
+  }
+  if (type_id == QLatin1String("NavigationDock")) {
+    return QCoreApplication::translate("autoviz::VisualizationFrame",
+                                       "Navigation");
   }
   if (type_id == QLatin1String("ChannelGraphDock")) {
     return QCoreApplication::translate("autoviz::VisualizationFrame",

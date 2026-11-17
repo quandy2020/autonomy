@@ -46,9 +46,11 @@ autocmake_library(autonomy_task
     ${PROJECT_BINARY_DIR}
   DEPENDENCIES
     autonomy_common
+    autonomy_navigation_support
     autonomy_proto
     autonomy_transform
     autonomy_map
+    autonomy_planning
     autonomy_control
     $<TARGET_NAME_IF_EXISTS:BT::behaviortree_cpp>
     $<TARGET_NAME_IF_EXISTS:behaviortree_cpp::behaviortree_cpp>)

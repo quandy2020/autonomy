@@ -5,14 +5,17 @@
 #include "autoviz/rendering/ogre_render_backend.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <limits>
 #include <mutex>
+#include <vector>
 
 #include <Ogre.h>
 
 #include <QImage>
 #include <QColor>
 #include <QOpenGLContext>
+#include <QPoint>
 
 #include "autoviz/rendering/ogre_geometry.hpp"
 #include "autoviz/rendering/ogre_materials.hpp"
@@ -32,9 +35,10 @@ namespace rendering {
 namespace {
 
 // Ogre Root is process-wide; dual 3D View paintEvents must not interleave
-// makeCurrent / swap on separate GLX drawables.
-std::mutex& OgreRenderMutex() {
-  static std::mutex mutex;
+// makeCurrent / swap on separate GLX drawables. recursive: rebind may run
+// under setWindowVisible while render already holds the lock.
+std::recursive_mutex& OgreRenderMutex() {
+  static std::recursive_mutex mutex;
   return mutex;
 }
 
@@ -384,6 +388,17 @@ struct OgreRenderBackend::Impl {
   OgrePickRenderer ogre_pick_renderer;
   std::unique_ptr<OgreSceneHost> ogre_scene_host_;
   bool initialized = false;
+  // Ogre may report the RenderWindow visible before the external GLX drawable
+  // is remapped onto the Qt host — skip remaps only after a successful sync.
+  bool surface_synced = false;
+  // Splitter / mosaic moves change screen position without QMoveEvent on the
+  // child (pos relative to host stays 0,0). Track global origin to remap GLX.
+  QPoint last_global_origin{-1, -1};
+  // Mosaic park/reparent recreates the Qt native window; Ogre must rebind.
+  WId bound_window_id = 0;
+  // CPU copy of the last hidden-GLX frame for QPainter (no on-screen GLX).
+  QImage frame_image;
+  std::vector<uint8_t> frame_bytes;
 };
 
 OgreRenderBackend::OgreRenderBackend(QWidget* host) : host_(host) {
@@ -392,9 +407,32 @@ OgreRenderBackend::OgreRenderBackend(QWidget* host) : host_(host) {
 
 OgreRenderBackend::~OgreRenderBackend() { shutdown(); }
 
+bool OgreRenderBackend::isInitialized() const {
+  return impl_ != nullptr && impl_->initialized &&
+         impl_->render_window != nullptr;
+}
+
+bool OgreRenderBackend::hasLiveRenderWindow() const {
+  return impl_ != nullptr && impl_->render_window != nullptr;
+}
+
 bool OgreRenderBackend::initialize() {
-  if (impl_->initialized || host_ == nullptr) {
-    return impl_->initialized;
+  if (host_ == nullptr) {
+    return false;
+  }
+  // Already scene-ready but GLX bind may have been deferred (0×0 host during
+  // mosaic restore). Retry rebind without rebuilding the scene.
+  if (impl_->initialized) {
+    if (impl_->render_window != nullptr) {
+      return true;
+    }
+    if (host_->width() < 2 || host_->height() < 2) {
+      return false;
+    }
+    if (!rebindExternalWindow()) {
+      return false;
+    }
+    return impl_->render_window != nullptr;
   }
 
   // Split deferred create often runs before the QSplitter assigns a real size.
@@ -473,6 +511,79 @@ bool OgreRenderBackend::initialize() {
   impl_->ogre_scene_host_ = std::make_unique<OgreSceneHost>(impl_->scene);
   impl_->ogre_pick_renderer.initialize(impl_->scene);
   impl_->initialized = true;
+  impl_->surface_synced = false;
+  impl_->bound_window_id = host_->winId();
+  // initialize() already created render_window + viewport above. Leave it
+  // mapped; callers that must hide (reveal_held_ / park) destroy via
+  // setWindowVisible(false).
+  impl_->render_window->setVisible(true);
+  impl_->render_window->windowMovedOrResized();
+  impl_->last_global_origin = host_->mapToGlobal(QPoint(0, 0));
+  impl_->surface_synced = true;
+  return true;
+}
+
+bool OgreRenderBackend::rebindExternalWindow() {
+  if (impl_ == nullptr || host_ == nullptr || !impl_->initialized ||
+      impl_->camera == nullptr) {
+    return false;
+  }
+  if (host_->width() < 2 || host_->height() < 2) {
+    return false;
+  }
+  RenderSystem* render_system = RenderSystem::instance();
+  if (render_system == nullptr || !render_system->ensureInitialized()) {
+    return false;
+  }
+  Ogre::Root* root = render_system->ogreRoot();
+  if (root == nullptr) {
+    return false;
+  }
+
+  const std::lock_guard<std::recursive_mutex> render_lock(OgreRenderMutex());
+  (void)host_->winId();
+  const WId current_id = host_->winId();
+  if (impl_->render_window != nullptr &&
+      impl_->bound_window_id == current_id) {
+    impl_->surface_synced = false;
+    impl_->last_global_origin = QPoint(-1, -1);
+    impl_->render_window->resize(
+        static_cast<unsigned>(std::max(1, host_->width())),
+        static_cast<unsigned>(std::max(1, host_->height())));
+    impl_->render_window->windowMovedOrResized();
+    impl_->render_window->setVisible(true);
+    impl_->last_global_origin = host_->mapToGlobal(QPoint(0, 0));
+    impl_->surface_synced = true;
+    return true;
+  }
+
+  // Drop the stale external GLX — do not touch scene/camera/overlays.
+  if (impl_->render_window != nullptr) {
+    root->destroyRenderTarget(impl_->render_window);
+    impl_->render_window = nullptr;
+  }
+  impl_->bound_window_id = 0;
+  impl_->surface_synced = false;
+  impl_->last_global_origin = QPoint(-1, -1);
+  impl_->frame_image = QImage();
+
+  const double dpr = static_cast<double>(host_->devicePixelRatioF());
+  impl_->render_window = render_system->makeRenderWindow(
+      static_cast<RenderSystem::WindowHandle>(current_id),
+      static_cast<unsigned>(std::max(1, host_->width())),
+      static_cast<unsigned>(std::max(1, host_->height())), dpr);
+  if (impl_->render_window == nullptr) {
+    return false;
+  }
+  Ogre::Viewport* viewport = impl_->render_window->addViewport(impl_->camera);
+  if (viewport != nullptr) {
+    viewport->setBackgroundColour(impl_->background_color);
+  }
+  impl_->bound_window_id = current_id;
+  impl_->render_window->setVisible(true);
+  impl_->render_window->windowMovedOrResized();
+  impl_->last_global_origin = host_->mapToGlobal(QPoint(0, 0));
+  impl_->surface_synced = true;
   return true;
 }
 
@@ -485,25 +596,22 @@ void OgreRenderBackend::resize(int width, int height) {
   impl_->render_window->windowMovedOrResized();
 }
 
-void OgreRenderBackend::render(bool show_grid,
+bool OgreRenderBackend::render(bool show_grid,
                                const ReferenceGridSettings& grid_settings,
                                SceneOverlay* overlay,
                                const ViewController& view_controller,
                                float aspect_ratio) {
   if (host_ != nullptr && !host_->isVisible()) {
     setWindowVisible(false);
-    return;
+    return false;
   }
   if (!initialize()) {
-    return;
+    return false;
   }
-  // Show once when needed — do not windowMovedOrResized every paint. Rapid
-  // Orbit drag + dual panes used to thrash GLX and leave a sibling white.
-  if (impl_->render_window != nullptr && !impl_->render_window->isVisible()) {
-    setWindowVisible(true);
-  }
+  // Ensures visibility + one-time / size-change GLX remap. Cheap when synced.
+  setWindowVisible(true);
 
-  const std::lock_guard<std::mutex> render_lock(OgreRenderMutex());
+  const std::lock_guard<std::recursive_mutex> render_lock(OgreRenderMutex());
 
   const QMatrix4x4 view = view_controller.viewMatrix();
   const QMatrix4x4 projection = view_controller.projectionMatrix(aspect_ratio);
@@ -618,14 +726,19 @@ void OgreRenderBackend::render(bool show_grid,
         impl_->background_color);
   }
 
-  // Update only this window. renderOneFrame() would redraw every auto-updated
-  // sibling (and used to, before setAutoUpdated(false)), corrupting dual panes
-  // when one view is Orbit-dragging.
+  // Windows are created with setAutoUpdated(false). Enable only this target
+  // for renderOneFrame so dual 3D Views do not paint into each other's GLX
+  // context, while still using Ogre's full frame path (queued + swap).
   Ogre::Root* root = RenderSystem::instance()->ogreRoot();
-  if (root != nullptr && impl_->render_window != nullptr) {
-    root->_fireFrameStarted();
-    impl_->render_window->update();
-    root->_fireFrameEnded();
+  if (root == nullptr || impl_->render_window == nullptr) {
+    return false;
+  }
+  impl_->render_window->setVisible(true);
+  impl_->render_window->setAutoUpdated(true);
+  const bool presented = root->renderOneFrame();
+  impl_->render_window->setAutoUpdated(false);
+  if (!presented) {
+    return false;
   }
 
   if (overlay != nullptr && overlay->hasPickGeometry() &&
@@ -633,6 +746,7 @@ void OgreRenderBackend::render(bool show_grid,
     impl_->pick_framebuffer.renderPickPass(overlay, view, projection,
                                            host_->width(), host_->height());
   }
+  return true;
 }
 
 void OgreRenderBackend::setBackgroundColor(const QColor& color) {
@@ -640,27 +754,70 @@ void OgreRenderBackend::setBackgroundColor(const QColor& color) {
       Ogre::ColourValue(color.redF(), color.greenF(), color.blueF(), 1.f);
 }
 
+const QImage& OgreRenderBackend::frameImage() const {
+  static const QImage kEmpty;
+  if (impl_ == nullptr) {
+    return kEmpty;
+  }
+  return impl_->frame_image;
+}
+
 void OgreRenderBackend::setWindowVisible(bool visible) {
-  if (impl_ == nullptr || impl_->render_window == nullptr) {
+  if (impl_ == nullptr) {
     return;
   }
-  const bool was_visible = impl_->render_window->isVisible();
-  impl_->render_window->setVisible(visible);
-  if (!visible || host_ == nullptr) {
+  if (!visible) {
+    // Unmap AND destroy the child. A mapped Ogre window with background_pixel=0
+    // that is not presenting is the X11 see-through hole. ViewController lives
+    // on the QWidget (not the RenderWindow), so this is safe for ViewsPanel.
+    const std::lock_guard<std::recursive_mutex> render_lock(OgreRenderMutex());
+    if (impl_->render_window != nullptr) {
+      impl_->render_window->setVisible(false);
+      if (RenderSystem* rs = RenderSystem::instance()) {
+        if (Ogre::Root* root = rs->ogreRoot()) {
+          root->destroyRenderTarget(impl_->render_window);
+        }
+      }
+      impl_->render_window = nullptr;
+    }
+    impl_->frame_image = QImage();
+    impl_->surface_synced = false;
+    impl_->last_global_origin = QPoint(-1, -1);
+    impl_->bound_window_id = 0;
+    return;
+  }
+  if (host_ == nullptr) {
+    return;
+  }
+  (void)host_->winId();
+  if (!impl_->initialized) {
+    return;
+  }
+  // winId changed (or cleared on hide) → recreate hidden RenderWindow.
+  if (impl_->render_window == nullptr ||
+      impl_->bound_window_id == 0 ||
+      impl_->bound_window_id != host_->winId()) {
+    if (!rebindExternalWindow()) {
+      return;
+    }
     return;
   }
   const unsigned width =
       static_cast<unsigned>(std::max(1, host_->width()));
   const unsigned height =
       static_cast<unsigned>(std::max(1, host_->height()));
-  // Skip redundant GLX remaps when already showing at the same size — those
-  // remaps flash a blank/white sibling during mouse-drag paint storms.
-  if (was_visible && impl_->render_window->getWidth() == width &&
-      impl_->render_window->getHeight() == height) {
-    return;
+  const QPoint global_origin = host_->mapToGlobal(QPoint(0, 0));
+  const bool size_changed =
+      impl_->render_window->getWidth() != width ||
+      impl_->render_window->getHeight() != height;
+  const bool moved = global_origin != impl_->last_global_origin;
+  impl_->render_window->setVisible(true);
+  if (!impl_->surface_synced || size_changed || moved) {
+    impl_->render_window->resize(width, height);
+    impl_->render_window->windowMovedOrResized();
+    impl_->last_global_origin = global_origin;
+    impl_->surface_synced = true;
   }
-  impl_->render_window->resize(width, height);
-  impl_->render_window->windowMovedOrResized();
 }
 
 void OgreRenderBackend::notifyWindowMovedOrResized() {
@@ -671,8 +828,10 @@ void OgreRenderBackend::notifyWindowMovedOrResized() {
     impl_->render_window->resize(
         static_cast<unsigned>(std::max(1, host_->width())),
         static_cast<unsigned>(std::max(1, host_->height())));
+    impl_->last_global_origin = host_->mapToGlobal(QPoint(0, 0));
   }
   impl_->render_window->windowMovedOrResized();
+  impl_->surface_synced = true;
 }
 
 bool OgreRenderBackend::pickDepthAt(int pixel_x, int pixel_y, int viewport_width,
@@ -756,6 +915,9 @@ void OgreRenderBackend::shutdown() {
     root->destroySceneManager(impl_->scene);
     impl_->scene = nullptr;
   }
+  impl_->surface_synced = false;
+  impl_->last_global_origin = QPoint(-1, -1);
+  impl_->bound_window_id = 0;
   impl_->initialized = false;
 }
 

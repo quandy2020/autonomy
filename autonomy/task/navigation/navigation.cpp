@@ -21,7 +21,9 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
+#include "autonomy/task/navigation/path_update.hpp"
 
 namespace autonomy {
 namespace task {
@@ -39,6 +41,20 @@ automsgs::msgs::geometry_msgs::PoseStamped ToPoseStamped(
     const ::automsgs::msgs::geometry_msgs::PoseStamped& proto)
 {
     return proto;
+}
+
+bool SameNavigationGoals(const ::autonomy::task::proto::NavigationGoal& a,
+                         const ::autonomy::task::proto::NavigationGoal& b)
+{
+    if (a.goals_size() != b.goals_size() || a.goals().empty()) {
+        return false;
+    }
+    for (int i = 0; i < a.goals_size(); ++i) {
+        if (!navigation::SameGoalPose(a.goals(i), b.goals(i), 0.05, 0.05)) {
+            return false;
+        }
+    }
+    return true;
 }
 
 }  // namespace
@@ -91,41 +107,11 @@ void NavigationTask::ApplyGoalToBlackboard(
     }
 }
 
-bool NavigationTask::RetargetRunningTree(const task_proto::NavigationGoal& goal)
-{
-    if (!runner() || !runner()->IsRunning()) {
-        return false;
-    }
-    const auto tree = ResolveTreeForGoal(goal);
-    if (tree.empty() || runner()->active_tree() != tree) {
-        return false;
-    }
-
-    active_goal_ = goal;
-    initial_distance_ = -1.f;
-    ApplyGoalToBlackboard(live_blackboard_, goal);
-    if (live_blackboard_) {
-        live_blackboard_->set("goal_epoch", static_cast<int>(++replan_epoch_));
-        live_blackboard_->set("path", automsgs::msgs::nav_msgs::Path{});
-    }
-    if (navigation()) {
-        // Only abort in-flight ComputePath waits. CancelActiveMotion also
-        // CancelAll on the planner and aborts the replacement 2D Goal.
-        navigation()->CancelPlanning();
-    }
-    SetLifecycle(TaskLifecycle::kRunning);
-    SetProgress(progress_.progress(), "retarget:" + tree);
-    AINFO << "NavigationTask: retargeted in-place " << tree
-          << " goals=" << goal.goals_size();
-    return true;
-}
-
 void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
 {
     if (!blackboard) {
         return;
     }
-    live_blackboard_ = blackboard;
 
     if (navigation()) {
         blackboard->set(navigation::kNavigationClientBlackboardKey,
@@ -167,95 +153,76 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
 {
     using Command = task_proto::NavigationCommand;
 
-    // CANCEL/STOP: bump epoch first so any in-flight START abandons, then
-    // cleanup without blocking behind START (which would kill a newer goal).
-    if (goal.command() == Command::NAV_CMD_STOP ||
-        goal.command() == Command::NAV_CMD_CANCEL) {
-        const uint64_t cancel_epoch = ++goal_epoch_;
-        if (goal_mutex_.try_lock()) {
-            std::lock_guard<std::mutex> adopt(goal_mutex_, std::adopt_lock);
-            if (navigation()) {
-                navigation()->CancelActiveMotion();
-            }
-            StopTree();
-            active_goal_.reset();
-            initial_distance_ = -1.f;
-            SetLifecycle(TaskLifecycle::kCanceled);
-            AINFO << "NavigationTask: canceled (epoch=" << cancel_epoch << ")";
-            return true;
-        }
-        AINFO << "NavigationTask: cancel signaled in-flight start (epoch="
-              << cancel_epoch << "); deferred cleanup";
-        std::thread([this, cancel_epoch]() {
-            std::lock_guard<std::mutex> lock(goal_mutex_);
-            if (goal_epoch_.load() != cancel_epoch) {
-                AINFO << "NavigationTask: deferred cancel skipped; newer goal "
-                         "won (epoch="
-                      << goal_epoch_.load() << ")";
-                return;
-            }
-            if (navigation()) {
-                navigation()->CancelActiveMotion();
-            }
-            StopTree();
-            active_goal_.reset();
-            initial_distance_ = -1.f;
-            SetLifecycle(TaskLifecycle::kCanceled);
-            AINFO << "NavigationTask: deferred cancel applied (epoch="
-                  << cancel_epoch << ")";
-        }).detach();
+    const bool changes_goal = goal.command() == Command::NAV_CMD_START ||
+                              goal.command() == Command::NAV_CMD_REPLAN ||
+                              goal.command() == Command::NAV_CMD_STOP ||
+                              goal.command() == Command::NAV_CMD_CANCEL;
+    std::lock_guard<std::mutex> goal_lock(goal_mutex_);
+    if (shutting_down_.load()) return false;
+
+    if ((goal.command() == Command::NAV_CMD_START ||
+         goal.command() == Command::NAV_CMD_REPLAN) &&
+        (Lifecycle() == TaskLifecycle::kRunning ||
+         Lifecycle() == TaskLifecycle::kPaused) &&
+        active_goal_.has_value() &&
+        SameNavigationGoals(*active_goal_, goal)) {
+        AINFO_EVERY(20) << "nav goal ignore_duplicate";
         return true;
     }
 
-    std::lock_guard<std::mutex> goal_lock(goal_mutex_);
+    const uint64_t incoming_epoch =
+        changes_goal ? ++goal_epoch_ : goal_epoch_.load();
+    if (changes_goal && navigation()) navigation()->CancelPlanning();
+    if (changes_goal && incoming_epoch != goal_epoch_.load()) return true;
+    if (goal.command() == Command::NAV_CMD_STOP ||
+        goal.command() == Command::NAV_CMD_CANCEL) {
+        if (navigation()) navigation()->CancelActiveMotion();
+        StopTree();
+        std::lock_guard<std::recursive_mutex> state_lock(mutex_);
+        active_goal_.reset();
+        initial_distance_ = -1.f;
+        SetLifecycle(TaskLifecycle::kCanceled);
+        AINFO << "nav goal cancel";
+        return true;
+    }
 
     switch (goal.command()) {
     case Command::NAV_CMD_START:
     case Command::NAV_CMD_REPLAN: {
+        const bool preempting = Lifecycle() == TaskLifecycle::kRunning ||
+                                Lifecycle() == TaskLifecycle::kPaused;
+        if (navigation()) navigation()->CancelActiveMotion();
+        StopTree();
         if (!EnsureNavigationClient()) {
-            AERROR << "NavigationTask: navigation client missing";
+            AERROR << "nav goal reject reason=no_client";
             return false;
         }
         if (goal.goals().empty()) {
-            AERROR << "NavigationTask: empty goals";
+            AERROR << "nav goal reject reason=empty";
             return false;
         }
 
-        const bool preempting =
-            Lifecycle() == TaskLifecycle::kRunning ||
-            Lifecycle() == TaskLifecycle::kPaused;
-        if (preempting && RetargetRunningTree(goal)) {
-            return true;
-        }
         if (preempting) {
-            AINFO << "NavigationTask: preempting active navigation with new "
-                     "goal";
+            const auto& g0 = goal.goals(0);
+            AINFO << "nav goal preempt xy="
+                  << ::autonomy::common::NavXY{g0.pose().position().x(),
+                                   g0.pose().position().y()}
+                  << " n=" << goal.goals_size();
         }
 
-        const uint64_t epoch = ++goal_epoch_;
-
-        if (navigation()) {
-            navigation()->CancelActiveMotion();
-        }
-        // Do not StopTree()/join: ComputePath can block the worker; Run()
-        // detaches the previous worker. CancelPlanning already aborted waits.
+        const uint64_t epoch = incoming_epoch;
 
         if (epoch != goal_epoch_.load()) {
-            AINFO << "NavigationTask: start superseded before BT launch";
+            AINFO << "nav goal superseded stage=before_bt";
             return true;
         }
 
         {
-            // Cold start: planning/control often need several seconds after
-            // launch (costmap + StaticLayer map) before action servers appear.
-            // Starting the BT early causes RateController FAILURE and stuck
-            // FollowPath waits.
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::seconds(20);
             while (std::chrono::steady_clock::now() < deadline) {
                 if (epoch != goal_epoch_.load()) {
-                    AINFO << "NavigationTask: start superseded while waiting "
-                             "ready";
+                    AINFO << "nav goal superseded stage=wait_ready";
                     return true;
                 }
                 if (navigation() && navigation()->IsPlanningReady() &&
@@ -265,53 +232,62 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                 std::this_thread::sleep_for(std::chrono::milliseconds(50));
             }
             if (!navigation()) {
-                AERROR << "NavigationTask: navigation client missing; "
-                          "rejecting goal";
+                AERROR << "nav goal reject reason=no_client";
                 return false;
             }
             const bool plan_ready = navigation()->IsPlanningReady();
             const bool ctrl_ready = navigation()->IsControlReady();
             if (!plan_ready || !ctrl_ready) {
-                // Discovery can lag; BT action nodes wait on ActionServerIsReady.
-                AWARN << "NavigationTask: servers not fully ready yet "
-                         "(planner="
-                      << plan_ready << " follow_path=" << ctrl_ready
-                      << "); starting BT anyway";
+                AWARN << "nav servers not_ready planner=" << plan_ready
+                      << " follow_path=" << ctrl_ready;
             }
         }
 
         if (epoch != goal_epoch_.load()) {
-            AINFO << "NavigationTask: start superseded before StartTree";
+            AINFO << "nav goal superseded stage=before_start_tree";
             return true;
         }
 
-        active_goal_ = goal;
-        initial_distance_ = -1.f;
+        {
+            std::lock_guard<std::recursive_mutex> state_lock(mutex_);
+            active_goal_ = goal;
+            ++replan_epoch_;
+            initial_distance_ = -1.f;
+        }
         const auto tree = ResolveTreeForGoal(goal);
         if (tree.empty()) {
-            AERROR << "NavigationTask: unresolved behavior tree path";
+            AERROR << "nav goal reject reason=unresolved_tree";
+            std::lock_guard<std::recursive_mutex> state_lock(mutex_);
             active_goal_.reset();
             return false;
         }
         if (!StartTree(tree)) {
-            AERROR << "NavigationTask: failed to start tree " << tree;
+            AERROR << "nav bt start_fail tree=" << ::autonomy::common::NavBasename(tree);
+            std::lock_guard<std::recursive_mutex> state_lock(mutex_);
             active_goal_.reset();
             return false;
         }
         if (epoch != goal_epoch_.load()) {
-            AINFO << "NavigationTask: start superseded after StartTree; "
-                     "stopping";
+            AINFO << "nav goal superseded stage=after_start_tree";
             StopTree();
             if (navigation()) {
                 navigation()->CancelActiveMotion();
             }
+            std::lock_guard<std::recursive_mutex> state_lock(mutex_);
             active_goal_.reset();
             return true;
         }
         SetLifecycle(TaskLifecycle::kRunning);
         SetProgress(0.f, preempting ? "preempted:" + tree : "bt:" + tree);
-        AINFO << "NavigationTask: " << (preempting ? "preempted -> " : "")
-              << "started " << tree << " goals=" << goal.goals_size();
+        {
+            const auto& g0 = goal.goals(0);
+            AINFO << "nav goal " << (preempting ? "preempt_start" : "start")
+                  << " xy="
+                  << ::autonomy::common::NavXY{g0.pose().position().x(),
+                                   g0.pose().position().y()}
+                  << " n=" << goal.goals_size()
+                  << " tree=" << ::autonomy::common::NavBasename(tree);
+        }
         return true;
     }
     case Command::NAV_CMD_RESUME:
@@ -338,7 +314,8 @@ void NavigationTask::OnTreeTick()
         }
         SetLifecycle(TaskLifecycle::kSucceeded);
         SetProgress(1.f, "bt succeeded: " + runner()->active_tree());
-        AINFO << "NavigationTask: bt succeeded " << runner()->active_tree();
+        AINFO << "nav bt succeeded tree="
+              << ::autonomy::common::NavBasename(runner()->active_tree());
         active_goal_.reset();
         initial_distance_ = -1.f;
         return;
@@ -349,7 +326,8 @@ void NavigationTask::OnTreeTick()
         SetLifecycle(TaskLifecycle::kFailed);
         SetProgress(progress_.progress(),
                     "bt failed: " + runner()->active_tree());
-        AWARN << "NavigationTask: bt failed " << runner()->active_tree();
+        AWARN << "nav bt failed tree="
+              << ::autonomy::common::NavBasename(runner()->active_tree());
         active_goal_.reset();
         initial_distance_ = -1.f;
         return;

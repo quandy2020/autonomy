@@ -226,6 +226,18 @@ void VisualizationFrame::setupUi() {
   viewport_->viewport_dock_->setPanelIcon(IconLoader::panelIcon(QStringLiteral("Panel3D")));
   auto* viewport_host = new QWidget(viewport_->viewport_dock_);
   viewport_host->setObjectName(QString::fromLatin1(AppThemeIds::kViewportHost));
+  // Opaque dark plate under WA_PaintOnScreen GL — if GL unmaps mid-drag the
+  // pane must stay charcoal, not default light-gray / see-through.
+  viewport_host->setAttribute(Qt::WA_OpaquePaintEvent, true);
+  viewport_host->setAutoFillBackground(true);
+  {
+    QPalette pal = viewport_host->palette();
+    pal.setColor(QPalette::Window, QColor(48, 48, 48));
+    pal.setColor(QPalette::Base, QColor(48, 48, 48));
+    viewport_host->setPalette(pal);
+    viewport_host->setStyleSheet(
+        QStringLiteral("QWidget#AutovizViewportHost { background-color: #303030; }"));
+  }
   viewport_host->setMinimumSize(80, 60);
   auto* viewport_layout = new QGridLayout(viewport_host);
   viewport_layout->setContentsMargins(0, 0, 0, 0);
@@ -234,8 +246,8 @@ void VisualizationFrame::setupUi() {
   layout_->configureMainPanelDock(viewport_->viewport_dock_);
   layout_->addMainPanelDock(viewport_->viewport_dock_, Qt::RightDockWidgetArea);
   viewport_->registerPrimaryViewportPanel();
-  if (ViewportPanelEntry* primary = viewport_->viewportEntryForDock(viewport_->viewport_dock_)) {
-    viewport_->installViewportFloatingToolbar(*primary);
+  if (ViewportPanelEntry* primary =
+          viewport_->viewportEntryForDock(viewport_->viewport_dock_)) {
     viewport_->installViewportHudOverlay(*primary);
   }
   panels_->registerPanelDock(viewport_->viewport_dock_);
@@ -376,6 +388,12 @@ void VisualizationFrame::setupUi() {
   layout_->addSidebarDock(panels_->teleop_dock_, Qt::RightDockWidgetArea);
   panels_->teleop_dock_->hide();
 
+  // Navigation — default hidden on right sidebar; Panels menu toggle / Add Panel.
+  panels_->navigation_dock_ =
+      panels_->createNavigationPanelDock(QStringLiteral("NavigationDock"));
+  layout_->addSidebarDock(panels_->navigation_dock_, Qt::RightDockWidgetArea);
+  panels_->navigation_dock_->hide();
+
   panels_->tf_dock_ = panels_->createTfTreePanelDock(QStringLiteral("TfTreeDock"));
   panels_->tf_tree_panel_ = qobject_cast<TfTreePanel*>(panels_->tf_dock_->widget());
   layout_->addMainPanelDock(panels_->tf_dock_, Qt::LeftDockWidgetArea);
@@ -464,6 +482,7 @@ void VisualizationFrame::setupUi() {
     if (panels_->panelTypeId(dock) == QLatin1String("PlotDock") ||
         panels_->panelTypeId(dock) == QLatin1String("ImageDock") ||
         panels_->panelTypeId(dock) == QLatin1String("TeleopDock") ||
+        panels_->panelTypeId(dock) == QLatin1String("NavigationDock") ||
         panels_->panelTypeId(dock) == QLatin1String("TfTreeDock") ||
         panels_->panelTypeId(dock) == QLatin1String("PublishDock") ||
         panels_->panelTypeId(dock) == QLatin1String("MapDock") ||

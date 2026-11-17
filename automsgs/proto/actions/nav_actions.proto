@@ -89,6 +89,8 @@ message ComputePathToPoseAction {
     automsgs.msgs.geometry_msgs.PoseStamped start = 2;
     string planner_id = 3;
     bool use_start = 4;
+    // Opaque caller token, echoed by the result and /plan_result.
+    string request_id = 5;
   }
 
   message Feedback {}
@@ -98,6 +100,7 @@ message ComputePathToPoseAction {
     automsgs.msgs.builtin_interfaces.Duration planning_time = 2;
     automsgs.msgs.status_msgs.StatusCode error_code = 3;
     string error_msg = 4;
+    string request_id = 5;
   }
 }
 
@@ -107,6 +110,8 @@ message ComputePathThroughPosesAction {
     automsgs.msgs.geometry_msgs.PoseStamped start = 2;
     string planner_id = 3;
     bool use_start = 4;
+    // Opaque caller token, echoed by the result and /plan_result.
+    string request_id = 5;
   }
 
   message Feedback {}
@@ -116,6 +121,7 @@ message ComputePathThroughPosesAction {
     automsgs.msgs.builtin_interfaces.Duration planning_time = 2;
     automsgs.msgs.status_msgs.StatusCode error_code = 3;
     string error_msg = 4;
+    string request_id = 5;
   }
 }
 
@@ -125,6 +131,8 @@ message SmoothPathAction {
     string smoother_id = 2;
     automsgs.msgs.builtin_interfaces.Duration max_smoothing_duration = 3;
     bool check_for_collisions = 4;
+    // Opaque caller token, echoed by the result and /plan_result.
+    string request_id = 5;
   }
 
   message Feedback {}
@@ -135,6 +143,7 @@ message SmoothPathAction {
     bool was_completed = 3;
     automsgs.msgs.status_msgs.StatusCode error_code = 4;
     string error_msg = 5;
+    string request_id = 6;
   }
 }
 
@@ -263,4 +272,11 @@ message DummyBehaviorAction {
     automsgs.msgs.status_msgs.StatusCode error_code = 2;
     string error_msg = 3;
   }
+}
+
+// /plan remains a visualization topic. Execution consumes only a token-matched
+// envelope or its action result; wall-clock proximity does not associate goals.
+message CorrelatedPlan {
+  string request_id = 1;
+  automsgs.msgs.nav_msgs.Path path = 2;
 }

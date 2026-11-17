@@ -237,16 +237,17 @@ class FrameLayout {
       Qt::DockWidgetArea area = Qt::LeftDockWidgetArea);
 
   /**
-   * @brief Extracts a main panel from the mosaic before title-bar floating.
+   * @brief Foxglove-style mosaic drag start: park GL, remove leaf, show ghost.
    *
-   * Collapses the freed leaf so siblings expand; parks viewport GLX when needed.
+   * Does @e not @c setFloating — the dock stays in the host parking lot while a
+   * lightweight preview follows the cursor (react-mosaic / Foxglove model).
    *
    * @param dock Main panel being dragged.
    */
   void beginMainPanelDrag(PanelDockWidget* dock);
 
   /**
-   * @brief Updates the edge-drop highlight while dragging a main panel.
+   * @brief Updates the edge-drop highlight and drag ghost while dragging.
    *
    * @param dock Dragged dock.
    * @param global_pos Cursor position.
@@ -255,7 +256,15 @@ class FrameLayout {
                                   const QPoint& global_pos);
 
   /**
-   * @brief Docks a floating main panel on a neighbor edge, or reattaches it.
+   * @brief Dock currently in mosaic title-drag parking (may be hidden).
+   */
+  PanelDockWidget* mosaicDragDock() const;
+
+  /** @brief Removes qApp mosaic drag mouse tracking. */
+  void removeMosaicDragMouseFilter();
+
+  /**
+   * @brief Commits mosaic edge drop or reattaches the parked dock as a leaf.
    *
    * @param dock Dragged dock.
    * @param global_pos Cursor at release.
@@ -387,6 +396,9 @@ class FrameLayout {
    * @brief @c true while a center-dock drag should suppress auto-tiling.
    */
   bool isCenterDockInteractionBlocked() const;
+
+  /** @brief @c true while a main-panel title-bar mosaic drag is in progress. */
+  bool isCenterDockDragging() const { return center_dock_drag_count_ > 0; }
 
   /**
    * @brief @c true if @p dock is classified as a main-column panel.
@@ -574,6 +586,27 @@ class FrameLayout {
 
   /** Last dock activated by title-bar click (for split / delete). */
   PanelDockWidget* last_active_dock_ = nullptr;
+
+  /**
+   * Lightweight Foxglove-style drag preview (not a floating QDockWidget / GLX).
+   * Shown while a main panel title-bar mosaic drag is active.
+   */
+  QPointer<QWidget> mosaic_drag_ghost_;
+
+  /** App-level mouse filter while a mosaic dock is parked/hidden mid-drag. */
+  QObject* mosaic_drag_mouse_filter_ = nullptr;
+
+  /** Dock currently tracked by @ref mosaic_drag_mouse_filter_. */
+  QPointer<PanelDockWidget> mosaic_drag_dock_;
+
+  /** @brief Shows / moves the mosaic drag ghost under the cursor. */
+  void updateMosaicDragGhost(PanelDockWidget* dock, const QPoint& global_pos);
+
+  /** @brief Hides the mosaic drag ghost. */
+  void clearMosaicDragGhost();
+
+  /** @brief Installs qApp mouse tracking for parked mosaic drag. */
+  void installMosaicDragMouseFilter(PanelDockWidget* dock);
 };
 
 }  // namespace autoviz

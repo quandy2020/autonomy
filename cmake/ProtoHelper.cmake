@@ -90,13 +90,19 @@ macro(autonomy_add_proto)
     set(_AUTONOMY_PROTO_DEPS automsgs_proto_copy)
   endif()
 
-  # Gather .proto under enabled domains; drop legacy commsgs copies.
+  # Gather .proto from every domain (AUTONOMY_MODULES), not only enabled
+  # ones. AutonomyOptions imports bridge / perception / prediction / control
+  # even when those domains are OFF; a trimmed proto.so then misses
+  # *_default_instance_ for leftover /usr/local binaries.
+  # Do not glob all of autonomy/: tools/bag_convert/.proto_gen copies
+  # automsgs and would duplicate descriptors with libautomsgs.
   set(_all "")
-  foreach(_mod IN LISTS AUTONOMY_ENABLED_MODULES)
+  foreach(_mod IN LISTS AUTONOMY_MODULES)
     file(GLOB_RECURSE _p "${PROJECT_SOURCE_DIR}/autonomy/${_mod}/*.proto")
     list(APPEND _all ${_p})
   endforeach()
   list(FILTER _all EXCLUDE REGEX ".*/commsgs/proto/.*")
+  list(FILTER _all EXCLUDE REGEX "/\\.proto_gen/")
 
   # Split *_service.proto for the gRPC path; remainder stay plain pb.
   set(_grpc ${_all})

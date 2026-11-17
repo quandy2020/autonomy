@@ -12,7 +12,6 @@
  * fan-out).
  *
  * @see FrameViewport::installViewportHudOverlay()
- * @see ViewportFloatingToolbar
  * @see AppUiPreferences::viewport_hud_visible
  */
 
@@ -55,7 +54,7 @@ class VisualizationManager;
  * @note Payload parsing runs off the UI thread into @c snapshot_ under
  *       @c mutex_; @ref applyLatestToUi() copies onto the GUI thread.
  *
- * @see glass::OverlayTokens
+ * @see theme::OverlayTokens
  * @see FrameViewport
  */
 class ViewportHudOverlay : public QWidget {
@@ -113,7 +112,7 @@ class ViewportHudOverlay : public QWidget {
 
  protected:
   /**
-   * @brief Paints frosted dials from the latest @ref Snapshot.
+   * @brief Paints flat dials from the latest @ref Snapshot.
    * @param event Paint event.
    */
   void paintEvent(QPaintEvent* event) override;

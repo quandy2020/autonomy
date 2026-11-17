@@ -39,7 +39,7 @@
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/tf_tree/graph_view.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -103,7 +103,7 @@ QIcon MakeGlyphIcon(const std::function<void(QPainter&, const QRectF&)>& paint,
 /** Matches Channel Graph node glyph (Shell accent card). */
 QIcon MakeFrameGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
-    const glass::ShellTokens s = glass::Shell();
+    const theme::ShellTokens s = theme::Shell();
     const QRectF card(r.left() + 1.5, r.top() + 3.5, r.width() - 3,
                       r.height() - 7);
     p.setPen(QPen(s.accent, 1.2));

@@ -7,7 +7,7 @@
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/displays/tree.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 #include <algorithm>
 
@@ -117,10 +117,10 @@ void StyleTreeCellEditor(QWidget* editor) {
           "QAbstractSpinBox QLineEdit:focus, QComboBox QLineEdit:focus {"
           "  border: none; outline: none;"
           "}")
-          .arg(glass::Hex(glass::Shell().border),
-               glass::Hex(glass::Shell().base),
-               glass::Hex(glass::Shell().text),
-               glass::Hex(glass::Shell().accent)));
+          .arg(theme::Hex(theme::Shell().border),
+               theme::Hex(theme::Shell().base),
+               theme::Hex(theme::Shell().text),
+               theme::Hex(theme::Shell().accent)));
   if (auto* spin = qobject_cast<QAbstractSpinBox*>(editor)) {
     spin->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
     spin->setFrame(true);
@@ -259,8 +259,8 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
     painter->save();
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(Qt::NoPen);
-    painter->setBrush(selected ? glass::ShellSelectionFill()
-                               : glass::ShellHoverFill());
+    painter->setBrush(selected ? theme::ShellSelectionFill()
+                               : theme::ShellHoverFill());
     painter->drawRoundedRect(QRectF(row).adjusted(0.5, 0.5, -0.5, -0.5), 6.0,
                              6.0);
     painter->restore();
@@ -277,8 +277,8 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(Qt::NoPen);
     {
-      QColor grip = selected ? glass::ShellSelectionInk()
-                             : glass::Shell().secondary_text;
+      QColor grip = selected ? theme::ShellSelectionInk()
+                             : theme::Shell().secondary_text;
       grip.setAlpha(selected ? 160 : 255);
       painter->setBrush(grip);
     }
@@ -327,8 +327,8 @@ void DisplayNameTreeDelegate::paint(QPainter* painter,
   }
   painter->save();
   painter->setFont(font);
-  painter->setPen(selected ? glass::ShellSelectionInk()
-                           : glass::Shell().text);
+  painter->setPen(selected ? theme::ShellSelectionInk()
+                           : theme::Shell().text);
   const QString label = index.data(Qt::DisplayRole).toString();
   painter->drawText(
       content.adjusted(2, 0, -2, 0),
@@ -385,7 +385,7 @@ void DisplayTreeDelegate::paint(QPainter* painter,
   cleared.icon = QIcon();
 
   {
-    const QColor ink = glass::Shell().text;
+    const QColor ink = theme::Shell().text;
     cleared.palette.setColor(QPalette::Text, ink);
     cleared.palette.setColor(QPalette::WindowText, ink);
   }
@@ -431,8 +431,8 @@ void DisplayTreeDelegate::paint(QPainter* painter,
   QRect text_rect = opt.rect;
   text_rect.setLeft(swatch_rect.right() + 6);
   painter->setPen(option.state.testFlag(QStyle::State_Selected)
-                      ? glass::ShellSelectionInk()
-                      : glass::Shell().text);
+                      ? theme::ShellSelectionInk()
+                      : theme::Shell().text);
   painter->drawText(text_rect, Qt::AlignVCenter | Qt::AlignLeft, rgb_text);
   painter->restore();
 }

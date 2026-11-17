@@ -32,6 +32,8 @@ const PanelCatalogEntry kPanelCatalog[] = {
     {"", "PanelTab", "Tab", "Tabbed panel container (not yet available)"},
     {"TeleopDock", "PanelTeleop", "Teleop",
      "Publish geometry_msgs/TwistStamped velocity commands (cmd_vel)"},
+    {"NavigationDock", "PanelNavigation", "Navigation",
+     "AB-point NavigateToPose and multi-point NavigateThroughPoses / waypoint following"},
     {"ChannelGraphDock", "PanelChannelGraph", "Channel Graph",
      "Visualize Autolink node, channel, and service topology"},
     {"EvidenceDock", "PanelEvidence", "Evidence",

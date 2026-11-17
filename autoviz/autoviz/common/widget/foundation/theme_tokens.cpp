@@ -11,7 +11,7 @@
 #include <QWidget>
 #include <QtMath>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz::widget {
 namespace {
@@ -116,38 +116,6 @@ ThemeAppearance SystemAppearance() {
       QGuiApplication::palette().color(QPalette::Window));
 }
 
-void DeriveDarkAppearance(ThemeTokens* tokens, style::Tone tone) {
-  // UIKit dark appearance uses explicit dynamic layers. Deriving dark colors
-  // from the light palette produces muddy intermediate grays and loses the
-  // clear grouped-background hierarchy.
-  tokens->window = QColor(0, 0, 0);
-  tokens->surface = QColor(28, 28, 30);
-  tokens->surface_raised = QColor(44, 44, 46);
-  tokens->text = QColor(242, 242, 247);
-  tokens->text_muted = QColor(174, 174, 178);
-  tokens->accent = QColor(0xA8, 0xC9, 0x4A);
-  tokens->accent_pressed = QColor(0x8F, 0xB0, 0x3A);
-  tokens->on_accent = QColor(Qt::black);
-  tokens->accent_filled = QColor(0x5B, 0x7A, 0x1E);
-  tokens->accent_filled_hovered = QColor(0x4A, 0x64, 0x18);
-  tokens->accent_filled_pressed = QColor(0x3D, 0x54, 0x14);
-  tokens->on_accent_filled = QColor(Qt::white);
-  tokens->border = QColor(72, 72, 74);
-  tokens->info = tokens->accent;
-  tokens->success = QColor(48, 209, 88);
-  tokens->warning = QColor(255, 159, 10);
-  tokens->danger = QColor(255, 69, 58);
-  tokens->danger_filled = QColor(215, 0, 21);
-  tokens->danger_filled_hovered = QColor(204, 0, 20);
-  tokens->danger_filled_pressed = QColor(184, 0, 18);
-  tokens->on_danger_filled = QColor(Qt::white);
-  tokens->disabled = QColor(99, 99, 102);
-  if (tone == style::Tone::Frost) {
-    tokens->surface = Blend(tokens->accent, tokens->surface, 10);
-    tokens->surface_raised = Blend(tokens->accent, tokens->surface_raised, 8);
-  }
-}
-
 void ResolveSemanticRoles(ThemeTokens* tokens, ThemeAppearance appearance) {
   const QColor themed_accent_pressed = tokens->accent_pressed;
   const QColor opaque_window = CompositeOver(tokens->window, QColor(Qt::white));
@@ -227,7 +195,7 @@ void ResolveSemanticRoles(ThemeTokens* tokens, ThemeAppearance appearance) {
   tokens->disabled = Blend(tokens->text, tokens->surface, 74);
 }
 
-void SeedFromShell(ThemeTokens* tokens, const glass::ShellTokens& shell,
+void SeedFromShell(ThemeTokens* tokens, const theme::ShellTokens& shell,
                    style::Tone tone) {
   tokens->window = shell.window;
   tokens->surface = shell.card;
@@ -256,29 +224,28 @@ void SeedFromShell(ThemeTokens* tokens, const glass::ShellTokens& shell,
     tokens->surface = Blend(tokens->accent, tokens->surface, 5);
     tokens->surface_raised = Blend(tokens->accent, tokens->surface_raised, 3);
   }
-  if (glass::ShellIsLiquid()) {
-    tokens->radius_small = qMax(8, shell.control_radius - 2);
-    tokens->radius_medium = shell.control_radius;
-    tokens->radius_large = shell.panel_radius;
-  }
 }
 
 ThemeTokens BuildTokens(style::Tone tone, ThemeAppearance appearance) {
   ThemeTokens result;
-  // Bridge Autoviz widget kit ↔ glass Shell (Liquid / Light / Dark) so every
-  // self-painted control follows qt-liquid-glass chrome when selected.
+  // Bridge Autoviz widget kit ↔ live flat Shell (Dark / Light / System).
   if (appearance == ThemeAppearance::kDark) {
-    SeedFromShell(&result, glass::Shell(), tone);
-    // When the live shell is Liquid/Light, still synthesize a dark kit for
-    // explicitly dark subtrees (tests / nested dark hosts).
-    if (!glass::ShellIsDark()) {
-      DeriveDarkAppearance(&result, tone);
+    SeedFromShell(&result, theme::Shell(), tone);
+    if (!theme::ShellIsDark()) {
+      // Explicit dark kit while live shell is light — synthesize charcoal.
+      result.window = QColor(0, 0, 0);
+      result.surface = QColor(28, 28, 30);
+      result.surface_raised = QColor(44, 44, 46);
+      result.text = QColor(242, 242, 247);
+      result.text_muted = QColor(174, 174, 178);
+      result.border = QColor(72, 72, 74);
+      result.disabled = QColor(99, 99, 102);
     }
-  } else if (glass::ShellIsLiquid() || !glass::ShellIsDark()) {
-    SeedFromShell(&result, glass::Shell(), tone);
+  } else if (!theme::ShellIsDark()) {
+    SeedFromShell(&result, theme::Shell(), tone);
   } else {
-    // Live shell is dark but caller asked for light — use default light plate.
-    SeedFromShell(&result, glass::ShellTokens{}, tone);
+    // Live shell is dark but caller asked for light — use light flat defaults.
+    SeedFromShell(&result, theme::ShellTokens{}, tone);
   }
   ResolveSemanticRoles(&result, appearance);
   return result;

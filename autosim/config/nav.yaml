@@ -20,7 +20,7 @@ habitat:
   #   scene_id: 8WUmhLawc2A/8WUmhLawc2A.glb
   #
   # Mode 2 (default): direct .glb — auto-installs dataset config in the scene parent.
-  path: /workspace/autonomy/src/29hnd4uzFmX/29hnd4uzFmX.glb
+  path: /workspace/autonomy/src/jtcxE69GiFV/jtcxE69GiFV.glb
   # Procedural mockamap (no GLB): use config/fake.yaml instead.
   # Dynamic pedestrians (CPU SFM) + optional SMPL-X visuals: see habitat_people.yaml
   # and docs/14_habitat_humanoids.md. Off by default so plain GLB demos stay light.

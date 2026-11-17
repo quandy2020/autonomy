@@ -95,6 +95,8 @@ void OgreMaterialManager::ensureDefaultMaterials() {
     Ogre::Pass* pass = overlay_line->getTechnique(0)->getPass(0);
     pass->setDepthCheckEnabled(false);
     pass->setDepthWriteEnabled(false);
+    // Grid / Path overlays use vertex alpha (default Grid alpha=0.5).
+    pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
   }
 }
 

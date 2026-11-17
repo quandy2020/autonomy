@@ -29,7 +29,7 @@
 #include <cmath>
 
 #include "autoviz/ui/map/map_toolbar.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace map {
@@ -742,7 +742,7 @@ void MapViewportWidget::drawLayers(QPainter* painter) {
 
 void MapViewportWidget::paintEvent(QPaintEvent* /*event*/) {
   QPainter painter(this);
-  const glass::OverlayTokens overlay = glass::Overlay();
+  const theme::OverlayTokens overlay = theme::Overlay();
   painter.fillRect(rect(), QColor(overlay.fill.red(), overlay.fill.green(),
                                   overlay.fill.blue(), 255));
 
@@ -792,7 +792,7 @@ void MapViewportWidget::drawScaleBar(QPainter* painter) const {
                  width() * 0.45);
   const QString label =
       use_feet ? FormatScaleFeet(chosen) : FormatScaleMeters(chosen);
-  const glass::OverlayTokens g = glass::Overlay();
+  const theme::OverlayTokens g = theme::Overlay();
 
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
@@ -1249,7 +1249,7 @@ void MapViewportWidget::fitToLayers(const QVector<MapRenderLayerSnapshot>& fit_l
 }
 
 void MapViewportWidget::drawCompass(QPainter* painter) const {
-  const glass::OverlayTokens g = glass::Overlay();
+  const theme::OverlayTokens g = theme::Overlay();
   const QPointF center(34.0, 34.0);
   constexpr double kRadius = 15.0;
   painter->save();
@@ -1296,7 +1296,7 @@ void MapViewportWidget::drawAttributeCard(QPainter* painter) const {
     rows << tr("+%1").arg(info.attributes.size() - shown);
   }
 
-  const glass::OverlayTokens g = glass::Overlay();
+  const theme::OverlayTokens g = theme::Overlay();
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
   QFont title_font = painter->font();
@@ -1381,7 +1381,7 @@ void MapViewportWidget::drawAttribution(QPainter* painter) const {
   if (text.isEmpty()) {
     return;
   }
-  const glass::OverlayTokens g = glass::Overlay();
+  const theme::OverlayTokens g = theme::Overlay();
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
   QFont font = painter->font();
@@ -1438,7 +1438,7 @@ void MapViewportWidget::drawPlan(QPainter* painter) const {
   if (painter == nullptr) {
     return;
   }
-  const glass::OverlayTokens g = glass::Overlay();
+  const theme::OverlayTokens g = theme::Overlay();
   const QColor route(g.accent.red(), g.accent.green(), g.accent.blue(), 230);
   const QColor fence(251, 146, 60, 220);
   painter->save();
@@ -1992,7 +1992,7 @@ void MapViewportWidget::drawHoverPreview(QPainter* painter) const {
     return;
   }
   const QPointF cursor = latLonToScreen(hover_lat_lon_.x(), hover_lat_lon_.y());
-  const glass::OverlayTokens g = glass::Overlay();
+  const theme::OverlayTokens g = theme::Overlay();
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
 

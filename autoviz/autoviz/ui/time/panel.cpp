@@ -45,8 +45,10 @@ QWidget* MakeMetricChip(const QString& caption, QLineEdit* value,
 
 TimePanel::TimePanel(common::VisualizationManager* manager, QWidget* parent)
     : QWidget(parent), manager_(manager) {
-  ApplyPanelShell(this);
+  // objectName before ApplyPanelShell — #Time/TimePanel needs escaping / attr
+  // selector (set after shell used to log "Could not parse stylesheet").
   setObjectName(QStringLiteral("Time/TimePanel"));
+  ApplyPanelShell(this);
 
   sim_time_label_ = makeTimeLabel();
   sim_elapsed_label_ = makeTimeLabel();

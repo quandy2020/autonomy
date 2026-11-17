@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <limits>
 #include <string>
 #include <thread>
@@ -28,6 +29,7 @@
 #include "autolink/node/node.hpp"
 #include "autolink/plugin_manager/plugin_manager.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
 #include "autonomy/common/time.hpp"
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>
@@ -53,6 +55,7 @@
 #include "autonomy/planning/planner/dijkstra/dijkstra_planner.hpp"
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 #include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
+#include "autonomy/planning/planner/vista/vista_planner.hpp"
 #include "autonomy/planning/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
@@ -75,6 +78,7 @@ const std::unordered_map<std::string, std::string>& PlannerClassAliases() {
         {"navfn_planner", "NavfnPlanner"},
         {"dijkstra_planner", "DijkstraPlanner"},
         {"theta_star_planner", "ThetaStarPlanner"},
+        {"vista_planner", "VistaPlanner"},
     };
     return kAliases;
 }
@@ -118,6 +122,7 @@ void LoadExternalPlugins(const proto::PlannerOptions& options) {
     pm->RegisterInProcessClass<common::GlobalPlanner>("NavfnPlanner");
     pm->RegisterInProcessClass<common::GlobalPlanner>("DijkstraPlanner");
     pm->RegisterInProcessClass<common::GlobalPlanner>("ThetaStarPlanner");
+    pm->RegisterInProcessClass<common::GlobalPlanner>("VistaPlanner");
     for (const auto& path : options.planner_plugin_libraries()) {
         if (path.empty()) {
             continue;
@@ -155,6 +160,9 @@ common::GlobalPlanner::SharedPtr CreatePlannerInstance(
         return std::make_shared<planner::theta_star::ThetaStarPlanner>(
             options, id, costmap);
     }
+    if (resolved == "VistaPlanner") {
+        return std::make_shared<planner::vista::VistaPlanner>(options, id, costmap);
+    }
     auto instance = PluginPm::Instance()->CreateInstance<common::GlobalPlanner>(
         resolved);
     if (!instance) {
@@ -172,6 +180,103 @@ void NormalizePoseFrame(automsgs::msgs::geometry_msgs::PoseStamped& pose,
         AWARN << "Pose has empty frame_id; assuming costmap global frame '"
               << global_frame << "'";
         pose.mutable_header()->set_frame_id(global_frame);
+    }
+}
+
+// Spiral-search a free cell (cost < inscribed) around an occupied start so
+// NavFn is not asked to propagate from a 1-cell hole inside a wall.
+bool FindNearestFreeCell(map::costmap_2d::Costmap2D* grid, unsigned int mx,
+                         unsigned int my, unsigned int max_r, unsigned int* ox,
+                         unsigned int* oy) {
+    const int size_x = static_cast<int>(grid->getSizeInCellsX());
+    const int size_y = static_cast<int>(grid->getSizeInCellsY());
+    auto is_free = [&](int x, int y) {
+        if (x < 0 || y < 0 || x >= size_x || y >= size_y) {
+            return false;
+        }
+        return grid->getCost(static_cast<unsigned int>(x),
+                             static_cast<unsigned int>(y)) <
+               map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+    };
+    if (is_free(static_cast<int>(mx), static_cast<int>(my))) {
+        *ox = mx;
+        *oy = my;
+        return true;
+    }
+    for (unsigned int r = 1; r <= max_r; ++r) {
+        const int ir = static_cast<int>(r);
+        for (int dx = -ir; dx <= ir; ++dx) {
+            const int x = static_cast<int>(mx) + dx;
+            if (is_free(x, static_cast<int>(my) - ir)) {
+                *ox = static_cast<unsigned int>(x);
+                *oy = static_cast<unsigned int>(static_cast<int>(my) - ir);
+                return true;
+            }
+            if (is_free(x, static_cast<int>(my) + ir)) {
+                *ox = static_cast<unsigned int>(x);
+                *oy = static_cast<unsigned int>(static_cast<int>(my) + ir);
+                return true;
+            }
+        }
+        for (int dy = -ir + 1; dy <= ir - 1; ++dy) {
+            const int y = static_cast<int>(my) + dy;
+            if (is_free(static_cast<int>(mx) - ir, y)) {
+                *ox = static_cast<unsigned int>(static_cast<int>(mx) - ir);
+                *oy = static_cast<unsigned int>(y);
+                return true;
+            }
+            if (is_free(static_cast<int>(mx) + ir, y)) {
+                *ox = static_cast<unsigned int>(static_cast<int>(mx) + ir);
+                *oy = static_cast<unsigned int>(y);
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+// Lethal start with no nearby free cell cannot be planned. Inscribed start is
+// projected onto free space when possible so the path begins outside the wall.
+void MaybeSnapOccupiedStart(
+    map::costmap_2d::Costmap2D* grid,
+    automsgs::msgs::geometry_msgs::PoseStamped& start) {
+    if (grid == nullptr) {
+        return;
+    }
+    unsigned int mx = 0;
+    unsigned int my = 0;
+    if (!grid->worldToMap(start.pose().position().x(),
+                          start.pose().position().y(), mx, my)) {
+        return;
+    }
+    const unsigned int cost = grid->getCost(mx, my);
+    if (cost < map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
+        return;
+    }
+    const double res = grid->getResolution();
+    const unsigned int max_r =
+        static_cast<unsigned int>(std::max(1.0, std::ceil(1.5 / std::max(res, 0.01))));
+    unsigned int ox = mx;
+    unsigned int oy = my;
+    if (FindNearestFreeCell(grid, mx, my, max_r, &ox, &oy)) {
+        double wx = 0.0;
+        double wy = 0.0;
+        grid->mapToWorld(ox, oy, wx, wy);
+        AINFO << "nav plan snap_start from="
+              << ::autonomy::common::NavXY{start.pose().position().x(),
+                                           start.pose().position().y()}
+              << " free=" << ::autonomy::common::NavXY{wx, wy}
+              << " cost=" << cost;
+        start.mutable_pose()->mutable_position()->set_x(wx);
+        start.mutable_pose()->mutable_position()->set_y(wy);
+        return;
+    }
+    if (cost >= map::costmap_2d::LETHAL_OBSTACLE) {
+        AWARN << "nav plan start_occupied xy="
+              << ::autonomy::common::NavXY{start.pose().position().x(),
+                                           start.pose().position().y()}
+              << " cost=" << cost;
+        throw common::StartOccupied("Start is occupied");
     }
 }
 
@@ -269,8 +374,10 @@ PlannerServer::~PlannerServer() {
         smooth_path_server_.reset();
     }
     path_valid_service_.reset();
+    clear_costmap_service_.reset();
     map_reader_.reset();
     plan_writer_.reset();
+    correlated_plan_writer_.reset();
     if (costmap_wrapper_) {
         costmap_wrapper_->SetMapPublishCallback(nullptr);
     }
@@ -356,11 +463,31 @@ void PlannerServer::SetPathUpdateCallback(PathUpdateCallback callback) {
     path_update_callback_ = std::move(callback);
 }
 
-void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path) {
+common::GlobalPlanner::SharedPtr PlannerServer::GetPlanner(
+    const std::string& planner_id) const {
+    const auto& id = planner_id.empty() ? default_planner_id_ : planner_id;
+    const auto instance = planners_.find(id);
+    return instance == planners_.end() ? nullptr : instance->second;
+}
+
+void PlannerServer::PublishCorrelatedPlan(
+    const automsgs::msgs::nav_msgs::Path& path, const std::string& request_id) {
+    if (!correlated_plan_writer_) {
+        return;
+    }
+    nav_proto::CorrelatedPlan msg;
+    msg.set_request_id(request_id);
+    *msg.mutable_path() = path;
+    correlated_plan_writer_->Write(msg);
+}
+
+void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path,
+                               const std::string& request_id) {
+    PublishCorrelatedPlan(path, request_id);
     if (plan_writer_) {
         plan_writer_->Write(path);
-        AINFO_EVERY(25) << "PlannerServer: published " << path.poses_size()
-                        << " poses on " << kPlanTopicName
+        AINFO_EVERY(25) << "nav plan publish poses=" << path.poses_size()
+                        << " topic=" << kPlanTopicName
                         << " frame=" << path.header().frame_id();
     }
     if (path_update_callback_) {
@@ -373,23 +500,25 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     const std::string& planner_id, std::function<bool()> cancel_checker) {
     automsgs::msgs::nav_msgs::Path path;
-    AINFO_EVERY(10) << "Planning algorithm " << planner_id
-                    << " is trying to find a path from ("
-                    << start.pose().position().x() << ", "
-                    << start.pose().position().y() << ")"
-                    << " to (" << goal.pose().position().x() << ","
-                    << goal.pose().position().y() << ")";
+    automsgs::msgs::geometry_msgs::PoseStamped start_pose = start;
+    MaybeSnapOccupiedStart(costmap_, start_pose);
+    AINFO_EVERY(10) << "nav plan try planner=" << planner_id << " from="
+                    << ::autonomy::common::NavXY{start_pose.pose().position().x(),
+                                     start_pose.pose().position().y()}
+                    << " to="
+                    << ::autonomy::common::NavXY{goal.pose().position().x(),
+                                     goal.pose().position().y()};
 
     uint32_t return_code = 0;
     std::string resolved_planner_id = planner_id;
     if (planners_.find(planner_id) != planners_.end()) {
-        return_code = planners_[planner_id]->CreatePlan(start, goal, path,
+        return_code = planners_[planner_id]->CreatePlan(start_pose, goal, path,
                                                         cancel_checker);
     } else if (planners_.size() == 1 && planner_id.empty()) {
         resolved_planner_id = planners_.begin()->first;
         AWARN << "No planner specified; using " << resolved_planner_id;
         return_code = planners_[resolved_planner_id]->CreatePlan(
-            start, goal, path, cancel_checker);
+            start_pose, goal, path, cancel_checker);
     } else {
         throw common::InvalidPlanner("Planner id " + planner_id +
                                      " is invalid. Available: " +
@@ -458,10 +587,9 @@ bool PlannerServer::ValidatePath(
     const automsgs::msgs::geometry_msgs::PoseStamped& curr_goal,
     const automsgs::msgs::nav_msgs::Path& path, const std::string& planner_id) {
     if (path.poses().empty()) {
-        AWARN << "Planning algorithm " << planner_id
-              << " failed to generate a valid path to ("
-              << curr_goal.pose().position().x() << ", " << curr_goal.pose().position().y()
-              << ")";
+        AWARN << "nav plan empty planner=" << planner_id << " to="
+              << ::autonomy::common::NavXY{curr_goal.pose().position().x(),
+                               curr_goal.pose().position().y()};
         return false;
     }
 
@@ -470,17 +598,16 @@ bool PlannerServer::ValidatePath(
     // plans (start and goal both in gray) and aborted /compute_path_to_pose.
     if (!IsPathValid(path, map::costmap_2d::LETHAL_OBSTACLE,
                      /*consider_unknown_as_obstacle=*/false)) {
-        AWARN_EVERY(10) << "Planning algorithm " << planner_id
-                        << " path collides with costmap obstacles toward ("
-                        << curr_goal.pose().position().x() << ", "
-                        << curr_goal.pose().position().y() << ")";
+        AWARN_EVERY(10) << "nav plan collide planner=" << planner_id << " to="
+                        << ::autonomy::common::NavXY{curr_goal.pose().position().x(),
+                                         curr_goal.pose().position().y()};
         return false;
     }
 
-    AINFO_EVERY(10) << "Found valid path of size " << path.poses_size() << " to ("
-                    << curr_goal.pose().position().x() << ", "
-                    << curr_goal.pose().position().y()
-                    << ")";
+    AINFO << "nav plan ok planner=" << planner_id
+          << " poses=" << path.poses_size() << " to="
+          << ::autonomy::common::NavXY{curr_goal.pose().position().x(),
+                           curr_goal.pose().position().y()};
     return true;
 }
 
@@ -527,7 +654,9 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
         const auto& position = path.poses(i).pose().position();
         const float dist_from_robot = static_cast<float>(utils::EuclideanDistance(
             current_point, position));
-        if (dist_from_robot < 0.40f) {
+        // Occupied cells under the robot (start in inflation) are skipped so a
+        // valid free-space remainder can still be accepted.
+        if (dist_from_robot < 0.60f) {
             continue;
         }
         if (use_radius) {

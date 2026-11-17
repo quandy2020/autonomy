@@ -92,6 +92,7 @@
 #include "autoviz/ui/table/table_config_io.hpp"
 #include "autoviz/ui/table/table_panel.hpp"
 #include "autoviz/ui/teleop/teleop_panel.hpp"
+#include "autoviz/ui/navigation/navigation_panel.hpp"
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/record/record_panel.hpp"
@@ -107,7 +108,6 @@
 #include "autoviz/ui/service/service_panel.hpp"
 #include "autoviz/ui/time/panel.hpp"
 #include "autoviz/ui/panel/name_map.hpp"
-#include "autoviz/ui/viewport_toolbar.hpp"
 #include "autoviz/ui/viewport_hud.hpp"
 #include "autoviz/ui/views/panel.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
@@ -538,11 +538,12 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
           frame_->session_->markConfigModified();
           return;
         }
+        // Keep center_dock_drag_count_ until after finish so visibilityChanged
+        // from show/reparent cannot scheduleTileCenterPanels mid-snap.
+        frame_->layout_->finishMainPanelDrag(dock, global_pos);
         if (frame_->layout_->center_dock_drag_count_ > 0) {
           --frame_->layout_->center_dock_drag_count_;
         }
-        // Edge drop into another main panel (adaptive splitter layout).
-        frame_->layout_->finishMainPanelDrag(dock, global_pos);
         frame_->layout_->syncCenterLayout();
         frame_->session_->markConfigModified();
       });
@@ -632,11 +633,9 @@ void FramePanels::registerPanelDock(PanelDockWidget* dock) {
         if (frame_->viewport_ == nullptr) {
           return;
         }
-        frame_->viewport_->forEachViewportPanel(
-            [this](ViewportPanelEntry& entry) {
-              frame_->viewport_->reinstallRenderWindowInEntry(entry);
-            });
-        frame_->viewport_->requestViewportUpdate();
+        // Park marked needs_gl_recreate — recreate on settle, not rebind-only
+        // (rebind left transparent 3D Views after close / Panels retile).
+        frame_->viewport_->scheduleSettleReinstallAll(48);
       };
 
       if (drop_duplicate && dock_guard) {
@@ -1994,6 +1993,31 @@ void FramePanels::wireTeleopPanel(PanelDockWidget* dock,
             }
             setActiveTeleopPanel(fallback);
           });
+}
+
+PanelDockWidget* FramePanels::createNavigationPanelDock(
+    const QString& object_name) {
+  if (navigation_dock_ != nullptr &&
+      (object_name.isEmpty() ||
+       object_name == QLatin1String("NavigationDock"))) {
+    return navigation_dock_;
+  }
+  const QString dock_name = object_name.isEmpty()
+                                ? QStringLiteral("NavigationDock")
+                                : object_name;
+  auto* dock = new PanelDockWidget(frame_->tr("Navigation"), frame_);
+  dock->setObjectName(dock_name);
+  dock->setProperty("panelTypeId", QStringLiteral("NavigationDock"));
+  dock->setPanelIcon(IconLoader::panelIcon(QStringLiteral("PanelNavigation")));
+  auto* panel = new navigation::NavigationPanel(frame_->manager_.get(), dock);
+  panel->installTitleBarTools(dock);
+  dock->setContentWidget(panel);
+  frame_->layout_->configureSidebarDock(dock, Qt::RightDockWidgetArea);
+  registerPanelDock(dock);
+  if (dock_name == QLatin1String("NavigationDock")) {
+    navigation_dock_ = dock;
+  }
+  return dock;
 }
 
 PanelDockWidget* FramePanels::createTeleopPanelDock(

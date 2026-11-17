@@ -4,6 +4,9 @@
 
 #include "autonomy/task/navigation/navigation_client.hpp"
 #include "autonomy/task/behavior_tree/blackboard_client.hpp"
+#include "autonomy/task/navigation/path_update.hpp"
+#include "autonomy/transform/buffer.hpp"
+#include <automsgs/msgs/time_utils.hpp>
 
 #include "autonomy/common/logging.hpp"
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
@@ -22,12 +25,24 @@
 #include "behaviortree_cpp/tree_node.h"
 
 #include <cmath>
+#include <random>
+#include <sstream>
 #include <thread>
 
 namespace autonomy {
 namespace task {
 namespace navigation {
 namespace {
+
+// Legacy synchronous callers also cancel late acceptance on every exit. BT
+// nodes use AsyncPathActionNode and never enter these polling waits.
+template <typename CancellationT>
+struct CancelPlanningOnExit {
+    std::shared_ptr<CancellationT> cancellation;
+    ~CancelPlanningOnExit() {
+        try { if (cancellation) cancellation->RequestCancel(); } catch (...) {}
+    }
+};
 
 constexpr int kErrorNoServer = 1;
 constexpr int kErrorRemoteCallFailed = 2;
@@ -49,6 +64,11 @@ void SetError(int* error_code, std::string* error_message, int code,
 NavigationClient::NavigationClient(std::shared_ptr<autolink::Node> node)
     : node_(std::move(node))
 {
+    std::random_device entropy;
+    std::ostringstream prefix;
+    prefix << std::hex;
+    for (int i = 0; i < 4; ++i) prefix << entropy() << '-';
+    request_prefix_ = prefix.str();
     compute_path_client_ =
         std::make_shared<common::TaskActionClient<navigation_actions::ComputePathToPoseAction>>(
             node_, kComputePathToPoseAction);
@@ -77,55 +97,46 @@ NavigationClient::NavigationClient(std::shared_ptr<autolink::Node> node)
                             navigation_services::ClearEntireCostmap_Response>(
             kClearGlobalCostmapService);
 
-    plan_reader_ = node_->CreateReader<automsgs::msgs::nav_msgs::Path>(
-        kPlanTopicName,
-        [this](const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan) {
-            OnPlan(plan);
+    const std::weak_ptr<PlanMailbox> mailbox = plan_mailbox_;
+    plan_reader_ = node_->CreateReader<navigation_actions::CorrelatedPlan>(
+        "/plan_result", [mailbox](const std::shared_ptr<navigation_actions::CorrelatedPlan>& plan) {
+            if (!plan || plan->request_id().empty() || plan->path().poses().empty()) return;
+            if (auto state = mailbox.lock()) {
+                std::lock_guard<std::mutex> lock(state->mutex);
+                state->latest = *plan;
+                state->received = std::chrono::steady_clock::now();
+            }
         });
 }
 
-void NavigationClient::OnPlan(
-    const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan)
+NavigationClient::~NavigationClient()
 {
-    if (!plan || plan->poses().empty()) {
-        return;
-    }
-    std::lock_guard<std::mutex> lock(plan_mutex_);
-    latest_plan_ = *plan;
-    latest_plan_time_ = std::chrono::steady_clock::now();
-    ++plan_epoch_;
+    plan_reader_.reset();
+    try { CancelActiveMotion(); } catch (const std::exception&) {}
+}
+
+std::string NavigationClient::NewPlanRequestId()
+{
+    return request_prefix_ + std::to_string(++next_plan_request_);
 }
 
 bool NavigationClient::TryTakePublishedPlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
     std::chrono::steady_clock::time_point not_before,
-    automsgs::msgs::nav_msgs::Path& path, uint64_t min_epoch) const
+    automsgs::msgs::nav_msgs::Path& path, const std::string& request_id, bool validate) const
 {
-    const double gx = goal.pose().position().x();
-    const double gy = goal.pose().position().y();
-    std::lock_guard<std::mutex> lock(plan_mutex_);
-    if (latest_plan_.poses().empty()) {
-        return false;
+    automsgs::msgs::nav_msgs::Path candidate;
+    {
+        std::lock_guard<std::mutex> lock(plan_mailbox_->mutex);
+        const auto& latest = plan_mailbox_->latest;
+        if (request_id.empty() || latest.request_id() != request_id ||
+            plan_mailbox_->received < not_before || latest.path().poses().empty()) return false;
+        candidate = latest.path();
     }
-    // min_epoch>0: wait for a *new* /plan (SmoothPath) so we do not pick up
-    // the unsmoothed ComputePath publish that just happened.
-    if (min_epoch > 0) {
-        if (plan_epoch_ <= min_epoch) {
-            return false;
-        }
-    } else {
-        const auto grace_before =
-            not_before - std::chrono::milliseconds(750);
-        if (latest_plan_time_ < grace_before) {
-            return false;
-        }
-    }
-    const auto& end =
-        latest_plan_.poses(latest_plan_.poses_size() - 1).pose().position();
-    if (std::hypot(end.x() - gx, end.y() - gy) >= 0.75) {
-        return false;
-    }
-    path = latest_plan_;
+    if (candidate.header().frame_id() != goal.header().frame_id() ||
+        !SameGoalPose(candidate.poses(candidate.poses_size()-1), goal, 0.25, 0.10) ||
+        (validate && !IsPathValid(candidate, 254, false))) return false;
+    path = std::move(candidate);
     return true;
 }
 
@@ -185,8 +196,17 @@ bool NavigationClient::ComputePathToPose(
     // before SucceededCurrent. Failed plans abort immediately and never
     // publish /plan — do not wait 10s for that.
     const uint64_t generation = plan_wait_generation_.load();
+    const auto request_id = NewPlanRequestId();
+    remote_goal.set_request_id(request_id);
     const auto sent_at = std::chrono::steady_clock::now();
-    auto accept_future = compute_path_client_->AsyncSendGoal(remote_goal);
+    using PlanningClient = common::TaskActionClient<navigation_actions::ComputePathToPoseAction>;
+    auto cancellation = compute_path_client_->MakeGoalCancellation();
+    CancelPlanningOnExit<PlanningClient::GoalCancellation> cancel_on_exit{cancellation};
+    PlanningClient::SendGoalOptions send_options;
+    send_options.goal_response_callback = [cancellation](std::shared_ptr<PlanningClient::GoalHandle> handle) {
+        cancellation->OnAccepted(std::move(handle));
+    };
+    auto accept_future = compute_path_client_->AsyncSendGoal(remote_goal, send_options);
     const auto accept_deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(3);
     while (accept_future.wait_for(std::chrono::milliseconds(20)) !=
@@ -218,26 +238,32 @@ bool NavigationClient::ComputePathToPose(
                      "compute_path_to_pose superseded");
             return false;
         }
-        if (TryTakePublishedPlan(goal, sent_at, path)) {
-            AINFO_EVERY(10) << "ComputePathToPose: using /plan ("
+        if (TryTakePublishedPlan(goal, sent_at, path, request_id)) {
+            AINFO_EVERY(10) << "ComputePathToPose: using /plan_result ("
                             << path.poses_size() << " poses)";
-            return true;
+            return plan_wait_generation_.load() == generation;
         }
         if (result_future.wait_for(std::chrono::milliseconds(0)) ==
             std::future_status::ready) {
             try {
                 const auto wrapped = result_future.get();
                 if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
-                    wrapped.result && !wrapped.result->path().poses().empty()) {
+                    wrapped.result && wrapped.result->error_code() == 0 &&
+                    wrapped.result->request_id() == request_id &&
+                    !wrapped.result->path().poses().empty() &&
+                    wrapped.result->path().header().frame_id() == goal.header().frame_id() &&
+                    SameGoalPose(wrapped.result->path().poses(wrapped.result->path().poses_size()-1),
+                                 goal, 0.25, 0.10) &&
+                    IsPathValid(wrapped.result->path(), 254, false)) {
                     path = wrapped.result->path();
-                    return true;
+                    return plan_wait_generation_.load() == generation;
                 }
                 // Abort/collision: keep polling /plan until the deadline so a
                 // PublishPlan that raced TerminateCurrent is not dropped.
-                if (TryTakePublishedPlan(goal, sent_at, path)) {
-                    AINFO_EVERY(10) << "ComputePathToPose: using /plan ("
+                if (TryTakePublishedPlan(goal, sent_at, path, request_id)) {
+                    AINFO_EVERY(10) << "ComputePathToPose: using /plan_result ("
                                     << path.poses_size() << " poses)";
-                    return true;
+                    return plan_wait_generation_.load() == generation;
                 }
                 if (wrapped.result && !wrapped.result->error_msg().empty()) {
                     SetError(error_code, error_message, kErrorRemoteCallFailed,
@@ -257,7 +283,7 @@ bool NavigationClient::ComputePathToPose(
     }
 
     SetError(error_code, error_message, kErrorRemoteCallFailed,
-             "compute_path_to_pose produced no /plan");
+             "compute_path_to_pose produced no matching /plan_result");
     return false;
 }
 
@@ -286,12 +312,20 @@ bool NavigationClient::ComputePathThroughPoses(
         remote_goal.set_planner_id(planner_id);
     }
 
-    // Same pattern as ComputePathToPose: accept via /plan (PublishPlan runs
+    // Same pattern as ComputePathToPose: accept via /plan_result (PublishPlan runs
     // before SucceededCurrent; get_result often stalls on large paths).
     const uint64_t generation = plan_wait_generation_.load();
+    const auto request_id = NewPlanRequestId();
+    remote_goal.set_request_id(request_id);
     const auto sent_at = std::chrono::steady_clock::now();
-    auto accept_future =
-        compute_through_poses_client_->AsyncSendGoal(remote_goal);
+    using PlanningClient = common::TaskActionClient<navigation_actions::ComputePathThroughPosesAction>;
+    auto cancellation = compute_through_poses_client_->MakeGoalCancellation();
+    CancelPlanningOnExit<PlanningClient::GoalCancellation> cancel_on_exit{cancellation};
+    PlanningClient::SendGoalOptions send_options;
+    send_options.goal_response_callback = [cancellation](std::shared_ptr<PlanningClient::GoalHandle> handle) {
+        cancellation->OnAccepted(std::move(handle));
+    };
+    auto accept_future = compute_through_poses_client_->AsyncSendGoal(remote_goal, send_options);
     const auto accept_deadline =
         std::chrono::steady_clock::now() + std::chrono::seconds(3);
     while (accept_future.wait_for(std::chrono::milliseconds(20)) !=
@@ -323,19 +357,25 @@ bool NavigationClient::ComputePathThroughPoses(
                      "compute_path_through_poses superseded");
             return false;
         }
-        if (TryTakePublishedPlan(goals.back(), sent_at, path)) {
-            AINFO_EVERY(10) << "ComputePathThroughPoses: using /plan ("
+        if (TryTakePublishedPlan(goals.back(), sent_at, path, request_id)) {
+            AINFO_EVERY(10) << "ComputePathThroughPoses: using /plan_result ("
                             << path.poses_size() << " poses)";
-            return true;
+            return plan_wait_generation_.load() == generation;
         }
         if (result_future.wait_for(std::chrono::milliseconds(0)) ==
             std::future_status::ready) {
             try {
                 const auto wrapped = result_future.get();
                 if (wrapped.code == autolink::action::ResultCode::SUCCEEDED &&
-                    wrapped.result && !wrapped.result->path().poses().empty()) {
+                    wrapped.result && wrapped.result->error_code() == 0 &&
+                    wrapped.result->request_id() == request_id &&
+                    !wrapped.result->path().poses().empty() &&
+                    wrapped.result->path().header().frame_id() == goals.back().header().frame_id() &&
+                    SameGoalPose(wrapped.result->path().poses(wrapped.result->path().poses_size()-1),
+                                 goals.back(), 0.25, 0.10) &&
+                    IsPathValid(wrapped.result->path(), 254, false)) {
                     path = wrapped.result->path();
-                    return true;
+                    return plan_wait_generation_.load() == generation;
                 }
                 if (wrapped.result && !wrapped.result->error_msg().empty()) {
                     SetError(error_code, error_message, kErrorRemoteCallFailed,
@@ -355,7 +395,7 @@ bool NavigationClient::ComputePathThroughPoses(
     }
 
     SetError(error_code, error_message, kErrorRemoteCallFailed,
-             "compute_path_through_poses produced no /plan");
+             "compute_path_through_poses produced no matching /plan_result");
     return false;
 }
 
@@ -400,17 +440,21 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
     }
     remote_goal.set_check_for_collisions(check_for_collisions);
 
-    // Same /plan shortcut as ComputePath: get_result can stall on SHM.
+    // Same correlated-plan shortcut as ComputePath: get_result can stall on SHM.
     // Do not SendGoalAndWait(5s) — that blocked RateController / FollowPath
     // and made the global path look frozen behind the robot.
-    uint64_t epoch_before = 0;
-    {
-        std::lock_guard<std::mutex> lock(plan_mutex_);
-        epoch_before = plan_epoch_;
-    }
     const uint64_t generation = plan_wait_generation_.load();
+    const auto request_id = NewPlanRequestId();
+    remote_goal.set_request_id(request_id);
     const auto sent_at = std::chrono::steady_clock::now();
-    auto accept_future = smooth_path_client_->AsyncSendGoal(remote_goal);
+    using PlanningClient = common::TaskActionClient<navigation_actions::SmoothPathAction>;
+    auto cancellation = smooth_path_client_->MakeGoalCancellation();
+    CancelPlanningOnExit<PlanningClient::GoalCancellation> cancel_on_exit{cancellation};
+    PlanningClient::SendGoalOptions send_options;
+    send_options.goal_response_callback = [cancellation](std::shared_ptr<PlanningClient::GoalHandle> handle) {
+        cancellation->OnAccepted(std::move(handle));
+    };
+    auto accept_future = smooth_path_client_->AsyncSendGoal(remote_goal, send_options);
     const auto accept_deadline =
         std::chrono::steady_clock::now() + std::chrono::milliseconds(400);
     while (accept_future.wait_for(std::chrono::milliseconds(10)) !=
@@ -438,13 +482,18 @@ bool NavigationClient::SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmooth
                      "smooth_path superseded");
             return false;
         }
-        if (TryTakePublishedPlan(end_pose, sent_at, smoothed, epoch_before)) {
-            return true;
+        if (TryTakePublishedPlan(end_pose, sent_at, smoothed, request_id)) {
+            return plan_wait_generation_.load() == generation;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
     // Smoother kept the ComputePath polyline (no second /plan). Reuse it so
     // FollowPath can start without a 350ms abort that looked like a flash.
+    if (plan_wait_generation_.load() != generation || !IsPathValid(unsmoothed, 254, false)) {
+        SetError(error_code, error_message, kErrorRemoteCallFailed,
+                 "old smoothing input superseded or no longer safe");
+        return false;
+    }
     smoothed = unsmoothed;
     return true;
 }
@@ -454,7 +503,7 @@ bool NavigationClient::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
                                    bool consider_unknown_as_obstacle) const
 {
     if (!path_valid_client_) {
-        return !path.poses().empty();
+        return false;
     }
 
     auto request = std::make_shared<navigation_services::IsPathValid_Request>();
@@ -465,9 +514,20 @@ bool NavigationClient::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
     const auto response = path_valid_client_->SendRequest(request);
     if (!response) {
         AWARN << "NavigationClient: is_path_valid service call failed";
-        return !path.poses().empty();
+        return false;
     }
     return response->is_valid();
+}
+
+NavigationClient::PathValidationFuture NavigationClient::ValidatePathAsync(
+    const automsgs::msgs::nav_msgs::Path& path) const
+{
+    if (!path_valid_client_ || path.poses().empty()) return {};
+    auto request = std::make_shared<navigation_services::IsPathValid_Request>();
+    *request->mutable_path() = path;
+    request->set_max_cost(254);
+    request->set_consider_unknown_as_obstacle(false);
+    return path_valid_client_->AsyncSendRequest(request);
 }
 
 bool NavigationClient::ClearCostmap() const
@@ -489,13 +549,47 @@ bool NavigationClient::IsGoalReached(double distance_tolerance) const
     return distance <= static_cast<float>(distance_tolerance);
 }
 
-bool NavigationClient::TryGetDistanceToGoal(float* distance_to_goal) const
+bool NavigationClient::IsGoalReached(
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+    double distance_tolerance, double yaw_tolerance,
+    const std::string& robot_frame, double max_pose_age) const
 {
-    if (distance_to_goal == nullptr || !follow_session_.has_feedback()) {
+    if (!std::isfinite(distance_tolerance) || distance_tolerance < 0.0 ||
+        !std::isfinite(yaw_tolerance) || yaw_tolerance < 0.0 ||
+        !std::isfinite(max_pose_age) || max_pose_age <= 0.0 ||
+        goal.header().frame_id().empty() || robot_frame.empty()) return false;
+    auto* buffer = ::autonomy::transform::Buffer::Instance();
+    if (!buffer) return false;
+    try {
+        const auto transform = buffer->lookupTransform(
+            goal.header().frame_id(), robot_frame,
+            automsgs::msgs::builtin_interfaces::ZeroTime(), 0.0f);
+        const auto now = automsgs::msgs::builtin_interfaces::Now();
+        const auto& stamp = transform.header().stamp();
+        const double age = static_cast<double>(now.sec()) - stamp.sec() +
+                           (static_cast<double>(now.nanosec()) - stamp.nanosec())*1e-9;
+        if (stamp.nanosec() >= 1000000000U ||
+            (stamp.sec() == 0 && stamp.nanosec() == 0) ||
+            !std::isfinite(age) || age < -0.01 || age > max_pose_age) return false;
+        automsgs::msgs::geometry_msgs::PoseStamped robot;
+        *robot.mutable_header() = transform.header();
+        robot.mutable_pose()->mutable_position()->set_x(transform.transform().translation().x());
+        robot.mutable_pose()->mutable_position()->set_y(transform.transform().translation().y());
+        *robot.mutable_pose()->mutable_orientation() = transform.transform().rotation();
+        return SameGoalPose(robot, goal, distance_tolerance, yaw_tolerance);
+    } catch (const std::exception&) {
         return false;
     }
-    *distance_to_goal = follow_session_.latest_feedback().distance_to_goal();
-    return true;
+}
+
+bool NavigationClient::TryGetDistanceToGoal(float* distance_to_goal) const
+{
+    navigation_actions::FollowPathAction::Feedback feedback;
+    if (distance_to_goal == nullptr || !follow_session_.TryGetFeedback(&feedback)) {
+        return false;
+    }
+    *distance_to_goal = feedback.distance_to_goal();
+    return std::isfinite(*distance_to_goal) && *distance_to_goal >= 0.f;
 }
 
 void NavigationClient::CancelPlanning()

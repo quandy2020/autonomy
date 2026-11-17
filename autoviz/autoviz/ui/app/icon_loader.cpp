@@ -19,7 +19,7 @@
 
 #include "autoviz/common/display_status.hpp"
 #include "autoviz/ui/theme/application.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 
 namespace autoviz {
@@ -76,6 +76,7 @@ QString MapPanelResourceBase(const QString& panel_id) {
       {"PanelTransformTree", "panels/transform_tree"},
       {"PanelPublish", "panels/publish"},
       {"PanelTeleop", "panels/teleop"},
+      {"PanelNavigation", "panels/navigation"},
       {"PanelOperatorTools", "panels/teleop"},
       {"PanelService", "panels/service"},
       {"PanelChannelGraph", "panels/channel_graph"},
@@ -115,6 +116,7 @@ QString MapDockTypeIcon(const QString& dock_type_id) {
       {"EvidenceDock", "PanelEvidence"},
       {"ServiceDock", "PanelService"},
       {"TeleopDock", "PanelTeleop"},
+      {"NavigationDock", "PanelNavigation"},
       {"ChannelGraphDock", "PanelChannelGraph"},
       {"TfTreeDock", "PanelTransformTree"},
       {"OperatorToolsDock", "PanelOperatorTools"},
@@ -379,8 +381,8 @@ void AddMonochromeMenuSlices(QIcon& icon, const QImage& raw_mask, const QColor& 
                              qreal scale, bool white_when_on = false) {
   const QImage mask = NormalizeMenuMask(raw_mask, raw_mask.width());
   const QColor normal_ink =
-      ink.isValid() ? ink : glass::Shell().secondary_text;
-  const QColor active_ink = glass::ShellSelectionInk();
+      ink.isValid() ? ink : theme::Shell().secondary_text;
+  const QColor active_ink = theme::ShellSelectionInk();
 
   auto make_pm = [&](const QColor& color, int alpha) {
     QPixmap pm(QPixmap::fromImage(TintMaskSourceIn(mask, color, alpha)));

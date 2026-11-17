@@ -1,90 +1,61 @@
-/*
- * Copyright 2026 The Openbot Authors
- */
+/* Copyright 2026 The Openbot Authors */
 
 #include <cmath>
-
-#include "autonomy/common/logging.hpp"
-#include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
-#include "autonomy/task/navigation/plugins/plugin_utils.hpp"
+#include <cstdint>
+#include "autonomy/task/navigation/plugins/async_path_action_node.hpp"
 
 namespace autonomy::task::plugins::navigation {
-
-class ComputePathAction : public BtSyncAction
+namespace actions = automsgs::actions;
+class ComputePathAction : public AsyncPathActionNode<actions::ComputePathToPoseAction>
 {
 public:
-    ComputePathAction(const std::string& name, const BT::NodeConfig& config)
-        : BtSyncAction(name, config) {}
-
+    using AsyncPathActionNode::AsyncPathActionNode;
     static BT::PortsList providedPorts()
     {
         return {
             BT::InputPort<automsgs::msgs::geometry_msgs::PoseStamped>("goal"),
             BT::BidirectionalPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
+            BT::InputPort<double>("max_path_reuse_age", 2.0, "s"),
+            BT::OutputPort<uint64_t>("path_revision"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };
     }
-
 protected:
-    BT::NodeStatus OnExecute() override
+    Client& GetClient(NavClient& client) override { return client.compute_path_client(); }
+    bool BuildGoal(Goal& goal, Pose& endpoint) override
     {
-        auto client = ResolveClient(*this);
-        automsgs::msgs::geometry_msgs::PoseStamped goal;
-        std::string planner_id;
-        if (!getInput("goal", goal)) {
-            SetErrorPorts(*this, 1, "ComputePath: missing goal");
-            return BT::NodeStatus::FAILURE;
-        }
-        getInput("planner_id", planner_id);
-
-        automsgs::msgs::nav_msgs::Path path;
-        int error_code = 0;
-        std::string error_message;
-        if (!client->ComputePathToPose(goal, planner_id, path, &error_code,
-                                       &error_message)) {
-            // Keep following the last good path instead of aborting FollowPath
-            // / thrashing RecoveryNode on transient costmap collisions.
-            automsgs::msgs::nav_msgs::Path existing;
-            if (getInput("path", existing) && !existing.poses().empty()) {
-                const auto& end =
-                    existing.poses(existing.poses_size() - 1).pose().position();
-                if (std::hypot(end.x() - goal.pose().position().x(),
-                               end.y() - goal.pose().position().y()) < 0.75) {
-                    AWARN_EVERY(20)
-                        << "ComputePath failed (" << error_message
-                        << "); keeping previous path (" << existing.poses_size()
-                        << " poses)";
-                    ClearErrorPorts(*this);
-                    return BT::NodeStatus::SUCCESS;
-                }
-            }
-            SetErrorPorts(*this, error_code, error_message);
-            return BT::NodeStatus::FAILURE;
-        }
-        try {
-            setOutput("path", path);
-        } catch (const std::exception& ex) {
-            AERROR << "ComputePathToPose: setOutput(path) failed: " << ex.what()
-                   << " poses=" << path.poses_size();
-            SetErrorPorts(*this, 1, ex.what());
-            return BT::NodeStatus::FAILURE;
-        }
-        ClearErrorPorts(*this);
-        AINFO_EVERY(10) << "ComputePathToPose OK (" << path.poses_size()
-                        << " poses)";
-        return BT::NodeStatus::SUCCESS;
+        if (!getInput("goal", endpoint)) return false;
+        *goal.mutable_goal() = endpoint;
+        std::string planner;
+        getInput("planner_id", planner);
+        goal.set_planner_id(planner);
+        goal.set_use_start(false);
+        return true;
     }
+    void OutputPath(const Path& path, bool) override
+    {
+        Path previous;
+        const bool changed = output_epoch_ != GoalEpoch() || !getInput("path", previous) ||
+            (!previous.poses().empty() || !path.poses().empty()) &&
+            !::autonomy::task::navigation::EquivalentPathSuffix(previous, path);
+        if (changed) {
+            if (config().blackboard) config().blackboard->get("path_revision", path_revision_);
+            ++path_revision_;
+        }
+        setOutput("path", path);
+        setOutput("path_revision", path_revision_);
+        if (config().blackboard) config().blackboard->set("path_revision", path_revision_);
+        output_epoch_ = GoalEpoch();
+    }
+    uint64_t path_revision_{0};
+    int output_epoch_{-1};
 };
-
 }  // namespace autonomy::task::plugins::navigation
 
 BT_REGISTER_NODES(factory)
 {
-    factory.registerNodeType<
-        autonomy::task::plugins::navigation::ComputePathAction>("PlanPath");
-    factory.registerNodeType<
-        autonomy::task::plugins::navigation::ComputePathAction>(
-        "ComputePathToPose");
+    factory.registerNodeType<autonomy::task::plugins::navigation::ComputePathAction>("PlanPath");
+    factory.registerNodeType<autonomy::task::plugins::navigation::ComputePathAction>("ComputePathToPose");
 }

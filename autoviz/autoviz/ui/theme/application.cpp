@@ -30,7 +30,7 @@
 #include <QtGlobal>
 
 #include "autoviz/common/widget/foundation/theme_tokens.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/proxy.hpp"
 #include "autoviz/ui/theme/style.hpp"
@@ -43,7 +43,7 @@ namespace {
  * Overlay (3D HUD / floating tools) retains its viewport-specific palette.
  */
 
-QPalette BuildPaletteFromShell(const glass::ShellTokens& t) {
+QPalette BuildPaletteFromShell(const theme::ShellTokens& t) {
   QPalette palette;
   // Opaque roles only — translucent Window/Base make Fusion indicators vanish.
   QColor window = t.window;
@@ -82,9 +82,9 @@ QPalette BuildPaletteFromShell(const glass::ShellTokens& t) {
   return palette;
 }
 
-QString Hex(const QColor& c) { return glass::Hex(c); }
+QString Hex(const QColor& c) { return theme::Hex(c); }
 
-QString BuildPanelsMenuCheckboxIndicatorQss(const glass::ShellTokens& t,
+QString BuildPanelsMenuCheckboxIndicatorQss(const theme::ShellTokens& t,
                                             const QString& selector_prefix,
                                             bool dark) {
   Q_UNUSED(dark);
@@ -98,9 +98,9 @@ QString BuildPanelsMenuCheckboxIndicatorQss(const glass::ShellTokens& t,
   return style::sheet(QStringLiteral("menu"), tokens);
 }
 
-bool PreferDarkPanelsMenu() { return glass::ShellIsDark(); }
+bool PreferDarkPanelsMenu() { return theme::ShellIsDark(); }
 
-QString BuildShellStylesheet(const glass::ShellTokens& /*t*/) {
+QString BuildShellStylesheet(const theme::ShellTokens& /*t*/) {
   return style::sheet(QStringLiteral("theme"));
 }
 
@@ -117,22 +117,22 @@ void ApplyAppFont(QApplication& app) {
 
 }  // namespace
 
-QColor AppThemeAccentColor() { return glass::Shell().accent; }
+QColor AppThemeAccentColor() { return theme::Shell().accent; }
 
 QColor AppThemeSuggestedViewportBackground() { return QColor(48, 48, 48); }
 
-QPalette BuildThemePalette() { return BuildPaletteFromShell(glass::Shell()); }
+QPalette BuildThemePalette() { return BuildPaletteFromShell(theme::Shell()); }
 
 QString BuildAppThemeStylesheet() {
-  return BuildShellStylesheet(glass::Shell());
+  return BuildShellStylesheet(theme::Shell());
 }
 
 QString BuildPanelsMenuStylesheet() {
   return BuildPanelsMenuCheckboxIndicatorQss(
-      glass::Shell(), QStringLiteral("QMenu"), PreferDarkPanelsMenu());
+      theme::Shell(), QStringLiteral("QMenu"), PreferDarkPanelsMenu());
 }
 
-QColor PanelsMenuIconInk() { return glass::Shell().secondary_text; }
+QColor PanelsMenuIconInk() { return theme::Shell().secondary_text; }
 
 namespace {
 QPointer<QMenu> g_active_glass_menu;
@@ -154,16 +154,17 @@ void PrepareAppMenu(QMenu* menu) {
   menu->setProperty("autovizGlassMenu", true);
   // Clear stylesheet so ProxyStyle owns CE_MenuItem / PE_PanelMenu.
   menu->setStyleSheet(QString());
-  // Opaque rectangular popup chrome hides the glass round-rect corners.
-  menu->setAttribute(Qt::WA_TranslucentBackground, true);
-  menu->setAttribute(Qt::WA_NoSystemBackground, true);
-  menu->setAutoFillBackground(false);
-  menu->setWindowFlag(Qt::FramelessWindowHint, true);
+  // Flat opaque popup — no translucent window plate over the desktop.
+  menu->setAttribute(Qt::WA_TranslucentBackground, false);
+  menu->setAttribute(Qt::WA_NoSystemBackground, false);
+  menu->setAutoFillBackground(true);
+  menu->setWindowFlag(Qt::FramelessWindowHint, false);
   menu->setWindowFlag(Qt::NoDropShadowWindowHint, true);
   {
+    const theme::ShellTokens shell = theme::Shell();
     QPalette pal = menu->palette();
-    pal.setBrush(QPalette::Base, Qt::transparent);
-    pal.setBrush(QPalette::Window, Qt::transparent);
+    pal.setBrush(QPalette::Base, shell.panel_surface);
+    pal.setBrush(QPalette::Window, shell.panel_surface);
     menu->setPalette(pal);
   }
   QFont font = menu->font();
@@ -257,17 +258,39 @@ void PreparePanelsMenu(QMenu* menu) {
   PrepareAppMenu(menu);
 }
 
+void EnsureSystemColorSchemeWatch(QApplication& app) {
+  static bool wired = false;
+  if (wired) {
+    return;
+  }
+  wired = true;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
+  if (QStyleHints* hints = QGuiApplication::styleHints()) {
+    QObject::connect(hints, &QStyleHints::colorSchemeChanged, &app,
+                     [&app](Qt::ColorScheme) {
+                       if (theme::CurrentShellAppearance() !=
+                           theme::ShellAppearance::kSystem) {
+                         return;
+                       }
+                       RefreshAppThemeChrome(app);
+                     });
+  }
+#else
+  Q_UNUSED(app);
+#endif
+}
+
 void ApplyAppTheme(QApplication& app) {
   ApplyAppFont(app);
+  EnsureSystemColorSchemeWatch(app);
   QStyle* fusion = QStyleFactory::create(QStringLiteral("Fusion"));
   auto* proxy = new ProxyStyle(fusion);
   proxy->setParent(&app);
 
-  const glass::ShellTokens theme = glass::Shell();
+  const theme::ShellTokens theme = theme::Shell();
   proxy->setAccentColor(theme.accent);
   proxy->setSelectionBackground(theme.selection_bg);
-  proxy->setHoverBackground(glass::ShellIsLiquid() ? theme.accent_soft
-                                                   : theme.hover_bg);
+  proxy->setHoverBackground(theme.hover_bg);
   proxy->setMenuShortcutColor(theme.secondary_text);
   app.setStyle(proxy);
   app.setPalette(BuildPaletteFromShell(theme));
@@ -283,15 +306,14 @@ void ApplyAppTheme(QApplication& app) {
 
 void RefreshAppThemeChrome(QApplication& app) {
   widget::InvalidateThemeTokens();
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   const QPalette app_pal = BuildPaletteFromShell(shell);
   app.setPalette(app_pal);
   app.setStyleSheet(style::toolTipSheet());
   if (auto* proxy = qobject_cast<ProxyStyle*>(app.style())) {
     proxy->setAccentColor(shell.accent);
     proxy->setSelectionBackground(shell.selection_bg);
-    proxy->setHoverBackground(glass::ShellIsLiquid() ? shell.accent_soft
-                                                     : shell.hover_bg);
+    proxy->setHoverBackground(shell.hover_bg);
     proxy->setMenuShortcutColor(shell.secondary_text);
   }
 
@@ -317,7 +339,7 @@ void RefreshAppThemeChrome(QApplication& app) {
       pal.setColor(QPalette::ButtonText, shell.window_text);
       pal.setColor(QPalette::Text, shell.text);
       widget->setPalette(pal);
-      widget->setStyleSheet(glass::ShellMenuBarStyleSheet() +
+      widget->setStyleSheet(theme::ShellMenuBarStyleSheet() +
                             style::toolTipSheet());
     } else if (name == QLatin1String(AppThemeIds::kToolBar) ||
                qobject_cast<QToolBar*>(widget) != nullptr) {
@@ -326,10 +348,10 @@ void RefreshAppThemeChrome(QApplication& app) {
       pal.setColor(QPalette::ButtonText, shell.secondary_text);
       pal.setColor(QPalette::Text, shell.text);
       widget->setPalette(pal);
-      widget->setStyleSheet(glass::ShellToolBarStyleSheet(false) +
+      widget->setStyleSheet(theme::ShellToolBarStyleSheet(false) +
                             style::toolTipSheet());
     } else if (qobject_cast<QStatusBar*>(widget) != nullptr) {
-      widget->setStyleSheet(glass::ShellStatusBarStyleSheet() +
+      widget->setStyleSheet(theme::ShellStatusBarStyleSheet() +
                             style::toolTipSheet());
     } else if (name == QLatin1String(AppThemeIds::kPanelContent) ||
                name.endsWith(QLatin1String("Panel")) ||

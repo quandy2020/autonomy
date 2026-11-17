@@ -2,8 +2,8 @@
 
 /* @section time.metric_chip */
 QFrame#TimeMetricChip {
-  background: {{glass-fill}};
-  border: 1px solid {{glass-rim}};
+  background: {{panel-bg}};
+  border: 1px solid {{panel-border}};
   border-radius: 10px;
 }
 /* @end */
@@ -17,7 +17,6 @@ QLineEdit {
   min-height: 22px;
   font-size: 12px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 /* @end */
 
@@ -84,9 +83,9 @@ QTreeWidget::branch:selected:active {
 
 /* @section add_display.ghost_button */
 QPushButton {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
   padding: 0 16px;
   min-height: 40px;
@@ -95,7 +94,7 @@ QPushButton {
   outline: none;
 }
 QPushButton:hover {
-  background: {{glass-deep}};
+  background: {{panel-surface}};
   border-color: {{accent-soft}};
   color: {{accent}};
 }
@@ -110,9 +109,9 @@ QPushButton:focus {
 
 /* @section add_display.line_edit */
 QLineEdit {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
   padding: 0 36px 0 14px;
   min-height: 40px;
@@ -121,7 +120,7 @@ QLineEdit {
   selection-background-color: {{accent-soft}};
 }
 QLineEdit:focus {
-  background: {{glass-deep}};
+  background: {{panel-surface}};
   border: 1.5px solid {{accent}};
 }
 /* @end */
@@ -160,9 +159,9 @@ QPushButton:focus {
   outline: none;
 }
 QPushButton:disabled {
-  background: {{glass-deep}};
+  background: {{panel-surface}};
   color: {{muted}};
-  border-color: {{glass-rim}};
+  border-color: {{panel-border}};
 }
 /* @end */
 
@@ -415,7 +414,7 @@ QToolButton:checked {
 /* @section channel_graph.dialog_close */
 QPushButton {
   color: {{text}}; background: #FFFFFF;
-  border: 1px solid {{glass-rim}}; border-radius: 10px;
+  border: 1px solid {{panel-border}}; border-radius: 10px;
   padding: 5px 14px; font-size: 12px; font-weight: 600;
   outline: none;
 }
@@ -436,7 +435,7 @@ background: transparent; border: none;
 /* @section channel_graph.entry_row_divider */
 QFrame {
   background: transparent; border: none;
-  border-top: 1px solid {{glass-rim}};
+  border-top: 1px solid {{panel-border}};
 }
 /* @end */
 
@@ -461,7 +460,7 @@ padding: 4px 10px; font-size: 11px; font-weight: 700;
 /* @section channel_graph.metric_chip */
 QFrame#PropertyMetricChip {
   background: #FFFFFF;
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
 }
 /* @end */
@@ -478,9 +477,9 @@ background: transparent; border: none;
 
 /* @section channel_graph.property_dialog */
 QDialog#ChannelGraphPropertyDialog {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 14px;
 }
 QScrollArea {
@@ -491,23 +490,23 @@ QScrollArea {
 /* @section channel_graph.property_header */
 QFrame#ChannelGraphPropertyHeader {
   background: qlineargradient(x1:0,y1:0,x2:1,y2:1,
-    stop:0 {{header-start}}, stop:1 {{glass-deep}});
+    stop:0 {{header-start}}, stop:1 {{panel-surface}});
   border: none;
-  border-bottom: 1px solid {{glass-rim}};
+  border-bottom: 1px solid {{panel-border}};
 }
 /* @end */
 
 /* @section channel_graph.section_card */
 QFrame#PropertySectionCard {
   background: #FFFFFF;
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
 }
 /* @end */
 
 /* @section channel_graph.section_count */
-color: {{muted}}; background: {{glass-deep}};
-border: 1px solid {{glass-rim}}; border-radius: 9px;
+color: {{muted}}; background: {{panel-surface}};
+border: 1px solid {{panel-border}}; border-radius: 9px;
 padding: 2px 8px; font-size: 11px; font-weight: 600;
 /* @end */
 
@@ -913,7 +912,7 @@ font-weight: 600; font-size: 11px; color: {{accent}};
 /* @end */
 
 /* @section publish.action_vline */
-background: {{glass-rim}};
+background: {{panel-border}};
 /* @end */
 
 /* @section publish.advanced_check */
@@ -956,11 +955,11 @@ QTreeWidget::item:selected {
   border-radius: 6px;
 }
 QHeaderView::section {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{muted}};
   border: none;
-  border-bottom: 1px solid {{glass-rim}};
-  border-right: 1px solid {{glass-rim}};
+  border-bottom: 1px solid {{panel-border}};
+  border-right: 1px solid {{panel-border}};
   padding: 6px 10px;
   font-size: 11px;
   font-weight: 700;
@@ -979,24 +978,24 @@ QPushButton:disabled { color: {{muted}}; }
 
 /* @section publish.icon_chip_button */
 QPushButton {
-  background: {{glass-fill}}; color: {{text}};
-  border: 1px solid {{glass-rim}}; border-radius: 10px;
+  background: {{panel-bg}}; color: {{text}};
+  border: 1px solid {{panel-border}}; border-radius: 10px;
   font-size: 14px; font-weight: 700; padding: 0;
   outline: none;
 }
 QPushButton:hover {
-  background: {{glass-deep}}; color: {{accent}}; border-color: {{accent-soft}};
+  background: {{panel-surface}}; color: {{accent}}; border-color: {{accent-soft}};
 }
 QPushButton:pressed { background: {{accent-soft}}; }
 QPushButton:disabled {
-  color: {{muted}}; background: {{glass-fill}}; border-color: {{glass-rim}};
+  color: {{muted}}; background: {{panel-bg}}; border-color: {{panel-border}};
 }
 /* @end */
 
 /* @section publish.json_editor */
 QPlainTextEdit {
   background: {{editor-bg}}; color: {{text}};
-  border: 1px solid {{glass-rim}}; border-radius: 10px;
+  border: 1px solid {{panel-border}}; border-radius: 10px;
   padding: 8px;
   selection-background-color: {{accent-a22}};
 }
@@ -1007,18 +1006,18 @@ QWidget#PublishEditorContent {
   background: transparent; color: {{text}};
 }
 QFrame#PublishToolbar, QFrame#PublishCollectionBar {
-  background: {{glass-fill}};
-  border: 1px solid {{glass-rim}};
+  background: {{panel-bg}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
 }
 QFrame#PublishTreeCard {
-  background: {{glass-fill}};
-  border: 1px solid {{glass-rim}};
+  background: {{panel-bg}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
 }
 QGroupBox {
-  background: {{glass-fill}};
-  border: 1px solid {{glass-rim}};
+  background: {{panel-bg}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
   margin-top: 10px;
   padding: 14px 10px 10px 10px;
@@ -1032,9 +1031,9 @@ QGroupBox::title {
   color: {{muted}};
 }
 QTabWidget::pane {
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 10px;
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   top: -1px;
 }
 QTabBar::tab {
@@ -1067,14 +1066,14 @@ QPushButton {
 QPushButton:hover { background: {{btn-hover}}; border-color: {{btn-hover}}; }
 QPushButton:pressed { background: {{btn-bg}}; }
 QPushButton:disabled {
-  background: {{glass-deep}}; color: {{muted}}; border-color: {{glass-rim}};
+  background: {{panel-surface}}; color: {{muted}}; border-color: {{panel-border}};
 }
 /* @end */
 
 /* @section publish.toolbar_combo */
 QComboBox {
   background: #FFFFFF; color: {{text}};
-  border: 1px solid {{glass-rim}}; border-radius: 10px;
+  border: 1px solid {{panel-border}}; border-radius: 10px;
   padding: 2px 8px; min-height: 28px; max-height: 32px;
   font-size: 12px;
 }
@@ -1095,7 +1094,7 @@ QComboBox QLineEdit {
 }
 QComboBox QAbstractItemView {
   background: rgba(255,255,255,0.96); color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   selection-background-color: {{accent-a16}};
   selection-color: {{accent}};
   outline: none;
@@ -1105,7 +1104,7 @@ QComboBox QAbstractItemView {
 /* @section publish.toolbar_spin */
 QDoubleSpinBox {
   background: #FFFFFF; color: {{text}};
-  border: 1px solid {{glass-rim}}; border-radius: 10px;
+  border: 1px solid {{panel-border}}; border-radius: 10px;
   padding: 2px 6px; min-height: 28px; max-height: 32px;
   font-size: 12px;
 }
@@ -1118,8 +1117,8 @@ QDoubleSpinBox:focus {
 /* @section publish.empty_hint */
 QLabel {
   color: {{muted}};
-  background: {{glass-fill}};
-  border: 1px solid {{glass-rim}};
+  background: {{panel-bg}};
+  border: 1px solid {{panel-border}};
   border-radius: 12px;
   padding: 14px 18px;
   font-size: 12px;
@@ -1467,9 +1466,9 @@ QTabBar::tab:hover { color: {{panel-text}}; }
 
 /* @section views.frosted_footer */
 QFrame#ViewsFrostedFooter {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   border: none;
-  border-top: 1px solid {{glass-rim}};
+  border-top: 1px solid {{panel-border}};
 }
 /* @end */
 
@@ -1479,14 +1478,75 @@ color: {{muted}}; font-size: 11px; font-weight: 600; background: transparent;
 
 /* @section views.zero_button */
 QPushButton {
-  background: {{glass-fill}}; color: {{text}};
-  border: 1px solid {{glass-rim}}; border-radius: 8px;
+  background: {{panel-bg}}; color: {{text}};
+  border: 1px solid {{panel-border}}; border-radius: 8px;
   padding: 0 10px; min-height: 22px; max-height: 22px;
   font-weight: 600; font-size: 11px;
 }
 QPushButton:hover {
-  background: {{glass-deep}}; color: {{accent}};
+  background: {{panel-surface}}; color: {{accent}};
   border-color: {{accent-soft}};
 }
 QPushButton:pressed { background: {{accent-soft}}; }
+/* @end */
+
+/* @section navigation.panel_root */
+QWidget#NavigationPanelContent {
+  background: {{wash}};
+  color: {{text}};
+}
+/* @end */
+
+/* @section navigation.status_card */
+QFrame#NavigationStatusCard {
+  background: {{panel-surface}};
+  border: 1px solid {{panel-border}};
+  border-radius: 12px;
+}
+/* @end */
+
+/* @section navigation.metric_chip */
+QFrame#NavigationMetricChip {
+  background: {{panel-bg}};
+  border: 1px solid {{panel-border}};
+  border-radius: 10px;
+}
+/* @end */
+
+/* @section navigation.metric_caption */
+color: {{muted}};
+font-size: 10px;
+font-weight: 600;
+letter-spacing: 0.4px;
+background: transparent;
+/* @end */
+
+/* @section navigation.metric_value */
+color: {{text}};
+font-size: 14px;
+font-weight: 700;
+background: transparent;
+/* @end */
+
+/* @section navigation.pose_card */
+QFrame#NavigationPoseCard {
+  background: {{panel-surface}};
+  border: 1px solid {{panel-border}};
+  border-radius: 10px;
+}
+/* @end */
+
+/* @section navigation.pose_index */
+color: {{accent}};
+font-size: 11px;
+font-weight: 700;
+background: transparent;
+/* @end */
+
+/* @section navigation.footer */
+QFrame#NavigationFooter {
+  background: {{panel-bg}};
+  border: none;
+  border-top: 1px solid {{panel-border}};
+}
 /* @end */

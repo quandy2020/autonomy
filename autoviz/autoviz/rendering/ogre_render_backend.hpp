@@ -23,6 +23,7 @@
 #include <QWidget>
 
 #include <QColor>
+#include <QImage>
 
 #include "autoviz/common/pick_handle.hpp"
 #include "autoviz/common/pick_registry.hpp"
@@ -70,6 +71,19 @@ class OgreRenderBackend {
   bool initialize();
 
   /**
+   * @brief Whether @ref initialize() has created an Ogre render window.
+   */
+  bool isInitialized() const;
+
+  /**
+   * @brief Whether a live (non-destroyed) Ogre @c RenderWindow currently exists.
+   *
+   * False after park/hide destroy — used to detect transparent-hole panes that
+   * should be closed when multiple 3D Views are open.
+   */
+  bool hasLiveRenderWindow() const;
+
+  /**
    * @brief Resizes the Ogre render window / viewport.
    * @param width Width in pixels.
    * @param height Height in pixels.
@@ -84,8 +98,10 @@ class OgreRenderBackend {
    * @param overlay Optional CPU overlay (lines/points/meshes); may be null.
    * @param view_controller Camera matrices source.
    * @param aspect_ratio Viewport aspect for projection.
+   * @return @c false if the frame could not be presented (caller should not
+   *         leave a @c WA_PaintOnScreen hole visible).
    */
-  void render(bool show_grid, const ReferenceGridSettings& grid_settings,
+  bool render(bool show_grid, const ReferenceGridSettings& grid_settings,
               SceneOverlay* overlay, const ViewController& view_controller,
               float aspect_ratio);
 
@@ -96,15 +112,21 @@ class OgreRenderBackend {
   void setBackgroundColor(const QColor& color);
 
   /**
-   * @brief Shows or hides the native Ogre @c RenderWindow.
+   * @brief Maps or destroys the Ogre child GLX @c RenderWindow.
    *
-   * Must be called when the host Qt widget is hidden (e.g. Change panel away
-   * from 3D View). Otherwise the external GL surface stays on top of the
-   * replacement panel and blocks display / mouse input.
+   * @p visible true remaps/rebinds for on-screen present. @p false unmaps and
+   * destroys the child so a stale @c background_pixel=0 surface cannot hole
+   * through the opaque Qt host after mosaic drag.
    *
-   * @param visible @c true to show and refresh geometry; @c false to hide.
+   * @param visible @c true to show; @c false to destroy.
    */
   void setWindowVisible(bool visible);
+
+  /**
+   * @brief Optional CPU frame mirror (unused for present; kept for tooling).
+   * @return Image in widget pixels; usually null.
+   */
+  const QImage& frameImage() const;
 
   /**
    * @brief Syncs the external GLX/HWND after the host top-level window moved.
@@ -113,6 +135,17 @@ class OgreRenderBackend {
    * callers must invoke this or the surface stays behind / goes transparent.
    */
   void notifyWindowMovedOrResized();
+
+  /**
+   * @brief Recreates the Ogre @c RenderWindow on the host's current @c winId().
+   *
+   * Mosaic drag/park reparents the Qt @c WA_NativeWindow and X11 often mints a
+   * new drawable. @c windowMovedOrResized alone leaves a transparent pane
+   * because the old external handle is dead. Scene/camera/overlays are kept.
+   *
+   * @return @c true when a live render window is bound to the current host.
+   */
+  bool rebindExternalWindow();
 
   /**
    * @brief Tears down Ogre objects owned by this backend.

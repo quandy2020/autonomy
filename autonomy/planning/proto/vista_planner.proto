@@ -1,0 +1,24 @@
+// Copyright 2026 The Openbot Authors (duyongquan).
+// Licensed under the Apache License, Version 2.0.
+//
+// Native visibility-graph configuration. No map messages are extended.
+syntax = "proto3";
+package autonomy.planning.proto;
+
+// Optional scalars distinguish omitted defaults from explicit zero margins.
+message VistaPlannerOptions {
+  // Maximum persistent graph nodes; must be positive. Default: 4096.
+  optional uint32 maximum_nodes = 1;
+  // Maximum accumulated map cells; must be positive. Default: 2000000.
+  optional uint64 maximum_cells = 2;
+  // Additional horizontal clearance in metres. Default: 0.05.
+  optional double horizontal_margin = 3;
+  // True only when input collision geometry already contains the footprint.
+  optional bool costmap_footprint_inflated = 4;
+  // Platform height in metres, used only when measured height evidence exists.
+  optional double robot_height = 5;
+  // Additional vertical clearance in metres. Default: 0.05.
+  optional double vertical_margin = 6;
+  // Maximum supported floor discontinuity in metres. Default: 0.08.
+  optional double max_floor_step = 7;
+}

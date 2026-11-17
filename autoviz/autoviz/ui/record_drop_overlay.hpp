@@ -4,7 +4,7 @@
 
 /**
  * @file record_drop_overlay.hpp
- * @brief Full-window frosted hint shown while dragging Autolink records.
+ * @brief Full-window flat hint shown while dragging Autolink records.
  *
  * Displayed by @ref FrameSession during drag-and-drop of @c .record /
  * @c .bag / @c .mcap files onto @ref VisualizationFrame.
@@ -25,7 +25,7 @@ namespace autoviz {
  *        @c .mcap.
  *
  * Transparent to layout (typically stacked over the frame client area). Paints
- * a frosted glass card with a drop message in @ref paintEvent(). Does not
+ * a flat overlay card with a drop message in @ref paintEvent(). Does not
  * accept drops itself — the parent frame handles MIME; this widget is visual
  * feedback only.
  *
@@ -33,7 +33,7 @@ namespace autoviz {
  *       when appropriate so the overlay does not steal drag events.
  *
  * @see FrameSession::handleRecordMime()
- * @see glass::PaintShellGlass()
+ * @see theme::PaintPanelFill()
  */
 class RecordDropOverlay : public QWidget {
   Q_OBJECT
@@ -49,7 +49,7 @@ class RecordDropOverlay : public QWidget {
 
  protected:
   /**
-   * @brief Paints the frosted drop-target chrome and instructional text.
+   * @brief Paints the flat drop-target chrome and instructional text.
    * @param event Paint event (rectangle unused; paints @c rect()).
    */
   void paintEvent(QPaintEvent* event) override;

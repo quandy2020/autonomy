@@ -30,7 +30,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/interaction/teleop_channels.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"

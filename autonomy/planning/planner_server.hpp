@@ -123,6 +123,17 @@ public:
     }
 
     /**
+     * @brief Retrieve the configured plugin shared by navigation and exploration.
+     * @param planner_id Instance id, or empty to select the configured default.
+     * @return The existing configured instance; nullptr for an unknown id.
+     * @details The registry is immutable after construction. Callers retain the
+     *          same plugin and costmap lifetime, rather than creating a second
+     *          visibility graph. Calls must not race server destruction.
+     */
+    common::GlobalPlanner::SharedPtr GetPlanner(
+        const std::string& planner_id = "") const;
+
+    /**
      * Registers a callback invoked after a successful plan (nav2 "plan" topic).
      * @param callback Receives each newly computed path; may be empty to disable.
      */
@@ -177,7 +188,10 @@ private:
                       const automsgs::msgs::nav_msgs::Path& path,
                       const std::string& planner_id);
 
-    void PublishPlan(const automsgs::msgs::nav_msgs::Path& path);
+    void PublishPlan(const automsgs::msgs::nav_msgs::Path& path,
+                     const std::string& request_id = "");
+    void PublishCorrelatedPlan(const automsgs::msgs::nav_msgs::Path& path,
+                               const std::string& request_id);
 
     proto::PlannerOptions options_;
     PlannerMap planners_;
@@ -206,6 +220,7 @@ private:
         map_reader_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
         plan_writer_;
+    std::shared_ptr<autolink::Writer<nav_proto::CorrelatedPlan>> correlated_plan_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         costmap_writer_;
 

@@ -24,7 +24,7 @@
 #include <QWidget>
 
 #include "autoviz/ui/theme/application.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 
 namespace autoviz {
@@ -96,7 +96,7 @@ void PaintRoundedControlFrame(QPainter* painter, const QStyleOption& option,
   const bool focused = option.state.testFlag(QStyle::State_HasFocus);
   // Prefer Shell accent over palette Highlight (tree palettes often clear it).
   const QColor border =
-      focused ? glass::Shell().accent : PaletteColor(option, QPalette::Mid);
+      focused ? theme::Shell().accent : PaletteColor(option, QPalette::Mid);
   // One thin focus stroke — never a fat ring that doubles with nested panels.
   const qreal width = 1.0;
   const qreal inset = width * 0.5;
@@ -125,16 +125,16 @@ void PaintPlainToolButtonFrame(QPainter* painter, const QStyleOption& option,
   }
 
   // CapCut: soft gray plate when checked; neutral hover; no accent wash rim.
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   const qreal radius = static_cast<qreal>(shell.control_radius);
   QColor fill = Qt::transparent;
   if (pressed) {
     fill = shell.hover_bg;
     fill = fill.darker(108);
   } else if (selected) {
-    fill = glass::ShellSelectionFill();
+    fill = theme::ShellSelectionFill();
   } else if (hovered) {
-    fill = glass::ShellHoverFill();
+    fill = theme::ShellHoverFill();
   }
 
   painter->save();
@@ -204,7 +204,7 @@ void PaintSelectionIndicator(QPainter* painter, const QStyleOption& option,
   // Always use Shell tokens — palette Highlight is soft selection_bg (Liquid
   // #CCE4FF) so a white checkmark vanishes; Base/Window may be transparent on
   // glass menus / trees.
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   QColor accent = shell.accent;
   QColor border = selected ? accent : shell.border;
   QColor fill = selected ? accent : shell.base;
@@ -253,35 +253,29 @@ void PaintSelectionIndicator(QPainter* painter, const QStyleOption& option,
   painter->restore();
 }
 
-bool UsesDarkAppearance(const QStyleOption& /*option*/) {
-  // Glass menus force transparent Window/Base for rounded corners; that makes
-  // QPalette::Window look black (alpha-0) and falsely selects dark chrome.
-  // Always follow the app shell preference instead.
-  return glass::ShellIsDark();
-}
-
 QColor MenuPillFill(const QStyleOption& option, const QColor& fallback) {
+  Q_UNUSED(option);
   // Prefer caller hover tint / shell soft accent — menu Highlight can be weak.
-  QColor fill = fallback.isValid() ? fallback : glass::Shell().accent_soft;
-  fill.setAlpha(UsesDarkAppearance(option) ? 64 : 44);
+  QColor fill = fallback.isValid() ? fallback : theme::Shell().hover_bg;
+  fill.setAlpha(255);
   return fill;
 }
 
 QColor MenuInk(const QStyleOption& option) {
   Q_UNUSED(option);
-  return glass::Shell().text;
+  return theme::Shell().text;
 }
 
 QColor MenuSelectedText(const QStyleOption& option) {
   Q_UNUSED(option);
-  const glass::ShellTokens shell = glass::Shell();
-  return glass::ShellIsDark() ? shell.accent : shell.accent_pressed;
+  const theme::ShellTokens shell = theme::Shell();
+  return theme::ShellIsDark() ? shell.accent : shell.accent_pressed;
 }
 
 QColor MenuSecondaryText(const QStyleOption& option, const QColor& fallback) {
   Q_UNUSED(option);
-  QColor text = fallback.isValid() ? fallback : glass::Shell().secondary_text;
-  text.setAlpha(UsesDarkAppearance(option) ? 176 : 150);
+  QColor text = fallback.isValid() ? fallback : theme::Shell().secondary_text;
+  text.setAlpha(theme::ShellIsDark() ? 176 : 150);
   return text;
 }
 
@@ -441,46 +435,27 @@ bool IsGlassMenu(const QWidget* widget, const QStyleOption* option = nullptr) {
 
 void PaintChromeBar(QPainter* painter, const QStyleOption& option) {
   const QRect rect = option.rect;
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   painter->save();
-  // Opaque plate from shell tokens (light milky or soft charcoal) — never raw
-  // QPalette::Window, which can be pure black under a dark desktop theme.
-  QColor plate = shell.glass_fill_deep;
+  QColor plate = shell.panel_surface;
   plate.setAlpha(255);
   painter->fillRect(rect, plate);
-  glass::PaintShellGlass(*painter, QRectF(rect), 0.0);
-  painter->setPen(QPen(shell.glass_rim, 1.0));
+  painter->setPen(QPen(shell.panel_border, 1.0));
   painter->drawLine(rect.left(), rect.bottom(), rect.right(), rect.bottom());
   painter->restore();
 }
 
 void PaintGlassMenuPanel(QPainter* painter, const QStyleOption& option) {
   const QRect rect = option.rect;
-  const glass::ShellTokens shell = glass::Shell();
-  const bool dark = glass::ShellIsDark();
-  const bool liquid = glass::ShellIsLiquid();
+  const theme::ShellTokens shell = theme::Shell();
   painter->save();
-  painter->setRenderHint(QPainter::Antialiasing, true);
-  // Clear opaque popup corners so the rounded glass card can show through.
-  painter->setCompositionMode(QPainter::CompositionMode_Source);
-  painter->fillRect(rect, Qt::transparent);
-  painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
-
-  // Liquid Glass menus use a larger radius (qt-liquid-glass Menu / Popover).
-  const qreal kRadius = liquid ? 16.0 : 12.0;
-  const QRectF card = QRectF(rect).adjusted(0.5, 0.5, -0.5, -0.5);
-  QPainterPath path;
-  path.addRoundedRect(card, kRadius, kRadius);
-
-  // Use Shell tokens — menu palette Base/Window are forced transparent for
-  // frameless corners and must not drive the fill (that painted solid black).
-  QColor material = shell.glass_fill_deep;
+  painter->setRenderHint(QPainter::Antialiasing, false);
+  QColor material = shell.panel_surface;
   material.setAlpha(255);
-  painter->fillPath(path, material);
-  Q_UNUSED(dark);
+  painter->fillRect(rect, material);
   painter->setBrush(Qt::NoBrush);
-  painter->setPen(QPen(shell.glass_rim, 1.0));
-  painter->drawPath(path);
+  painter->setPen(QPen(shell.panel_border, 1.0));
+  painter->drawRect(rect.adjusted(0, 0, -1, -1));
   painter->restore();
 }
 
@@ -500,7 +475,7 @@ void DrawMenuBarItem(const QStyleOptionMenuItem& opt, QPainter* painter,
     painter->drawRoundedRect(opt.rect.adjusted(1, 1, -1, -1), 10, 10);
   }
 
-  QColor text = enabled ? MenuInk(opt) : glass::Shell().disabled_text;
+  QColor text = enabled ? MenuInk(opt) : theme::Shell().disabled_text;
   if (selected && enabled) {
     text = MenuSelectedText(opt);
   }
@@ -520,7 +495,7 @@ void DrawCheckbox(QPainter* painter, const QRect& box, bool checked,
                   const QColor& bg) {
   painter->save();
   painter->setRenderHint(QPainter::Antialiasing, true);
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   QColor ink = accent.isValid() && accent.alpha() > 0 ? accent : shell.accent;
   QColor edge = border.isValid() && border.alpha() > 0 ? border : shell.border;
   QColor fill = bg.isValid() && bg.alpha() > 0 ? bg : shell.base;
@@ -574,7 +549,7 @@ void DrawPanelsMenuItem(const QStyleOptionMenuItem& opt, QPainter* painter,
       enabled &&
       (opt.state & (QStyle::State_Selected | QStyle::State_MouseOver));
 
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   if (opt.menuItemType == QStyleOptionMenuItem::Separator) {
     const int y = rect.top() + rect.height() / 2;
     painter->setPen(QPen(shell.border, 1));
@@ -690,7 +665,7 @@ void DrawSimpleGlassMenuItem(const QStyleOptionMenuItem& opt, QPainter* painter,
       enabled &&
       (opt.state & (QStyle::State_Selected | QStyle::State_MouseOver));
 
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   if (opt.menuItemType == QStyleOptionMenuItem::Separator) {
     const int y = rect.top() + rect.height() / 2;
     painter->setPen(QPen(shell.border, 1));
@@ -951,7 +926,7 @@ void ProxyStyle::drawComplexControl(ComplexControl control,
     if (button->autoRaise() && tool->state.testFlag(State_On) &&
         tool->state.testFlag(State_Enabled)) {
       // CapCut: olive ink on soft gray plate (Highlight is the plate fill).
-      foreground = glass::ShellSelectionInk();
+      foreground = theme::ShellSelectionInk();
     }
     if (tool->features.testFlag(QStyleOptionToolButton::Arrow) &&
         tool->icon.isNull() && tool->text.isEmpty()) {
@@ -1042,7 +1017,7 @@ void ProxyStyle::drawComplexControl(ComplexControl control,
         CC_ScrollBar, slider, SC_ScrollBarGroove, widget);
     const QRect handle = QProxyStyle::subControlRect(
         CC_ScrollBar, slider, SC_ScrollBarSlider, widget);
-    const glass::ShellTokens shell = glass::Shell();
+    const theme::ShellTokens shell = theme::Shell();
     const bool hovered = slider->state.testFlag(State_MouseOver) ||
                          slider->state.testFlag(State_Sunken);
     const bool active =
@@ -1053,10 +1028,9 @@ void ProxyStyle::drawComplexControl(ComplexControl control,
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setPen(Qt::NoPen);
 
-    // No hard track — only a whisper of glass when hovered (Liquid Glass).
     if (hovered && !groove.isEmpty()) {
-      QColor track = shell.glass_fill;
-      track.setAlpha(glass::ShellIsDark() ? 40 : 70);
+      QColor track = shell.panel_bg;
+      track.setAlpha(255);
       QRectF track_rect = QRectF(groove);
       if (slider->orientation == Qt::Vertical) {
         track_rect.adjust(3.5, 4.0, -3.5, -4.0);
@@ -1070,7 +1044,6 @@ void ProxyStyle::drawComplexControl(ComplexControl control,
     if (!handle.isEmpty() && handle.width() > 2 && handle.height() > 2) {
       QRectF thumb(handle);
       if (slider->orientation == Qt::Vertical) {
-        // Floating capsule inset from the list edge.
         const qreal inset = hovered ? 2.5 : 3.5;
         thumb.adjust(inset, 2.0, -inset, -2.0);
         thumb.setWidth(qMax(4.0, thumb.width()));
@@ -1082,35 +1055,16 @@ void ProxyStyle::drawComplexControl(ComplexControl control,
       const qreal radius =
           qMin(thumb.width(), thumb.height()) * 0.5;
 
-      // Frosted pill body.
-      QColor body = shell.glass_fill_deep;
-      if (glass::ShellIsDark()) {
-        body = QColor(255, 255, 255, active ? 120 : (hovered ? 88 : 64));
-      } else {
-        body = shell.accent;
-        body.setAlpha(active ? 170 : (hovered ? 125 : 88));
+      QColor body = shell.hover_bg;
+      if (active) {
+        body = shell.accent_soft;
       }
+      body.setAlpha(255);
       painter->setBrush(body);
       painter->drawRoundedRect(thumb, radius, radius);
 
-      // Specular glass sheen.
-      QLinearGradient sheen(thumb.topLeft(),
-                            slider->orientation == Qt::Vertical
-                                ? thumb.topRight()
-                                : thumb.bottomLeft());
-      sheen.setColorAt(0.0, QColor(255, 255, 255, active ? 110 : 70));
-      sheen.setColorAt(0.55, QColor(255, 255, 255, 18));
-      sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-      painter->setBrush(sheen);
-      painter->drawRoundedRect(thumb, radius, radius);
-
-      // Soft rim so the pill reads on both light and dark glass plates.
-      QColor rim = QColor(255, 255, 255, hovered ? 140 : 90);
-      if (glass::ShellIsDark()) {
-        rim = QColor(255, 255, 255, hovered ? 70 : 40);
-      }
       painter->setBrush(Qt::NoBrush);
-      painter->setPen(QPen(rim, 1.0));
+      painter->setPen(QPen(shell.panel_border, 1.0));
       painter->drawRoundedRect(thumb.adjusted(0.5, 0.5, -0.5, -0.5),
                                radius, radius);
     }

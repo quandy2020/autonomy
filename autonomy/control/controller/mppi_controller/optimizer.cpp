@@ -18,6 +18,7 @@
 
 #include <algorithm>
 
+#include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/filters/filter_values.hpp"
 
 namespace autonomy {
@@ -207,7 +208,7 @@ void Optimizer::reset(bool reset_dynamic_speed_limits) {
   motion_model_->clearCommandHistory();
   configureMotionModel();
 
-  AINFO << "Optimizer reset";
+  AINFO_EVERY(25) << "nav optimizer reset";
 }
 
 bool Optimizer::isHolonomic() const { return motion_model_->isHolonomic(); }

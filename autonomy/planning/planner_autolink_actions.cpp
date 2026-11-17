@@ -177,6 +177,7 @@ void PlannerServer::RegisterAutolinkEndpoints()
         costmap_wrapper_->AttachSensorReaders(node_);
     }
 
+    correlated_plan_writer_ = node_->CreateWriter<nav_proto::CorrelatedPlan>("/plan_result");
     plan_writer_ =
         node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(kPlanTopicName);
     if (plan_writer_) {
@@ -226,6 +227,7 @@ void PlannerServer::ComputePlan()
     }
 
     auto result = std::make_shared<nav_proto::ComputePathToPoseAction::Result>();
+    result->set_request_id(goal->request_id());
     const auto start_time = automsgs::msgs::builtin_interfaces::TimeNow();
     metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
 
@@ -260,15 +262,10 @@ void PlannerServer::ComputePlan()
                 goal->planner_id() + " generated an empty path");
         }
         if (!ValidatePath(goal_pose, path, goal->planner_id())) {
-            // NavFn already avoided COST_OBS. Post-check often flags inflation
-            // near walls; dropping the plan left start/goal in free space with
-            // no /plan and no FollowPath.
-            AWARN_EVERY(20) << "PlannerServer: path touches inflated cells; "
-                               "publishing anyway ("
-                            << path.poses_size() << " poses)";
+            throw common::NoValidPathCouldBeFound("planner path failed current-map validation");
         }
 
-        PublishPlan(path);
+        PublishPlan(path, goal->request_id());
         metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
 
         *result->mutable_path() = path;
@@ -308,6 +305,7 @@ void PlannerServer::ComputePlanThroughPoses()
 
     auto result =
         std::make_shared<nav_proto::ComputePathThroughPosesAction::Result>();
+    result->set_request_id(goal->request_id());
     const auto start_time = automsgs::msgs::builtin_interfaces::TimeNow();
     metrics_.plans_requested.fetch_add(1, std::memory_order_relaxed);
 
@@ -379,17 +377,8 @@ void PlannerServer::ComputePlanThroughPoses()
                     ++skipped;
                     continue;
                 }
-                // Prefer a planner-found path over a strict post-check. NavFn
-                // already avoids lethal cells; ValidatePath can reject usable
-                // routes that only graze inflated costs and left every
-                // through-poses goal "unplannable" while to-pose still worked.
                 if (!ValidatePath(curr_goal, segment, goal->planner_id())) {
-                    AWARN << "ComputePathThroughPoses: accepting path to "
-                             "waypoint "
-                          << i << " despite costmap check ("
-                          << segment.poses_size() << " poses) toward ("
-                          << curr_goal.pose().position().x() << ", "
-                          << curr_goal.pose().position().y() << ")";
+                    throw common::NoValidPathCouldBeFound("waypoint segment failed current-map validation");
                 }
                 for (const auto& pose : segment.poses()) {
                     *merged_path.mutable_poses()->Add() = pose;
@@ -417,7 +406,9 @@ void PlannerServer::ComputePlanThroughPoses()
                   << "/" << goals.size() << " waypoints";
         }
 
-        PublishPlan(merged_path);
+        if (!ValidatePath(goals.back(), merged_path, goal->planner_id()))
+            throw common::NoValidPathCouldBeFound("stitched path failed current-map validation");
+        PublishPlan(merged_path, goal->request_id());
         metrics_.plans_succeeded.fetch_add(1, std::memory_order_relaxed);
 
         *result->mutable_path() = merged_path;
@@ -456,6 +447,7 @@ void PlannerServer::SmoothPathAction()
     }
 
     auto result = std::make_shared<nav_proto::SmoothPathAction::Result>();
+    result->set_request_id(goal->request_id());
     const auto start_time = std::chrono::steady_clock::now();
 
     try {
@@ -475,20 +467,21 @@ void PlannerServer::SmoothPathAction()
             throw common::SmootherTimedOut("SmoothPath cancelled");
         }
 
-        const bool was_completed = default_smoother_->Smooth(path, max_time);
+        bool was_completed = default_smoother_->Smooth(path, max_time);
         if (!was_completed) {
-            throw common::SmootherTimedOut("Smoother exceeded max duration");
+            AWARN << "nav smooth keep_unsmoothed poses="
+                  << goal->path().poses_size() << " reason=timeout";
+            path = goal->path();
+            was_completed = false;
         }
 
-        bool published_new_plan = true;
+        bool published_new_plan = was_completed;
         if (goal->check_for_collisions() && path.poses_size() > 0) {
             automsgs::msgs::geometry_msgs::PoseStamped end = path.poses(
                 path.poses_size() - 1);
             if (!ValidatePath(end, path, "simple_smoother")) {
-                AWARN_EVERY(20)
-                    << "SmoothPath cut through obstacles; keeping unsmoothed "
-                       "plan ("
-                    << goal->path().poses_size() << " poses)";
+                AWARN << "nav smooth keep_unsmoothed poses="
+                      << goal->path().poses_size() << " reason=collision";
                 path = goal->path();
                 published_new_plan = false;
             }
@@ -497,7 +490,11 @@ void PlannerServer::SmoothPathAction()
         // ComputePath already published this polyline. Republishing the same
         // (or a rejected-smooth copy) makes Autoviz redraw once — a flash.
         if (published_new_plan) {
-            PublishPlan(path);
+            PublishPlan(path, goal->request_id());
+        } else {
+            // A rejected smooth still returns a token-correlated result without
+            // republishing the visualization polyline.
+            PublishCorrelatedPlan(path, goal->request_id());
         }
 
         const auto elapsed = std::chrono::steady_clock::now() - start_time;

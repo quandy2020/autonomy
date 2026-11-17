@@ -3,7 +3,7 @@
  *****************************************************************************/
 
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 #include <algorithm>
@@ -248,7 +248,7 @@ QPointF ServiceGridPosition(const ChannelGraphLayoutOptions& layout, int index) 
 constexpr QRgb kChannelAccentRgb = 0xff7c3aed;  // violet
 constexpr QRgb kServiceAccentRgb = 0xffef4444;  // red
 
-QColor NodeAccentColor() { return glass::Shell().accent; }
+QColor NodeAccentColor() { return theme::Shell().accent; }
 
 /** Channel traffic bands for probe / stats coloring. */
 enum class ActivityBand { kUnknown, kSilent, kLow, kHealthy };
@@ -292,7 +292,7 @@ QColor ColorForKind(integration::GraphVertexKind kind) {
     case integration::GraphVertexKind::kService:
       return QColor::fromRgba(kServiceAccentRgb);
   }
-  return glass::Shell().disabled_text;
+  return theme::Shell().disabled_text;
 }
 
 QColor ColorForEdge(integration::GraphEdgeKind kind) {
@@ -305,7 +305,7 @@ QColor ColorForEdge(integration::GraphEdgeKind kind) {
     case integration::GraphEdgeKind::kSubscribe:
       return QColor(0x7c, 0x3a, 0xed, 210);
     case integration::GraphEdgeKind::kRelay: {
-      QColor c = glass::Shell().secondary_text;
+      QColor c = theme::Shell().secondary_text;
       c.setAlpha(190);
       return c;
     }
@@ -314,7 +314,7 @@ QColor ColorForEdge(integration::GraphEdgeKind kind) {
     case integration::GraphEdgeKind::kServiceClient:
       return QColor(0xf9, 0x73, 0x16, 220);
   }
-  QColor c = glass::Shell().disabled_text;
+  QColor c = theme::Shell().disabled_text;
   c.setAlpha(180);
   return c;
 }
@@ -481,7 +481,7 @@ class ColumnHeaderItem : public QGraphicsItem {
     painter->setRenderHint(QPainter::Antialiasing, true);
     painter->setRenderHint(QPainter::TextAntialiasing, true);
 
-    const glass::ShellTokens shell = glass::Shell();
+    const theme::ShellTokens shell = theme::Shell();
     QPainterPath card;
     card.addRoundedRect(bounds_, 14.0, 14.0);
 
@@ -494,14 +494,14 @@ class ColumnHeaderItem : public QGraphicsItem {
 
     // Frosted plate + cool wash.
     QLinearGradient fill(bounds_.topLeft(), bounds_.bottomRight());
-    QColor plate = shell.glass_fill;
+    QColor plate = shell.panel_bg;
     plate.setAlpha(qMax(plate.alpha(), 236));
-    QColor deep = shell.glass_fill_deep;
+    QColor deep = shell.panel_surface;
     deep.setAlpha(qMax(deep.alpha(), 245));
     fill.setColorAt(0.0, plate);
     fill.setColorAt(1.0, deep);
     painter->setBrush(fill);
-    QColor rim = shell.glass_rim;
+    QColor rim = shell.panel_border;
     rim.setAlpha(qMax(rim.alpha(), 140));
     painter->setPen(QPen(rim, 1.0));
     painter->drawPath(card);

@@ -10,7 +10,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz::widget {
 
@@ -157,23 +157,13 @@ void Surface::paintEvent(QPaintEvent* event) {
 
   // Flat chrome only — no ambient shadow / cool wash (read as double halo).
   if (elevation_ == Elevation::kFlat) {
-    if (glass::ShellIsLiquid() && !selected_) {
-      const glass::ShellTokens shell = glass::Shell();
-      QColor plate = shell.glass_fill;
-      plate.setAlpha(255);
-      painter.setBrush(plate);
-      painter.setPen(QPen(shell.glass_rim, 1.0));
-      painter.drawRoundedRect(surface_rect, shell.control_radius,
-                              shell.control_radius);
-    } else {
-      painter.setBrush(fill);
-      const QColor outline =
-          !isEnabled() ? tokens.border_subtle
-                       : (selected_ ? tokens.accent : tokens.border_subtle);
-      painter.setPen(QPen(outline, selected_ ? 1.5 : 1.0));
-      painter.drawRoundedRect(surface_rect, tokens.radius_medium,
-                              tokens.radius_medium);
-    }
+    painter.setBrush(fill);
+    const QColor outline =
+        !isEnabled() ? tokens.border_subtle
+                     : (selected_ ? tokens.accent : tokens.border_subtle);
+    painter.setPen(QPen(outline, selected_ ? 1.5 : 1.0));
+    painter.drawRoundedRect(surface_rect, tokens.radius_medium,
+                            tokens.radius_medium);
   } else {
     const qreal shadow_offset = elevation_ == Elevation::kOverlay ? 2.0 : 1.0;
     QColor shadow = tokens.shadow_ambient;

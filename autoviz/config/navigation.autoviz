@@ -182,6 +182,15 @@ Displays:
       success_hold_sec: 1.4
       z_lift: 0.16
     Type: TargetVisualizer
+  - Channel: /waypoints
+    Enabled: true
+    Name: Waypoints
+    Properties:
+      color: 0;255;0
+      mesh_style: solid
+      point_size: 4
+      use_custom_color: false
+    Type: MarkerArray
   - Channel: /camera/depth/points
     Enabled: true
     Name: points PointCloud2
@@ -467,6 +476,15 @@ Displays:
       success_hold_sec: 1.4
       z_lift: 0.16
     Type: TargetVisualizer
+  - Channel: /waypoints
+    Enabled: true
+    Name: Waypoints
+    Properties:
+      color: 0;255;0
+      mesh_style: solid
+      point_size: 4
+      use_custom_color: false
+    Type: MarkerArray
   - Channel: /camera/depth/points
     Enabled: true
     Name: points PointCloud2
@@ -728,7 +746,9 @@ Window:
   Height: 1371
   HideLeftDock: true
   HideRightDock: true
-  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2siLCJ0eXBlIjoibGVhZiJ9LHsiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYyMSw2MjFdLCJ0eXBlIjoic3BsaXQifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjE5LDEyNDldLCJ0eXBlIjoic3BsaXQifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjEyLDE4NzVdLCJ0eXBlIjoic3BsaXQifSx7ImNoaWxkcmVuIjpbeyJuYW1lIjoiVmlld3BvcnREb2NrXzIiLCJ0eXBlIjoibGVhZiJ9LHsibmFtZSI6IlZpZXdwb3J0RG9ja18zIiwidHlwZSI6ImxlYWYifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbMTI0NCwxMjQzXSwidHlwZSI6InNwbGl0In1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0OTAsNzg4XSwidHlwZSI6InNwbGl0In19
+  # Single 3D View under the image strip — ViewportDock_2/_3 removed (drag left
+  # transparent GLX holes / crash). Re-open extras from Panels if needed.
+  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0OTAsNzg4XSwiY2hpbGRyZW4iOlt7InR5cGUiOiJzcGxpdCIsIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjEyLDE4NzVdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9jayIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYxOSwxMjQ5XSwiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYyMSw2MjFdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dfV19XX0seyJuYW1lIjoiVmlld3BvcnREb2NrIiwidHlwZSI6ImxlYWYifV19fQ==
   Panels:
     - Name: ViewportDock
     - Collapsed: true
@@ -748,8 +768,6 @@ Window:
     - Name: ImageDock_2
     - Name: ImageDock_3
     - Name: ImageDock_4
-    - Name: ViewportDock_2
-    - Name: ViewportDock_3
     - Collapsed: true
       Name: PropertiesDock
   PlotSettingsVisible: false
@@ -759,8 +777,7 @@ Window:
     - ImageDock_2
     - ImageDock_3
     - ImageDock_4
-    - ViewportDock_2
-    - ViewportDock_3
+    - ViewportDock
   Width: 2494
   X: 66
   Y: 69

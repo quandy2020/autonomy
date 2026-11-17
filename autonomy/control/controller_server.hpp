@@ -124,6 +124,10 @@ public:
     void PublishPolicyDiagnostics();
     void ReloadPolicyConfig(const std::string& config_path);
 
+    bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose);
+    void PublishVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
+    void PublishZeroVelocity();
+
 protected:
 
     /**
@@ -135,7 +139,7 @@ protected:
      * the specified rate till the goal is reached.
      * @throw nav2_core::PlannerException
      */
-    void ComputeControl();
+    void ComputeControl(bool reset_plugins = true);
 
     /**
      * @brief Find the valid controller ID name for the given request
@@ -191,16 +195,6 @@ protected:
      * @return true or false
      */
     bool IsGoalReached();
-
-    /**
-     * @brief Obtain current pose of the robot
-     * @param pose To store current pose of the robot
-     * @return true if able to obtain current pose of the robot, else false
-     */
-    bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose);
-
-    void PublishVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
-    void PublishZeroVelocity();
 
     common::ControllerInterface* GetActiveController();
     common::GoalChecker* GetActiveGoalChecker();

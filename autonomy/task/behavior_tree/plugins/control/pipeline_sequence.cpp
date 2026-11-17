@@ -53,8 +53,12 @@ private:
                     current_child_idx_ = 0;
                     return BT::NodeStatus::FAILURE;
                 case BT::NodeStatus::RUNNING:
-                    // RateController waiting on a new goal must halt FollowPath
-                    // so MPPI does not keep the previous endpoint.
+                    // Poll an earlier replan while continuing a previously
+                    // started follower. Goal replacement must revoke its path
+                    // explicitly; new task goals halt/join their old tree.
+                    if (i < current_child_idx_) {
+                        break;
+                    }
                     for (size_t j = i + 1; j < children_count; ++j) {
                         ControlNode::haltChild(j);
                     }

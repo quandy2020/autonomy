@@ -35,7 +35,7 @@
 #include "autoviz/common/view_state_io.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/rendering/view_controller.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -134,6 +134,13 @@ void ViewsPanel::setViewController(rendering::ViewController* view_controller) {
   }
   populateTypeSelector();
   populateTree();
+}
+
+void ViewsPanel::detachViewControllerIf(
+    const rendering::ViewController* dying) {
+  if (dying != nullptr && view_controller_ == dying) {
+    view_controller_ = nullptr;
+  }
 }
 
 void ViewsPanel::setupUi() {

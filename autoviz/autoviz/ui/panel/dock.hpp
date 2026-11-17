@@ -145,6 +145,16 @@ class PanelDockWidget : public QDockWidget {
    */
   bool isTitleDragActive() const { return title_drag_active_; }
 
+  /**
+   * @brief Clears drag state and emits @ref titleDragFinished() if needed.
+   *
+   * Public so mosaic drag can finish from an app-level mouse filter after the
+   * dock is hidden in the parking lot (title-bar no longer receives release).
+   *
+   * @param global_pos Cursor position at release (global coordinates).
+   */
+  void endTitleDrag(const QPoint& global_pos = QPoint());
+
  protected:
   /**
    * @brief Emits @ref closed() then accepts the close.
@@ -244,12 +254,6 @@ class PanelDockWidget : public QDockWidget {
    * @return Main window, or @c nullptr.
    */
   QMainWindow* mainWindow() const;
-
-  /**
-   * @brief Clears drag state and emits @ref titleDragFinished() if needed.
-   * @param global_pos Cursor position at release (global coordinates).
-   */
-  void endTitleDrag(const QPoint& global_pos = QPoint());
 
   /** Content currently collapsed. */
   bool collapsed_ = false;

@@ -16,7 +16,7 @@
 #include <cmath>
 
 #include "autoviz/ui/image/image_analysis.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace image {
@@ -410,7 +410,7 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
               image_roi.top() * image_rect.height() / frame_.height(),
           image_roi.width() * image_rect.width() / frame_.width(),
           image_roi.height() * image_rect.height() / frame_.height());
-      QColor roi = glass::Shell().accent;
+      QColor roi = theme::Shell().accent;
       QColor roi_fill = roi;
       roi_fill.setAlpha(40);
       painter.fillRect(widget_roi, roi_fill);

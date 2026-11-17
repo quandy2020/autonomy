@@ -19,6 +19,8 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <thread>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -209,6 +211,7 @@ private:
     void AddApps(const proto::TaskAppOptions& apps);
     void Bind();
     void Unbind();
+    void GoalPoseLoop();
 
     TaskScheduler::SharedPtr scheduler_;
     NavigationTask::SharedPtr navigation_;
@@ -232,14 +235,18 @@ private:
         goal_poses_reader_;
     std::shared_ptr<autolink::Reader<::automsgs::msgs::std_msgs::Bool>>
         cancel_navigation_reader_;
-    std::chrono::steady_clock::time_point last_goal_pose_time_{};
-    double last_goal_pose_x_{0.0};
-    double last_goal_pose_y_{0.0};
-    // Coalesce rapid Autoviz 2D Goal clicks onto the latest pose only.
-    std::mutex goal_pose_mutex_;
-    std::optional<::automsgs::msgs::geometry_msgs::PoseStamped>
-        pending_goal_pose_;
-    std::atomic<bool> goal_pose_worker_busy_{false};
+    // Reader callbacks hold only this independent mailbox, never TaskServer.
+    struct GoalPoseInbox {
+        std::mutex mutex;
+        std::condition_variable cv;
+        std::optional<::automsgs::msgs::geometry_msgs::PoseStamped> pending;
+        std::optional<::automsgs::msgs::geometry_msgs::PoseStamped> last_sent;
+        bool stopping{true};
+        std::chrono::steady_clock::time_point updated{};
+        std::chrono::steady_clock::time_point last_sent_at{};
+    };
+    std::shared_ptr<GoalPoseInbox> goal_pose_inbox_{std::make_shared<GoalPoseInbox>()};
+    std::thread goal_pose_worker_;
     common::Navigator::SharedPtr navigator_;
 
     std::shared_ptr<

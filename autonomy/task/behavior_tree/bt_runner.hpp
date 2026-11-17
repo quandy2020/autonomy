@@ -9,6 +9,7 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -67,8 +68,6 @@ public:
 
 private:
     void WorkerLoop();
-    /** Detach a previous worker so Run() never blocks the caller on join. */
-    void DetachWorker();
     void StopWorker();
     BT::Tree CreateTreeFromFile(const std::string& file_path,
                                 BT::Blackboard::Ptr blackboard);
@@ -85,6 +84,9 @@ private:
     std::atomic<bool> paused_{false};
     std::atomic<bool> cancel_requested_{false};
     std::thread worker_;
+    // Management is serialized; the worker only uses atomic flags. Hooks must
+    // not start/configure this runner from the tick thread.
+    std::mutex management_mutex_;
 };
 
 }  // namespace task

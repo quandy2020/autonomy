@@ -196,11 +196,24 @@ class MainPanelHost : public QMainWindow {
                    QDockWidget** target_out, Qt::Edge* edge_out) const;
 
   /**
-   * @brief Shows or clears the Foxglove-style edge drop highlight overlay.
+   * @brief Starts a Foxglove-style mosaic drop session (charcoal stage ready).
+   *
+   * Call after the dragged leaf is removed so the center never flashes black.
+   */
+  void beginMosaicDropSession();
+
+  /** @brief Ends the drop session and hides the preview chrome. */
+  void endMosaicDropSession();
+
+  /**
+   * @brief Shows or clears the Foxglove / react-mosaic half-pane drop preview.
+   *
+   * Translucent accent wash on the destination half; charcoal stage when the
+   * mosaic is empty. Sibling panes stay visible when present.
    *
    * @param global_pos Cursor position; ignored when @p visible is false.
    * @param exclude Dragged dock (not a valid drop target).
-   * @param visible @c true to update highlight; @c false to hide.
+   * @param visible @c true to update preview; @c false to hide.
    */
   void setDropPreview(const QPoint& global_pos, const QDockWidget* exclude,
                       bool visible);

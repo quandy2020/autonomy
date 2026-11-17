@@ -102,6 +102,10 @@ public:
     bool ClearCostmap() const;
 
     bool IsGoalReached(double distance_tolerance) const;
+    bool IsGoalReached(const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+                       double distance_tolerance, double yaw_tolerance,
+                       const std::string& robot_frame = "base_link",
+                       double max_pose_age = 0.5) const;
 
     /** Latest FollowPath feedback distance, if any. */
     [[nodiscard]] bool TryGetDistanceToGoal(float* distance_to_goal) const;
@@ -141,6 +145,22 @@ public:
     }
 
     explicit NavigationClient(std::shared_ptr<autolink::Node> node);
+    ~NavigationClient();
+
+    using PathValidationFuture = std::shared_future<
+        std::shared_ptr<navigation_services::IsPathValid_Response>>;
+    PathValidationFuture ValidatePathAsync(const automsgs::msgs::nav_msgs::Path& path) const;
+    std::string NewPlanRequestId();
+    uint64_t planning_generation() const { return plan_wait_generation_.load(); }
+    bool TryGetCorrelatedPlan(const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+                             std::chrono::steady_clock::time_point sent_at,
+                             const std::string& request_id,
+                             automsgs::msgs::nav_msgs::Path& path) const {
+        return TryTakePublishedPlan(goal, sent_at, path, request_id, false);
+    }
+    auto& compute_path_client() { return *compute_path_client_; }
+    auto& compute_through_poses_client() { return *compute_through_poses_client_; }
+    auto& smooth_path_client() { return *smooth_path_client_; }
 
 private:
     std::shared_ptr<autolink::Node> node_;
@@ -172,22 +192,24 @@ private:
 
     ActionSession<navigation_actions::FollowPathAction> follow_session_;
 
-    // PlannerServer publishes the path on /plan *before* action get_result.
-    // Successful get_result often stalls (large Result over SHM), so we take
-    // the path from this topic as soon as it appears after send_goal.
-    std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Path>>
-        plan_reader_;
-    mutable std::mutex plan_mutex_;
-    automsgs::msgs::nav_msgs::Path latest_plan_;
-    std::chrono::steady_clock::time_point latest_plan_time_{};
-    uint64_t plan_epoch_{0};
+    // /plan is display-only. The envelope carries the caller's opaque token.
+    struct PlanMailbox {
+        std::mutex mutex;
+        navigation_actions::CorrelatedPlan latest;
+        std::chrono::steady_clock::time_point received{};
+    };
+    std::shared_ptr<PlanMailbox> plan_mailbox_ = std::make_shared<PlanMailbox>();
+    std::shared_ptr<autolink::Reader<navigation_actions::CorrelatedPlan>> plan_reader_;
     std::atomic<uint64_t> plan_wait_generation_{0};
+    std::atomic<uint64_t> next_plan_request_{0};
+    std::string request_prefix_;
 
-    void OnPlan(const std::shared_ptr<automsgs::msgs::nav_msgs::Path>& plan);
     bool TryTakePublishedPlan(
         const automsgs::msgs::geometry_msgs::PoseStamped& goal,
         std::chrono::steady_clock::time_point not_before,
-        automsgs::msgs::nav_msgs::Path& path, uint64_t min_epoch = 0) const;
+        automsgs::msgs::nav_msgs::Path& path, const std::string& request_id,
+        bool validate = true) const;
+
 };
 
 }  // namespace navigation

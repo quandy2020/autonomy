@@ -42,16 +42,16 @@
 #include "autoviz/ui/publish/publish_field_tree.hpp"
 #include "autoviz/ui/publish/publish_message_codec.hpp"
 #include "autoviz/ui/theme/panel.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace publish_panel {
 namespace {
 
-QString kBg() { return glass::Rgba(glass::Shell().glass_fill); }
-QString kSurface() { return glass::Rgba(glass::Shell().glass_fill_deep); }
-QColor kAccent() { return glass::Shell().accent; }
+QString kBg() { return theme::Rgba(theme::Shell().panel_bg); }
+QString kSurface() { return theme::Rgba(theme::Shell().panel_surface); }
+QColor kAccent() { return theme::Shell().accent; }
 
 QString ShortTypeLabel(const std::string& type) {
   QString label = QString::fromStdString(type);

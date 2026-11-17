@@ -71,6 +71,10 @@ bool PublishNavigationGoal(
                       static_cast<double>(position.y()),
                       static_cast<double>(yaw), frame_q);
 
+  if (GoalUpdater.accumulateOnly()) {
+    return true;
+  }
+
   if (node == nullptr || channel.empty()) {
     return false;
   }

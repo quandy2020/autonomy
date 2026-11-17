@@ -21,13 +21,13 @@
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/common/interaction/channel_reader_registry.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace {
 
-const glass::OverlayTokens& O() {
-  static const glass::OverlayTokens tokens = glass::Overlay();
+const theme::OverlayTokens& O() {
+  static const theme::OverlayTokens tokens = theme::Overlay();
   return tokens;
 }
 
@@ -91,7 +91,7 @@ QString PreferOdomChannel(common::VisualizationManager* manager) {
 void DrawDial(QPainter& painter, const QRectF& bounds, double normalized,
               const QColor& accent, const QString& title, const QString& value,
               const QString& unit, bool has_data) {
-  const glass::OverlayTokens& g = O();
+  const theme::OverlayTokens& g = O();
   const QPointF center(bounds.center().x(), bounds.center().y() + 5.0);
   const double radius =
       std::min({bounds.width() * 0.40, bounds.height() * 0.38, 26.0});
@@ -160,8 +160,9 @@ ViewportHudOverlay::ViewportHudOverlay(common::VisualizationManager* manager,
   setFixedSize(kHudWidth, kHudHeight);
   setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
   setAttribute(Qt::WA_TransparentForMouseEvents, true);
-  setAttribute(Qt::WA_AlwaysStackOnTop, true);
-  setAttribute(Qt::WA_TranslucentBackground, true);
+  setAttribute(Qt::WA_AlwaysStackOnTop, false);
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  setAutoFillBackground(true);
 
   refresh_timer_ = new QTimer(this);
   refresh_timer_->setInterval(50);
@@ -349,7 +350,7 @@ void ViewportHudOverlay::paintEvent(QPaintEvent* /*event*/) {
   QPainter painter(this);
   painter.setRenderHint(QPainter::Antialiasing, true);
 
-  const glass::OverlayTokens& g = O();
+  const theme::OverlayTokens& g = O();
   const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
   QPainterPath path;
   path.addRoundedRect(card, static_cast<qreal>(g.radius),

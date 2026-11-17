@@ -39,7 +39,7 @@
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -1061,7 +1061,7 @@ void RecordPanel::onTick() {
 }
 
 void RecordPanel::applyChromeStyles() {
-  const glass::ShellTokens s = glass::Shell();
+  const theme::ShellTokens s = theme::Shell();
   setStyleSheet(QStringLiteral(
                     "QToolButton { padding: 3px 7px; min-height: 22px; }"
                     "QToolButton#RecordMsgStep {"
@@ -1081,10 +1081,10 @@ void RecordPanel::applyChromeStyles() {
                     "  background: %4;"
                     "}"
                     "QComboBox { min-height: 22px; padding: 1px 6px; }")
-                    .arg(glass::Hex(s.secondary_text), glass::Hex(s.border),
+                    .arg(theme::Hex(s.secondary_text), theme::Hex(s.border),
                          QString::number(s.control_radius > 6 ? 6
                                                               : s.control_radius),
-                         glass::Hex(s.card)));
+                         theme::Hex(s.card)));
 }
 
 void RecordPanel::syncTransportButtons() {

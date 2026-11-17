@@ -43,7 +43,7 @@
 #include "autoviz/ui/displays/add_dialog.hpp"
 #include "autoviz/ui/displays/tree.hpp"
 #include "autoviz/ui/displays/tree_delegate.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
@@ -629,12 +629,12 @@ void DisplaysPanel::setupUi() {
   help_->setAttribute(Qt::WA_StyledBackground, true);
   help_->setStyleSheet(QString());
   {
-    const glass::ShellTokens shell = glass::Shell();
+    const theme::ShellTokens shell = theme::Shell();
     QPalette pal = help_->palette();
     pal.setColor(QPalette::WindowText, shell.secondary_text);
     pal.setColor(QPalette::Text, shell.secondary_text);
-    pal.setBrush(QPalette::Window, shell.glass_fill);
-    pal.setBrush(QPalette::Base, shell.glass_fill);
+    pal.setBrush(QPalette::Window, shell.panel_bg);
+    pal.setBrush(QPalette::Base, shell.panel_bg);
     help_->setPalette(pal);
     help_->setAutoFillBackground(true);
   }
@@ -1591,8 +1591,8 @@ void DisplaysPanel::updateHelp(QTreeWidgetItem* item) {
           "<div style=\"font-weight:700; color:%1; margin-bottom:6px;\">"
           "%2</div>"
           "<div style=\"color:%3; line-height:1.45;\">%4</div>")
-          .arg(glass::Hex(glass::Shell().text), heading.toHtmlEscaped(),
-               glass::Hex(glass::Shell().secondary_text),
+          .arg(theme::Hex(theme::Shell().text), heading.toHtmlEscaped(),
+               theme::Hex(theme::Shell().secondary_text),
                body.toHtmlEscaped()));
   help_->show();
 }

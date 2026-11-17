@@ -168,10 +168,10 @@ mppi_controller_options {
     required_movement_radius: 0.08
   }
   path_follow_critic {
-    cost_weight: 8
+    cost_weight: 10
     threshold_to_consider: 1.4
     enabled: true
-    offset_from_furthest: 5
+    offset_from_furthest: 12
     cost_power: 1
   }
   path_angle_critic {
@@ -201,7 +201,7 @@ mppi_controller_options {
     min_turning_r: 0.2
   }
   path_align_critic {
-    cost_weight: 3
+    cost_weight: 2
     threshold_to_consider: 0.5
     enabled: true
     use_path_orientations: false
@@ -239,24 +239,24 @@ mppi_controller_options {
     enabled: false
     cost_power: 1
   }
-  vx_std: 0.25
+  vx_std: 0.12
   twirling_critic {
     twirling_cost_power: 1
     enabled: false
     twirling_cost_weight: 10
   }
   model_dt: 0.05
-  temperature: 0.3
+  temperature: 0.22
   gamma: 0.015
   motion_model: "DiffDrive"
   batch_size: 2000
   # Publishes /mppi_controller/{candidate_trajectories,optimal_path,transformed_global_plan}
   visualize: true
-  ax_max: 3
-  ax_min: -3
-  ay_max: 3
-  ay_min: -3
-  az_max: 3.5
+  ax_max: 1.2
+  ax_min: -1.5
+  ay_max: 1.2
+  ay_min: -1.5
+  az_max: 2.5
   retry_attempt_limit: 3
   regenerate_noises: false
   open_loop: false
@@ -266,7 +266,7 @@ mppi_controller_options {
   model_delay_wz: 0
   sgf_order: 2
   vy_std: 0.2
-  wz_std: 0.5
+  wz_std: 0.35
   vx_max: 0.8
 }
 

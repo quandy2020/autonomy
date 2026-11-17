@@ -22,7 +22,7 @@
 
 #include <algorithm>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
@@ -30,9 +30,9 @@
 namespace autoviz {
 namespace {
 
-class DockGlassTitleBar : public QWidget {
+class DockTitleBar : public QWidget {
  public:
-  explicit DockGlassTitleBar(QWidget* parent = nullptr) : QWidget(parent) {
+  explicit DockTitleBar(QWidget* parent = nullptr) : QWidget(parent) {
     setObjectName(QString::fromLatin1(AppThemeIds::kDockTitleBar));
     setAttribute(Qt::WA_StyledBackground, false);
     setAutoFillBackground(false);
@@ -52,11 +52,9 @@ class DockGlassTitleBar : public QWidget {
   void paintEvent(QPaintEvent* /*event*/) override {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, false);
-    const glass::ShellTokens shell = glass::Shell();
-    // Flat slim strip — not a full-width rounded glass “card”, which looks
-    // oversized and empty on wide panels (e.g. 3D View).
+    const theme::ShellTokens shell = theme::Shell();
     painter.fillRect(rect(), shell.dock_title);
-    painter.setPen(QPen(shell.glass_rim, 1.0));
+    painter.setPen(QPen(shell.panel_border, 1.0));
     painter.drawLine(0, height() - 1, width(), height() - 1);
   }
 
@@ -89,8 +87,11 @@ class DockGlassTitleBar : public QWidget {
 PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
     : QDockWidget(name, parent) {
   setAttribute(Qt::WA_StyledBackground, true);
+  setAttribute(Qt::WA_OpaquePaintEvent, true);
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  setAutoFillBackground(true);
   setStyleSheet(style::sheet(QStringLiteral("chrome/dock")));
-  title_bar_ = new DockGlassTitleBar(this);
+  title_bar_ = new DockTitleBar(this);
 
   icon_label_ = new QLabel(title_bar_);
   // Keep icon flush with title-bar left inset so it lines up with inspector
@@ -106,9 +107,9 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
   title_label_->setStyleSheet(DockTitleLabelStyle());
   title_label_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
   title_label_->setMinimumWidth(0);
-  if (auto* glass = dynamic_cast<DockGlassTitleBar*>(title_bar_)) {
-    glass->setTitleLabel(title_label_);
-    glass->setFullTitle(name);
+  if (auto* bar = dynamic_cast<DockTitleBar*>(title_bar_)) {
+    bar->setTitleLabel(title_label_);
+    bar->setFullTitle(name);
   }
 
   auto* close_button = new QToolButton(title_bar_);
@@ -321,8 +322,8 @@ void PanelDockWidget::setPanelIcon(const QIcon& icon) {
 }
 
 void PanelDockWidget::setPanelTitle(const QString& title) {
-  if (auto* glass = dynamic_cast<DockGlassTitleBar*>(title_bar_)) {
-    glass->setFullTitle(title);
+  if (auto* bar = dynamic_cast<DockTitleBar*>(title_bar_)) {
+    bar->setFullTitle(title);
   } else if (title_label_ != nullptr) {
     title_label_->setText(title);
   }
@@ -386,9 +387,12 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
 
   const bool free_float = property("intentionalFloat").toBool();
 
-  // Free-float window: never call QDockWidget::eventFilter for title-bar mouse
-  // traffic — Qt's dock drag would fight our move() and snap into other docks.
-  if (free_float && watched == title_bar_) {
+  // Center mosaic (NoDockWidgetArea): own title-bar mouse fully — never call
+  // QDockWidget::eventFilter first. Qt can still touch native window state on
+  // the path that remaps a background_pixel=0 GLX child as a floating hole.
+  const bool mosaic_manual =
+      !free_float && allowedAreas() == Qt::NoDockWidgetArea;
+  if ((free_float || mosaic_manual) && watched == title_bar_) {
     switch (event->type()) {
       case QEvent::MouseButtonPress: {
         emit activated();
@@ -420,13 +424,22 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
             return false;
           }
           title_drag_active_ = true;
+          if (mosaic_manual) {
+            // Foxglove-style: park GL + ghost — never setFloating.
+            emit titleDragStarted();
+            emit titleDragMoved(mouse->globalPosition().toPoint());
+            return true;
+          }
         }
-        // Intentional float may live inside a top-level shell QMainWindow —
-        // move that window, not the dock child. No titleDragMoved/Finished:
-        // free-float must not mosaic-snap while hovering other panels.
-        if (QWidget* top = window()) {
-          top->raise();
-          top->move(mouse->globalPosition().toPoint() - title_press_pos_);
+        if (free_float) {
+          // Intentional float may live inside a top-level shell QMainWindow —
+          // move that window, not the dock child.
+          if (QWidget* top = window()) {
+            top->raise();
+            top->move(mouse->globalPosition().toPoint() - title_press_pos_);
+          }
+        } else if (mosaic_manual) {
+          emit titleDragMoved(mouse->globalPosition().toPoint());
         }
         return true;
       }
@@ -434,9 +447,15 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
         auto* mouse = static_cast<QMouseEvent*>(event);
         if (mouse->button() == Qt::LeftButton) {
           title_press_active_ = false;
+          if (mosaic_manual && title_drag_active_) {
+            // titleDragStarted parks/hides this dock; hide() synthesizes a
+            // MouseButtonRelease here. Finishing would abort 吸附 before the
+            // user drops — MainPanelHost capture overlay owns Move/Release.
+            return true;
+          }
           title_drag_active_ = false;
         }
-        return false;
+        return mosaic_manual ? true : false;
       }
       case QEvent::MouseButtonDblClick:
         return true;
@@ -445,8 +464,7 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
     }
   }
 
-  // Let QDockWidget finish drag/drop (吸附) before we clear drag state —
-  // ending early reparents mid-drop and can SIGSEGV / cancel snap.
+  // Sidebar / floatable docks: let QDockWidget finish drag/drop (吸附).
   const bool qt_handled = QDockWidget::eventFilter(watched, event);
 
   if (watched == title_bar_) {
@@ -455,7 +473,6 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
         emit activated();
         auto* mouse = static_cast<QMouseEvent*>(event);
         if (mouse->button() == Qt::LeftButton) {
-          // Ignore presses on title-bar buttons / tools.
           if (QWidget* child = title_bar_->childAt(mouse->position().toPoint())) {
             if (qobject_cast<QToolButton*>(child) != nullptr ||
                 child == title_tools_host_ ||
@@ -475,34 +492,12 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
         if (!(mouse->buttons() & Qt::LeftButton)) {
           break;
         }
-        // Nested MainPanelHost often fails to start Qt's built-in dock drag from
-        // a custom title bar — undock under the cursor once the drag threshold
-        // is crossed so the panel can be moved / snapped.
-        // Only use the manual float+move path when the dock has no allowed areas
-        // (center MainPanelHost). Flexible / sidebar docks keep AllowedAreas so
-        // QDockWidget::eventFilter can drive native dock drag and 吸附.
-        const bool use_manual_undock =
-            allowedAreas() == Qt::NoDockWidgetArea;
         if (title_press_active_ && !title_drag_active_) {
           const QPoint delta = mouse->position().toPoint() - title_press_pos_;
           if (delta.manhattanLength() >= QApplication::startDragDistance()) {
             title_drag_active_ = true;
             emit titleDragStarted();
-            // beginMainPanelDrag already floated center docks off MainPanelHost
-            // (avoids blank QMainWindow dock slots). Just place under the cursor.
-            if (use_manual_undock) {
-              if (!isFloating()) {
-                setFeatures(features() | DockWidgetFloatable);
-                setFloating(true);
-                show();
-              }
-              move(mouse->globalPosition().toPoint() - title_press_pos_);
-              emit titleDragMoved(mouse->globalPosition().toPoint());
-            }
           }
-        } else if (title_drag_active_ && use_manual_undock && isFloating()) {
-          move(mouse->globalPosition().toPoint() - title_press_pos_);
-          emit titleDragMoved(mouse->globalPosition().toPoint());
         }
         break;
       }
@@ -510,8 +505,6 @@ bool PanelDockWidget::eventFilter(QObject* watched, QEvent* event) {
         auto* mouse = static_cast<QMouseEvent*>(event);
         if (mouse->button() == Qt::LeftButton) {
           title_press_active_ = false;
-          // Defer so Qt can finish docking/snap before retile / sync runs.
-          // Capture release position for center mosaic edge-drop.
           const QPoint release_global = mouse->globalPosition().toPoint();
           QTimer::singleShot(0, this, [this, release_global]() {
             endTitleDrag(release_global);

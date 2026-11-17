@@ -13,7 +13,7 @@
  *
  * @see ApplyAppTheme()
  * @see BuildAppThemeStylesheet()
- * @see glass::ShellTokens
+ * @see theme::ShellTokens
  */
 
 #pragma once

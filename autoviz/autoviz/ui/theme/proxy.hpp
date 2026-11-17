@@ -45,7 +45,7 @@ namespace autoviz {
  * @note Prefer updating colors through the setters after theme construction
  *       rather than subclassing further.
  *
- * @see glass::ShellTokens
+ * @see theme::ShellTokens
  * @see AppThemeAccentColor()
  */
 class ProxyStyle : public QProxyStyle {

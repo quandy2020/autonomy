@@ -69,7 +69,7 @@
 #include "autoviz/ui/image/image_view_widget.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
@@ -84,13 +84,13 @@ qint64 HeaderTimestampNs(const automsgs::msgs::std_msgs::Header& header) {
          static_cast<qint64>(header.stamp().nanosec());
 }
 
-/** Translucent cyan-white glass card floating over the image. */
+/** Opaque flat chrome bar over the image. */
 class ImageFloatingChrome : public QFrame {
  public:
   explicit ImageFloatingChrome(QWidget* parent = nullptr) : QFrame(parent) {
     setObjectName(QStringLiteral("ImageFloatingChrome"));
-    setAttribute(Qt::WA_TranslucentBackground, true);
-    setAutoFillBackground(false);
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setAutoFillBackground(true);
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
   }
 
@@ -98,38 +98,24 @@ class ImageFloatingChrome : public QFrame {
   void paintEvent(QPaintEvent* /*event*/) override {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, true);
-    const glass::ShellTokens t = glass::Shell();
+    const theme::ShellTokens t = theme::Shell();
     const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
     QPainterPath path;
-    path.addRoundedRect(card, 14.0, 14.0);
+    path.addRoundedRect(card, 8.0, 8.0);
 
-    // See-through frosted glass (image shows through) — Shell / Liquid.
-    QColor plate = t.glass_fill;
-    plate.setAlpha(72);
+    QColor plate = t.panel_surface;
+    plate.setAlpha(255);
     painter.fillPath(path, plate);
     QLinearGradient body(card.topLeft(), card.bottomLeft());
-    QColor top = t.glass_cool;
-    top.setAlpha(90);
-    QColor mid = t.glass_fill;
-    mid.setAlpha(48);
-    QColor bottom = t.accent_soft;
-    bottom.setAlpha(36);
+    QColor top = t.panel_surface;
+    top.setAlpha(255);
+    QColor mid = t.panel_bg;
+    mid.setAlpha(255);
     body.setColorAt(0.0, top);
-    body.setColorAt(0.55, mid);
-    body.setColorAt(1.0, bottom);
+    body.setColorAt(1.0, mid);
     painter.fillPath(path, body);
 
-    QColor sheen_end = t.glass_sheen;
-    sheen_end.setAlpha(0);
-    QLinearGradient sheen(card.topLeft(),
-                          QPointF(card.left(), card.top() + 26.0));
-    sheen.setColorAt(0.0, QColor(255, 255, 255, 110));
-    sheen.setColorAt(1.0, sheen_end);
-    painter.fillPath(path, sheen);
-
-    QColor rim = t.accent;
-    rim.setAlpha(70);
-    painter.setPen(QPen(rim, 1.0));
+    painter.setPen(QPen(t.panel_border, 1.0));
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
   }
@@ -144,8 +130,8 @@ class ImageFloatingRevealButton : public QToolButton {
   explicit ImageFloatingRevealButton(QWidget* parent = nullptr)
       : QToolButton(parent) {
     setObjectName(QStringLiteral("ImageFloatingReveal"));
-    setAttribute(Qt::WA_TranslucentBackground, true);
-    setAutoFillBackground(false);
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setAutoFillBackground(true);
     setCursor(Qt::PointingHandCursor);
     setFocusPolicy(Qt::NoFocus);
     setToolButtonStyle(Qt::ToolButtonIconOnly);
@@ -173,20 +159,9 @@ class ImageFloatingRevealButton : public QToolButton {
     path.addRoundedRect(card, radius, radius);
 
     const bool hover = underMouse();
-    const glass::ShellTokens t = glass::Shell();
-    QColor plate = t.glass_fill;
-    plate.setAlpha(hover ? 110 : 70);
-    painter.fillPath(path, plate);
-    QColor cool = t.glass_cool;
-    cool.setAlpha(hover ? 60 : 34);
-    painter.fillPath(path, cool);
-    QLinearGradient sheen(card.topLeft(),
-                          QPointF(card.left(), card.top() + card.height() * 0.7));
-    sheen.setColorAt(0.0, QColor(255, 255, 255, hover ? 140 : 100));
-    sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
-    painter.fillPath(path, sheen);
-
-    painter.setPen(QPen(QColor(255, 255, 255, hover ? 180 : 120), 1.0));
+    const theme::ShellTokens t = theme::Shell();
+    painter.fillPath(path, hover ? t.panel_bg : t.panel_surface);
+    painter.setPen(QPen(t.panel_border, 1.0));
     painter.setBrush(Qt::NoBrush);
     painter.drawPath(path);
 
@@ -200,10 +175,8 @@ class ImageFloatingRevealButton : public QToolButton {
       tri << QPointF(c.x(), c.y() + 3.2) << QPointF(c.x() - 4.8, c.y() - 2.6)
           << QPointF(c.x() + 4.8, c.y() - 2.6);
     }
-    QColor ink = hover ? t.accent : t.text;
-    ink.setAlpha(hover ? 230 : 200);
     painter.setPen(Qt::NoPen);
-    painter.setBrush(ink);
+    painter.setBrush(hover ? t.accent : t.text);
     painter.drawPolygon(tri);
   }
 
@@ -289,7 +262,7 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
   host_layout->addWidget(view_, 0, 0);
 
   overlay_wrap_ = new QWidget(image_host_);
-  overlay_wrap_->setAttribute(Qt::WA_TranslucentBackground, true);
+  overlay_wrap_->setAttribute(Qt::WA_TranslucentBackground, false);
   overlay_wrap_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
   auto* wrap_layout = new QVBoxLayout(overlay_wrap_);
   wrap_layout->setContentsMargins(10, 0, 10, 8);
@@ -303,7 +276,7 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
   chrome_layout->setSpacing(6);
 
   tool_bar_ = new QWidget(overlay_chrome_);
-  tool_bar_->setAttribute(Qt::WA_TranslucentBackground, true);
+  tool_bar_->setAttribute(Qt::WA_TranslucentBackground, false);
   auto* tool_layout = new QHBoxLayout(tool_bar_);
   tool_layout->setContentsMargins(0, 0, 0, 0);
   tool_layout->setSpacing(3);
@@ -371,7 +344,7 @@ ImagePanel::ImagePanel(common::VisualizationManager* manager, QWidget* parent)
   chrome_layout->addWidget(tool_bar_);
 
   analysis_strip_ = new QWidget(overlay_chrome_);
-  analysis_strip_->setAttribute(Qt::WA_TranslucentBackground, true);
+  analysis_strip_->setAttribute(Qt::WA_TranslucentBackground, false);
   analysis_strip_->hide();
   auto* analysis_layout = new QVBoxLayout(analysis_strip_);
   analysis_layout->setContentsMargins(0, 0, 0, 0);

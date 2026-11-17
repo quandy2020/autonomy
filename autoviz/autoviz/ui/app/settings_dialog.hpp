@@ -70,7 +70,7 @@ struct AppSettingsResult {
   bool plot_settings_visible = true; /**< Plot settings pane visible. */
   bool start_maximized = true;   /**< Launch maximized. */
   QString language_code;         /**< UI locale (empty = system). */
-  QString theme_mode; /**< @c system / @c light / @c dark / @c liquid. */
+  QString theme_mode; /**< @c system / @c light / @c dark. */
   QString accent_color; /**< Optional @c #RRGGBB accent override. */
   QHash<QString, QKeySequence> shortcuts; /**< Shortcut overrides. */
 };
@@ -79,8 +79,8 @@ struct AppSettingsResult {
  * @class AppSettingsDialog
  * @brief Concat-style preferences: gray rail + grouped detail pages.
  *
- * Appearance page uses a Dark / Light / Liquid segmented control and accent
- * color swatches (live-preview; Cancel restores the prior theme).
+ * Appearance page: Dark / Light / System segmented control + accent swatches
+ * (live-preview; Cancel restores the prior theme).
  *
  * @see FrameSession::onAppSettings()
  * @see ShortcutsEditorWidget
@@ -114,7 +114,7 @@ class AppSettingsDialog : public QDialog {
   widget::SegmentedControl* theme_segments_ = nullptr;
   QWidget* accent_host_ = nullptr;
   QLabel* accent_name_label_ = nullptr;
-  QString theme_mode_ = QStringLiteral("light");
+  QString theme_mode_ = QStringLiteral("dark");
   QString accent_color_;
   QString preview_restore_theme_;
   QString preview_restore_accent_;

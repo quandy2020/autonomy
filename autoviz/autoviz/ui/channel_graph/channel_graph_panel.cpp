@@ -41,7 +41,7 @@
 #include "autoviz/common/interaction/topology_graph_builder.hpp"
 #include "autoviz/ui/channel_graph/channel_graph_view.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/context_menu.hpp"
 #include "autoviz/ui/panel/dock.hpp"
@@ -101,7 +101,7 @@ QIcon MakeServiceGlyphIcon() {
 
 QIcon MakeRefreshGlyphIcon() {
   return MakeGlyphIcon([](QPainter& p, const QRectF& r) {
-    const QColor ink = glass::Shell().text;
+    const QColor ink = theme::Shell().text;
     const QPointF center = r.center();
     constexpr qreal kRadius = 5.2;
     const QRectF arc(center.x() - kRadius, center.y() - kRadius, kRadius * 2.0,

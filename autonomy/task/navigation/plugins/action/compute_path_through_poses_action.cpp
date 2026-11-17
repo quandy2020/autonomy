@@ -1,82 +1,78 @@
-/*
- * Copyright 2026 The Openbot Authors
- */
+/* Copyright 2026 The Openbot Authors */
 
-#include "autonomy/common/logging.hpp"
-#include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
-#include "autonomy/task/navigation/plugins/plugin_utils.hpp"
+#include <cmath>
+#include <cstdint>
+#include "autonomy/task/navigation/plugins/async_path_action_node.hpp"
 
 namespace autonomy::task::plugins::navigation {
-
-class ComputePathThroughPosesAction : public BtSyncAction
+namespace actions = automsgs::actions;
+class ComputePathThroughPosesAction : public AsyncPathActionNode<actions::ComputePathThroughPosesAction>
 {
 public:
-    ComputePathThroughPosesAction(const std::string& name,
-                                  const BT::NodeConfig& config)
-        : BtSyncAction(name, config) {}
-
+    using AsyncPathActionNode::AsyncPathActionNode;
     static BT::PortsList providedPorts()
     {
         return {
-            BT::InputPort<std::vector<automsgs::msgs::geometry_msgs::PoseStamped>>(
-                "goals"),
+            BT::InputPort<std::vector<automsgs::msgs::geometry_msgs::PoseStamped>>("goals"),
             BT::BidirectionalPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("planner_id"),
+            BT::InputPort<double>("max_path_reuse_age", 2.0, "s"),
+            BT::OutputPort<uint64_t>("path_revision"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };
     }
-
 protected:
-    BT::NodeStatus OnExecute() override
+    Client& GetClient(NavClient& client) override { return client.compute_through_poses_client(); }
+    bool BuildGoal(Goal& goal, Pose& endpoint) override
     {
-        auto client = ResolveClient(*this);
-        std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
-        std::string planner_id;
-        if (!getInput("goals", goals)) {
-            SetErrorPorts(*this, 1, "ComputePathThroughPoses: missing goals");
-            return BT::NodeStatus::FAILURE;
-        }
-        // All waypoints passed / filtered: treat as done so FollowPath can
-        // finish on the last good path instead of thrashing RecoveryNode.
-        if (goals.empty()) {
-            ClearErrorPorts(*this);
-            AINFO_EVERY(10) << "ComputePathThroughPoses: no remaining goals";
-            return BT::NodeStatus::SUCCESS;
-        }
-        getInput("planner_id", planner_id);
-
-        automsgs::msgs::nav_msgs::Path path;
-        int error_code = 0;
-        std::string error_message;
-        if (!client->ComputePathThroughPoses(goals, planner_id, path, &error_code,
-                                             &error_message)) {
-            automsgs::msgs::nav_msgs::Path existing;
-            if (getInput("path", existing) && !existing.poses().empty()) {
-                AWARN_EVERY(20)
-                    << "ComputePathThroughPoses failed (" << error_message
-                    << "); keeping previous path (" << existing.poses_size()
-                    << " poses)";
-                ClearErrorPorts(*this);
-                return BT::NodeStatus::SUCCESS;
-            }
-            SetErrorPorts(*this, error_code, error_message);
-            return BT::NodeStatus::FAILURE;
+        std::vector<Pose> goals;
+        empty_goals_ = getInput("goals", goals) && goals.empty();
+        if (goals.empty()) return false;
+        endpoint = goals.back();
+        last_endpoint_ = endpoint;
+        has_endpoint_ = true;
+        endpoint_epoch_ = GoalEpoch();
+        for (const auto& pose : goals) *goal.mutable_goals()->add_goals() = pose;
+        *goal.mutable_goals()->mutable_header() = endpoint.header();
+        std::string planner;
+        getInput("planner_id", planner);
+        goal.set_planner_id(planner);
+        goal.set_use_start(false);
+        return true;
+    }
+    bool EmptyGoalIsComplete() const override
+    {
+        // Waypoint filtering can empty the list on XY distance alone. Completion
+        // still requires a fresh pose, final yaw and the same task epoch.
+        return empty_goals_ && has_endpoint_ && endpoint_epoch_ == GoalEpoch() &&
+            ResolveClient(*this)->IsGoalReached(last_endpoint_, 0.10, 0.10);
+    }
+    void OutputPath(const Path& path, bool) override
+    {
+        Path previous;
+        const bool changed = output_epoch_ != GoalEpoch() || !getInput("path", previous) ||
+            (!previous.poses().empty() || !path.poses().empty()) &&
+            !::autonomy::task::navigation::EquivalentPathSuffix(previous, path);
+        if (changed) {
+            if (config().blackboard) config().blackboard->get("path_revision", path_revision_);
+            ++path_revision_;
         }
         setOutput("path", path);
-        ClearErrorPorts(*this);
-        return BT::NodeStatus::SUCCESS;
+        setOutput("path_revision", path_revision_);
+        if (config().blackboard) config().blackboard->set("path_revision", path_revision_);
+        output_epoch_ = GoalEpoch();
     }
+    uint64_t path_revision_{0};
+    int output_epoch_{-1};
+    Pose last_endpoint_;
+    int endpoint_epoch_{-1};
+    bool empty_goals_{false}, has_endpoint_{false};
 };
-
 }  // namespace autonomy::task::plugins::navigation
 
 BT_REGISTER_NODES(factory)
 {
-    factory.registerNodeType<
-        autonomy::task::plugins::navigation::ComputePathThroughPosesAction>(
-        "PlanPoses");
-    factory.registerNodeType<
-        autonomy::task::plugins::navigation::ComputePathThroughPosesAction>(
-        "ComputePathThroughPoses");
+    factory.registerNodeType<autonomy::task::plugins::navigation::ComputePathThroughPosesAction>("PlanPoses");
+    factory.registerNodeType<autonomy::task::plugins::navigation::ComputePathThroughPosesAction>("ComputePathThroughPoses");
 }

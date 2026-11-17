@@ -34,7 +34,7 @@
 #include <QVBoxLayout>
 
 #include "autoviz/common/widget/layout/collapsible_panel.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -66,8 +66,8 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
       painter->save();
       painter->setRenderHint(QPainter::Antialiasing, true);
       painter->setPen(Qt::NoPen);
-      painter->setBrush(selected ? glass::ShellSelectionFill()
-                                 : glass::ShellHoverFill());
+      painter->setBrush(selected ? theme::ShellSelectionFill()
+                                 : theme::ShellHoverFill());
       painter->drawRoundedRect(QRectF(row).adjusted(0.5, 0.5, -0.5, -0.5), 6.0,
                                6.0);
       painter->restore();
@@ -81,7 +81,7 @@ class ContinuousNameColumnDelegate : public QStyledItemDelegate {
     opt.showDecorationSelected = false;
     {
       const QColor ink =
-          selected ? glass::ShellSelectionInk() : glass::Shell().text;
+          selected ? theme::ShellSelectionInk() : theme::Shell().text;
       opt.palette.setColor(QPalette::Text, ink);
       opt.palette.setColor(QPalette::WindowText, ink);
       if (selected) {
@@ -118,7 +118,7 @@ void ApplyItemViewShellPalette(QWidget* widget) {
   if (widget == nullptr) {
     return;
   }
-  const glass::ShellTokens shell = glass::Shell();
+  const theme::ShellTokens shell = theme::Shell();
   QPalette pal = widget->palette();
   pal.setBrush(QPalette::Base, Qt::transparent);
   pal.setBrush(QPalette::Window, Qt::transparent);
@@ -129,10 +129,10 @@ void ApplyItemViewShellPalette(QWidget* widget) {
   pal.setColor(QPalette::PlaceholderText, shell.secondary_text);
   pal.setColor(QPalette::Link, shell.link);
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
+  pal.setBrush(QPalette::HighlightedText, theme::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   pal.setBrush(QPalette::Inactive, QPalette::HighlightedText,
-               glass::ShellSelectionInk());
+               theme::ShellSelectionInk());
   widget->setPalette(pal);
   if (auto* view = qobject_cast<QAbstractItemView*>(widget)) {
     if (QWidget* viewport = view->viewport()) {
@@ -169,10 +169,34 @@ QString PanelShellStyle(const QString& object_name) {
   const QString id = object_name.isEmpty()
                          ? QStringLiteral("AutovizPanelContent")
                          : object_name;
+  // Names like "Time/TimePanel" are invalid as bare #id selectors (Qt logs
+  // "Could not parse stylesheet"). Prefer an attribute selector — no escape
+  // gymnastics, and works with '/', '.', ':', etc.
+  const bool needs_attr =
+      id.contains(QLatin1Char('/')) || id.contains(QLatin1Char('\\')) ||
+      id.contains(QLatin1Char('.')) || id.contains(QLatin1Char(':')) ||
+      id.contains(QLatin1Char(' ')) || id.contains(QLatin1Char('#')) ||
+      id.contains(QLatin1Char('[')) || id.contains(QLatin1Char(']'));
+  if (needs_attr) {
+    QString escaped_value = id;
+    escaped_value.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    escaped_value.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    const theme::ShellTokens& s = theme::Shell();
+    return QStringLiteral(
+               "QWidget[objectName=\"%1\"] {\n"
+               "  background: %2; color: %3;\n"
+               "  border: 1px solid %4; border-radius: %5px;\n"
+               "}\n")
+               .arg(escaped_value, theme::Hex(s.panel_bg), theme::Hex(s.text),
+                    theme::Hex(s.panel_border),
+                    QString::number(s.panel_radius)) +
+           style::toolTipSheet();
+  }
   QHash<QString, QString> tokens = style::tokens();
   tokens.insert(QStringLiteral("{{name}}"), id);
   return style::sheet(QStringLiteral("chrome/panel"), tokens);
 }
+
 
 bool ShouldSkipPanelShellBackground(const QWidget* widget) {
   if (widget == nullptr) {
@@ -546,9 +570,9 @@ void PaintPanelFrostedCard(QPainter& painter, const QRect& rect, qreal radius) {
   QPainterPath card;
   card.addRoundedRect(outer, radius, radius);
 
-  const glass::ShellTokens s = glass::Shell();
-  painter.fillPath(card, s.glass_fill_deep);
-  painter.setPen(QPen(s.glass_rim, 1.0));
+  const theme::ShellTokens s = theme::Shell();
+  painter.fillPath(card, s.panel_surface);
+  painter.setPen(QPen(s.panel_border, 1.0));
   painter.setBrush(Qt::NoBrush);
   painter.drawPath(card);
 }

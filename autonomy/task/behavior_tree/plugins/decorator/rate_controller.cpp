@@ -6,8 +6,9 @@
  * When skipped, returns SUCCESS so PipelineSequence can continue to FollowPath.
  * After the first successful child tick, later failures are soft (SUCCESS) so a
  * transient replan miss does not abort an active FollowPath.
- * Before the first success, FAILURE/RUNNING keep the decorator RUNNING so a
- * cold-start planner miss does not trip RecoveryNode immediately.
+ * Before the first success, FAILURE is returned immediately so RecoveryNode
+ * can BackUp when the robot starts inside an obstacle. RUNNING is still
+ * forwarded while ComputePath is in flight.
  */
 
 #include <chrono>
@@ -33,23 +34,21 @@ public:
 
     void halt() override
     {
-        // Keep got_success_ across RecoveryNode retries so a transient replan
-        // miss after clear does not immediately FAIL the whole pipeline.
+        // Recovery (backup/spin) changes the robot pose; the next pipeline
+        // pass must replan instead of reusing a SUCCESS from inside a wall.
         first_time_ = true;
-        waiting_first_plan_ = false;
+        got_success_ = false;
         DecoratorNode::halt();
     }
 
 private:
     std::chrono::duration<double> period_{1.0};
     std::chrono::steady_clock::time_point last_time_{};
-    std::chrono::steady_clock::time_point first_wait_start_{};
     bool first_time_{true};
     bool got_success_{false};
-    bool waiting_first_plan_{false};
     int seen_goal_epoch_{0};
 
-    static constexpr std::chrono::seconds kFirstPlanTimeout{30};
+    static constexpr auto kFirstPlanRetry{std::chrono::milliseconds(400)};
 
     BT::NodeStatus tick() override
     {
@@ -65,27 +64,36 @@ private:
             goal_epoch != seen_goal_epoch_) {
             seen_goal_epoch_ = goal_epoch;
             first_time_ = true;
-            waiting_first_plan_ = false;
             // New 2D Goal: do not keep SUCCESS from the previous path or
             // FollowPath continues tracking the old endpoint.
             got_success_ = false;
         }
 
         const auto now = std::chrono::steady_clock::now();
-        if (!first_time_ && (now - last_time_) < period_) {
-            // Between replan ticks: pipeline must stay alive so FollowPath
-            // keeps running. If we still have no first plan, stay RUNNING.
-            return got_success_ ? BT::NodeStatus::SUCCESS
-                                : BT::NodeStatus::RUNNING;
+        const bool child_running =
+            child_node_ && child_node_->status() == BT::NodeStatus::RUNNING;
+        // hz only spaces completed replan cycles. An in-flight ComputePath
+        // (RUNNING) must be ticked every BT cycle — 0.25 Hz + 3s action
+        // timeout otherwise fails before the planner result is polled.
+        // Before the first success, retry immediately instead of waiting
+        // a full 1/hz period.
+        if (!first_time_ && !child_running && got_success_ &&
+            (now - last_time_) < period_) {
+            return BT::NodeStatus::SUCCESS;
+        }
+        if (!first_time_ && !child_running && !got_success_ &&
+            (now - last_time_) < kFirstPlanRetry) {
+            return BT::NodeStatus::RUNNING;
         }
 
-        first_time_ = false;
-        last_time_ = now;
         setStatus(BT::NodeStatus::RUNNING);
         const BT::NodeStatus child_status = child_node_->executeTick();
+        if (child_status != BT::NodeStatus::RUNNING) {
+            first_time_ = false;
+            last_time_ = now;
+        }
         if (child_status == BT::NodeStatus::SUCCESS) {
             got_success_ = true;
-            waiting_first_plan_ = false;
             return BT::NodeStatus::SUCCESS;
         }
         if (child_status == BT::NodeStatus::RUNNING) {
@@ -96,20 +104,8 @@ private:
             if (got_success_) {
                 return BT::NodeStatus::SUCCESS;
             }
-            if (!waiting_first_plan_) {
-                waiting_first_plan_ = true;
-                first_wait_start_ = now;
-            }
-            if (now - first_wait_start_ >= kFirstPlanTimeout) {
-                AWARN << "RateController '" << name()
-                      << "': first plan timed out after "
-                      << kFirstPlanTimeout.count() << "s";
-                waiting_first_plan_ = false;
-                return BT::NodeStatus::FAILURE;
-            }
-            AWARN_EVERY(25) << "RateController '" << name()
-                            << "': waiting for first successful plan";
-            return BT::NodeStatus::RUNNING;
+            AWARN << "nav rate first_plan_failed";
+            return BT::NodeStatus::FAILURE;
         }
         return got_success_ ? BT::NodeStatus::SUCCESS
                             : BT::NodeStatus::RUNNING;

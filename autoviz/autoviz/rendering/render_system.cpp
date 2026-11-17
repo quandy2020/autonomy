@@ -411,9 +411,9 @@ Ogre::RenderWindow* RenderSystem::makeRenderWindow(WindowHandle window_id,
   // current first — otherwise GLXWindow::create SIGSEGVs / corrupts heap when
   // glXGetCurrentContext() is null (common right after Qt reparent).
   params["currentGLContext"] = Ogre::String("false");
-  // RViz sets both; externalWindowHandle is what OgreBitesQt uses for Qt embeds.
-  params["externalWindowHandle"] =
-      Ogre::StringConverter::toString(static_cast<size_t>(window_id));
+  // Child GLX under the Qt host (parentWindowHandle). Flicker is avoided by
+  // FrameViewport reveal_held_ / park (destroy child) — not by creating the
+  // window permanently hidden (hidden GLX breaks first present on X11/GLX).
   params["parentWindowHandle"] =
       Ogre::StringConverter::toString(static_cast<size_t>(window_id));
   params["left"] = "0";

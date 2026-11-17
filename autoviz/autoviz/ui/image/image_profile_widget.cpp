@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <cmath>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace image {
@@ -67,7 +67,7 @@ void ImageProfileWidget::paintEvent(QPaintEvent* event) {
     poly << QPointF(plot.left() + t * plot.width(),
                     plot.bottom() - n * plot.height());
   }
-  painter.setPen(QPen(glass::Shell().accent, 1.5));
+  painter.setPen(QPen(theme::Shell().accent, 1.5));
   painter.drawPolyline(poly);
   painter.setPen(QColor(30, 41, 59, 200));
   painter.drawText(plot.adjusted(0, 0, 0, 0), Qt::AlignRight | Qt::AlignTop,

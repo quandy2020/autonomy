@@ -13,7 +13,7 @@
  * @see AppThemeIds
  * @see ApplyAppTheme()
  * @see PaintPanelFrostedCard()
- * @see glass::ShellTokens
+ * @see theme::ShellTokens
  */
 
 #pragma once

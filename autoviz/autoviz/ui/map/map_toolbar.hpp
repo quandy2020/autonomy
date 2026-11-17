@@ -6,7 +6,7 @@
  * @file map_toolbar.hpp
  * @brief Frosted glass tool strip overlaid on the map viewport.
  *
- * Mirrors @ref ViewportFloatingToolbar styling with map edit tools, measure,
+ * Glass-style floating strip with map edit tools, measure,
  * and recenter. Empty overlay area is click-through.
  */
 

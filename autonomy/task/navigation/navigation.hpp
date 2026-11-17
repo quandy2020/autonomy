@@ -30,6 +30,15 @@ class NavigationTask : public BtTaskApp<
 public:
     AUTONOMY_SMART_PTR_DEFINITIONS(NavigationTask);
 
+    ~NavigationTask() override { Shutdown(); }
+    void Shutdown() override {
+        shutting_down_.store(true);
+        ++goal_epoch_;
+        if (navigation()) navigation()->CancelPlanning();
+        std::lock_guard<std::mutex> goal_lock(goal_mutex_);
+        BtTaskApp::Shutdown();
+    }
+
     ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
         const override;
 
@@ -55,16 +64,19 @@ private:
     void ApplyGoalToBlackboard(
         const BT::Blackboard::Ptr& blackboard,
         const ::autonomy::task::proto::NavigationGoal& goal);
-    bool RetargetRunningTree(const ::autonomy::task::proto::NavigationGoal& goal);
 
     std::optional<::autonomy::task::proto::NavigationGoal> active_goal_;
-    BT::Blackboard::Ptr live_blackboard_;
     uint64_t replan_epoch_{0};
     float initial_distance_{-1.f};
     // Serialize START/CANCEL/preempt — cancel must not race a blocked START.
     mutable std::mutex goal_mutex_;
+    // Goal/progress data uses the inherited recursive lifecycle mutex. A
+    // separate hook lock would invert GetFeedback's lifecycle -> hook order.
+    // The lifecycle mutex is never held across a worker join.
     // Bumped on every START/CANCEL so a stalled START can abandon StartTree.
     std::atomic<uint64_t> goal_epoch_{0};
+    // Prevent a dequeued request from reopening navigation after shutdown.
+    std::atomic<bool> shutting_down_{false};
 };
 
 }  // namespace task

@@ -179,7 +179,8 @@ void ChangePanelMenuWidget::populate() {
     if (!entry.isImplemented()) {
       continue;
     }
-    if (QLatin1String(entry.object_name) == QLatin1String("TeleopDock")) {
+    if (QLatin1String(entry.object_name) == QLatin1String("TeleopDock") ||
+        QLatin1String(entry.object_name) == QLatin1String("NavigationDock")) {
       continue;
     }
 

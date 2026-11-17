@@ -15,6 +15,7 @@
  */
 
 #include "autonomy/task/task_server.hpp"
+#include "autonomy/task/navigation/path_update.hpp"
 
 #include <chrono>
 #include <cmath>
@@ -104,94 +105,39 @@ void TaskServer::Bind() {
             : 100);
 
     if (options_.apps().enable_navigation() && navigation_) {
+        {
+            std::lock_guard<std::mutex> lock(goal_pose_inbox_->mutex);
+            goal_pose_inbox_->stopping = false;
+        }
+        goal_pose_worker_ = std::thread([this] { GoalPoseLoop(); });
         goal_pose_reader_ =
             node_->CreateReader<::automsgs::msgs::geometry_msgs::PoseStamped>(
                 kGoalPose,
-                [this](const std::shared_ptr<
+                [weak_inbox = std::weak_ptr<GoalPoseInbox>(goal_pose_inbox_)](const std::shared_ptr<
                        ::automsgs::msgs::geometry_msgs::PoseStamped>& pose) {
-                    if (!pose) {
+                    const auto inbox = weak_inbox.lock();
+                    if (!inbox || !pose) {
                         return;
                     }
                     const auto now = std::chrono::steady_clock::now();
-                    const double x = pose->pose().position().x();
-                    const double y = pose->pose().position().y();
-                    // Only drop near-duplicate Autoviz publishes (same click),
-                    // never block intentional preemption to a new pose.
-                    if (last_goal_pose_time_.time_since_epoch().count() > 0 &&
-                        now - last_goal_pose_time_ <
-                            std::chrono::milliseconds(250) &&
-                        std::hypot(x - last_goal_pose_x_, y - last_goal_pose_y_) <
-                            0.05) {
-                        return;
-                    }
-                    last_goal_pose_time_ = now;
-                    last_goal_pose_x_ = x;
-                    last_goal_pose_y_ = y;
-                    AINFO << "TaskServer: /goal_pose (" << x << ", " << y << ")";
-
                     {
-                        std::lock_guard<std::mutex> lock(goal_pose_mutex_);
-                        pending_goal_pose_ = *pose;
-                    }
-                    // Single worker applies the latest pose after a quiet
-                    // window so Autoviz click-drag / rapid 2D Goal clicks do
-                    // not start then immediately preempt the same BT.
-                    if (goal_pose_worker_busy_.exchange(true)) {
-                        return;
-                    }
-                    std::thread([this]() {
-                        constexpr auto kSettle = std::chrono::milliseconds(50);
-                        auto take_pending =
-                            [this]()
-                            -> std::optional<
-                                ::automsgs::msgs::geometry_msgs::PoseStamped> {
-                            std::lock_guard<std::mutex> lock(goal_pose_mutex_);
-                            auto pose = pending_goal_pose_;
-                            pending_goal_pose_.reset();
-                            return pose;
-                        };
-                        for (;;) {
-                            auto pose = take_pending();
-                            if (!pose) {
-                                goal_pose_worker_busy_.store(false);
-                                std::lock_guard<std::mutex> lock(
-                                    goal_pose_mutex_);
-                                if (pending_goal_pose_ &&
-                                    !goal_pose_worker_busy_.exchange(true)) {
-                                    continue;
-                                }
-                                return;
-                            }
-                            auto quiet_since =
-                                std::chrono::steady_clock::now();
-                            for (;;) {
-                                std::this_thread::sleep_for(
-                                    std::chrono::milliseconds(30));
-                                if (auto newer = take_pending()) {
-                                    pose = std::move(newer);
-                                    quiet_since =
-                                        std::chrono::steady_clock::now();
-                                    continue;
-                                }
-                                if (std::chrono::steady_clock::now() -
-                                        quiet_since >=
-                                    kSettle) {
-                                    break;
-                                }
-                            }
-                            proto::NavigationGoal goal;
-                            goal.set_command(proto::NAV_CMD_START);
-                            goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
-                            *goal.add_goals() = *pose;
-                            AINFO << "TaskServer: /goal_pose settled ("
-                                  << pose->pose().position().x() << ", "
-                                  << pose->pose().position().y() << ")";
-                            if (!Submit(goal)) {
-                                AWARN << "TaskServer: /goal_pose submit failed "
-                                         "(preempt/start)";
-                            }
+                        std::lock_guard<std::mutex> lock(inbox->mutex);
+                        if (inbox->stopping) return;
+                        constexpr auto kDup = std::chrono::milliseconds(400);
+                        // Autoviz PublishNavigationGoal writes at 0/50/200 ms.
+                        if (inbox->pending &&
+                            navigation::SameGoalPose(*inbox->pending, *pose, 0.05, 0.05)) {
+                            inbox->pending = *pose;
+                            inbox->updated = now;
+                        } else if (inbox->last_sent && now - inbox->last_sent_at < kDup &&
+                                   navigation::SameGoalPose(*inbox->last_sent, *pose, 0.05, 0.05)) {
+                            return;
+                        } else {
+                            inbox->pending = *pose;
+                            inbox->updated = now;
                         }
-                    }).detach();
+                    }
+                    inbox->cv.notify_one();
                 });
 
         goal_poses_reader_ = node_->CreateReader<
@@ -204,9 +150,7 @@ void TaskServer::Bind() {
                 }
                 proto::NavigationGoal goal;
                 goal.set_command(proto::NAV_CMD_START);
-                goal.set_mode(poses->poses_size() == 1
-                                  ? proto::NAV_MODE_SINGLE_POSE
-                                  : proto::NAV_MODE_THROUGH_POSES);
+                goal.set_mode(proto::NAV_MODE_THROUGH_POSES);
                 for (const auto& pose : poses->poses()) {
                     auto* stamped = goal.add_goals();
                     if (poses->has_header()) {
@@ -232,8 +176,8 @@ void TaskServer::Bind() {
                     // queued — otherwise Cancel runs after Start and kills the
                     // preempted navigation (looks like "cannot preempt / dead").
                     {
-                        std::lock_guard<std::mutex> lock(goal_pose_mutex_);
-                        if (pending_goal_pose_) {
+                        std::lock_guard<std::mutex> lock(goal_pose_inbox_->mutex);
+                        if (goal_pose_inbox_->pending) {
                             AINFO << "TaskServer: ignore /cancel_navigation "
                                      "(goal_pose pending)";
                             return;
@@ -458,7 +402,50 @@ void TaskServer::Bind() {
         });
 }
 
+void TaskServer::GoalPoseLoop() {
+    std::unique_lock<std::mutex> lock(goal_pose_inbox_->mutex);
+    while (!goal_pose_inbox_->stopping) {
+        goal_pose_inbox_->cv.wait(lock, [this] { return goal_pose_inbox_->stopping || goal_pose_inbox_->pending; });
+        if (goal_pose_inbox_->stopping) break;
+        const auto updated = goal_pose_inbox_->updated;
+        // Wait past Autoviz's 200 ms retry so one click is one START.
+        if (goal_pose_inbox_->cv.wait_until(lock, updated + std::chrono::milliseconds(250),
+                                    [this, updated] {
+                                        return goal_pose_inbox_->stopping || goal_pose_inbox_->updated != updated;
+                                    })) continue;
+        auto pose = std::move(goal_pose_inbox_->pending);
+        goal_pose_inbox_->pending.reset();
+        goal_pose_inbox_->last_sent = pose;
+        goal_pose_inbox_->last_sent_at = std::chrono::steady_clock::now();
+        lock.unlock();
+        try {
+            proto::NavigationGoal goal;
+            goal.set_command(proto::NAV_CMD_START);
+            goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
+            *goal.add_goals() = *pose;
+            if (!Submit(goal)) AWARN << "TaskServer: /goal_pose submit failed";
+        } catch (const std::exception& ex) {
+            AWARN << "TaskServer: /goal_pose worker: " << ex.what();
+        }
+        lock.lock();
+    }
+}
+
 void TaskServer::Unbind() {
+    {
+        std::lock_guard<std::mutex> lock(goal_pose_inbox_->mutex);
+        goal_pose_inbox_->stopping = true;
+        goal_pose_inbox_->pending.reset();
+    }
+    goal_pose_reader_.reset();
+    goal_poses_reader_.reset();
+    cancel_navigation_reader_.reset();
+    goal_pose_inbox_->cv.notify_all();
+    // Close the task before joining the producer. A request dequeued just
+    // before stopping must not START after a one-shot cancellation has run.
+    // Shutdown rejects new input and interrupts an existing readiness wait.
+    if (navigation_) navigation_->Shutdown();
+    if (goal_pose_worker_.joinable()) goal_pose_worker_.join();
     exploration_monitor_running_.store(false);
     if (exploration_monitor_thread_.joinable()) {
         exploration_monitor_thread_.join();
@@ -556,6 +543,8 @@ bool TaskServer::Start() {
 }
 
 void TaskServer::Shutdown() {
+    // Close ingress and join producers before destroying tasks they reference.
+    Unbind();
     if (scheduler_) {
         scheduler_->Stop();
     }
@@ -577,7 +566,6 @@ void TaskServer::Shutdown() {
         scheduler_->Shutdown();
         scheduler_.reset();
     }
-    Unbind();
     navigation_.reset();
     tracking_.reset();
     teleop_.reset();

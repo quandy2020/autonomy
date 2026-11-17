@@ -20,7 +20,7 @@
 #include <QStyleOptionViewItem>
 #include <QVBoxLayout>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -45,7 +45,7 @@ class GlassWell : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 14.0, 14.0);
     painter.fillPath(path, QColor(255, 255, 255));
-    painter.setPen(QPen(glass::Shell().glass_rim, 1.0));
+    painter.setPen(QPen(theme::Shell().panel_border, 1.0));
     painter.drawPath(path);
   }
 };
@@ -71,8 +71,8 @@ class ContinuousListDelegate : public QStyledItemDelegate {
       painter->setRenderHint(QPainter::Antialiasing, true);
       QPainterPath path;
       path.addRoundedRect(QRectF(row).adjusted(0.5, 1.0, -0.5, -1.0), 10.0, 10.0);
-      painter->fillPath(path, selected ? glass::ShellSelectionFill()
-                                       : glass::ShellHoverFill());
+      painter->fillPath(path, selected ? theme::ShellSelectionFill()
+                                       : theme::ShellHoverFill());
       painter->restore();
     }
 
@@ -80,7 +80,7 @@ class ContinuousListDelegate : public QStyledItemDelegate {
     opt.state.setFlag(QStyle::State_MouseOver, false);
     opt.backgroundBrush = Qt::NoBrush;
     if (selected) {
-      const QColor ink = glass::ShellSelectionInk();
+      const QColor ink = theme::ShellSelectionInk();
       opt.palette.setColor(QPalette::Text, ink);
       opt.palette.setColor(QPalette::WindowText, ink);
       opt.font.setWeight(QFont::DemiBold);
@@ -129,7 +129,7 @@ AddPanelDialog::AddPanelDialog(const QStringList& available_panels,
       style::sheet(QStringLiteral("add_panel")));
   QPalette pal = list_->palette();
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
+  pal.setBrush(QPalette::HighlightedText, theme::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   list_->setPalette(pal);
   list_->setItemDelegate(new ContinuousListDelegate(list_));

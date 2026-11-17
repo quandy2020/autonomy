@@ -9,9 +9,25 @@
 #include <QSettings>
 
 #include "autoviz/ui/theme/application.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
+namespace {
+
+QString NormalizeThemeMode(const QString& theme_mode) {
+  if (theme_mode == QLatin1String("light") ||
+      theme_mode == QLatin1String("dark") ||
+      theme_mode == QLatin1String("system")) {
+    return theme_mode;
+  }
+  // Legacy Liquid Glass → light flat.
+  if (theme_mode == QLatin1String("liquid")) {
+    return QStringLiteral("light");
+  }
+  return QStringLiteral("dark");
+}
+
+}  // namespace
 
 QVector<AppShortcutDefinition> DefaultShortcutDefinitions() {
   return {
@@ -31,15 +47,9 @@ AppUiPreferences LoadAppUiPreferences() {
   AppUiPreferences preferences;
   QSettings settings;
   preferences.language_code = settings.value(QStringLiteral("ui/language")).toString();
-  preferences.theme_mode =
-      settings.value(QStringLiteral("ui/theme_mode"), QStringLiteral("light"))
-          .toString();
-  if (preferences.theme_mode != QLatin1String("system") &&
-      preferences.theme_mode != QLatin1String("light") &&
-      preferences.theme_mode != QLatin1String("dark") &&
-      preferences.theme_mode != QLatin1String("liquid")) {
-    preferences.theme_mode = QStringLiteral("light");
-  }
+  preferences.theme_mode = NormalizeThemeMode(
+      settings.value(QStringLiteral("ui/theme_mode"), QStringLiteral("dark"))
+          .toString());
   preferences.accent_color =
       settings.value(QStringLiteral("ui/accent_color")).toString().trimmed();
   if (!preferences.accent_color.isEmpty()) {
@@ -53,7 +63,7 @@ AppUiPreferences LoadAppUiPreferences() {
   preferences.start_maximized =
       settings.value(QStringLiteral("ui/start_maximized"), true).toBool();
   preferences.viewport_hud_visible =
-      settings.value(QStringLiteral("ui/viewport_hud_visible"), true).toBool();
+      settings.value(QStringLiteral("ui/viewport_hud_visible"), false).toBool();
 
   settings.beginGroup(QStringLiteral("ui/shortcuts"));
   for (const AppShortcutDefinition& definition : DefaultShortcutDefinitions()) {
@@ -72,7 +82,8 @@ AppUiPreferences LoadAppUiPreferences() {
 void SaveAppUiPreferences(const AppUiPreferences& preferences) {
   QSettings settings;
   settings.setValue(QStringLiteral("ui/language"), preferences.language_code);
-  settings.setValue(QStringLiteral("ui/theme_mode"), preferences.theme_mode);
+  settings.setValue(QStringLiteral("ui/theme_mode"),
+                    NormalizeThemeMode(preferences.theme_mode));
   settings.setValue(QStringLiteral("ui/accent_color"), preferences.accent_color);
   settings.setValue(QStringLiteral("ui/start_maximized"), preferences.start_maximized);
   settings.setValue(QStringLiteral("ui/viewport_hud_visible"),
@@ -90,17 +101,15 @@ QKeySequence ShortcutForId(const AppUiPreferences& preferences,
   return preferences.shortcuts.value(id);
 }
 
-glass::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode) {
-  if (theme_mode == QLatin1String("dark")) {
-    return glass::ShellAppearance::kDark;
+theme::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode) {
+  const QString mode = NormalizeThemeMode(theme_mode);
+  if (mode == QLatin1String("light")) {
+    return theme::ShellAppearance::kLight;
   }
-  if (theme_mode == QLatin1String("system")) {
-    return glass::ShellAppearance::kSystem;
+  if (mode == QLatin1String("system")) {
+    return theme::ShellAppearance::kSystem;
   }
-  if (theme_mode == QLatin1String("liquid")) {
-    return glass::ShellAppearance::kLiquid;
-  }
-  return glass::ShellAppearance::kLight;
+  return theme::ShellAppearance::kDark;
 }
 
 void ApplyUiThemeMode(const QString& theme_mode, QApplication& app) {
@@ -109,9 +118,9 @@ void ApplyUiThemeMode(const QString& theme_mode, QApplication& app) {
 
 void ApplyUiTheme(const QString& theme_mode, const QString& accent_hex,
                   QApplication& app) {
-  glass::SetShellAppearance(ShellAppearanceFromThemeMode(theme_mode));
+  theme::SetShellAppearance(ShellAppearanceFromThemeMode(theme_mode));
   const QColor accent(accent_hex);
-  glass::SetShellAccentOverride(accent.isValid() ? accent : QColor());
+  theme::SetAccentOverride(accent.isValid() ? accent : QColor());
   ApplyAppTheme(app);
   RefreshAppThemeChrome(app);
 }

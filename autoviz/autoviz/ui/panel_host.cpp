@@ -4,15 +4,25 @@
 
 #include "autoviz/ui/panel_host.hpp"
 
+#include <algorithm>
+#include <functional>
+#include <limits>
+
+#include <QAbstractAnimation>
 #include <QColor>
 #include <QDockWidget>
+#include <QEasingCurve>
 #include <QEnterEvent>
+#include <QEvent>
+#include <QLinearGradient>
+#include <QPalette>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QPainter>
 #include <QPaintEvent>
 #include <QPointer>
+#include <QPropertyAnimation>
 #include <QResizeEvent>
 #include <QSignalBlocker>
 #include <QSizePolicy>
@@ -22,7 +32,7 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -31,10 +41,6 @@ namespace {
 /** Hit target width — visual line stays 1px so the seam reads as a border. */
 constexpr int kSplitterHit = 7;
 constexpr int kMinPaneSpan = 80;
-/** Edge band for mosaic drop (fraction of the smaller pane side). */
-constexpr float kDropEdgeFraction = 0.32f;
-constexpr int kDropEdgeMinPx = 36;
-constexpr int kDropEdgeMaxPx = 120;
 
 void ApplyExpandingPolicy(QWidget* widget) {
   if (widget == nullptr) {
@@ -135,13 +141,21 @@ void EqualizeSplitter(QSplitter* splitter) {
       (splitter->orientation() == Qt::Horizontal ? qMax(splitter->width(), 1)
                                                  : qMax(splitter->height(), 1)) -
       handle_space;
-  const int each = qMax(available / count, kMinPaneSpan);
-  QList<int> sizes;
-  sizes.reserve(count);
-  for (int i = 0; i < count; ++i) {
-    sizes.push_back(each);
+  if (available >= count) {
+    const int each = qMax(available / count, kMinPaneSpan);
+    QList<int> sizes;
+    sizes.reserve(count);
+    for (int i = 0; i < count; ++i) {
+      sizes.push_back(each);
+    }
+    splitter->setSizes(sizes);
   }
-  splitter->setSizes(sizes);
+  // Equalize nested after parent span is committed so children see real sizes.
+  for (int i = 0; i < count; ++i) {
+    if (auto* nested = qobject_cast<QSplitter*>(splitter->widget(i))) {
+      EqualizeSplitter(nested);
+    }
+  }
 }
 
 class PanelSplitterHandle : public QSplitterHandle {
@@ -153,13 +167,12 @@ class PanelSplitterHandle : public QSplitterHandle {
   void paintEvent(QPaintEvent* /*event*/) override {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, false);
-    painter.fillRect(rect(), Qt::transparent);
+    const theme::ShellTokens shell = theme::Shell();
+    painter.fillRect(rect(), shell.panel_surface);
 
-    // Idle: barely-there cool seam; hover: soft cyan drag affordance.
+    // Idle seam; hover: accent drag affordance.
     const bool hover = underMouse();
-    const glass::ShellTokens shell = glass::Shell();
     QColor line = hover ? shell.accent : shell.border;
-    line.setAlpha(hover ? 140 : 90);
     painter.setPen(QPen(line, 1));
     if (orientation() == Qt::Horizontal) {
       const int x = width() / 2;
@@ -238,7 +251,18 @@ QWidget* WrapDockInPane(QDockWidget* dock) {
   pane->setMinimumSize(220, 80);
   ApplyExpandingPolicy(pane);
   pane->setMinimumSize(220, 80);
+  // Opaque fill — Clear/transparent panes show MainPanelHost black through
+  // gaps as 黑边 after splitter 吸附.
+  pane->setAttribute(Qt::WA_OpaquePaintEvent, true);
   pane->setAttribute(Qt::WA_StyledBackground, true);
+  pane->setAutoFillBackground(true);
+  {
+    const theme::ShellTokens shell = theme::Shell();
+    QPalette pal = pane->palette();
+    pal.setColor(QPalette::Window, shell.panel_surface);
+    pal.setColor(QPalette::Base, shell.panel_surface);
+    pane->setPalette(pal);
+  }
   pane->setStyleSheet(style::mark(style::Mark::Clear));
   auto* layout = new QVBoxLayout(pane);
   layout->setContentsMargins(0, 0, 0, 0);
@@ -303,51 +327,53 @@ QWidget* FindPaneForDock(QSplitter* root, QDockWidget* dock) {
   return nullptr;
 }
 
-int DropEdgeBandPx(const QRect& pane_rect) {
-  const int side = qMin(pane_rect.width(), pane_rect.height());
-  return qBound(kDropEdgeMinPx,
-                static_cast<int>(side * kDropEdgeFraction), kDropEdgeMaxPx);
-}
-
+/**
+ * Foxglove / react-mosaic drop: whole pane is a target. Nearest edge in
+ * normalized [0,1] space — raw |dx| vs |dy| locked tall remaining leaves into
+ * Top/Bottom whenever the cursor stayed near the title bar (左右 never won).
+ */
 bool EdgeForLocalPoint(const QRect& pane_rect, const QPoint& local,
                        Qt::Edge* edge_out) {
   if (edge_out == nullptr || !pane_rect.contains(local)) {
     return false;
   }
-  const int band = DropEdgeBandPx(pane_rect);
-  const int dl = local.x() - pane_rect.left();
-  const int dr = pane_rect.right() - local.x();
-  const int dt = local.y() - pane_rect.top();
-  const int db = pane_rect.bottom() - local.y();
-  const int nearest = qMin(qMin(dl, dr), qMin(dt, db));
-  if (nearest > band) {
-    return false;
-  }
-  if (nearest == dl) {
-    *edge_out = Qt::LeftEdge;
-  } else if (nearest == dr) {
-    *edge_out = Qt::RightEdge;
-  } else if (nearest == dt) {
-    *edge_out = Qt::TopEdge;
-  } else {
+  const double w = static_cast<double>(qMax(1, pane_rect.width()));
+  const double h = static_cast<double>(qMax(1, pane_rect.height()));
+  const double x_rate =
+      static_cast<double>(local.x() - pane_rect.left()) / w;
+  const double y_rate =
+      static_cast<double>(local.y() - pane_rect.top()) / h;
+  const double dist_l = x_rate;
+  const double dist_r = 1.0 - x_rate;
+  const double dist_t = y_rate * 0.92;
+  const double dist_b = (1.0 - y_rate) * 0.92;
+  if (dist_b <= dist_t && dist_b <= dist_l && dist_b <= dist_r) {
     *edge_out = Qt::BottomEdge;
+  } else if (dist_t <= dist_l && dist_t <= dist_r) {
+    *edge_out = Qt::TopEdge;
+  } else if (dist_l <= dist_r) {
+    *edge_out = Qt::LeftEdge;
+  } else {
+    *edge_out = Qt::RightEdge;
   }
   return true;
 }
 
+/** Half-pane highlight matching Foxglove mosaic drop preview. */
 QRect HighlightRectForEdge(const QRect& pane_rect, Qt::Edge edge) {
-  const int band = DropEdgeBandPx(pane_rect);
+  const int hw = qMax(1, pane_rect.width() / 2);
+  const int hh = qMax(1, pane_rect.height() / 2);
   switch (edge) {
     case Qt::LeftEdge:
-      return QRect(pane_rect.left(), pane_rect.top(), band, pane_rect.height());
+      return QRect(pane_rect.left(), pane_rect.top(), hw, pane_rect.height());
     case Qt::RightEdge:
-      return QRect(pane_rect.right() - band + 1, pane_rect.top(), band,
+      return QRect(pane_rect.right() - hw + 1, pane_rect.top(), hw,
                    pane_rect.height());
     case Qt::TopEdge:
-      return QRect(pane_rect.left(), pane_rect.top(), pane_rect.width(), band);
+      return QRect(pane_rect.left(), pane_rect.top(), pane_rect.width(), hh);
     case Qt::BottomEdge:
-      return QRect(pane_rect.left(), pane_rect.bottom() - band + 1,
-                   pane_rect.width(), band);
+      return QRect(pane_rect.left(), pane_rect.bottom() - hh + 1,
+                   pane_rect.width(), hh);
     default:
       return QRect();
   }
@@ -361,6 +387,11 @@ bool FindDropAt(QSplitter* root, QWidget* host, const QPoint& global_pos,
   }
   QList<QDockWidget*> docks;
   CollectDocks(root, &docks);
+  // Prefer the smallest pane under the cursor (deepest mosaic leaf).
+  QDockWidget* best_dock = nullptr;
+  QWidget* best_pane = nullptr;
+  int best_area = std::numeric_limits<int>::max();
+  QPoint best_local;
   for (QDockWidget* dock : docks) {
     if (dock == nullptr || dock == exclude) {
       continue;
@@ -370,20 +401,58 @@ bool FindDropAt(QSplitter* root, QWidget* host, const QPoint& global_pos,
       continue;
     }
     const QPoint local = pane->mapFromGlobal(global_pos);
-    Qt::Edge edge = Qt::LeftEdge;
-    if (!EdgeForLocalPoint(pane->rect(), local, &edge)) {
+    if (!pane->rect().contains(local)) {
       continue;
     }
-    *target_out = dock;
-    *edge_out = edge;
-    if (highlight_in_host != nullptr && host != nullptr) {
-      const QRect pane_hl = HighlightRectForEdge(pane->rect(), edge);
-      *highlight_in_host =
-          QRect(pane->mapTo(host, pane_hl.topLeft()), pane_hl.size());
+    const int area = qMax(1, pane->width()) * qMax(1, pane->height());
+    if (area < best_area) {
+      best_area = area;
+      best_dock = dock;
+      best_pane = pane;
+      best_local = local;
     }
-    return true;
   }
-  return false;
+  // Layout churn / native-hole miss: fall back to the sole (or largest) leaf
+  // and map the cursor into that pane so 左右吸附 still resolves.
+  if (best_dock == nullptr || best_pane == nullptr) {
+    int largest = -1;
+    for (QDockWidget* dock : docks) {
+      if (dock == nullptr || dock == exclude) {
+        continue;
+      }
+      QWidget* pane = FindPaneForDock(root, dock);
+      if (pane == nullptr || !pane->isVisible()) {
+        continue;
+      }
+      const int area = qMax(1, pane->width()) * qMax(1, pane->height());
+      if (area > largest) {
+        largest = area;
+        best_dock = dock;
+        best_pane = pane;
+      }
+    }
+    if (best_dock == nullptr || best_pane == nullptr) {
+      return false;
+    }
+    best_local = best_pane->mapFromGlobal(global_pos);
+    if (!best_pane->rect().contains(best_local)) {
+      // Clamp into pane so EdgeForLocalPoint can still pick a half.
+      best_local.setX(qBound(0, best_local.x(), best_pane->width() - 1));
+      best_local.setY(qBound(0, best_local.y(), best_pane->height() - 1));
+    }
+  }
+  Qt::Edge edge = Qt::LeftEdge;
+  if (!EdgeForLocalPoint(best_pane->rect(), best_local, &edge)) {
+    return false;
+  }
+  *target_out = best_dock;
+  *edge_out = edge;
+  if (highlight_in_host != nullptr && host != nullptr) {
+    const QRect pane_hl = HighlightRectForEdge(best_pane->rect(), edge);
+    *highlight_in_host =
+        QRect(best_pane->mapTo(host, pane_hl.topLeft()), pane_hl.size());
+  }
+  return true;
 }
 
 /** Foxglove/react-mosaic remove: collapse a splitter that has a single child. */
@@ -449,6 +518,12 @@ void ScrubEmptyPanesRecursive(QSplitter* splitter, QSplitter* root) {
       continue;
     }
     if (!child->property("mainPanelPane").toBool()) {
+      // Orphan filler widgets (not pane / splitter / dock) become the black
+      // band above a left/right snap — delete them.
+      if (qobject_cast<QDockWidget*>(child) == nullptr) {
+        child->setParent(nullptr);
+        delete child;
+      }
       continue;
     }
     QDockWidget* dock = DockFromPane(child);
@@ -481,6 +556,66 @@ void PrepareDockForSplitter(QDockWidget* dock) {
     const QSignalBlocker blocker(dock);
     dock->setFloating(false);
   }
+}
+
+/**
+ * Collapse the mosaic to a single root leaf for @p dock.
+ * Prevents Left/Right 吸附 from nesting under a Vertical remnant (black band
+ * on top, grey|purple strip on the bottom).
+ *
+ * @p park must park any other docks found under the cleared tree.
+ */
+void FlattenToSoleRootLeaf(
+    QSplitter* root, QDockWidget* dock,
+    const std::function<void(QDockWidget*)>& park) {
+  if (root == nullptr || dock == nullptr) {
+    return;
+  }
+  PrepareDockForSplitter(dock);
+  if (QWidget* parent = dock->parentWidget()) {
+    if (parent->property("mainPanelPane").toBool()) {
+      if (QLayout* layout = parent->layout()) {
+        layout->removeWidget(dock);
+      }
+    }
+  }
+
+  QList<QWidget*> orphans;
+  while (root->count() > 0) {
+    QWidget* child = root->widget(0);
+    child->setParent(nullptr);
+    orphans.push_back(child);
+  }
+  for (QWidget* orphan : orphans) {
+    if (orphan == nullptr) {
+      continue;
+    }
+    const QList<QDockWidget*> nested_docks =
+        orphan->findChildren<QDockWidget*>();
+    for (QDockWidget* nested : nested_docks) {
+      if (nested == nullptr || nested == dock) {
+        continue;
+      }
+      if (park) {
+        park(nested);
+      } else {
+        nested->hide();
+      }
+    }
+    if (QWidget* p = dock->parentWidget()) {
+      if (p == orphan || orphan->isAncestorOf(dock)) {
+        if (QLayout* layout = p->layout()) {
+          layout->removeWidget(dock);
+        }
+      }
+    }
+    delete orphan;
+  }
+
+  root->setOrientation(Qt::Horizontal);
+  root->addWidget(WrapDockInPane(dock));
+  dock->show();
+  dock->raise();
 }
 
 constexpr char kMosaicPrefix[] = "mosaic:v1:";
@@ -583,44 +718,254 @@ QWidget* BuildMosaicNode(
 
 class MainPanelHost::DropOverlay : public QWidget {
  public:
-  explicit DropOverlay(QWidget* parent) : QWidget(parent) {
+  /**
+   * Opaque top-level plate sized to the drop half only.
+   * Geometry morphs with OutCubic so edge changes feel Foxglove-smooth;
+   * windowOpacity fades in/out without a translucent X11 hole.
+   */
+  explicit DropOverlay(QWidget* host)
+      : QWidget(/*parent=*/nullptr), host_(host) {
     setObjectName(QStringLiteral("MainPanelDropOverlay"));
-    setAttribute(Qt::WA_TransparentForMouseEvents);
-    setAttribute(Qt::WA_NoSystemBackground);
-    setAttribute(Qt::WA_TranslucentBackground);
+    setWindowFlags(Qt::Tool | Qt::FramelessWindowHint |
+                   Qt::WindowStaysOnTopHint | Qt::WindowDoesNotAcceptFocus);
+    setAttribute(Qt::WA_ShowWithoutActivating, true);
+    setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    setAttribute(Qt::WA_TranslucentBackground, false);
+    setAttribute(Qt::WA_NoSystemBackground, false);
+    setAttribute(Qt::WA_OpaquePaintEvent, true);
+    setAutoFillBackground(false);
     hide();
+
+    geo_anim_ = new QPropertyAnimation(this, "geometry", this);
+    geo_anim_->setDuration(150);
+    geo_anim_->setEasingCurve(QEasingCurve::OutCubic);
+
+    opacity_anim_ = new QPropertyAnimation(this, "windowOpacity", this);
+    opacity_anim_->setDuration(120);
+    opacity_anim_->setEasingCurve(QEasingCurve::OutCubic);
   }
 
-  void setHighlight(const QRect& rect) {
-    highlight_ = rect;
-    if (rect.isValid() && !rect.isEmpty()) {
+  void beginSession(const QRect& /*host_local*/, bool /*empty_mosaic*/) {
+    session_active_ = true;
+    edge_ = Qt::LeftEdge;
+    stopAnims();
+    hide();
+    setWindowOpacity(1.0);
+  }
+
+  void endSession() {
+    session_active_ = false;
+    if (geo_anim_ != nullptr) {
+      geo_anim_->stop();
+    }
+    if (!isVisible()) {
+      hide();
+      return;
+    }
+    fadeOutAndHide();
+  }
+
+  void clearPreview() { endSession(); }
+
+  void setHalfPanePreview(const QRect& /*host_local*/,
+                          const QRect& /*pane_in_host*/,
+                          const QRect& dest_in_host, Qt::Edge edge) {
+    session_active_ = true;
+    if (host_ == nullptr || !dest_in_host.isValid() || dest_in_host.isEmpty()) {
+      fadeOutAndHide();
+      return;
+    }
+    const QRect local = dest_in_host.adjusted(3, 3, -3, -3);
+    if (!local.isValid() || local.isEmpty()) {
+      fadeOutAndHide();
+      return;
+    }
+    const QPoint origin = host_->mapToGlobal(local.topLeft());
+    const QRect target(origin, local.size());
+    const bool edge_changed = edge_ != edge;
+    edge_ = edge;
+
+    // Cancel a pending hide fade if the cursor re-entered a valid half.
+    if (opacity_anim_ != nullptr &&
+        opacity_anim_->state() == QAbstractAnimation::Running &&
+        opacity_anim_->endValue().toReal() < 0.5) {
+      opacity_anim_->stop();
+    }
+
+    if (!isVisible()) {
+      // Appear from a slightly inset rect so the first flash eases in.
+      const QRect sprout = QRect(target.center(), QSize(1, 1))
+                               .adjusted(-12, -12, 12, 12)
+                               .intersected(target);
+      setGeometry(sprout.isValid() ? sprout : target);
+      setWindowOpacity(0.0);
       show();
       raise();
+      animateGeometry(target);
+      animateOpacity(0.0, 0.94);
       update();
-    } else {
-      hide();
+      return;
     }
+
+    raise();
+    const QRect current =
+        (geo_anim_ != nullptr &&
+         geo_anim_->state() == QAbstractAnimation::Running)
+            ? geo_anim_->endValue().toRect()
+            : geometry();
+    if (RectsNearlyEqual(current, target) && !edge_changed) {
+      return;
+    }
+    if (RectsNearlyEqual(current, target)) {
+      update();
+      return;
+    }
+    animateGeometry(target);
+    if (windowOpacity() < 0.9) {
+      animateOpacity(windowOpacity(), 0.94);
+    }
+    update();
   }
 
  protected:
   void paintEvent(QPaintEvent* /*event*/) override {
-    if (!highlight_.isValid() || highlight_.isEmpty()) {
-      return;
-    }
     QPainter painter(this);
-    painter.setRenderHint(QPainter::Antialiasing, false);
-    const glass::ShellTokens shell = glass::Shell();
-    QColor fill = shell.accent;
-    fill.setAlpha(72);
-    QColor border = shell.accent;
-    border.setAlpha(200);
-    painter.fillRect(highlight_, fill);
-    painter.setPen(QPen(border, 2));
-    painter.drawRect(highlight_.adjusted(1, 1, -2, -2));
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const QRect plate = rect().adjusted(1, 1, -1, -1);
+
+    // Soft outer ring then solid fill — reads smoother while morphing.
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(QColor(0x7C, 0x4D, 0xFF, 90));
+    painter.drawRoundedRect(plate.adjusted(-2, -2, 2, 2), 10, 10);
+
+    painter.setBrush(QColor(0x7C, 0x4D, 0xFF));
+    painter.drawRoundedRect(plate, 8, 8);
+
+    // Inner sheen.
+    QLinearGradient sheen(plate.topLeft(), plate.bottomLeft());
+    sheen.setColorAt(0.0, QColor(255, 255, 255, 40));
+    sheen.setColorAt(1.0, QColor(255, 255, 255, 0));
+    painter.setBrush(sheen);
+    painter.drawRoundedRect(plate.adjusted(2, 2, -2, -2), 6, 6);
+
+    painter.setBrush(Qt::NoBrush);
+    painter.setPen(QPen(QColor(255, 255, 255, 210), 2));
+    painter.drawRoundedRect(plate, 8, 8);
+
+    painter.setBrush(QColor(255, 255, 255, 235));
+    painter.setPen(Qt::NoPen);
+    const QPoint c = plate.center();
+    const int s = qBound(14, qMin(plate.width(), plate.height()) / 7, 26);
+    QPolygon tri;
+    switch (edge_) {
+      case Qt::TopEdge:
+        tri << QPoint(c.x(), c.y() - s) << QPoint(c.x() - s, c.y() + s / 2)
+            << QPoint(c.x() + s, c.y() + s / 2);
+        break;
+      case Qt::BottomEdge:
+        tri << QPoint(c.x(), c.y() + s) << QPoint(c.x() - s, c.y() - s / 2)
+            << QPoint(c.x() + s, c.y() - s / 2);
+        break;
+      case Qt::LeftEdge:
+        tri << QPoint(c.x() - s, c.y()) << QPoint(c.x() + s / 2, c.y() - s)
+            << QPoint(c.x() + s / 2, c.y() + s);
+        break;
+      case Qt::RightEdge:
+      default:
+        tri << QPoint(c.x() + s, c.y()) << QPoint(c.x() - s / 2, c.y() - s)
+            << QPoint(c.x() - s / 2, c.y() + s);
+        break;
+    }
+    painter.drawPolygon(tri);
   }
 
  private:
-  QRect highlight_;
+  static bool RectsNearlyEqual(const QRect& a, const QRect& b) {
+    return qAbs(a.x() - b.x()) <= 2 && qAbs(a.y() - b.y()) <= 2 &&
+           qAbs(a.width() - b.width()) <= 2 &&
+           qAbs(a.height() - b.height()) <= 2;
+  }
+
+  void stopAnims() {
+    if (geo_anim_ != nullptr) {
+      geo_anim_->stop();
+    }
+    if (opacity_anim_ != nullptr) {
+      opacity_anim_->stop();
+      QObject::disconnect(opacity_anim_, &QPropertyAnimation::finished, this,
+                          nullptr);
+    }
+  }
+
+  void animateGeometry(const QRect& target) {
+    if (geo_anim_ == nullptr) {
+      setGeometry(target);
+      return;
+    }
+    if (geo_anim_->state() == QAbstractAnimation::Running &&
+        RectsNearlyEqual(geo_anim_->endValue().toRect(), target)) {
+      return;
+    }
+    geo_anim_->stop();
+    geo_anim_->setStartValue(geometry());
+    geo_anim_->setEndValue(target);
+    geo_anim_->setDuration(edgeTravelMs(geometry(), target));
+    geo_anim_->start();
+  }
+
+  static int edgeTravelMs(const QRect& from, const QRect& to) {
+    // Short hop for tiny nudges; longer morph when flipping L↔R / U↔D.
+    const int dx = qAbs(from.center().x() - to.center().x());
+    const int dy = qAbs(from.center().y() - to.center().y());
+    const int dist = qMax(dx, dy);
+    return qBound(90, 90 + dist / 8, 180);
+  }
+
+  void animateOpacity(qreal from, qreal to) {
+    if (opacity_anim_ == nullptr) {
+      setWindowOpacity(to);
+      return;
+    }
+    QObject::disconnect(opacity_anim_, &QPropertyAnimation::finished, this,
+                        nullptr);
+    opacity_anim_->stop();
+    opacity_anim_->setDuration(120);
+    opacity_anim_->setStartValue(from);
+    opacity_anim_->setEndValue(to);
+    opacity_anim_->start();
+  }
+
+  void fadeOutAndHide() {
+    if (!isVisible()) {
+      return;
+    }
+    if (geo_anim_ != nullptr) {
+      geo_anim_->stop();
+    }
+    if (opacity_anim_ == nullptr) {
+      hide();
+      setWindowOpacity(1.0);
+      return;
+    }
+    QObject::disconnect(opacity_anim_, &QPropertyAnimation::finished, this,
+                        nullptr);
+    opacity_anim_->stop();
+    opacity_anim_->setDuration(100);
+    opacity_anim_->setStartValue(windowOpacity());
+    opacity_anim_->setEndValue(0.0);
+    QObject::connect(opacity_anim_, &QPropertyAnimation::finished, this,
+                     [this]() {
+                       hide();
+                       setWindowOpacity(1.0);
+                     });
+    opacity_anim_->start();
+  }
+
+  QWidget* host_ = nullptr;
+  Qt::Edge edge_ = Qt::LeftEdge;
+  bool session_active_ = false;
+  QPropertyAnimation* geo_anim_ = nullptr;
+  QPropertyAnimation* opacity_anim_ = nullptr;
 };
 
 MainPanelHost::MainPanelHost(QWidget* parent) : QMainWindow(parent) {
@@ -631,6 +976,16 @@ MainPanelHost::MainPanelHost(QWidget* parent) : QMainWindow(parent) {
   setDockOptions(QMainWindow::AllowNestedDocks | QMainWindow::AllowTabbedDocks);
   setDockNestingEnabled(false);
   setContentsMargins(0, 0, 0, 0);
+  setAttribute(Qt::WA_OpaquePaintEvent, true);
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  setAutoFillBackground(true);
+  {
+    const theme::ShellTokens shell = theme::Shell();
+    QPalette pal = palette();
+    pal.setColor(QPalette::Window, shell.panel_surface);
+    pal.setColor(QPalette::Base, shell.panel_surface);
+    setPalette(pal);
+  }
 
   parking_ = new QWidget(this);
   parking_->setObjectName(QStringLiteral("MainPanelHostParking"));
@@ -639,8 +994,8 @@ MainPanelHost::MainPanelHost(QWidget* parent) : QMainWindow(parent) {
   root_splitter_ = new PanelSplitter(Qt::Horizontal, this);
   setCentralWidget(root_splitter_);
 
+  // Opaque half-pane Tool window (global dest rect only).
   drop_overlay_ = new DropOverlay(this);
-  drop_overlay_->setGeometry(rect());
 }
 
 void MainPanelHost::parkDock(QDockWidget* dock) {
@@ -649,10 +1004,29 @@ void MainPanelHost::parkDock(QDockWidget* dock) {
   }
   if (parking_ == nullptr) {
     parking_ = new QWidget(this);
+    parking_->setObjectName(QStringLiteral("MainPanelHostParking"));
     parking_->hide();
   }
   const QSignalBlocker blocker(dock);
-  dock->setParent(parking_);
+  if (dock->isFloating()) {
+    dock->setFloating(false);
+  }
+  // Detach from splitter pane layout first.
+  if (QWidget* parent = dock->parentWidget()) {
+    if (QLayout* layout = parent->layout()) {
+      layout->removeWidget(dock);
+    }
+  }
+  if (dockWidgetArea(dock) != Qt::NoDockWidgetArea) {
+    removeDockWidget(dock);
+  }
+  // Park under the plain parking_ widget with Qt::Widget flags. Bare
+  // setParent(non-QMainWindow) would promote QDockWidget to a top-level
+  // window (transparent 3D). setParent(QMainWindow) engages dock machinery
+  // and corrupts NoDockWidgetArea mosaic docks — avoid both.
+  dock->setFeatures(QDockWidget::DockWidgetClosable);
+  dock->setAllowedAreas(Qt::NoDockWidgetArea);
+  dock->setParent(parking_, Qt::Widget);
   dock->hide();
 }
 
@@ -888,8 +1262,28 @@ bool MainPanelHost::hitTestDrop(const QPoint& global_pos,
                                 const QDockWidget* exclude,
                                 QDockWidget** target_out,
                                 Qt::Edge* edge_out) const {
+  // Foxglove: drop against the mosaic leaf under the cursor (not host-global).
   return FindDropAt(root_splitter_, const_cast<MainPanelHost*>(this),
                     global_pos, exclude, target_out, edge_out, nullptr);
+}
+
+void MainPanelHost::beginMosaicDropSession() {
+  if (drop_overlay_ == nullptr) {
+    return;
+  }
+  // Keep host palette unchanged — siblings must look like idle mosaic panes.
+  drop_overlay_->beginSession(rect(), hostedPanels().isEmpty());
+}
+
+void MainPanelHost::endMosaicDropSession() {
+  if (drop_overlay_ != nullptr) {
+    drop_overlay_->endSession();
+  }
+  const theme::ShellTokens shell = theme::Shell();
+  QPalette pal = palette();
+  pal.setColor(QPalette::Window, shell.panel_surface);
+  pal.setColor(QPalette::Base, shell.panel_surface);
+  setPalette(pal);
 }
 
 void MainPanelHost::setDropPreview(const QPoint& global_pos,
@@ -898,19 +1292,92 @@ void MainPanelHost::setDropPreview(const QPoint& global_pos,
     return;
   }
   if (!visible) {
-    drop_overlay_->setHighlight(QRect());
+    endMosaicDropSession();
     return;
   }
+
+  auto dest_for_edge = [](const QRect& pane_rect, Qt::Edge edge) -> QRect {
+    const int hw = qMax(1, pane_rect.width() / 2);
+    const int hh = qMax(1, pane_rect.height() / 2);
+    switch (edge) {
+      case Qt::LeftEdge:
+        return QRect(pane_rect.left(), pane_rect.top(), hw, pane_rect.height());
+      case Qt::RightEdge:
+        return QRect(pane_rect.right() - hw + 1, pane_rect.top(), hw,
+                     pane_rect.height());
+      case Qt::TopEdge:
+        return QRect(pane_rect.left(), pane_rect.top(), pane_rect.width(), hh);
+      case Qt::BottomEdge:
+        return QRect(pane_rect.left(), pane_rect.bottom() - hh + 1,
+                     pane_rect.width(), hh);
+      default:
+        return QRect();
+    }
+  };
+
+  auto edge_for_point = [](const QRect& pane_rect, const QPoint& local,
+                           Qt::Edge* edge_out) -> bool {
+    if (edge_out == nullptr || !pane_rect.contains(local)) {
+      return false;
+    }
+    const double w = static_cast<double>(qMax(1, pane_rect.width()));
+    const double h = static_cast<double>(qMax(1, pane_rect.height()));
+    const double x_rate =
+        static_cast<double>(local.x() - pane_rect.left()) / w;
+    const double y_rate =
+        static_cast<double>(local.y() - pane_rect.top()) / h;
+    const double dist_l = x_rate;
+    const double dist_r = 1.0 - x_rate;
+    const double dist_t = y_rate;
+    const double dist_b = 1.0 - y_rate;
+      // Slight bias toward top/bottom so 下放 half is easy to aim on wide panes.
+    const double d_l = dist_l;
+    const double d_r = dist_r;
+    const double d_t = dist_t * 0.92;
+    const double d_b = dist_b * 0.92;
+    if (d_b <= d_t && d_b <= d_l && d_b <= d_r) {
+      *edge_out = Qt::BottomEdge;
+    } else if (d_t <= d_l && d_t <= d_r) {
+      *edge_out = Qt::TopEdge;
+    } else if (d_l <= d_r) {
+      *edge_out = Qt::LeftEdge;
+    } else {
+      *edge_out = Qt::RightEdge;
+    }
+    return true;
+  };
+
+  const QRect host_rect = rect();
   QDockWidget* target = nullptr;
   Qt::Edge edge = Qt::LeftEdge;
-  QRect highlight;
-  if (!FindDropAt(root_splitter_, this, global_pos, exclude, &target, &edge,
-                  &highlight)) {
-    drop_overlay_->setHighlight(QRect());
-    return;
+  QRect pane_in_host;
+  QRect dest_in_host;
+
+  // Prefer the leaf under the cursor; fall back to full-host half.
+  if (FindDropAt(root_splitter_, this, global_pos, exclude, &target, &edge,
+                 &dest_in_host) &&
+      target != nullptr) {
+    if (QWidget* pane = FindPaneForDock(root_splitter_, target)) {
+      pane_in_host = QRect(pane->mapTo(this, QPoint(0, 0)), pane->size());
+      const QPoint local = pane->mapFromGlobal(global_pos);
+      edge_for_point(pane->rect(), local, &edge);
+      dest_in_host = dest_for_edge(pane_in_host, edge);
+    }
+  } else {
+    const QPoint local = mapFromGlobal(global_pos);
+    if (!edge_for_point(host_rect, local, &edge)) {
+      drop_overlay_->setHalfPanePreview(host_rect, QRect(), QRect(), edge);
+      drop_overlay_->raise();
+      return;
+    }
+    pane_in_host = host_rect;
+    dest_in_host = dest_for_edge(host_rect, edge);
   }
-  drop_overlay_->setGeometry(rect());
-  drop_overlay_->setHighlight(highlight);
+
+  // Only the target leaf half is painted; siblings stay visible.
+  drop_overlay_->setHalfPanePreview(host_rect, pane_in_host, dest_in_host,
+                                    edge);
+  drop_overlay_->raise();
 }
 
 bool MainPanelHost::tryAcceptDrop(QDockWidget* dragged,
@@ -930,11 +1397,10 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
       dragged == target) {
     return false;
   }
-  if (!hostsPanel(target)) {
-    return false;
-  }
 
-  // Pull dragged out of its current leaf so the target leaf stays intact.
+  // Extract dragged first — removePanel manages its own mutating_mosaic_ flag.
+  // Holding the flag across removePanel would early-out to park-only and leave
+  // a stale leaf in the splitter tree.
   if (hostsPanel(dragged)) {
     removePanel(dragged);
   }
@@ -945,12 +1411,38 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
     removeDockWidget(target);
   }
 
+  // Hold through replaceWidget / show so visibilityChanged cannot re-enter
+  // scrub/removePanel (layout scramble / UAF during drag-snap).
+  const bool was_mutating = mutating_mosaic_;
+  mutating_mosaic_ = true;
+
+  ScrubEmptyPanesRecursive(root_splitter_, root_splitter_);
+
+  const auto park = [this](QDockWidget* dock) { parkDock(dock); };
+
   // Target may have been collapsed away if it was the only sibling of dragged
   // in a degenerate tree — re-seed when needed.
   if (!hostsPanel(target)) {
     PrepareDockForSplitter(target);
-    root_splitter_->addWidget(WrapDockInPane(target));
-    target->show();
+    FlattenToSoleRootLeaf(root_splitter_, target, park);
+  }
+
+  // After title-drag park, usually only @p target remains. Flatten so Left/Right
+  // reuses the root as Horizontal — nesting under a Vertical remnant leaves the
+  // black top band + grey|purple strip the user screenshots.
+  {
+    QList<QDockWidget*> remaining;
+    CollectDocks(root_splitter_, &remaining);
+    remaining.removeAll(dragged);
+    if (remaining.size() == 1 && remaining[0] == target) {
+      QWidget* pane = FindPaneForDock(root_splitter_, target);
+      const bool already_sole =
+          pane != nullptr && pane->parentWidget() == root_splitter_ &&
+          root_splitter_->count() == 1;
+      if (!already_sole) {
+        FlattenToSoleRootLeaf(root_splitter_, target, park);
+      }
+    }
   }
 
   PrepareDockForSplitter(dragged);
@@ -958,8 +1450,12 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
 
   QWidget* target_pane = FindPaneForDock(root_splitter_, target);
   if (target_pane == nullptr) {
-    target_pane = WrapDockInPane(target);
-    root_splitter_->addWidget(target_pane);
+    FlattenToSoleRootLeaf(root_splitter_, target, park);
+    target_pane = FindPaneForDock(root_splitter_, target);
+  }
+  if (target_pane == nullptr) {
+    mutating_mosaic_ = was_mutating;
+    return false;
   }
 
   auto* parent = qobject_cast<QSplitter*>(target_pane->parentWidget());
@@ -972,6 +1468,7 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
 
   const int index = parent->indexOf(target_pane);
   if (index < 0) {
+    mutating_mosaic_ = was_mutating;
     return false;
   }
 
@@ -994,8 +1491,45 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
     }
     target->show();
     dragged->show();
-    scrubEmptyPanes();
+    ApplyExpandingPolicy(root_splitter_);
+    ScrubEmptyPanesRecursive(root_splitter_, root_splitter_);
+    if (root_splitter_->count() > 0) {
+      EqualizeSplitter(root_splitter_);
+      FillSplitter(root_splitter_);
+      RaiseSplitterHandles(root_splitter_);
+    }
+    mutating_mosaic_ = was_mutating;
     return true;
+  }
+
+  // Prefer promoting a 2-child root to the drop orientation instead of nesting
+  // a Horizontal under Vertical (black top + side strip).
+  if (parent == root_splitter_ && root_splitter_->count() == 2 &&
+      orientation != root_splitter_->orientation()) {
+    QWidget* sibling =
+        root_splitter_->widget(index == 0 ? 1 : 0);
+    // Only safe when sibling is the other leaf of a pure 2-dock mosaic and the
+    // dragged is new — rebuild as flat root in @p orientation.
+    QList<QDockWidget*> docks;
+    CollectDocks(root_splitter_, &docks);
+    if (docks.size() == 1 && docks[0] == target) {
+      FlattenToSoleRootLeaf(root_splitter_, target, park);
+      root_splitter_->setOrientation(orientation);
+      if (dragged_first) {
+        root_splitter_->insertWidget(0, dragged_pane);
+      } else {
+        root_splitter_->addWidget(dragged_pane);
+      }
+      target->show();
+      dragged->show();
+      ApplyExpandingPolicy(root_splitter_);
+      EqualizeSplitter(root_splitter_);
+      FillSplitter(root_splitter_);
+      RaiseSplitterHandles(root_splitter_);
+      mutating_mosaic_ = was_mutating;
+      return true;
+    }
+    (void)sibling;
   }
 
   const int parent_span = parent->orientation() == Qt::Horizontal
@@ -1008,6 +1542,16 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
                       qMax(width(), 160))
                : qMax(qMax(target_pane->height(), parent_span),
                       qMax(height(), 120));
+  }
+
+  // When inserting a horizontal split into a vertical parent (or vice versa),
+  // span must be the TARGET leaf span along the NEW orientation axis — using
+  // the parent's vertical size as width leaves the nested strip too short and
+  // a black void above/beside it.
+  if (orientation != parent->orientation()) {
+    span = orientation == Qt::Horizontal
+               ? qMax(qMax(target_pane->width(), width()), 160)
+               : qMax(qMax(target_pane->height(), height()), 120);
   }
 
   auto* nested = new PanelSplitter(orientation);
@@ -1033,7 +1577,14 @@ bool MainPanelHost::dockPanelAt(QDockWidget* dragged, QDockWidget* target,
   if (parent_sizes.size() == parent->count()) {
     parent->setSizes(parent_sizes);
   }
-  scrubEmptyPanes();
+  ApplyExpandingPolicy(root_splitter_);
+  ScrubEmptyPanesRecursive(root_splitter_, root_splitter_);
+  if (root_splitter_->count() > 0) {
+    EqualizeSplitter(root_splitter_);
+    FillSplitter(root_splitter_);
+    RaiseSplitterHandles(root_splitter_);
+  }
+  mutating_mosaic_ = was_mutating;
   return true;
 }
 
@@ -1054,6 +1605,11 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
   if (dockWidgetArea(second) != Qt::NoDockWidgetArea) {
     removeDockWidget(second);
   }
+
+  // Hold through replaceWidget / show — same re-entry hazard as dockPanelAt.
+  const bool was_mutating = mutating_mosaic_;
+  mutating_mosaic_ = true;
+
   PrepareDockForSplitter(first);
   PrepareDockForSplitter(second);
 
@@ -1072,6 +1628,7 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
 
   const int index = parent->indexOf(first_pane);
   if (index < 0) {
+    mutating_mosaic_ = was_mutating;
     return;
   }
 
@@ -1085,10 +1642,13 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
     first->show();
     second->show();
     EqualizeSplitter(root_splitter_);
+    FillSplitter(root_splitter_);
     RaiseSplitterHandles(root_splitter_);
+    mutating_mosaic_ = was_mutating;
     const QPointer<MainPanelHost> self(this);
     QTimer::singleShot(0, this, [self]() {
-      if (self == nullptr || self->root_splitter_ == nullptr) {
+      if (self == nullptr || self->root_splitter_ == nullptr ||
+          self->mutating_mosaic_) {
         return;
       }
       EqualizeSplitter(self->root_splitter_);
@@ -1133,9 +1693,11 @@ void MainPanelHost::splitPanel(QDockWidget* first, QDockWidget* second,
   }
   FillSplitter(root_splitter_);
   RaiseSplitterHandles(root_splitter_);
+  mutating_mosaic_ = was_mutating;
   const QPointer<MainPanelHost> self(this);
   QTimer::singleShot(0, this, [self]() {
-    if (self == nullptr || self->root_splitter_ == nullptr) {
+    if (self == nullptr || self->root_splitter_ == nullptr ||
+        self->mutating_mosaic_) {
       return;
     }
     FillSplitter(self->root_splitter_);
@@ -1349,10 +1911,7 @@ bool MainPanelHost::restoreMosaicLayout(
 
 void MainPanelHost::resizeEvent(QResizeEvent* event) {
   QMainWindow::resizeEvent(event);
-  if (drop_overlay_ != nullptr) {
-    drop_overlay_->setGeometry(rect());
-    drop_overlay_->raise();
-  }
+  // Drop overlay geometry is the half-pane rect only — do not expand to host.
   // Only top up when there is a real gap. Unconditional FillSplitter here
   // fights Ogre resize and produces perpetual 3D View flicker.
   if (root_splitter_ != nullptr && !tiling_ && root_splitter_->count() > 0) {

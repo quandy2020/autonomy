@@ -48,7 +48,7 @@
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
 #include "autoviz/ui/raw/message_tree.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -57,7 +57,7 @@ namespace {
 
 using automsgs::msgs::DynamicFactory;
 
-QColor kTextMuted() { return glass::Shell().secondary_text; }
+QColor kTextMuted() { return theme::Shell().secondary_text; }
 
 std::string StripPackagePrefix(const std::string& type_name) {
   static const char* kPrefix = "automsgs.msgs.";

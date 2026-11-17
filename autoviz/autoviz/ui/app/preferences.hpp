@@ -4,14 +4,13 @@
 
 /**
  * @file preferences.hpp
- * @brief Persisted UI preferences: language, window start, HUD, shortcuts.
+ * @brief Persisted UI preferences: language, theme, window start, HUD, shortcuts.
  *
  * Stored outside session @c .autoviz files so settings survive config switches.
  * Loaded at startup and edited via @ref AppSettingsDialog.
  *
  * @see AppSettingsDialog
  * @see FrameSession::applyUiPreferences()
- * @see FrameSession::applyShortcutPreferences()
  * @see ShortcutsEditorWidget
  */
 
@@ -21,7 +20,7 @@
 #include <QKeySequence>
 #include <QString>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 class QApplication;
 
@@ -32,9 +31,9 @@ namespace autoviz {
  * @brief Built-in shortcut catalog entry (id, label, default sequence).
  */
 struct AppShortcutDefinition {
-  QString id;                      /**< Stable shortcut id (preferences key). */
-  QString label;                   /**< UI label (may be translated later). */
-  QKeySequence default_sequence;   /**< Factory-default key sequence. */
+  QString id;
+  QString label;
+  QKeySequence default_sequence;
 };
 
 /**
@@ -46,75 +45,35 @@ struct AppUiPreferences {
   QString language_code;
 
   /**
-   * App chrome theme: @c "system", @c "light", @c "dark", or @c "liquid".
-   * Default @c "light" keeps milky bars readable on dark desktops.
+   * App chrome theme: @c "system", @c "light", or @c "dark".
+   * Legacy @c "liquid" is normalized to @c "light".
    */
-  QString theme_mode = QStringLiteral("light");
+  QString theme_mode = QStringLiteral("dark");
 
   /**
-   * Optional accent override as @c #RRGGBB (Concat-style Appearance swatch).
+   * Optional accent override as @c #RRGGBB.
    * Empty means the theme's default accent.
    */
   QString accent_color;
 
-  /** Start the main window maximized on launch. */
   bool start_maximized = true;
-
-  /** Speed / odometer HUD on 3D viewports. */
-  bool viewport_hud_visible = true;
-
-  /** User overrides keyed by @ref AppShortcutDefinition::id. */
+  bool viewport_hud_visible = false;
   QHash<QString, QKeySequence> shortcuts;
 };
 
-/**
- * @brief Returns the built-in shortcut definitions (defaults + labels).
- * @return Catalog used by @ref ShortcutsEditorWidget and preference load.
- */
 QVector<AppShortcutDefinition> DefaultShortcutDefinitions();
-
-/**
- * @brief Loads UI preferences from the platform settings store.
- * @return Preferences with defaults filled for missing keys.
- */
 AppUiPreferences LoadAppUiPreferences();
-
-/**
- * @brief Persists @p preferences to the platform settings store.
- * @param preferences Values to write.
- */
 void SaveAppUiPreferences(const AppUiPreferences& preferences);
 
 /**
- * @brief Maps a stored theme id to @ref glass::ShellAppearance.
- * @param theme_mode @c "system" / @c "light" / @c "dark" / @c "liquid".
+ * @brief Maps a stored theme id to @ref theme::ShellAppearance.
  */
-glass::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode);
+theme::ShellAppearance ShellAppearanceFromThemeMode(const QString& theme_mode);
 
-/**
- * @brief Applies @p theme_mode to the live shell and refreshes the app theme.
- * @param theme_mode Preference id (@c system / @c light / @c dark / @c liquid).
- * @param app Application to restyle (typically @c qApp).
- */
 void ApplyUiThemeMode(const QString& theme_mode, QApplication& app);
-
-/**
- * @brief Applies theme + optional accent override, then refreshes chrome.
- *
- * @param theme_mode Preference id (@c system / @c light / @c dark / @c liquid).
- * @param accent_hex @c #RRGGBB accent, or empty for theme default.
- * @param app Application to restyle.
- */
 void ApplyUiTheme(const QString& theme_mode, const QString& accent_hex,
                   QApplication& app);
 
-/**
- * @brief Resolves a shortcut by @p id (user override or default).
- *
- * @param preferences Loaded preferences.
- * @param id Shortcut id from @ref DefaultShortcutDefinitions().
- * @return Effective key sequence (may be empty if unbound).
- */
 QKeySequence ShortcutForId(const AppUiPreferences& preferences,
                            const QString& id);
 

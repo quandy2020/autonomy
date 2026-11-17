@@ -207,6 +207,14 @@ class ViewsPanel : public QWidget {
   void setViewController(rendering::ViewController* view_controller);
 
   /**
+   * @brief Drops @c view_controller_ if it aliases @p dying (no UI rebuild).
+   *
+   * Call before deleting an @c OgreRenderWindow so @ref onRefreshTick cannot
+   * UAF through @ref ViewController::targetFrameDisplay().
+   */
+  void detachViewControllerIf(const rendering::ViewController* dying);
+
+  /**
    * @brief Syncs Current View values from the controller.
    *
    * Does not rebuild the whole tree (unlike @ref setViewController()). Type

@@ -1,11 +1,11 @@
 /* chrome — window frame, dock, frosted surfaces, viewport */
 
 /* @section dock */
-QDockWidget { background: transparent; border: none; }
+QDockWidget { background: {{panel-surface}}; border: none; }
 /* @end */
 
 /* @section dock_title_bar */
-background: transparent; border: none;
+background: {{dock-title}}; border: none;
 /* @end */
 
 /* @section dock_title_label */
@@ -54,12 +54,12 @@ border-top: 1px solid {{panel-border}};
 /* @end */
 
 /* @section window_status_bar */
-background: {{glass-bar}}; color: {{muted}}; border-top: 1px solid {{glass-rim}};
+background: {{panel-bar}}; color: {{muted}}; border-top: 1px solid {{panel-border}};
 /* @end */
 
 /* @section layout */
-QSplitter { background: transparent; }
-QScrollArea { background: transparent; border: none; }
+QSplitter { background: {{panel-surface}}; }
+QScrollArea { background: {{panel-surface}}; border: none; }
 /* @end */
 
 /* @section panel */
@@ -212,10 +212,10 @@ QTextBrowser {
 /* @section help_browser */
 /* surface/help_browser */
 QTextBrowser {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{text}};
   border: none;
-  border-top: 1px solid {{glass-rim}};
+  border-top: 1px solid {{panel-border}};
   padding: 10px;
   font-size: 12px;
 }

@@ -115,6 +115,32 @@ def test_constrain_motion_blocks_navmesh_and_occupancy():
     assert x == pytest.approx(2.5)
 
 
+def test_constrain_motion_nudges_out_of_occupied_start():
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    from autosim.scene.map import Map
+
+    mapper = Map({"grid": {"resolution": 1.0, "z_min": 0.1, "z_max": 2.0}})
+    mapper.cached_grid = (
+        np.array([[0, 100, 0]], dtype=np.int8),
+        1.0,
+        0.0,
+        0.0,
+        3,
+        1,
+    )
+    simulator.map_builder = mapper
+    simulator.session = None
+    # Occupied cell center; cmd_vel stays inside the wall.
+    x, y = simulator.constrain_motion(1.5, 0.5, 1.5, 0.5)
+    assert mapper.disc_occupied(x, y, radius=0.16) is False
+
+
 def test_simulator_has_no_mock_backend():
     simulator = Simulator(
         backend="minimal",
@@ -153,6 +179,82 @@ def test_refine_floor_y_from_mesh_pulls_down_to_glb():
     simulator.cast_from_origin = fake_cast  # type: ignore[method-assign]
     assert simulator.refine_floor_y_from_mesh() == pytest.approx(0.01)
     assert simulator.floor_y == pytest.approx(0.01)
+
+
+def test_navmesh_height_candidates_include_bounds_and_samples():
+    """Elevated scenes need height probes beyond the old 0…1.5 list."""
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    simulator.floor_y = 0.05
+
+    class Pathfinder:
+        def get_bounds(self):
+            return ((0.0, 2.4, 0.0), (10.0, 5.2, 10.0))
+
+        def get_random_navigable_point(self):
+            return (1.0, 3.1, -2.0)
+
+    heights = simulator.navmesh_height_candidates(Pathfinder())
+    assert 0.05 in heights
+    assert 2.4 in heights
+    assert 5.2 in heights
+    assert 3.1 in heights
+    assert max(heights) >= 5.0
+
+
+def test_snap_to_navmesh_uses_elevated_height_probe():
+    """Spawn at z=0 must still snap when only an elevated navmesh island exists."""
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+
+    class Pathfinder:
+        is_loaded = True
+
+        def get_bounds(self):
+            return ((-1.0, 4.0, -1.0), (1.0, 4.5, 1.0))
+
+        def get_random_navigable_point(self):
+            return (0.2, 4.2, -0.1)
+
+        def snap_point(self, point):
+            y = float(point[1])
+            if abs(y - 4.2) > 0.6:
+                return None
+            return (0.0, 4.2, 0.0)
+
+    class Session:
+        pathfinder = Pathfinder()
+
+        def get_agent(self, _index):
+            raise RuntimeError("unused")
+
+    simulator.session = Session()
+    simulator.x = 0.0
+    simulator.y = 0.0
+    simulator.yaw = 0.0
+    simulator.floor_y = 0.0
+    # Avoid Habitat agent set_state; only verify floor selection.
+    simulator.set_pose = lambda x, y, yaw: (
+        setattr(simulator, "x", float(x)),
+        setattr(simulator, "y", float(y)),
+        setattr(simulator, "yaw", float(yaw)),
+    )  # type: ignore[method-assign]
+    simulator.refine_floor_y_from_mesh = lambda **_kwargs: float(simulator.floor_y)  # type: ignore[method-assign]
+
+    pose = simulator.snap_to_navmesh()
+    assert simulator.floor_y == pytest.approx(4.2)
+    assert pose[0] == pytest.approx(0.0)
+    assert pose[1] == pytest.approx(0.0)
 
 
 def test_husky_camera_offset_is_above_agent():

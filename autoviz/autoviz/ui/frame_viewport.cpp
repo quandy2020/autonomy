@@ -7,6 +7,11 @@
 #include <QObject>
 #include "autoviz/common/selection.hpp"
 #include <algorithm>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <vector>
+#include <cstddef>
 #include <QApplication>
 #include <QFrame>
 #include <QGuiApplication>
@@ -94,7 +99,6 @@
 #include "autoviz/ui/service/service_panel.hpp"
 #include "autoviz/ui/time/panel.hpp"
 #include "autoviz/ui/panel/name_map.hpp"
-#include "autoviz/ui/viewport_toolbar.hpp"
 #include "autoviz/ui/viewport_hud.hpp"
 #include "autoviz/ui/views/panel.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
@@ -175,6 +179,15 @@ void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry,
   if (entry.widget == nullptr) {
     return;
   }
+  // ViewsPanel holds a raw pointer into OgreRenderWindow::viewController().
+  // Detach before delete — otherwise onRefreshTick UAFs in targetFrameDisplay
+  // after mosaic drag recreate (QString::fromUtf8 SEGV).
+  if (frame_ != nullptr && frame_->panels_ != nullptr &&
+      frame_->panels_->views_panel_ != nullptr &&
+      entry.ogre_viewport != nullptr) {
+    frame_->panels_->views_panel_->detachViewControllerIf(
+        &entry.ogre_viewport->viewController());
+  }
   QWidget* w = entry.widget;
   entry.widget = nullptr;
   entry.ogre_viewport = nullptr;
@@ -193,13 +206,14 @@ void FrameViewport::destroyRenderWindowInEntry(ViewportPanelEntry& entry,
   if (entry.layout != nullptr) {
     entry.layout->removeWidget(w);
   }
-  // Detach before hide so hide_helper does not walk dock-host siblings.
-  w->setParent(nullptr);
   w->hide();
-
+  // Synchronous delete keeps the parent — setParent(nullptr) on a live
+  // WA_NativeWindow maps a top-level X window (see-through mosaic-drag hole).
   if (synchronous) {
     delete w;
   } else {
+    w->setParent(nullptr);
+    w->hide();
     w->deleteLater();
   }
 }
@@ -211,41 +225,96 @@ void FrameViewport::clearForQuit() {
 }
 
 void FrameViewport::parkRenderWindowInEntry(ViewportPanelEntry& entry) {
-  if (entry.widget == nullptr) {
-    return;
+  // Title-drag: unmap GLX but keep the charcoal QWidget plate visible in the
+  // hosted leaf. Hiding/destroying WA_NativeWindow punches an X11 hole so the
+  // IDE shows through "3D View". Do not delete OgreRenderWindow (SceneHost UAF).
+  if (entry.hud_overlay != nullptr) {
+    if (entry.layout != nullptr) {
+      entry.layout->removeWidget(entry.hud_overlay);
+    }
+    entry.hud_overlay->setAttribute(Qt::WA_AlwaysStackOnTop, false);
+    entry.hud_overlay->setHudVisible(false);
+    entry.hud_overlay->hide();
   }
-  if (entry.layout != nullptr) {
-    entry.layout->removeWidget(entry.widget);
+  if (entry.ogre_viewport != nullptr) {
+    entry.ogre_viewport->releaseNativeWindowForPark();
+  } else if (entry.widget != nullptr) {
+    entry.widget->show();
+    entry.widget->update();
   }
-  // Park on the frame (not a QMainWindow dock area) so mosaic reparent of
-  // the empty ViewportDock does not touch the native GLX window.
-  entry.widget->setParent(frame_);
-  entry.widget->hide();
+  // Settle must recreate at the post-snap pane size — stale GLX geometry is
+  // the black/purple/grey 黑边 after mosaic 吸附.
+  entry.needs_gl_recreate = true;
+  if (entry.host != nullptr) {
+    entry.host->setAttribute(Qt::WA_OpaquePaintEvent, true);
+    entry.host->setAutoFillBackground(true);
+    entry.host->setStyleSheet(
+        QStringLiteral("QWidget#AutovizViewportHost { background-color: #303030; }"));
+    entry.host->show();
+    entry.host->update();
+  }
+  if (entry.widget != nullptr && entry.layout != nullptr &&
+      entry.widget->parentWidget() != entry.host) {
+    entry.layout->addWidget(entry.widget, 0, 0);
+  }
+  if (entry.widget != nullptr && entry.host != nullptr &&
+      entry.host->width() >= 2 && entry.host->height() >= 2) {
+    entry.widget->setGeometry(entry.host->rect());
+    entry.widget->show();
+    entry.widget->raise();
+    entry.widget->update();
+  }
 }
 
 void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
+  // Park sets needs_gl_recreate — recreate only after reveal is released.
+  // Doing it under reveal_held_ (loadConfig / mosaic restore) flashes a
+  // transparent GLX child while docks are still shuffling.
+  if (!reveal_held_ && entry.needs_gl_recreate && entry.host != nullptr &&
+      entry.host->width() >= 2 && entry.host->height() >= 2) {
+    // Skip while mosaic drag / splitter mutate — host size is still wrong and
+    // a premature recreate locks in black bars until the next full restart.
+    if (frame_ != nullptr && frame_->layout_ != nullptr) {
+      if (frame_->layout_->isCenterDockDragging()) {
+        return;
+      }
+      if (frame_->layout_->main_panel_host_ != nullptr &&
+          frame_->layout_->main_panel_host_->isMutatingMosaic()) {
+        return;
+      }
+    }
+    recreateRenderSurfaceInEntry(entry);
+    return;
+  }
   if (entry.widget == nullptr || entry.layout == nullptr) {
     return;
   }
-  entry.layout->addWidget(entry.widget, 0, 0);
-  if (entry.floating_toolbar != nullptr) {
-    entry.layout->addWidget(entry.floating_toolbar, 0, 0,
-                            Qt::AlignRight | Qt::AlignTop);
-    entry.floating_toolbar->raise();
+  // Legacy park used setParent(frame_); put the widget back if needed.
+  if (entry.widget->parentWidget() != entry.host) {
+    entry.layout->addWidget(entry.widget, 0, 0);
   }
-  if (entry.hud_overlay != nullptr) {
-    entry.layout->addWidget(entry.hud_overlay, 0, 0,
-                            Qt::AlignLeft | Qt::AlignTop);
+  // Never remount while the leaf is mid mosaic title-drag (parking lot).
+  if (frame_ != nullptr && frame_->layout_ != nullptr &&
+      frame_->layout_->isCenterDockDragging()) {
+    const bool hosted =
+        frame_->layout_->main_panel_host_ != nullptr &&
+        entry.dock != nullptr &&
+        frame_->layout_->main_panel_host_->hostsPanel(entry.dock);
+    if (!hosted) {
+      return;
+    }
   }
   // Free-float / intentionalFloat docks may still be mapping (isVisible false
-  // briefly). Prefer requestedVisible + intentionalFloat so GL is not left
-  // parked on the main frame after undock — which looks like the 3D View
-  // "disappeared".
+  // briefly). Prefer hosted / floating so parking mid-drag cannot remount GLX.
+  const bool hosted =
+      frame_ != nullptr && frame_->layout_ != nullptr &&
+      frame_->layout_->main_panel_host_ != nullptr && entry.dock != nullptr &&
+      frame_->layout_->main_panel_host_->hostsPanel(entry.dock);
   const bool should_show =
       entry.dock != nullptr &&
-      (entry.dock->isVisible() || entry.dock->requestedVisible() ||
-       entry.dock->isFloating() ||
-       entry.dock->property("intentionalFloat").toBool());
+      (entry.dock->isVisible() || hosted || entry.dock->isFloating() ||
+       entry.dock->property("intentionalFloat").toBool() ||
+       (entry.dock->requestedVisible() && !entry.needs_gl_recreate));
   if (!should_show) {
     return;
   }
@@ -263,21 +332,243 @@ void FrameViewport::reinstallRenderWindowInEntry(ViewportPanelEntry& entry) {
       entry.widget->setGeometry(entry.host->rect());
     }
   }
-  entry.widget->show();
-  entry.widget->raise();
   entry.widget->updateGeometry();
   if (!reveal_held_) {
     (void)entry.widget->winId();
     if (entry.ogre_viewport != nullptr) {
-      // Undo hideNativeSurface / park so the GLX window paints again.
+      // coverNativeHole rebinds then shows — never bare QWidget::show().
       entry.ogre_viewport->showNativeSurface();
+      entry.ogre_viewport->notifyParentWindowMoved();
     }
-    // Paint only — do not syncToolContext here. Split/mosaic reinstall runs
-    // while sibling docks may still be mid-reparent; requestViewportUpdate()
-    // would call objectName() on a disposed dock and SIGSEGV.
-    entry.widget->update();
   } else if (entry.ogre_viewport != nullptr) {
     entry.ogre_viewport->hideNativeSurface();
+  }
+}
+
+void FrameViewport::recreateRenderSurfaceInEntry(ViewportPanelEntry& entry) {
+  if (entry.host == nullptr || entry.layout == nullptr) {
+    return;
+  }
+  std::optional<rendering::ViewState> camera;
+  if (rendering::ViewController* controller = entry.viewController()) {
+    camera = controller->state();
+  }
+  const std::shared_ptr<rendering::SceneOverlay> overlay = entry.scene_overlay;
+  const std::string tool = entry.local_tool_id;
+
+  destroyRenderWindowInEntry(entry, /*synchronous=*/true);
+  entry.scene_overlay =
+      overlay != nullptr ? overlay
+                         : std::make_shared<rendering::SceneOverlay>();
+  entry.local_tool_id = tool;
+  createRenderWindowInEntry(entry, QStringLiteral("Ogre"));
+  if (camera.has_value() && entry.ogre_viewport != nullptr) {
+    entry.ogre_viewport->viewController().setState(*camera);
+  }
+  entry.needs_gl_recreate = false;
+  if (entry.host != nullptr) {
+    entry.host->setStyleSheet(
+        QStringLiteral("QWidget#AutovizViewportHost { background-color: #303030; }"));
+    if (entry.host->width() >= 2 && entry.host->height() >= 2 &&
+        entry.widget != nullptr) {
+      entry.widget->setGeometry(entry.host->rect());
+    }
+  }
+  if (!reveal_held_ && entry.ogre_viewport != nullptr) {
+    entry.ogre_viewport->showNativeSurface();
+    entry.ogre_viewport->notifyParentWindowMoved();
+  }
+  // Rebind ViewsPanel to the (possibly new) active controller after recreate.
+  if (frame_ != nullptr && frame_->panels_ != nullptr &&
+      frame_->panels_->views_panel_ != nullptr) {
+    frame_->panels_->views_panel_->setViewController(activeViewController());
+  }
+  // New OgreSceneHost is empty until displays redraw into it.
+  requestViewportUpdate();
+}
+
+void FrameViewport::scheduleSettleReinstallAll(int delay_ms,
+                                               bool close_broken_duplicates) {
+  ++settle_reinstall_epoch_;
+  // delay_ms < 0: cancel in-flight settle only (e.g. new mosaic drag started).
+  if (delay_ms < 0 || frame_ == nullptr) {
+    return;
+  }
+  const int epoch = settle_reinstall_epoch_;
+  const int wait_ms = delay_ms;
+
+  const auto try_reveal = [this, epoch]() -> bool {
+    if (epoch != settle_reinstall_epoch_ || frame_ == nullptr || reveal_held_) {
+      return true;
+    }
+    bool pending = false;
+    forEachViewportPanel([this, &pending](ViewportPanelEntry& entry) {
+      if (entry.dock == nullptr) {
+        return;
+      }
+      const bool hosted =
+          frame_->layout_ != nullptr &&
+          frame_->layout_->main_panel_host_ != nullptr &&
+          frame_->layout_->main_panel_host_->hostsPanel(entry.dock);
+      const bool want_visible =
+          entry.dock->isVisible() || entry.dock->isFloating() ||
+          entry.dock->requestedVisible() ||
+          entry.dock->property("intentionalFloat").toBool() || hosted;
+      if (!want_visible) {
+        return;
+      }
+      if (entry.host == nullptr) {
+        ensureViewportPanelReady(entry.dock);
+      }
+      if (entry.host == nullptr) {
+        pending = true;
+        return;
+      }
+      if (entry.host->width() < 2 || entry.host->height() < 2) {
+        pending = true;
+        return;
+      }
+
+      entry.host->updateGeometry();
+      if (entry.dock != nullptr) {
+        entry.dock->updateGeometry();
+      }
+
+      const bool size_mismatch =
+          entry.widget != nullptr &&
+          (qAbs(entry.widget->width() - entry.host->width()) > 2 ||
+           qAbs(entry.widget->height() - entry.host->height()) > 2);
+
+      // Dragged panes / stale GLX: destroy + new QWidget at final pane size.
+      // Size mismatch after 吸附 is the usual black/grey 黑边 source.
+      if (entry.needs_gl_recreate || size_mismatch ||
+          entry.ogre_viewport == nullptr || entry.widget == nullptr) {
+        entry.needs_gl_recreate = true;
+        recreateRenderSurfaceInEntry(entry);
+      } else {
+        if (entry.widget->parentWidget() != entry.host) {
+          reinstallRenderWindowInEntry(entry);
+        }
+        entry.widget->setGeometry(entry.host->rect());
+        (void)entry.widget->winId();
+        entry.ogre_viewport->showNativeSurface();
+        entry.ogre_viewport->notifyParentWindowMoved();
+      }
+
+      if (entry.ogre_viewport == nullptr || entry.widget == nullptr ||
+          !entry.widget->isVisible()) {
+        pending = true;
+        return;
+      }
+      // Drop the charcoal plate once GL is live — avoids a second flash.
+      if (entry.host != nullptr) {
+        entry.host->setStyleSheet(QString());
+      }
+      if (entry.hud_overlay != nullptr && entry.hud_overlay->isVisible()) {
+        entry.hud_overlay->raise();
+      }
+    });
+    requestViewportUpdate();
+    return !pending;
+  };
+
+  QTimer::singleShot(wait_ms, frame_, [this, epoch, try_reveal,
+                                       close_broken_duplicates]() {
+    if (epoch != settle_reinstall_epoch_) {
+      return;
+    }
+    // Freeze paints while remounting so dual-pane GLX does not tear mid-bind.
+    QWidget* mosaic = (frame_->layout_ != nullptr)
+                          ? static_cast<QWidget*>(frame_->layout_->main_panel_host_)
+                          : nullptr;
+    if (mosaic != nullptr) {
+      mosaic->setUpdatesEnabled(false);
+    }
+    const bool done = try_reveal();
+    if (mosaic != nullptr) {
+      mosaic->setUpdatesEnabled(true);
+    }
+    if (done) {
+      if (close_broken_duplicates) {
+        closeTransparentViewportDuplicates();
+      }
+      return;
+    }
+    // Sequential retries only — the old parallel {32,80,160,320} barrage
+    // remounted GLX several times and caused loadConfig tearing/flicker.
+    const std::vector<int> gaps = {40, 80, 160};
+    auto chain = std::make_shared<std::function<void(size_t)>>();
+    *chain = [this, epoch, try_reveal, close_broken_duplicates, gaps,
+              chain, mosaic](size_t index) {
+      if (epoch != settle_reinstall_epoch_ || frame_ == nullptr) {
+        return;
+      }
+      if (mosaic != nullptr) {
+        mosaic->setUpdatesEnabled(false);
+      }
+      const bool ok = try_reveal();
+      if (mosaic != nullptr) {
+        mosaic->setUpdatesEnabled(true);
+      }
+      if (ok) {
+        if (close_broken_duplicates) {
+          closeTransparentViewportDuplicates();
+        }
+        return;
+      }
+      if (index >= gaps.size()) {
+        if (close_broken_duplicates) {
+          closeTransparentViewportDuplicates();
+        }
+        return;
+      }
+      QTimer::singleShot(gaps[index], frame_, [chain, index]() {
+        (*chain)(index + 1);
+      });
+    };
+    QTimer::singleShot(gaps[0], frame_, [chain]() { (*chain)(1); });
+  });
+}
+
+void FrameViewport::closeTransparentViewportDuplicates() {
+  if (frame_ == nullptr) {
+    return;
+  }
+  // Only close floating / intentionalFloat ghosts with no live GL. Never close
+  // hosted mosaic panes — intentional Split right / dual-pane snap must keep
+  // both (Foxglove multi-3D model).
+  std::vector<PanelDockWidget*> ghosts;
+  forEachViewportPanel([this, &ghosts](ViewportPanelEntry& entry) {
+    if (entry.dock == nullptr) {
+      return;
+    }
+    const bool floating =
+        entry.dock->isFloating() ||
+        entry.dock->property("intentionalFloat").toBool();
+    if (!floating) {
+      return;
+    }
+    const bool hosted =
+        frame_->layout_ != nullptr &&
+        frame_->layout_->main_panel_host_ != nullptr &&
+        frame_->layout_->main_panel_host_->hostsPanel(entry.dock);
+    if (hosted) {
+      return;
+    }
+    const bool live_gl = entry.ogre_viewport != nullptr &&
+                         entry.ogre_viewport->hasLiveGlSurface() &&
+                         entry.widget != nullptr && entry.widget->isVisible();
+    if (!live_gl) {
+      if (entry.ogre_viewport != nullptr) {
+        entry.ogre_viewport->hideNativeSurface();
+      }
+      ghosts.push_back(entry.dock);
+    }
+  });
+  for (PanelDockWidget* dock : ghosts) {
+    if (dock != nullptr) {
+      dock->close();
+    }
   }
 }
 
@@ -304,22 +595,11 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
 
   if (entry.widget != nullptr && entry.layout != nullptr) {
     entry.layout->addWidget(entry.widget, 0, 0);
-    if (entry.floating_toolbar != nullptr) {
-      entry.layout->addWidget(entry.floating_toolbar, 0, 0,
-                              Qt::AlignRight | Qt::AlignTop);
-      entry.floating_toolbar->raise();
-      entry.floating_toolbar->show();
-    }
-    if (entry.hud_overlay != nullptr) {
-      entry.layout->addWidget(entry.hud_overlay, 0, 0,
-                              Qt::AlignLeft | Qt::AlignTop);
-      if (entry.hud_overlay->isHudVisible()) {
-        entry.hud_overlay->raise();
-        entry.hud_overlay->show();
-      } else {
-        entry.hud_overlay->hide();
-      }
-    }
+  }
+  // Never remount the glass HUD — AlwaysStackOnTop floats over other apps
+  // during mosaic drag. installViewportHudOverlay() only tears leftovers down.
+  if (entry.hud_overlay != nullptr) {
+    installViewportHudOverlay(entry);
   }
   applyViewportEntryRenderSettings(entry);
   connectViewportInteractionsForEntry(entry);
@@ -328,18 +608,26 @@ void FrameViewport::createRenderWindowInEntry(ViewportPanelEntry& entry,
   // GLX surface until startup settle (reveal_held_) and the host is sized.
   const bool sized = entry.host != nullptr && entry.host->width() >= 2 &&
                      entry.host->height() >= 2;
-  if (entry.dock != nullptr && entry.dock->requestedVisible() &&
-      entry.widget != nullptr && sized) {
+  const bool mosaic_dragging =
+      frame_ != nullptr && frame_->layout_ != nullptr &&
+      frame_->layout_->isCenterDockDragging();
+  const bool hosted =
+      frame_ != nullptr && frame_->layout_ != nullptr &&
+      frame_->layout_->main_panel_host_ != nullptr && entry.dock != nullptr &&
+      frame_->layout_->main_panel_host_->hostsPanel(entry.dock);
+  const bool want_map =
+      entry.dock != nullptr && sized && entry.widget != nullptr &&
+      (hosted || entry.dock->isVisible() || entry.dock->isFloating() ||
+       entry.dock->property("intentionalFloat").toBool()) &&
+      !(mosaic_dragging && !hosted);
+  if (want_map) {
     entry.widget->setGeometry(entry.host->rect());
-    entry.widget->show();
-    entry.widget->raise();
     entry.widget->updateGeometry();
     if (!reveal_held_) {
       (void)entry.widget->winId();
       if (entry.ogre_viewport != nullptr) {
         entry.ogre_viewport->showNativeSurface();
       }
-      entry.widget->update();
     } else if (entry.ogre_viewport != nullptr) {
       entry.ogre_viewport->hideNativeSurface();
     }
@@ -402,6 +690,15 @@ void FrameViewport::registerPrimaryViewportPanel() {
   entry.host = viewport_dock_->widget();
   if (entry.host != nullptr) {
     entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
+  }
+  // Primary was registered without createViewportPanelDock — still need a
+  // visibility bit or drawViewport() skips the pane (no Grid / displays).
+  if (frame_->manager_ != nullptr) {
+    entry.visibility_bit = frame_->manager_->allocViewportBit();
+    if (entry.visibility_bit != 0) {
+      frame_->manager_->claimOrphanDisplaysForViewport(entry.visibility_bit);
+      frame_->manager_->setActiveViewportBit(entry.visibility_bit);
+    }
   }
   viewport_panels_.insert(viewport_dock_, entry);
   active_viewport_dock_ = viewport_dock_;
@@ -527,11 +824,6 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
     entry.host = dock->widget();
     if (entry.host != nullptr) {
       entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
-      const QList<ViewportFloatingToolbar*> toolbars =
-          entry.host->findChildren<ViewportFloatingToolbar*>();
-      if (!toolbars.isEmpty()) {
-        entry.floating_toolbar = toolbars.first();
-      }
       const QList<ViewportHudOverlay*> huds =
           entry.host->findChildren<ViewportHudOverlay*>();
       if (!huds.isEmpty()) {
@@ -561,23 +853,36 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
   if (entry.host != nullptr && entry.layout == nullptr) {
     entry.layout = qobject_cast<QGridLayout*>(entry.host->layout());
   }
+  // Session reopen / primary path may still lack a bit after register.
+  if (entry.visibility_bit == 0 && frame_->manager_ != nullptr) {
+    entry.visibility_bit = frame_->manager_->allocViewportBit();
+    if (entry.visibility_bit != 0) {
+      const bool first =
+          std::count_if(viewport_panels_.cbegin(), viewport_panels_.cend(),
+                        [](const auto& item) {
+                          return item.visibility_bit != 0;
+                        }) <= 1;
+      if (first) {
+        frame_->manager_->claimOrphanDisplaysForViewport(entry.visibility_bit);
+        frame_->manager_->setActiveViewportBit(entry.visibility_bit);
+      } else {
+        frame_->manager_->seedViewportDisplaysFromPeer(entry.visibility_bit);
+      }
+    }
+  }
   if (entry.widget == nullptr) {
     const QString backend = QString::fromStdString(frame_->manager_->renderBackendName());
     createRenderWindowInEntry(entry, backend);
-    if (entry.floating_toolbar == nullptr) {
-      installViewportFloatingToolbar(entry);
-    }
     if (entry.hud_overlay == nullptr) {
       installViewportHudOverlay(entry);
     }
   } else {
     applyViewportEntryRenderSettings(entry);
-    // Mosaic tile parks the GL surface on the frame. Reopen / attach paths that
-    // skip a full retile must reinstall it or the 3D View stays blank (toolbar
-    // only). Only reinstall when actually parked — transient !isVisible during
-    // drag/resize must not reparent the GLX window (interaction hitch).
+    // Park sets needs_gl_recreate without reparenting — honor that flag so
+    // reopen / split deferred ensure does not leave a blank charcoal pane.
     const bool parked =
-        entry.host != nullptr && entry.widget->parentWidget() != entry.host;
+        entry.needs_gl_recreate ||
+        (entry.host != nullptr && entry.widget->parentWidget() != entry.host);
     if (parked) {
       reinstallRenderWindowInEntry(entry);
     } else if (dock->isVisible() && entry.widget->parentWidget() == entry.host) {
@@ -585,16 +890,11 @@ void FrameViewport::ensureViewportPanelReady(PanelDockWidget* dock) {
                          entry.host->height() >= 2;
       if (sized) {
         entry.widget->setGeometry(entry.host->rect());
-        if (!entry.widget->isVisible()) {
-          entry.widget->show();
-        }
-        entry.widget->raise();
         if (!reveal_held_) {
           (void)entry.widget->winId();
           if (entry.ogre_viewport != nullptr) {
             entry.ogre_viewport->showNativeSurface();
           }
-          entry.widget->update();
         } else if (entry.ogre_viewport != nullptr) {
           entry.ogre_viewport->hideNativeSurface();
         }
@@ -622,6 +922,26 @@ PanelDockWidget* FrameViewport::createViewportPanelDock(
   entry.object_name = dock_name;
   entry.host = new QWidget(dock);
   entry.host->setObjectName(QString::fromLatin1(AppThemeIds::kViewportHost));
+  // Opaque plate under the WA_PaintOnScreen GL child. If GLX is down/hidden,
+  // this plate must fill the dock — otherwise the pane is a transparent hole.
+  entry.host->setAttribute(Qt::WA_OpaquePaintEvent, true);
+  entry.host->setAttribute(Qt::WA_NoSystemBackground, false);
+  entry.host->setAutoFillBackground(true);
+  {
+    const QColor plate =
+        frame_->manager_ != nullptr
+            ? common::ParseColorProperty(frame_->manager_->backgroundColor(),
+                                         QColor(48, 48, 48))
+            : QColor(48, 48, 48);
+    QPalette pal = entry.host->palette();
+    pal.setColor(QPalette::Window, plate);
+    pal.setColor(QPalette::Base, plate);
+    entry.host->setPalette(pal);
+    // Stylesheet beats theme polish that otherwise leaves a light dock plate.
+    entry.host->setStyleSheet(
+        QStringLiteral("QWidget#AutovizViewportHost { background-color: %1; }")
+            .arg(plate.name()));
+  }
   // Keep mins small so repeated Split down (4+ stacked panes) can fit.
   entry.host->setMinimumSize(80, 60);
   entry.layout = new QGridLayout(entry.host);
@@ -651,7 +971,6 @@ PanelDockWidget* FrameViewport::createViewportPanelDock(
     const QString backend =
         QString::fromStdString(frame_->manager_->renderBackendName());
     createRenderWindowInEntry(entry, backend);
-    installViewportFloatingToolbar(entry);
     installViewportHudOverlay(entry);
   }
 
@@ -737,18 +1056,41 @@ void FrameViewport::requestViewportUpdate() {
 }
 
 void FrameViewport::setViewportRevealHeld(bool held) {
+  auto park_opaque = [this](bool force_paint) {
+    forEachViewportPanel([force_paint](ViewportPanelEntry& entry) {
+      entry.needs_gl_recreate = true;
+      if (entry.ogre_viewport != nullptr) {
+        entry.ogre_viewport->hideNativeSurface();
+      }
+      if (entry.host != nullptr) {
+        entry.host->setStyleSheet(QStringLiteral(
+            "QWidget#AutovizViewportHost { background-color: #303030; }"));
+        // Avoid host->update() storms during loadConfig re-enter — paints
+        // while docks reshuffle are the main UI flicker source.
+        if (force_paint) {
+          entry.host->update();
+        }
+      }
+    });
+  };
+
   if (reveal_held_ == held) {
+    // loadConfig / mosaic churn may re-enter while already held — re-park so
+    // a stray showNativeSurface cannot flash a hole mid-restore.
+    if (held) {
+      park_opaque(/*force_paint=*/false);
+    }
     return;
   }
   reveal_held_ = held;
   if (!reveal_held_) {
-    revealViewportSurfaces();
+    // Do not bare-map GLX here — that flashes X11 holes during loadConfig.
+    // Settle recreates each parked pane at final geometry, then presents.
+    park_opaque(/*force_paint=*/false);
+    scheduleSettleReinstallAll(/*delay_ms=*/32,
+                               /*close_broken_duplicates=*/false);
   } else {
-    forEachViewportPanel([](ViewportPanelEntry& entry) {
-      if (entry.ogre_viewport != nullptr) {
-        entry.ogre_viewport->hideNativeSurface();
-      }
-    });
+    park_opaque(/*force_paint=*/false);
   }
 }
 
@@ -771,13 +1113,14 @@ void FrameViewport::revealViewportSurfaces() {
       return;
     }
     entry.widget->setGeometry(entry.host->rect());
-    if (!entry.widget->isVisible()) {
-      entry.widget->show();
-    }
-    entry.widget->raise();
     (void)entry.widget->winId();
     entry.ogre_viewport->showNativeSurface();
-    entry.widget->update();
+    // External GLX ignores Qt layout until windowMovedOrResized — dual panes
+    // otherwise keep a stale full-width surface over the sibling.
+    entry.ogre_viewport->notifyParentWindowMoved();
+    if (entry.hud_overlay != nullptr && entry.hud_overlay->isVisible()) {
+      entry.hud_overlay->raise();
+    }
   });
 }
 
@@ -791,16 +1134,63 @@ void FrameViewport::viewportTick(float delta_seconds) {
     if (reveal_held_) {
       return;
     }
-    // Hidden 3D docks must not keep painting their native Ogre surface —
-    // otherwise Change panel leaves a GL window covering the replacement.
-    if (entry.dock != nullptr && !entry.dock->isVisible()) {
-      entry.ogre_viewport->hideNativeSurface();
-      return;
-    }
     // Parked on the frame during mosaic/split reparent — never paint GLX there.
     if (entry.widget != nullptr && entry.widget->parentWidget() == frame_) {
       return;
     }
+    // Mosaic title-drag: only the dragged dock stays parked. Sibling panes
+    // keep live GL so the mosaic looks unchanged aside from the drop half.
+    const bool mosaic_dragging =
+        frame_->layout_ != nullptr && frame_->layout_->isCenterDockDragging();
+    const bool hosted =
+        frame_->layout_ != nullptr &&
+        frame_->layout_->main_panel_host_ != nullptr &&
+        entry.dock != nullptr &&
+        frame_->layout_->main_panel_host_->hostsPanel(entry.dock);
+    if (mosaic_dragging) {
+      PanelDockWidget* dragged =
+          frame_->layout_ != nullptr ? frame_->layout_->mosaicDragDock()
+                                     : nullptr;
+      if (entry.dock == dragged) {
+        entry.ogre_viewport->hideNativeSurface();
+        if (entry.widget != nullptr && !entry.widget->isVisible()) {
+          entry.widget->show();
+          entry.widget->update();
+        }
+        return;
+      }
+      // Fall through — remount/resize sibling viewports normally.
+    }
+    // Hidden 3D docks must not keep painting their native Ogre surface —
+    // otherwise Change panel leaves a GL window covering the replacement.
+    // After mosaic snap, isVisible() can flicker false while the dock is
+    // already hosted — do not unmap in that race (blank pane). Do NOT treat
+    // requestedVisible alone as keep_mapped (parking mid-drag).
+    if (entry.dock != nullptr && !entry.dock->isVisible()) {
+      const bool keep_mapped =
+          entry.dock->isFloating() ||
+          entry.dock->property("intentionalFloat").toBool() || hosted;
+      if (!keep_mapped) {
+        entry.ogre_viewport->hideNativeSurface();
+        return;
+      }
+    }
+    // Keep each WA_NativeWindow clipped to its host. Splitter moves often
+    // leave one GLX at the pre-split full width covering the other pane —
+    // or a mapped Ogre child with background_pixel=0 (see-through hole).
+    // Destroy the child before resize; paint/tick recreates on next present.
+    if (entry.widget != nullptr && entry.host != nullptr &&
+        entry.widget->parentWidget() == entry.host &&
+        entry.host->width() >= 2 && entry.host->height() >= 2) {
+      const QRect host_rect = entry.host->rect();
+      if (entry.widget->geometry() != host_rect) {
+        entry.widget->setGeometry(host_rect);
+        entry.ogre_viewport->invalidateGlSurface();
+        entry.ogre_viewport->notifyParentWindowMoved();
+      }
+    }
+    // tick() owns show/hide: never force-show a PaintOnScreen widget here —
+    // that reopened X11 see-through holes when present failed.
     entry.ogre_viewport->tick(delta_seconds);
   });
 }
@@ -1029,7 +1419,6 @@ void FrameViewport::syncViewportTitleBarToolsForEntry(
       }
     }
   }
-  syncViewportFloatingToolbarForEntry(entry);
 }
 
 void FrameViewport::setViewportFloatButtonChecked(PanelDockWidget* dock,
@@ -1067,38 +1456,6 @@ void FrameViewport::setViewportContentOnlyButtonChecked(PanelDockWidget* dock,
   entry->content_only_button->blockSignals(false);
 }
 
-void FrameViewport::setViewportFloatingToolbarVisible(PanelDockWidget* dock,
-                                                      bool visible) {
-  ViewportPanelEntry* entry = viewportEntryForDock(dock);
-  if (entry == nullptr || entry->floating_toolbar == nullptr) {
-    return;
-  }
-  entry->floating_toolbar->setVisible(visible);
-  if (visible) {
-    entry->floating_toolbar->raise();
-  }
-}
-
-void FrameViewport::syncViewportFloatingToolbarForEntry(
-    const ViewportPanelEntry& entry) {
-  if (entry.floating_toolbar == nullptr) {
-    return;
-  }
-  entry.floating_toolbar->setInspectChecked(entry.local_tool_id == "Select");
-  entry.floating_toolbar->setMeasureChecked(entry.local_tool_id == "Measure");
-  if (rendering::ViewController* controller = entry.viewController()) {
-    const auto type = controller->type();
-    entry.floating_toolbar->set2dCameraChecked(
-        type == rendering::ViewControllerType::kTopDownOrtho);
-    const QString frame_label = controller->targetFrameDisplay();
-    entry.floating_toolbar->setRecenterToolTip(
-        frame_->tr("Re-center On %1").arg(frame_label));
-  }
-  const bool hud_visible =
-      entry.hud_overlay != nullptr && entry.hud_overlay->isHudVisible();
-  entry.floating_toolbar->setHudChecked(hud_visible);
-}
-
 void FrameViewport::pushViewportLocalTool(ViewportPanelEntry& entry) {
   const std::string viewport_key =
       entry.dock != nullptr ? entry.dock->objectName().toStdString()
@@ -1106,7 +1463,6 @@ void FrameViewport::pushViewportLocalTool(ViewportPanelEntry& entry) {
   if (entry.ogre_viewport != nullptr) {
     entry.ogre_viewport->setViewportToolId(entry.local_tool_id);
   }
-  syncViewportFloatingToolbarForEntry(entry);
   if (common::Tool* tool = frame_->manager_->tools().toolById(entry.local_tool_id)) {
     tool->setCursor(IconLoader::toolCursor(
         QString::fromStdString(entry.local_tool_id)));
@@ -1148,134 +1504,39 @@ void FrameViewport::setViewportLocalTool(PanelDockWidget* dock,
   requestViewportUpdate();
 }
 
-void FrameViewport::toggleViewportLocalTool(PanelDockWidget* dock,
-                                                 const std::string& tool_id) {
-  ViewportPanelEntry* entry = viewportEntryForDock(dock);
-  if (entry == nullptr) {
-    return;
-  }
-  const std::string next =
-      entry->local_tool_id == tool_id
-          ? frame_->manager_->tools().defaultToolId()
-          : tool_id;
-  setViewportLocalTool(dock, next.empty() ? "Interact" : next);
-}
 
-void FrameViewport::onViewportToggle2dCamera(PanelDockWidget* dock) {
-  ViewportPanelEntry* entry = viewportEntryForDock(dock);
-  if (entry == nullptr) {
-    return;
-  }
-  setActiveViewportDock(dock);
-  rendering::ViewController* controller = entry->viewController();
-  if (controller == nullptr) {
-    return;
-  }
-  const auto type = controller->type();
-  const bool in_2d = type == rendering::ViewControllerType::kTopDownOrtho;
-  if (in_2d) {
-    if (entry->saved_3d_view_state.has_value()) {
-      controller->setState(*entry->saved_3d_view_state);
-      entry->saved_3d_view_state.reset();
-    } else {
-      controller->setTypeByName(QStringLiteral("Orbit"));
-    }
-  } else {
-    // TopDownOrtho::setType overwrites yaw/pitch — save full 3D state first.
-    entry->saved_3d_view_state = controller->state();
-    controller->setTypeByName(QStringLiteral("TopDownOrtho"));
-  }
-  if (frame_->panels_->views_panel_ != nullptr && dock == active_viewport_dock_) {
-    frame_->panels_->views_panel_->refreshFromController();
-  }
-  syncViewportFloatingToolbarForEntry(*entry);
-  requestViewportUpdate();
-  frame_->session_->markConfigModified();
-}
 
-void FrameViewport::onViewportRecenterOnFrame(PanelDockWidget* dock) {
-  ViewportPanelEntry* entry = viewportEntryForDock(dock);
-  if (entry == nullptr) {
-    return;
-  }
-  setActiveViewportDock(dock);
-  rendering::ViewController* controller = entry->viewController();
-  if (controller == nullptr) {
-    return;
-  }
-  // Same as Views panel "Zero": reset yaw/pitch/distance/focal point to defaults
-  // in the Target Frame. Only setTarget(0,0,0) is a no-op after orbit-only moves.
-  controller->reset();
-  if (frame_->panels_->views_panel_ != nullptr && dock == active_viewport_dock_) {
-    frame_->panels_->views_panel_->refreshFromController();
-  }
-  syncViewportFloatingToolbarForEntry(*entry);
-  requestViewportUpdate();
-  frame_->session_->markConfigModified();
-}
 
-void FrameViewport::installViewportFloatingToolbar(ViewportPanelEntry& entry) {
-  if (entry.host == nullptr || entry.floating_toolbar != nullptr) {
-    return;
-  }
-  entry.floating_toolbar = new ViewportFloatingToolbar(entry.host);
-  PanelDockWidget* dock = entry.dock;
-  ViewportFloatingToolbarCallbacks callbacks;
-  callbacks.on_inspect = [this, dock]() {
-    setActiveViewportDock(dock);
-    toggleViewportLocalTool(dock, "Select");
-  };
-  callbacks.on_toggle_2d_camera = [this, dock]() {
-    onViewportToggle2dCamera(dock);
-  };
-  callbacks.on_measure = [this, dock]() {
-    setActiveViewportDock(dock);
-    toggleViewportLocalTool(dock, "Measure");
-  };
-  callbacks.on_recenter_frame = [this, dock]() {
-    onViewportRecenterOnFrame(dock);
-  };
-  callbacks.on_toggle_hud = [this](bool visible) {
-    forEachViewportPanel([visible](ViewportPanelEntry& panel) {
-      if (panel.hud_overlay != nullptr) {
-        panel.hud_overlay->setHudVisible(visible);
-      }
-    });
-    AppUiPreferences preferences = LoadAppUiPreferences();
-    preferences.viewport_hud_visible = visible;
-    SaveAppUiPreferences(preferences);
-    forEachViewportPanel([this](ViewportPanelEntry& panel) {
-      syncViewportFloatingToolbarForEntry(panel);
-    });
-  };
-  entry.floating_toolbar->setCallbacks(std::move(callbacks));
-  if (entry.layout != nullptr) {
-    entry.layout->addWidget(entry.floating_toolbar, 0, 0,
-                            Qt::AlignRight | Qt::AlignTop);
-    entry.layout->setContentsMargins(8, 8, 8, 8);
-  }
-  entry.floating_toolbar->raise();
-  entry.floating_toolbar->show();
-  syncViewportFloatingToolbarForEntry(entry);
-}
 
 void FrameViewport::installViewportHudOverlay(ViewportPanelEntry& entry) {
-  if (entry.host == nullptr || entry.hud_overlay != nullptr) {
-    return;
+  // Glass SPEED/ANG/ODOM dials (WA_AlwaysStackOnTop + translucent) float as a
+  // see-through strip over the desktop during mosaic drag. Flat theme keeps
+  // the 3D plate clean — tear down any leftover overlay and do not reinstall.
+  if (entry.hud_overlay != nullptr) {
+    if (entry.layout != nullptr) {
+      entry.layout->removeWidget(entry.hud_overlay);
+    }
+    entry.hud_overlay->setAttribute(Qt::WA_AlwaysStackOnTop, false);
+    entry.hud_overlay->setHudVisible(false);
+    entry.hud_overlay->hide();
+    entry.hud_overlay->deleteLater();
+    entry.hud_overlay = nullptr;
   }
-  entry.hud_overlay = new ViewportHudOverlay(frame_->manager_.get(), entry.host);
-  const bool visible = LoadAppUiPreferences().viewport_hud_visible;
-  entry.hud_overlay->setHudVisible(visible);
+  if (entry.host != nullptr) {
+    const QList<ViewportHudOverlay*> orphans =
+        entry.host->findChildren<ViewportHudOverlay*>();
+    for (ViewportHudOverlay* hud : orphans) {
+      if (hud == nullptr) {
+        continue;
+      }
+      hud->setAttribute(Qt::WA_AlwaysStackOnTop, false);
+      hud->setHudVisible(false);
+      hud->hide();
+      hud->deleteLater();
+    }
+  }
   if (entry.layout != nullptr) {
-    entry.layout->addWidget(entry.hud_overlay, 0, 0,
-                            Qt::AlignLeft | Qt::AlignTop);
-    entry.layout->setContentsMargins(8, 8, 8, 8);
-  }
-  if (visible) {
-    entry.hud_overlay->raise();
-  }
-  if (entry.floating_toolbar != nullptr) {
-    entry.floating_toolbar->setHudChecked(visible);
+    entry.layout->setContentsMargins(0, 0, 0, 0);
   }
 }
 

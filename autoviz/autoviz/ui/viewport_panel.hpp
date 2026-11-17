@@ -11,7 +11,6 @@
  * does); it holds non-owning pointers to widgets created under that dock.
  *
  * @see FrameViewport
- * @see ViewportFloatingToolbar
  * @see ViewportHudOverlay
  * @see rendering::OgreRenderWindow
  */
@@ -34,7 +33,6 @@ class QWidget;
 namespace autoviz {
 
 class PanelDockWidget;
-class ViewportFloatingToolbar;
 class ViewportHudOverlay;
 
 namespace rendering {
@@ -77,7 +75,6 @@ struct ViewportPanelEntry {
       std::make_shared<rendering::SceneOverlay>();
   /** Visibility bit allocated for this view's Display ownership. */
   uint32_t visibility_bit = 0;
-  ViewportFloatingToolbar* floating_toolbar = nullptr;  /**< Right-edge tools. */
   ViewportHudOverlay* hud_overlay = nullptr;            /**< Top-left HUD. */
   QToolButton* expand_button = nullptr;   /**< Title-bar expand toggle. */
   QToolButton* settings_button = nullptr; /**< Title-bar settings toggle. */
@@ -96,7 +93,13 @@ struct ViewportPanelEntry {
   bool detached_for_window_hide = false;
 
   /**
-   * Snapshot taken when entering 2D via floating toolbar; restored on 3D.
+   * Set when mosaic title-bar drag parks this pane. Settle must destroy and
+   * recreate the Ogre QWidget/GLX (rebind alone left a blank/transparent view).
+   */
+  bool needs_gl_recreate = false;
+
+  /**
+   * Snapshot taken when entering top-down ortho; restored on return to 3D.
    */
   std::optional<rendering::ViewState> saved_3d_view_state;
 

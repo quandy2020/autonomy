@@ -182,7 +182,12 @@ endif()
 #   add_subdirectory each enabled domain, then wire INTERFACE target
 #   autonomy / autonomy::autonomy that links proto + all domain libs.
 autonomy_add_proto()
+option(AUTONOMY_BUILD_EXPLORATION_TESTS "Build native exploration integration checks" OFF)
+if(AUTONOMY_BUILD_EXPLORATION_TESTS)
+  enable_testing()
+endif()
 autonomy_add_domains()
+include(cmake/ExplorationTests.cmake)
 
 # --- companions --------------------------------------------------------------
 # Built after domains so they can link autonomy / autolink / automsgs.

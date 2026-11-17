@@ -79,15 +79,16 @@ class OgreRenderWindow : public QWidget {
   /**
    * @brief Hides the native Ogre surface without waiting for a Qt hide event.
    *
-   * Used by Change panel so the GL window cannot cover the replacement dock.
+   * Unmaps GLX and hides this widget so the host @c #303030 plate shows.
+   * Autoviz never uses @c WA_PaintOnScreen (that path punched X11 holes).
    */
-  void hideNativeSurface() { ogre_backend_.setWindowVisible(false); }
+  void hideNativeSurface();
 
   /**
    * @brief Shows the native Ogre surface after park / hide without waiting for
    *        a Qt show event (reinstall may already mark the QWidget visible).
    */
-  void showNativeSurface() { ogre_backend_.setWindowVisible(true); }
+  void showNativeSurface();
 
   /**
    * @brief Syncs the external GL surface after a parent top-level window move.
@@ -96,6 +97,31 @@ class OgreRenderWindow : public QWidget {
    * window moves — float-shell drag must call this explicitly.
    */
   void notifyParentWindowMoved() { ogre_backend_.notifyWindowMovedOrResized(); }
+
+  /**
+   * @brief Rebinds Ogre GLX to this widget's current @c winId() after park.
+   * @return @c true when the external surface is live on this host.
+   */
+  bool rebindNativeSurface() { return ogre_backend_.rebindExternalWindow(); }
+
+  /** @brief Whether the Ogre child GLX window currently exists. */
+  bool hasLiveGlSurface() const { return ogre_backend_.hasLiveRenderWindow(); }
+
+  /**
+   * @brief Destroys the Ogre child GLX window without hiding this QWidget.
+   *
+   * Used on host resize so a stale mapped child (@c background_pixel=0) cannot
+   * sit as an X11 see-through hole over the opaque Qt plate.
+   */
+  void invalidateGlSurface();
+
+  /**
+   * @brief Unmaps GLX for mosaic title-drag; keeps this QWidget as opaque plate.
+   *
+   * Must not @c hide() / @c destroy() the native window — that punches an X11
+   * hole through Autoviz. @ref showNativeSurface remounts GLX afterward.
+   */
+  void releaseNativeWindowForPark();
 
   /**
    * @brief Returns the owned camera controller.
@@ -231,6 +257,20 @@ class OgreRenderWindow : public QWidget {
   void enterEvent(QEnterEvent* event) override;
 
  private:
+  /**
+   * @brief Maps or unmaps the native GL surface.
+   *
+   * When mapping: shows this widget in opaque-plate mode, rebinds GLX to the
+   * finalized @c winId(), then presents. PaintOnScreen is never enabled.
+   */
+  void coverNativeHole(bool want_visible);
+
+  /** @brief Forces opaque Qt fill (PaintOnScreen always off). */
+  void setOpaquePlateMode();
+
+  /** @brief Retired no-op alias — kept so call sites compile; never enables POS. */
+  void setDirectGlMode();
+
   SceneOverlay* scene_overlay_ = nullptr;
   ViewController view_controller_;
   common::ToolManager* tool_manager_ = nullptr;
@@ -240,6 +280,12 @@ class OgreRenderWindow : public QWidget {
   std::function<void()> on_view_drag_started_;
   std::function<void()> on_view_drag_ended_;
   std::function<void()> on_viewport_activate_;
+  // Explicit request from reveal/reinstall/ensure — not cleared on present fail.
+  bool wants_native_surface_ = false;
+  // Backoff so a failed present does not flap show/hide every frame.
+  int present_fail_backoff_ticks_ = 0;
+  // Consecutive failed presents before unmapping (Orbit drag must not unmap).
+  int present_fail_streak_ = 0;
 };
 
 }  // namespace rendering

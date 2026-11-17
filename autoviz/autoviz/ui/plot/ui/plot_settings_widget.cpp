@@ -31,7 +31,7 @@
 #include "autoviz/common/widget/input/segmented_control.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -185,7 +185,7 @@ std::function<void()> InstallPlotValuePathEditor(
 QString ColorSwatchStyle(const QColor& color) {
   const QString css =
       color.isValid() ? color.name(QColor::HexRgb)
-                      : glass::Hex(glass::Shell().accent);
+                      : theme::Hex(theme::Shell().accent);
   return style::mark(style::Mark::Swatch, css);
 }
 

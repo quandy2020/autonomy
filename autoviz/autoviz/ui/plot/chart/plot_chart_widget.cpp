@@ -27,7 +27,7 @@
 #include "autoviz/ui/plot/core/plot_time_join.hpp"
 #include "autoviz/ui/plot/core/plot_xy_align.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -1584,7 +1584,7 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
       synced_cursor_x_ <= range.max_x &&
       !(hover_active_ && std::abs(hover_x_ - synced_cursor_x_) < 1e-12)) {
     const QPointF top = mapToChart(synced_cursor_x_, range.max_y, range);
-    QColor sync = glass::Shell().accent;
+    QColor sync = theme::Shell().accent;
     sync.setAlpha(200);
     QPen pen(sync);
     pen.setWidth(1);
@@ -1599,7 +1599,7 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
   drawBrush(painter, range, chart);
 
   if (interaction_mode_ == PlotInteractionMode::kZoom && !zoom_rect_.isNull()) {
-    const QColor zoom = glass::Shell().accent;
+    const QColor zoom = theme::Shell().accent;
     QColor zoom_fill = zoom;
     zoom_fill.setAlpha(40);
     painter.setPen(QPen(zoom, 1, Qt::DashLine));
@@ -1611,11 +1611,11 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
   // corner; always painting the chip made legends look "missing".
   if (series_.empty()) {
     const QRect add_button = addSeriesButtonRect();
-    painter.setPen(glass::Shell().border_light);
-    painter.setBrush(glass::Shell().card);
+    painter.setPen(theme::Shell().border_light);
+    painter.setBrush(theme::Shell().card);
     painter.drawRoundedRect(add_button, 4, 4);
     painter.fillRect(QRect(add_button.left() + 10, add_button.top() + 10, 8, 8),
-                     glass::Shell().accent);
+                     theme::Shell().accent);
     painter.setPen(QColor(60, 60, 60));
     painter.drawText(add_button.adjusted(24, 0, -8, 0),
                      Qt::AlignVCenter | Qt::AlignLeft,

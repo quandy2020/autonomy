@@ -16,7 +16,7 @@ QMenuBar {
   background: transparent;
   color: {{text}};
   border: none;
-  border-bottom: 1px solid {{glass-rim}};
+  border-bottom: 1px solid {{panel-border}};
   padding: 2px 8px;
   spacing: 2px;
   min-height: 32px;
@@ -25,7 +25,7 @@ QMenuBar {
 QToolBar {
   background: transparent;
   border: none;
-  border-bottom: 1px solid {{glass-rim}};
+  border-bottom: 1px solid {{panel-border}};
   spacing: 2px;
   padding: 2px 6px;
   min-height: 32px;
@@ -77,9 +77,9 @@ QToolButton#AutovizToolbarSidebarToggle {
 }
 
 QStatusBar {
-  background: {{glass-bar}};
+  background: {{panel-bar}};
   color: {{muted}};
-  border-top: 1px solid {{glass-rim}};
+  border-top: 1px solid {{panel-border}};
   padding: 2px 8px;
   font-size: 12px;
 }
@@ -94,17 +94,17 @@ QDockWidget { color: {{text}}; background: transparent; }
 /* app/widgets — forms, buttons, progress */
 
 QGroupBox {
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: {{r-panel}}px;
   margin-top: 12px;
   padding: 14px 10px 10px 10px;
-  background: {{glass-deep}};
+  background: {{panel-surface}};
   color: {{muted}};
   font-weight: 700;
 }
 
 QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit, QPlainTextEdit {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{text}};
   border: 1px solid {{border}};
   border-radius: {{r-ctrl}}px;
@@ -121,7 +121,7 @@ QTextEdit:focus, QPlainTextEdit:focus {
 QComboBox QAbstractItemView {
   background: rgba(255,255,255,0.96);
   color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: {{r-ctrl}}px;
   selection-background-color: {{sel-bg}};
   selection-color: {{sel-text}};
@@ -140,10 +140,10 @@ QProgressBar {
 /* app/views — trees, lists, tables, scrollbars */
 
 QTreeWidget, QTreeView, QListWidget, QListView, QTableWidget, QTableView {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   alternate-background-color: {{alt}};
   color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: {{r-panel}}px;
   outline: none;
 }
@@ -154,7 +154,7 @@ QListWidget, QListView, QTableWidget, QTableView {
   outline: none;
 }
 QHeaderView {
-  background: {{glass-bar}};
+  background: {{panel-bar}};
   color: {{muted}};
   border: none;
 }
@@ -184,20 +184,20 @@ QToolTip {
 /* app/panel_ids — themed object-name selectors */
 
 #{{id-content}} {
-  background: {{glass-fill}};
+  background: {{panel-bg}};
   color: {{text}};
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: {{r-panel}}px;
 }
 #{{id-toolbar}} {
-  background: {{glass-bar}};
+  background: {{panel-bar}};
   border: none;
-  border-bottom: 1px solid {{glass-rim}};
+  border-bottom: 1px solid {{panel-border}};
 }
 #{{id-footer}} {
-  background: {{glass-bar}};
+  background: {{panel-bar}};
   border: none;
-  border-top: 1px solid {{glass-rim}};
+  border-top: 1px solid {{panel-border}};
 }
 #{{id-dock-title}} {
   background: transparent;
@@ -228,11 +228,11 @@ QToolTip {
   background: transparent;
 }
 QTreeWidget#{{id-tree}}, QTreeView#{{id-tree}} {
-  background: {{glass-fill}}; color: {{text}}; border: none;
+  background: {{panel-bg}}; color: {{text}}; border: none;
   alternate-background-color: {{alt}};
 }
 #{{id-segment}} {
-  background: {{glass-cool}}; border: 1px solid {{glass-rim}};
+  background: {{panel-bg}}; border: 1px solid {{panel-border}};
   border-radius: {{r-ctrl}}px; padding: 2px;
 }
 #{{id-settings}} { border: none; background: transparent; }

@@ -42,8 +42,8 @@
 #include "autoviz/ui/plot/field/plot_field_extractor.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/ui/plot_drag_mime.hpp"
-#include "autoviz/ui/theme/glass.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
@@ -59,9 +59,9 @@ constexpr int kColumnValue = 4;
 /** Cap concurrent probe subscriptions to avoid bandwidth spikes. */
 constexpr int kMaxProbeChannels = 48;
 
-QColor kText() { return glass::Shell().text; }
-QColor kTextMuted() { return glass::Shell().secondary_text; }
-QColor kAccent() { return glass::Shell().accent; }
+QColor kText() { return theme::Shell().text; }
+QColor kTextMuted() { return theme::Shell().secondary_text; }
+QColor kAccent() { return theme::Shell().accent; }
 
 constexpr int kRoleMessageType = Qt::UserRole + 20;
 constexpr int kRoleFieldsPopulated = Qt::UserRole + 21;

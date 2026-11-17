@@ -484,11 +484,32 @@ class FrameSession {
    */
   void activateRestoredViewportAndView();
 
+  /**
+   * @brief After mosaic/dock geometry settles, pin each GLX and release
+   *        @ref FrameViewport::setViewportRevealHeld().
+   *
+   * Used by mid-session Open Config and by @ref applyStartupWindowState so
+   * native surfaces are never remapped while QMainWindow / mosaic reparents.
+   */
+  void scheduleViewportRevealAfterLayoutSettle();
+
+  /** @brief Opaque cover while mid-session config restore remounts GLX. */
+  void showLayoutTransitionCover();
+
+  /** @brief Fade out and hide the layout transition cover. */
+  void dismissLayoutTransitionCover();
+
+  /** @brief Keep the transition cover sized to the frame. */
+  void layoutLayoutTransitionCover();
+
   /** Non-owning back-pointer to the main window. */
   VisualizationFrame* frame_ = nullptr;
 
   /** Full-window drop hint for Autolink records (may be @ref RecordDropOverlay). */
   QWidget* record_drop_overlay_ = nullptr;
+
+  /** Opaque plate over the frame during live config reload (hides GL flicker). */
+  QPointer<QWidget> layout_transition_cover_;
 
   /** MRU list of config paths (capped by @ref kRecentConfigCount). */
   QStringList recent_configs_;

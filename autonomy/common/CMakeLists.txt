@@ -176,3 +176,6 @@ autocmake_test(common.math.bezier_test
 autocmake_test(common.math.bspline_test
   SOURCES math/bspline_test.cpp
   DEPENDENCIES autonomy_common)
+
+# Shared geometry and lightweight observations, independent of ML/perception.
+add_subdirectory(navigation)

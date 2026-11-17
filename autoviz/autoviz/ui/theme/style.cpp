@@ -7,7 +7,7 @@
 #include <QFile>
 #include <QRegularExpression>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 
 namespace autoviz {
@@ -28,17 +28,32 @@ QString ScrubUnresolved(QString css) {
   return css.replace(kToken, QStringLiteral("transparent"));
 }
 
+/**
+ * Strip CSS properties Qt Style Sheets do not implement. Leaving them in
+ * QSS floods stderr with "Unknown property …" on every polish (TimePanel,
+ * metric chips, etc.).
+ */
+QString ScrubUnsupportedProperties(QString css) {
+  // Only properties that Qt Style Sheets reject with "Unknown property …".
+  // Keep letter-spacing — used widely in panel.qss and accepted by Qt 6.
+  static const QRegularExpression kUnsupported(
+      QStringLiteral("(?i)(?:^|[\\s;{])(?:font-variant-numeric|"
+                     "font-variant-ligatures|font-feature-settings|"
+                     "font-kerning)\\s*:[^;}]*;?"));
+  return css.replace(kUnsupported, QStringLiteral(" "));
+}
+
 QString Apply(QString css, const QHash<QString, QString>& map) {
   for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
     css.replace(it.key(), it.value());
   }
-  return ScrubUnresolved(std::move(css));
+  return ScrubUnsupportedProperties(ScrubUnresolved(std::move(css)));
 }
 
 /** Solid tooltip fill — see @ref toolTipSheet(). Kept free of {{tokens}} so
  *  ScrubUnresolved cannot turn the background into "transparent". */
 QString BuildOpaqueToolTipCss() {
-  const glass::ShellTokens& s = glass::Shell();
+  const theme::ShellTokens& s = theme::Shell();
   QColor bg = s.tooltip_base;
   bg.setAlpha(255);
   QColor fg = s.tooltip_text;
@@ -53,7 +68,7 @@ QString BuildOpaqueToolTipCss() {
              "  border: 1px solid %3;\n"
              "  padding: 4px 8px;\n"
              "}\n")
-      .arg(glass::Hex(bg), glass::Hex(fg), glass::Hex(border));
+      .arg(theme::Hex(bg), theme::Hex(fg), theme::Hex(border));
 }
 
 QString Section(const QString& css, const QString& name) {
@@ -113,25 +128,25 @@ bool IsCoreModule(const QString& name) {
 }  // namespace
 
 QHash<QString, QString> tokens(Tone tone) {
-  const glass::ShellTokens& s = glass::Shell();
+  const theme::ShellTokens& s = theme::Shell();
   QHash<QString, QString> t;
-  t.insert(QStringLiteral("{{window}}"), glass::Hex(s.window));
-  t.insert(QStringLiteral("{{wash}}"), glass::ShellWindowWashCss());
-  t.insert(QStringLiteral("{{base}}"), glass::Hex(s.base));
-  t.insert(QStringLiteral("{{card}}"), glass::Hex(s.card));
-  t.insert(QStringLiteral("{{alt}}"), glass::Hex(s.alternate_base));
-  t.insert(QStringLiteral("{{text}}"), glass::Hex(s.text));
-  t.insert(QStringLiteral("{{muted}}"), glass::Hex(s.secondary_text));
-  t.insert(QStringLiteral("{{button}}"), glass::Hex(s.button));
-  t.insert(QStringLiteral("{{button-text}}"), glass::Hex(s.button_text));
-  t.insert(QStringLiteral("{{accent}}"), glass::Hex(s.accent));
-  t.insert(QStringLiteral("{{accent-pressed}}"), glass::Hex(s.accent_pressed));
-  t.insert(QStringLiteral("{{accent-soft}}"), glass::Hex(s.accent_soft));
+  t.insert(QStringLiteral("{{window}}"), theme::Hex(s.window));
+  t.insert(QStringLiteral("{{wash}}"), theme::ShellWindowWashCss());
+  t.insert(QStringLiteral("{{base}}"), theme::Hex(s.base));
+  t.insert(QStringLiteral("{{card}}"), theme::Hex(s.card));
+  t.insert(QStringLiteral("{{alt}}"), theme::Hex(s.alternate_base));
+  t.insert(QStringLiteral("{{text}}"), theme::Hex(s.text));
+  t.insert(QStringLiteral("{{muted}}"), theme::Hex(s.secondary_text));
+  t.insert(QStringLiteral("{{button}}"), theme::Hex(s.button));
+  t.insert(QStringLiteral("{{button-text}}"), theme::Hex(s.button_text));
+  t.insert(QStringLiteral("{{accent}}"), theme::Hex(s.accent));
+  t.insert(QStringLiteral("{{accent-pressed}}"), theme::Hex(s.accent_pressed));
+  t.insert(QStringLiteral("{{accent-soft}}"), theme::Hex(s.accent_soft));
   // Translucent accent washes for QSS that used to hardcode teal/cyan rgba.
   auto accent_a = [&](int alpha) {
     QColor c = s.accent;
     c.setAlpha(qBound(0, alpha, 255));
-    return glass::Rgba(c);
+    return theme::Rgba(c);
   };
   t.insert(QStringLiteral("{{accent-a08}}"), accent_a(20));
   t.insert(QStringLiteral("{{accent-a10}}"), accent_a(26));
@@ -149,20 +164,21 @@ QHash<QString, QString> tokens(Tone tone) {
   t.insert(QStringLiteral("{{accent-a55}}"), accent_a(55));
   t.insert(QStringLiteral("{{accent-a70}}"), accent_a(70));
   t.insert(QStringLiteral("{{accent-a90}}"), accent_a(230));
-  t.insert(QStringLiteral("{{sel-bg}}"), glass::Hex(s.selection_bg));
-  t.insert(QStringLiteral("{{sel-text}}"), glass::Hex(s.selection_text));
-  t.insert(QStringLiteral("{{border}}"), glass::Hex(s.border));
-  t.insert(QStringLiteral("{{border-light}}"), glass::Hex(s.border_light));
-  t.insert(QStringLiteral("{{disabled}}"), glass::Hex(s.disabled_text));
-  t.insert(QStringLiteral("{{toolbar}}"), glass::Hex(s.toolbar_bg));
-  t.insert(QStringLiteral("{{hover}}"), glass::Hex(s.hover_bg));
-  t.insert(QStringLiteral("{{dock-title}}"), glass::Hex(s.dock_title));
-  t.insert(QStringLiteral("{{status}}"), glass::Hex(s.status_bar));
-  t.insert(QStringLiteral("{{glass-bar}}"), glass::ShellGlassBarGradientCss());
-  t.insert(QStringLiteral("{{glass-fill}}"), glass::Hex(s.glass_fill));
-  t.insert(QStringLiteral("{{glass-deep}}"), glass::Hex(s.glass_fill_deep));
-  t.insert(QStringLiteral("{{glass-rim}}"), glass::Hex(s.glass_rim));
-  t.insert(QStringLiteral("{{glass-cool}}"), glass::Hex(s.glass_cool));
+  t.insert(QStringLiteral("{{sel-bg}}"), theme::Hex(s.selection_bg));
+  t.insert(QStringLiteral("{{sel-text}}"), theme::Hex(s.selection_text));
+  t.insert(QStringLiteral("{{border}}"), theme::Hex(s.border));
+  t.insert(QStringLiteral("{{border-light}}"), theme::Hex(s.border_light));
+  t.insert(QStringLiteral("{{disabled}}"), theme::Hex(s.disabled_text));
+  t.insert(QStringLiteral("{{toolbar}}"), theme::Hex(s.toolbar_bg));
+  t.insert(QStringLiteral("{{hover}}"), theme::Hex(s.hover_bg));
+  t.insert(QStringLiteral("{{dock-title}}"), theme::Hex(s.dock_title));
+  t.insert(QStringLiteral("{{status}}"), theme::Hex(s.status_bar));
+  t.insert(QStringLiteral("{{panel-bar}}"), theme::ShellBarCss());
+  t.insert(QStringLiteral("{{glass-bar}}"), theme::ShellBarCss());
+  t.insert(QStringLiteral("{{glass-fill}}"), theme::Hex(s.panel_bg));
+  t.insert(QStringLiteral("{{glass-deep}}"), theme::Hex(s.panel_surface));
+  t.insert(QStringLiteral("{{glass-rim}}"), theme::Hex(s.panel_border));
+  t.insert(QStringLiteral("{{glass-cool}}"), theme::Hex(s.panel_cool));
   t.insert(QStringLiteral("{{r-panel}}"), QString::number(s.panel_radius));
   t.insert(QStringLiteral("{{r-title}}"), QString::number(s.title_radius));
   t.insert(QStringLiteral("{{r-ctrl}}"), QString::number(s.control_radius));
@@ -190,42 +206,35 @@ QHash<QString, QString> tokens(Tone tone) {
            QString::fromLatin1(AppThemeIds::kSettingsScroll));
   t.insert(QStringLiteral("{{panels-menu}}"), QString());
 
-  // Panel-family sheets — always derive from Shell so Liquid / Dark / Light
-  // stay in sync (hardcoded milky cyan washed out Liquid Glass checkboxes).
-  QColor panel_bg = s.glass_fill;
-  QColor panel_surface = s.glass_fill_deep;
-  QColor panel_raised = s.base;
+  // Panel-family sheets — derive from live flat Shell (Dark / Light / System).
+  QColor panel_bg = s.panel_bg;
+  QColor panel_surface = s.panel_surface;
+  QColor panel_raised = theme::ShellIsDark() ? s.card : s.base;
   panel_bg.setAlpha(255);
   panel_surface.setAlpha(255);
   panel_raised.setAlpha(255);
-  if (glass::ShellIsDark()) {
-    panel_raised = s.card;
-    panel_raised.setAlpha(255);
-  }
-  t.insert(QStringLiteral("{{panel-bg}}"), glass::Hex(panel_bg));
-  t.insert(QStringLiteral("{{panel-surface}}"), glass::Hex(panel_surface));
-  t.insert(QStringLiteral("{{panel-border}}"), glass::Hex(s.glass_rim));
-  t.insert(QStringLiteral("{{panel-text}}"), glass::Hex(s.text));
-  t.insert(QStringLiteral("{{panel-muted}}"), glass::Hex(s.secondary_text));
-  t.insert(QStringLiteral("{{panel-accent}}"), glass::Hex(s.accent));
+  t.insert(QStringLiteral("{{panel-bg}}"), theme::Hex(panel_bg));
+  t.insert(QStringLiteral("{{panel-surface}}"), theme::Hex(panel_surface));
+  t.insert(QStringLiteral("{{panel-border}}"), theme::Hex(s.panel_border));
+  t.insert(QStringLiteral("{{panel-text}}"), theme::Hex(s.text));
+  t.insert(QStringLiteral("{{panel-muted}}"), theme::Hex(s.secondary_text));
+  t.insert(QStringLiteral("{{panel-accent}}"), theme::Hex(s.accent));
   t.insert(QStringLiteral("{{panel-accent-pressed}}"),
-           glass::Hex(s.accent_pressed));
+           theme::Hex(s.accent_pressed));
   t.insert(QStringLiteral("{{panel-surface-raised}}"),
-           glass::Hex(panel_raised));
-  // Legacy {{accent-teal}} now follows Shell accent so Liquid Glass (system
-  // blue) and Light/Dark stay one palette — dual teal/blue chrome is gone.
-  t.insert(QStringLiteral("{{accent-teal}}"), glass::Hex(s.accent));
-  t.insert(QStringLiteral("{{accent-color}}"), glass::Hex(s.accent));
+           theme::Hex(panel_raised));
+  t.insert(QStringLiteral("{{accent-teal}}"), theme::Hex(s.accent));
+  t.insert(QStringLiteral("{{accent-color}}"), theme::Hex(s.accent));
   t.insert(QStringLiteral("{{on-accent}}"), QStringLiteral("#FFFFFF"));
-  QColor header = s.glass_fill_deep;
+  QColor header = s.panel_surface;
   header.setAlpha(255);
-  t.insert(QStringLiteral("{{header-start}}"), glass::Hex(header));
+  t.insert(QStringLiteral("{{header-start}}"), theme::Hex(header));
   QColor editor = s.base;
   editor.setAlpha(255);
-  t.insert(QStringLiteral("{{editor-bg}}"), glass::Rgba(editor));
-  t.insert(QStringLiteral("{{btn-bg}}"), glass::Hex(s.accent));
-  t.insert(QStringLiteral("{{btn-hover}}"), glass::Hex(s.accent_pressed));
-  t.insert(QStringLiteral("{{color}}"), glass::Hex(s.accent));
+  t.insert(QStringLiteral("{{editor-bg}}"), theme::Rgba(editor));
+  t.insert(QStringLiteral("{{btn-bg}}"), theme::Hex(s.accent));
+  t.insert(QStringLiteral("{{btn-hover}}"), theme::Hex(s.accent_pressed));
+  t.insert(QStringLiteral("{{color}}"), theme::Hex(s.accent));
   t.insert(QStringLiteral("{{name}}"), QStringLiteral("AutovizPanelPart"));
 
   Q_UNUSED(tone);

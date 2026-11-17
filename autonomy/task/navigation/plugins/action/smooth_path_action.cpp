@@ -1,119 +1,75 @@
-/*
- * Copyright 2026 The Openbot Authors
- */
+/* Copyright 2026 The Openbot Authors */
 
 #include <cmath>
 #include <cstdint>
-
-#include "autonomy/common/logging.hpp"
-#include "autonomy/task/behavior_tree/plugins/bt_node_base.hpp"
-#include "autonomy/task/navigation/plugins/plugin_utils.hpp"
+#include "autonomy/task/navigation/plugins/async_path_action_node.hpp"
 
 namespace autonomy::task::plugins::navigation {
-namespace {
-
-uint64_t PathFingerprint(const automsgs::msgs::nav_msgs::Path& path)
-{
-    const int n = path.poses_size();
-    if (n <= 0) {
-        return 0;
-    }
-    const auto& a = path.poses(0).pose().position();
-    const auto& b = path.poses(n - 1).pose().position();
-    // Coarse identity: size + endpoints (mm). Enough to skip duplicate smooth.
-    const auto q = [](double v) {
-        return static_cast<uint64_t>(std::llround(v * 1000.0)) & 0xfffffu;
-    };
-    return (static_cast<uint64_t>(n) << 40) ^ (q(a.x()) << 20) ^ q(a.y()) ^
-           (q(b.x()) << 30) ^ (q(b.y()) << 10);
-}
-
-}  // namespace
-
-class SmoothPathAction : public BtSyncAction
+namespace actions = automsgs::actions;
+class SmoothPathAction : public AsyncPathActionNode<actions::SmoothPathAction>
 {
 public:
-    SmoothPathAction(const std::string& name, const BT::NodeConfig& config)
-        : BtSyncAction(name, config) {}
-
+    using AsyncPathActionNode::AsyncPathActionNode;
     static BT::PortsList providedPorts()
     {
         return {
             BT::InputPort<automsgs::msgs::nav_msgs::Path>("unsmoothed_path"),
             BT::OutputPort<automsgs::msgs::nav_msgs::Path>("smoothed_path"),
-            BT::InputPort<std::string>("smoother_id", "simple_smoother",
-                                       "plugin id"),
-            BT::InputPort<double>("max_smoothing_duration", 1.0,
-                                  "smoother wall-time budget (s)"),
-            BT::InputPort<bool>("check_for_collisions", false,
-                                "reject smoothed path on collision"),
+            BT::InputPort<std::string>("smoother_id", "simple_smoother", "plugin id"),
+            BT::InputPort<double>("max_smoothing_duration", 1.0, "s"),
+            BT::InputPort<bool>("check_for_collisions", false, "smoother collision check"),
+            BT::InputPort<double>("max_path_reuse_age", 0.0, "use only this request's input fallback"),
             BT::OutputPort<double>("smoothing_duration"),
             BT::OutputPort<bool>("was_completed"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };
     }
-
 protected:
-    BT::NodeStatus OnExecute() override
+    Client& GetClient(NavClient& client) override { return client.smooth_path_client(); }
+    bool BuildGoal(Goal& goal, Pose& endpoint) override
     {
-        auto client = ResolveClient(*this);
-        automsgs::msgs::nav_msgs::Path unsmoothed;
-        std::string smoother_id;
-        double max_smoothing_duration = 1.0;
-        bool check_for_collisions = false;
-        if (!getInput("unsmoothed_path", unsmoothed)) {
-            SetErrorPorts(*this, 1, "SmoothPath: missing unsmoothed_path");
-            return BT::NodeStatus::FAILURE;
+        Path path;
+        if (!getInput("unsmoothed_path", path) || path.poses().empty()) return false;
+        endpoint = path.poses(path.poses_size()-1);
+        if (endpoint.header().frame_id().empty()) {
+            endpoint.mutable_header()->set_frame_id(path.header().frame_id());
         }
-        getInput("smoother_id", smoother_id);
-        getInput("max_smoothing_duration", max_smoothing_duration);
-        getInput("check_for_collisions", check_for_collisions);
-
-        const uint64_t fingerprint = PathFingerprint(unsmoothed);
-        if (fingerprint != 0 && fingerprint == last_fingerprint_) {
-            setOutput("smoothed_path", unsmoothed);
-            setOutput("smoothing_duration", 0.0);
-            setOutput("was_completed", true);
-            ClearErrorPorts(*this);
-            return BT::NodeStatus::SUCCESS;
-        }
-
-        automsgs::msgs::nav_msgs::Path smoothed;
-        int error_code = 0;
-        std::string error_message;
-        if (!client->SmoothPath(unsmoothed, smoother_id, max_smoothing_duration,
-                                check_for_collisions, smoothed, &error_code,
-                                &error_message)) {
-            // Optional stage: keep navigating on the planned path if smoothing
-            // fails (timeout / abort / empty). Avoids BT recovery thrashing.
-            AWARN_EVERY(20) << "SmoothPath failed (" << error_message
-                            << "); using unsmoothed path ("
-                            << unsmoothed.poses_size() << " poses)";
-            setOutput("smoothed_path", unsmoothed);
-            setOutput("smoothing_duration", 0.0);
-            setOutput("was_completed", false);
-            last_fingerprint_ = fingerprint;
-            SetErrorPorts(*this, error_code, error_message);
-            return BT::NodeStatus::SUCCESS;
-        }
-
-        setOutput("smoothed_path", smoothed);
-        setOutput("smoothing_duration", 0.0);
-        setOutput("was_completed", true);
-        last_fingerprint_ = fingerprint;
-        ClearErrorPorts(*this);
-        return BT::NodeStatus::SUCCESS;
+        *goal.mutable_path() = path;
+        std::string smoother;
+        double duration = 1.0;
+        bool check = false;
+        getInput("smoother_id", smoother);
+        getInput("max_smoothing_duration", duration);
+        getInput("check_for_collisions", check);
+        if (!std::isfinite(duration) || duration <= 0.0 || duration > 60.0) return false;
+        goal.set_smoother_id(smoother);
+        *goal.mutable_max_smoothing_duration() = ToProtoDuration(duration);
+        goal.set_check_for_collisions(check);
+        return true;
     }
-
+    Path InitialFallback(const Goal& goal) const override { return goal.path(); }
+    bool UsePublishedPlan() const override { return false; }
+    void ResetResultMetadata() override { smoothing_duration_ = 0.0; completed_ = false; }
+    void RecordResult(const Result& result) override
+    {
+        smoothing_duration_ = result.smoothing_duration().sec() +
+            1e-9*result.smoothing_duration().nanosec();
+        completed_ = result.was_completed();
+    }
+    void OutputPath(const Path& path, bool computed) override
+    {
+        setOutput("smoothed_path", path);
+        setOutput("smoothing_duration", computed ? smoothing_duration_ : 0.0);
+        setOutput("was_completed", computed && completed_);
+    }
 private:
-    uint64_t last_fingerprint_{0};
+    double smoothing_duration_{0.0};
+    bool completed_{false};
 };
-
 }  // namespace autonomy::task::plugins::navigation
 
 BT_REGISTER_NODES(factory)
 {
-    factory.registerNodeType<autonomy::task::plugins::navigation::SmoothPathAction>(
-        "SmoothPath");
+    factory.registerNodeType<autonomy::task::plugins::navigation::SmoothPathAction>("SmoothPath");
 }

@@ -10,6 +10,7 @@
 #include <thread>
 
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
 #include "autonomy/task/behavior_tree/bt_node_registry.hpp"
 #include "autonomy/task/behavior_tree/bt_status_logger.hpp"
 #include "behaviortree_cpp/decorators/retry_node.h"
@@ -21,6 +22,11 @@ BtRunner::~BtRunner() { StopWorker(); }
 
 bool BtRunner::Configure(const BtProfile& profile)
 {
+    std::lock_guard<std::mutex> lock(management_mutex_);
+    if (worker_.joinable() && worker_.get_id() == std::this_thread::get_id()) {
+        return false;
+    }
+    StopWorker();
     profile_ = profile;
     factory_ = std::make_unique<BT::BehaviorTreeFactory>();
 
@@ -44,34 +50,41 @@ void BtRunner::SetHooks(BtRunnerHooks* hooks) { hooks_ = hooks; }
 bool BtRunner::Run(const std::string& tree_xml_path)
 {
     if (tree_xml_path.empty()) {
-        AERROR << "BtRunner: empty behavior tree path";
+        AERROR << "nav bt empty_path";
         return false;
     }
     if (!factory_) {
-        AERROR << "BtRunner: not configured";
+        AERROR << "nav bt not_configured";
         return false;
     }
     if (!std::filesystem::exists(tree_xml_path)) {
-        AERROR << "BtRunner: behavior tree file not found: " << tree_xml_path;
+        AERROR << "nav bt missing file=" << tree_xml_path;
         return false;
     }
 
-    DetachWorker();
+    std::lock_guard<std::mutex> lock(management_mutex_);
+    if (worker_.joinable() && worker_.get_id() == std::this_thread::get_id()) {
+        return false;
+    }
+    // The previous worker must finish halting its tree before its cancellation
+    // flag, factory, hooks or active tree are reused for another goal.
+    StopWorker();
     active_tree_ = tree_xml_path;
     cancel_requested_.store(false);
     paused_.store(false);
     state_.store(BtRunState::kRunning);
     running_.store(true);
     worker_ = std::thread([this]() { WorkerLoop(); });
-    AINFO << "BtRunner: running " << active_tree_;
+    AINFO << "nav bt tree=" << ::autonomy::common::NavBasename(active_tree_);
     return true;
 }
 
 bool BtRunner::Cancel()
 {
+    std::lock_guard<std::mutex> lock(management_mutex_);
     cancel_requested_.store(true);
-    state_.store(BtRunState::kCanceled);
     StopWorker();
+    state_.store(BtRunState::kCanceled);
     return true;
 }
 
@@ -98,8 +111,8 @@ void BtRunner::WorkerLoop()
     try {
         tree = CreateTreeFromFile(active_tree_, blackboard);
     } catch (const std::exception& ex) {
-        AERROR << "BtRunner: failed to load tree " << active_tree_ << ": "
-               << ex.what();
+        AERROR << "nav bt load_fail tree=" << ::autonomy::common::NavBasename(active_tree_)
+               << " err=" << ex.what();
         state_.store(BtRunState::kFailed);
         if (hooks_ != nullptr) {
             hooks_->OnTick();
@@ -129,15 +142,6 @@ void BtRunner::WorkerLoop()
         hooks_->OnTick();
     }
     running_.store(false);
-}
-
-void BtRunner::DetachWorker()
-{
-    cancel_requested_.store(true);
-    running_.store(false);
-    if (worker_.joinable()) {
-        worker_.detach();
-    }
 }
 
 void BtRunner::StopWorker()
@@ -183,7 +187,7 @@ BtRunState BtRunner::RunTree(BT::Tree* tree, BtRunnerHooks* hooks,
             std::this_thread::sleep_for(loop_period);
         }
     } catch (const std::exception& ex) {
-        AERROR << "BtRunner: tree exception: " << ex.what();
+        AERROR << "nav bt exception err=" << ex.what();
         return BtRunState::kFailed;
     }
 

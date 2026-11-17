@@ -244,7 +244,7 @@ class FrameChrome {
   void setupToolbar();
 
   /**
-   * @brief Re-applies menu/tool bar colors from the current @ref glass::Shell().
+   * @brief Re-applies menu/tool bar colors from the current @ref theme::Shell().
    *
    * Call after Settings theme changes so Light/Dark take effect immediately.
    */

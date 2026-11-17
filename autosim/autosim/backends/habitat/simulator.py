@@ -155,6 +155,9 @@ class Simulator:
         self.reset(float(spawn[0]), float(spawn[1]), float(spawn[2]))
         self.snap_to_navmesh()
         self.ensure_semantic_spawn()
+        # ensure_semantic_spawn re-snaps; call again so any late pathfinder
+        # init / mesh cast sees the final pose before humanoids attach.
+        self.snap_to_navmesh()
         self.attach_humanoids()
 
     def habitat_configuration(self, habitat_sim: Any) -> Any:
@@ -372,6 +375,7 @@ class Simulator:
 
         best_count = initial
         best_pose = self.pose()
+        best_floor = float(self.floor_y)
         spawn_yaw = best_pose[2]
         for _ in range(max(1, int(max_tries))):
             try:
@@ -388,8 +392,15 @@ class Simulator:
             if count > best_count:
                 best_count = count
                 best_pose = self.pose()
+                best_floor = float(self.floor_y)
             if count >= min_unique:
                 break
+
+        # Restore the winning xy/yaw with its floor, then re-snap so a later
+        # trial's floor_y cannot leave the agent floating/buried.
+        self.floor_y = best_floor
+        self.set_pose(*best_pose)
+        self.snap_to_navmesh()
 
         if best_count <= initial:
             warnings.warn(
@@ -398,10 +409,8 @@ class Simulator:
                 "segmentation may not align with RGB at this pose",
                 stacklevel=2,
             )
-            self.set_pose(*best_pose)
             return False
 
-        self.set_pose(*best_pose)
         warnings.warn(
             "Relocated spawn for semantic camera: "
             f"unique ids {initial} -> {best_count} at "
@@ -1363,8 +1372,15 @@ class Simulator:
                 )
         mapper = self.map_builder
         recover = getattr(mapper, "recover_from_occupied", None)
+        occupied = getattr(mapper, "disc_occupied", None)
+        start_hit = callable(occupied) and occupied(sx, sy, radius=radius)
         if callable(recover):
-            sx, sy = recover(sx, sy, radius=radius)
+            rx, ry = recover(sx, sy, radius=radius)
+            # Occupied start + cmd_vel into the wall: try_step stays put.
+            # Nudge onto the nearest free disc so recovery BackUp can move.
+            if start_hit and (abs(rx - sx) + abs(ry - sy) > 1e-4):
+                return float(rx), float(ry)
+            sx, sy = rx, ry
         clip = getattr(mapper, "last_free_on_segment", None)
         if callable(clip):
             return clip(sx, sy, placed_x, placed_y, radius=radius)
@@ -1507,11 +1523,66 @@ class Simulator:
             self.floor_y = mesh_floor
         return float(self.floor_y)
 
+    def navmesh_height_candidates(self, pathfinder: Any) -> list[float]:
+        """Seed Habitat-Y probes so snap works on any floor elevation.
+
+        Fixed ``0…1.5`` misses multi-level MP3D / elevated GLBs. Bounds and
+        random navigable samples cover the loaded scene's vertical range.
+        """
+        heights: list[float] = []
+
+        def add(value: Any) -> None:
+            try:
+                height = float(value)
+            except (TypeError, ValueError):
+                return
+            if not math.isfinite(height):
+                return
+            if any(abs(height - existing) < 1e-4 for existing in heights):
+                return
+            heights.append(height)
+
+        add(self.floor_y)
+        for height in (0.0, 0.3, 0.6, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0):
+            add(height)
+
+        get_bounds = getattr(pathfinder, "get_bounds", None)
+        if callable(get_bounds):
+            try:
+                bounds = get_bounds()
+                lo, hi = bounds[0], bounds[1]
+                y0, y1 = float(lo[1]), float(hi[1])
+                if math.isfinite(y0) and math.isfinite(y1):
+                    if y1 < y0:
+                        y0, y1 = y1, y0
+                    add(y0)
+                    add(y1)
+                    span = y1 - y0
+                    if span > 1e-3:
+                        steps = max(3, min(16, int(span / 0.4) + 1))
+                        for index in range(steps):
+                            add(y0 + span * index / max(1, steps - 1))
+            except Exception:
+                pass
+
+        random_nav = getattr(pathfinder, "get_random_navigable_point", None)
+        if callable(random_nav):
+            for _ in range(12):
+                try:
+                    sample = self.finite_xyz(random_nav())
+                except Exception:
+                    sample = None
+                if sample is not None:
+                    add(sample[1])
+        return heights
+
     def snap_to_navmesh(self) -> Tuple[float, float, float]:
         """Project the planar pose onto the loaded navmesh.
 
-        Updates ``floor_y`` so RGB-D sits on the floor. Never jumps to a
-        random island: that desyncs heading from the corridor the camera sees.
+        Updates ``floor_y`` so RGB-D / URDF sit on the floor for any scene.
+        Never jumps to a random island for heading: that desyncs the camera
+        from the corridor. Off-navmesh spawn falls back to the nearest
+        navigable sample, then mesh-refines height.
         """
         if self.session is None:
             return self.pose()
@@ -1521,18 +1592,7 @@ class Simulator:
             self.set_pose(self.x, self.y, self.yaw)
             return self.pose()
 
-        heights = []
-        for height in (self.floor_y, 0.0, 0.3, 0.6, 1.0, 1.5):
-            if height not in heights:
-                heights.append(float(height))
-        random_nav = getattr(pathfinder, "get_random_navigable_point", None)
-        if callable(random_nav):
-            try:
-                sample = self.finite_xyz(random_nav())
-                if sample is not None and sample[1] not in heights:
-                    heights.append(sample[1])
-            except Exception:
-                pass
+        heights = self.navmesh_height_candidates(pathfinder)
 
         best: Tuple[float, float, float] | None = None
         best_dist = float("inf")
@@ -1564,7 +1624,7 @@ class Simulator:
         return self.pose()
 
     def nearest_navigable_sample(
-        self, pathfinder: Any, habitat_x: float, habitat_z: float, trials: int = 32
+        self, pathfinder: Any, habitat_x: float, habitat_z: float, trials: int = 64
     ) -> Tuple[float, float, float] | None:
         """Return a navigable Habitat ``(x, y, z)`` closest to ``(habitat_x, *, habitat_z)``."""
         random_nav = getattr(pathfinder, "get_random_navigable_point", None)

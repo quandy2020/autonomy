@@ -54,7 +54,7 @@ QLineEdit#AutovizSettingsLineEdit:focus {
 }
 
 QLineEdit#AutovizFilterLineEdit {
-  background: {{glass-fill}}; color: {{text}};
+  background: {{panel-bg}}; color: {{text}};
   border: 1px solid {{border}}; border-radius: {{r-ctrl}}px;
   padding: 6px 10px; min-height: 26px;
 }
@@ -99,11 +99,11 @@ QComboBox#AutovizToolbarCombo::drop-down { border: none; width: 18px; }
 
 /* compact_group — QGroupBox (Liquid Glass settings sections) */
 QGroupBox {
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 10px;
   margin-top: 6px;
   padding: 10px 8px 8px 8px;
-  background: {{glass-fill}};
+  background: {{panel-bg}};
 }
 QGroupBox::title {
   subcontrol-origin: margin; left: 8px; padding: 0 4px;
@@ -112,7 +112,7 @@ QGroupBox::title {
 
 /* segmented_toggle — container #AutovizSegmentedToggle */
 #AutovizSegmentedToggle {
-  background: rgba(241,245,249,0.85); border: 1px solid {{glass-rim}};
+  background: rgba(241,245,249,0.85); border: 1px solid {{panel-border}};
   border-radius: {{r-ctrl}}px; padding: 3px;
 }
 #AutovizSegmentedToggle QPushButton {
@@ -129,8 +129,8 @@ QGroupBox::title {
 
 /* collapsible_section */
 QFrame#AutovizCollapsibleSection {
-  background: {{glass-deep}};
-  border: 1px solid {{glass-rim}};
+  background: {{panel-surface}};
+  border: 1px solid {{panel-border}};
   border-radius: 8px;
 }
 
@@ -152,7 +152,7 @@ QCheckBox {
 /* soft_card — token {{name}} on target widget id */
 #{{name}} {
   background: #FFFFFF;
-  border: 1px solid {{glass-rim}};
+  border: 1px solid {{panel-border}};
   border-radius: 10px;
 }
 /* @end */
@@ -240,7 +240,7 @@ QPushButton:pressed { background: {{accent-soft}}; color: {{text}}; }
 QPushButton:disabled {
   color: {{disabled}};
   border-color: {{border-light}};
-  background: {{glass-fill}};
+  background: {{panel-bg}};
 }
 /* @end */
 

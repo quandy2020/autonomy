@@ -29,7 +29,7 @@
 #include <QStringList>
 #include <QWheelEvent>
 
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace {
@@ -100,7 +100,7 @@ struct GraphPalette {
 
 GraphPalette MakeGraphPalette(const QPalette& palette) {
   Q_UNUSED(palette);
-  const glass::ShellTokens s = glass::Shell();
+  const theme::ShellTokens s = theme::Shell();
   GraphPalette graph;
   graph.canvas = s.alternate_base;
   graph.node_fill = s.card;
@@ -719,7 +719,7 @@ void TfTreeGraphView::setFrames(
       shadow_item->setZValue(0.4);
     }
 
-    QPen node_pen(glass::Shell().accent, 1.3);
+    QPen node_pen(theme::Shell().accent, 1.3);
     if (node.is_static) {
       node_pen.setColor(graph_palette.static_accent);
       node_pen.setStyle(Qt::DashLine);

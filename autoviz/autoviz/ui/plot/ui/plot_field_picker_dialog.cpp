@@ -26,7 +26,7 @@
 #include "autoviz/ui/app/icon_loader.hpp"
 #include "autoviz/ui/plot/field/message_field_tree.hpp"
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
-#include "autoviz/ui/theme/glass.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
@@ -137,7 +137,7 @@ class GlassPane : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 10.0, 10.0);
     painter.fillPath(path, QColor(255, 255, 255));
-    painter.setPen(QPen(glass::Shell().border_light, 1.0));
+    painter.setPen(QPen(theme::Shell().border_light, 1.0));
     painter.drawPath(path);
   }
 };
@@ -172,16 +172,16 @@ class RailRowDelegate : public QStyledItemDelegate {
     QPainterPath path;
     path.addRoundedRect(QRectF(row).adjusted(0.5, 0.5, -0.5, -0.5), 4.0, 4.0);
     if (selected) {
-      painter->fillPath(path, glass::ShellSelectionFill());
+      painter->fillPath(path, theme::ShellSelectionFill());
     } else if (hovered) {
-      painter->fillPath(path, glass::ShellHoverFill());
+      painter->fillPath(path, theme::ShellHoverFill());
     }
 
     const QString title = index.data(Qt::DisplayRole).toString();
     const int count = index.data(kCountRole).toInt();
     const QColor ink =
-        selected ? glass::ShellSelectionInk() : glass::Shell().text;
-    const QColor muted = glass::Shell().secondary_text;
+        selected ? theme::ShellSelectionInk() : theme::Shell().text;
+    const QColor muted = theme::Shell().secondary_text;
 
     QFont title_font = opt.font;
     title_font.setPointSizeF(qMax(10.5, title_font.pointSizeF() - 0.5));
@@ -212,10 +212,10 @@ class RailRowDelegate : public QStyledItemDelegate {
                        content.center().y() - badge_h / 2, badge_w, badge_h);
       QPainterPath badge_path;
       badge_path.addRoundedRect(QRectF(badge_rect), 8.0, 8.0);
-      painter->fillPath(badge_path, selected ? glass::Shell().hover_bg
+      painter->fillPath(badge_path, selected ? theme::Shell().hover_bg
                                              : QColor(0, 0, 0, 14));
       painter->setFont(badge_font);
-      painter->setPen(selected ? glass::ShellSelectionInk() : muted);
+      painter->setPen(selected ? theme::ShellSelectionInk() : muted);
       painter->drawText(badge_rect, Qt::AlignCenter, badge);
       content.setRight(badge_rect.left() - 6);
     }
@@ -253,7 +253,7 @@ void PrepList(QListWidget* list, bool show_icon) {
 
   QPalette pal = list->palette();
   pal.setBrush(QPalette::Highlight, Qt::transparent);
-  pal.setBrush(QPalette::HighlightedText, glass::ShellSelectionInk());
+  pal.setBrush(QPalette::HighlightedText, theme::ShellSelectionInk());
   pal.setBrush(QPalette::Inactive, QPalette::Highlight, Qt::transparent);
   list->setPalette(pal);
   list->setItemDelegate(new RailRowDelegate(show_icon, list));
@@ -466,7 +466,7 @@ void PlotFieldPickerDialog::paintEvent(QPaintEvent* /*event*/) {
   painter.fillPath(shadow, QColor(0, 0, 0, 28));
 
   painter.fillPath(card, QColor(250, 251, 253));
-  painter.setPen(QPen(glass::Shell().border_light, 1.0));
+  painter.setPen(QPen(theme::Shell().border_light, 1.0));
   painter.drawPath(card);
 }
 

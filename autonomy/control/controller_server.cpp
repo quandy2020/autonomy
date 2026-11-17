@@ -26,6 +26,7 @@
 
 #include "autolink/node/writer.hpp"
 #include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
 
 #include "autonomy/control/checker/simple_goal_checker.hpp"
 #include "autonomy/control/checker/simple_progress_checker.hpp"
@@ -593,7 +594,7 @@ void ControllerServer::PublishZeroVelocity() {
     PublishVelocity(zero);
 }
 
-void ControllerServer::ComputeControl() {
+void ControllerServer::ComputeControl(bool reset_plugins) {
     if (!plugins_loaded_) {
         LoadPlugins();
     }
@@ -621,9 +622,11 @@ void ControllerServer::ComputeControl() {
         throw common::InvalidController("ControllerServer plugins not ready");
     }
 
-    goal_checker->Reset();
-    progress_checker->Reset();
-    controller->Reset();
+    if (reset_plugins) {
+        goal_checker->Reset();
+        progress_checker->Reset();
+        controller->Reset();
+    }
     controller->SetPlan(current_path_);
 
     if (!current_path_.poses().empty()) {
@@ -634,8 +637,28 @@ void ControllerServer::ComputeControl() {
     follow_path_active_ = true;
     controllers_active_ = true;
 
-    AINFO_EVERY(5) << "FollowPath started: controller=" << current_controller_
-                   << " path_poses=" << current_path_.poses_size();
+    AINFO << "nav follow start controller=" << current_controller_
+          << " poses=" << current_path_.poses_size()
+          << (reset_plugins ? "" : " reuse");
+
+    automsgs::msgs::geometry_msgs::PoseStamped pose;
+    if (reset_plugins && GetRobotPose(pose) && costmap_wrapper_ &&
+        costmap_wrapper_->getCostmap()) {
+        unsigned int mx = 0;
+        unsigned int my = 0;
+        auto* grid = costmap_wrapper_->getCostmap();
+        if (grid->worldToMap(pose.pose().position().x(),
+                             pose.pose().position().y(), mx, my) &&
+            grid->getCost(mx, my) >=
+                map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
+            AWARN << "nav recover trigger reason=in_obstacle xy="
+                  << ::autonomy::common::NavXY{pose.pose().position().x(),
+                                               pose.pose().position().y()}
+                  << " stage=follow_start";
+            throw common::PatienceExceeded(
+                "robot in obstacle; triggering backup recovery");
+        }
+    }
 }
 
 void ControllerServer::ComputeAndPublishVelocity() {
@@ -698,6 +721,31 @@ void ControllerServer::ComputeAndPublishVelocity() {
     }
 
     if (code != proto::CONTROLLER_RESULT_SUCCESS) {
+        // A failed computation grants no authority to replay a previous command.
+        // In particular, replay must never override a plugin's collision stop.
+        // failure_tolerance is a retry window while stationary.
+        PublishZeroVelocity();
+        const bool retryable = code == proto::CONTROLLER_RESULT_NO_VALID_CMD ||
+                               code == proto::CONTROLLER_RESULT_FAILURE;
+        if (!retryable) {
+            throw common::ControllerException("Controller stopped (code=" +
+                                              std::to_string(code) + "): " + message);
+        }
+        if (costmap_wrapper_ && costmap_wrapper_->getCostmap()) {
+            unsigned int mx = 0;
+            unsigned int my = 0;
+            auto* grid = costmap_wrapper_->getCostmap();
+            if (grid->worldToMap(pose.pose().position().x(),
+                                 pose.pose().position().y(), mx, my) &&
+                grid->getCost(mx, my) >=
+                    map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE) {
+                AWARN << "nav recover trigger reason=in_obstacle xy="
+                      << ::autonomy::common::NavXY{pose.pose().position().x(),
+                                       pose.pose().position().y()};
+                throw common::PatienceExceeded(
+                    "robot in obstacle; triggering backup recovery");
+            }
+        }
         if (failure_tolerance_ > 0.0) {
             const double elapsed =
                 TimeDiffSeconds(NowTime(), last_valid_cmd_time_);
@@ -708,15 +756,8 @@ void ControllerServer::ComputeAndPublishVelocity() {
                 throw common::PatienceExceeded(
                     "Controller patience exceeded: " + message);
             }
-            AWARN << "Controller returned code=" << code
-                  << " (within failure_tolerance): " << message;
-            // Keep last good command so the robot does not freeze on a single
-            // bad MPPI sample.
-            if (last_cmd_vel_.twist().linear().x() != 0.0 ||
-                last_cmd_vel_.twist().linear().y() != 0.0 ||
-                last_cmd_vel_.twist().angular().z() != 0.0) {
-                PublishVelocity(last_cmd_vel_);
-            }
+            AWARN_EVERY(20) << "nav follow retry code=" << code
+                            << " msg=" << message;
             return;
         }
         if (publish_zero_velocity_) {

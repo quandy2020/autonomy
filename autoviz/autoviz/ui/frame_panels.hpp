@@ -78,6 +78,7 @@ class EvidencePanel;
 namespace plot { class PlotPanel; }
 namespace image { class ImagePanel; }
 namespace teleop { class TeleopPanel; }
+namespace navigation { class NavigationPanel; }
 namespace publish_panel { class PublishPanel; }
 namespace map { class MapPanel; }
 namespace service_panel { class ServicePanel; }
@@ -341,6 +342,13 @@ class FramePanels {
    * @return New dock hosting @ref teleop::TeleopPanel.
    */
   PanelDockWidget* createTeleopPanelDock(const QString& object_name = QString());
+
+  /**
+   * @brief Creates a Navigation panel dock (Nav2-style AB / multi-point).
+   * @param object_name Optional fixed @c objectName; empty → @c NavigationDock.
+   * @return Singleton right-sidebar Navigation dock.
+   */
+  PanelDockWidget* createNavigationPanelDock(const QString& object_name = QString());
 
   /**
    * @brief Creates a TF Tree panel dock.
@@ -717,6 +725,9 @@ class FramePanels {
 
   /** Primary Teleop dock. */
   PanelDockWidget* teleop_dock_ = nullptr;
+
+  /** Primary Navigation dock (Nav2-style). */
+  PanelDockWidget* navigation_dock_ = nullptr;
 
   /** Primary Image dock. */
   PanelDockWidget* image_dock_ = nullptr;

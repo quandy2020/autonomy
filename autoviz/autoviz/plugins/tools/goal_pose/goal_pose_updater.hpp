@@ -65,6 +65,19 @@ class GoalPoseUpdater : public QObject {
   double lastTheta() const { return last_theta_; }
   QString lastFrame() const { return last_frame_; }
 
+  /**
+   * @brief When true, @ref PublishNavigationGoal still emits @ref updateGoal
+   *        but does not write @c /goal_pose (waypoint accumulation).
+   */
+  void setAccumulateOnly(bool accumulate) { accumulate_only_ = accumulate; }
+  bool accumulateOnly() const { return accumulate_only_; }
+
+  /** @brief Drops the last 2D goal so TargetVisualizer rings disappear. */
+  void clearGoal() {
+    last_valid_ = false;
+    emit goalCleared();
+  }
+
  signals:
   /**
    * @brief Fired when a 2D goal pose is set (e.g. by @ref NavGoalTool).
@@ -75,9 +88,12 @@ class GoalPoseUpdater : public QObject {
    * @param frame TF frame id of the pose.
    */
   void updateGoal(double x, double y, double theta, QString frame);
+  /** @brief Fired when navigation is canceled or the goal overlay is dropped. */
+  void goalCleared();
 
  private:
   bool last_valid_ = false;
+  bool accumulate_only_ = false;
   double last_x_ = 0.0;
   double last_y_ = 0.0;
   double last_theta_ = 0.0;

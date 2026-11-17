@@ -12,7 +12,6 @@
  *
  * @see VisualizationFrame
  * @see ViewportPanelEntry
- * @see ViewportFloatingToolbar
  * @see ViewportHudOverlay
  * @see rendering::RenderWindow
  */
@@ -215,10 +214,11 @@ class FrameViewport {
   void clearForQuit();
 
   /**
-   * @brief Detaches the native Ogre widget from its dock for mosaic reparent.
+   * @brief Unmaps the native Ogre surface for mosaic drag / reparent.
    *
-   * Keeps the same GL context/scene alive (no destroy/recreate). Call
-   * @ref reinstallRenderWindowInEntry after the dock is in its final pane.
+   * Keeps the widget parented to its dock host (no @c setParent to the frame)
+   * so X11 does not mint a new drawable mid-drag. Call
+   * @ref reinstallRenderWindowInEntry / settle reveal after the dock lands.
    */
   void parkRenderWindowInEntry(ViewportPanelEntry& entry);
 
@@ -226,6 +226,36 @@ class FrameViewport {
    * @brief Puts a parked Ogre widget back into @p entry's dock layout.
    */
   void reinstallRenderWindowInEntry(ViewportPanelEntry& entry);
+
+  /**
+   * @brief After mosaic drag/snap settles, restore every visible 3D View.
+   *
+   * Entries marked @c needs_gl_recreate get a full Ogre QWidget recreate
+   * (fresh @c winId + GLX); others are shown/rebound. Pass @p delay_ms @c < 0
+   * to cancel an in-flight settle only.
+   *
+   * @param delay_ms Extra wait after the first turn for splitter geometry.
+   * @param close_broken_duplicates When @c true (drag finish), close 3D Views
+   *        that still have no live GL after retries (the transparent pane).
+   */
+  void scheduleSettleReinstallAll(int delay_ms = 48,
+                                  bool close_broken_duplicates = false);
+
+  /**
+   * @brief Destroys and recreates the Ogre widget for @p entry (keeps camera /
+   *        overlay / visibility bit). Used after mosaic drag when rebind fails
+   *        to restore a live surface.
+   */
+  void recreateRenderSurfaceInEntry(ViewportPanelEntry& entry);
+
+  /**
+   * @brief After mosaic settle: close visible 3D Views that still have no live
+   *        GL surface (transparent hole), keeping at least one pane if any.
+   *
+   * Prefer closing Split duplicates (@c ViewportDock_2, …) over the canonical
+   * @c ViewportDock.
+   */
+  void closeTransparentViewportDuplicates();
 
   /**
    * @brief When @c true, native GL surfaces stay hidden (startup settle).
@@ -261,11 +291,6 @@ class FrameViewport {
   void forEachViewportPanel(
       const std::function<void(ViewportPanelEntry&)>& fn);
 
-  /**
-   * @brief Installs @ref ViewportFloatingToolbar on @p entry.
-   * @param entry Viewport entry to decorate.
-   */
-  void installViewportFloatingToolbar(ViewportPanelEntry& entry);
 
   /**
    * @brief Installs @ref ViewportHudOverlay on @p entry.
@@ -293,27 +318,8 @@ class FrameViewport {
    */
   void setViewportContentOnlyButtonChecked(PanelDockWidget* dock, bool enabled);
 
-  /**
-   * @brief Shows or hides the floating tool strip for content-only mode.
-   * @param dock Viewport dock.
-   * @param visible @c false hides the right-edge toolbar (and keeps HUD).
-   */
-  void setViewportFloatingToolbarVisible(PanelDockWidget* dock, bool visible);
 
-  /**
-   * @brief Recenter-on-frame action from the floating toolbar.
-   * @param dock Viewport dock that requested recenter.
-   */
-  void onViewportRecenterOnFrame(PanelDockWidget* dock);
 
-  /**
-   * @brief Toggles 2D (top-down ortho) vs 3D camera for @p dock.
-   *
-   * Saves / restores @ref ViewportPanelEntry::saved_3d_view_state.
-   *
-   * @param dock Viewport dock.
-   */
-  void onViewportToggle2dCamera(PanelDockWidget* dock);
 
   /**
    * @brief Pushes @p entry's @c local_tool_id into the render/tool context.
@@ -356,11 +362,6 @@ class FrameViewport {
    */
   void syncToolContext();
 
-  /**
-   * @brief Syncs floating-toolbar checked state with @p entry local tools.
-   * @param entry Viewport entry to sync.
-   */
-  void syncViewportFloatingToolbarForEntry(const ViewportPanelEntry& entry);
 
   /**
    * @brief Syncs title-bar expand / settings tools for all viewport entries.
@@ -372,15 +373,6 @@ class FrameViewport {
    * @param entry Viewport entry to sync.
    */
   void syncViewportTitleBarToolsForEntry(const ViewportPanelEntry& entry);
-
-  /**
-   * @brief Toggles @p tool_id on @p dock (check → set, uncheck → Interact).
-   *
-   * @param dock Viewport dock.
-   * @param tool_id Tool id to toggle.
-   */
-  void toggleViewportLocalTool(PanelDockWidget* dock,
-                               const std::string& tool_id);
 
   /**
    * @brief Updates the cursor on the active render window for the current tool.
@@ -431,6 +423,9 @@ class FrameViewport {
    * Cleared by @ref FrameSession::applyStartupWindowState().
    */
   bool reveal_held_ = true;
+
+  /** Cancels stale @ref scheduleSettleReinstallAll callbacks after a new drag. */
+  int settle_reinstall_epoch_ = 0;
 };
 
 }  // namespace autoviz

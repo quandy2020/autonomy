@@ -51,6 +51,7 @@
 #include <QShortcut>
 #include <QSignalBlocker>
 #include <QStatusBar>
+#include <QSize>
 #include <QSizePolicy>
 #include <QTimer>
 #include <QCursor>
@@ -97,6 +98,7 @@
 #include "autoviz/ui/image/image_config_io.hpp"
 #include "autoviz/ui/plot/panel/plot_panel.hpp"
 #include "autoviz/ui/teleop/teleop_panel.hpp"
+#include "autoviz/ui/navigation/navigation_panel.hpp"
 #include "autoviz/ui/raw/panel.hpp"
 #include "autoviz/ui/channels/channels_panel.hpp"
 #include "autoviz/ui/record/record_panel.hpp"
@@ -110,13 +112,47 @@
 #include "autoviz/ui/service/service_panel.hpp"
 #include "autoviz/ui/time/panel.hpp"
 #include "autoviz/ui/panel/name_map.hpp"
-#include "autoviz/ui/viewport_toolbar.hpp"
 #include "autoviz/ui/viewport_hud.hpp"
 #include "autoviz/ui/views/panel.hpp"
 #include "autoviz/commsgs/message_type_utils.hpp"
 #include "autoviz/ui/record_drop_overlay.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
+
+#include <QAbstractAnimation>
+#include <QEasingCurve>
+#include <QGraphicsOpacityEffect>
+#include <QPropertyAnimation>
 
 namespace autoviz {
+namespace {
+
+/** Opaque full-frame plate — hides dock/GL churn during Open Config. */
+class LayoutTransitionCover : public QWidget {
+ public:
+  explicit LayoutTransitionCover(QWidget* parent) : QWidget(parent) {
+    setObjectName(QStringLiteral("AutovizLayoutTransitionCover"));
+    setAttribute(Qt::WA_TransparentForMouseEvents, false);
+    setAttribute(Qt::WA_OpaquePaintEvent, true);
+    setAttribute(Qt::WA_NoSystemBackground, false);
+    setAutoFillBackground(false);
+    effect_ = new QGraphicsOpacityEffect(this);
+    effect_->setOpacity(1.0);
+    setGraphicsEffect(effect_);
+    hide();
+  }
+
+  void paintEvent(QPaintEvent* /*event*/) override {
+    QPainter painter(this);
+    painter.fillRect(rect(), theme::Shell().panel_surface);
+  }
+
+  QGraphicsOpacityEffect* effect() const { return effect_; }
+
+ private:
+  QGraphicsOpacityEffect* effect_ = nullptr;
+};
+
+}  // namespace
 
 FrameSession::FrameSession(VisualizationFrame* frame) : frame_(frame) {}
 
@@ -250,7 +286,47 @@ void FrameSession::keyPressEvent(QKeyEvent* event) {
 
 bool FrameSession::loadConfig(const QString& path) {
   suppress_config_modified_ = true;
+  // Always freeze GLX before dock/mosaic churn — both first launch (config
+  // applied while still hidden) and mid-session Open Config. Remapping while
+  // docks shuffle flashes transparent background_pixel=0 3D panes.
+  const bool live_reload = frame_->isVisible();
+  if (frame_->viewport_ != nullptr) {
+    frame_->viewport_->setViewportRevealHeld(true);
+  }
+
+  // Live reload: opaque cover + frozen paints so the user never sees dock
+  // reparent / charcoal / GL remount tearing (双窗撕裂闪烁).
+  QWidget* mosaic_host = (frame_->layout_ != nullptr)
+                             ? static_cast<QWidget*>(frame_->layout_->main_panel_host_)
+                             : nullptr;
+  const bool freeze_ui = live_reload;
+  if (freeze_ui) {
+    showLayoutTransitionCover();
+    frame_->setUpdatesEnabled(false);
+    if (mosaic_host != nullptr) {
+      mosaic_host->setUpdatesEnabled(false);
+    }
+  }
+  const auto unfreeze_ui = [this, mosaic_host, freeze_ui]() {
+    if (!freeze_ui) {
+      return;
+    }
+    if (mosaic_host != nullptr) {
+      mosaic_host->setUpdatesEnabled(true);
+    }
+    frame_->setUpdatesEnabled(true);
+    layoutLayoutTransitionCover();
+    if (layout_transition_cover_ != nullptr) {
+      layout_transition_cover_->raise();
+    }
+  };
+
   if (!frame_->manager_->loadSession(path.toStdString())) {
+    unfreeze_ui();
+    dismissLayoutTransitionCover();
+    if (frame_->viewport_ != nullptr) {
+      scheduleViewportRevealAfterLayoutSettle();
+    }
     suppress_config_modified_ = false;
     return false;
   }
@@ -311,6 +387,13 @@ bool FrameSession::loadConfig(const QString& path) {
   frame_->panels_->syncDeletePanelMenu();
   frame_->chrome_->updateStatusBar();
   markRecentConfig(path);
+  // One paint of the final dock/mosaic chrome, then deferred GL reveal.
+  unfreeze_ui();
+  // Mid-session Open Config: reveal after mosaic settles. Startup leaves hold
+  // in place — applyStartupWindowState() schedules the first reveal after map.
+  if (live_reload) {
+    scheduleViewportRevealAfterLayoutSettle();
+  }
   suppress_config_modified_ = false;
   clearConfigModified();
   return true;
@@ -443,13 +526,16 @@ void FrameSession::ensureSessionMainPanels() {
 
 void FrameSession::activateRestoredViewportAndView() {
   PanelDockWidget* visible_viewport = nullptr;
+  QList<PanelDockWidget*> visible_viewports;
   for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
     if (dock == nullptr || !dock->requestedVisible() ||
         frame_->panels_->panelTypeId(dock) != QLatin1String("ViewportDock")) {
       continue;
     }
-    visible_viewport = dock;
-    break;
+    visible_viewports.push_back(dock);
+    if (visible_viewport == nullptr) {
+      visible_viewport = dock;
+    }
   }
 
   const bool host_has_viewport = [&]() {
@@ -491,9 +577,17 @@ void FrameSession::activateRestoredViewportAndView() {
       frame_->layout_->scheduleTileCenterPanels();
     }
     visible_viewport = primary;
+    if (!visible_viewports.contains(primary)) {
+      visible_viewports.push_back(primary);
+    }
+  }
+  // Dual-pane sessions create ViewportDock_2 with create_render_window=false.
+  // Ready EVERY visible 3D View — ensuring only the first left the sibling
+  // without GL (Qt-gray hole) while the primary GLX often covered the right.
+  for (PanelDockWidget* dock : visible_viewports) {
+    frame_->viewport_->ensureViewportPanelReady(dock);
   }
   if (visible_viewport != nullptr) {
-    frame_->viewport_->ensureViewportPanelReady(visible_viewport);
     frame_->viewport_->setActiveViewportDock(visible_viewport);
   }
   applyCurrentView();
@@ -718,29 +812,26 @@ void FrameSession::applyStartupWindowState() {
                           Qt::Horizontal);
     }
 
-    if (frame_->viewport_->viewport_dock_ != nullptr &&
-        frame_->layout_->main_panel_host_ != nullptr) {
-      const bool host_has_viewport =
-          frame_->layout_->main_panel_host_->hostsPanel(
-              frame_->viewport_->viewport_dock_);
-      if (host_has_viewport &&
-          frame_->viewport_->viewport_dock_->requestedVisible()) {
-        frame_->viewport_->ensureViewportPanelReady(
-            frame_->viewport_->viewport_dock_);
-      } else {
+    if (frame_->layout_->main_panel_host_ != nullptr) {
+      bool host_has_viewport = false;
+      for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+        if (dock == nullptr ||
+            frame_->panels_->panelTypeId(dock) !=
+                QLatin1String("ViewportDock") ||
+            !dock->requestedVisible()) {
+          continue;
+        }
+        if (frame_->layout_->main_panel_host_->hostsPanel(dock)) {
+          host_has_viewport = true;
+          frame_->viewport_->ensureViewportPanelReady(dock);
+        }
+      }
+      if (!host_has_viewport) {
         frame_->layout_->applyMainPanelDefaultLayout();
       }
     }
 
-    // Wait one frame for dock resize / WM configure, then reveal GL once at
-    // the final pane size (avoids mid-resize native surface flashes).
-    QTimer::singleShot(32, frame_, [this]() {
-      if (frame_->viewport_ == nullptr) {
-        return;
-      }
-      frame_->viewport_->setViewportRevealHeld(false);
-      frame_->viewport_->requestViewportUpdate();
-    });
+    scheduleViewportRevealAfterLayoutSettle();
 
     // Optional CI/smoke: Split Right the active 3D View after layout settles.
     const int split_ms = qEnvironmentVariableIntValue("AUTOVIZ_SMOKE_SPLIT_MS");
@@ -798,7 +889,184 @@ void FrameSession::applyStartupWindowState() {
   });
 }
 
+void FrameSession::showLayoutTransitionCover() {
+  if (frame_ == nullptr) {
+    return;
+  }
+  if (layout_transition_cover_.isNull()) {
+    layout_transition_cover_ = new LayoutTransitionCover(frame_);
+  }
+  auto* cover =
+      static_cast<LayoutTransitionCover*>(layout_transition_cover_.data());
+  if (cover == nullptr) {
+    return;
+  }
+  if (cover->effect() != nullptr) {
+    cover->effect()->setOpacity(1.0);
+  }
+  layoutLayoutTransitionCover();
+  cover->show();
+  cover->raise();
+  cover->update();
+}
+
+void FrameSession::dismissLayoutTransitionCover() {
+  if (layout_transition_cover_.isNull()) {
+    return;
+  }
+  auto* cover =
+      static_cast<LayoutTransitionCover*>(layout_transition_cover_.data());
+  if (cover == nullptr || !cover->isVisible()) {
+    if (layout_transition_cover_ != nullptr) {
+      layout_transition_cover_->hide();
+    }
+    return;
+  }
+  auto* effect = cover->effect();
+  if (effect == nullptr) {
+    cover->hide();
+    return;
+  }
+  auto* fade = new QPropertyAnimation(effect, "opacity", cover);
+  fade->setDuration(160);
+  fade->setStartValue(effect->opacity());
+  fade->setEndValue(0.0);
+  fade->setEasingCurve(QEasingCurve::OutCubic);
+  QObject::connect(fade, &QPropertyAnimation::finished, cover, [cover]() {
+    cover->hide();
+    if (cover->effect() != nullptr) {
+      cover->effect()->setOpacity(1.0);
+    }
+  });
+  fade->start(QAbstractAnimation::DeleteWhenStopped);
+}
+
+void FrameSession::layoutLayoutTransitionCover() {
+  if (layout_transition_cover_.isNull() || frame_ == nullptr) {
+    return;
+  }
+  layout_transition_cover_->setGeometry(frame_->rect());
+  layout_transition_cover_->raise();
+}
+
+void FrameSession::scheduleViewportRevealAfterLayoutSettle() {
+  // Keep GLX destroyed through mosaic/WM configure; release once hosts are
+  // size-stable. Cover (if any) stays up until remount finishes.
+  QTimer::singleShot(0, frame_, [this]() {
+    if (frame_ == nullptr || frame_->viewport_ == nullptr) {
+      return;
+    }
+    frame_->viewport_->setViewportRevealHeld(true);
+    layoutLayoutTransitionCover();
+    if (frame_->layout_ != nullptr &&
+        frame_->layout_->main_panel_host_ != nullptr) {
+      for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+        if (dock == nullptr ||
+            frame_->panels_->panelTypeId(dock) !=
+                QLatin1String("ViewportDock") ||
+            !dock->requestedVisible()) {
+          continue;
+        }
+        if (frame_->layout_->main_panel_host_->hostsPanel(dock)) {
+          frame_->viewport_->ensureViewportPanelReady(dock);
+        }
+      }
+    }
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->parkRenderWindowInEntry(entry);
+      if (entry.host != nullptr) {
+        entry.host->setStyleSheet(QStringLiteral(
+            "QWidget#AutovizViewportHost { background-color: #303030; }"));
+      }
+    });
+
+    if (frame_->layout_ != nullptr &&
+        frame_->layout_->main_panel_host_ != nullptr) {
+      frame_->layout_->main_panel_host_->syncHorizontalDockLayout();
+      frame_->layout_->main_panel_host_->updateGeometry();
+    }
+    frame_->updateGeometry();
+
+    // Require two consecutive matching host sizes before remount — avoids
+    // binding GLX to a mid-layout width (map tearing across dual panes).
+    auto last_sizes = std::make_shared<QHash<QString, QSize>>();
+    auto stable_hits = std::make_shared<int>(0);
+
+    auto try_release = std::make_shared<std::function<void(int)>>();
+    *try_release = [this, try_release, last_sizes, stable_hits](int attempt) {
+      if (frame_ == nullptr || frame_->viewport_ == nullptr) {
+        dismissLayoutTransitionCover();
+        return;
+      }
+      if (frame_->layout_ != nullptr &&
+          frame_->layout_->center_dock_drag_count_ > 0) {
+        QTimer::singleShot(40, frame_, [try_release, attempt]() {
+          (*try_release)(attempt + 1);
+        });
+        return;
+      }
+
+      bool pending = false;
+      bool size_changed = false;
+      frame_->viewport_->forEachViewportPanel(
+          [&pending, &size_changed, last_sizes](ViewportPanelEntry& entry) {
+            if (entry.dock == nullptr || !entry.dock->requestedVisible()) {
+              return;
+            }
+            if (entry.host == nullptr || entry.host->width() < 40 ||
+                entry.host->height() < 40) {
+              pending = true;
+              return;
+            }
+            const QString key = entry.dock->objectName();
+            const QSize now(entry.host->width(), entry.host->height());
+            const auto it = last_sizes->constFind(key);
+            if (it == last_sizes->constEnd() || it.value() != now) {
+              size_changed = true;
+              (*last_sizes)[key] = now;
+            }
+          });
+
+      if (pending || size_changed) {
+        *stable_hits = 0;
+      } else {
+        ++(*stable_hits);
+      }
+
+      if ((pending || *stable_hits < 2) && attempt < 16) {
+        QTimer::singleShot(32, frame_, [try_release, attempt]() {
+          (*try_release)(attempt + 1);
+        });
+        return;
+      }
+
+      // Remount under the cover, then fade the cover after first presents.
+      frame_->viewport_->setViewportRevealHeld(false);
+      QTimer::singleShot(120, frame_, [this]() {
+        dismissLayoutTransitionCover();
+        if (frame_ != nullptr) {
+          frame_->update();
+        }
+      });
+    };
+
+    QTimer::singleShot(48, frame_, [try_release]() { (*try_release)(0); });
+  });
+}
+
 void FrameSession::restoreWindowLayout() {
+  // Detach native GLX BEFORE restoreState / mosaic reparent. Remapping
+  // WA_PaintOnScreen windows while docks shuffle produces overlapping holes
+  // and the "frenzied" layout (duplicate titles, tear, purple garbage).
+  if (frame_->viewport_ != nullptr) {
+    if (!frame_->viewport_->isViewportRevealHeld()) {
+      frame_->viewport_->setViewportRevealHeld(true);
+    }
+    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
+      frame_->viewport_->parkRenderWindowInEntry(entry);
+    });
+  }
+
   frame_->layout_->expanded_main_panel_dock_ = nullptr;
   frame_->layout_->pre_expand_visible_main_panel_docks_.clear();
   frame_->layout_->pre_expand_mosaic_layout_.clear();
@@ -827,6 +1095,9 @@ void FrameSession::restoreWindowLayout() {
   // Saved layouts may still place Teleop on the left from older builds.
   if (frame_->panels_->teleop_dock_ != nullptr) {
     frame_->layout_->ensureSidebarDockAttached(frame_->panels_->teleop_dock_);
+  }
+  if (frame_->panels_->navigation_dock_ != nullptr) {
+    frame_->layout_->ensureSidebarDockAttached(frame_->panels_->navigation_dock_);
   }
   // Ensure main-column docks are owned by the center host before mosaic restore.
   for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
@@ -870,17 +1141,24 @@ void FrameSession::restoreWindowLayout() {
   bool restored_mosaic = false;
   if (have_mosaic && frame_->layout_->main_panel_host_ != nullptr) {
     frame_->layout_->center_manual_layout_ = true;
-    // Park native Ogre widgets off the docks before mosaic reparent — do not
-    // destroy/recreate (that races with NVIDIA GL teardown and PointCloud GPU).
-    frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
-      frame_->viewport_->parkRenderWindowInEntry(entry);
-    });
+    // Already parked at entry — keep surfaces off docks during mosaic reparent.
     restored_mosaic = frame_->layout_->main_panel_host_->restoreMosaicLayout(
         mosaic, [this](const QString& object_name) -> QDockWidget* {
           return frame_->findChild<PanelDockWidget*>(object_name);
         });
+    // Create deferred GL windows into final panes, but keep them parked.
+    // reinstall must not recreate/map under reveal_held_ (loadConfig flicker).
+    for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
+      if (dock == nullptr || !dock->requestedVisible() ||
+          frame_->panels_->panelTypeId(dock) !=
+              QLatin1String("ViewportDock")) {
+        continue;
+      }
+      frame_->viewport_->ensureViewportPanelReady(dock);
+    }
     frame_->viewport_->forEachViewportPanel([this](ViewportPanelEntry& entry) {
       frame_->viewport_->reinstallRenderWindowInEntry(entry);
+      frame_->viewport_->parkRenderWindowInEntry(entry);
     });
   }
   if (restored_mosaic) {
@@ -1355,6 +1633,7 @@ void FrameSession::resizeEvent(QResizeEvent* event) {
     frame_->layout_->main_panel_host_->syncHorizontalDockLayout();
   }
   layoutRecordDropOverlay();
+  layoutLayoutTransitionCover();
 }
 
 void FrameSession::applyBackgroundColor(const QColor& color) {
