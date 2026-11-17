@@ -438,6 +438,7 @@ struct NavigationPanel::Impl {
       feedback_reader;
   int cancel_epoch = 0;
   int markers_epoch = 0;
+  bool suppress_nav_feedback = false;
 };
 
 using NavigateToPoseAction = automsgs::actions::NavigateToPoseAction;
@@ -794,7 +795,10 @@ void NavigationPanel::applyUi() {
 
 void NavigationPanel::enterMode(UiMode mode) {
   mode_ = mode;
-  tools::GoalUpdater.setAccumulateOnly(mode_ == UiMode::kAccumulating);
+  tools::GoalUpdater.setAccumulateOnly(mode_ == UiMode::kAccumulating ||
+                                       mode_ == UiMode::kNavThroughPoses ||
+                                       mode_ == UiMode::kFollowingWp ||
+                                       mode_ == UiMode::kPausedWp);
   applyUi();
 }
 
@@ -889,6 +893,7 @@ void NavigationPanel::onProbeServers() {
 
 void NavigationPanel::onStartResetClicked() {
   if (isBusy() || mode_ == UiMode::kPausedWp) {
+    impl_->suppress_nav_feedback = true;
     cancelAllGoals();
     clearNavVisuals();
     setWaypointNote(QString());
@@ -1086,8 +1091,12 @@ void NavigationPanel::onNewGoal(double x, double y, double theta, QString frame)
     updateWpNavigationMarkers();
     return;
   }
+  if (isBusy()) {
+    return;
+  }
   // 2D Goal Pose already publishes /goal_pose (TaskServer). Track it here so
   // Cancel is available; do not send a second NavigateToPose.
+  impl_->suppress_nav_feedback = false;
   ++impl_->cancel_epoch;
   impl_->accumulated_poses.clear();
   updateWpNavigationMarkers();
@@ -1388,30 +1397,36 @@ void NavigationPanel::cancelActionGoals() {
 
 void NavigationPanel::publishCancelNavigation() {
   ensureClients();
-  if (!impl_->cancel_writer) {
-    return;
+  if (impl_->cancel_writer) {
+    auto msg = std::make_shared<automsgs::msgs::std_msgs::Bool>();
+    msg->set_data(true);
+    impl_->cancel_writer->Write(msg);
   }
-  automsgs::msgs::std_msgs::Bool msg;
-  msg.set_data(true);
-  impl_->cancel_writer->Write(msg);
+  if (impl_->goal_poses_writer) {
+    automsgs::msgs::geometry_msgs::PoseStampedArray empty;
+    empty.mutable_header()->set_frame_id(defaultFrame().toStdString());
+    *empty.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::TimeNow();
+    impl_->goal_poses_writer->Write(
+        std::make_shared<automsgs::msgs::geometry_msgs::PoseStampedArray>(
+            empty));
+  }
 }
 
 void NavigationPanel::requestTaskCancel() {
   ++impl_->cancel_epoch;
+  impl_->suppress_nav_feedback = true;
   const int epoch = impl_->cancel_epoch;
   publishCancelNavigation();
-  // 2D Goal Pose retries /goal_pose at 50/200 ms; TaskServer ignores cancel
-  // while a pose is still pending. Re-send after that window.
-  QTimer::singleShot(300, this, [this, epoch]() {
-    if (impl_->cancel_epoch == epoch) {
-      publishCancelNavigation();
-    }
-  });
-  QTimer::singleShot(500, this, [this, epoch]() {
-    if (impl_->cancel_epoch == epoch) {
-      publishCancelNavigation();
-    }
-  });
+  // /goal_poses and 2D Goal Pose retry at 50/200 ms. Re-send cancel after
+  // that window so a late START cannot outrun Cancel.
+  for (int delay_ms : {80, 200, 350, 550}) {
+    QTimer::singleShot(delay_ms, this, [this, epoch]() {
+      if (impl_->cancel_epoch == epoch) {
+        publishCancelNavigation();
+      }
+    });
+  }
 }
 
 void NavigationPanel::clearNavVisuals() {
@@ -1439,6 +1454,9 @@ void NavigationPanel::onNavigationFeedback(int status, float distance_remaining,
   switch (status) {
     case nav_proto::NAV_STATUS_PLANNING:
     case nav_proto::NAV_STATUS_NAVIGATING:
+      if (impl_->suppress_nav_feedback) {
+        break;
+      }
       setGoalStatus(2);
       setNavFeedback(0.0, distance_remaining, 0.0, 0,
                      through ? poses_remaining : -1);
@@ -1552,6 +1570,7 @@ bool NavigationPanel::publishGoalPoses(const std::vector<PoseStamped>& poses) {
 
 void NavigationPanel::startNavigation(const PoseStamped& pose) {
   ensureClients();
+  impl_->suppress_nav_feedback = false;
   const bool keep_sequential = impl_->sequential_wp;
   cancelActionGoals();
   ++impl_->cancel_epoch;
@@ -1629,6 +1648,7 @@ void NavigationPanel::startNavigation(const PoseStamped& pose) {
 
 void NavigationPanel::startNavThroughPoses() {
   ensureClients();
+  impl_->suppress_nav_feedback = false;
   cancelActionGoals();
   ++impl_->cancel_epoch;
   if (!publishGoalPoses(impl_->accumulated_poses)) {
@@ -1645,6 +1665,7 @@ void NavigationPanel::startNavThroughPoses() {
 
 void NavigationPanel::startWaypointFollowing() {
   ensureClients();
+  impl_->suppress_nav_feedback = false;
   if (impl_->store_initial_pose && !impl_->initial_pose_stored) {
     PoseStamped initial;
     if (!lookupInitialPose(&initial)) {

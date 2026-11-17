@@ -144,6 +144,7 @@ private:
 
     void WireVoiceDispatchers();
     void CancelDomainTasks();
+    void SubmitNavigationCancel();
 
     template <typename TaskT, typename GoalT>
     bool Dispatch(const std::shared_ptr<TaskT>& task, const GoalT& goal) {
@@ -244,6 +245,7 @@ private:
         bool stopping{true};
         std::chrono::steady_clock::time_point updated{};
         std::chrono::steady_clock::time_point last_sent_at{};
+        std::chrono::steady_clock::time_point last_cancel_at{};
     };
     std::shared_ptr<GoalPoseInbox> goal_pose_inbox_{std::make_shared<GoalPoseInbox>()};
     std::thread goal_pose_worker_;

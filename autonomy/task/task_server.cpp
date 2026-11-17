@@ -145,8 +145,24 @@ void TaskServer::Bind() {
             kGoalPoses,
             [this](const std::shared_ptr<
                    ::automsgs::msgs::geometry_msgs::PoseStampedArray>& poses) {
-                if (!poses || poses->poses().empty()) {
+                if (!poses) {
                     return;
+                }
+                if (poses->poses().empty()) {
+                    AINFO << "TaskServer: /goal_poses empty → cancel";
+                    SubmitNavigationCancel();
+                    return;
+                }
+                {
+                    std::lock_guard<std::mutex> lock(goal_pose_inbox_->mutex);
+                    const auto now = std::chrono::steady_clock::now();
+                    if (goal_pose_inbox_->last_cancel_at.time_since_epoch()
+                            .count() != 0 &&
+                        now - goal_pose_inbox_->last_cancel_at <
+                            std::chrono::milliseconds(400)) {
+                        AINFO << "TaskServer: ignore /goal_poses after cancel";
+                        return;
+                    }
                 }
                 proto::NavigationGoal goal;
                 goal.set_command(proto::NAV_CMD_START);
@@ -172,24 +188,8 @@ void TaskServer::Bind() {
                     if (!msg || !msg->data()) {
                         return;
                     }
-                    // Drop stale cancel when a newer /goal_pose is already
-                    // queued — otherwise Cancel runs after Start and kills the
-                    // preempted navigation (looks like "cannot preempt / dead").
-                    {
-                        std::lock_guard<std::mutex> lock(goal_pose_inbox_->mutex);
-                        if (goal_pose_inbox_->pending) {
-                            AINFO << "TaskServer: ignore /cancel_navigation "
-                                     "(goal_pose pending)";
-                            return;
-                        }
-                    }
-                    proto::NavigationGoal goal;
-                    goal.set_command(proto::NAV_CMD_CANCEL);
-                    goal.set_mode(proto::NAV_MODE_UNSPECIFIED);
                     AINFO << "TaskServer: /cancel_navigation";
-                    if (!Submit(goal)) {
-                        AWARN << "TaskServer: cancel submit failed";
-                    }
+                    SubmitNavigationCancel();
                 });
 
         navigator_ = std::make_shared<common::Navigator>();
@@ -415,9 +415,20 @@ void TaskServer::GoalPoseLoop() {
                                     })) continue;
         auto pose = std::move(goal_pose_inbox_->pending);
         goal_pose_inbox_->pending.reset();
+        if (!pose) {
+            continue;
+        }
+        const auto last_cancel = goal_pose_inbox_->last_cancel_at;
         goal_pose_inbox_->last_sent = pose;
         goal_pose_inbox_->last_sent_at = std::chrono::steady_clock::now();
         lock.unlock();
+        if (last_cancel.time_since_epoch().count() != 0 &&
+            std::chrono::steady_clock::now() - last_cancel <
+                std::chrono::milliseconds(400)) {
+            AINFO << "TaskServer: drop /goal_pose after cancel";
+            lock.lock();
+            continue;
+        }
         try {
             proto::NavigationGoal goal;
             goal.set_command(proto::NAV_CMD_START);
@@ -508,6 +519,24 @@ void TaskServer::WireVoiceDispatchers() {
     voice_->SetSubmitExploration(
         [this](const proto::ExplorationGoal& goal) { return Submit(goal); });
     voice_->SetCancelDomains([this] { CancelDomainTasks(); });
+}
+
+void TaskServer::SubmitNavigationCancel() {
+    if (goal_pose_inbox_) {
+        std::lock_guard<std::mutex> lock(goal_pose_inbox_->mutex);
+        goal_pose_inbox_->pending.reset();
+        goal_pose_inbox_->last_cancel_at = std::chrono::steady_clock::now();
+        goal_pose_inbox_->updated = goal_pose_inbox_->last_cancel_at;
+    }
+    if (goal_pose_inbox_) {
+        goal_pose_inbox_->cv.notify_all();
+    }
+    proto::NavigationGoal goal;
+    goal.set_command(proto::NAV_CMD_CANCEL);
+    goal.set_mode(proto::NAV_MODE_UNSPECIFIED);
+    if (!Submit(goal)) {
+        AWARN << "TaskServer: cancel submit failed";
+    }
 }
 
 void TaskServer::CancelDomainTasks() {
