@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-18",
+  "deployed": true,
+  "backup": "/tmp/opt-navigation-deploy-v2.12-7f3a086c1c19/backup",
+  "expected_sha256": {
+    "autonomy/task/navigation/navigation.hpp": "415d81dcf30e81fc3bbc0dc28a25f466c0c8de7a2b0382a0e90355dec02a5826",
+    "autonomy/task/navigation/navigation.cpp": "0cd8202f719792fbf8a78bb7219a1014c8aa4a1b08ef898b2823e0e590f8a062",
+    "autonomy/task/navigation/navigation_task_test.cpp": null,
+    "autonomy/task/behavior_tree/bt_runner.hpp": "573423328ff8b1803650e47b82c602738bbed744d7e170e4c149d015303ad661",
+    "docs/navigation_task_admission.md": null,
+    "cmake/ExplorationTests.cmake": "1855455a846e7853f8b0d024da358063114220be9f75b1d8b060564a3472ed84"
+  },
+  "before_sha256": {
+    "autonomy/task/navigation/navigation.hpp": "415d81dcf30e81fc3bbc0dc28a25f466c0c8de7a2b0382a0e90355dec02a5826",
+    "autonomy/task/navigation/navigation.cpp": "0cd8202f719792fbf8a78bb7219a1014c8aa4a1b08ef898b2823e0e590f8a062",
+    "autonomy/task/navigation/navigation_task_test.cpp": null,
+    "autonomy/task/behavior_tree/bt_runner.hpp": "573423328ff8b1803650e47b82c602738bbed744d7e170e4c149d015303ad661",
+    "docs/navigation_task_admission.md": null,
+    "cmake/ExplorationTests.cmake": "1855455a846e7853f8b0d024da358063114220be9f75b1d8b060564a3472ed84"
+  },
+  "deployed_sha256": {
+    "autonomy/task/navigation/navigation.hpp": "5f204857de105d3a37727e0c6f7ef37d06a51391c1083da5cd8406ed637b19f3",
+    "autonomy/task/navigation/navigation.cpp": "92b2e1de416026e175dc4fa7770905ffc5655b7f01b45e86675c41c94218fa65",
+    "autonomy/task/navigation/navigation_task_test.cpp": "33e49ad89a293d8eea867d77f55c029392149f6298f15f8832709dfff09cbc33",
+    "autonomy/task/behavior_tree/bt_runner.hpp": "871c598e51ac98f60902d81ae79f4fee9143d4763b84522514ab02f36f8d7200",
+    "docs/navigation_task_admission.md": "4e36f66e31a123c551aecd918746c54c0f709f8974e9659877cd9c02f0e34009",
+    "cmake/ExplorationTests.cmake": "e8a5508abff16cd7e3b8fd4b2c00ba16219ae57687debc8fc641d40ba33bc1b4"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "task_server_sha256": {
+    "autonomy/task/task_server.hpp": "d054a6f65a31324638bc866657be62949f6c8ed26736fe19eaa1d38623f1bc63",
+    "autonomy/task/task_server.cpp": "b8a1e578e8c805119ed5063b79e28f8c45599fea3fa413fef58d9cde1599f60f"
+  },
+  "git_head": "bdfd9f0b8a2949f5b7fae08c5f5ec8e5c5243498"
+}

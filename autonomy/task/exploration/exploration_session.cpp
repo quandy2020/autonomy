@@ -4,6 +4,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <deque>
+#include <limits>
 #include <mutex>
 #include <set>
 #include <stdexcept>
@@ -14,6 +15,20 @@
 #include "autonomy/task/exploration/frontier/frontier_extractor.hpp"
 
 namespace autonomy::task::exploration {
+namespace {
+/// Process-wide session identities reject replies from reconstructed tasks.
+std::atomic<std::uint64_t> next_session_identity{0};
+/** @brief Allocate a nonzero identity without wrapping onto a prior session. */
+std::uint64_t NewSessionIdentity() {
+    auto current = next_session_identity.load();
+    for (;;) {
+        if (current == std::numeric_limits<std::uint64_t>::max())
+            throw std::overflow_error("exploration session identity exhausted");
+        if (next_session_identity.compare_exchange_weak(current, current + 1))
+            return current + 1;
+    }
+}
+}  // namespace
 class ExplorationSession::Impl {
 public:
     struct PoseEvent {
@@ -129,7 +144,7 @@ public:
         }
         snapshot_ = {};
         snapshot_.state = ExplorationState::kInitializing;
-        snapshot_.session_id = ++session_counter_;
+        snapshot_.session_id = NewSessionIdentity();
         started_ = last_now_ = now;
         paused_time_ = 0;
         wait_started_.reset();
@@ -1154,6 +1169,10 @@ public:
     }
 
     void Publish() {
+        // Early paused/terminal paths still consume admitted requirement events.
+        // Publish ledger counts from actual state on every path, never from a
+        // prediction or a previous running tick's cached progress.
+        snapshot_.pending_units = coverage_.PendingCount();
         snapshot_.motion_ready = !execution_fault_ && snapshot_.sensors.ready &&
             PoseReady(last_now_) && snapshot_.state != ExplorationState::kPaused &&
             snapshot_.state != ExplorationState::kIdle &&
@@ -1197,7 +1216,7 @@ public:
     bool home_valid_ = false, finishing_ = false, saving_map_ = false;
     bool execution_fault_ = false;
     unsigned recovery_count_ = 0;
-    std::uint64_t session_counter_ = 0, request_counter_ = 0, confirmation_round_ = 0;
+    std::uint64_t request_counter_ = 0, confirmation_round_ = 0;
     std::uint64_t worker_session_ = 0;
     std::optional<std::thread::id> owner_;
     ExplorationSnapshot snapshot_, published_;

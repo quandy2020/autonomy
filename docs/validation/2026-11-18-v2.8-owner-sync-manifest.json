@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-18",
+  "files": {
+    "autonomy/task/exploration/exploration.hpp": {
+      "sha256": "b46f97485f5fa4dbab77ae26200e79f528344f9ffec176f4c1d317a3aa178108",
+      "expected": "c5e4ad5d66875598796f97590956b5bc9b7b0d62508821281fbd28ee38a493f1"
+    },
+    "autonomy/task/exploration/exploration.cpp": {
+      "sha256": "f7ae4bfcfe3905de6746d1bda84bc5f70d8607620b4360d0fd55c8f6b5cb481c",
+      "expected": "3c015f256d12015adbda45d5d2059e979387dfef91bcd480d76e7898668e5e10"
+    },
+    "autonomy/task/exploration/exploration_session.cpp": {
+      "sha256": "c0eccaf8f53838974dfef6de5eb0e842c74c2503f9679f72fe9a56d7b8e37dab",
+      "expected": "335ae81ae0380fe7a8ebaecea40d360bd119cd965344b8ca9f27fd1960638dff"
+    },
+    "autonomy/task/exploration/exploration_owner_test.cpp": {
+      "sha256": "62ec4f5955b2b097a4739c29b6a2076282046e718520d28502a26ad6317bae76",
+      "expected": null
+    },
+    "cmake/ExplorationTests.cmake": {
+      "sha256": "7e09d1e756987bd748ea319a1adf9966546704a5984e320585d2a5d6a14458ba",
+      "expected": "28635e56b1fa683c079b29d687198475d158bb57718db2ef17218bb647b161f4"
+    },
+    "docs/exploration_task_owner.md": {
+      "sha256": "c59995c34da9f3645df57fc53b1819d4ddbdf030cdc6fcac692a317d2c841243",
+      "expected": null
+    }
+  },
+  "staging": "/tmp/opt-owner-deploy-v2.8-86ef9ffc183b",
+  "result": "{\n  \"files\": 6,\n  \"changed\": [\n    \"autonomy/task/exploration/exploration.hpp\",\n    \"autonomy/task/exploration/exploration.cpp\",\n    \"autonomy/task/exploration/exploration_session.cpp\",\n    \"autonomy/task/exploration/exploration_owner_test.cpp\",\n    \"cmake/ExplorationTests.cmake\",\n    \"docs/exploration_task_owner.md\"\n  ],\n  \"backup\": \"/tmp/opt-owner-deploy-v2.8-86ef9ffc183b/backup\",\n  \"staging\": \"/tmp/opt-owner-deploy-v2.8-86ef9ffc183b\",\n  \"map_count\": 471,\n  \"map_unchanged\": true\n}\n",
+  "stderr": "",
+  "returncode": 0
+}

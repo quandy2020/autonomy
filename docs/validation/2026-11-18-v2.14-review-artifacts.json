@@ -1,0 +1,72 @@
+{
+  "date": "2026-11-18",
+  "edition": "v2.14-review",
+  "scope": "Review artifacts and source/remote verification only",
+  "business_code_changed_by_this_review": false,
+  "business_build_run": false,
+  "business_tests_run": false,
+  "latest_formal_validation": "2026-11-18-v2.12-navigation-native-validation.json",
+  "latest_formal_ctest_passed": 11,
+  "latest_formal_ctest_seconds": 2.67,
+  "navigation_native_scenarios": 21,
+  "whole_exploration_complete": false,
+  "formal_log_checks": [
+    {
+      "stage": "configure",
+      "sha256_matches": true,
+      "returncode": 0
+    },
+    {
+      "stage": "build",
+      "sha256_matches": true,
+      "returncode": 0
+    },
+    {
+      "stage": "tests",
+      "sha256_matches": true,
+      "returncode": 0
+    }
+  ],
+  "official_http_sources_verified": 8,
+  "review_case_count": 26,
+  "review_check_count": 30,
+  "offline_page_sections": 18,
+  "missing_local_links": [],
+  "canvas_typecheck": {
+    "strict": true,
+    "noEmit": true,
+    "returncode": 0
+  },
+  "browser_rendering_verified": false,
+  "current_native_check": "2026-11-18-v2.14-review-native-check.json",
+  "motion_gate": {
+    "path": "autonomy/task/common/motion_dispatch_gate.hpp",
+    "sha256": "ae96c6623ea215588a3b05269676b5c29e29f9067ac473aee49d307c5fed5e6a",
+    "production_calls_found": false,
+    "compiled": false,
+    "tested": false,
+    "deployed": false
+  },
+  "artifacts": [
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_final_plan.md",
+      "bytes": 30028,
+      "sha256": "a43e61ea22491e9001d302078b658e8c76a113a4e92e1eaf753a1d64515188f9"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.md",
+      "bytes": 28966,
+      "sha256": "ad5e9d765117ab445b5eb0ced639bd139b6fa7fe9773a55f795b33712e71369c"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.html",
+      "bytes": 45439,
+      "sha256": "037368650001efc5fd23d527c1a22bf8326e88e4f79767fec30ea64c604b056b"
+    },
+    {
+      "path": "/Users/duyongquan3/.cursor/projects/Users-duyongquan3-workspace-Opt/canvases/multisensor-exploration-review.canvas.tsx",
+      "bytes": 47001,
+      "sha256": "01d1fff5d70ebacd71d70a695ef3188278e31323dc9c59d2eb6b8853b9fb63c8"
+    }
+  ]
+}

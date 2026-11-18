@@ -1,294 +1,938 @@
-/*
- * Copyright 2026 The Openbot Authors
- */
-
+/* Copyright 2026 The Openbot Authors. */
+/** @file exploration.cpp @brief Native exploration Session/BT ownership. */
 #include "autonomy/task/exploration/exploration.hpp"
 
+#include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <cmath>
+#include <condition_variable>
+#include <deque>
+#include <limits>
+#include <mutex>
+#include <random>
+#include <sstream>
+#include <stdexcept>
+#include <thread>
+#include <utility>
+#include <variant>
 
 #include "autonomy/common/logging.hpp"
-#include "autonomy/task/common/names.hpp"
+#include "autonomy/task/exploration/plugins/exploration_tree.hpp"
 #include <automsgs/msgs/vehicle_msgs/robot_task_type.pb.h>
 
 namespace autonomy {
 namespace task {
 namespace {
+namespace e = exploration;
+/// Unique task-instance scope prevents request reuse after reconstruction.
+std::atomic<std::uint64_t> next_instance{0};
+/// Identifies native callback reentry without retaining a task pointer.
+thread_local std::uint64_t callback_instance = 0;
 
-namespace tp = ::autonomy::task::proto;
-using RobotTaskType = ::automsgs::msgs::vehicle_msgs::RobotTaskType;
+/** @brief A native dependency may request close but must never self-join. */
+class NativeCallbackScope {
+public:
+    /// Bind the callback thread to its immutable task-instance identity.
+    explicit NativeCallbackScope(std::uint64_t instance)
+        : previous_(callback_instance) { callback_instance = instance; }
+    /// Restore nested callback context on every exit, including exceptions.
+    ~NativeCallbackScope() { callback_instance = previous_; }
+private:
+    /// Identity of an enclosing callback, if any.
+    const std::uint64_t previous_;
+};
+
+/** @brief Process nonce prevents request identities repeating after a restart. */
+const std::string& ProcessIdentity() {
+    static const std::string identity = [] {
+        std::random_device random;
+        std::ostringstream stream;
+        stream << std::hex;
+        for (int i = 0; i < 8; ++i) stream << random() << '-';
+        return stream.str();
+    }();
+    return identity;
+}
+
+/** @brief Return a validated rectangular task boundary, without centroiding. */
+std::optional<e::Bounds2d> Rectangle(
+    const ::automsgs::msgs::geometry_msgs::Polygon& area) {
+    auto count = area.points_size();
+    if (count == 5 && area.points(0).x() == area.points(4).x() &&
+        area.points(0).y() == area.points(4).y()) --count;
+    if (count != 4) return {};
+    e::Bounds2d bounds{std::numeric_limits<double>::infinity(),
+        std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity(),
+        -std::numeric_limits<double>::infinity()};
+    double twice_area = 0;
+    for (int i = 0; i < count; ++i) {
+        const auto& p = area.points(i);
+        const auto& q = area.points((i + 1) % count);
+        if (!std::isfinite(p.x()) || !std::isfinite(p.y()) ||
+            (p.x() != q.x() && p.y() != q.y()) ||
+            (p.x() == q.x() && p.y() == q.y())) return {};
+        bounds.min_x = std::min<double>(bounds.min_x, p.x());
+        bounds.min_y = std::min<double>(bounds.min_y, p.y());
+        bounds.max_x = std::max<double>(bounds.max_x, p.x());
+        bounds.max_y = std::max<double>(bounds.max_y, p.y());
+        twice_area += p.x() * q.y() - q.x() * p.y();
+    }
+    const auto box_area = (bounds.max_x - bounds.min_x) *
+                          (bounds.max_y - bounds.min_y);
+    if (box_area <= 0 || std::abs(std::abs(twice_area) / 2 - box_area) >
+                         1e-6 * std::max(1., box_area)) return {};
+    return bounds;
+}
 
 }  // namespace
 
-RobotTaskType ExplorationTask::GetTaskType() const {
-    return RobotTaskType::ROBOT_TASK_EXPLORATION;
-}
+/** @brief Owns inbox synchronization and all mutable Session/BT runtime. */
+class ExplorationTask::Impl {
+public:
+    /** @brief Bind the implementation to its native task lifecycle. */
+    explicit Impl(ExplorationTask& owner) : owner_(owner), instance_(++next_instance) {}
 
-void ExplorationTask::SetNode(std::shared_ptr<autolink::Node> node) {
-    node_ = std::move(node);
-}
+    /** @brief Pose event preserves real acquisition time and localization mode. */
+    struct PoseInput {
+        /// Pose in the current map alignment.
+        e::Pose2d pose;
+        /// Acquisition time in the configured clock domain.
+        double stamp;
+        /// Map alignment epoch, not a message publication sequence.
+        std::uint64_t epoch;
+        /// Sources supporting this localization result.
+        perception::SensorMask support;
+    };
+    /** @brief Observation admission retains acquisition and processing clocks. */
+    struct ObservationInput {
+        /// Owned real sensor observation.
+        perception::SensorObservation observation;
+        /// Admission time in the shared clock domain.
+        double now;
+    };
+    /// Data events are processed in bounded batches on the owner.
+    using Data = std::variant<e::MapReadView, PoseInput, ObservationInput, e::CoverageUnit>;
+    /** @brief An input belongs to the task generation that admitted it. */
+    struct Input {
+        /// Zero permits pre-start map/pose seeding, never coverage completion.
+        std::uint64_t generation;
+        /// Owned immutable event payload.
+        Data data;
+    };
+    /** @brief START carries an immutable per-goal policy snapshot. */
+    struct StartRequest {
+        /// Accepted task generation.
+        std::uint64_t generation;
+        /// Original command and user intent.
+        proto::ExplorationGoal goal;
+        /// Dependencies and policy captured at admission.
+        ExplorationTaskBindings bindings;
+        /// Cancellation/pause may revoke this gate while the factory waits.
+        std::shared_ptr<e::MotionGate> gate;
+    };
+    /** @brief High-priority command for one accepted generation. */
+    struct Command {
+        /// START supersedes older commands without affecting a newer request.
+        std::uint64_t generation;
+        /// Session command or a new START.
+        std::variant<e::SessionCommand, StartRequest> value;
+    };
 
-void ExplorationTask::SetSubmitNavigation(SubmitNavigation submit) {
-    submit_navigation_ = std::move(submit);
-}
-
-void ExplorationTask::SetSubmitMapping(SubmitMapping submit) {
-    submit_mapping_ = std::move(submit);
-}
-
-void ExplorationTask::SetNavigationProbe(IsNavigationActive is_active,
-                                         GetNavigationResult get_result) {
-    is_navigation_active_ = std::move(is_active);
-    get_navigation_result_ = std::move(get_result);
-}
-
-bool ExplorationTask::OnInitialize(const tp::TaskServerOptions& options) {
-    if (!node_) {
-        AERROR << "ExplorationTask: node is null";
-        return false;
+    /** @brief Test whether a task generation still owns lifecycle publication. */
+    bool Current(std::uint64_t generation) const {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        return !stopping_ && generation == generation_;
     }
-    const auto period = std::chrono::milliseconds(
-        options.scheduler().feedback_period_ms() > 0
-            ? options.scheduler().feedback_period_ms()
-            : 100);
 
-    waypoint_reader_ =
-        node_->CreateReader<::automsgs::msgs::geometry_msgs::PoseStamped>(
-            kExplorationWaypoint,
-            [this](const std::shared_ptr<
-                   ::automsgs::msgs::geometry_msgs::PoseStamped>& pose) {
-                HandleWaypoint(pose);
-            });
-    finished_reader_ = node_->CreateReader<::automsgs::msgs::std_msgs::Bool>(
-        kExplorationFinished,
-        [this](const std::shared_ptr<::automsgs::msgs::std_msgs::Bool>& msg) {
-            HandleFinished(msg);
-        });
-    waypoint_reached_writer_ =
-        node_->CreateWriter<::automsgs::msgs::std_msgs::Bool>(
-            kExplorationWaypointReached);
-    StartMonitor(period);
-    return true;
-}
-
-void ExplorationTask::Shutdown() {
-    StopMonitor();
-    StopUnderlying();
-    waypoint_reader_.reset();
-    finished_reader_.reset();
-    waypoint_reached_writer_.reset();
-    TypedTaskAppBase::Shutdown();
-    status_ = tp::EXPLORATION_STATUS_IDLE;
-}
-
-bool ExplorationTask::Cancel() {
-    StopUnderlying();
-    status_ = tp::EXPLORATION_STATUS_CANCELED;
-    return TypedTaskAppBase::Cancel();
-}
-
-bool ExplorationTask::Pause() {
-    if (!PublishNavigation(tp::NAV_CMD_PAUSE)) {
-        return false;
+    /** @brief A matching generation must also retain current running intent. */
+    bool Running(std::uint64_t generation) const {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        return !stopping_ && generation == generation_ &&
+               desired_ == TaskLifecycle::kRunning && motion_gate_ &&
+               motion_gate_->Enabled();
     }
-    status_ = tp::EXPLORATION_STATUS_PAUSED;
-    return TypedTaskAppBase::Pause();
-}
 
-bool ExplorationTask::Resume() {
-    if (!PublishNavigation(tp::NAV_CMD_RESUME)) {
-        return false;
+    /** @brief Dependency replacement cannot race prepared/running native work. */
+    void RequireIdleLocked() const {
+        if (runtime_busy_ || desired_ == TaskLifecycle::kRunning ||
+            desired_ == TaskLifecycle::kPaused)
+            throw std::logic_error("exploration dependencies require an idle runtime");
     }
-    status_ = tp::EXPLORATION_STATUS_EXPLORING;
-    return TypedTaskAppBase::Resume();
-}
 
-bool ExplorationTask::PublishNavigation(tp::NavigationCommand command) {
-    if (!submit_navigation_) {
-        return false;
+    /** @brief Start one owner thread; initialization does not invent services. */
+    bool Initialize(std::chrono::milliseconds period) {
+        std::lock_guard<std::mutex> join_lock(join_mutex_);
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (worker_started_) return !stopping_;
+        stopping_ = false;
+        period_ = std::max(std::chrono::milliseconds(1), period);
+        worker_ = std::thread([this] { Run(); });
+        owner_thread_id_ = worker_.get_id();
+        worker_started_ = true;
+        return true;
     }
-    tp::NavigationGoal goal;
-    goal.set_command(command);
-    return submit_navigation_(goal);
-}
 
-bool ExplorationTask::PublishMapping(tp::MapCommand command,
-                                     const std::string& map_name) {
-    if (!submit_mapping_) {
-        return false;
+    /** @brief Admit a real runtime while idle or after a terminal generation. */
+    bool Configure(ExplorationTaskBindings bindings) {
+        if (!bindings.create_session || !bindings.clock) return false;
+        bindings.options.driver = e::ExplorationDriver::kBehaviorTree;
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (runtime_busy_ || desired_ == TaskLifecycle::kRunning ||
+            desired_ == TaskLifecycle::kPaused || motion_fault_)
+            return false;
+        bindings_ = std::move(bindings);
+        return true;
     }
-    tp::MappingGoal goal;
-    goal.set_command(command);
-    if (!map_name.empty()) {
-        goal.set_map_name(map_name);
-    }
-    return submit_mapping_(goal);
-}
 
-bool ExplorationTask::PublishAreaWaypoint(
-    const ::automsgs::msgs::geometry_msgs::Polygon& area) {
-    if (area.points_size() == 0) {
-        return false;
+    /** @brief Queue a START without blocking ingress on session construction. */
+    bool Start(const proto::ExplorationGoal& goal) {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (stopping_ || !worker_started_ || !bindings_ || motion_fault_)
+            return false;
+        if (!std::isfinite(goal.coverage_target()) || goal.coverage_target() < 0 ||
+            goal.coverage_target() > 1) return false;
+        // Partial-coverage stopping requires a separately versioned policy.
+        if (goal.coverage_target() > 0 && goal.coverage_target() < 1) {
+            AWARN << "ExplorationTask: partial coverage policy is not configured";
+            return false;
+        }
+        auto bindings = *bindings_;
+        if (goal.has_area() && goal.area().points_size()) {
+            const auto rectangle = Rectangle(goal.area());
+            if (!rectangle) {
+                AWARN << "ExplorationTask: polygon requires a polygon-capable coverage policy";
+                return false;
+            }
+            bindings.options.allowed_region = rectangle;
+        }
+        if (goal.enable_mapping() && !bindings.prepare_mapping) return false;
+        if (!goal.map_name().empty()) bindings.options.map_name = goal.map_name();
+        if (generation_ == std::numeric_limits<std::uint64_t>::max()) return false;
+        const auto generation = ++generation_;
+        if (motion_gate_) motion_gate_->Retire();
+        auto gate = std::make_shared<e::MotionGate>();
+        gate->SetEnabled(true);
+        motion_gate_ = gate;
+        runtime_busy_ = true;
+        commands_.clear();
+        commands_.push_back({generation, StartRequest{generation, goal, std::move(bindings), std::move(gate)}});
+        desired_ = TaskLifecycle::kRunning;
+        current_goal_ = goal;
+        {
+            std::lock_guard<std::recursive_mutex> state_lock(owner_.mutex_);
+            if (goal.has_header()) {
+                owner_.task_id_ = goal.header().task_id();
+                owner_.client_id_ = goal.header().client_id();
+            } else { owner_.task_id_.clear(); owner_.client_id_.clear(); }
+            owner_.lifecycle_ = TaskLifecycle::kRunning;
+            status_ = proto::EXPLORATION_STATUS_PLANNING;
+            map_name_ = commands_.back().value.index() == 1 ?
+                std::get<StartRequest>(commands_.back().value).bindings.options.map_name : "";
+            snapshot_.reset();
+            owner_.progress_.Clear();
+            owner_.progress_.set_detail("waiting for real map and localization input");
+        }
+        ready_.notify_one();
+        return true;
     }
-    ::automsgs::msgs::geometry_msgs::PoseStamped waypoint;
-    double x = 0., y = 0.;
-    for (const auto& p : area.points()) {
-        x += p.x();
-        y += p.y();
-    }
-    const auto n = static_cast<double>(area.points_size());
-    waypoint.mutable_pose()->mutable_position()->set_x(x / n);
-    waypoint.mutable_pose()->mutable_position()->set_y(y / n);
-    waypoint.mutable_pose()->mutable_orientation()->set_w(1.0);
-    return NavigateToWaypoint(waypoint);
-}
 
-bool ExplorationTask::NavigateToWaypoint(
-    const ::automsgs::msgs::geometry_msgs::PoseStamped& pose) {
-    if (!submit_navigation_) {
-        return false;
+    /** @brief Validate and queue control transitions against pending intent. */
+    bool Control(e::SessionCommand command) {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (stopping_ || !worker_started_) return false;
+        if (command == e::SessionCommand::kPause) {
+            if (desired_ != TaskLifecycle::kRunning || commands_.size() >= 64) return false;
+            desired_ = TaskLifecycle::kPaused;
+            if (motion_gate_) motion_gate_->SetEnabled(false);
+        } else if (command == e::SessionCommand::kResume) {
+            if (desired_ != TaskLifecycle::kPaused || commands_.size() >= 64) return false;
+            desired_ = TaskLifecycle::kRunning;
+            if (motion_gate_) motion_gate_->SetEnabled(true);
+        } else {
+            if (desired_ != TaskLifecycle::kRunning && desired_ != TaskLifecycle::kPaused)
+                return false;
+            desired_ = TaskLifecycle::kCanceled;
+            if (motion_gate_) motion_gate_->Retire();
+            // Cancellation must remain admissible even with a full control queue.
+            commands_.erase(std::remove_if(commands_.begin(), commands_.end(),
+                [](const Command& queued) {
+                    return std::holds_alternative<e::SessionCommand>(queued.value);
+                }), commands_.end());
+        }
+        commands_.push_back({generation_, command});
+        ready_.notify_one();
+        return true;
     }
-    tp::NavigationGoal goal;
-    goal.set_command(tp::NAV_CMD_START);
-    goal.set_mode(tp::NAV_MODE_SINGLE_POSE);
-    *goal.add_goals() = pose;
-    if (!submit_navigation_(goal)) {
-        return false;
-    }
-    last_waypoint_x_ = pose.pose().position().x();
-    last_waypoint_y_ = pose.pose().position().y();
-    nav_pending_.store(true);
-    nav_was_active_.store(false);
-    return true;
-}
 
-void ExplorationTask::StopUnderlying() {
-    if (mapping_enabled_) {
-        PublishMapping(tp::MAP_CMD_CANCEL);
-        mapping_enabled_ = false;
+    /** @brief Reject inbox overflow instead of silently dropping evidence. */
+    bool Push(Data data) {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (stopping_ || !worker_started_ || inputs_.size() >= 1024) return false;
+        if (!std::holds_alternative<e::MapReadView>(data) &&
+            !std::holds_alternative<PoseInput>(data) &&
+            desired_ != TaskLifecycle::kRunning && desired_ != TaskLifecycle::kPaused)
+            return false;
+        inputs_.push_back({generation_, std::move(data)});
+        ready_.notify_one();
+        return true;
     }
-    PublishNavigation(tp::NAV_CMD_CANCEL);
-    nav_pending_.store(false);
-    nav_was_active_.store(false);
-}
 
-void ExplorationTask::StartMonitor(std::chrono::milliseconds period) {
-    StopMonitor();
-    monitor_running_.store(true);
-    monitor_thread_ = std::thread([this, period]() {
-        while (monitor_running_.load()) {
-            if (is_navigation_active_ && is_navigation_active_()) {
-                nav_was_active_.store(true);
-            } else if (nav_pending_.load() && nav_was_active_.load()) {
-                tp::NavigationResult result;
-                if (get_navigation_result_ &&
-                    get_navigation_result_(&result) &&
-                    result.final_status() == tp::NAV_STATUS_SUCCEEDED) {
-                    if (waypoint_reached_writer_) {
-                        ::automsgs::msgs::std_msgs::Bool reached;
-                        reached.set_data(true);
-                        waypoint_reached_writer_->Write(reached);
-                    }
-                    nav_pending_.store(false);
-                    nav_was_active_.store(false);
-                    AINFO << "ExplorationTask: waypoint reached";
+    /** @brief Obtain a consistent outcome without acquiring the owner inbox. */
+    std::optional<e::ExplorationSnapshot> Snapshot() const {
+        std::lock_guard<std::recursive_mutex> lock(owner_.mutex_);
+        return snapshot_;
+    }
+
+    /** @brief Stop admission and wake the owner before joining it. */
+    void Shutdown() {
+        bool on_owner;
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            stopping_ = true;
+            if (motion_gate_) motion_gate_->Retire();
+            on_owner = worker_started_ && owner_thread_id_ == std::this_thread::get_id();
+            commands_.clear();
+            inputs_.clear();
+            ready_.notify_all();
+        }
+        // A dependency may request shutdown from the owner. The outer owner
+        // still joins before destruction; self-join would deadlock.
+        if (on_owner || callback_instance == instance_) return;
+        std::lock_guard<std::mutex> join_lock(join_mutex_);
+        if (worker_.joinable()) worker_.join();
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            worker_started_ = false;
+            owner_thread_id_ = {};
+        }
+        std::lock_guard<std::recursive_mutex> state_lock(owner_.mutex_);
+        status_ = proto::EXPLORATION_STATUS_IDLE;
+        owner_.lifecycle_ = TaskLifecycle::kIdle;
+        owner_.progress_.Clear();
+        owner_.task_id_.clear();
+        owner_.client_id_.clear();
+    }
+
+    /** @brief Cancel and destroy runtime objects only on their owner thread. */
+    bool StopSession(double now) noexcept {
+        bool clean = true;
+        if (active_gate_) active_gate_->Retire();
+        try {
+            if (session_) {
+                if (session_->Snapshot().state != e::ExplorationState::kFinished) {
+                    if (!session_->PostCommand(e::SessionCommand::kCancel)) clean = false;
+                    const auto final = session_->Tick(std::max(now, last_now_));
+                    Publish(final, active_generation_);
                 }
             }
-            std::this_thread::sleep_for(period);
+        } catch (...) { clean = false; }
+        try { if (tree_) tree_->Halt(); } catch (...) { clean = false; }
+        tree_.reset();
+        session_.reset();
+        prepared_.reset();
+        if (dispatcher_) {
+            try { dispatcher_->Shutdown(); } catch (...) { clean = false; }
+            if (dispatcher_->Failed()) clean = false;
+            dispatcher_.reset();
         }
-    });
-}
-
-void ExplorationTask::StopMonitor() {
-    monitor_running_.store(false);
-    if (monitor_thread_.joinable()) {
-        monitor_thread_.join();
-    }
-}
-
-void ExplorationTask::HandleWaypoint(
-    const std::shared_ptr<::automsgs::msgs::geometry_msgs::PoseStamped>& pose) {
-    if (!pose || Lifecycle() != TaskLifecycle::kRunning) {
-        return;
-    }
-    const double x = pose->pose().position().x();
-    const double y = pose->pose().position().y();
-    if (nav_pending_.load() &&
-        std::hypot(x - last_waypoint_x_, y - last_waypoint_y_) < 0.12) {
-        return;
-    }
-    if (NavigateToWaypoint(*pose)) {
-        status_ = tp::EXPLORATION_STATUS_EXPLORING;
-        AINFO << "ExplorationTask: waypoint (" << x << ", " << y << ")";
-    }
-}
-
-void ExplorationTask::HandleFinished(
-    const std::shared_ptr<::automsgs::msgs::std_msgs::Bool>& message) {
-    if (!message || !message->data()) {
-        return;
-    }
-    PublishNavigation(tp::NAV_CMD_CANCEL);
-    nav_pending_.store(false);
-    status_ = tp::EXPLORATION_STATUS_SUCCEEDED;
-    SetProgress(1.f, "exploration finished");
-    SetLifecycle(TaskLifecycle::kSucceeded);
-}
-
-bool ExplorationTask::OnGoal(const tp::ExplorationGoal& goal) {
-    using Command = tp::ExplorationCommand;
-    switch (goal.command()) {
-        case Command::EXPLORATION_CMD_START: {
-            mapping_enabled_ = goal.enable_mapping();
-            if (!goal.map_name().empty()) {
-                map_name_ = goal.map_name();
-            }
-            coverage_target_ = goal.coverage_target();
-            if (mapping_enabled_) {
-                PublishMapping(tp::MAP_CMD_LOAD, map_name_);
-            }
-            if (goal.has_area() && goal.area().points_size() > 0) {
-                PublishAreaWaypoint(goal.area());
-            }
-            status_ = tp::EXPLORATION_STATUS_EXPLORING;
-            SetProgress(0.f, "exploring");
-            SetLifecycle(TaskLifecycle::kRunning);
-            return true;
+        active_gate_.reset();
+        dispatcher_frame_.clear();
+        dispatcher_planner_.clear();
+        waiting_.reset();
+        waiting_control_.reset();
+        mapping_prepared_ = false;
+        initialization_resumed_ = false;
+        posted_control_.reset();
+        deferred_.clear();
+        active_clock_ = {};
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            // A newer accepted START still owns a pending runtime requirement.
+            if (active_generation_ == generation_) runtime_busy_ = false;
+            if (!clean) motion_fault_ = true;
         }
-        case Command::EXPLORATION_CMD_PAUSE:
-            return Pause();
-        case Command::EXPLORATION_CMD_RESUME:
-            return Resume();
-        case Command::EXPLORATION_CMD_STOP:
-        case Command::EXPLORATION_CMD_CANCEL:
-            return Cancel();
-        case Command::EXPLORATION_CMD_SET_AREA:
-            if (goal.has_area()) {
-                PublishAreaWaypoint(goal.area());
-            }
-            return true;
-        case Command::EXPLORATION_CMD_SAVE_MAP: {
-            const std::string name =
-                goal.map_name().empty() ? map_name_ : goal.map_name();
-            return PublishMapping(tp::MAP_CMD_SWITCH, name);
+        return clean;
+    }
+
+    /** @brief Read a finite shared clock and reject backwards progression. */
+    double Now() {
+        const auto now = active_clock_ ? active_clock_() : last_now_;
+        if (!std::isfinite(now) || now < last_now_)
+            throw std::runtime_error("exploration input clock is not monotonic");
+        last_now_ = now;
+        return now;
+    }
+
+    /** @brief Begin a fresh generation after canceling previous owned work. */
+    void Begin(StartRequest request) {
+        if (!StopSession(last_now_)) {
+            Fail("previous exploration cleanup/cancellation could not be confirmed", request.generation);
+            return;
         }
-        default:
-            AWARN << "ExplorationTask: unsupported command "
-                  << static_cast<int>(goal.command());
+        if (!Current(request.generation)) return;
+        active_generation_ = request.generation;
+        active_gate_ = request.gate;
+        active_clock_ = request.bindings.clock;
+        last_now_ = 0;
+        const auto now = Now();
+        waiting_since_ = now;
+        waiting_ = std::move(request);
+    }
+
+    /** @brief Seed a new session only from current, matching map/pose evidence. */
+    void StartReady(double now) {
+        if (!waiting_ || !Running(waiting_->generation)) return;
+        if (!mapping_prepared_ && waiting_->goal.enable_mapping()) {
+            const auto generation = waiting_->generation;
+            const auto prepare = waiting_->bindings.prepare_mapping;
+            const auto map_name = waiting_->bindings.options.map_name;
+            const bool ready = prepare(map_name);
+            // The callback is external and may admit cancel, pause or START.
+            // Its result must never initialize a replacement generation.
+            if (!Current(generation)) return;
+            if (!ready) throw std::runtime_error("real mapping session could not be prepared");
+            mapping_prepared_ = true;
+            if (!Running(generation)) return;
+        }
+        const auto& options = waiting_->bindings.options;
+        if (!latest_map_ || !latest_pose_ || latest_map_->map_epoch != latest_pose_->epoch ||
+            !latest_pose_->support || latest_pose_->stamp > now || latest_map_->source_stamp > now ||
+            now - latest_pose_->stamp > options.pose_max_age ||
+            now - latest_map_->source_stamp > options.map_max_age) {
+            if (now - waiting_since_ >= options.maximum_sensor_wait) {
+                throw std::runtime_error("fresh map/localization input unavailable");
+            }
+            return;
+        }
+        if (!prepared_) {
+            prepared_ = waiting_->bindings.create_session(waiting_->goal, options);
+            if (!prepared_ || prepared_->driver() != e::ExplorationDriver::kBehaviorTree ||
+                prepared_->Snapshot().state != e::ExplorationState::kIdle)
+                throw std::runtime_error("factory must return an unstarted BT-driven session");
+        }
+        // Keep an unstarted candidate across pause; destroying its service
+        // dispatcher here would permanently retire the resumable gate.
+        if (!Running(waiting_->generation)) return;
+        now = Now();
+        if (latest_pose_->stamp > now || latest_map_->source_stamp > now ||
+            now - latest_pose_->stamp > options.pose_max_age ||
+            now - latest_map_->source_stamp > options.map_max_age) return;
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            if (stopping_ || waiting_->generation != generation_ ||
+                desired_ != TaskLifecycle::kRunning || !motion_gate_ ||
+                !motion_gate_->Enabled()) return;
+            // Admission linearizes with Pause/Cancel/START under this lock.
+            // The validated unstarted session has no queued planning, map or
+            // navigation work, so Start performs internal initialization only.
+            // Factory/clock/native callbacks remain outside the admission lock.
+            prepared_->Start(latest_pose_->pose, latest_map_->map_epoch, now);
+        }
+        auto candidate = std::move(prepared_);
+        if (!candidate->PushMap(*latest_map_) ||
+            !candidate->PushPose(latest_pose_->pose, latest_pose_->stamp, latest_pose_->epoch,
+                                latest_pose_->support))
+            throw std::runtime_error("session refused admitted map/localization input");
+        auto context = std::make_shared<plugins::exploration::ExplorationBtContext>();
+        context->session = candidate;
+        context->clock = active_clock_;
+        auto tree = std::make_unique<e::ExplorationTree>(context);
+        active_options_ = options;
+        session_ = std::move(candidate);
+        tree_ = std::move(tree);
+        waiting_.reset();
+        for (auto& input : deferred_) Deliver(std::move(input), now);
+        deferred_.clear();
+    }
+
+    /** @brief Route input to the owner without renewing its evidence timestamp. */
+    void Deliver(Input input, double now) {
+        if (auto* map = std::get_if<e::MapReadView>(&input.data)) {
+            if (!latest_map_ || map->map_epoch != latest_map_->map_epoch ||
+                map->source_stamp >= latest_map_->source_stamp) latest_map_ = *map;
+            if (session_ && input.generation == active_generation_ && !session_->PushMap(std::move(*map)))
+                throw std::runtime_error("session refused an admitted map input");
+        } else if (auto* pose = std::get_if<PoseInput>(&input.data)) {
+            if ((!latest_map_ || pose->epoch == latest_map_->map_epoch) &&
+                (!latest_pose_ || pose->epoch != latest_pose_->epoch ||
+                 pose->stamp >= latest_pose_->stamp)) latest_pose_ = *pose;
+            if (session_ && input.generation == active_generation_)
+                if (!session_->PushPose(pose->pose, pose->stamp, pose->epoch, pose->support))
+                    throw std::runtime_error("session refused an admitted pose input");
+        } else if (input.generation == active_generation_) {
+            if (!session_) {
+                if (waiting_) {
+                    if (deferred_.size() >= 1024)
+                        throw std::runtime_error("admitted exploration evidence exceeded deferred capacity");
+                    deferred_.push_back(std::move(input));
+                }
+                return;
+            }
+            if (auto* observation = std::get_if<ObservationInput>(&input.data)) {
+                // Validate at the actual processing time, not an old callback
+                // time that would make an expired observation appear current.
+                if (!session_->PushObservation(std::move(observation->observation),
+                                                std::max(now, observation->now)))
+                    throw std::runtime_error("session refused an admitted observation");
+            } else if (auto* unit = std::get_if<e::CoverageUnit>(&input.data))
+                if (!session_->PushCoverageUnit(std::move(*unit)))
+                    throw std::runtime_error("session refused an admitted coverage requirement");
+        }
+    }
+
+    /** @brief Publish outcome only if this generation still owns the task. */
+    void Publish(const e::ExplorationSnapshot& snapshot, std::uint64_t generation) {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (generation != generation_) return;
+        if (desired_ == TaskLifecycle::kCanceled &&
+            snapshot.result.exploration != e::ExplorationOutcome::kCanceled) return;
+        std::lock_guard<std::recursive_mutex> state_lock(owner_.mutex_);
+        snapshot_ = snapshot;
+        if (snapshot.state == e::ExplorationState::kFinished) {
+            if (snapshot.result.exploration == e::ExplorationOutcome::kCanceled) {
+                status_ = proto::EXPLORATION_STATUS_CANCELED;
+                owner_.lifecycle_ = TaskLifecycle::kCanceled;
+            } else if (snapshot.result.Success(active_options_.require_return,
+                                                active_options_.require_save)) {
+                status_ = proto::EXPLORATION_STATUS_SUCCEEDED;
+                owner_.lifecycle_ = TaskLifecycle::kSucceeded;
+                owner_.progress_.set_progress(1);
+            } else {
+                status_ = proto::EXPLORATION_STATUS_FAILED;
+                owner_.lifecycle_ = TaskLifecycle::kFailed;
+            }
+            desired_ = owner_.lifecycle_;
+        } else if (snapshot.state == e::ExplorationState::kPaused || desired_ == TaskLifecycle::kPaused) {
+            status_ = proto::EXPLORATION_STATUS_PAUSED;
+            owner_.lifecycle_ = TaskLifecycle::kPaused;
+        } else {
+            status_ = snapshot.state == e::ExplorationState::kInitializing ?
+                proto::EXPLORATION_STATUS_PLANNING : proto::EXPLORATION_STATUS_EXPLORING;
+            owner_.lifecycle_ = TaskLifecycle::kRunning;
+        }
+        owner_.progress_.set_detail(snapshot.reason);
+    }
+
+    /** @brief Report missing/failing real dependencies without forged success. */
+    void Fail(const std::string& reason, std::uint64_t generation) {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (generation != generation_) return;
+        if (desired_ == TaskLifecycle::kCanceled && !motion_fault_) {
+            std::lock_guard<std::recursive_mutex> state_lock(owner_.mutex_);
+            status_ = proto::EXPLORATION_STATUS_CANCELED;
+            owner_.lifecycle_ = TaskLifecycle::kCanceled;
+            owner_.progress_.set_detail("exploration canceled before runtime completion");
+            return;
+        }
+        desired_ = TaskLifecycle::kFailed;
+        if (motion_gate_) motion_gate_->Retire();
+        std::lock_guard<std::recursive_mutex> state_lock(owner_.mutex_);
+        status_ = proto::EXPLORATION_STATUS_FAILED;
+        owner_.lifecycle_ = TaskLifecycle::kFailed;
+        owner_.progress_.set_detail(reason);
+    }
+
+    /**
+     * @brief Reconcile current ingress intent before advancing BT actions.
+     * @param now Validated time from this owner's configured clock.
+     * @return True only while this generation may advance task stages.
+     * @details Already extracted control batches can lag Pause/Cancel/START.
+     * Monitor a paused session directly, preserving its active BT node and
+     * observation phase while consuming bounded input and cancellation work.
+     */
+    bool ReconcileBeforeTree(double now) {
+        if (!session_) return false;
+        TaskLifecycle intent;
+        bool current;
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            current = !stopping_ && active_generation_ == generation_;
+            intent = desired_;
+        }
+        if (!current || intent == TaskLifecycle::kCanceled || intent == TaskLifecycle::kFailed) {
+            const auto generation = active_generation_;
+            if (!StopSession(now)) Fail("exploration cancellation could not be confirmed", generation);
             return false;
+        }
+        if (intent == TaskLifecycle::kPaused) {
+            if (posted_control_ != e::SessionCommand::kPause) {
+                if (!session_->PostCommand(e::SessionCommand::kPause))
+                    throw std::runtime_error("session refused authoritative pause");
+                posted_control_ = e::SessionCommand::kPause;
+            }
+            const auto snapshot = session_->Tick(now);
+            Publish(snapshot, active_generation_);
+            if (snapshot.state == e::ExplorationState::kFinished) StopSession(now);
+            return false;
+        }
+        if (intent != TaskLifecycle::kRunning) return false;
+        if (posted_control_ == e::SessionCommand::kPause ||
+            session_->Snapshot().state == e::ExplorationState::kPaused) {
+            if (!session_->PostCommand(e::SessionCommand::kResume))
+                throw std::runtime_error("session refused authoritative resume");
+            posted_control_ = e::SessionCommand::kResume;
+            const auto snapshot = session_->Tick(now);
+            Publish(snapshot, active_generation_);
+            if (snapshot.state == e::ExplorationState::kFinished) {
+                StopSession(now);
+                return false;
+            }
+            if (snapshot.state == e::ExplorationState::kPaused) return false;
+        }
+        // Native readiness, acceptance and execution also check their lease:
+        // revocation during an already admitted tree tick cannot authorize motion.
+        return Running(active_generation_);
+    }
+
+    /** @brief Consume priority commands and bounded data before each tree tick. */
+    void Run() {
+        for (;;) {
+            std::deque<Command> commands;
+            std::deque<Input> inputs;
+            bool stopping;
+            {
+                std::unique_lock<std::mutex> lock(inbox_mutex_);
+                ready_.wait_for(lock, period_, [this] {
+                    return stopping_ || !commands_.empty() || !inputs_.empty();
+                });
+                stopping = stopping_;
+                commands.swap(commands_);
+                for (std::size_t i = 0; i < 32 && !inputs_.empty(); ++i) {
+                    inputs.push_back(std::move(inputs_.front()));
+                    inputs_.pop_front();
+                }
+            }
+            if (stopping) break;
+            try {
+                for (auto& command : commands) {
+                    if (!Current(command.generation)) continue;
+                    if (auto* start = std::get_if<StartRequest>(&command.value)) {
+                        deferred_.clear();
+                        Begin(std::move(*start));
+                    } else {
+                        const auto control = std::get<e::SessionCommand>(command.value);
+                        if (session_) {
+                            if (!session_->PostCommand(control))
+                                throw std::runtime_error("session refused an admitted lifecycle command");
+                            posted_control_ = control;
+                        }
+                        else if (control == e::SessionCommand::kCancel) {
+                            const bool clean = StopSession(last_now_);
+                            e::ExplorationSnapshot canceled;
+                            canceled.state = e::ExplorationState::kFinished;
+                            canceled.result.exploration = e::ExplorationOutcome::kCanceled;
+                            canceled.reason = "exploration canceled before inputs became ready";
+                            Publish(canceled, command.generation);
+                            if (!clean) Fail("exploration cancellation could not be confirmed", command.generation);
+                        } else if (waiting_) {
+                            waiting_control_ = control;
+                            if (control == e::SessionCommand::kResume) initialization_resumed_ = true;
+                        }
+                    }
+                }
+                const auto now = Now();
+                if (waiting_ && initialization_resumed_) {
+                    waiting_since_ = now;
+                    initialization_resumed_ = false;
+                }
+                for (auto& input : inputs) Deliver(std::move(input), now);
+                StartReady(now);
+                if (session_) {
+                    if (dispatcher_ && dispatcher_->Failed())
+                        throw std::runtime_error("native navigation cancellation could not be confirmed");
+                    if (waiting_control_) {
+                        if (!session_->PostCommand(*waiting_control_))
+                            throw std::runtime_error("session refused pending pause/resume");
+                        posted_control_ = waiting_control_;
+                        waiting_control_.reset();
+                    }
+                    if (!ReconcileBeforeTree(now)) continue;
+                    const auto snapshot = tree_->Tick();
+                    Publish(snapshot, active_generation_);
+                    if (snapshot.state == e::ExplorationState::kFinished) StopSession(now);
+                }
+            } catch (const std::exception& exception) {
+                try { StopSession(last_now_); } catch (...) {}
+                Fail(exception.what(), active_generation_);
+            } catch (...) {
+                try { StopSession(last_now_); } catch (...) {}
+                Fail("exploration dependency threw a nonstandard exception", active_generation_);
+            }
+        }
+        try { StopSession(last_now_); } catch (...) {}
+    }
+
+    /// Native lifecycle and result owner; outlives the worker.
+    ExplorationTask& owner_;
+    /// Unique native request scope for the task object.
+    const std::uint64_t instance_;
+    /// Serializes inbox admission, configuration and generation changes.
+    mutable std::mutex inbox_mutex_;
+    /// Serializes external worker joins; never held by feedback/tick.
+    std::mutex join_mutex_;
+    /// Wakes the owner for commands, data or shutdown.
+    std::condition_variable ready_;
+    /// Native task loop with sole mutable Session/Tree access.
+    std::thread worker_;
+    /// Cached under inbox_mutex_; never reads a thread concurrently with join.
+    std::thread::id owner_thread_id_;
+    /// Admission checks this field instead of thread::joinable.
+    bool worker_started_ = false;
+    /// Prepared/active generation must drain before dependency replacement.
+    bool runtime_busy_ = false;
+    /// Unconfirmed old cancellation prevents replacement by another START.
+    bool motion_fault_ = false;
+    /// Current generation permission, revoked directly by admission commands.
+    std::shared_ptr<e::MotionGate> motion_gate_;
+    /// Native scheduler tick period, copied before worker creation.
+    std::chrono::milliseconds period_{100};
+    /// Blocks all new command/data admission during shutdown.
+    bool stopping_ = false;
+    /// Current accepted task generation, protected by inbox_mutex_.
+    std::uint64_t generation_ = 0;
+    /// Last admitted control intent, including commands not yet consumed.
+    TaskLifecycle desired_ = TaskLifecycle::kIdle;
+    /// Immutable configured dependencies, replaced only while inactive.
+    std::optional<ExplorationTaskBindings> bindings_;
+    /// Current original goal for intent-preserving area updates.
+    proto::ExplorationGoal current_goal_;
+    /// High-priority commands bounded independently of observation backlog.
+    std::deque<Command> commands_;
+    /// Owned bounded producer events.
+    std::deque<Input> inputs_;
+    /// Native node compatibility injection; no competing waypoint readers.
+    std::shared_ptr<autolink::Node> node_;
+    /// Dispatcher installed by TaskServer.
+    SubmitNavigation submit_navigation_;
+    /// Cooperative native START; legacy submission never backs new services.
+    GuardedSubmitNavigation guarded_submit_navigation_;
+    /// Legacy mapping dispatcher does not supply a save/fusion receipt.
+    SubmitMapping submit_mapping_;
+    /// Identity-aware native result probe.
+    GetVersionedNavigationResult navigation_result_;
+    /// Conditional cancellation of the current owned navigation task.
+    CancelNavigationRequest cancel_navigation_;
+    /// Native feedback status, protected by owner_.mutex_.
+    proto::ExplorationStatus status_ = proto::EXPLORATION_STATUS_IDLE;
+    /// Map identity associated with accepted task policy, same protection.
+    std::string map_name_;
+    /// Consistent algorithm outcome, protected by owner_.mutex_.
+    std::optional<e::ExplorationSnapshot> snapshot_;
+    /// Owner-only generation of the active runtime.
+    std::uint64_t active_generation_ = 0;
+    /// Owner-only pending START awaiting real seed evidence.
+    std::optional<StartRequest> waiting_;
+    /// Owner-only pause/resume intent before runtime creation.
+    std::optional<e::SessionCommand> waiting_control_;
+    /// This generation completed its real mapping precondition before Start.
+    bool mapping_prepared_ = false;
+    /// Resume grants a fresh bounded seed wait rather than charging paused time.
+    bool initialization_resumed_ = false;
+    /// Last control queued to Session, reconciled with the latest ingress intent.
+    std::optional<e::SessionCommand> posted_control_;
+    /// Input requirements retained while a START waits for real map/pose.
+    std::deque<Input> deferred_;
+    /// Latest owned map with its original source stamp and alignment.
+    std::optional<e::MapReadView> latest_map_;
+    /// Latest pose used for start seeding; never manufactures localization.
+    std::optional<PoseInput> latest_pose_;
+    /// Owner-only shared clock copied from accepted START.
+    std::function<double()> active_clock_;
+    /// Last accepted monotonic owner time.
+    double last_now_ = 0;
+    /// Start-wait time, not refreshed by repeated messages.
+    double waiting_since_ = 0;
+    /// Actual options used to interpret the terminal three-part result.
+    e::ExplorationSessionOptions active_options_;
+    /// Session created, started and destroyed on this owner.
+    std::shared_ptr<e::ExplorationSession> session_;
+    /// A paused factory result remains unstarted until running intent returns.
+    std::shared_ptr<e::ExplorationSession> prepared_;
+    /// Owner generation gate; may differ from a newer admitted generation.
+    std::shared_ptr<e::MotionGate> active_gate_;
+    /// One asynchronous native dispatcher; closed before native dependencies.
+    std::shared_ptr<e::NavigationDispatcher> dispatcher_;
+    /// One dispatcher cannot silently change its native reference frame.
+    std::string dispatcher_frame_;
+    /// Planner selection is fixed for this dispatcher generation.
+    std::string dispatcher_planner_;
+    /// Real native tree, never used by producer callbacks.
+    std::unique_ptr<e::ExplorationTree> tree_;
+};
+
+ExplorationTask::ExplorationTask() : impl_(std::make_unique<Impl>(*this)) {}
+ExplorationTask::~ExplorationTask() { Shutdown(); }
+::automsgs::msgs::vehicle_msgs::RobotTaskType ExplorationTask::GetTaskType() const {
+    return ::automsgs::msgs::vehicle_msgs::RobotTaskType::ROBOT_TASK_EXPLORATION;
+}
+void ExplorationTask::SetNode(std::shared_ptr<autolink::Node> node) {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    impl_->RequireIdleLocked(); impl_->node_ = std::move(node);
+}
+void ExplorationTask::SetSubmitNavigation(SubmitNavigation submit) {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    impl_->RequireIdleLocked(); impl_->submit_navigation_ = std::move(submit);
+}
+void ExplorationTask::SetGuardedSubmitNavigation(GuardedSubmitNavigation submit) {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    impl_->RequireIdleLocked(); impl_->guarded_submit_navigation_ = std::move(submit);
+}
+void ExplorationTask::SetSubmitMapping(SubmitMapping submit) {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    impl_->RequireIdleLocked(); impl_->submit_mapping_ = std::move(submit);
+}
+void ExplorationTask::SetNavigationProbe(IsNavigationActive, GetNavigationResult) {
+    // The compatibility surface deliberately cannot fabricate versioned results.
+}
+void ExplorationTask::SetVersionedNavigationProbe(GetVersionedNavigationResult result,
+                                                 CancelNavigationRequest cancel) {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    impl_->RequireIdleLocked();
+    impl_->navigation_result_ = std::move(result); impl_->cancel_navigation_ = std::move(cancel);
+}
+bool ExplorationTask::ConfigureSession(ExplorationTaskBindings bindings) {
+    return impl_->Configure(std::move(bindings));
+}
+e::ExplorationServices ExplorationTask::NavigationServices(
+    const std::string& frame_id, const std::string& planner_id) const {
+    GuardedSubmitNavigation submit;
+    GetVersionedNavigationResult result;
+    CancelNavigationRequest cancel;
+    std::shared_ptr<e::MotionGate> gate;
+    std::string prefix;
+    {
+        std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+        if (std::this_thread::get_id() != impl_->owner_thread_id_ ||
+            impl_->active_generation_ != impl_->generation_ || impl_->stopping_ ||
+            (impl_->desired_ != TaskLifecycle::kRunning &&
+             impl_->desired_ != TaskLifecycle::kPaused))
+            throw std::logic_error("navigation services require the current factory owner");
+        submit = impl_->guarded_submit_navigation_;
+        result = impl_->navigation_result_;
+        cancel = impl_->cancel_navigation_;
+        gate = impl_->motion_gate_;
+        prefix = "exploration/" + ProcessIdentity() + "/" +
+                 std::to_string(impl_->instance_) + "/" +
+                 std::to_string(impl_->generation_) + "/";
+    }
+    if (frame_id.empty() || planner_id.empty() || !gate || !submit || !result || !cancel)
+        throw std::logic_error("exploration requires cooperative versioned native services");
+    if (!impl_->dispatcher_) {
+        const auto instance = impl_->instance_;
+        impl_->dispatcher_ = std::make_shared<e::NavigationDispatcher>(
+            gate, prefix,
+            [submit, frame_id, planner_id, instance](
+                const e::NavigationDispatchRequest& request,
+                const e::MotionGate::Permit& permit) {
+                NativeCallbackScope scope(instance);
+                proto::NavigationGoal goal;
+                goal.mutable_header()->set_task_id(request.task_id);
+                goal.mutable_header()->set_client_id("exploration");
+                goal.set_command(proto::NAV_CMD_START);
+                goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
+                goal.mutable_plugins()->set_planner_id(planner_id);
+                auto* target = goal.add_goals();
+                target->mutable_header()->set_frame_id(frame_id);
+                target->mutable_pose()->mutable_position()->set_x(request.pose.x);
+                target->mutable_pose()->mutable_position()->set_y(request.pose.y);
+                target->mutable_pose()->mutable_orientation()->set_z(std::sin(request.pose.yaw / 2));
+                target->mutable_pose()->mutable_orientation()->set_w(std::cos(request.pose.yaw / 2));
+                return submit(goal, permit);
+            },
+            [result, instance](const std::string& id) -> std::optional<bool> {
+                NativeCallbackScope scope(instance);
+                proto::NavigationResult reply;
+                if (!result(id, &reply)) return {};
+                return reply.final_status() == proto::NAV_STATUS_SUCCEEDED;
+            },
+            [cancel, instance](const std::string& id) {
+                NativeCallbackScope scope(instance);
+                // False denotes no matching native request; exceptions mean
+                // the backend could not confirm stopping this accepted ID.
+                cancel(id);
+            });
+        impl_->dispatcher_frame_ = frame_id;
+        impl_->dispatcher_planner_ = planner_id;
+    } else if (impl_->dispatcher_frame_ != frame_id ||
+               impl_->dispatcher_planner_ != planner_id) {
+        throw std::logic_error("one exploration dispatcher has one native frame/planner");
+    }
+    const auto dispatcher = impl_->dispatcher_;
+    e::ExplorationServices services;
+    services.submit_navigation = [dispatcher](const e::Pose2d& pose,
+                                              const e::RequestVersion& version) {
+        return dispatcher->Enqueue(pose, version);
+    };
+    services.poll_navigation = [dispatcher] { return dispatcher->Poll(); };
+    services.cancel_navigation = [dispatcher](const e::RequestVersion& version) {
+        dispatcher->CancelRequest(version);
+    };
+    return services;
+}
+bool ExplorationTask::PushMap(e::MapReadView map) {
+    if (!map.grid || !map.map_epoch || map.frame_id.empty() || !std::isfinite(map.source_stamp))
+        return false;
+    return impl_->Push(std::move(map));
+}
+bool ExplorationTask::PushPose(e::Pose2d pose, double stamp, std::uint64_t epoch,
+                              perception::SensorMask support) {
+    if (!opt::navigation::IsFinite(pose) || !std::isfinite(stamp) || !epoch || !support) return false;
+    return impl_->Push(Impl::PoseInput{pose, stamp, epoch, support});
+}
+bool ExplorationTask::PushObservation(perception::SensorObservation observation, double now) {
+    if (!std::isfinite(now)) return false;
+    return impl_->Push(Impl::ObservationInput{std::move(observation), now});
+}
+bool ExplorationTask::PushCoverageUnit(e::CoverageUnit unit) { return impl_->Push(std::move(unit)); }
+std::optional<e::ExplorationSnapshot> ExplorationTask::GetExplorationSnapshot() const {
+    return impl_->Snapshot();
+}
+bool ExplorationTask::SubmitGoal(const proto::ExplorationGoal& goal) { return OnGoal(goal); }
+void ExplorationTask::Shutdown() { impl_->Shutdown(); }
+bool ExplorationTask::Cancel() { return impl_->Control(e::SessionCommand::kCancel); }
+bool ExplorationTask::Pause() { return impl_->Control(e::SessionCommand::kPause); }
+bool ExplorationTask::Resume() { return impl_->Control(e::SessionCommand::kResume); }
+bool ExplorationTask::OnInitialize(const proto::TaskServerOptions& options) {
+    return impl_->Initialize(std::chrono::milliseconds(
+        options.scheduler().feedback_period_ms() > 0 ? options.scheduler().feedback_period_ms() : 100));
+}
+bool ExplorationTask::OnGoal(const proto::ExplorationGoal& goal) {
+    switch (goal.command()) {
+        case proto::EXPLORATION_CMD_START: return impl_->Start(goal);
+        case proto::EXPLORATION_CMD_PAUSE: return Pause();
+        case proto::EXPLORATION_CMD_RESUME: return Resume();
+        case proto::EXPLORATION_CMD_CANCEL:
+        case proto::EXPLORATION_CMD_STOP: return Cancel();
+        case proto::EXPLORATION_CMD_SET_AREA: {
+            proto::ExplorationGoal changed;
+            {
+                std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+                if (impl_->desired_ != TaskLifecycle::kRunning && impl_->desired_ != TaskLifecycle::kPaused)
+                    return false;
+                changed = impl_->current_goal_;
+            }
+            *changed.mutable_area() = goal.area();
+            changed.set_command(proto::EXPLORATION_CMD_START);
+            return impl_->Start(changed);
+        }
+        case proto::EXPLORATION_CMD_SAVE_MAP:
+            AWARN << "ExplorationTask: checkpoint saving needs a real versioned mapping service";
+            return false;
+        default: return false;
     }
 }
-
-void ExplorationTask::FillFeedback(tp::ExplorationFeedback* feedback) const {
-    feedback->set_status(status_);
+void ExplorationTask::FillFeedback(proto::ExplorationFeedback* feedback) const {
+    feedback->set_status(impl_->status_);
     *feedback->mutable_progress() = progress_;
-    feedback->set_map_name(map_name_);
+    feedback->set_exploration_progress(progress_.progress());
+    feedback->set_map_name(impl_->map_name_);
 }
-
-void ExplorationTask::FillResult(tp::ExplorationResult* result) const {
+void ExplorationTask::FillResult(proto::ExplorationResult* result) const {
     *result->mutable_result() = MakeTaskResult();
-    result->set_final_status(status_);
-    result->set_map_name(map_name_);
+    result->set_final_status(impl_->status_);
+    result->set_map_name(impl_->map_name_);
 }
-
 }  // namespace task
 }  // namespace autonomy

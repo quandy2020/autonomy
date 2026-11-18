@@ -1,0 +1,33 @@
+{
+  "date": "2026-11-18",
+  "map_unchanged": true,
+  "map_file_count": 471,
+  "deployed_source_checks": {
+    "autonomy/task/common/typed_task.hpp": {
+      "expected": "2acf06664b4eb22a3f3d63381a8acd4e2d7322d9a4bbf325126e3420b8381fd8",
+      "actual": "2acf06664b4eb22a3f3d63381a8acd4e2d7322d9a4bbf325126e3420b8381fd8",
+      "matches": true
+    },
+    "autonomy/task/common/typed_task_test.cpp": {
+      "expected": "3096d0deb0cd8409cdcb7906c8a8d4497ae4394003772589b37646bad1a1ad28",
+      "actual": "3096d0deb0cd8409cdcb7906c8a8d4497ae4394003772589b37646bad1a1ad28",
+      "matches": true
+    },
+    "docs/typed_task_admission.md": {
+      "expected": "196126c793922e3c7e435deed62d0486ea642152740ff13c9c03212ddb33be10",
+      "actual": "196126c793922e3c7e435deed62d0486ea642152740ff13c9c03212ddb33be10",
+      "matches": true
+    },
+    "cmake/ExplorationTests.cmake": {
+      "expected": "1855455a846e7853f8b0d024da358063114220be9f75b1d8b060564a3472ed84",
+      "actual": "1855455a846e7853f8b0d024da358063114220be9f75b1d8b060564a3472ed84",
+      "matches": true
+    }
+  },
+  "task_server_preserved_against_precheck": {
+    "autonomy/task/task_server.hpp": true,
+    "autonomy/task/task_server.cpp": true
+  },
+  "git_head": "bdfd9f0b8a2949f5b7fae08c5f5ec8e5c5243498",
+  "docker_status": "running"
+}

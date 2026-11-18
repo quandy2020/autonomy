@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-18",
+  "deployed": true,
+  "backup": "/tmp/opt-typed-deploy-v2.11-2e43f82e178c/backup",
+  "expected_sha256": {
+    "autonomy/task/common/typed_task.hpp": "62716f29c8885b09391b7e5456cadef7f3c8c28643290174f2e28ad802a05fda",
+    "autonomy/task/common/typed_task_test.cpp": null,
+    "docs/typed_task_admission.md": null,
+    "cmake/ExplorationTests.cmake": "6c9a10e282466025775bb9c00154ac5e62f185dca45a65d1606f2cc314e08129"
+  },
+  "before_sha256": {
+    "autonomy/task/common/typed_task.hpp": "62716f29c8885b09391b7e5456cadef7f3c8c28643290174f2e28ad802a05fda",
+    "autonomy/task/common/typed_task_test.cpp": null,
+    "docs/typed_task_admission.md": null,
+    "cmake/ExplorationTests.cmake": "6c9a10e282466025775bb9c00154ac5e62f185dca45a65d1606f2cc314e08129"
+  },
+  "deployed_sha256": {
+    "autonomy/task/common/typed_task.hpp": "2acf06664b4eb22a3f3d63381a8acd4e2d7322d9a4bbf325126e3420b8381fd8",
+    "autonomy/task/common/typed_task_test.cpp": "3096d0deb0cd8409cdcb7906c8a8d4497ae4394003772589b37646bad1a1ad28",
+    "docs/typed_task_admission.md": "196126c793922e3c7e435deed62d0486ea642152740ff13c9c03212ddb33be10",
+    "cmake/ExplorationTests.cmake": "1855455a846e7853f8b0d024da358063114220be9f75b1d8b060564a3472ed84"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "task_server_sha256": {
+    "autonomy/task/task_server.hpp": "d054a6f65a31324638bc866657be62949f6c8ed26736fe19eaa1d38623f1bc63",
+    "autonomy/task/task_server.cpp": "b8a1e578e8c805119ed5063b79e28f8c45599fea3fa413fef58d9cde1599f60f"
+  },
+  "git_head": "bdfd9f0b8a2949f5b7fae08c5f5ec8e5c5243498"
+}

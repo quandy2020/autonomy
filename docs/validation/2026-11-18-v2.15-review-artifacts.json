@@ -1,0 +1,47 @@
+{
+  "date": "2026-11-18",
+  "edition": "v2.15-review",
+  "html_sections": 20,
+  "cases": 26,
+  "review_checks": 30,
+  "offline_html": true,
+  "missing_local_links": [],
+  "browser_rendering_checked": false,
+  "new_business_build_run": false,
+  "robot_verified": false,
+  "canvas_typecheck": "strict/noEmit passed",
+  "artifacts": [
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_final_plan.md",
+      "bytes": 36070,
+      "sha256": "4266809b4f368701d16cc5fbe70216e4f736d3ca3c4fe229750f9b40f2a44c61"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.md",
+      "bytes": 29563,
+      "sha256": "d81d15396b95de1e2016432770ef7658b804ccc3191368a23dc8adf8180e42d4"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_design.md",
+      "bytes": 138637,
+      "sha256": "beee08fa3594e97cd3d9a715f2a8067336eb787030e7a6890ae93a442073c43c"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/implementation_validation.md",
+      "bytes": 45436,
+      "sha256": "e0df4f420004a784a4612b38dbf98f65bcdf862fc840f639905b219c35cbdbc8"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.html",
+      "bytes": 49676,
+      "sha256": "01f35bdd614d55a8d8be68c9f53e4e441f5cfe99118d07c5e08df6bcffa54db5"
+    },
+    {
+      "path": "/Users/duyongquan3/.cursor/projects/Users-duyongquan3-workspace-Opt/canvases/multisensor-exploration-review.canvas.tsx",
+      "bytes": 47540,
+      "sha256": "8dc67488f87bcac9562f25865da80ff81b4b787b411dff1850d02bbc3ffd26a0"
+    }
+  ],
+  "canvas_typecheck_log": "docs/validation/2026-11-18-v2.15-canvas-typecheck.log",
+  "canvas_typecheck_log_sha256": "bb292aab46566ff147c7028a9811fb2ae770793287d0a652142cd13393e70d6a"
+}

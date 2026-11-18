@@ -1,0 +1,96 @@
+{
+  "date": "2026-11-18",
+  "edition": "v2.14-review",
+  "read_only": true,
+  "business_source_checks": {
+    "autonomy/task/common/task_action_client.hpp": {
+      "expected": "e5f15a02692081abed63197a5941627ce13ee68ddf372530d422b459bbcdac43",
+      "actual": "e5f15a02692081abed63197a5941627ce13ee68ddf372530d422b459bbcdac43",
+      "matches": true
+    },
+    "autonomy/task/navigation/action_session.hpp": {
+      "expected": "847b257f061453c90ee874a4b1402d55a64ddeee76cb56614295dbd9f8848243",
+      "actual": "847b257f061453c90ee874a4b1402d55a64ddeee76cb56614295dbd9f8848243",
+      "matches": true
+    },
+    "autonomy/task/navigation/navigation_client.hpp": {
+      "expected": "860e81f39a483a419f44b5e21aff11b6c3214a9b6baa9801463564a2c4f0e266",
+      "actual": "860e81f39a483a419f44b5e21aff11b6c3214a9b6baa9801463564a2c4f0e266",
+      "matches": true
+    },
+    "autonomy/task/navigation/navigation_client.cpp": {
+      "expected": "ff8f194c08a8016af2732cf669a1c835fc67b5625c883cbee0c8ca030415788e",
+      "actual": "ff8f194c08a8016af2732cf669a1c835fc67b5625c883cbee0c8ca030415788e",
+      "matches": true
+    },
+    "autonomy/task/navigation/navigation.hpp": {
+      "expected": "5f204857de105d3a37727e0c6f7ef37d06a51391c1083da5cd8406ed637b19f3",
+      "actual": "5f204857de105d3a37727e0c6f7ef37d06a51391c1083da5cd8406ed637b19f3",
+      "matches": true
+    },
+    "autonomy/task/navigation/navigation.cpp": {
+      "expected": "92b2e1de416026e175dc4fa7770905ffc5655b7f01b45e86675c41c94218fa65",
+      "actual": "92b2e1de416026e175dc4fa7770905ffc5655b7f01b45e86675c41c94218fa65",
+      "matches": true
+    },
+    "autonomy/task/navigation/plugins/async_remote_action_node.hpp": {
+      "expected": "43e1da9127ae55605c6e6caa9062501b3451fe90eb2442dd800a98d3961c1994",
+      "actual": "43e1da9127ae55605c6e6caa9062501b3451fe90eb2442dd800a98d3961c1994",
+      "matches": true
+    },
+    "autonomy/task/navigation/plugins/async_path_action_node.hpp": {
+      "expected": "24401aa9d7107658ae9a355076eed0db17703931e1e4ddb72168499ec4b12d56",
+      "actual": "24401aa9d7107658ae9a355076eed0db17703931e1e4ddb72168499ec4b12d56",
+      "matches": true
+    },
+    "autonomy/task/exploration/integration/navigation_dispatcher.hpp": {
+      "expected": "689a3b9fedb07cb972bea206810698edb4810f460cb5179f15bc6f65b68d15d8",
+      "actual": "689a3b9fedb07cb972bea206810698edb4810f460cb5179f15bc6f65b68d15d8",
+      "matches": true
+    },
+    "autonomy/task/exploration/integration/navigation_dispatcher.cpp": {
+      "expected": "2128ef79b06a22e5f32e80ff8b0c05dc5526d709d93e9f6102812b632963f66b",
+      "actual": "2128ef79b06a22e5f32e80ff8b0c05dc5526d709d93e9f6102812b632963f66b",
+      "matches": true
+    },
+    "autonomy/task/exploration/exploration.hpp": {
+      "expected": "b46f97485f5fa4dbab77ae26200e79f528344f9ffec176f4c1d317a3aa178108",
+      "actual": "b46f97485f5fa4dbab77ae26200e79f528344f9ffec176f4c1d317a3aa178108",
+      "matches": true
+    },
+    "autonomy/task/exploration/exploration.cpp": {
+      "expected": "f7ae4bfcfe3905de6746d1bda84bc5f70d8607620b4360d0fd55c8f6b5cb481c",
+      "actual": "f7ae4bfcfe3905de6746d1bda84bc5f70d8607620b4360d0fd55c8f6b5cb481c",
+      "matches": true
+    },
+    "autonomy/task/task_server.hpp": {
+      "expected": "d054a6f65a31324638bc866657be62949f6c8ed26736fe19eaa1d38623f1bc63",
+      "actual": "d054a6f65a31324638bc866657be62949f6c8ed26736fe19eaa1d38623f1bc63",
+      "matches": true
+    },
+    "autonomy/task/task_server.cpp": {
+      "expected": "b8a1e578e8c805119ed5063b79e28f8c45599fea3fa413fef58d9cde1599f60f",
+      "actual": "b8a1e578e8c805119ed5063b79e28f8c45599fea3fa413fef58d9cde1599f60f",
+      "matches": true
+    },
+    "cmake/ExplorationTests.cmake": {
+      "expected": "e8a5508abff16cd7e3b8fd4b2c00ba16219ae57687debc8fc641d40ba33bc1b4",
+      "actual": "e8a5508abff16cd7e3b8fd4b2c00ba16219ae57687debc8fc641d40ba33bc1b4",
+      "matches": true
+    }
+  },
+  "document_expected": {
+    "docs/multisensor_exploration_final_plan.md": "ee8a5e84840adcf937d85abc5a56dd69fb423838f9da6098acfc006662dc1eb0",
+    "docs/multisensor_exploration_review.md": "8996918c18ed0588dd1125ca313ac722eca4babf2ae63e6b294478606e6675ea",
+    "docs/multisensor_exploration_review.html": "801a1a24def2409570acfc72ec74c676ac9ae48067896f96a18cfb68ea650ad7"
+  },
+  "map_unchanged": true,
+  "map_file_count": 471,
+  "container_running": true,
+  "remote_gate_exists": false,
+  "local_docs_match_remote_before_review": {
+    "docs/multisensor_exploration_final_plan.md": true,
+    "docs/multisensor_exploration_review.md": true,
+    "docs/multisensor_exploration_review.html": true
+  }
+}

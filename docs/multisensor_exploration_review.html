@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Autonomy 多传感器探索：v2.15 最终方案审查</title><style>
+:root {color-scheme:light dark;--bg:#fff;--fg:#242424;--muted:#626262;--line:#ddd;--panel:#f4f5f6;--link:#1757a6}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1d20;--fg:#e4e5e7;--muted:#b5b6ba;--line:#45464b;--panel:#28292d;--link:#9abaff}}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:20px}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.8 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+nav{position:fixed;inset:0 auto 0 0;width:270px;padding:24px 20px;border-right:1px solid var(--line);overflow:auto;background:var(--bg)}
+nav strong{display:block;margin-bottom:16px}nav a{display:block;margin:6px 0;font-size:14px;text-decoration:none}
+main{max-width:1130px;margin-left:270px;padding:36px 42px}h1{font-size:25px}h2{font-size:21px;margin-top:36px}h3{font-size:18px}
+a{color:var(--link)}p,li{overflow-wrap:anywhere}pre{overflow:auto;background:var(--panel);padding:16px;border:1px solid var(--line);font-size:13px;line-height:1.65}
+code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}table{border-collapse:collapse;width:100%;font-size:14px;margin:16px 0}
+th,td{border:1px solid var(--line);padding:9px 12px;text-align:left;vertical-align:top}th{background:var(--panel)}
+footer{font-size:13px;color:var(--muted);padding-top:20px;border-top:1px solid var(--line);margin-top:32px}
+@media(max-width:850px){nav{position:static;width:auto;border-right:0;border-bottom:1px solid var(--line)}main{margin-left:0;padding:22px}table{display:block;overflow:auto}}
+@media print{nav{display:none}main{margin:0;padding:0}body{font-size:11pt}pre{white-space:pre-wrap}section{break-inside:auto}a{color:inherit}}
+</style></head><body><nav><strong>最终方案 · v2.15</strong><a href="#section-1">1. 任务范围与固定选择</a><a href="#section-2">2. 架构与所有权</a><a href="#section-3">3. 三种传感器模式</a><a href="#section-4">4. 地图零改动与消费者增量</a><a href="#section-5">5. Vista 增量可见性图</a><a href="#section-6">6. 分层覆盖与效率</a><a href="#section-7">7. 信息增益与候选排序</a><a href="#section-8">8. Opt 最佳目标位姿自适应调整</a><a href="#section-9">9. DeFM、SanD 与训练</a><a href="#section-10">10. 平滑、可执行与独立安全</a><a href="#section-11">11. BT 节点与行为编排</a><a href="#section-12">12. 完成判据、返航与保存</a><a href="#section-13">13. 目标目录与专业命名</a><a href="#section-14">14. 异常矩阵与验收</a><a href="#section-15">15. 当前实现与验证边界</a><a href="#section-16">16. 审查顺序与实施门槛</a><a href="#section-17">17. 提交审定的配置与接口</a><a href="#section-18">18. 完整交付的验收阶段</a><a href="#section-19">19. 关键情况与预期行为</a><a href="#section-20">20. 审查核对清单</a><a href="multisensor_exploration_final_plan.md">Markdown 集中审查稿</a><a href="multisensor_exploration_review.md">历史证据与审查入口</a></nav><main><h1>Autonomy 室内多传感器自主探索建图：最终设计审查稿</h1>
+<p>版本：v2.15-review；日期：2026-11-18。本稿给出供审定的最终目标设计；正式部署证据对应 v2.12 NavigationTask 批次。v2.15 派发门控已在本地接入并通过隔离编译和原有导航专项，新增派发竞态及正式消费者部署仍待验证。</p>
+<p>本文给出可逐项审查的目标设计。已实现范围单独列在 §15；其余接口、算法条件和验收要求属于实施目标。详细算法及历史证据见 <a href="multisensor_exploration_design.md">详细设计</a>，26 类异常情形及交互审阅入口见 <a href="multisensor_exploration_review.md">方案总览</a>。</p>
+<p><strong>核心方案：保留 FAR 的增量可见性图路线机制与 TARE 的全局/局部分层覆盖框架，适配 Autonomy 原生任务系统；现有 GridMap/Costmap 保持不变；Opt 调整观测目标位姿；冻结 DeFM 与经过三模态适配训练的 SanD 式 B 样条局部策略共同支撑执行，独立几何 Safety 拥有最终否决权。</strong></p>
+<section id="section-1"><h2>1. 任务范围与固定选择</h2>
+<ul>
+<li>面向地面机器人、单层室内、与起点连通的允许区域，按明确的空间分辨率、观测方向和质量要求探索建图。</li>
+<li>支持 <code>lidar_only</code>、<code>rgbd_only</code>、<code>lidar_rgbd</code>。每种模式有独立可用的定位链；任务不隐含额外 IMU、轮速计或可转动相机。</li>
+<li>路线插件为 <code>VistaPlanner</code>，实例名 <code>vista_planner</code>，目录为 <code>autonomy/planning/planner/vista/</code>；探索位于 <code>autonomy/task/exploration/</code>，核心策略为 <code>HierarchicalCoverageStrategy</code>。</li>
+<li>使用原生 C++、Autolink、Protobuf、Autonomy BT，遵循 <code>.hpp/.cpp</code>、snake_case 路径和现有嵌套命名空间。</li>
+<li><code>autonomy/map</code> 的代码、目录、接口和消息定义全部保持不变。版本、差分、观测账本和局部执行几何由 map 外的消费者维护。</li>
+<li>初始任务默认几何覆盖；类别语义、RGB 纹理、跨楼层和操作开门需要单独能力与验收。早期 VNT-PA 姿态记忆方案不进入本版依赖。</li>
+</ul>
+<p>任务启动时冻结允许范围、覆盖分辨率、质量要求和来源政策。传感器掉线、深度孔洞或候选采样失败都不能自动缩小原任务要求。</p>
+<p>“探索建图”分开验收三个产品：机器人可达自由空间的发现、所需几何表面的有效观测、上游地图融合与持久化。已走过地面不表示墙面已充分建图；室内未进入的房间也不能因门口没有局部 frontier 而被排除。仅 LiDAR 可以满足几何目标，不能满足要求 RGB 纹理的任务。任务将这些覆盖要求、可观测范围与排除政策明确列出。</p>
+</section><section id="section-2"><h2>2. 架构与所有权</h2>
+<pre><code class="language-text">3D LiDAR / RGB-D
+    │ 标定、真实采样时间、有效掩码、健康状态
+    ├── 定位建图 ──→ 现有 GridMap / Costmap
+    │                         │ 安全读取、消费者快照与差分
+    │                         ▼
+    │                Vista 增量 visibility graph
+    │                         │ 路线与访问成本
+    ├── 原始几何 ──→ 覆盖账本 ──→ 分层覆盖策略
+    │                                      │ ObservationGoal
+    │                                      ▼
+    │                              Opt 调整并复核观测要求
+    │                                      │ 委托导航
+    └── 深度视图 ──→ 冻结 DeFM ──→ 模态条件融合 / B 样条扩散
+                                           │ 物理时间、边界衔接
+                                           ▼
+                               独立 Safety ──→ 高频跟踪与底盘
+                                           │ 反馈、实际观测
+                                           ▼
+                            覆盖兑现 → 完成复核 → 返航 → 保存
+</code></pre>
+<p><code>PlannerServer</code> 持有一张长期 Vista 图。普通导航和探索均向这个所有者查询路线；独立 task/planning 进程通过 Autolink 服务通信。同进程注入可以复用实例，跨进程不能共享插件指针。</p>
+<p><code>ExplorationTask</code> 拥有一个 Session 和一棵 Tree；Session 统一提交探索导航、观测与收尾请求。策略、Opt 和 BT 选点节点只提出意图。探索父任务持有运动资格，委托导航继承该资格，由原生调度器识别父子关系。</p>
+<p>上游定位建图或 <code>MappingTask</code> 负责更新、融合与保存地图。控制侧维护局部三维执行证据，覆盖侧维护历史观测证据，二者不替代现有 map owner。</p>
+</section><section id="section-3"><h2>3. 三种传感器模式</h2>
+<p><strong>仅 3D LiDAR。</strong> 使用真实扫描束、水平/垂直视野、量程、回波有效性与采样时间；不假定所有型号具有完整 360° 视野。点云和射线直接用于几何覆盖、遮挡和 Safety。学习支路投影为带标定、视角及有效掩码的虚拟透视深度。射线量程需要转换为相机轴向 Z；未命中像素保持未知。定位链必须在没有相机或额外 IMU 的配置下仍可工作。</p>
+<p><strong>仅 RGB-D。</strong> 使用相机内外参、米制深度和 RGB-D 里程计/SLAM。候选包含机器人位置与 yaw，固定相机 pitch 来自安装外参。深度孔洞、透明、反光、量程外与不可见部分保留未知。到达位置后仍需确认相机方向、有效帧、停留和实际覆盖。</p>
+<p><strong>LiDAR 与 RGB-D 联合。</strong> 按各自采样时间变换到统一位姿基准；LiDAR 去畸变使用可用的时序位姿。分别计算真实视野，几何按稳定单元去重。超龄输入退出当前执行证据；有效 occupied/free 冲突保守处理并安排重新观测。</p>
+<p><code>configured_mode</code> 与本周期 <code>active_sensors</code> 分开。联合模式降级继续要同时满足：剩余观测有效、定位有效、控制后端支持剩余模态、Safety 能验证当前执行。模式滞回稳定配置状态，不能延长过期证据的有效期。全部观测或定位失效时停止新运动；旋转也需验证机器人扫掠体。</p>
+<p>默认 <code>GEOMETRY_ANY_SENSOR</code>：任一允许来源可兑现一份几何覆盖。同一单元的重叠不重复计分。配置 <code>GEOMETRY_PER_SENSOR</code> 或多方向要求时，来源、方向、独立帧和质量分别记账；掉线不会删除未兑现要求。</p>
+</section><section id="section-4"><h2>4. 地图零改动与消费者增量</h2>
+<p><code>perception/data/map_reader</code> 通过现有安全入口取得拥有内容的不可变快照；解锁后比较分区，生成消费者侧 <code>map_epoch</code>、<code>geometry_revision</code>、<code>dirty_regions</code> 与分来源观测截面。</p>
+<p>需要验证读取的数据确实来自在线建图，而非未更新的静态地图。地图发布时间变化不等于几何变化；整图时间戳也不能刷新旧 free/occupied 单元的观测年龄。只有二维地图时明确缺少高度证据，三维净空由原始观测补充。</p>
+<p>既有 GridMap 管理规划用地面、障碍与代价，消费者维护稳定覆盖单元及 frontier/区域状态，控制侧维护局部高度和三维净空证据。保留这三种产品的来源与时间关联：单张 2D GridMap 不承担完整室内三维表面模型；DeFM token 不替代任何一项几何证据。</p>
+<p>滚动窗口移出不删除历史覆盖、连接或未完成要求。回环与坐标重置推进 epoch，可靠变换后复核图和证据，否则重建受影响状态。未知、无效、未观测与已知 free 必须区分。</p>
+<p>第一版可以安全拷贝现有图并在消费者侧比较差分，从而增量更新 visibility graph。全图读取与比较的成本仍须计入延迟和内存预算。</p>
+</section><section id="section-5"><h2>5. Vista 增量可见性图</h2>
+<p>节点来自障碍轮廓拐点、通道连接及临时起终点，保留稳定 ID；边携带验证版本、几何来源与可通行/待验证状态。</p>
+<p>更新过程为：变化区域定位 → 局部轮廓提取 → 稳定节点匹配 → 受影响边验证 → 断边或重连 → 发布新图版本。边空间索引必须查询穿过变化区域的长边；仅查询端点会漏掉中段新增障碍。障碍移除后重新检查曾被阻挡的连接。</p>
+<p>足迹膨胀只应用一次。图查询失败时用已知空间栅格连通搜索复核；图采样不足不构成物理不可达证明。高层可保留带未知段的尝试性路线，当前运动只执行已验证近端，并在安全观测位置更新环境。</p>
+<p>规划查询有取消、版本兼容与截止时间。图只由一个更新所有者修改，查询使用只读视图或受锁保护的数据。跨进程路线返回 request、frame、epoch 和图版本。</p>
+</section><section id="section-6"><h2>6. 分层覆盖与效率</h2>
+<p>全局 <code>RegionManager</code> 管区域、覆盖进度、入口和重访；<code>VisitOrderOptimizer</code> 使用 Vista 的真实路线成本优化访问顺序，计入转向、观测时间、重复覆盖与返航成本。</p>
+<p>局部 <code>ViewpointSampler</code> 采样安全位置及 yaw，<code>ViewpointEvaluator</code> 计算可见性和有效质量改善；先硬筛选，再选择边际覆盖候选集并优化访问次序。每选一个候选更新预计覆盖并集，后续候选只计算增量贡献。</p>
+<p>低收益角落、小 frontier、暂时受阻与尚未评估区域进入独立公平队列。分页保存游标与证据，地图变化只重开受影响项。启发式候选耗尽后，对明确的离散位置/方向空间进行扫尾与栅格复核。处理预算结束不能等同于没有剩余任务。</p>
+<p>效率通过分层排序、图/候选局部重算、覆盖去重、特征缓存和目标切换滞回来提高。返航预算使用从下一目标回起点的可通行路线；返航连通性无法确认时停止向外扩展。启发式路线不承诺全局最优。</p>
+</section><section id="section-7"><h2>7. 信息增益与候选排序</h2>
+<p>第一版信息增益定义为<strong>预计有效覆盖质量改善</strong>，属于几何与质量代理。没有经过校准的后验和传感器似然时，不将它称为严格 Shannon 熵下降。</p>
+<p>对候选位姿 q、已经选择的候选集合 S 和覆盖类型 k：</p>
+<pre><code class="language-text">G_k(q | S) = Σ_i A_i W_i [max_s(V_i,s(q) Ĉ_i,s(q)) - B_i(S)]+
+G(q | S)   = Σ_k λ_k G_k(q | S) / Z_k
+U(q | S)   = G(q | S) / (T_travel + T_turn + T_observe + ε)
+</code></pre>
+<p><code>i</code> 是稳定覆盖单元；<code>A_i</code> 是面积或固定标准化单元，<code>W_i</code> 是任务权重；<code>V</code> 表示视野、量程与遮挡；<code>Ĉ</code> 是按任务质量要求归一化的预测完成程度；<code>B_i(S)</code> 是实际已得与已选候选预测的最大完成程度；<code>[x]+ = max(0,x)</code>。<code>Z_k</code> 在任务启动时固定，用于归一化不同覆盖类型。原始点数不直接代表面积。</p>
+<p>质量与可见性考虑距离、入射角、采样密度、有效深度/回波、定位误差、运动模糊/去畸变和历史预测失败。未知遮挡后方不算确定可见收益；门口潜在拓展价值、等待时间与公平性单独进入调度政策。</p>
+<p><code>V</code> 必须先应用真实传感器模型：RGB-D 检查相机视锥、深度范围、投影与遮挡；LiDAR 检查真实束角、垂直盲区、回波与射线遮挡。未知空间采用预计可新增观测的保守代理，不假定未知处已有可验证表面法向。表面质量项只有在相应几何与法向有证据时使用。联合模式中的遮挡和质量分别估计，再按任务要求融合。</p>
+<p>ANY_SENSOR 对同一单元取来源 max，是保守去重；互补视野通过不同单元产生额外收益。PER_SENSOR 对每个必要来源分别计算正改善，并按固定来源数归一化。必要方向、独立帧数和停留不能由另一来源或高总分抵消。</p>
+<p>例如原始质量要求为 0.8，实际已得 0.6；候选预测 0.4 的改善为 0，预测 0.7 的归一化改善为 0.125。质量改善为零不代表方向或独立帧要求已经兑现。</p>
+<p>不可达、净空不足、任务约束不满足、预算不足或证据过期的候选先被硬过滤。到达后只凭真实有效观测更新账本，同时记录 <code>predicted_gain</code> 与 <code>realized_gain</code>，用差异检查收益模型。</p>
+</section><section id="section-8"><h2>8. Opt 最佳目标位姿自适应调整</h2>
+<p>输入 <code>ObservationGoal</code> 表达原始位姿、允许区域及位移/yaw 范围、目标 region/frontier、必要覆盖单元、required_views、最低质量/收益和要求版本。</p>
+<p>Opt 在有限候选中验证足迹、垂直净空、已知可达性、预算与观测约束，再按收益、路线成本和调整代价选择最高分。适配后重新计算路径与可见性；安全可停靠但看不到指定区域的点不能替代原观测目标。“最佳”限定为本次候选集合及约束下的最优评分。</p>
+<p>三种状态的语义为：</p>
+<ul>
+<li><code>POINT_GOAL</code>：目标及观测条件已确认，可以按该目标执行。</li>
+<li><code>REGION_FALLBACK</code>：在任务允许的替代区域中找到仍能兑现原观测要求的位姿。</li>
+<li><code>UNKNOWN_APPROACH</code>：目标信息不足，先去已知安全的观测位姿取得证据；未知原始点仍是任务意图。</li>
+</ul>
+<p>每轮处理地图/观测变化。unknown → free 后重验目标；unknown → occupied 后搜索允许替代；障碍移除后重开相关任务。路径暂时受阻先重规划、等待或有界恢复，保留仍有效的观测意图。封闭房间或长期遮挡保留未确认项，门口到达不等于房间完成。</p>
+<p>任务状态由运行时可观测证据驱动，不能读取仿真真值来决定行为。<code>FREE</code> 单元不自动证明整个位姿可达：机器人足迹、三维净空、路径、证据年龄和必要观测仍须独立验证。目标本身有效但通路受阻时保留目标；感知超时则报告观测不足，不将未知改写为已确认不可达。区域替代只有在任务显式允许且观测要求仍可兑现时才成立。</p>
+</section><section id="section-9"><h2>9. DeFM、SanD 与训练</h2>
+<p>DeFM 全程冻结，锁定权重摘要与官方预处理版本。每个新视图编码一次并缓存时间、位姿、标定、模态和掩码；历史窗口复用缓存。原始深度与射线保留用于覆盖和 Safety，DeFM 特征不直接证明自由空间或类别语义。</p>
+<p>起步采用一套共享的模态条件投影/融合与 B 样条扩散头，数据包含 LiDAR 稀疏虚拟视图、RGB-D、联合输入、孔洞、异步、模态缺失及运动反馈。三种模式分别验收；更换原感知编码器与新增 LiDAR 条件都需要适配训练。</p>
+<p>训练次序：准备带时间的专家轨迹及样条拟合 → 冻结 DeFM 训练投影/融合/扩散头 → 三模式闭环评估和难例补充 → 必要时小范围控制头微调。Vista、覆盖账本、几何可见性、Opt 核心与 Safety 不依赖学习训练。</p>
+<p>共享网络不要求维护三套完整策略。若某模态的学习控制尚未验证，只能使用明确配置且经验证的替代执行后端，该模态不能因此获得学习控制通过声明。</p>
+</section><section id="section-10"><h2>10. 平滑、可执行与独立安全</h2>
+<p>候选为带物理时间的三次 B 样条。空间曲线、时间参数化、实际切换时刻和参考版本共同定义执行轨迹。三次样条在简单内部结点可达到 C2；跨重规划还需在预计交接时刻匹配位置、速度和加速度：</p>
+<pre><code class="language-text">τ_new(0)    = x_switch
+τ̇_new(0)   = v_switch
+τ̈_new(0)   = a_switch
+</code></pre>
+<p>交接状态结合尚在执行的轨迹和实时反馈，按实际结点向量及物理时间导数求边界控制点。只锚定首点或输入上一规划 token 不足以建立交接约束。三次样条的 jerk 通常分段，并可在内部结点跳变；额外交接约束只解决交接处的问题。第一版验收 C2 衔接与 jerk 上限。若任务要求全程 jerk 连续，应改用至少四次、简单内部结点的样条或更高阶表示，并核验交接导数。</p>
+<p>轨迹可执行性按真实底盘运动学确定。非完整约束底盘不能沿任意侧向曲线直接运动；曲率、角速度和末端 yaw 必须与速度及转向能力兼容。固定 RGB-D 相机的观测朝向通过机器人姿态实现；若需要原地旋转，作为显式执行段验证其完整扫掠体与停车条件。</p>
+<p>时间缩放与约束后的最终候选再交给独立 Safety，检查整个机器人扫掠体、悬空净空、地面连续性、运动学/制动、动态障碍、证据年龄、定位误差、停车区与参考有效期。轨迹离散采样需要误差裕度或自适应细分，不能只检查有限中心点。</p>
+<p>高频跟踪器限制速度、角速度、加速度和 jerk，并处理参考迟到、跟踪偏差与期限违约。新轨迹无效时沿用仍有效且有停车余量的参考或停车。急停优先于平滑；全盲或未知不能靠统一 20% 膨胀证明安全，旋转同样受校验。</p>
+<p>初始规划 8–10 Hz、跟踪 30–50 Hz、控制点数 8 属于设计预算，最终由 Orin 实测、底盘约束与制动能力冻结。</p>
+</section><section id="section-11"><h2>11. BT 节点与行为编排</h2>
+<p>复用 Autonomy 原生 BT 基类、注册和生命周期；探索专用节点位于自己的 plugins/action 与 plugins/condition。通用控制/装饰节点继续复用公共行为树目录。</p>
+<p>核心八节点职责：</p>
+<ol>
+<li><code>SensorReady</code>：检查本模式的定位、观测、控制与安全能力。</li>
+<li><code>UpdateExploration</code>：有界消费输入，更新健康、预算、地图变化、覆盖和会话事件。</li>
+<li><code>SelectObservationPose</code>：分层覆盖选取下一个观测意图。</li>
+<li><code>AdaptObservationPose</code>：调用 Opt 并重新核验观测收益及要求。</li>
+<li><code>ObserveAtPose</code>：请求匹配身份的导航/观测；到达、朝向、独立有效帧及停留都满足后成功。</li>
+<li><code>CheckExplorationCompletion</code>：请求完成复核，依据实际证据进入收尾。</li>
+<li><code>ReturnToStart</code>：按配置请求返航并记录真实结果。</li>
+<li><code>SaveExplorationMap</code>：请求真实保存，核验对应版本的回执。</li>
+</ol>
+<p>结构为：Update 持续监测 → 若已经收尾则返航/保存 → 否则检查 SensorReady → 完成复核或选点/适配/观测。导航、观测和保存等异步 action 返回 RUNNING，接受请求不等于成功。SensorReady 暂时不满足进入会话等待/恢复；终止结果由会话状态与结果政策确定。</p>
+<p>Update 在导航和保存期间持续执行；暂停时 owner 仍处理健康、预算与输入。正常到达不自动触发 Spin/BackUp。接近区域的新证据由 Update 触发重验，无需把接近检查仅放在 FollowPath 已失败后的分支。</p>
+<p>原生 <code>BeforeTick</code>/<code>BeforeTreeTick</code> 已有执行前检查，但实际运动还需同一可撤销 lease 贯穿 readiness、接受、树启动和 action dispatch。暂停树本身不会停止已经派发的异步控制。</p>
+<p>开始/重规划先验证请求、几何和树资源，再进行可取消的服务准备等待，准备失败保留上一项已接受任务。当前 NavigationTask 已验证 XML 普通文件及请求内容；XML 内容和节点构造仍由原生 runner 在运行时校验，尚不具备接受前完整树构造验证。运动资格要在实际异步派发边界核验，并处理撤销与迟到接受；旧回调只可更新匹配请求。暂停与取消先撤销资格，再取消对应远端运动；恢复取得新的资格。取消无法确认时禁止派发新的运动。工作线程不得等待一个正被外部 join 的生命周期锁。</p>
+<p>接受元数据只在领域接受后提交；新任务身份不能被旧结果污染。同位姿的新 task ID 仍是新任务，控制命令与 START/REPLAN 分别分类。检查与派发之间的并发窗口通过实际派发边界、撤销交接和晚接受取消关闭，不能用一次谓词检查代替。</p>
+<p>实际派发采用明确的责任交接协议：先登记与本请求关联的取消责任，再提交一次发送资格；撤销后拒绝新的发送提交。已经提交、但仍阻塞在传输或尚未得到接受响应的请求继续保留取消责任，迟到接受后定向取消。门控锁不跨可能阻塞的传输调用，生命周期锁内只关闭资格，锁外发起取消，再等待线程退出和受控排空。这个协议确保取消责任不丢失，不承诺撤销瞬间已经提交的传输或物理运动立即停止。</p>
+<p>取消 RPC 被接受只表明取消请求送达；运动排空需要目标拒绝或该目标的权威终态结果。取消异常、无效 future、拒绝或超时保留故障并阻止新运动，不能用清空本地句柄恢复资格。路径计算/平滑请求同样受撤销约束，但与真实运动分开记账，不用规划结果缺失制造底盘仍在运动的结论。恢复取得新代数，旧 ticket 和旧回调不能成为新请求的执行资格。物理停车还需要控制服务、反馈与底盘 watchdog 的独立契约和验收。</p>
+</section><section id="section-12"><h2>12. 完成判据、返航与保存</h2>
+<p>“完全探索”相对于固定任务范围、分辨率和传感器可观测要求；需要环境在确认期足够稳定、定位可靠、离散候选具有充分覆盖能力、公平处理和足够预算。没有建筑真值边界时报告终止证据与未确认清单，不输出整栋建筑 100% 承诺。</p>
+<p>完成需要同时证明：实际账本无待兑现要求；frontier/重访均已处理；配置离散空间完成扫尾；图无路经过栅格复核；新有效观测下多轮稳定；相关输入、差分、图与覆盖处理到一致的有限截面；上游融合能够真实确认。</p>
+<p>候选为空、传感器停止、预算耗尽或滚动窗口边界都不能证明完成。封闭门、无法观测材料和未评估区域保留原因及证据；若无法排除仍存在可达未探索空间，则结果保持 <code>INCOMPLETE_OBSERVATION</code>。</p>
+<p>持续输入下锁定 <code>cut={lidar:n_lidar,rgbd:n_rgbd}</code>，各模块处理到这个有限前缀并检查真实融合依据。后续重复健康帧不无限重置完成；新增 frontier、必要质量/方向、相关几何或 epoch 改变撤销受影响结论。序号空洞与丢弃独立记录，不算覆盖。</p>
+<p>保存绑定建图会话、已确认版本和完成凭据。保存期间继续监测，旧 ACK 不能覆盖更晚未完成工作。地图消费队列为空、等待一段时间或 MAP_CMD_SWITCH 都不能伪装为融合/保存回执；现有上游缺少能力时明确报告未完成或保存失败。</p>
+<p>结果分别为 <code>exploration_outcome</code>、<code>return_outcome</code>、<code>map_save_outcome</code>。只有任务配置要求的三部分全部兑现才成功。时间/距离不足使用 <code>PARTIAL_BUDGET</code>；返航失败与保存失败分别记录；部分地图可以保存。手动 checkpoint 按版本保存并继续探索，最终保存绑定完成凭据。</p>
+<p>预算持续预留下一任务、从该目标返航与裕度：<code>T_remaining &gt;= T_next + T_return_from_next + T_margin</code>。返航路线失效则重算；缺少电池遥测时不声称能保证电量充足。</p>
+</section><section id="section-13"><h2>13. 目标目录与专业命名</h2>
+<p>以下为目标布局；包含待实现文件，不是当前代码清单。目录描述职责，不设置 <code>tare/</code> 中间目录。</p>
+<pre><code class="language-text">autonomy/
+├── common/navigation/                      共享轻量几何/观测支撑
+├── perception/
+│   ├── data/                              sensor_observation、buffer、map_reader
+│   ├── observation/                       lidar/rgbd_observation_adapter
+│   └── inference/defm/                     深度视图适配、冻结特征与缓存
+├── planning/
+│   ├── planner_server.hpp/.cpp             唯一 Vista 图所有者与路线服务
+│   └── planner/vista/
+│       ├── vista_planner.hpp/.cpp
+│       ├── native_costmap_reader.hpp/.cpp
+│       ├── visibility_graph.hpp/.cpp
+│       ├── graph_updater.hpp/.cpp
+│       ├── obstacle_contour.hpp/.cpp
+│       ├── edge_validator.hpp/.cpp
+│       ├── route_planner.hpp/.cpp
+│       └── spatial_index.hpp/.cpp
+├── task/
+│   ├── exploration/
+│   │   ├── exploration.hpp/.cpp
+│   │   ├── exploration_session.hpp/.cpp
+│   │   ├── exploration_context.hpp
+│   │   ├── strategy/                      exploration_strategy、hierarchical_coverage_strategy
+│   │   ├── region/                        region_manager
+│   │   ├── frontier/                      frontier_extractor、frontier_queue
+│   │   ├── coverage/                      state、evaluator、fusion、surface、completion
+│   │   ├── viewpoint/                     sampler、evaluator、manager
+│   │   ├── routing/                       visit_order_optimizer、traversal_graph
+│   │   ├── observation/                   camera/lidar_visibility_model
+│   │   ├── integration/                   goal_pose_adapter、path_provider、dispatcher
+│   │   └── plugins/{action,condition}/    八个探索 BT 节点
+│   └── behavior_tree/                     公共节点基类、runner、控制/装饰节点
+└── control/controller/policy_controller/sand_planner/
+    ├── sensor_condition_encoder.hpp/.cpp
+    ├── diffusion_bspline_head.hpp/.cpp
+    ├── trajectory_time_scaler.hpp/.cpp
+    ├── trajectory_validator.hpp/.cpp
+    ├── trajectory_tracker.hpp/.cpp
+    └── local_esdf.hpp/.cpp
+</code></pre>
+<p>perception/observation 处理真实输入；task/exploration/observation 预测候选视野。planning 不依赖 task 的状态。新增版本与任务结果协议放在任务/规划/控制侧，不改 map 消息。原生同步需连同 Opt 几何支撑库、include 和链接接入；保持无环依赖并防止递归 glob 重复编译。</p>
+</section><section id="section-14"><h2>14. 异常矩阵与验收</h2>
+<p>必须覆盖目标 free/occupied/unknown、历史证据过期、悬空结构、透明/反光、路径暂时阻塞、封闭门、图遗漏、窄门、动态障碍、滚动窗口、回环、低收益饥饿、预算截断、传感器退出、定位失效及迟到回执。每一项都检查是否误退化目标、误计覆盖或误报完成。完整 26 类行为矩阵见总览及详细设计 §19。</p>
+<p>生命周期验收包括接受前/交接中/接受后取消、同位姿新身份、父探索委托导航、外部抢占、暂停恢复新 lease、取消失败禁发新运动、callback 重入关闭与队列饱和。Shutdown 先关闭入口、撤销资格、排空提交/取消，再释放 owner、导航和建图依赖。</p>
+<p>统一验收口径：覆盖看遗漏与误完成，效率在相同覆盖目标下比较时间/路程/重复率/有效覆盖每米，增量图看变化区域与长边正确性，平滑看实际切换速度跳变和 jerk，安全看扫掠体 clearance 违例及碰撞，实时看截止时间违约和最坏观测至执行延迟。三模式分别回放、仿真和实机验收，并记录硬件、标定、权重、地图/任务版本。</p>
+</section><section id="section-15"><h2>15. 当前实现与验证边界</h2>
+<p>2026-11-18 最新正式验证：SpaceHero checkout 中 <code>autonomy_planning</code>、<code>autonomy_task</code>、<code>autonomy_control</code> 与十一个相关测试程序构建成功；相关 CTest <strong>11/11 通过，2.67 秒</strong>。范围为 Vista/native server、覆盖、Session、Phase、探索 BT、派发器、owner、原生 BT runner、typed-task 和 NavigationTask。</p>
+<p>NavigationTask 生命周期代码已完成本批次接入，六项白名单文件经 expected SHA256 核验、备份和同步。真实 NavigationTask 的 <strong>21 类隔离原生场景通过</strong>，包含同位姿新身份、完整请求重试、匿名 START、控制分类、准备超时和异常、定向取消、等待者替换、即时完成、worker 重入、halt 故障以及 join 中的请求替换。正式构建日志确认导航与 TaskServer 消费者重编；21 类场景和 11 项 CTest 不累加为整机通过数量。</p>
+<p>领域接受与 worker tick 资格已通过本批次验证：准备等待不持目标交接/生命周期锁，准备失败保留已有调用；安装时提交 active/tree/motion epoch；终态不被接受线程覆盖；按任务 ID 取消不误停较新请求；本地取消依赖异常或真实 halt 故障保留失败并阻止新 START/Resume。XML 内容及节点构造仍是运行时验证。</p>
+<p>部署后只读核验确认 map <strong>471 个文件</strong>与保护基线一致，TaskServer 两文件保持用户内容，SpaceHero running。证据见 <a href="validation/2026-11-18-v2.12-navigation-native-validation.json">正式验证</a>、<a href="validation/2026-11-18-v2.12-navigation-native-tests.log">测试日志</a>、<a href="validation/2026-11-18-v2.12-navigation-postdeploy-check.json">部署核验</a>、<a href="validation/2026-11-18-v2.12-navigation-sync-manifest.json">同步清单</a> 和 <a href="navigation_task_admission.md">导航接受契约</a>。本次文档更新不重复业务构建。</p>
+<p><strong>完整方案仍未实现完毕。</strong> 正式部署首要缺口是实际 ActionSession 派发与取消证据、父探索/委托导航调度及依赖关闭。远端 <code>NavigationClient::CancelActiveMotion()</code> 的异步返回、树暂停或树停止都不构成底盘物理停止 ACK。仅领域 tick 检查不足以关闭实际 send 与撤销之间的竞争窗口。</p>
+<p><strong>v2.15 本地增量</strong>：<code>motion_dispatch_gate.hpp</code> 已接入 ActionSession、NavigationTask 及运动/规划异步节点；TaskActionClient 维护每目标取消责任，Autolink Client 提供请求 UUID、明确拒绝/传输失败区分及按 UUID 定向取消。相同派发责任在发送前登记，迟到接受后仍能取消；取消 ACK 不用于证明排空，目标明确拒绝或匹配 UUID 的权威终态才用于结算。本地实现范围不等于已经验证的行为范围。</p>
+<p>SpaceHero 的隔离目录使用真实原生头文件、编译参数和链接库：本地 NavigationTask 与原有导航测试编译、链接成功，原有 <strong>21 类导航场景通过</strong>。这批场景不能证明新增阻塞发送、迟到接受、ACK 与终态差异、取消异常、错误 UUID 或会话销毁行为。真实节点消费者尚未正式重编，新增派发专项尚未完成；见 <a href="validation/2026-11-18-v2.15-motion-navigation-stage.json">隔离构建记录</a> 与 <a href="validation/2026-11-18-v2.15-review-stage-check.json">本轮指纹复核</a>。本轮文档审查仅复核既有记录，没有重复业务构建或测试。</p>
+<p>原生传输的分离工作线程仍捕获客户端原始 <code>this</code>，依赖销毁及迟到回调生命周期仍需修复和验证；不能声称完整 transport shutdown 已安全。规划请求撤销后的有界清理也需单独验证，不得以规划结果缺失伪造底盘未停止证据。</p>
+<p>2026-11-18 本轮再次只读核验远端：业务文件保持派发实施前基线，远端没有门控头文件，map <strong>471 个文件</strong>与保护基线一致，TaskServer 用户内容保留，SpaceHero running。见 <a href="validation/2026-11-18-v2.15-review-native-check.json">当前远端快照</a>。本地 v2.15 与远端 v2.12 是不同源码版本，不能混用通过声明。</p>
+<p>后续独立验收项为三模式真实生产者和定位、跨进程 Vista、完整公平扫尾/有限截面、真实融合/保存、允许多边形与 checkpoint、三模态训练、时间轨迹/三维 Safety/跟踪、回放/仿真/实机/Orin。指定目标编译和受控依赖专项不证明学习策略、整个工作树或机器人任务通过。历史 v2.11 和早期 v2.12 审查中的未完成草稿描述只对当时快照成立。</p>
+</section><section id="section-16"><h2>16. 审查顺序与实施门槛</h2>
+<p>先审定：允许区域与分辨率；ANY_SENSOR/PER_SENSOR 及必要方向；每模式独立定位与失效政策；map 消费来源与真实融合保存能力；Vista 图所有权；Opt 调整范围与最低收益；公平扫尾/预算；物理时间边界与制动能力。</p>
+<p>实施顺序为：真实任务许可与父子调度 → 三模式观测/定位和地图读取 → 共享路线、覆盖扫尾与真实保存 → 已验证后端的完整任务回放/仿真 → 三模态学习及连续执行 → Orin 与实机。每阶段以新的源码指纹、适当原生构建/专项及任务证据验收。</p>
+<p>文献归属：FAR 为 arXiv:2110.09460；TARE 算法依据其官方仓库所列原始分层覆盖论文，用户提供的 arXiv:2110.14573 是开发环境及规划集成文献；DeFM 为 arXiv:2601.18923，SanD 为 arXiv:2602.00923。官方原文副本及摘要见 <a href="validation/2026-11-18-v2.15-review-sources.json">来源核验</a>。文献机制与本系统适配设计分开记录，论文性能和预训练结果不作为本系统已达标依据。</p>
+<p>本次通过官方 HTTP 重新核验八项原始来源，均返回 200；联网工具未提供可用来源编号，因此以已保存内容、标题和 SHA256 追溯文献，不编造网页引用。模型权重、预处理、实际传感器和底盘参数仍需锁定具体版本。审查入口见 <a href="/Users/duyongquan3/.cursor/projects/Users-duyongquan3-workspace-Opt/canvases/multisensor-exploration-review.canvas.tsx">交互审查画布</a>。</p>
+</section><section id="section-17"><h2>17. 提交审定的配置与接口</h2>
+<p>以下是目标契约，具体字段需要按 Autonomy 原有 Protobuf 和配置风格落地；不能据此推定当前消息已包含全部字段。</p>
+<p>任务配置至少冻结：允许多边形和起点；空间、表面与 yaw 分辨率；<code>configured_mode</code>；独立定位后端；<code>GEOMETRY_ANY_SENSOR</code> 或 <code>GEOMETRY_PER_SENSOR</code>；必要方向、独立帧和最低质量；是否要求 RGB 纹理；允许目标调整范围；时间/距离与返航裕度；部分结果、checkpoint、最终保存与取消政策。足迹、高度、相机/LiDAR 标定、证据最大年龄、定位误差和运动上限来自具体设备。初始频率和控制点数是设计预算，不能直接写成硬件能力。</p>
+<p>接口必须表达六个完整交接：</p>
+<ol>
+<li><strong>观测到地图/覆盖</strong>：sensor_id、独立序号、真实采样时间、frame、标定版本、采样位姿及定位健康、有效掩码与原始几何；输入缺失/丢弃有独立记录。</li>
+<li><strong>地图到路线</strong>：拥有内容的 MapReadView、epoch、geometry_revision、dirty_regions；RouteResult 带 request、图版本、路径成本及已验证/待验证区段。</li>
+<li><strong>策略到 Opt</strong>：ObservationGoal 保留原位姿、region/frontier、允许区域、必要单元/方向、质量/收益与要求版本；AdaptationResult 给出选点、模式、原因及复核依据。</li>
+<li><strong>会话到执行</strong>：父任务/session/request/goal/epoch、可撤销运动资格、截止时间及取消责任；未知接受状态不因空句柄而被当作明确拒绝。</li>
+<li><strong>控制到 Safety/跟踪</strong>：TimedTrajectory 含控制点、结点向量、物理时间、交接状态、执行起时与有效期限；最终约束后轨迹才做扫掠体复核。</li>
+<li><strong>观测/收尾到结果</strong>：ObservationReceipt 提供实际质量与独立帧；CompletionEvidence 绑定任务要求、分来源有限截面、扫尾与真实融合；SaveReceipt 绑定建图会话、地图版本、保存产物及成功结果。</li>
+</ol>
+<p>当前审定的默认政策是几何 ANY_SENSOR、保留原观测意图、未知先去已知安全观测位姿、低收益公平扫尾、覆盖/返航/保存分开报告。逐来源质量、RGB 纹理和允许替代范围必须显式配置，不能在感知降级或选点失败时自动放宽。</p>
+</section><section id="section-18"><h2>18. 完整交付的验收阶段</h2>
+<ol>
+<li><strong>任务与运动责任</strong>：真实父子调度、发送责任交接、定向取消、权威终态排空及依赖销毁；受控竞态专项与真实服务分开验证。</li>
+<li><strong>三模式几何闭环</strong>：每模式独立定位、真实观测生产者、消费者地图增量、跨进程 Vista、Opt 观测约束；分别验证遮挡、孔洞、异步和掉线。</li>
+<li><strong>探索与建图闭环</strong>：实际覆盖兑现、低收益公平处理、离散扫尾、有限完成截面、真实融合/保存、允许多边形及部分结果；核验遗漏、误完成、失效重开和旧保存回执。</li>
+<li><strong>学习与连续执行</strong>：冻结 DeFM 的三模态适配训练，物理时间样条与 C2 交接，底盘运动学、完整扫掠体及跟踪/制动；分别报告各模式效果。</li>
+<li><strong>任务与硬件验收</strong>：同覆盖要求下比较时间、路程、重复观测和有效覆盖每米；回放、仿真、机器人与 Orin 分层验证，记录 p95/p99 延迟、截止时间违约、碰撞和实际 jerk。</li>
+</ol>
+<p>仿真真值仅用于离线计算遗漏率、覆盖率和误完成率，运行时策略仍只使用真实可观测输入。故障注入至少覆盖 26 类行为及派发/关闭竞态。任何一个阶段通过都不能自动授予后续阶段的完成声明。</p>
+</section><section id="section-19"><h2>19. 关键情况与预期行为</h2>
+<p>这些情况使用系统可观察的证据触发，物理真值只用于仿真验收。机器人不能读取“目标其实在墙里”等真值标签。</p>
+<table>
+<thead>
+<tr>
+<th>情况</th>
+<th>触发证据</th>
+<th>规定行为与结果</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>已知 free、正常观测</td>
+<td>位姿足迹/净空和已知路径通过</td>
+<td>选最佳观测朝向、执行、真实观测确认；不能仅按目标栅格完成</td>
+</tr>
+<tr>
+<td>历史 free、当前不可见</td>
+<td>历史记录可用但局部证据年龄不足</td>
+<td>历史用于路线与覆盖；新执行区段重新取得有效几何，不刷新旧证据年龄</td>
+</tr>
+<tr>
+<td>目标 occupied、附近有有效替代</td>
+<td>已观测占用，允许的观测区域内有可见且可达位姿</td>
+<td>REGION_FALLBACK；Opt 复核必要覆盖与最低收益</td>
+</tr>
+<tr>
+<td>目标 occupied、无有效替代</td>
+<td>足迹/净空/观测约束不能同时满足</td>
+<td>记录 NO_REACHABLE_VIEW 与证据，尝试有界恢复；不得静默替换到看不见目标的位置</td>
+</tr>
+<tr>
+<td>目标 unknown、可以接近</td>
+<td>有已知安全观测位姿，未知区域尚未确认</td>
+<td>UNKNOWN_APPROACH；执行安全位姿获取信息，未知路线段只作未验证估计</td>
+</tr>
+<tr>
+<td>目标 unknown、长期遮挡</td>
+<td>多个有效视角仍不能确认，预算/候选尚可用</td>
+<td>调度替代视角、入口或公平重访；仍无法确认时 INCOMPLETE_OBSERVATION，不伪称已证明不可达</td>
+</tr>
+<tr>
+<td>unknown 变 free</td>
+<td>新有效观测确认目标区</td>
+<td>重新评估足迹、路径、朝向与收益，切入 POINT_GOAL 或对应观测任务</td>
+</tr>
+<tr>
+<td>unknown 变 occupied</td>
+<td>新有效观测确认占用</td>
+<td>重新搜索允许区域内的观测位姿；必要时 REGION_FALLBACK</td>
+</tr>
+<tr>
+<td>occupied 变 free</td>
+<td>有效清除证据，几何版本改变</td>
+<td>重新打开相关任务，复核原目标；按目标保持政策切换，避免无意义抖动</td>
+</tr>
+<tr>
+<td>free 变 occupied</td>
+<td>新障碍或相互矛盾的有效观测</td>
+<td>失效受影响图边和剩余执行段，重新规划/选择；Safety 可否决</td>
+</tr>
+<tr>
+<td>2D free 但悬空净空不足</td>
+<td>3D 点云/深度确认机器人高度内障碍</td>
+<td>目标或轨迹否决；搜索侧方有效观测位姿，不能仅依靠 2D costmap 放行</td>
+</tr>
+<tr>
+<td>透明/反光/局部深度缺失</td>
+<td>有效性不足，无法建立需要的自由空间证据</td>
+<td>保留未知、拒绝未验证区段；不假设固定增加 20% 裕度就足够安全</td>
+</tr>
+<tr>
+<td>全部观测失效或定位失效</td>
+<td>过期、无变换、定位不可信</td>
+<td>停止新平移，在仍可验证条件下停车；无条件旋转也被禁止</td>
+</tr>
+<tr>
+<td>路径暂时受阻、目标仍有效</td>
+<td>执行受阻但目标观测条件未失效</td>
+<td>保留原意图，重规划、等待、有界恢复；不直接退化目标</td>
+</tr>
+<tr>
+<td>稀疏图无路</td>
+<td>可见图查询失败</td>
+<td>已知空间栅格复核；图连接遗漏不能作为不可达证明</td>
+</tr>
+<tr>
+<td>栅格也无路但边界仍未知</td>
+<td>当前已知空间不连通，存在潜在未知入口</td>
+<td>记录待确认、换视角或重访；有预算时探索，不能直接宣称永久不可达</td>
+</tr>
+<tr>
+<td>到达但没有新增有效观测</td>
+<td>朝向、停留、遮挡或质量要求未兑现</td>
+<td>ObserveAtPose 保持 RUNNING 或返回明确失败；重新选择视角，不增加真实覆盖</td>
+</tr>
+<tr>
+<td>联合传感器覆盖重叠</td>
+<td>两种观测落到同一稳定几何单元</td>
+<td>几何去重；分别要求质量时单独记账和验收</td>
+</tr>
+<tr>
+<td>单传感器退出联合模式</td>
+<td>剩余观测、定位、控制模型、安全同时有效</td>
+<td>允许配置内降级；原任务质量目标保留，不能自动宣布双模态目标完成</td>
+</tr>
+<tr>
+<td>窗口移动、回环、地图重置</td>
+<td>窗口/坐标版本改变</td>
+<td>保留合法历史；可靠变换后复核或新 epoch 重建，拒绝旧坐标请求结果</td>
+</tr>
+<tr>
+<td>小 frontier / 候选超过预算</td>
+<td>收益小、区域多、当轮评估截断</td>
+<td>公平扫尾、分页继续；截断项维持未评估，不作为完成证据</td>
+</tr>
+<tr>
+<td>动态门口、暂时封闭房间</td>
+<td>门/障碍变化或入口不可确认</td>
+<td>保留重访条件；未知房间不能靠门口停靠算作房间已覆盖</td>
+</tr>
+<tr>
+<td>时间/距离不足</td>
+<td>剩余预算不满足探索加返航预留</td>
+<td>PARTIAL_BUDGET；执行配置的返航/保存，覆盖结果保持部分完成</td>
+</tr>
+<tr>
+<td>返航或地图保存失败</td>
+<td>导航失败/保存 ACK 失败</td>
+<td>分别报告 RETURN_FAILED / SAVE_FAILED；成功保存部分地图不改变覆盖结果</td>
+</tr>
+<tr>
+<td>取消、暂停或旧请求返回</td>
+<td>会话/请求/目标版本不匹配</td>
+<td>取消对应运动、保留合法账本、丢弃旧结果；恢复前重验健康与版本</td>
+</tr>
+<tr>
+<td>几何可达但类别/任务语义不允许</td>
+<td>经过验证的任务语义来源给出限制</td>
+<td>独立报语义不满足；纯几何/DeFM 特征不得伪造类别判定</td>
+</tr>
+</tbody>
+</table>
+</section><section id="section-20"><h2>20. 审查核对清单</h2>
+<ul>
+<li>[ ] 真实任务拥有 Session/Tree，旧 waypoint/finished 入口收敛</li>
+<li>[ ] 取消/暂停/抢占的发送资格与取消责任交接</li>
+<li>[ ] 原生接受与取消责任交接窗口，不漏取消</li>
+<li>[ ] 探索父任务与委托导航共享运动资格，外部抢占有序</li>
+<li>[ ] 先停提交者并排空取消，再关闭导航依赖</li>
+<li>[ ] 远端 TaskServer 新修改逐文件合并，禁止覆盖</li>
+<li>[ ] 初始化失败清理、建图准备恢复与 owner 线程证据</li>
+<li>[ ] 进程启动身份与跨重启旧回执拒绝</li>
+<li>[ ] 允许多边形、部分覆盖政策与手动 checkpoint</li>
+<li>[ ] map 的零改动边界</li>
+<li>[ ] 三种模式的独立定位与降级条件</li>
+<li>[ ] 几何收益去重与质量权重定义</li>
+<li>[ ] TARE 分层机制与公平重访</li>
+<li>[ ] 共享 Vista 图、长边更新与重连</li>
+<li>[ ] Opt 保持观测意图并复核收益</li>
+<li>[ ] 到达、观测、覆盖、返航与保存分离</li>
+<li>[ ] LiDAR 投影与三模态训练验收</li>
+<li>[ ] 时间参数化、边界衔接与实际跟踪</li>
+<li>[ ] 退化、预算和无法确认的结果</li>
+<li>[ ] 历史覆盖与逐单元执行证据新鲜度</li>
+<li>[ ] 地图边界、处理上限与扫尾完成</li>
+<li>[ ] BT 返回语义、恢复触发与取消</li>
+<li>[ ] 上游地图融合确认的真实依据</li>
+<li>[ ] 真实返航路线成本与完成结论撤销</li>
+<li>[ ] 各传感器质量与多视角分别兑现</li>
+<li>[ ] 任务覆盖政策固定，降级保留原要求</li>
+<li>[ ] BT 阶段请求与唯一导航提交者</li>
+<li>[ ] 新观测稳定轮与保存阶段完成凭据</li>
+<li>[ ] 实际结点导数矩阵与交接时刻</li>
+<li>[ ] 设计、代码存在与验收证据分别报告</li>
+</ul></section><footer>2026-11-18 · 无外部运行资源。正式 v2.12 CTest 11/11；本地 v2.15 隔离编译及原有导航 21 类通过，新增派发竞态、正式消费者部署、三模式全任务与机器人未验收。浏览器渲染未验证。</footer></main></body></html>

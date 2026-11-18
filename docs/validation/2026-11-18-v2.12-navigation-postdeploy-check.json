@@ -1,0 +1,43 @@
+{
+  "date": "2026-11-18",
+  "deployed_source_checks": {
+    "autonomy/task/navigation/navigation.hpp": {
+      "expected": "5f204857de105d3a37727e0c6f7ef37d06a51391c1083da5cd8406ed637b19f3",
+      "actual": "5f204857de105d3a37727e0c6f7ef37d06a51391c1083da5cd8406ed637b19f3",
+      "matches": true
+    },
+    "autonomy/task/navigation/navigation.cpp": {
+      "expected": "92b2e1de416026e175dc4fa7770905ffc5655b7f01b45e86675c41c94218fa65",
+      "actual": "92b2e1de416026e175dc4fa7770905ffc5655b7f01b45e86675c41c94218fa65",
+      "matches": true
+    },
+    "autonomy/task/navigation/navigation_task_test.cpp": {
+      "expected": "33e49ad89a293d8eea867d77f55c029392149f6298f15f8832709dfff09cbc33",
+      "actual": "33e49ad89a293d8eea867d77f55c029392149f6298f15f8832709dfff09cbc33",
+      "matches": true
+    },
+    "autonomy/task/behavior_tree/bt_runner.hpp": {
+      "expected": "871c598e51ac98f60902d81ae79f4fee9143d4763b84522514ab02f36f8d7200",
+      "actual": "871c598e51ac98f60902d81ae79f4fee9143d4763b84522514ab02f36f8d7200",
+      "matches": true
+    },
+    "docs/navigation_task_admission.md": {
+      "expected": "4e36f66e31a123c551aecd918746c54c0f709f8974e9659877cd9c02f0e34009",
+      "actual": "4e36f66e31a123c551aecd918746c54c0f709f8974e9659877cd9c02f0e34009",
+      "matches": true
+    },
+    "cmake/ExplorationTests.cmake": {
+      "expected": "e8a5508abff16cd7e3b8fd4b2c00ba16219ae57687debc8fc641d40ba33bc1b4",
+      "actual": "e8a5508abff16cd7e3b8fd4b2c00ba16219ae57687debc8fc641d40ba33bc1b4",
+      "matches": true
+    }
+  },
+  "map_unchanged": true,
+  "map_file_count": 471,
+  "task_server_preserved": {
+    "autonomy/task/task_server.hpp": true,
+    "autonomy/task/task_server.cpp": true
+  },
+  "container_running": true,
+  "git_head": "bdfd9f0b8a2949f5b7fae08c5f5ec8e5c5243498"
+}

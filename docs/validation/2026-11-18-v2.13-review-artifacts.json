@@ -1,0 +1,105 @@
+{
+  "date": "2026-11-18",
+  "edition": "v2.13-review",
+  "business_code_changed_by_this_review": false,
+  "business_build_run": false,
+  "business_tests_run": false,
+  "latest_formal_validation": "2026-11-18-v2.12-navigation-native-validation.json",
+  "latest_formal_ctest_passed": 11,
+  "latest_formal_ctest_seconds": 2.67,
+  "navigation_native_scenarios": 21,
+  "whole_exploration_complete": false,
+  "formal_log_checks": [
+    {
+      "stage": "configure",
+      "sha256_matches": true,
+      "returncode": 0
+    },
+    {
+      "stage": "build",
+      "sha256_matches": true,
+      "returncode": 0
+    },
+    {
+      "stage": "tests",
+      "sha256_matches": true,
+      "returncode": 0
+    }
+  ],
+  "business_source_checks": [
+    {
+      "path": "autonomy/task/navigation/navigation.hpp",
+      "sha256": "5f204857de105d3a37727e0c6f7ef37d06a51391c1083da5cd8406ed637b19f3",
+      "matches_verified_source": true
+    },
+    {
+      "path": "autonomy/task/navigation/navigation.cpp",
+      "sha256": "92b2e1de416026e175dc4fa7770905ffc5655b7f01b45e86675c41c94218fa65",
+      "matches_verified_source": true
+    },
+    {
+      "path": "autonomy/task/navigation/navigation_task_test.cpp",
+      "sha256": "33e49ad89a293d8eea867d77f55c029392149f6298f15f8832709dfff09cbc33",
+      "matches_verified_source": true
+    },
+    {
+      "path": "autonomy/task/behavior_tree/bt_runner.hpp",
+      "sha256": "871c598e51ac98f60902d81ae79f4fee9143d4763b84522514ab02f36f8d7200",
+      "matches_verified_source": true
+    },
+    {
+      "path": "cmake/ExplorationTests.cmake",
+      "sha256": "e8a5508abff16cd7e3b8fd4b2c00ba16219ae57687debc8fc641d40ba33bc1b4",
+      "matches_verified_source": true
+    }
+  ],
+  "official_http_sources_verified": 8,
+  "missing_local_links": [],
+  "review_case_count": 26,
+  "review_check_count": 30,
+  "offline_page_sections": 18,
+  "browser_rendering_verified": false,
+  "canvas_typecheck": {
+    "strict": true,
+    "noEmit": true,
+    "returncode": 0
+  },
+  "documentation_sync_manifest": "2026-11-18-v2.13-review-docs-sync-manifest.json",
+  "artifacts": [
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_final_plan.md",
+      "bytes": 28298,
+      "sha256": "ee8a5e84840adcf937d85abc5a56dd69fb423838f9da6098acfc006662dc1eb0"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.md",
+      "bytes": 28128,
+      "sha256": "8996918c18ed0588dd1125ca313ac722eca4babf2ae63e6b294478606e6675ea"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_design.md",
+      "bytes": 136626,
+      "sha256": "ccb1600cf4b8111ddf99b2686108f57dd2fbc8628b38808b364db0a1435463e7"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/navigation_task_admission.md",
+      "bytes": 7149,
+      "sha256": "ab04682b09f4a6923081d85464174cbe1e840760aa6da3bb7940235e7782ffa0"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/implementation_validation.md",
+      "bytes": 44430,
+      "sha256": "1251bc2a543666ffca5e466f3516e3eaf4186262e7e2788c5619f7a0709a8631"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.html",
+      "bytes": 44775,
+      "sha256": "801a1a24def2409570acfc72ec74c676ac9ae48067896f96a18cfb68ea650ad7"
+    },
+    {
+      "path": "/Users/duyongquan3/.cursor/projects/Users-duyongquan3-workspace-Opt/canvases/multisensor-exploration-review.canvas.tsx",
+      "bytes": 46621,
+      "sha256": "9d83dc425ed253d5c8e811e1a12b3c6cd8f0023e8e1d86f940760666d86cfa03"
+    }
+  ]
+}

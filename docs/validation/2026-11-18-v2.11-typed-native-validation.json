@@ -1,0 +1,71 @@
+{
+  "date": "2026-11-18",
+  "remote_logs": "/tmp/opt-typed-native-v2.11-1099c1b9c5",
+  "steps": [
+    {
+      "stage": "configure",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "cmake",
+        "-S",
+        "/workspace/autonomy/src/autonomy",
+        "-B",
+        "/workspace/autonomy/build/autonomy",
+        "-DAUTONOMY_BUILD_EXPLORATION_TESTS=ON"
+      ],
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.11-typed-native-configure.log",
+      "log_sha256": "ae194cba7d11aa92e79d44bcb527ee9cb75a7c8664bc0640c55c78d63a0b69db"
+    },
+    {
+      "stage": "build",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "cmake",
+        "--build",
+        "/workspace/autonomy/build/autonomy",
+        "--target",
+        "autonomy_planning",
+        "autonomy_task",
+        "autonomy_control",
+        "autonomy_native_vista_test",
+        "autonomy_vista_server_test",
+        "autonomy_multisensor_exploration_test",
+        "autonomy_exploration_session_test",
+        "autonomy_exploration_phase_test",
+        "autonomy_native_exploration_bt_test",
+        "autonomy_navigation_dispatcher_test",
+        "autonomy_exploration_owner_test",
+        "autonomy_bt_runner_test",
+        "autonomy_typed_task_test",
+        "-j",
+        "4"
+      ],
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.11-typed-native-build.log",
+      "log_sha256": "3c1266969b53b5adc08e74455c2eefe618fce4c3d07c5b3595f8fa489b7077f4"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "ctest",
+        "--test-dir",
+        "/workspace/autonomy/build/autonomy",
+        "-R",
+        "^autonomy[.](native[.]vista|planning[.]vista_server|task[.](bt_runner|typed_task)|exploration[.](multisensor_exploration|exploration_session|exploration_phase|native_exploration_bt|navigation_dispatcher|exploration_owner))$",
+        "--output-on-failure"
+      ],
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.11-typed-native-tests.log",
+      "log_sha256": "ce77808017ef65e071bf69f7d75e3c841bf92cb5298352305833b3c0adcc2d45"
+    }
+  ],
+  "scope": "Formal checkout, specified native domain and test targets; ten relevant CTests. Does not validate complete exploration or robot operation."
+}

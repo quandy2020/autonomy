@@ -1,0 +1,87 @@
+{
+  "date": "2026-11-18",
+  "edition": "v2.15-review",
+  "method": "Official primary HTTP fallback; web.run yielded no usable sources. Content and SHA256 retained.",
+  "records": [
+    {
+      "url": "https://arxiv.org/abs/2110.09460",
+      "status": 200,
+      "final_url": "https://arxiv.org/abs/2110.09460",
+      "path": "docs/validation/reference_sources/2110.09460-2026-11-18-v2.15.txt",
+      "bytes": 42593,
+      "sha256": "f0eb4edeb58a419481e39d279eb3d300eccce003519b8e304a2d3fae77fa6dcc",
+      "title": "[2110.09460] FAR Planner: Fast, Attemptable Route Planner using Dynamic Visibility Update",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://arxiv.org/abs/2110.14573",
+      "status": 200,
+      "final_url": "https://arxiv.org/abs/2110.14573",
+      "path": "docs/validation/reference_sources/2110.14573-2026-11-18-v2.15.txt",
+      "bytes": 41044,
+      "sha256": "e1fbb3bd8ade482ddef51ea9a454f716ae639f1dc285e22b6821f8c45d6c1f18",
+      "title": "[2110.14573] Autonomous Exploration Development Environment and the Planning Algorithms",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://arxiv.org/abs/2601.18923",
+      "status": 200,
+      "final_url": "https://arxiv.org/abs/2601.18923",
+      "path": "docs/validation/reference_sources/2601.18923-2026-11-18-v2.15.txt",
+      "bytes": 42462,
+      "sha256": "1b06a35111bb4a5d5858b04f692ecd16f6098ad61845bbd154c0865407ce9cb4",
+      "title": "[2601.18923] DeFM: Learning Foundation Representations from Depth for Robotics",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://arxiv.org/abs/2602.00923",
+      "status": 200,
+      "final_url": "https://arxiv.org/abs/2602.00923",
+      "path": "docs/validation/reference_sources/2602.00923-2026-11-18-v2.15.txt",
+      "bytes": 42433,
+      "sha256": "1eab33452fc5f27d5725b68714b5d432784da7a80e6a36228484604c3f3040c1",
+      "title": "[2602.00923] SanD-Planner: Sample-Efficient Diffusion Planner in B-Spline Space for Robust Local Navigation",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://raw.githubusercontent.com/MichaelFYang/far_planner/master/README.md",
+      "status": 200,
+      "final_url": "https://raw.githubusercontent.com/MichaelFYang/far_planner/master/README.md",
+      "path": "docs/validation/reference_sources/far-readme-2026-11-18-v2.15.txt",
+      "bytes": 7429,
+      "sha256": "e0f2c95d8f2201de3b17e201d9fe28152888d48966190f84d554ad2ebebfa7c2",
+      "title": "",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://raw.githubusercontent.com/caochao39/tare_planner/master/README.md",
+      "status": 200,
+      "final_url": "https://raw.githubusercontent.com/caochao39/tare_planner/master/README.md",
+      "path": "docs/validation/reference_sources/tare-readme-2026-11-18-v2.15.txt",
+      "bytes": 4755,
+      "sha256": "9539b95ad43a57a4feed779eba3208ddd1922b846a5b6a00f1fd48a5a23a0086",
+      "title": "",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://arxiv.org/html/2602.00923v1",
+      "status": 200,
+      "final_url": "https://arxiv.org/html/2602.00923v1",
+      "path": "docs/validation/reference_sources/2602.00923v1-full-2026-11-18-v2.15.txt",
+      "bytes": 278376,
+      "sha256": "a10e272574632c6a3891f51ed95c2c56477be0997748974d682e06c95a685df4",
+      "title": "SanD-Planner: Sample-Efficient Diffusion Planner in B-Spline Space for Robust Local Navigation",
+      "live_http_verified": true
+    },
+    {
+      "url": "https://arxiv.org/html/2601.18923v1",
+      "status": 200,
+      "final_url": "https://arxiv.org/html/2601.18923v1",
+      "path": "docs/validation/reference_sources/2601.18923v1-full-2026-11-18-v2.15.txt",
+      "bytes": 326318,
+      "sha256": "e2c251ff11f7a8526eaceca0d19452bda05e169b6b65306d7a2bf291d0dfcfdd",
+      "title": "DeFM: Learning Foundation Representations from Depth for Robotics",
+      "live_http_verified": true
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "date": "2026-11-18",
+  "edition": "v2.15-review",
+  "source_checks": [
+    {
+      "path": "autonomy/task/navigation/navigation.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/navigation/navigation.cpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/navigation/navigation_task_test.cpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/behavior_tree/bt_runner.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/navigation/action_session.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/common/task_action_client.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/common/motion_dispatch_gate.hpp",
+      "matches": true
+    },
+    {
+      "path": "autolink/autolink/action/client.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/navigation/plugins/plugin_utils.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/navigation/plugins/async_remote_action_node.hpp",
+      "matches": true
+    },
+    {
+      "path": "autonomy/task/navigation/plugins/async_path_action_node.hpp",
+      "matches": true
+    }
+  ],
+  "staged_steps_verified": 4,
+  "existing_navigation_scenarios_passed": 21,
+  "dispatch_specific_scenarios_verified": false,
+  "production_deployment_verified": false,
+  "new_business_build_run_by_review": false
+}

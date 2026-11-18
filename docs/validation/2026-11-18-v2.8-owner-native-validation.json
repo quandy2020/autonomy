@@ -1,0 +1,106 @@
+{
+  "date": "2026-11-18",
+  "scope": "Formal native checkout build after six allowlisted owner/Session files synchronized",
+  "source_sha256": {
+    "autonomy/task/exploration/exploration.hpp": "b46f97485f5fa4dbab77ae26200e79f528344f9ffec176f4c1d317a3aa178108",
+    "autonomy/task/exploration/exploration.cpp": "f7ae4bfcfe3905de6746d1bda84bc5f70d8607620b4360d0fd55c8f6b5cb481c",
+    "autonomy/task/exploration/exploration_session.cpp": "c0eccaf8f53838974dfef6de5eb0e842c74c2503f9679f72fe9a56d7b8e37dab",
+    "autonomy/task/exploration/exploration_owner_test.cpp": "62ec4f5955b2b097a4739c29b6a2076282046e718520d28502a26ad6317bae76",
+    "cmake/ExplorationTests.cmake": "7e09d1e756987bd748ea319a1adf9966546704a5984e320585d2a5d6a14458ba",
+    "docs/exploration_task_owner.md": "c59995c34da9f3645df57fc53b1819d4ddbdf030cdc6fcac692a317d2c841243"
+  },
+  "steps": [
+    {
+      "stage": "configure",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "cmake",
+        "-S",
+        "/workspace/autonomy/src/autonomy",
+        "-B",
+        "/workspace/autonomy/build/autonomy",
+        "-DAUTONOMY_BUILD_EXPLORATION_TESTS=ON"
+      ],
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-configure.log",
+      "log_sha256": "76657f55cb9fe659c1f6daa09b481a0baadd4f31eba3c3c229065eee87e24e45"
+    },
+    {
+      "stage": "build",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "cmake",
+        "--build",
+        "/workspace/autonomy/build/autonomy",
+        "--target",
+        "autonomy_planning",
+        "autonomy_task",
+        "autonomy_control",
+        "autonomy_native_vista_test",
+        "autonomy_vista_server_test",
+        "autonomy_multisensor_exploration_test",
+        "autonomy_exploration_session_test",
+        "autonomy_exploration_phase_test",
+        "autonomy_native_exploration_bt_test",
+        "autonomy_navigation_dispatcher_test",
+        "autonomy_exploration_owner_test",
+        "-j",
+        "4"
+      ],
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-build.log",
+      "log_sha256": "af10bf0855eb1071ed0265894c22a9f94eaf02bf4919ec813dddda1bf9544a4c"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "ctest",
+        "--test-dir",
+        "/workspace/autonomy/build/autonomy",
+        "-R",
+        "^(autonomy\\.native\\.vista|autonomy\\.planning\\.vista_server|autonomy\\.exploration\\.(multisensor_exploration|exploration_session|exploration_phase|native_exploration_bt|navigation_dispatcher|exploration_owner))$",
+        "--output-on-failure"
+      ],
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-tests.log",
+      "log_sha256": "bdf928602e1e1f109ab8895e9b3fbf19870806cddc9a150aefd72fd3c9a36049"
+    }
+  ],
+  "all_passed": true,
+  "historical_launcher_failures": [
+    {
+      "stage": "tests_launcher_failure",
+      "command": [
+        "docker",
+        "exec",
+        "SpaceHero",
+        "ctest",
+        "--test-dir",
+        "/workspace/autonomy/build/autonomy",
+        "-R",
+        "^(autonomy\\.native\\.vista|autonomy\\.planning\\.vista_server|autonomy\\.exploration\\.(multisensor_exploration|exploration_session|exploration_phase|native_exploration_bt|navigation_dispatcher|exploration_owner))$",
+        "--output-on-failure"
+      ],
+      "returncode": 1,
+      "classification": "Remote fish unescaped JSON; CTest did not start",
+      "original_log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-tests.log",
+      "original_log_sha256": "6703f9f8d1711ad713abcf43ffe6b2cfdad156caba15e24ae61e53a7136ecc2c",
+      "log_available": false,
+      "reason": "The tests-only retry reused the pathname and overwrote the original launcher failure log. The original digest is retained as historical metadata; no matching original log is available. The launcher failed before CTest started."
+    }
+  ],
+  "all_passed_scope": "Successful formal configure, build, and latest CTest stages; excludes the separately recorded historical launcher failure.",
+  "evidence_repair": {
+    "date": "2026-11-18",
+    "original_manifest": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-validation-before-log-repair.json",
+    "business_build_or_tests_rerun": false,
+    "lost_log_explicitly_reported": true
+  }
+}

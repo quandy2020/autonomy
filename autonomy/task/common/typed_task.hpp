@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
+/** @file typed_task.hpp @brief Typed task lifecycle and accepted-goal identity. */
+
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <mutex>
 #include <string>
 
@@ -47,11 +51,17 @@ public:
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
             server_options_ = options;
+            accepting_goals_ = true;
         }
         return OnInitialize(options);
     }
 
     void Shutdown() override {
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            accepting_goals_ = false;
+            invalidated_admission_ = next_admission_;
+        }
         Cancel();
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         lifecycle_ = TaskLifecycle::kIdle;
@@ -99,17 +109,36 @@ public:
         return snapshot;
     }
 
+    /**
+     * @brief Publish goal identity only after the domain accepts that goal.
+     * @return False for rejection, closed admission, or an obsolete acceptance.
+     *
+     * OnGoal executes without mutex_ so cancellation/worker joins remain legal.
+     * Domain handlers still serialize or version their own execution changes.
+     * While any handler is pending, terminal reads cannot associate its changing
+     * state with a previous goal. Exceptions release that read barrier and
+     * propagate to the caller. A later rejected goal does not erase an earlier
+     * valid acceptance; an earlier late acceptance cannot replace a newer one.
+     */
     bool SubmitGoal(const GoalType& goal) override {
+        uint64_t admission;
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
-            if (goal.has_header()) {
-                task_id_ = goal.header().task_id();
-                client_id_ = goal.header().client_id();
-            }
+            if (!accepting_goals_ ||
+                next_admission_ == std::numeric_limits<uint64_t>::max() ||
+                pending_admissions_ == std::numeric_limits<uint64_t>::max())
+                return false;
+            admission = ++next_admission_;
+            ++pending_admissions_;
         }
-        // Run OnGoal outside the lifecycle mutex so preemption can StopTree
-        // (join BT worker) without deadlocking feedback / tick callbacks.
-        return OnGoal(goal);
+        bool accepted;
+        try {
+            accepted = OnGoal(goal);
+        } catch (...) {
+            FinishAdmission(admission, goal, false);
+            throw;
+        }
+        return FinishAdmission(admission, goal, accepted);
     }
 
     bool GetFeedback(FeedbackType* feedback) const override {
@@ -126,14 +155,46 @@ public:
             return false;
         }
         std::lock_guard<std::recursive_mutex> lock(mutex_);
-        if (!IsTerminalLifecycle(lifecycle_)) {
+        if (pending_admissions_ != 0 || !IsTerminalLifecycle(lifecycle_)) {
             return false;
         }
         FillResult(result);
         return true;
     }
 
+    /**
+     * @brief Read a terminal result only for the expected goal identity.
+     * @param expected_task_id Nonempty identity carried by TaskHeader.
+     * @param result Destination; untouched on mismatch or nonterminal state.
+     * @return True when identity and result were checked under one lock.
+     *
+     * A separate GetSnapshot/GetResult pair can observe different goals during
+     * preemption. Consumers use this operation to reject stale completions.
+     */
+    bool GetResultForTask(const std::string& expected_task_id,
+                         ResultType* result) const {
+        if (expected_task_id.empty() || result == nullptr) return false;
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (pending_admissions_ != 0 || task_id_ != expected_task_id ||
+            !IsTerminalLifecycle(lifecycle_))
+            return false;
+        FillResult(result);
+        return true;
+    }
+
 protected:
+    /**
+     * @brief Decide whether acceptance replaces the active task identity.
+     *
+     * The default preserves headerless control requests. Domains distinguish
+     * START/replacement from PAUSE/STOP and may return true for an anonymous
+     * new task so its missing header clears the preceding task identity.
+     * Called with mutex_ held; implementations must be bounded and nonblocking.
+     */
+    virtual bool ShouldUpdateGoalIdentity(const GoalType& goal) const {
+        return goal.has_header();
+    }
+
     virtual bool OnInitialize(
         const ::autonomy::task::proto::TaskServerOptions& /*options*/) {
         return true;
@@ -176,6 +237,36 @@ protected:
     ::autonomy::task::proto::TaskProgress progress_;
     std::string task_id_;
     std::string client_id_;
+
+private:
+    /**
+     * @brief Close one handler and commit only a current accepted identity.
+     * @param admission Monotonic ticket assigned before entering OnGoal.
+     * @param goal Header to publish for identity-changing domain requests.
+     * @param accepted Domain acceptance, independent of terminal completion.
+     */
+    bool FinishAdmission(uint64_t admission, const GoalType& goal, bool accepted) {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        --pending_admissions_;
+        if (!accepted || !accepting_goals_ || admission <= invalidated_admission_ ||
+            admission < accepted_admission_) return false;
+        if (!ShouldUpdateGoalIdentity(goal)) return true;
+        task_id_ = goal.has_header() ? goal.header().task_id() : std::string{};
+        client_id_ = goal.has_header() ? goal.header().client_id() : std::string{};
+        accepted_admission_ = admission;
+        return true;
+    }
+
+    /// Monotonic admission tickets; exhaustion refuses further goals.
+    uint64_t next_admission_{0};
+    /// Newest accepted identity, protected by mutex_.
+    uint64_t accepted_admission_{0};
+    /// All tickets at or below this cutoff were invalidated by shutdown.
+    uint64_t invalidated_admission_{0};
+    /// Pending handlers suppress terminal reads without holding their lock.
+    uint64_t pending_admissions_{0};
+    /// Shutdown closes acceptance before clearing public state.
+    bool accepting_goals_{true};
 };
 
 }  // namespace task

@@ -3,6 +3,10 @@
  *
  * Behavior-tree task application base (Nav2 BtNavigator-style host).
  */
+/**
+ * @file bt_task_app.hpp
+ * @brief Typed native task host, including domain admission before tree ticks.
+ */
 
 #pragma once
 
@@ -34,7 +38,8 @@ namespace task {
  * Hosts a BtRunner for a typed Goal/Feedback/Result task.
  *
  * Derived classes implement domain hooks:
- *   OnTreeInitialize, PopulateBlackboard, OnTreeTick, OnGoal, Fill*.
+ *   OnTreeInitialize, PopulateBlackboard, BeforeTreeTick, OnTreeTick,
+ *   OnGoal, Fill*.
  */
 template <typename GoalType, typename FeedbackType, typename ResultType>
 class BtTaskApp : public TypedTaskAppBase<GoalType, FeedbackType, ResultType>,
@@ -94,6 +99,13 @@ protected:
 
     virtual void PopulateBlackboard(const BT::Blackboard::Ptr& /*blackboard*/) {}
 
+    /**
+     * @brief Check domain permission immediately before the next tree tick.
+     * @return False to cancel the invocation before executing any next node.
+     * Actual action dispatch separately validates the same revocable lease.
+     */
+    virtual bool BeforeTreeTick() { return true; }
+
     virtual void OnTreeTick() {}
 
     void SetupBlackboard(const BT::Blackboard::Ptr& blackboard) override {
@@ -101,6 +113,9 @@ protected:
     }
 
     void OnTick() override { OnTreeTick(); }
+
+    /// Bridge the non-template runner hook to the typed task domain.
+    bool BeforeTick() override { return BeforeTreeTick(); }
 
     void OnStatusLog(const std::vector<BtStatusEvent>& events) override {
         PublishBehaviorTreeLog(events);

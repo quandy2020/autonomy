@@ -1,0 +1,142 @@
+{
+  "date": "2026-11-18",
+  "design_version": "v2.9-review",
+  "review_sections": 16,
+  "detail_sections": 20,
+  "html_sections": 18,
+  "case_count": 26,
+  "node_count": 8,
+  "review_check_count": 30,
+  "offline_html": true,
+  "browser_rendering_checked": false,
+  "missing_local_links": [],
+  "business_code_modified_by_review": false,
+  "business_build_run_by_review": false,
+  "business_ctest_run_by_review": false,
+  "remote_sync_run": false,
+  "retrieved_completed_owner_validation": "2026-11-18-v2.8-owner-final-owner.json",
+  "owner_isolated_scenarios_passed": 13,
+  "owner_isolated_scenarios_total": 13,
+  "formal_native_owner_build_and_deployment_verified": true,
+  "source_checks": [
+    {
+      "path": "autonomy/task/exploration/exploration_session.cpp",
+      "sha256": "c0eccaf8f53838974dfef6de5eb0e842c74c2503f9679f72fe9a56d7b8e37dab",
+      "matches_verified_source": true
+    },
+    {
+      "path": "autonomy/task/exploration/exploration.hpp",
+      "sha256": "b46f97485f5fa4dbab77ae26200e79f528344f9ffec176f4c1d317a3aa178108",
+      "matches_verified_source": true
+    },
+    {
+      "path": "autonomy/task/exploration/exploration.cpp",
+      "sha256": "f7ae4bfcfe3905de6746d1bda84bc5f70d8607620b4360d0fd55c8f6b5cb481c",
+      "matches_verified_source": true
+    },
+    {
+      "path": "autonomy/task/exploration/exploration_owner_test.cpp",
+      "sha256": "62ec4f5955b2b097a4739c29b6a2076282046e718520d28502a26ad6317bae76",
+      "matches_verified_source": true
+    }
+  ],
+  "log_checks": [
+    {
+      "stage": "compile exploration.cpp",
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-final-owner-compile-exploration-cpp.log",
+      "hash_matches": true
+    },
+    {
+      "stage": "compile exploration_session.cpp",
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-final-owner-compile-exploration_session-cpp.log",
+      "hash_matches": true
+    },
+    {
+      "stage": "compile exploration_owner_test.cpp",
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-final-owner-compile-exploration_owner_test-cpp.log",
+      "hash_matches": true
+    },
+    {
+      "stage": "link real native libraries",
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-final-owner-link-real-native-libraries.log",
+      "hash_matches": true
+    },
+    {
+      "stage": "owner scenarios",
+      "returncode": 0,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-final-owner-owner-scenarios.log",
+      "hash_matches": true
+    }
+  ],
+  "primary_http_sources": 8,
+  "map_live_unchanged": true,
+  "map_file_count": 471,
+  "canvas_typecheck": "passed; 0 source diagnostics; strict/noEmit; host declarations skipLibCheck",
+  "robot_runtime_verified": false,
+  "artifacts": [
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.md",
+      "bytes": 22631,
+      "sha256": "cd020f23b87e08c00f2ad00d08c42a15124f757227243ec7f03ed4fd6012e3b7"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_design.md",
+      "bytes": 127086,
+      "sha256": "67f254995a6375ccc427bdd655a239bf5221695317af056eebc250f8550a1eee"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/multisensor_exploration_review.html",
+      "bytes": 38804,
+      "sha256": "221b65321f22442126ab0ac8d3c06ed7e8e81cefd28f175c75c43eb0d3590549"
+    },
+    {
+      "path": "/Users/duyongquan3/.cursor/projects/Users-duyongquan3-workspace-Opt/canvases/multisensor-exploration-review.canvas.tsx",
+      "bytes": 43138,
+      "sha256": "10fff726c951bcce6c8263081264709e4b8d24a778a38eb23841c3d80f2e82de"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/exploration_task_owner.md",
+      "bytes": 9682,
+      "sha256": "5199a776d2032a85b9d0ec47ce082311a20ac05925a611c9f43248fd80144b99"
+    },
+    {
+      "path": "/Users/duyongquan3/workspace/Opt/docs/implementation_validation.md",
+      "bytes": 37763,
+      "sha256": "3579d75e1d27007d2d9955bb746f128ca7743bb526930c0bec15e29e4f3e3021"
+    }
+  ],
+  "formal_native_ctest_passed": 8,
+  "formal_native_ctest_total": 8,
+  "formal_native_ctest_seconds": 2.13,
+  "formal_stage_log_checks": [
+    {
+      "stage": "configure",
+      "returncode": 0,
+      "hash_matches": true,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-configure.log"
+    },
+    {
+      "stage": "build",
+      "returncode": 0,
+      "hash_matches": true,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-build.log"
+    },
+    {
+      "stage": "tests",
+      "returncode": 0,
+      "hash_matches": true,
+      "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.8-owner-native-tests.log"
+    }
+  ],
+  "historical_launcher_failure_log_available": false,
+  "historical_launcher_failure_classification": "Before CTest; original log overwritten by tests-only retry; missing log explicitly retained in metadata",
+  "verified_existing_deployment": "2026-11-18-v2.8-owner-sync-manifest.json",
+  "documentation_updated_locally_after_deployment": true,
+  "task_server_user_changes_preserved": true,
+  "canvas_typecheck_log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.9-canvas-typecheck.log",
+  "canvas_typecheck_log_sha256": "f94dd2c39f0ed6295149d6148f79a10a56acd0ea1424d4e9d9550f30c5893ce1"
+}
