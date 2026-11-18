@@ -64,6 +64,47 @@ Costmap 锁内复制尺寸、原点、分辨率和栅格，释放锁后生成消
 观测前缀；地图随后出现的新输入尾部不应让已固定的请求无限等待。
 探索端不能通过队列清空或提高版本号自行生成融合回执。
 
+## 原生路线服务与同一图所有者
+
+`PlannerServer` 的 `/get_plan` 使用现有 `automsgs::srvs::GetPlan`。探索端的
+`NativeVistaPathProvider` 发送精确起点、终点、插件 id 和独立请求 token；服务
+查找服务器已经配置的 `VistaPlanner`，刷新其地图读取源并调用 `QueryRoute`。
+同进程仍可以使用 `VistaPathProvider`，两个适配器均不创建额外的增量图。
+
+路径和证据从同一个锁定的图/地图快照复制，证据包括 frame、map epoch、
+图实际消费的 geometry revision、两种传感器的观测前缀、恢复基线和恢复世代。
+`Evidence()` 只复制小型证据，不再为了查询元数据复制全部顶点和边。
+几何版本就是已有图的版本，服务不会凭空生成一个额外 graph version。
+
+`evidence_only` 刷新真实地图读取源后返回当前图证据，不生成路径；它也不把
+源观测水位当作融合回执。精确查询拒绝被占用的起点，不调用普通导航的
+`MaybeSnapOccupiedStart`。服务不读取 `LastRoute()`，避免将另一请求的路径和
+元数据关联；探索查询不会递增普通导航的 latest request 或改写其 LastRoute。
+
+`NO_ROUTE` 携带实际源快照证据且没有路径。未知插件、输入错误、源不可用、
+取消和内部错误使用不同状态。客户端拒绝缺失证据、错误 token/插件/frame、
+非法观测位掩码、恢复基线不一致、非有限路径、终点/朝向改变和长度不一致。
+通信失败是查询错误，不能被解释成已经证明某区域不可达。
+
+一个客户端最多保留一个未完成请求。超时或取消后保留该 future，重复调用
+不会继续积累 native pending requests；真正的迟到回复完成后先丢弃，再发送
+新请求。原始等待预算内可以按 `retry_interval` 重传同一只读请求，复用原生
+sequence、token 与 promise，以处理接收器尚未启用时的首包丢失；重传不延长
+deadline，不新增 pending slot。间隔为零时关闭重传，超时/取消后停止重传。
+无回复的永久故障需要上层重建客户端。客户端超时包含串行等待，
+服务工作预算上限为五秒；取消只停止客户端等待，服务在地图读取、图更新及
+路径搜索的检查点观察独立预算，不能中断任意外部阻塞回调。
+
+`native_route_service_test.cpp` 覆盖实际 PlannerServer 和独立 Autolink 客户端
+进程、精确占用起点、协议异常、超时/取消后的单请求所有权和迟到回复。
+另检查同一原生请求重传、客户端回调退役、服务 worker 退出与重新 Init，
+以及真实 SHM 历史接收回调的退役。接收器基类提供拥有独立状态的监听器，
+SHM、进程内和 RTPS 分发器不再通过裸接收器指针调用消息回调。历史接收
+任务持有专用通道属性、传输模式、转发状态和原子到达标志；没有函数栈
+引用。接收器析构先关闭入口、等待已进入的回调，再移除分发器监听器；
+已经复制的监听器只能看到关闭状态。
+其地图前缀由测试源控制，传播通过不代表真实 SLAM 融合已经接入。
+
 ## 相关实现与验收
 
 - `native_costmap_reader.hpp/.cpp`：原有地图的有界锁定读取。
@@ -71,6 +112,8 @@ Costmap 锁内复制尺寸、原点、分辨率和栅格，释放锁后生成消
 - `spatial_index.hpp/.cpp`：边空间查询。
 - `visibility_graph.hpp`：图身份、几何版本及源观测前缀。
 - `vista_planner.hpp/.cpp`：原生规划器接入。
+- `planner_route_service.cpp`、`native_route_protocol.hpp`：原有 GetPlan 服务与证据转换。
+- `native_route_service_test.cpp`：实际服务器、独立客户端进程及请求生命期回归。
 - `native_vista_test.cpp`、`vista_server_test.cpp`：实际地图与服务器消费者检查。
 - `incremental_graph_test.cpp`：跳过版本、差分缺失、索引替换拒绝、数值边界、契约预检、局部失效与重连、地图范围变化。
 

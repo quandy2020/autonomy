@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+/** @file localization_main.cpp
+ * @brief Native localization application and CLI configuration for isolated sensor and output channels.
+ */
 #include <cstddef>
 #include <cstdlib>
 #include <memory>
@@ -49,6 +52,14 @@ struct LocalizationCli {
     std::string atlas_image_topic = "/image";
     std::string atlas_right_image_topic = "/camera/right/image";
     std::string atlas_depth_image_topic = "/camera/depth/image";
+    std::string atlas_odometry_topic = "/atlas/odometry";  ///< Estimated camera odometry output.
+    std::string atlas_localization_status_topic;  ///< Optional actual tracker DiagnosticArray output.
+    std::string atlas_trajectory_topic = "/atlas/trajectory";  ///< Estimated camera trajectory output.
+    std::string atlas_optimized_trajectory_topic = "/atlas/optimized_trajectory";  ///< Optimized keyframe trajectory output.
+    std::string atlas_map_points_topic = "/atlas/map_points";  ///< Sparse mapper landmark output.
+    std::string atlas_tracking_image_topic = "/atlas/tracking_image";  ///< Tracking diagnostic image output.
+    std::string atlas_loop_closures_topic = "/atlas/loop_closures";  ///< Loop-closure diagnostic output.
+    std::string atlas_ground_truth_trajectory_topic = "/atlas/ground_truth_trajectory";  ///< Optional evaluation output; empty disables it.
     std::string atlas_feature_matches_topic = "/atlas/feature_matches";
     std::string atlas_dense_map_points_topic = "/atlas/dense_map_points";
     std::string atlas_occupancy_grid_topic = "/atlas/occupancy_grid";
@@ -71,6 +82,7 @@ struct LocalizationCli {
     std::string argus_image_topic = "/image";
 };
 
+/** @brief Bind native backend options without introducing transport message types. */
 void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
     app.add_option("--localization_mode", cli.localization_mode,
                    "Backend: cartographer | atlas | argus.")
@@ -107,6 +119,31 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
         ->capture_default_str();
     app.add_option("--atlas_depth_image_topic", cli.atlas_depth_image_topic,
                    "Atlas: registered depth Image topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_localization_status_topic", cli.atlas_localization_status_topic,
+                   "Optional per-acquisition Atlas tracking diagnostics; empty disables publication.");
+    app.add_option("--atlas_odometry_topic", cli.atlas_odometry_topic,
+                   "Atlas: estimated camera Odometry output topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_trajectory_topic", cli.atlas_trajectory_topic,
+                   "Atlas: live estimated camera Path output topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_optimized_trajectory_topic",
+                   cli.atlas_optimized_trajectory_topic,
+                   "Atlas: optimized keyframe Path output topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_map_points_topic", cli.atlas_map_points_topic,
+                   "Atlas: sparse landmark PointCloud2 output topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_tracking_image_topic", cli.atlas_tracking_image_topic,
+                   "Atlas: tracking diagnostic Image output topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_loop_closures_topic", cli.atlas_loop_closures_topic,
+                   "Atlas: loop-closure MarkerArray output topic.")
+        ->capture_default_str();
+    app.add_option("--atlas_ground_truth_trajectory_topic",
+                   cli.atlas_ground_truth_trajectory_topic,
+                   "Atlas: optional evaluation Path output; empty disables it.")
         ->capture_default_str();
     app.add_option("--atlas_feature_matches_topic",
                    cli.atlas_feature_matches_topic,
@@ -176,6 +213,7 @@ void BindLocalizationOptions(CLI::App& app, LocalizationCli& cli) {
         ->capture_default_str();
 }
 
+/** @brief Forward CLI settings to the selected backend, including every Atlas output. */
 LocalizationOptions BuildOptions(const LocalizationCli& cli) {
     LocalizationOptions options;
     options.backend = ParseLocalizationBackend(cli.localization_mode);
@@ -201,6 +239,14 @@ LocalizationOptions BuildOptions(const LocalizationCli& cli) {
     options.atlas_image_topic = cli.atlas_image_topic;
     options.atlas_right_image_topic = cli.atlas_right_image_topic;
     options.atlas_depth_image_topic = cli.atlas_depth_image_topic;
+    options.atlas_odometry_topic = cli.atlas_odometry_topic;
+    options.atlas_localization_status_topic = cli.atlas_localization_status_topic;
+    options.atlas_trajectory_topic = cli.atlas_trajectory_topic;
+    options.atlas_optimized_trajectory_topic = cli.atlas_optimized_trajectory_topic;
+    options.atlas_map_points_topic = cli.atlas_map_points_topic;
+    options.atlas_tracking_image_topic = cli.atlas_tracking_image_topic;
+    options.atlas_loop_closures_topic = cli.atlas_loop_closures_topic;
+    options.atlas_ground_truth_trajectory_topic = cli.atlas_ground_truth_trajectory_topic;
     options.atlas_feature_matches_topic = cli.atlas_feature_matches_topic;
     options.atlas_dense_map_points_topic =
         cli.atlas_dense_map_points_topic;

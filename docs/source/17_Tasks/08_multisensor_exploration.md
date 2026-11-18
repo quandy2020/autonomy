@@ -8,6 +8,14 @@
 ## 所有权与目录职责
 
 `ExplorationTask` 负责原生任务生命周期及身份化输入。
+应用通过 `ConfigureNativeExploration()` 同时安装原生 Session 工厂、传感器
+配置和采集时刻定位查询。既有 `ConfigureSession()` 与
+`ConfigureObservationSource()` 保留为独立接入接口。安装后，task owner
+自动管理预 START、START 替换和终态的
+原生 Reader。暂停/恢复保留序号；替换必须等待旧 Reader 成功退役。
+退役超时或失败会锁存输入错误并拒绝新 START。
+输入清理 future 与机器人停止/地图落盘回执分别审计，详细契约见
+[多传感器观测入口](../10_Perception/13_multisensor_observation.md)。
 `ExplorationSession` 是状态、观测账本、完成证据和异步阶段的唯一写入者。
 策略工作线程对不可变输入进行选择/适配；迟到结果需通过请求身份和依赖
 版本检查才能被 Session 接纳。
@@ -65,6 +73,78 @@ RGB-D 对同一几何的重复观察直接相加。
 公平重访与完整栅格/yaw 遍历避免低即时收益的区域一直被高收益区域挤出。
 `maximum_examined` 限制连不可行候选也计算在内的单次枚举工作。
 
+## 跨进程路线查询
+
+任务进程通过 `integration/native_vista_path_provider.hpp/.cpp` 复用 PlannerServer
+的 `/get_plan`。调用方向是探索 worker → 原生 Autolink GetPlan → 服务器已配置的
+VistaPlanner → 同一张持久化增量图 → automsgs Path 与实际图证据 → worker 结果。
+同进程嵌入使用 `VistaPathProvider`；两个实现都满足现有 `PathProvider` 接口。
+
+构造时传入已有 task 通信 Node，配置明确的 planner id、frame、响应超时和
+路径点上限；再将同一个 provider 传给策略、GoalPoseAdapter 和 ExplorationSession。
+跨进程组装不能另外实例化 VistaRoutePlanner，也不能在 `update_route_map` 中维护
+一份任务私有图。服务器通过自己的地图读取源完成更新。
+
+每次路径查询保持精确起终点与观测朝向，路径随自身证据返回；`Evidence()`
+则通过独立只读请求刷新 graph owner 的前缀。单客户端对请求进行串行化，
+超时与取消保留未完成 future，迟到结果不参与下一目标。无服务、旧协议和
+非法响应产生查询错误，进入原有 worker 的错误/重试路径；它们不能提供区域
+不可达证明，也不能满足完成判据。
+
+在原始响应预算内，`retry_interval` 允许同一只读 GetPlan 请求重传，仍使用
+同一个原生 sequence/promise 和业务 token。它解决晚发现接收器时的首包丢失，
+不扩张客户端 pending 队列；暂停/取消或超时后不会继续重传。客户端销毁关闭
+回调入口后才释放 transport，服务销毁关闭入口、清理待执行队列并等待
+实际 worker 退出后再退出拓扑并释放传输端点，以保留已进入请求的回复
+通道。异步历史发送持有独立快照，不引用已经销毁的发送器。
+历史接收同样使用拥有独立状态的静态任务；到达标志是共享原子变量，
+不引用已经返回的函数栈。所有接收传输的分发器监听器复制基类的回调
+状态，析构先关闭转发并等待实际调用退出，晚到的副本不再调用业务层。
+历史任务通过协程友好的短轮询观察退役，并释放临时通道接收器。
+
+该适配器及原生 Session 工厂已实现；平台仍需提供实际定位、地图融合和
+前缀回执。接口和测试可用不等于整机探索部署已完成。
+
+## 原生 Session 工厂与平台接入
+
+`integration/native_session_factory.hpp/.cpp` 提供
+`ConfigureNativeExploration(task, node, configuration, platform)`。它直接使用
+远端 TaskServer 现有的 `exploration()` 和 `node()`，不需要修改 TaskServer。
+在 TaskServer 已配置、任务空闲时安装；配置完成后可按原有顺序启动服务器。
+
+```cpp
+// server 为已完成 Configure 的原生 TaskServer。
+// configuration 和 platform 由实际设备/定位器/地图后端提供。
+const bool installed = autonomy::task::exploration::ConfigureNativeExploration(
+    server.exploration(), server.node(), configuration, platform);
+```
+
+`NativeExplorationConfiguration` 汇集 Session、覆盖选择、输入源和路线参数。
+三个位置的 `SensorMode` 必须一致；RGB-D 模式只配置实际相机，LiDAR 模式
+只配置实际束方向和外参，联合模式配置二者。执行模式必须在
+`validated_controller_modes` 中明确列出；工厂不会自动声明模型已经适配。
+
+工厂在调用线程核验话题、范围、模式、内参、外参和工作预算，然后一次性
+安装 Session 工厂与源配置。源和工厂共享一个配置修订，活动或暂停任务、
+不同 Node、输入/运动故障均拒绝替换。旧 Reader 必须由 owner 实际退役后
+才能按新配置创建，配置成功不代表新订阅已就绪。
+
+实际 owner 创建 Session 时，先取得本世代 `NavigationServices` 的协作许可
+派发器，再调用平台 `create_mapping_services`。融合必须提供
+`request_map_refresh`、`poll_map_refresh` 和 `cancel_mapping`；要求保存时还
+必须提供 `save_map`、`poll_map_save`。平台不得覆盖导航回调或
+`update_route_map`。随后创建一个 `NativeVistaPathProvider`，共享给覆盖策略、
+目标位姿适配器和 Session，服务器继续持有唯一的增量图。工厂返回尚未启动的
+BT Session；异常由任务 owner 关闭派发器和会话，报告失败。
+
+`NativeExplorationPlatform` 的 `localization` 和 `clock` 必须来自实际定位链。
+每个采集时刻的证明需匹配路线坐标系、实际标定修订，以及
+`world_from_base * base_from_sensor == world_from_sensor`。RGB-D 的实际
+CameraInfo 必须匹配覆盖模型内参；不一致锁存标定错误，不能让预测视域
+使用另一套相机参数。`prepare_mapping` 在目标明确要求启用建图时调用。
+这些检查只核验供应者契约，不把请求接收、Reader 创建或文件存在视为融合/
+保存成功。平台必须通过版本化实际回执确认观测前缀和持久化完成。
+
 ## 完成与无法完成
 
 有限分辨率任务的完成要求：没有活跃边界、待观测单元、待重访和未解决
@@ -95,8 +175,8 @@ RGB-D 对同一几何的重复观察直接相加。
 
 2026-11-18 对远端源码的检查确认，`task_main.cpp` 当前只创建、配置和
 启动 TaskServer，没有配置探索会话。远端 TaskServer 公开的
-`exploration()` 可以取得实际任务，并通过该任务的 `ConfigureSession`
-注入依赖；本地 TaskServer 头文件中的 `ConfigureExplorationSession`
+`exploration()` 和 `node()` 可直接用于上面的原生工厂；本地 TaskServer
+头文件中的 `ConfigureExplorationSession`
 便利包装尚未同步，不能将它当作远端已经存在的调用入口。
 
 远端 TaskServer 当前探索桥接使用旧的 `SetSubmitNavigation` 和
@@ -104,8 +184,8 @@ RGB-D 对同一几何的重复观察直接相加。
 `SubmitGoalWithMotionPermit` 提供协作许可准入，按身份结果和取消分别复用
 `GetResultForTask` 和 `CancelForTask`。v2.42 的 `TaskScheduler::RegisterTask`
 已在实际导航、探索任务上安装协作准入和按身份结果/取消绑定；注册顺序
-不影响服务查找。生产应用仍需调用 `ConfigureSession` 配置实际会话，
-接入定位、融合和保存者。当前 `MappingClient`
+不影响服务查找。生产应用仍需调用 `ConfigureNativeExploration` 并提供实际
+定位、融合和保存者。当前 `MappingClient`
 的 `LoadMap` 只检查地图名，`SetInitialPose` 只接受字段并写日志，二者
 不能作为定位或建图成功的回执。MapServer 的静态地图注入/读取接口和
 `costmap_2d::saveMapToFile` 可以复用，但文件写入本身不能证明观测前缀已融合。
@@ -181,5 +261,26 @@ TaskServer 对已 active 的 NavigationTask 可能跳过 RequestActivation。
 外部导航会按抢占配置被拒绝，或在父子权限退役并确认软件清理后接管。
 该路径已在 Scheduler 和领域任务中接入；TaskServer 保留用户版本。
 这项所有权接入仍需与真实建图会话、定位和模型配置一起完成生产组装。
+
+## 实际部署与独立地图评估
+
+生产链按已有职责组装：RGB-D / LiDAR 原生输入提供采集时刻的定位与
+有效观测；实际建图会话通过有限输入前缀返回独立融合回执；探索 owner
+按真实覆盖与地图快照选择目标，使用 PlannerServer 的共享 Vista 图
+提交路线；SanD 的样条统一调用 `common/math/bspline.hpp`，通过已有
+NMPC/MPPI 和 automsgs `Path` / `TwistStamped` 完成跟踪。map 源码继续
+保持不变，应用配置需要显式接通这些已有入口。
+
+2026-11-18 的真实 AutoSim 结果目前只覆盖独立 RGB-D 环境启动及原生
+消息传输，生产 Task/Planning/Control 应用也已编译。探索会话、实际
+RGB-D 定位/地图融合保存、DeFM 条件 SanD 和执行安全供应者的完整组合
+仍未验收。当前 SanD ONNX 是原始深度条件，不能据此声明已经适配 DeFM。
+
+真值 OccupancyGrid 只进入离线 `scripts/compare_exploration_maps.py`。
+它采用固定的起点连通真值自由域，分别比较算法地图的已知程度、正确
+free 覆盖、错误占用及剩余未知区域；算法预测信息增益、目标到达或消息
+数量不能替代真实覆盖。地图只比较已明确对齐的 frame、resolution 和
+原点。具体报告、使用方式及验收缺口见
+[原生探索验证](09_native_exploration_validation.md)。
 
 原生构建与证据见 [检查方法](09_native_exploration_validation.md)。

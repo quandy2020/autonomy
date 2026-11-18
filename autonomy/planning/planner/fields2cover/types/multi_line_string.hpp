@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <utility>
 #include "autonomy/planning/planner/fields2cover/types/geometries.hpp"
 #include "autonomy/planning/planner/fields2cover/types/line_string.hpp"
@@ -32,13 +31,13 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 struct MultiLineString :
-    public Geometries<MultiLineString, OGRMultiLineString,
-            wkbMultiLineString, LineString> {
+    public Geometries<MultiLineString, NativeGeom,
+            WkbKind::kMultiLineString, LineString> {
  public:
-  using Geometries<MultiLineString, OGRMultiLineString,
-            wkbMultiLineString, LineString>::Geometries;
+  using Geometries<MultiLineString, NativeGeom,
+            WkbKind::kMultiLineString, LineString>::Geometries;
   MultiLineString();
-  explicit MultiLineString(const OGRGeometry* geom);
+  explicit MultiLineString(const NativeGeom* geom);
   explicit MultiLineString(const LineString& line);
   explicit MultiLineString(const std::initializer_list<LineString>& ls);
 
@@ -58,7 +57,7 @@ struct MultiLineString :
 
   void SetGeometry(size_t i, const LineString& line);
 
-  void Append(const OGRGeometry* geom);
+  void Append(const NativeGeom* geom);
 
   void AddGeometry(const LineString& line);
   void AddGeometry(const MultiLineString& lines);
@@ -66,30 +65,30 @@ struct MultiLineString :
   static MultiLineString GetLineSegments(const LineString& line);
   static MultiLineString GetLineSegments(const LinearRing& line);
 
-  template <class T, OGRwkbGeometryType R>
+  template <class T, WkbKind R>
   MultiLineString intersection(const Geometry<T, R>& g) const;
 
-  template <class T, OGRwkbGeometryType R>
+  template <class T, WkbKind R>
   static MultiLineString intersection(
       const LineString& line, const Geometry<T, R>& g);
 };
 
 
-template <class T, OGRwkbGeometryType R>
+template <class T, WkbKind R>
 MultiLineString MultiLineString::intersection(const Geometry<T, R>& g) const {
   auto inter = this->data_->Intersection(g.get());
   autonomy::planning::planner::fields2cover::types::MultiLineString lines(inter);
-  OGRGeometryFactory::destroyGeometry(inter);
+  GeomFactory::destroyGeometry(inter);
   return lines;
 }
 
 
-template <class T, OGRwkbGeometryType R>
+template <class T, WkbKind R>
 MultiLineString MultiLineString::intersection(
     const LineString& line, const Geometry<T, R>& g) {
   auto inter = line->Intersection(g.get());
   autonomy::planning::planner::fields2cover::types::MultiLineString lines(inter);
-  OGRGeometryFactory::destroyGeometry(inter);
+  GeomFactory::destroyGeometry(inter);
   return lines;
 }
 

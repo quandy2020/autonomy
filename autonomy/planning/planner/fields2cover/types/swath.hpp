@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 
 #include <algorithm>
 #include <memory>

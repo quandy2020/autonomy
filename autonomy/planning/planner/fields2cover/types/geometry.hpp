@@ -24,8 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
-#include <ogr_core.h>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -34,22 +32,23 @@
 #include <iostream>
 #include <boost/math/constants/constants.hpp>
 #include "autonomy/common/math/math_utils.hpp"
+#include "autonomy/planning/planner/fields2cover/types/native_geom.hpp"
 
 namespace autonomy::planning::planner::fields2cover::types {
 
 /**
  * @class autonomy::planning::planner::fields2cover::types::EmptyDestructor
- * @brief Tag for wrapping an OGR pointer that this type does not own.
+ * @brief Tag for wrapping a NativeGeom pointer that this type does not own.
  */
 class EmptyDestructor {};
 
 /**
  * @class autonomy::planning::planner::fields2cover::types::Geometry
- * @brief Typed wrapper around an OGR geometry.
- * @tparam T Concrete OGR geometry type.
- * @tparam R OGR wkb type of @p T.
+ * @brief Typed wrapper around a native geometry.
+ * @tparam T Concrete native geometry type.
+ * @tparam R WKB kind of @p T.
  */
-template <class T, OGRwkbGeometryType R>
+template <class T, WkbKind R>
 struct Geometry {
  public:
   Geometry();
@@ -57,8 +56,6 @@ struct Geometry {
   explicit Geometry(std::shared_ptr<T> g);
   explicit Geometry(T* g, EmptyDestructor);
   explicit Geometry(const T* g);
-  explicit Geometry(OGRGeometry* g, EmptyDestructor);
-  explicit Geometry(const OGRGeometry* g);
   ~Geometry();
   explicit Geometry(const Geometry& g);
   Geometry(Geometry&& g);
@@ -115,43 +112,43 @@ struct Geometry {
   /**
    * @brief Compute shortest Distance between this and another geometry.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   double Distance(const Geometry<T2, R2>& p) const;
 
   /**
    * @brief Check if this and another geometry are disjoint.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   bool disjoint(const Geometry<T2, R2>& geom) const;
 
   /**
    * @brief Check if this and another geometry cross.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   bool crosses(const Geometry<T2, R2>& geom) const;
 
   /**
    * @brief Check if this and another geometry touch each other.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   bool touches(const Geometry<T2, R2>& geom) const;
 
   /**
    * @brief Check if this geometry is inside another geometry.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   bool within(const Geometry<T2, R2>& geom) const;
 
   /**
    * @brief Check if this geometry contains another geometry.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   bool contains(const Geometry<T2, R2>& geom) const;
 
   /**
    * @brief Check if this and another geometry intersects.
    */
-  template <class T2, OGRwkbGeometryType R2>
+  template <class T2, WkbKind R2>
   bool intersects(const Geometry<T2, R2>& geom) const;
 
   /**
@@ -186,36 +183,20 @@ struct Geometry {
   std::string ExportToKML() const;
   std::string ExportToJson() const;
 
-  // Code adapted from:
-  // https://github.com/OSGeo/gdal/blob/717dcc0eed252e2f78c142b1f7866e49c5511224/ogr/ogrgeometry.cpp#L4309
-  OGRGeometry* OGRBuffer(double DfDist, int side = 0) const;
+  NativeGeom* BufferNative(double DfDist, int side = 0) const;
 
  protected:
   std::shared_ptr<T> data_;
 
  protected:
-  // Code adapted from:
-  // https://github.com/OSGeo/gdal/blob/b0aa6065a39b252cb8306e9c2e2535d6dda0fb55/port/cpl_conv.h#L397
   template <typename To, typename From>
   inline To DownCast(From *f) const;
 
   template<typename RetType>
-  static RetType DestroyResGeom(OGRGeometry*);
-
- private:
-  // Code extracted from:
-  // https://github.com/OSGeo/gdal/blob/717dcc0eed252e2f78c142b1f7866e49c5511224/ogr/ogrgeometry.cpp#L4309
-  OGRGeometry* BuildGeometryFromGEOS(
-      GEOSContextHandle_t HGEOSCtxt, GEOSGeom HGeosProduct,
-      const OGRGeometry *PoSelf, const OGRGeometry *PoOtherGeom) const;
-  // Code extracted from:
-  // https://github.com/OSGeo/gdal/blob/717dcc0eed252e2f78c142b1f7866e49c5511224/ogr/ogrgeometry.cpp#L4309
-  OGRGeometry* OGRGeometryRebuildCurves(const OGRGeometry *PoGeom,
-      const OGRGeometry *PoOtherGeom, OGRGeometry *PoOGRProduct) const;
+  static RetType DestroyResGeom(NativeGeom* g);
 };
 
 
 }  // namespace autonomy::planning::planner::fields2cover::types
 
 #include "autonomy/planning/planner/fields2cover/types/geometry_impl.hpp"
-

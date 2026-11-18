@@ -1,0 +1,11 @@
+{
+  "passed": true,
+  "returncode": 0,
+  "stderr": "",
+  "seconds": 16.971197084,
+  "prefix_bytes": 58752000,
+  "prefix_sha256": "413d84aae8c9d5c30b5b742e1c3d2d78fe2de5a3db7afa6e9638ac1afd4a0fdc",
+  "received_bytes": 28516944,
+  "full_model_sha256": "334320ee2fc7794de959681a83755b69c75486ec64bdcb5daeb194b54ce199c4",
+  "fixture_sha256": "b8b5d4eace7df445654c59b52bb9b5128dc4da4f57a88e332571f491e2c050bf"
+}

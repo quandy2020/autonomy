@@ -1,0 +1,13 @@
+{
+  "cache": [
+    "BUILD_ONNXRUNTIME:BOOL=ON",
+    "OnnxRuntime_INCLUDE_DIR:PATH=/tmp/autonomy-onnxruntime-1.23.2-sdk/include",
+    "OnnxRuntime_LIBRARY:FILEPATH=/tmp/autonomy-onnxruntime-1.23.2-sdk/lib/libonnxruntime.so",
+    "OnnxRuntime_ROOT:UNINITIALIZED=/tmp/autonomy-onnxruntime-1.23.2-sdk"
+  ],
+  "ldd": [
+    "libautonomy_common.so.0 => /workspace/autonomy/build/autonomy/lib/libautonomy_common.so.0 (0x0000733ae2200000)",
+    "libonnxruntime.so.1 => /tmp/autonomy-onnxruntime-1.23.2-sdk/lib/libonnxruntime.so.1 (0x0000733adc2d9000)"
+  ],
+  "runtime_sha256": "13ab8084954fa4a47c777880180b90810d6020f021441395712b48a75b74c68b"
+}

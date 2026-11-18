@@ -187,6 +187,8 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   enable_testing()
 endif()
 autonomy_add_domains()
+include(cmake/DepthFeatures.cmake)
+include(cmake/NativeObservationMapping.cmake)
 include(cmake/ExplorationTests.cmake)
 
 # --- companions --------------------------------------------------------------

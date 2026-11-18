@@ -30,10 +30,10 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 LinearRing::LinearRing() {
-  this->data_ = std::shared_ptr<OGRLinearRing>(
-    static_cast<OGRLinearRing*>(
-      OGRGeometryFactory::createGeometry(wkbLinearRing)),
-    [](OGRLinearRing* f) {OGRGeometryFactory::destroyGeometry(f);});
+  this->data_ = std::shared_ptr<NativeGeom>(
+    static_cast<NativeGeom*>(
+      GeomFactory::createGeometry(WkbKind::kLinearRing)),
+    [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
 }
 
 LinearRing::LinearRing(const std::vector<Point>& ps) {
@@ -100,7 +100,7 @@ Point LinearRing::GetGeometry(size_t i) {
         "Error GetGeometry: LinearRing does not contain point " +
         std::to_string(i));
   }
-  OGRPoint point;
+  NativeGeom point;
   data_->getPoint(i, &point);
   return Point(point);
 }

@@ -103,13 +103,14 @@ F2CField Parser::ImportFieldGml(
   FindAndReplaceAll(p_coords, " ", ", ");
   FindAndReplaceAll(p_coords, ";", " ");
   p_coords = "POLYGON ((" + p_coords + "))";
-  OGRGeometry* new_geom{};
-  auto spt_ref = Transform::CreateSptRef(coord_sys, coord_frame_fail_silently);
-  OGRGeometryFactory::createFromWkt(p_coords.c_str(), spt_ref.get(), &new_geom);
+  if (coord_sys.empty() && !coord_frame_fail_silently) {
+    throw std::invalid_argument("Coordinate system empty");
+  }
+  types::NativeGeom* new_geom = types::GeomFactory::createFromWkt(p_coords);
 
   F2CField field(F2CCells(new_geom), id);
   field.SetCRS(coord_sys);
-  OGRGeometryFactory::destroyGeometry(new_geom);
+  types::GeomFactory::destroyGeometry(new_geom);
 
   return field;
 }

@@ -1,0 +1,21 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autolink/autolink/service/service.hpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-ymtbk81p/backup",
+  "expected_sha256": {
+    "autolink/autolink/service/service.hpp": "41b0d86bfba0a6d3306c8c014234e33a8de09031b1da47aa3900eecbc69e42a1"
+  },
+  "deployed_sha256": {
+    "autolink/autolink/service/service.hpp": "2fe0e88c6303f762745f3c13e86ce95d208315f2d32ddd96ecf29e1f6bb0e8dc"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "b75dffc90d59a2911dd114792ece2fa58de1cc9e3e7c212bb129259b5c9c13ab",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

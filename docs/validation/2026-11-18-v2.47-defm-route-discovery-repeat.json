@@ -1,0 +1,8 @@
+{
+  "passed": true,
+  "passed_repetitions": 3,
+  "log": "docs/validation/2026-11-18-v2.47-defm-route-discovery-repeat.log",
+  "log_sha256": "c84548bfb9280d8765374e2254b9d1a2f413c130d0752e26cd5a7dbc0295848b",
+  "evidence": "CTest LastTest.log from the completed until-fail:3 command; the initial local report writer failed before saving stdout.",
+  "scope": "Repeated real cross-process route tests after full-suite timeout; not a confirmed root-cause fix."
+}

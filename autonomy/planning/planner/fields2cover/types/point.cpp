@@ -125,7 +125,7 @@ void Point::SetPoint(double x, double y, double z) {
   data_->setZ(z);
 }
 
-void Point::SetPoint(const OGRPoint& p) {
+void Point::SetPoint(const NativeGeom& p) {
   data_->setX(p.getX());
   data_->setY(p.getY());
   data_->setZ(p.getZ());

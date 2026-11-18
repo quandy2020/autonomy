@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "ssh_returncode": 0,
+  "stderr": "",
+  "host": "/tmp/autonomy-defm-v2.47",
+  "container": "/tmp/autonomy-defm-v2.47",
+  "host_sha256": {
+    "depth_features.onnx": "334320ee2fc7794de959681a83755b69c75486ec64bdcb5daeb194b54ce199c4",
+    "parity.json": "b8b5d4eace7df445654c59b52bb9b5128dc4da4f57a88e332571f491e2c050bf",
+    "manifest.json": "979db329643a93b5ce7df2877e8a1ec03a2c3bc590034fd1238135187405e12d"
+  },
+  "container_sha256": {
+    "depth_features.onnx": "334320ee2fc7794de959681a83755b69c75486ec64bdcb5daeb194b54ce199c4",
+    "parity.json": "b8b5d4eace7df445654c59b52bb9b5128dc4da4f57a88e332571f491e2c050bf",
+    "manifest.json": "979db329643a93b5ce7df2877e8a1ec03a2c3bc590034fd1238135187405e12d"
+  },
+  "scope": "Actual frozen DeFM model and Torch fixture bytes, not trained SanD or robot validation."
+}

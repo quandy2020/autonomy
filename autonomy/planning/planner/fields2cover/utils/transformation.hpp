@@ -24,12 +24,12 @@
  */
 
 
-#include <ogr_spatialref.h>
 #include <memory>
 #include <utility>
 #include <string>
 #include <algorithm>
 #include "autonomy/planning/planner/fields2cover/types.hpp"
+#include "autonomy/planning/planner/fields2cover/types/native_geom.hpp"
 
 namespace autonomy {
 namespace planning {
@@ -42,9 +42,7 @@ namespace fields2cover {
  */
 class Transform {
  public:
-  static std::unique_ptr<OGRCoordinateTransformation,
-    void(*)(OGRCoordinateTransformation*)>
-      GenerateCoordTransf(
+  static std::unique_ptr<types::CoordTransform> GenerateCoordTransf(
           const std::string& coord_sys_from, const std::string& coord_sys_to);
 
   static F2CRoute TransformRouteWithFieldRef(const F2CRoute& route,
@@ -94,14 +92,6 @@ class Transform {
       const std::string& coord_sys_from, const std::string& coord_sys_to);
 
   static F2CPoint GetRefPointInGPS(const F2CField& field);
-
-  static std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)>
-        CreateSptRef(const std::string& coord_sys, bool fail_silently = false);
-
-  static std::unique_ptr<OGRCoordinateTransformation,
-    void(*)(OGRCoordinateTransformation*)> CreateCoordTransf(
-    std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)> in,
-    std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)> out);
 };
 
 template <class T>

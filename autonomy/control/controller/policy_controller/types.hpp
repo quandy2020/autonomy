@@ -97,6 +97,13 @@ struct TensorFrame {
      * @brief Frame stamp in seconds (0 → skip skew check).
      */
     double stamp_sec{0.0};
+    /**
+     * @brief Optional absolute acquisition expiry in the same clock, seconds.
+     *
+     * Zero preserves legacy tensors. Frozen depth features retain their original
+     * observation expiry; copying or consuming a tensor never extends it.
+     */
+    double valid_until_sec{0.0};
 };
 
 /**
@@ -404,3 +411,4 @@ inline bool HasObservationModality(const ObservationSnapshot& snapshot,
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy
+

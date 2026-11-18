@@ -29,42 +29,42 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 Cells::Cells() {
-  this->data_ = std::shared_ptr<OGRMultiPolygon>(
-    DownCast<OGRMultiPolygon*>(
-      OGRGeometryFactory::createGeometry(wkbMultiPolygon)),
-    [](OGRMultiPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
+  this->data_ = std::shared_ptr<NativeGeom>(
+    DownCast<NativeGeom*>(
+      GeomFactory::createGeometry(WkbKind::kMultiPolygon)),
+    [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
 }
 
-Cells::Cells(const OGRGeometry* geom) {
-  if (wkbFlatten(geom->getGeometryType()) == OGRwkbGeometryType::wkbPolygon) {
-    this->data_ = std::shared_ptr<OGRMultiPolygon>(DownCast<OGRMultiPolygon*>(
-        OGRGeometryFactory::createGeometry(wkbMultiPolygon)),
-        [](OGRMultiPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
+Cells::Cells(const NativeGeom* geom) {
+  if (wkbFlatten(geom->getGeometryType()) == WkbKind::kPolygon) {
+    this->data_ = std::shared_ptr<NativeGeom>(DownCast<NativeGeom*>(
+        GeomFactory::createGeometry(WkbKind::kMultiPolygon)),
+        [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
     this->data_->addGeometry(geom->toPolygon());
   } else if (wkbFlatten(geom->getGeometryType()) ==
-      OGRwkbGeometryType::wkbMultiPolygon) {
-    this->data_ = std::shared_ptr<OGRMultiPolygon>(
-        DownCast<OGRMultiPolygon*>(geom->clone()),
-        [](OGRMultiPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
+      WkbKind::kMultiPolygon) {
+    this->data_ = std::shared_ptr<NativeGeom>(
+        DownCast<NativeGeom*>(geom->clone()),
+        [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
   } else if (wkbFlatten(geom->getGeometryType()) ==
-      OGRwkbGeometryType::wkbGeometryCollection) {
-    this->data_ = std::shared_ptr<OGRMultiPolygon>(
-        DownCast<OGRMultiPolygon*>(
-          OGRGeometryFactory::createGeometry(wkbMultiPolygon)),
-            [](OGRMultiPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
-    auto* gc = DownCast<const OGRGeometryCollection*>(geom);
+      WkbKind::kGeometryCollection) {
+    this->data_ = std::shared_ptr<NativeGeom>(
+        DownCast<NativeGeom*>(
+          GeomFactory::createGeometry(WkbKind::kMultiPolygon)),
+            [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
+    auto* gc = DownCast<const NativeGeom*>(geom);
     for (int i = 0; i < gc->getNumGeometries(); ++i) {
       auto* g_i = gc->getGeometryRef(i);
       if (wkbFlatten(g_i->getGeometryType()) ==
-          OGRwkbGeometryType::wkbPolygon) {
+          WkbKind::kPolygon) {
         this->data_->addGeometry(g_i);
       }
     }
   } else {
-    this->data_ = std::shared_ptr<OGRMultiPolygon>(
-        DownCast<OGRMultiPolygon*>(
-          OGRGeometryFactory::createGeometry(wkbMultiPolygon)),
-            [](OGRMultiPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
+    this->data_ = std::shared_ptr<NativeGeom>(
+        DownCast<NativeGeom*>(
+          GeomFactory::createGeometry(WkbKind::kMultiPolygon)),
+            [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
   }
 }
 
@@ -140,7 +140,7 @@ const LinearRing Cells::GetCellBorder(size_t i) const {
         "Cells does not contain cell at " + std::to_string(i));
   }
   return LinearRing(
-      DownCast<OGRPolygon*>(this->data_->getGeometryRef(i))->getExteriorRing());
+      DownCast<NativeGeom*>(this->data_->getGeometryRef(i))->getExteriorRing());
 }
 
 const LinearRing Cells::GetInteriorRing(size_t i_cell, size_t i_ring) const {
@@ -148,7 +148,7 @@ const LinearRing Cells::GetInteriorRing(size_t i_cell, size_t i_ring) const {
     throw std::out_of_range(
         "Cells does not contain cell at " + std::to_string(i_cell));
   }
-  return LinearRing(DownCast<OGRPolygon*>(this->data_->getGeometryRef(i_cell))
+  return LinearRing(DownCast<NativeGeom*>(this->data_->getGeometryRef(i_cell))
       ->getInteriorRing(i_ring));
 }
 
@@ -161,7 +161,7 @@ void Cells::AddRing(size_t i, const LinearRing& ring) {
     throw std::out_of_range(
         "Cells does not contain cell at " + std::to_string(i));
   }
-  DownCast<OGRPolygon*>(this->data_->getGeometryRef(i))->addRing(
+  DownCast<NativeGeom*>(this->data_->getGeometryRef(i))->addRing(
       ring.Clone().get());
 }
 
@@ -217,7 +217,7 @@ namespace {
 // every split line is buffered together into a single pass. A reinflated
 // piece can also come out pinched into two, which Cell::buffer can't hold;
 // collect into a fresh Cells instead.
-template <class T, OGRwkbGeometryType R>
+template <class T, WkbKind R>
 Cells SplitCellsByGeom(const Cells& self, const Geometry<T, R>& geom) {
   Cells raw = self.difference(self.buffer(geom, 1e-8));
   Cells cells;
@@ -294,7 +294,7 @@ LineString Cells::CreateLineUntilBorder(
 }
 
 Cells Cells::buffer(double width) const {
-  return DestroyResGeom<Cells>(this->OGRBuffer(width));
+  return DestroyResGeom<Cells>(this->BufferNative(width));
 }
 
 Point Cells::ClosestPointOnBorderTo(const Point& p) const {

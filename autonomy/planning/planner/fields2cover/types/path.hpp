@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <fstream>
 #include <vector>
 #include <string>

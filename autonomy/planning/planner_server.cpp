@@ -375,6 +375,7 @@ PlannerServer::~PlannerServer() {
     }
     path_valid_service_.reset();
     clear_costmap_service_.reset();
+    get_plan_service_.reset();
     map_reader_.reset();
     plan_writer_.reset();
     correlated_plan_writer_.reset();

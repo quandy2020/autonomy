@@ -4,14 +4,19 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  */
 
+/** @file atlas_node.cpp
+ * @brief Real visual tracking, native output publication and per-acquisition health diagnostics.
+ */
 #include "atlas/atlas_node.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <chrono>
 #include <cstdint>
 #include <exception>
 #include <limits>
 #include <utility>
+#include <unistd.h>
 
 #include <Eigen/Geometry>
 
@@ -306,6 +311,12 @@ bool AtlasNode::Start() {
     odometry_writer_ =
         node_->CreateWriter< ::automsgs::msgs::nav_msgs::Odometry>(
             options_.odometry_topic);
+    if (!options_.localization_status_topic.empty()) {
+        localization_status_writer_ = node_->CreateWriter<
+            ::automsgs::msgs::diagnostic_msgs::DiagnosticArray>(options_.localization_status_topic);
+        diagnostic_instance_ = std::to_string(::getpid()) + ":" +
+            std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+    }
     trajectory_writer_ = node_->CreateWriter< ::automsgs::msgs::nav_msgs::Path>(
         options_.trajectory_topic);
     optimized_trajectory_writer_ =
@@ -353,6 +364,7 @@ bool AtlasNode::Start() {
                 options_.tf_topic);
     }
     if (!odometry_writer_ || !trajectory_writer_ ||
+        (!options_.localization_status_topic.empty() && !localization_status_writer_) ||
         !optimized_trajectory_writer_ ||
         (!options_.ground_truth_trajectory_topic.empty() &&
          !ground_truth_trajectory_writer_) ||
@@ -491,6 +503,7 @@ void AtlasNode::Shutdown() {
     ground_truth_reader_.reset();
     node_.reset();
     odometry_writer_.reset();
+    localization_status_writer_.reset(); diagnostic_instance_.clear();
     trajectory_writer_.reset();
     optimized_trajectory_writer_.reset();
     ground_truth_trajectory_writer_.reset();
@@ -613,7 +626,12 @@ void AtlasNode::OnPrimaryImage(const std::shared_ptr<Image>& message) {
         if (!AcceptTrackingTimestamp(timestamp))
             return;
         if (messages_->TrackMonocular(*message))
-            Publish(timestamp);
+            Publish(timestamp, &message->header().stamp());
+        else {
+            TrackingResult result;
+            if (system_) system_->LatestResult(&result);
+            PublishTrackingDiagnostics(timestamp, result, false, &message->header().stamp());
+        }
         return;
     }
     {
@@ -691,8 +709,17 @@ void AtlasNode::TryTrackSynchronized(bool depth) {
         return;
     const bool tracked = depth ? messages_->TrackRgbd(*primary, *secondary)
                                : messages_->TrackStereo(*primary, *secondary);
+    const auto& first = primary->header().stamp();
+    const auto& second = secondary->header().stamp();
+    const auto& acquisition = first.sec() > second.sec() ||
+        (first.sec() == second.sec() && first.nanosec() >= second.nanosec()) ? first : second;
     if (tracked)
-        Publish(timestamp);
+        Publish(timestamp, &acquisition);
+    else {
+        TrackingResult result;
+        if (system_) system_->LatestResult(&result);
+        PublishTrackingDiagnostics(timestamp, result, false, &acquisition);
+    }
 }
 
 bool AtlasNode::ComputeMapToOdom(const Odometry& odometry,
@@ -933,7 +960,48 @@ void AtlasNode::PublishGroundTruth(double timestamp, bool publish_path,
         ground_truth_trajectory_writer_->Write(output);
 }
 
-void AtlasNode::Publish(double timestamp) {
+void AtlasNode::PublishTrackingDiagnostics(double timestamp, const TrackingResult& result,
+    bool have_odometry, const ::automsgs::msgs::builtin_interfaces::Time* acquisition) {
+    if (!running_ || !localization_status_writer_) return;
+    ::automsgs::msgs::diagnostic_msgs::DiagnosticArray output;
+    if (!SetStamp(timestamp, output.mutable_header()->mutable_stamp())) return;
+    if (acquisition) {
+        if (acquisition->nanosec() >= 1000000000U) return;
+        *output.mutable_header()->mutable_stamp() = *acquisition;
+    }
+    output.mutable_header()->set_frame_id(options_.map_frame);
+    auto* status = output.add_status();
+    status->set_name("atlas/localization"); status->set_hardware_id(diagnostic_instance_);
+    ::automsgs::msgs::builtin_interfaces::Time result_stamp;  ///< Exact native stamp used by the estimated pose.
+    const bool same_acquisition = acquisition ? have_odometry : SetStamp(result.time, &result_stamp) &&
+        result_stamp.sec() == output.header().stamp().sec() &&
+        result_stamp.nanosec() == output.header().stamp().nanosec();
+    const bool healthy = have_odometry && result.valid && result.map_id_valid &&
+        result.coordinate_frame_ready && same_acquisition;
+    status->set_level(healthy ? ::automsgs::msgs::diagnostic_msgs::DiagnosticStatus::OK :
+                               ::automsgs::msgs::diagnostic_msgs::DiagnosticStatus::ERROR);
+    status->set_message(healthy ? "valid tracking at the original acquisition" :
+                                 "no matching valid metric tracking for this acquisition");
+    /** @brief Preserve raw backend values without inventing a consumer alignment epoch. */
+    const auto value = [status](const char* key, const std::string& text) {
+        auto* item = status->add_values(); item->set_key(key); item->set_value(text);
+    };
+    value("schema", "autonomy.atlas.tracking.v1");
+    value("sensor_mode", options_.sensor_mode); value("camera_frame", options_.camera_frame);
+    value("odometry_topic", options_.odometry_topic);
+    value("healthy", healthy ? "true" : "false");
+    value("pose_valid", result.valid ? "true" : "false");
+    value("map_id_valid", result.map_id_valid ? "true" : "false");
+    value("coordinate_frame_ready", result.coordinate_frame_ready ? "true" : "false");
+    value("matching_odometry", have_odometry && same_acquisition ? "true" : "false");
+    value("tracking_state", std::to_string(result.tracking_state));
+    value("map_id", std::to_string(result.map_id));
+    value("coordinate_epoch", std::to_string(result.coordinate_epoch));
+    value("destructive_epoch", std::to_string(result.destructive_epoch));
+    localization_status_writer_->Write(output);
+}
+
+void AtlasNode::Publish(double timestamp, const ::automsgs::msgs::builtin_interfaces::Time* acquisition) {
     if (!running_ || !std::isfinite(timestamp) || !messages_)
         return;
     TrackingResult tracking_result;
@@ -942,6 +1010,10 @@ void AtlasNode::Publish(double timestamp) {
     ObserveGroundTruthCoordinateFrame(tracking_result);
     Odometry odometry;
     const bool have_odometry = messages_->GetOdometry(&odometry);
+    const bool matching_odometry = have_odometry && (!acquisition ||
+        (odometry.header().stamp().sec() == acquisition->sec() &&
+         odometry.header().stamp().nanosec() == acquisition->nanosec()));
+    PublishTrackingDiagnostics(timestamp, tracking_result, matching_odometry, acquisition);
     ++publish_count_;
     if (have_odometry) {
         if (odometry_writer_)

@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <vector>
 #include "autonomy/planning/planner/fields2cover/types/geometries.hpp"
 #include "autonomy/planning/planner/fields2cover/types/point.hpp"
@@ -32,10 +31,10 @@
 
 namespace autonomy::planning::planner::fields2cover::types {
 
-struct LineString : public Geometries<LineString, OGRLineString, wkbLineString,
+struct LineString : public Geometries<LineString, NativeGeom, WkbKind::kLineString,
   Point> {
  public:
-  using Geometries<LineString, OGRLineString, wkbLineString, Point>::Geometries;
+  using Geometries<LineString, NativeGeom, WkbKind::kLineString, Point>::Geometries;
   LineString();
   explicit LineString(const LinearRing& ring);
   explicit LineString(const std::vector<Point>& ps);

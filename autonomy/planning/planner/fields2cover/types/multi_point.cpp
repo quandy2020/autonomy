@@ -28,10 +28,10 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 MultiPoint::MultiPoint() {
-  data_ = std::shared_ptr<OGRMultiPoint>(
-    static_cast<OGRMultiPoint*>(
-      OGRGeometryFactory::createGeometry(wkbMultiPoint)),
-    [](OGRMultiPoint* f) {OGRGeometryFactory::destroyGeometry(f);});
+  data_ = std::shared_ptr<NativeGeom>(
+    static_cast<NativeGeom*>(
+      GeomFactory::createGeometry(WkbKind::kMultiPoint)),
+    [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
 }
 
 MultiPoint::MultiPoint(const std::vector<Point>& ps) {
@@ -101,7 +101,7 @@ const Point MultiPoint::GetLastPoint() const {
 
 
 void MultiPoint::SetGeometry(size_t i, const Point& p) {
-    OGRPoint* point = DownCast<OGRPoint*>(data_->getGeometryRef(i));
+    NativeGeom* point = DownCast<NativeGeom*>(data_->getGeometryRef(i));
     point->setX(p.GetX());
     point->setY(p.GetY());
     point->setZ(p.GetZ());
@@ -123,7 +123,7 @@ void MultiPoint::AddPoints(const MultiPoint& ps) {
 }
 
 void MultiPoint::AddPoint(double x, double y, double z) {
-  OGRPoint p(x, y, z);
+  NativeGeom p(x, y, z);
   this->data_->addGeometry(&p);
 }
 

@@ -1,0 +1,71 @@
+{
+  "schema": "autonomy.defm.depth_features.v1",
+  "variant": "defm_vit_s14",
+  "source_revision": "4849a368d669ae5d34bcd612fa3620f0e8a7ab83",
+  "weights_sha256": "37a6e95befea3a16732a743b2ebec854fd5eaed912ebaf9fbffc63a2306f1e90",
+  "frozen": true,
+  "strict_checkpoint_load": true,
+  "official_preprocessor": "defm.utils.utils.preprocess_depth_batch",
+  "source_sha256": {
+    "defm/__init__.py": "0f60ab2f0fc405273f6321073d54f8eda61eeb575c78888aa55bfc2686b751e2",
+    "defm/layers/__init__.py": "563218b177142b9a458c80c1de239f999b387899af20c3affe3132c1dfaa55c0",
+    "defm/layers/attention.py": "4b9334371965c424a754691d24c71189a547a8d30355b8806d485f4d886c0569",
+    "defm/layers/block.py": "acdc0293a930957e48f5b7ec3e4402846c24962a970e354271f4658df6f4c1d4",
+    "defm/layers/dino_head.py": "121001fe35daf5eb76b642a0dfdfac1ba737c40c5446f72efec007e9ccf776b7",
+    "defm/layers/drop_path.py": "7478970c2959947096a8dd386f88e8587a4b86113a220b77f92cc97e0f87bc46",
+    "defm/layers/layer_scale.py": "08812e0db7acd937faac5dc70d792af602edc44aad4b9158c2536c59ee84883e",
+    "defm/layers/mlp.py": "cd14cdce2f59dfa0d5feef1a23297a3befeb3adbb43cbdb1d46f41510e98b9c3",
+    "defm/layers/patch_embed.py": "3e781f2579f0ee1de2162268ba9fc7db49922f5e7593c84e9202300599fc236f",
+    "defm/layers/swiglu_ffn.py": "2a2ebc0608357e913b9dc02b693bb0034a745ffb5a04b0e8cddcdf35a58d66d2",
+    "defm/model_factory.py": "6638e7b14364acdd9d8da6f8013cf32ec92f74a61e74f0db836e080d34db843d",
+    "defm/models/__init__.py": "25f780f479c7a710f7d65ced95292300a73e69ff26e5e656c1af2a78bf485e01",
+    "defm/models/bifpn.py": "1643b0701c3e4faa84b369c27811ec562eecceae6036be865c9c822ed997fb9a",
+    "defm/models/efficientnet_bifpn.py": "7d05f1369312111537d563b188770ba4d3359b155fbab564a6c8e2afe1963f87",
+    "defm/models/regnet_bifpn.py": "636e3553ad24970a51f238aff0b351905695eeea57d0417cb8909e7e4293056e",
+    "defm/models/resnet_bifpn.py": "e671f08aaf4a48cf4118d4b25f4f94818057ac8bb158d9b7a7e9a291449882df",
+    "defm/models/vision_transformer.py": "981ace837301f25a507c4153264b5eed841569891d318b9229670fedcebdda13",
+    "defm/utils/__init__.py": "7d0936f83c6e0af5ab294d6f0b3e891e693e77a5a25568f0c3fed73173ca7a7d",
+    "defm/utils/utils.py": "7a0ebb7efb1f31a7f184d10075f9a234c222f5e644814c8dac889e1420b99a60"
+  },
+  "input_shape": [
+    1,
+    1,
+    480,
+    640
+  ],
+  "output_shapes": [
+    [
+      1,
+      3,
+      224,
+      224
+    ],
+    [
+      1,
+      256,
+      384
+    ],
+    [
+      1,
+      384
+    ]
+  ],
+  "onnx_opset": 18,
+  "max_abs_errors": {
+    "normalized_depth": 3.0934810638427734e-05,
+    "patch_tokens": 6.914138793945312e-05,
+    "global_feature": 1.1444091796875e-05
+  },
+  "official_image_batch_max_abs_error": 2.3841126842949478e-05,
+  "official_image_batch_tolerance": {
+    "rtol": 3e-05,
+    "atol": 3e-05
+  },
+  "torch_version": "2.8.0",
+  "ort_version": "1.19.2",
+  "artifacts": {
+    "depth_features.onnx": "334320ee2fc7794de959681a83755b69c75486ec64bdcb5daeb194b54ce199c4",
+    "parity.json": "b8b5d4eace7df445654c59b52bb9b5128dc4da4f57a88e332571f491e2c050bf"
+  },
+  "scope": "Real frozen encoder and official preprocessing parity; not a trained SanD adapter or robot trial."
+}

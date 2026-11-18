@@ -86,6 +86,21 @@ public:
     std::optional<VistaRoute> LastRoute() const;
 
     /**
+     * @brief Query the configured graph without superseding a navigation action.
+     * @param start Exact source pose; occupied starts are never silently moved.
+     * @param goal Exact destination and final orientation.
+     * @param[out] route Owned result with evidence from its actual graph snapshot.
+     * @param evidence_only Refresh the source and return provenance, with no path.
+     * @param cancel_checker Optional bounded-work predicate, called outside locks.
+     * @return Native PlannerResultCode; evidence-only success does not set route.success.
+     * @details Reconfiguration or concurrent geometry replacement rejects a stale
+     * result. A query never reads LastRoute from another request.
+     */
+    uint32 QueryRoute(const automsgs::msgs::geometry_msgs::PoseStamped& start,
+        const automsgs::msgs::geometry_msgs::PoseStamped& goal, VistaRoute& route,
+        bool evidence_only = false, std::function<bool()> cancel_checker = {});
+
+    /**
      * @brief Generate a native path without exposing stale or partial output.
      * @param start Valid start pose in the map view's frame.
      * @param goal Valid goal pose, preserving the requested final orientation.

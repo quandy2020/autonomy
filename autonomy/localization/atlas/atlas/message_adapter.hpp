@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
@@ -94,13 +95,22 @@ public:
 private:
     friend class MessageAdapterEpochTest;
 
-    bool Record(const TrackingResult& result);
+    /** @brief Record a completed tracking attempt and its original native acquisition stamp.
+     * @param result Actual tracking result returned for this attempt.
+     * @param acquisition Original integer source stamp; null retains legacy result-time encoding.
+     * @return Whether the result contains a usable pose.
+     * @details ORB uses double seconds internally. Production message identity
+     * must retain the integer Header instead of reconstructing epoch nanoseconds.
+     */
+    bool Record(const TrackingResult& result,
+                const ::automsgs::msgs::builtin_interfaces::Time* acquisition = nullptr);
 
     MapBuilder* system_ = nullptr;
     Options options_;
     mutable std::mutex mutex_;
     ::automsgs::msgs::nav_msgs::Path path_;
     TrackingResult latest_;
+    std::optional<::automsgs::msgs::builtin_interfaces::Time> latest_acquisition_;  ///< Exact input stamp of latest_, never a guessed timestamp correction.
     bool have_path_coordinate_frame_ = false;
     std::uint64_t path_map_id_ = 0;
     std::uint64_t path_coordinate_epoch_ = 0;

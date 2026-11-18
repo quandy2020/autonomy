@@ -17,6 +17,7 @@
 #include "autonomy/planning/common/planner_exceptions.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
+#include "autonomy/planning/planner/vista/native_route_protocol.hpp"
 
 namespace autonomy {
 namespace planning {
@@ -118,6 +119,13 @@ void PlannerServer::RegisterAutolinkEndpoints()
     }
 
     PlannerServer* self = this;
+
+    get_plan_service_ = node_->CreateService<GetPlanRequest, GetPlanResponse>(
+        planner::vista::kGetPlanServiceName,
+        [self](const std::shared_ptr<GetPlanRequest>& request,
+               std::shared_ptr<GetPlanResponse>& response) {
+            if (request && response) self->QueryRoute(*request, *response);
+        });
 
     compute_path_to_pose_server_ = std::make_shared<ComputePathToPoseServer>(
         node_, kComputePathToPoseActionName,

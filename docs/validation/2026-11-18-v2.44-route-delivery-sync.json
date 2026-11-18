@@ -1,0 +1,33 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "docs/validation/2026-11-18-v2.44-route-evidence-write-set.json",
+    "docs/validation/2026-11-18-v2.44-route-evidence-presync.json",
+    "docs/validation/2026-11-18-v2.44-route-evidence-manifest.json",
+    "docs/validation/2026-11-18-v2.44-route-evidence-sync.json",
+    "docs/validation/2026-11-18-v2.44-route-delivery-verified.json"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-9rddj1bs/backup",
+  "expected_sha256": {
+    "docs/validation/2026-11-18-v2.44-route-evidence-write-set.json": null,
+    "docs/validation/2026-11-18-v2.44-route-evidence-presync.json": null,
+    "docs/validation/2026-11-18-v2.44-route-evidence-manifest.json": null,
+    "docs/validation/2026-11-18-v2.44-route-evidence-sync.json": null,
+    "docs/validation/2026-11-18-v2.44-route-delivery-verified.json": null
+  },
+  "deployed_sha256": {
+    "docs/validation/2026-11-18-v2.44-route-evidence-write-set.json": "b5b881484f28dcf9eb2543a67bd899d50f2a381412a4cb97ad5fe0bb387d1b27",
+    "docs/validation/2026-11-18-v2.44-route-evidence-presync.json": "cd4e9309efc226ce5fe848df05c6fe480ed90a825f4299140867d0240c6a544e",
+    "docs/validation/2026-11-18-v2.44-route-evidence-manifest.json": "f7018443b1f88aacae0b283b76a5e67bdffd89695a3e5dbcfccd52181f77d9e5",
+    "docs/validation/2026-11-18-v2.44-route-evidence-sync.json": "d901041a6b8ca69535fe28f686d97a487733b58c4653fd4ca641c1961db8b225",
+    "docs/validation/2026-11-18-v2.44-route-delivery-verified.json": "dec85ec2ca4fccbdebd4a29186f4489a5d4691050daf7576b0ad3e458d558b31"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "8a978b3ac7febdd7607ce08c66b44e70428e58cde1414b2298c9d7d349af3c4b",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

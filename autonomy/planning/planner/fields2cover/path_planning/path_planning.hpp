@@ -70,7 +70,7 @@ class PathPlanning {
    */
   static F2CPath PlanPathForConnection(const F2CRobot& robot,
       const F2CSwaths& s1, const F2CMultiPoint& mp, const F2CSwaths& s2,
-      TurningBase& turn);
+      TurningBase& turn, const F2CCells* field = nullptr);
 
   /**
    * @brief Compute a path that connects two poses and visits middle points.
@@ -87,7 +87,7 @@ class PathPlanning {
       const F2CPoint& p1, double ang1,
       const F2CMultiPoint& mp,
       const F2CPoint& p2, double ang2,
-      TurningBase& turn);
+      TurningBase& turn, const F2CCells* field = nullptr);
 
   /**
    * @brief Radius swept by a continuous-curvature turn.

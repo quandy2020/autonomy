@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <vector>
 #include "autonomy/planning/planner/fields2cover/types/geometries.hpp"
 #include "autonomy/planning/planner/fields2cover/types/point.hpp"
@@ -32,9 +31,9 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 struct MultiPoint :
-  public Geometries<MultiPoint, OGRMultiPoint, wkbMultiPoint, Point> {
+  public Geometries<MultiPoint, NativeGeom, WkbKind::kMultiPoint, Point> {
  public:
-  using Geometries<MultiPoint, OGRMultiPoint, wkbMultiPoint, Point>::Geometries;
+  using Geometries<MultiPoint, NativeGeom, WkbKind::kMultiPoint, Point>::Geometries;
   MultiPoint();
   explicit MultiPoint(const std::vector<Point>& ps);
   explicit MultiPoint(const std::initializer_list<Point>& ps);

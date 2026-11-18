@@ -138,7 +138,9 @@ F2CRoute PlanCovRoute(const F2CRobot& robot, const F2CCells& cells,
           opt.sg_angle, robot.GetCovWidth(), mainland);
   }
   autonomy::planning::planner::fields2cover::rp::RoutePlannerBase rp;
-  return rp.GenRoute(fast_hl_rings, swaths);
+  auto route = rp.GenRoute(fast_hl_rings, swaths);
+  route.SetField(cells);
+  return route;
 }
 
 F2CRoute PlanCovRoute(const F2CRobot& robot, const F2CField& field,

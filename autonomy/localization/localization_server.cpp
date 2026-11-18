@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+/** @file localization_server.cpp
+ * @brief Select the existing native localization backend and forward its configured endpoints.
+ */
 #include "autonomy/localization/localization_server.hpp"
 
 #include <utility>
@@ -221,6 +224,16 @@ public:
         node_opts.image_topic = options_.atlas_image_topic;
         node_opts.right_image_topic = options_.atlas_right_image_topic;
         node_opts.depth_image_topic = options_.atlas_depth_image_topic;
+        node_opts.odometry_topic = options_.atlas_odometry_topic;
+        node_opts.localization_status_topic = options_.atlas_localization_status_topic;
+        node_opts.trajectory_topic = options_.atlas_trajectory_topic;
+        node_opts.optimized_trajectory_topic =
+            options_.atlas_optimized_trajectory_topic;
+        node_opts.map_points_topic = options_.atlas_map_points_topic;
+        node_opts.tracking_image_topic = options_.atlas_tracking_image_topic;
+        node_opts.loop_closures_topic = options_.atlas_loop_closures_topic;
+        node_opts.ground_truth_trajectory_topic =
+            options_.atlas_ground_truth_trajectory_topic;
         node_opts.feature_matches_topic =
             options_.atlas_feature_matches_topic;
         node_opts.dense_map_points_topic =

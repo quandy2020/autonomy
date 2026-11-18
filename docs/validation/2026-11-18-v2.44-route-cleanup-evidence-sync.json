@@ -1,0 +1,51 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "docs/source/17_Tasks/09_native_exploration_validation.md",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-manifest.json",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-presync.json",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-sync.json",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-build.log",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-configure.log",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-tests.log",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation.json",
+    "docs/validation/2026-11-18-v2.44-route-delivery-manifest.json",
+    "docs/validation/2026-11-18-v2.44-route-delivery-presync.json",
+    "docs/validation/2026-11-18-v2.44-route-delivery-sync.json"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-2x5fsod0/backup",
+  "expected_sha256": {
+    "docs/source/17_Tasks/09_native_exploration_validation.md": "9f0fcbc51cb4a8a999eb1dacd4bb9859807764067e837e27dbe85a8601858d40",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-manifest.json": null,
+    "docs/validation/2026-11-18-v2.44-route-cleanup-presync.json": null,
+    "docs/validation/2026-11-18-v2.44-route-cleanup-sync.json": null,
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-build.log": null,
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-configure.log": null,
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-tests.log": null,
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation.json": null,
+    "docs/validation/2026-11-18-v2.44-route-delivery-manifest.json": null,
+    "docs/validation/2026-11-18-v2.44-route-delivery-presync.json": null,
+    "docs/validation/2026-11-18-v2.44-route-delivery-sync.json": null
+  },
+  "deployed_sha256": {
+    "docs/source/17_Tasks/09_native_exploration_validation.md": "70666560fbb51032f6ad7ecc97d515f0efe8e12a4274f7c2d663c68b9ffc088d",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-manifest.json": "8e2b594304f16cee163dbe04c615e39a6711b76ebeef81237e47c4cecb0284b9",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-presync.json": "70995422c6ea6c69c353a4f6440ca9739e1cb382ef6fa7e3d37be80673c2bbf4",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-sync.json": "623820570ce970b97e81d8f87cf4a0dee52f48f2e1a226ea4cc4c1f7842fe4a8",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-build.log": "731ca516a801287999863742373b0b8bc1846f5ad19dc384c098c648e121207e",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-configure.log": "b145dc165dff73203d6c0ba9b9c9f81128b3f866f9113eacc976e0ecfd1ddbd0",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation-tests.log": "ca96ff122906372dd538fbd2bb06187df05fd96514f48f1f54a2c3a0007262f3",
+    "docs/validation/2026-11-18-v2.44-route-cleanup-validation.json": "2d3628c0c4f66666a0fe2ba26ffe73a5f9ff25e38999aede23f909eec61e8f97",
+    "docs/validation/2026-11-18-v2.44-route-delivery-manifest.json": "8a978b3ac7febdd7607ce08c66b44e70428e58cde1414b2298c9d7d349af3c4b",
+    "docs/validation/2026-11-18-v2.44-route-delivery-presync.json": "419192c5cb902630edf487c4b8ab0c086e0aa55f67121d9f64e84f100a9d517c",
+    "docs/validation/2026-11-18-v2.44-route-delivery-sync.json": "abd4c5f6c57b660e0d50dc90157a57427ab0cba5a815f92950a22d554a17e443"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "85a0d283de4ca1a721026d2cccf09f4f8223acfd11f7353f2c76c76c229e9b8e",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

@@ -1,0 +1,24 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/exploration/native_session_factory_test.cpp",
+    "docs/source/17_Tasks/09_native_exploration_validation.md"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-6_bykyz7/backup",
+  "expected_sha256": {
+    "autonomy/task/exploration/native_session_factory_test.cpp": "bca28616c481917802d1275ad0d4b53b739f8e5c6f589fcd7c9870eeb50a05f6",
+    "docs/source/17_Tasks/09_native_exploration_validation.md": "10368ca8ace0b4759bc7699c7a9938ba6805a5ee86633834706a7b5d16a4e11c"
+  },
+  "deployed_sha256": {
+    "autonomy/task/exploration/native_session_factory_test.cpp": "a25643325d71ffc60ec44e8c4ab4a0e3afda40ee4f93ad91ed518c6a918a3c9d",
+    "docs/source/17_Tasks/09_native_exploration_validation.md": "397bfa8b344f8e7ebe691ad2cdef90bdbc274dc88a68fa886a9dd70e7947e6ea"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "f5aeb22178d504536309e049ec36ad720d6fadf0faede50deab60ff31114488c",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

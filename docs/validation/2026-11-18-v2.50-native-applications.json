@@ -1,0 +1,97 @@
+{
+  "applications_verified": true,
+  "steps": [
+    {
+      "stage": "build",
+      "returncode": 0,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/workspace/autonomy/build/autonomy",
+        "SpaceHero",
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=10",
+        "1200",
+        "/bin/bash",
+        "-lc",
+        "cmake --build /workspace/autonomy/build/autonomy --target autonomy.task autonomy.planning autonomy.control -j 4"
+      ],
+      "remote_log": "/tmp/opt-native-applications-4ua2hszl/build.log",
+      "log": "docs/validation/2026-11-18-v2.50-native-applications-build.log",
+      "log_sha256": "fbab9d47a9c610206196c58c1f135a2fb05a9425a9f728ffa680071d6285b511"
+    },
+    {
+      "stage": "autonomy.task-help",
+      "returncode": 0,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/workspace/autonomy/build/autonomy",
+        "SpaceHero",
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=10",
+        "30",
+        "/bin/bash",
+        "-lc",
+        "/workspace/autonomy/build/autonomy/bin/autonomy.task --help"
+      ],
+      "remote_log": "/tmp/opt-native-applications-4ua2hszl/autonomy.task-help.log",
+      "log": "docs/validation/2026-11-18-v2.50-native-applications-autonomy.task-help.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "autonomy.planning-help",
+      "returncode": 0,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/workspace/autonomy/build/autonomy",
+        "SpaceHero",
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=10",
+        "30",
+        "/bin/bash",
+        "-lc",
+        "/workspace/autonomy/build/autonomy/bin/autonomy.planning --help"
+      ],
+      "remote_log": "/tmp/opt-native-applications-4ua2hszl/autonomy.planning-help.log",
+      "log": "docs/validation/2026-11-18-v2.50-native-applications-autonomy.planning-help.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "autonomy.control-help",
+      "returncode": 0,
+      "command": [
+        "docker",
+        "exec",
+        "-w",
+        "/workspace/autonomy/build/autonomy",
+        "SpaceHero",
+        "timeout",
+        "--signal=TERM",
+        "--kill-after=10",
+        "30",
+        "/bin/bash",
+        "-lc",
+        "/workspace/autonomy/build/autonomy/bin/autonomy.control --help"
+      ],
+      "remote_log": "/tmp/opt-native-applications-4ua2hszl/autonomy.control-help.log",
+      "log": "docs/validation/2026-11-18-v2.50-native-applications-autonomy.control-help.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "manifest_sha256": "b597a0646c7cd4e439787da032a1aad10e2838a13064914e44781c39da936bd5",
+  "exploration_task_started": false,
+  "coverage_comparison_performed": false,
+  "scope": "Production applications build and CLI only; no exploration acceptance.",
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "protected_map_file_count": 471,
+  "ssh_returncode": 0
+}

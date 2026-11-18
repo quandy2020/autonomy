@@ -106,22 +106,20 @@ std::optional<VistaRoute> VistaPlanner::LastRoute() const {
     std::lock_guard<std::mutex> lock(mutex_); return last_route_;
 }
 
-uint32 VistaPlanner::CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
-    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
-    automsgs::msgs::nav_msgs::Path& plan, std::function<bool()> cancel_checker) {
-    plan.Clear();
+uint32 VistaPlanner::QueryRoute(const automsgs::msgs::geometry_msgs::PoseStamped& start,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal, VistaRoute& route,
+    bool evidence_only, std::function<bool()> cancel_checker) {
+    route = {};
     MapViewSource source;
     std::shared_ptr<VistaRoutePlanner> routes;
     std::shared_ptr<NativeCostmapReader> reader;
     std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap;
     VistaPlannerSettings settings;
     CostmapReadMetadata metadata;
-    std::uint64_t request, configuration;
+    std::uint64_t configuration;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        request = ++latest_request_;
         configuration = configuration_version_;
-        last_route_.reset();
         source = map_source_; routes = route_planner_; reader = costmap_reader_;
         costmap = costmap_; settings = settings_; metadata = metadata_;
     }
@@ -129,43 +127,86 @@ uint32 VistaPlanner::CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped
     try {
         if (canceled()) return proto::PLANNER_CANCELED;
         if (!routes) return proto::PLANNER_NOT_INITIALIZED;
-        if (!PoseValid(start)) return proto::PLANNER_INVALID_START;
-        if (!PoseValid(goal)) return proto::PLANNER_INVALID_GOAL;
+        if (!evidence_only && !PoseValid(start)) return proto::PLANNER_INVALID_START;
+        if (!evidence_only && !PoseValid(goal)) return proto::PLANNER_INVALID_GOAL;
         std::optional<perception::MapReadView> view;
         if (source) view = source();
         else if (costmap && costmap->getCostmap())
-            view = reader->Read(*costmap->getCostmap(),costmap->getGlobalFrameID(),
-                                metadata,settings.costmap_footprint_inflated);
+            view = reader->Read(*costmap->getCostmap(), costmap->getGlobalFrameID(),
+                                metadata, settings.costmap_footprint_inflated);
         if (canceled()) return proto::PLANNER_CANCELED;
         if (!view || !view->grid || !view->map_epoch || !view->geometry_revision)
             return proto::PLANNER_NOT_INITIALIZED;
-        if (start.header().frame_id() != view->frame_id ||
-            goal.header().frame_id() != view->frame_id || view->frame_id != view->grid->frame_id())
+        if (view->frame_id != view->grid->frame_id() || (!evidence_only &&
+            (start.header().frame_id() != view->frame_id || goal.header().frame_id() != view->frame_id)))
             return proto::PLANNER_TF_ERROR;
         routes->Update(*view);
-        const auto evidence = routes->GraphSnapshot();
-        if (evidence.map_epoch != view->map_epoch || evidence.geometry_revision != view->geometry_revision)
+        const auto evidence = routes->Evidence();
+        if (!evidence || evidence->map_epoch != view->map_epoch ||
+            evidence->geometry_revision != view->geometry_revision)
             return proto::PLANNER_TF_ERROR;
+        if (!(evidence->observation_cut == view->observation_cut) ||
+            !(evidence->observation_baseline == view->observation_baseline) ||
+            evidence->observation_recovery_generation != view->observation_recovery_generation)
+            return proto::PLANNER_CANCELED;
         {
             std::lock_guard<std::mutex> lock(mutex_);
-            if (request != latest_request_ || configuration != configuration_version_)
-                return proto::PLANNER_CANCELED;
+            if (configuration != configuration_version_) return proto::PLANNER_CANCELED;
             latest_map_ = *view;
         }
-        const Pose2d from = PlanarPose(start), to = PlanarPose(goal);
-        if (!view->grid->WorldToCell(from)) return proto::PLANNER_INVALID_START;
-        if (!view->grid->WorldToCell(to)) return proto::PLANNER_INVALID_GOAL;
-        EdgeValidator validator(*view,settings.safety);
-        if (!validator.PoseSafe(from)) return proto::PLANNER_BLOCKED_START;
-        if (!validator.PoseSafe(to)) return proto::PLANNER_BLOCKED_GOAL;
-        auto route = routes->CreateRoute(from,to,canceled);
-        if (route.canceled || canceled()) return proto::PLANNER_CANCELED;
-        if (!route.success) return proto::PLANNER_NO_PATH_FOUND;
-        if (route.path.poses.empty()) return proto::PLANNER_EMPTY_PATH;
+        route.evidence = evidence;
+        route.map_epoch = evidence->map_epoch;
+        route.geometry_revision = evidence->geometry_revision;
+        route.path.frame_id = evidence->frame_id;
+        if (evidence_only) {
+            // A provenance refresh never manufactures a successful route.
+        } else {
+            const Pose2d from = PlanarPose(start), to = PlanarPose(goal);
+            if (!view->grid->WorldToCell(from)) return proto::PLANNER_INVALID_START;
+            if (!view->grid->WorldToCell(to)) return proto::PLANNER_INVALID_GOAL;
+            EdgeValidator validator(*view, settings.safety);
+            if (!validator.PoseSafe(from)) return proto::PLANNER_BLOCKED_START;
+            if (!validator.PoseSafe(to)) return proto::PLANNER_BLOCKED_GOAL;
+            route = routes->CreateRoute(from, to, canceled);
+            if (route.canceled || canceled()) return proto::PLANNER_CANCELED;
+            if (!route.success) return proto::PLANNER_NO_PATH_FOUND;
+            if (route.path.poses.empty()) return proto::PLANNER_EMPTY_PATH;
+        }
+        if (canceled()) { route = {}; route.canceled = true; return proto::PLANNER_CANCELED; }
+        const auto current = routes->Evidence();
+        if (!current || !route.evidence || current->map_epoch != route.map_epoch ||
+            current->geometry_revision != route.geometry_revision ||
+            !(current->observation_cut == route.evidence->observation_cut) ||
+            !(current->observation_baseline == route.evidence->observation_baseline) ||
+            current->observation_recovery_generation != route.evidence->observation_recovery_generation) {
+            route = {}; return proto::PLANNER_CANCELED;
+        }
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (configuration != configuration_version_) { route = {}; return proto::PLANNER_CANCELED; }
+        return proto::PLANNER_SUCCESS;
+    } catch (...) {
+        route = {}; return proto::PLANNER_INTERNAL_ERROR;
+    }
+}
 
+uint32 VistaPlanner::CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped& start,
+    const automsgs::msgs::geometry_msgs::PoseStamped& goal,
+    automsgs::msgs::nav_msgs::Path& plan, std::function<bool()> cancel_checker) {
+    plan.Clear();
+    std::uint64_t request, configuration;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        request = ++latest_request_; configuration = configuration_version_;
+        last_route_.reset();
+    }
+    auto canceled = [&] { return cancel_checker && cancel_checker(); };
+    try {
+        VistaRoute route;
+        const auto code = QueryRoute(start, goal, route, false, cancel_checker);
+        if (code != proto::PLANNER_SUCCESS) return code;
         automsgs::msgs::nav_msgs::Path candidate;
         candidate.mutable_header()->CopyFrom(start.header());
-        candidate.mutable_header()->set_frame_id(view->frame_id);
+        candidate.mutable_header()->set_frame_id(route.path.frame_id);
         for (std::size_t i = 0; i < route.path.poses.size(); ++i) {
             auto* pose = candidate.add_poses(); pose->mutable_header()->CopyFrom(candidate.header());
             auto* p = pose->mutable_pose()->mutable_position();
@@ -187,15 +228,17 @@ uint32 VistaPlanner::CreatePlan(const automsgs::msgs::geometry_msgs::PoseStamped
             std::lock_guard<std::mutex> lock(mutex_);
             if (request != latest_request_ || configuration != configuration_version_)
                 return proto::PLANNER_CANCELED;
-            const auto current = routes->GraphSnapshot();
-            if (route.map_epoch != current.map_epoch ||
-                route.geometry_revision != current.geometry_revision)
+            const auto current = route_planner_->Evidence();
+            if (!current || !route.evidence || route.map_epoch != current->map_epoch ||
+                route.geometry_revision != current->geometry_revision ||
+                !(route.evidence->observation_cut == current->observation_cut) ||
+                !(route.evidence->observation_baseline == current->observation_baseline) ||
+                route.evidence->observation_recovery_generation != current->observation_recovery_generation)
                 return proto::PLANNER_CANCELED;
             last_route_ = std::move(route); plan.Swap(&candidate);
         }
         return proto::PLANNER_SUCCESS;
     } catch (...) {
-        // No partially constructed path can escape an input/worker exception.
         plan.Clear();
         std::lock_guard<std::mutex> lock(mutex_);
         if (request == latest_request_) last_route_.reset();

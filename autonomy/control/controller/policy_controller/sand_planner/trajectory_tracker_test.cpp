@@ -304,6 +304,90 @@ void Handoff(const std::shared_ptr<const s::LocalGroundSnapshot>& ground,
     Runner replay(reference); replay.Start(); replay.Advance(10.3); replay.input.reference = Admit(ground);
     Require(!replay.Tick().command, "new certificate with the same reference version cannot bypass replay checks");
 }
+
+/** @brief Native controller proposals retain the original gates and exact command identity. */
+void NativeControllerGate(const std::shared_ptr<const s::AdmittedReference>& reference) {
+    Runner runner(reference);
+    unsigned solves = 0, checks = 0;
+    const s::TrackingController controller = [&](const auto& query, const auto&, auto* output, auto*) {
+        ++solves;
+        Require(query.reference == reference && query.deadline == runner.now + .02 &&
+                query.command.begin_stamp == query.deadline + .005, "native solve changed reference or charged budgets");
+        *output = query.command;
+        output->linear_velocity = query.feedback.state.velocity[0] + .0001;
+        output->yaw_velocity = 0;
+        return true;
+    };
+    const s::TrackingCommandVerifier verifier = [&](const auto& query) {
+        ++checks;
+        Require(query.command.linear_velocity == runner.input.feedback.state.velocity[0] + .0001,
+                "native command was replaced by built-in feedback before actual-command verification");
+        return Clear(query);
+    };
+    const auto tick = [&] { return runner.tracker.TickWithController(runner.input, [&] { return runner.now; }, verifier, controller); };
+    const auto request = tick();
+    Require(!request.command && solves == 0, "native solve ran before physical-stop confirmation");
+    runner.now = 10.21; runner.input.feedback = Feedback(runner.now, ++runner.feedback_sequence);
+    runner.input.stop_receipt = Receipt(request, runner.now);
+    Require(tick().status == s::TrajectoryTrackingStatus::kWaiting && solves == 0,
+            "native solve ran before the scheduled admitted reference");
+    runner.input.stop_receipt.reset(); runner.Advance(10.25);
+    const auto started = tick();
+    Require(started.command && solves == 1 && checks == 1 && started.command->valid_until == runner.now + .04,
+            "native solve did not preserve the original command horizon and independent verifier");
+    runner.Advance(10.29); runner.input.lease.active = false;
+    Require(!tick().command && solves == 1, "revoked grant reached native controller");
+
+    for (unsigned fault = 0; fault < 9; ++fault) {
+        Runner bad(reference); bad.Start(); bad.Advance(10.29);
+        unsigned checked = 0;
+        s::TrackingController broken;
+        if (fault != 0) broken = [&](const auto& query, const auto&, auto* output, auto*) {
+            *output = query.command; output->linear_velocity = bad.input.feedback.state.velocity[0];
+            output->yaw_velocity = 0;
+            if (fault == 1) return false;
+            if (fault == 2) throw std::runtime_error("actual native dependency exception");
+            if (fault == 3) bad.now = query.deadline;
+            if (fault == 4) ++output->timing.reference_version;
+            if (fault == 5) output->valid_until += 1;
+            if (fault == 6) output->linear_velocity = 100;
+            if (fault == 7) output->yaw_velocity = std::numeric_limits<double>::quiet_NaN();
+            if (fault == 8) bad.tracker.RequestStop(bad.input.lease, bad.now, "stop during native solve");
+            return true;
+        };
+        const auto result = bad.tracker.TickWithController(bad.input, [&] { return bad.now; },
+            [&](const auto& query) { ++checked; return Clear(query); }, broken);
+        Require(!result.command && checked == 0, "missing/late/malformed native solve bypassed the original gate");
+        bad.Advance(10.33);
+        Require(!bad.Tick().command, "failed native mode silently fell back and revived movement");
+    }
+    Runner stale(reference); stale.Start(); stale.Advance(10.29);
+    stale.input.feedback.stamp = stale.now - .049;
+    const auto expired = stale.tracker.TickWithController(stale.input, [&] { return stale.now; }, Clear,
+        [&](const auto& query, const auto&, auto* output, auto*) {
+            *output = query.command; output->linear_velocity = query.feedback.state.velocity[0];
+            output->yaw_velocity = 0; stale.now += .002; return true;
+        });
+    Require(!expired.command, "native solve revived feedback that expired during computation");
+
+    Runner budget(reference); budget.Start(); budget.Advance(10.29);
+    double verified_at = 0;
+    unsigned verifications = 0;
+    const auto exceeded = budget.tracker.TickWithController(budget.input, [&] { return budget.now; },
+        [&](const auto& query) {
+            ++verifications;
+            Require(query.deadline == verified_at + .005 && query.deadline < query.command.begin_stamp,
+                    "unused solver time silently extended the independent verifier budget");
+            budget.now = query.deadline;
+            return Clear(query);
+        }, [&](const auto& query, const auto&, auto* output, auto*) {
+            *output = query.command; output->linear_velocity = query.feedback.state.velocity[0];
+            output->yaw_velocity = 0; budget.now += .001; verified_at = budget.now;
+            return true;
+        });
+    Require(!exceeded.command && verifications == 1,
+            "verifier overran its own budget but used spare native solve time to authorize movement");
+}
 }  // namespace
 
 /** @brief Standalone scenarios use real production admission and report the first failed obligation. */
@@ -312,6 +396,7 @@ int main() {
         const auto ground = Ground(); const auto reference = Admit(ground);
         AdmissionFailure(ground); CommandsAndStop(reference); FeedbackFailures(reference);
         CommandVerdictFailures(reference); OwnershipFailures(reference); Handoff(ground, reference);
+        NativeControllerGate(reference);
         std::cout << "PASS trajectory tracker admission, identity, deadlines, physical-stop gating and C2 handoff\n";
         return 0;
     } catch (const std::exception& exception) {

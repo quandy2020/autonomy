@@ -104,19 +104,104 @@ TartanAir 是合成数据集，以上结果验证离线接口、尺度和数值�
 | `/atlas/odometry` | 当前相机位姿里程计 |
 | `/atlas/trajectory` | 已跟踪轨迹 `Path` |
 | `/atlas/map_points` | 当前稀疏地图点 `PointCloud2` |
+| `/atlas/dense_map_points` | 启用稠密建图后的彩色地图 `PointCloud2` |
+| `/atlas/occupancy_grid` | 启用稠密建图后的导航投影 `OccupancyGrid` |
+| `/atlas/optimized_trajectory` | 优化后的关键帧 `Path` |
+| `/atlas/loop_closures` | 回环约束 `MarkerArray` |
 | `/tf` | 默认发布 `map→odom` 动态变换 |
 
-当前实现仍不发布：
-
-- LiDAR registered cloud 或 cloud map
-- occupancy grid
-- loop marker
+Atlas 不产生 LiDAR registered cloud 或 LiDAR cloud map。
+占用栅格和稠密点云由实际 RGB-D/双目建图流水线发布，需要
+`--atlas_enable_dense_mapping=true` 和非空输出话题；发布成功不等于
+已经融合探索消费者接收的全部输入，也不构成保存地图的回执。
 
 Atlas 默认订阅 `/tf` 和 `/tf_static`，在图像时刻查询
 `odom→base_link→camera_link`（也兼容直接 `odom→camera_link`），再由
 视觉位姿计算并发布 `map→odom`。输入变换缺失或与图像时间相差超过 100 ms
 时会跳过本次 TF 发布；可用 `--atlas_publish_tf=false` 关闭该输出。
-依赖占用栅格的导航模块仍需显式适配或选择具备相应输出的后端。
+非惯性 RGB-D 的世界坐标从第一帧相机初始化，栅格可能采用 XZ 投影。
+导航消费者须检查消息里的栅格原点姿态及世界坐标关系，不能仅把
+`frame_id` 改成 `map` 就当作已经完成对齐。
+
+## 隔离实例与 RGB-D 验证
+
+2026-11-18 补齐 `LocalizationOptions` → `AtlasBackend` → `AtlasNode::Options`
+和原生 CLI 的输出话题转发。新增参数为
+`--atlas_odometry_topic`、`--atlas_trajectory_topic`、
+`--atlas_optimized_trajectory_topic`、`--atlas_map_points_topic`、
+`--atlas_tracking_image_topic`、`--atlas_loop_closures_topic` 和
+`--atlas_ground_truth_trajectory_topic`。原来的稠密地图、特征匹配、占用
+栅格与 TF 参数继续使用；所有默认话题与已有 AtlasNode 一致。
+这些参数复用已有 AutoMsgs 类型，没有新增传输消息。
+
+验证实例把全部输入/输出放到同一 `/validation/exploration/…` 前缀，并为
+AutoSim 和 Atlas 分别设置 `AUTOSIM_INSTANCE_LOCK_PATH` 与
+`AUTONOMY_ATLAS_INSTANCE_LOCK_PATH`。只停止本次创建的子进程；已有
+AutoSim 实例继续运行。纯 RGB-D 模式不启用 IMU 和 LiDAR。
+
+`scripts/validate_rgbd_localization.py` 等待实际 `CameraInfo`、注册 RGB8、
+米单位 `32FC1` 深度及静态 TF，再生成相机 YAML。内参来自消息，安装高度
+来自 `base_footprint→相机` 的实际静态变换链。浮点参数保留 `.0` 或小数，
+避免 OpenCV 将整数形式的主点坐标判为非 real。图像尺寸和 `Camera.fps`
+按 Atlas 的解析约定输出为整数。即使关闭 GUI，Atlas 仍解析十项必需的
+`Viewer.*` 浮点参数，因此验证配置同时提供这些设置。没有沿用 TUM 内参、
+畸变或 5000 倍深度缩放。
+
+验证时显式关闭 Atlas 的 GT 输入和 GT 轨迹输出，同时关闭 TF 发布；
+独立记录器保留 GT 栅格和位姿用于之后的评价。Atlas 的估计位姿和占用
+栅格由它自己的实际 RGB-D 流水线产生。脚本记录原始消息、程序日志、
+标定与词表摘要、退出状态以及非未知栅格数量。
+
+在当前 SpaceHero 中，定位依赖配置与四个实际应用的构建及 `--help`
+已通过。原始证据为 `docs/validation/2026-11-18-v2.52-localization-applications.json`
+和补齐话题后的 `2026-11-18-v2.53-localization-applications.json`。
+这是应用构建证据；实际 RGB-D 运行有独立记录，完整探索任务及真值覆盖
+比较也必须分别验证，不能从 CLI 成功推导。
+
+v2.57 已通过真实 Habitat + Atlas RGB-D 静止运行：640×480、10 Hz，
+2500 个模拟步，收到 RGB、深度和 CameraInfo 各 500 条；Atlas 估计
+里程计 498 条、轨迹 249 条、算法占用栅格 50 条，最终地图包含 3073 个
+已知格子。Atlas 正常退出，安装高度从静态 TF 得到 0.21 m。
+四项标定配置回归通过，并将 23 个原始消息、配置和日志文件按摘要导出。
+证据为 `docs/validation/2026-11-18-v2.57-rgbd-localization-attempt.json`，
+原始记录位于同名前缀的 `-recording/recording/` 子目录。
+运行没有发送运动指令；起止真值位姿相同，不能用它验证移动跟踪精度、
+探索覆盖、参考平滑性、避障或闭环保存。
+
+## 原生定位状态与探索关联
+
+`--atlas_localization_status_topic` 可配置原生 automsgs `DiagnosticArray`
+输出；空字符串关闭该输出，不改变原有话题配置。每次完成或失败的相机
+跟踪尝试都发布 `atlas/localization` 状态，消息 Header 保留该次尝试的
+采集时间及 Atlas 世界帧。
+
+只有实际跟踪结果有效、地图身份有效、度量坐标已就绪，并且结果时间与
+该次采集时间在 native nanosecond 表示下完全相同时，状态才为 `OK`。
+MessageAdapter 的定位和路径 Header 保留实际输入的整数秒/纳秒；内部
+ORB 跟踪仍使用 double 时间。不能通过 double 重建 epoch nanoseconds
+后关联深度，因为大 epoch 时间的浮点精度可能产生数百纳秒偏差。
+失败尝试不会把上一帧仍有效的结果变成当前帧健康状态。状态与 Odometry
+可以先后到达，消费者必须按时间和帧名关联；不能把最新状态配给旧深度。
+
+`values` 保留版本标识 `autonomy.atlas.tracking.v1`、实际 sensor mode、
+camera frame、odometry topic、跟踪状态、有效性和实际 Atlas map id、
+coordinate epoch、destructive epoch。`hardware_id` 区分进程/启动实例，
+避免重启后的相同 map id 被当作原有坐标世代。这里的地图身份是后端原始
+值，消费者仍需建立非零 map epoch 并处理重置及坐标变更。
+
+这些状态由真实 MapBuilder 产生，补充普通 Odometry 缺少的健康及坐标身份。
+它们不包含底盘外参标定，也不证明地图融合、覆盖或保存。探索平台仍需
+使用实际静态安装链组合相机与底盘位姿，并对实际测量和地图处理结果建立
+关联。RGB-D 验证脚本记录原始状态消息，检查至少五组原始深度、健康状态
+和估计位姿的相同整数时间戳；后两者的地图/相机帧也必须一致。该项验证
+仍属于定位建图接入，不代表完整探索通过。
+
+v2.63 的真实 Habitat + Atlas RGB-D 运行已经验证上述整数时间关联：
+500 条相机输入中有 498 组健康状态、估计位姿与原始深度精确对应，
+算法地图含 3073 个已知格子，Atlas 正常退出。该验证仍是静止定位建图。
+原始记录和 26 文件摘要校验位于
+`docs/validation/2026-11-18-v2.63-rgbd-acquisition-recording/` 及同版本
+`-export.json`，任务整体接入状态见 Tasks 下的 native exploration 验证文档。
 
 ## 常见问题
 

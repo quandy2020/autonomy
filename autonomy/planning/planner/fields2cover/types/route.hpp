@@ -24,12 +24,12 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <algorithm>
 #include <vector>
 #include <numeric>
 #include <optional>
 #include "autonomy/planning/planner/fields2cover/types/swath.hpp"
+#include "autonomy/planning/planner/fields2cover/types/cells.hpp"
 #include "autonomy/planning/planner/fields2cover/types/swaths.hpp"
 #include "autonomy/planning/planner/fields2cover/types/line_string.hpp"
 #include "autonomy/planning/planner/fields2cover/types/multi_point.hpp"
@@ -84,7 +84,12 @@ struct Route {
 
   Route Clone() const;
 
+  // Preserve the actual field (including holes) for collision-checked turns.
+  void SetField(const Cells& field) { field_ = field.Clone(); }
+  const std::optional<Cells>& GetField() const { return field_; }
+
  private:
+  std::optional<Cells> field_;
   std::vector<Swaths> v_swaths_;
   std::vector<MultiPoint> connections_;
 };

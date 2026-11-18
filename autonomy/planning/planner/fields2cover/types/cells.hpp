@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <vector>
 #include "autonomy/planning/planner/fields2cover/types/geometry.hpp"
 #include "autonomy/planning/planner/fields2cover/types/geometries.hpp"
@@ -34,12 +33,12 @@
 
 namespace autonomy::planning::planner::fields2cover::types {
 
-struct Cells : public Geometries<Cells, OGRMultiPolygon, wkbMultiPolygon,
+struct Cells : public Geometries<Cells, NativeGeom, WkbKind::kMultiPolygon,
     Cell> {
  public:
-  using Geometries<Cells, OGRMultiPolygon, wkbMultiPolygon, Cell>::Geometries;
+  using Geometries<Cells, NativeGeom, WkbKind::kMultiPolygon, Cell>::Geometries;
   Cells();
-  explicit Cells(const OGRGeometry* geom);
+  explicit Cells(const NativeGeom* geom);
   explicit Cells(const Cell& c);
   ~Cells() = default;
 
@@ -106,7 +105,7 @@ struct Cells : public Geometries<Cells, OGRMultiPolygon, wkbMultiPolygon,
   LineString CreateLineUntilBorder(
       const autonomy::planning::planner::fields2cover::types::Point& p, double ang) const;
 
-  template <class T, OGRwkbGeometryType R>
+  template <class T, WkbKind R>
   static Cells buffer(const Geometry<T, R>& geom, double width,
       int side = 0);
 
@@ -117,11 +116,11 @@ struct Cells : public Geometries<Cells, OGRMultiPolygon, wkbMultiPolygon,
 
 
 
-template <class T, OGRwkbGeometryType R>
+template <class T, WkbKind R>
 Cells Cells::buffer(const Geometry<T, R>& geom, double width, int side) {
-  OGRGeometry* buffer = geom.OGRBuffer(width, side);
+  NativeGeom* buffer = geom.BufferNative(width, side);
   Cells cells {buffer};
-  OGRGeometryFactory::destroyGeometry(buffer);
+  GeomFactory::destroyGeometry(buffer);
   return cells;
 }
 

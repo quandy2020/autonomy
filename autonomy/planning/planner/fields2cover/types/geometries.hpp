@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <memory>
 #include <type_traits>
 #include <iterator>
@@ -33,7 +32,7 @@
 
 namespace autonomy::planning::planner::fields2cover::types {
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 struct Geometries : public Geometry<T, R> {
  public:
   // Hidden from SWIG, which would also wrap the base copy/move constructors.

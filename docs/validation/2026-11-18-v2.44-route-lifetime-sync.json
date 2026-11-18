@@ -1,0 +1,24 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autolink/autolink/transport/transmitter/hybrid_transmitter.hpp",
+    "autonomy/planning/planner/vista/vista_planner.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-cm_pgm58/backup",
+  "expected_sha256": {
+    "autolink/autolink/transport/transmitter/hybrid_transmitter.hpp": "7c17b27a56b39c1662cffb2d75bc500e6480cdb533c9501b56f202fcbdfb5e67",
+    "autonomy/planning/planner/vista/vista_planner.cpp": "fd6f4239d6c8b29f4298907b6ba31a190d6a4047df8d76896b27f66a2a18f697"
+  },
+  "deployed_sha256": {
+    "autolink/autolink/transport/transmitter/hybrid_transmitter.hpp": "ac4c66352a9bb85a2ee78df45bbd0936aa0c162b2c5f28ee450b8610ba6fb8e6",
+    "autonomy/planning/planner/vista/vista_planner.cpp": "46e7533eb3f9a5a0c68c9013598f8c6e95ac07a8582fbaa45f135ae5934afeec"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "36ae28131af029a3a6f9e2d51c4f2695884f4b0c85ad3a1ce1804bc3f9acb0e4",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

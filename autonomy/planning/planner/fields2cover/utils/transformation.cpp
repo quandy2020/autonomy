@@ -32,12 +32,13 @@ namespace planner {
 namespace fields2cover {
 
 
-std::unique_ptr<OGRCoordinateTransformation,
-  void(*)(OGRCoordinateTransformation*)>
+std::unique_ptr<types::CoordTransform>
     Transform::GenerateCoordTransf(
         const std::string& coord_sys_from, const std::string& coord_sys_to) {
-  return CreateCoordTransf(
-      CreateSptRef(coord_sys_from), CreateSptRef(coord_sys_to));
+  if (coord_sys_from.empty() || coord_sys_to.empty()) {
+    throw std::invalid_argument("Coordinate system empty");
+  }
+  return std::make_unique<types::CoordTransform>(coord_sys_from, coord_sys_to);
 }
 
 void Transform::transform(F2CField& field, const std::string& coord_sys_to) {
@@ -66,6 +67,11 @@ F2CRoute Transform::TransformRouteWithFieldRef(const F2CRoute& route,
   for (size_t i = 0; i < new_route.SizeConnections(); ++i) {
     new_route.SetConnection(i, TransformMultiPointWithFieldRef(
           new_route.GetConnection(i), field, coord_sys_to));
+  }
+  if (route.GetField()) {
+    auto domain = *route.GetField() + field.GetRefPoint();
+    domain->transform(coords.get());
+    new_route.SetField(domain);
   }
   return new_route;
 }
@@ -260,49 +266,6 @@ F2CPoint Transform::GetRefPointInGPS(const F2CField& field) {
   point->transform(GenerateCoordTransf(field.GetCRS(), "EPSG:4326").get());
   return point;
 }
-
-std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)>
-      Transform::CreateSptRef(
-          const std::string& coord_sys, bool fail_silently) {
-  auto spt_ref =
-    std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)>(
-      new OGRSpatialReference(), [](OGRSpatialReference* ref) {
-      OGRSpatialReference::DestroySpatialReference(ref);});
-  if (coord_sys.empty() && !fail_silently) {
-    throw std::invalid_argument("Coordinate system empty");
-  } else if (F2CField::IsCoordSystemEPSG(coord_sys)) {
-    spt_ref->importFromEPSG(F2CField::GetEPSGCoordSystem(coord_sys));
-  } else if (F2CField::IsCoordSystemUTM(coord_sys)) {
-    std::string proj = (
-      std::string("+proj=utm +zone=") + F2CField::GetUTMZone(coord_sys) + " " +
-      F2CField::GetUTMHemisphere(coord_sys) +
-      (boost::iequals(F2CField::GetUTMDatum(coord_sys), "ETRS89") ?
-        " +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +type=crs" :
-        " +datum=" + F2CField::GetUTMDatum(coord_sys))
-      + " +units=m +no_defs ");
-    spt_ref->importFromProj4(proj.c_str());
-  } else if (!fail_silently) {
-    throw std::invalid_argument("Coordinate system not recognized");
-  }
-  if (GDALVersionInfo("VERSION_NUM")[0] == '3') {
-    // Next line solve issue in https://github.com/OSGeo/gdal/Issues/1546
-    spt_ref->SetAxisMappingStrategy(OAMS_TRADITIONAL_GIS_ORDER);
-  }
-  return spt_ref;
-}
-
-
-std::unique_ptr<OGRCoordinateTransformation,
-      void(*)(OGRCoordinateTransformation*)> Transform::CreateCoordTransf(
-  std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)> in,
-  std::unique_ptr<OGRSpatialReference, void(*)(OGRSpatialReference*)> out) {
-    return std::unique_ptr<OGRCoordinateTransformation,
-      void(*)(OGRCoordinateTransformation*)>(
-        OGRCreateCoordinateTransformation(in.get(), out.get()),
-          [](OGRCoordinateTransformation* coord) {
-            OGRCoordinateTransformation::DestroyCT(coord);});
-}
-
 
 }  // namespace fields2cover
 }  // namespace planner

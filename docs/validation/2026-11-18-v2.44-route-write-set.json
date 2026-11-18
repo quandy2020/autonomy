@@ -1,0 +1,19 @@
+[
+  "autonomy/planning/planner/vista/route_planner.hpp",
+  "autonomy/planning/planner/vista/route_planner.cpp",
+  "autonomy/planning/planner/vista/vista_planner.hpp",
+  "autonomy/planning/planner/vista/vista_planner.cpp",
+  "autonomy/task/exploration/integration/path_provider.hpp",
+  "autonomy/task/exploration/integration/vista_path_provider.cpp",
+  "automsgs/proto/srvs/get_plan.proto",
+  "autonomy/planning/planner_server.hpp",
+  "autonomy/planning/planner_server.cpp",
+  "autonomy/planning/planner_autolink_actions.cpp",
+  "autonomy/planning/planner_route_service.cpp",
+  "autonomy/planning/planner/vista/native_route_protocol.hpp",
+  "autonomy/task/exploration/integration/native_vista_path_provider.hpp",
+  "autonomy/task/exploration/integration/native_vista_path_provider.cpp",
+  "autonomy/planning/planner/vista/native_route_service_test.cpp",
+  "integration/native/cmake/ExplorationTests.cmake",
+  "scripts/validate_native_exploration.py"
+]

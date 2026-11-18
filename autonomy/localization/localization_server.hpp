@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+/** @file localization_server.hpp
+ * @brief Native SLAM backend options and process lifecycle, with instance-scoped Atlas topics.
+ */
 #pragma once
 
 #include <cstddef>
@@ -56,6 +59,14 @@ struct LocalizationOptions {
     std::string atlas_image_topic = "/image";
     std::string atlas_right_image_topic = "/camera/right/image";
     std::string atlas_depth_image_topic = "/camera/depth/image";
+    std::string atlas_odometry_topic = "/atlas/odometry";  ///< Estimated camera pose; never a ground-truth input.
+    std::string atlas_localization_status_topic;  ///< Optional actual tracker DiagnosticArray; empty disables it.
+    std::string atlas_trajectory_topic = "/atlas/trajectory";  ///< Live estimated camera trajectory.
+    std::string atlas_optimized_trajectory_topic = "/atlas/optimized_trajectory";  ///< Optimized keyframe path.
+    std::string atlas_map_points_topic = "/atlas/map_points";  ///< Sparse landmarks from the selected mapper.
+    std::string atlas_tracking_image_topic = "/atlas/tracking_image";  ///< Tracking diagnostics on the same instance.
+    std::string atlas_loop_closures_topic = "/atlas/loop_closures";  ///< Loop-closure marker output.
+    std::string atlas_ground_truth_trajectory_topic = "/atlas/ground_truth_trajectory";  ///< Optional evaluation path; empty disables it.
     std::string atlas_feature_matches_topic = "/atlas/feature_matches";
     std::string atlas_dense_map_points_topic = "/atlas/dense_map_points";
     std::string atlas_occupancy_grid_topic = "/atlas/occupancy_grid";

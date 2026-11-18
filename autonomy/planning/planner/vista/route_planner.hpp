@@ -9,6 +9,19 @@
 #include "opt/navigation/reachability.h"
 
 namespace autonomy::planning::planner::vista {
+/** @brief Small immutable certificate copied from the graph owner under its lock.
+ * @details Geometry revision is the graph's actual consumed version. Neither a
+ * query nor wall-clock time creates observation or mapper-recovery evidence.
+ */
+struct VistaMapEvidence {
+    std::uint64_t map_epoch = 0;  ///< Coordinate generation of the graph.
+    std::uint64_t geometry_revision = 0;  ///< Geometry consumed by the graph.
+    std::uint64_t watermark = 0;  ///< Diagnostic upstream watermark.
+    perception::ObservationCut observation_cut{};  ///< Actual incorporated source prefixes.
+    perception::ObservationCut observation_baseline{};  ///< Excluded recovered history.
+    std::uint64_t observation_recovery_generation = 0;  ///< Upstream recovery identity.
+    std::string frame_id;  ///< Explicit frame; never used to encode hidden metadata.
+};
 /** @brief Route result and its source geometry; execution safety is a separate authority. */
 struct VistaRoute {
     opt::navigation::Path path;  ///< Complete world-frame route.
@@ -19,6 +32,7 @@ struct VistaRoute {
     bool used_grid_fallback = false;  ///< Sparse graph required independent grid routing.
     bool canceled = false;  ///< Caller requested cancellation before completion.
     bool execution_verified = false;  ///< Never asserted by this planar route planner.
+    std::optional<VistaMapEvidence> evidence;  ///< Certificate from the same snapshot as this route.
 };
 /** @brief Own one persistent graph and prevent routes from observing partial updates. */
 class VistaRoutePlanner {
@@ -37,6 +51,10 @@ public:
                             const std::function<bool()>& canceled = {}) const;
     /** @brief Return an owned graph copy serialized against updates. */
     VisibilityGraph GraphSnapshot() const;
+    /** @brief Read provenance without copying graph vertices and edges.
+     * @return No evidence when an update failed or no map has been admitted.
+     */
+    std::optional<VistaMapEvidence> Evidence() const;
 private:
     mutable std::mutex mutex_;  ///< Protect accepted map, graph and updater state.
     opt::navigation::SafetyOptions options_;  ///< Configured robot geometry.

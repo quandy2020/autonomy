@@ -1,0 +1,8 @@
+{
+  "autonomy/control/proto/mppi_controller.proto": {
+    "sha256": "322b6b9a94ee1d5af08517f566408bfac76a0cc34dac98f875b16ca9367a22a9"
+  },
+  "autonomy/control/controller/mppi_controller/optimizer.cpp": {
+    "sha256": "c0e19f30e68c40a580ca202fffd3ff01d1a7b82a14d477b0d40a96b465e162b5"
+  }
+}

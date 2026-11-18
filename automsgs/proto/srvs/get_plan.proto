@@ -21,16 +21,59 @@ import "automsgs/msgs/nav_msgs/path.proto";
 
 // Service to get a plan from the current position to a goal pose.
 message GetPlan {
+  // Provenance additions are optional on the wire; old field numbers are stable.
+  // Unknown/default status must never be interpreted as certified success.
+  enum Status {
+    UNSPECIFIED = 0;
+    SUCCESS = 1;
+    UNAVAILABLE = 2;
+    INVALID_REQUEST = 3;
+    NO_ROUTE = 4;
+    CANCELED = 5;
+    UNSUPPORTED = 6;
+    INTERNAL_ERROR = 7;
+  }
+
+  // Independent incorporated sequence numbers; publication time is not evidence.
+  message ObservationPrefix {
+    uint32 present = 1;  // Bit 0: LiDAR; bit 1: RGB-D.
+    uint64 lidar_sequence = 2;
+    uint64 rgbd_sequence = 3;
+  }
+
+  // Copied from the actual persistent graph used by this request.
+  message GraphEvidence {
+    string frame_id = 1;
+    uint64 map_epoch = 2;
+    uint64 geometry_revision = 3;  // Actual version consumed by the graph.
+    uint64 observation_watermark = 4;  // Diagnostic only.
+    ObservationPrefix observation_cut = 5;
+    ObservationPrefix observation_baseline = 6;
+    uint64 observation_recovery_generation = 7;
+  }
+
   // Request specifying start, goal and tolerance.
   message Request {
     automsgs.msgs.geometry_msgs.PoseStamped start = 1;
     automsgs.msgs.geometry_msgs.PoseStamped goal = 2;
     float tolerance = 3;
+    string planner_id = 4;
+    string request_id = 5;  // Opaque token echoed exactly, including failures.
+    bool evidence_only = 6;  // Refresh/read graph provenance without finding a route.
+    uint32 timeout_ms = 7;  // Server work budget; bounded by the server.
+    bool require_graph_evidence = 8;  // Fail if the selected plugin cannot certify it.
   }
 
   // Response containing the planned path, if found.
   message Response {
     automsgs.msgs.nav_msgs.Path plan = 1;
+    string request_id = 2;
+    string planner_id = 3;
+    Status status = 4;
+    string error_msg = 5;
+    double length = 6;  // Metres; meaningful only for a successful route.
+    bool used_grid_fallback = 7;
+    GraphEvidence graph_evidence = 8;
   }
 
   Request request = 1;

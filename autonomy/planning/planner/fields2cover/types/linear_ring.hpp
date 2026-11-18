@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <vector>
 #include "autonomy/planning/planner/fields2cover/types/geometries.hpp"
 #include "autonomy/planning/planner/fields2cover/types/point.hpp"
@@ -33,10 +32,10 @@ namespace autonomy::planning::planner::fields2cover::types {
 
 struct LineString;
 
-struct LinearRing : public Geometries<LinearRing, OGRLinearRing, wkbLinearRing,
+struct LinearRing : public Geometries<LinearRing, NativeGeom, WkbKind::kLinearRing,
   Point> {
  public:
-  using Geometries<LinearRing, OGRLinearRing, wkbLinearRing, Point>::Geometries;
+  using Geometries<LinearRing, NativeGeom, WkbKind::kLinearRing, Point>::Geometries;
   LinearRing();
   explicit LinearRing(const std::vector<Point>& ps);
   explicit LinearRing(const std::initializer_list<Point>& ps);

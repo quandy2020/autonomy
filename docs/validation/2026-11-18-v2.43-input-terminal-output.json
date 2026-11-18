@@ -1,0 +1,14 @@
+{
+  "returncode": 0,
+  "output": "26/32 Testing: autonomy.exploration.exploration_observation_source\n26/32 Test: autonomy.exploration.exploration_observation_source\nCommand: \"/workspace/autonomy/build/autonomy/bin/autonomy_exploration_observation_source_test\"\nDirectory: /workspace/autonomy/build/autonomy\n\"autonomy.exploration.exploration_observation_source\" start time: Nov 18 14:28 CST\nOutput:\n----------------------------------------------------------\nPASS all_modes_task_input_lifecycle\nPASS latest_generation_after_actual_retirement\nPASS retirement_timeout_preserves_fault_and_channels\nPASS startup_collision_and_exact_mode\n<end of output>\nTest time =   0.31 sec\n----------------------------------------------------------\nTest Passed.\n\"autonomy.exploration.exploration_observation_source\" end time: Nov 18 14:28 CST\n\"autonomy.exploration.exploration_observation_source\" time elapsed: 00:00:00\n----------------------------------------------------------\n\n\n",
+  "error": "",
+  "date": "2026-11-18T14:32:05.129000+08:00",
+  "scenarios": [
+    "all_modes_task_input_lifecycle",
+    "latest_generation_after_actual_retirement",
+    "retirement_timeout_preserves_fault_and_channels",
+    "startup_collision_and_exact_mode"
+  ],
+  "output_sha256": "6a2895c35d1a886e8ef8905c924b9c0b99de5078343e285f9871a6a929099cb6",
+  "scope": "Actual native Node/Reader/Writer and ExplorationTask input lifecycle; controlled acquisition localization; no SLAM or physical navigation proof."
+}

@@ -38,14 +38,20 @@ double FieldCoverage::ComputeCost(
     return 0.0;
   }
 
-  F2CMultiLineString lines;
-  for (const auto& s : swaths) {
-    lines.AddGeometry(s.GetPath());
+  // Overlay individual footprints in a local frame. A multi-line buffer can
+  // discard components when rotated strips share almost coincident edges.
+  const F2CPoint origin = swaths[0].StartPoint();
+  const double angle = swaths[0].GetInAngle();
+  const F2CPoint zero(0.0, 0.0);
+  auto local_poly = zero.RotateFromPoint(-angle, poly - origin);
+  F2CCells footprints;
+  for (const auto& swath : swaths) {
+    auto line = zero.RotateFromPoint(-angle, swath.GetPath() - origin);
+    auto strip = F2CCells::buffer(line, swath.GetWidth() / 2.0);
+    footprints = footprints.UnionOp(strip);
   }
-
-  double area_covered {poly.GetCellsInside(
-      F2CCells::buffer(lines, swaths[0].GetWidth() / 2.0)).Area()};
-  return area_covered / (poly.Area() + 1e-7);
+  const double covered = local_poly.GetCellsInside(footprints).Area();
+  return covered / (local_poly.Area() + 1e-7);
 }
 
 bool FieldCoverage::IsMinimizing() const {

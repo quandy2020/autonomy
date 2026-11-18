@@ -5,6 +5,7 @@
 #include "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker.hpp"
 
 #include <cmath>
+#include <limits>
 #include <stdexcept>
 #include <utility>
 
@@ -51,6 +52,51 @@ bool FiniteTwist(const automsgs::msgs::geometry_msgs::Twist& twist) {
     return std::isfinite(twist.linear().x()) && std::isfinite(twist.linear().y()) &&
         std::isfinite(twist.linear().z()) && std::isfinite(twist.angular().x()) &&
         std::isfinite(twist.angular().y()) && std::isfinite(twist.angular().z());
+}
+
+/** @brief Encode acquisition seconds without rounding a measurement into the future. */
+void Stamp(automsgs::msgs::std_msgs::Header* header, double seconds, const std::string& frame) {
+    using Seconds = decltype(header->stamp().sec());
+    if (!std::isfinite(seconds) || seconds <= 0.0 || frame.empty() ||
+        static_cast<long double>(seconds) >= static_cast<long double>(std::numeric_limits<Seconds>::max()))
+        throw std::invalid_argument("SanD tracker: time cannot be represented in automsgs Header");
+    auto whole = static_cast<Seconds>(std::floor(seconds));
+    const auto nanos = static_cast<std::uint32_t>(std::floor((seconds - whole) * 1e9));
+    header->set_frame_id(frame);
+    header->mutable_stamp()->set_sec(whole);
+    header->mutable_stamp()->set_nanosec(nanos);
+}
+
+/** @brief A native proposal cannot outlive or detach from its original private admission. */
+bool ValidTrackingQuery(const TrackingCommandQuery& query, double now) {
+    if (!query.reference || !query.reference->geometry() || !query.reference->ground()) return false;
+    const auto& reference = *query.reference;
+    const auto& timing = reference.trajectory().data().timing;
+    const auto& command = query.command;
+    const auto& lease = command.lease;
+    const auto& feedback = query.feedback;
+    return std::isfinite(now) && std::isfinite(query.deadline) && now < query.deadline &&
+        std::isfinite(command.begin_stamp) && std::isfinite(command.valid_until) &&
+        query.deadline < command.begin_stamp && command.begin_stamp < command.valid_until &&
+        now >= timing.start_stamp && now < reference.trajectory().EndStamp() &&
+        command.valid_until <= reference.trajectory().EndStamp() && command.valid_until <= reference.valid_until() &&
+        lease.active && lease.generation && lease.valid_from <= now && command.valid_until <= lease.valid_until &&
+        std::isfinite(lease.actuator_watchdog) && lease.actuator_watchdog > 0 &&
+        command.valid_until <= now + lease.actuator_watchdog &&
+        lease.execution_id == timing.execution_id && lease.frame_id == timing.frame_id &&
+        lease.alignment_epoch == timing.alignment_epoch &&
+        lease.clock_domain == reference.safety().clock_domain &&
+        lease.calibration_revision == reference.drive().calibration_revision &&
+        command.timing.execution_id == timing.execution_id && command.timing.frame_id == timing.frame_id &&
+        command.timing.alignment_epoch == timing.alignment_epoch && command.timing.reference_version == timing.reference_version &&
+        command.timing.start_stamp == timing.start_stamp && command.timing.duration == timing.duration &&
+        command.timing.valid_until == timing.valid_until && command.sequence &&
+        command.feedback_sequence == feedback.sequence && feedback.sequence &&
+        command.geometry_revision == reference.geometry()->options().revision && feedback.state.Finite() &&
+        feedback.localization_healthy && feedback.actuator_healthy && feedback.frame_id == lease.frame_id &&
+        feedback.clock_domain == lease.clock_domain && feedback.alignment_epoch == lease.alignment_epoch &&
+        feedback.calibration_revision == lease.calibration_revision &&
+        std::isfinite(feedback.stamp) && feedback.stamp >= lease.valid_from && feedback.stamp <= now;
 }
 }  // namespace
 
@@ -104,6 +150,45 @@ bool BuildSandPlannerPath(const std::vector<Eigen::Vector3d>& controls,
     if (!std::isfinite(length) || length < 1e-6) return Reject("SanD tracker: stationary spline", error);
     path->Swap(&result);
     return true;
+}
+
+bool BuildAdmittedPlannerPath(const AdmittedReference& reference, int sample_count,
+    automsgs::msgs::nav_msgs::Path* path, std::string* error) {
+    if (!path) return Reject("SanD tracker: null admitted Path output", error);
+    path->Clear();
+    if (error) error->clear();
+    if (sample_count < 2 || sample_count > 512)
+        return Reject("SanD tracker: invalid admitted Path sample count", error);
+    try {
+        const auto& curve = reference.trajectory();
+        const auto& timing = curve.data().timing;
+        automsgs::msgs::nav_msgs::Path result;
+        Stamp(result.mutable_header(), timing.start_stamp, timing.frame_id);
+        double length = 0.0;
+        Eigen::Vector3d previous = Eigen::Vector3d::Zero();
+        for (int i = 0; i < sample_count; ++i) {
+            const double fraction = static_cast<double>(i) / (sample_count - 1);
+            const double stamp = i + 1 == sample_count ? curve.EndStamp() :
+                timing.start_stamp + fraction * (curve.EndStamp() - timing.start_stamp);
+            const auto value = curve.Evaluate(stamp);
+            const Eigen::Vector3d position(value.position[0], value.position[1], value.position[2]);
+            if (i) length += (position - previous).norm();
+            previous = position;
+            auto* pose = result.add_poses();
+            Stamp(pose->mutable_header(), stamp, timing.frame_id);
+            auto* point = pose->mutable_pose()->mutable_position();
+            point->set_x(position.x()); point->set_y(position.y()); point->set_z(position.z());
+            auto* rotation = pose->mutable_pose()->mutable_orientation();
+            rotation->set_z(std::sin(value.position[3] / 2));
+            rotation->set_w(std::cos(value.position[3] / 2));
+        }
+        if (!std::isfinite(length) || length < 1e-6)
+            return Reject("SanD tracker: stationary admitted geometry needs a separate stop/rotation action", error);
+        path->Swap(&result);
+        return true;
+    } catch (const std::exception& exception) {
+        return Reject(exception.what(), error);
+    }
 }
 
 void NativeSplineTracker::Configure(const proto::ControllerOptions& options,
@@ -170,6 +255,7 @@ void NativeSplineTracker::Cleanup() {
 void NativeSplineTracker::Reset() {
     reference_path_.Clear();
     reference_deadline_ = {};
+    admitted_reference_.reset();
     if (controller_) controller_->Reset();
 }
 
@@ -185,6 +271,7 @@ bool NativeSplineTracker::SetReference(const std::vector<Eigen::Vector3d>& contr
     }
     automsgs::msgs::nav_msgs::Path path;
     if (!BuildSandPlannerPath(controls, anchor, sample_count, &path, error)) { Reset(); return false; }
+    admitted_reference_.reset();
     try {
         controller_->SetPlan(path);
         controller_->SetSpeedLimit(execute_speed, false);
@@ -246,11 +333,92 @@ uint32 NativeSplineTracker::Compute(const automsgs::msgs::geometry_msgs::PoseSta
         !CanReuse(solve_end) || !ValidateFeedback(pose, velocity, feedback_now, &detail)) {
         Reset();
         Reject(detail.empty() ? "SanD tracker: invalid or late native command" : detail, error);
-        return status == proto::CONTROLLER_RESULT_SUCCESS ? proto::CONTROLLER_RESULT_NO_VALID_CMD : status;
+        return status == proto::CONTROLLER_RESULT_SUCCESS ? static_cast<uint32>(proto::CONTROLLER_RESULT_NO_VALID_CMD) : status;
     }
     command->mutable_twist()->CopyFrom(candidate.twist());
     if (error) error->clear();
     return proto::CONTROLLER_RESULT_SUCCESS;
+}
+
+bool NativeSplineTracker::SolveTrackingCommand(const TrackingCommandQuery& query, const ExecutionClock& clock,
+    automsgs::msgs::geometry_msgs::TwistStamped* command, std::string* error) {
+    if (!command) return Reject("SanD tracker: null native command output", error);
+    command->Clear();
+    if (error) error->clear();
+    if (in_admitted_solve_) { Reset(); return Reject("SanD tracker: admitted solver callback reentry", error); }
+    struct Scope {
+        bool& entered; ///< Owner flag remains set during all native callbacks.
+        /** @brief Mark the serialized native solve as entered until stack unwind. */
+        explicit Scope(bool& value) : entered(value) { entered = true; }
+        /** @brief Release callback entry even when the native dependency throws. */
+        ~Scope() { entered = false; }
+    } scope(in_admitted_solve_);
+    try {
+        const double now = clock ? clock() : std::numeric_limits<double>::quiet_NaN();
+        if (!active_ || !controller_ || !ValidTrackingQuery(query, now)) {
+            Reset(); return Reject("SanD tracker: incompatible or expired admitted command query", error);
+        }
+        const auto reference = query.reference;
+        if (admitted_reference_ != reference || !CanReuse(std::chrono::steady_clock::now())) {
+            automsgs::msgs::nav_msgs::Path path;
+            if (!BuildAdmittedPlannerPath(*reference, 64, &path, error)) { Reset(); return false; }
+            controller_->SetPlan(path);
+            const auto& drive = reference->drive();
+            controller_->SetSpeedLimit(std::min(drive.wheel_velocity[0], drive.wheel_velocity[1]), false);
+            reference_path_.Swap(&path);
+            admitted_reference_ = reference;
+            const double horizon = std::min({replan_period_, reference->valid_until() - now,
+                reference->trajectory().EndStamp() - now, query.command.lease.valid_until - now});
+            reference_deadline_ = std::chrono::steady_clock::now() +
+                std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<double>(horizon));
+        }
+        const double solve_at = clock();
+        if (!ValidTrackingQuery(query, solve_at) || solve_at < now) {
+            Reset(); return Reject("SanD tracker: native reference setup consumed its original solve budget", error);
+        }
+        const auto& feedback = query.feedback;
+        automsgs::msgs::geometry_msgs::PoseStamped pose;
+        Stamp(pose.mutable_header(), feedback.stamp, feedback.frame_id);
+        auto* point = pose.mutable_pose()->mutable_position();
+        point->set_x(feedback.state.position[0]); point->set_y(feedback.state.position[1]);
+        point->set_z(feedback.state.position[2]);
+        const double yaw = feedback.state.position[3];
+        pose.mutable_pose()->mutable_orientation()->set_z(std::sin(yaw / 2));
+        pose.mutable_pose()->mutable_orientation()->set_w(std::cos(yaw / 2));
+        automsgs::msgs::geometry_msgs::TwistStamped velocity;
+        Stamp(velocity.mutable_header(), feedback.stamp, robot_frame_);
+        velocity.mutable_twist()->mutable_linear()->set_x(std::cos(yaw) * feedback.state.velocity[0] +
+                                                         std::sin(yaw) * feedback.state.velocity[1]);
+        velocity.mutable_twist()->mutable_linear()->set_y(-std::sin(yaw) * feedback.state.velocity[0] +
+                                                          std::cos(yaw) * feedback.state.velocity[1]);
+        velocity.mutable_twist()->mutable_linear()->set_z(feedback.state.velocity[2]);
+        velocity.mutable_twist()->mutable_angular()->set_z(feedback.state.velocity[3]);
+        automsgs::msgs::geometry_msgs::TwistStamped candidate;
+        const auto status = Compute(pose, velocity, solve_at, &candidate, error);
+        const double finished = clock();
+        if (status != proto::CONTROLLER_RESULT_SUCCESS || admitted_reference_ != reference ||
+            finished < solve_at || !ValidTrackingQuery(query, finished)) {
+            Reset(); return Reject("SanD tracker: native admitted solve failed, changed reference or exceeded its deadline", error);
+        }
+        command->Swap(&candidate);
+        return true;
+    } catch (const std::exception& exception) {
+        Reset(); return Reject(exception.what(), error);
+    }
+}
+
+TrackingController NativeSplineTracker::TrackingCallback() {
+    return [this](const TrackingCommandQuery& query, const ExecutionClock& clock,
+                  TrackingCommand* command, std::string* error) {
+        if (!command) return Reject("SanD tracker: null gated command output", error);
+        *command = {};
+        automsgs::msgs::geometry_msgs::TwistStamped velocity;
+        if (!SolveTrackingCommand(query, clock, &velocity, error)) return false;
+        *command = query.command;
+        command->linear_velocity = velocity.twist().linear().x();
+        command->yaw_velocity = velocity.twist().angular().z();
+        return true;
+    };
 }
 
 }  // namespace sand_planner

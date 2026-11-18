@@ -252,6 +252,216 @@ void FatalLossRetiresReaders() {
             "fatal rejected packet closes input and preserves rejection evidence");
     CheckRegistered(node, options, false);
 }
+
+/** @brief Actual rectified calibration for the deferred depth source. */
+m::CameraInfo Camera() {
+    m::CameraInfo info;
+    info.mutable_header()->set_frame_id("depth_optical");
+    info.set_width(2); info.set_height(2);
+    for (double value : {100., 0., .5, 0., 110., .5, 0., 0., 1.}) info.add_k(value);
+    for (double value : {100., 0., .5, 0., 0., 110., .5, 0., 0., 0., 1., 0.}) info.add_p(value);
+    return info;
+}
+
+/** @brief Four real encoded depth samples at the requested original acquisition stamp. */
+m::Image Image(unsigned nanoseconds = 250000000) {
+    m::Image image;
+    image.mutable_header()->set_frame_id("depth_optical");
+    image.mutable_header()->mutable_stamp()->set_sec(3);
+    image.mutable_header()->mutable_stamp()->set_nanosec(nanoseconds);
+    image.set_width(2); image.set_height(2); image.set_step(4);
+    image.set_encoding("16UC1"); image.set_is_bigendian(false);
+    std::string bytes;
+    for (unsigned i = 0; i < 4; ++i) { bytes.push_back(static_cast<char>(232)); bytes.push_back(3); }
+    image.set_data(bytes);
+    return image;
+}
+
+/** @brief Shared test authority; native transport remains real and localization is explicitly controlled. */
+struct DelayedEvidence {
+    std::array<std::atomic<bool>, 2> available{{false, false}};  ///< Independent authority readiness per source.
+    std::array<std::atomic<unsigned>, 2> calls{{0, 0}};  ///< Actual acquisition lookups made by the Source.
+    std::atomic<double> now{3.4};  ///< Source clock used to exercise evidence expiry independently from wall waits.
+    std::mutex mutex;  ///< Protects packet and loss evidence from native/association threads.
+    std::vector<p::ObservationPacket> packets;  ///< Actually admitted packets, with original stamps and ordinals.
+    std::vector<std::pair<p::SensorKind, std::uint64_t>> losses;  ///< Rejected ordinals reported by the actual source.
+};
+
+/** @brief Build a real native source whose independently supplied authority may finish later. */
+std::shared_ptr<p::NativeObservationSource> DelayedSource(const std::shared_ptr<autolink::Node>& node,
+    const p::NativeObservationSourceOptions& options, const std::shared_ptr<DelayedEvidence>& evidence) {
+    auto authority = Localization();
+    return std::make_shared<p::NativeObservationSource>(node, options,
+        [evidence, authority](p::SensorKind sensor, const std::string& frame, double stamp)
+            -> std::optional<p::AcquisitionLocalization> {
+            const unsigned index = sensor == p::SensorKind::kLidar ? 0 : 1;
+            ++evidence->calls[index];
+            if (!evidence->available[index]) return {};
+            return authority(sensor, frame, stamp);
+        },
+        [evidence](p::ObservationPacket packet, double now) {
+            Require(packet.Valid(now), "deferred packet retains independently valid acquisition evidence");
+            std::lock_guard<std::mutex> lock(evidence->mutex);
+            evidence->packets.push_back(std::move(packet)); return true;
+        }, [evidence] { return evidence->now.load(); },
+        [evidence](p::SensorKind sensor, std::uint64_t sequence) {
+            std::lock_guard<std::mutex> lock(evidence->mutex); evidence->losses.emplace_back(sensor, sequence);
+        });
+}
+
+/** @brief Publish actual CameraInfo and wait for the source's own calibration latch. */
+void Calibrate(const std::shared_ptr<autolink::Node>& node, const p::NativeObservationSourceOptions& options,
+    const std::shared_ptr<p::NativeObservationSource>& source) {
+    auto writer = node->CreateWriter<m::CameraInfo>(options.camera_info_topic);
+    Require(writer != nullptr, "actual calibration Writer created");
+    Await([&] { return writer->HasReader(); }, "calibration Reader discovered");
+    Require(writer->Write(Camera()), "actual CameraInfo submitted");
+    Await([&] { return source->Snapshot().depth_calibration_ready; }, "source calibrated from actual CameraInfo");
+}
+
+/** @brief Delayed RGB-D proofs admit the original two timestamps in FIFO order. */
+void DelayedRgbdAcquisition() {
+    auto node = autolink::CreateNode("observation_delayed_rgbd");
+    auto options = Options(p::SensorMode::kRgbdOnly, "delayed_rgbd");
+    options.localization_wait_timeout = 1500ms;
+    auto evidence = std::make_shared<DelayedEvidence>();
+    auto source = DelayedSource(node, options, evidence);
+    Require(source->Start(), "deferred RGB-D source starts"); Calibrate(node, options, source);
+    auto writer = node->CreateWriter<m::Image>(options.depth_topic);
+    Await([&] { return writer && writer->HasReader(); }, "actual depth Reader discovered");
+    Require(writer->Write(Image()), "first delayed depth written");
+    Await([&] { return evidence->calls[1] > 0; }, "first original acquisition lookup attempted");
+    Require(writer->Write(Image(350000000)), "second delayed depth written");
+    Await([&] { return source->Snapshot().awaiting_localization[1] == 2; }, "both wire inputs retained");
+    Require(source->Snapshot().accepted[1] == 0, "missing authority cannot become an admitted packet");
+    evidence->available[1] = true;
+    Await([&] { return source->Snapshot().accepted[1] == 2; }, "delayed original acquisitions admitted");
+    {
+        std::lock_guard<std::mutex> lock(evidence->mutex);
+        Require(evidence->packets.size() == 2 && evidence->losses.empty(), "two real admissions without fabricated loss");
+        Require(evidence->packets[0].observation.sequence == 1 && evidence->packets[1].observation.sequence == 2 &&
+            evidence->packets[0].observation.stamp == 3.25 && evidence->packets[1].observation.stamp == 3.35,
+            "original stamps and receiver ordinals survive deferred admission");
+    }
+    source->Shutdown(); Require(source->WaitForShutdown(5s), "deferred RGB-D workers and readers retire");
+    CheckRegistered(node, options, false);
+}
+
+/** @brief Overflow reports the newly rejected ordinal instead of the most recently received one. */
+void DelayedOverflowIdentity() {
+    auto node = autolink::CreateNode("observation_delayed_overflow");
+    auto options = Options(p::SensorMode::kLidarOnly, "delayed_overflow");
+    options.localization_wait_timeout = 1500ms; options.localization_queue_size = 1;
+    auto evidence = std::make_shared<DelayedEvidence>();
+    auto source = DelayedSource(node, options, evidence);
+    Require(source->Start(), "bounded deferred source starts");
+    auto writer = node->CreateWriter<m::PointCloud2>(options.lidar_topic); Publish(writer);
+    Await([&] { return evidence->calls[0] > 0; }, "first cloud waiting for its own proof");
+    Publish(writer);
+    Await([&] { return source->Snapshot().localization_overflows[0] == 1; }, "new cloud rejected on retained-head overflow");
+    evidence->available[0] = true;
+    Await([&] { return source->Snapshot().accepted[0] == 1; }, "retained first cloud survives overflow");
+    {
+        std::lock_guard<std::mutex> lock(evidence->mutex);
+        Require(evidence->packets.size() == 1 && evidence->packets.front().observation.sequence == 1 &&
+            evidence->losses.size() == 1 && evidence->losses.front().second == 2,
+            "deferred first success and second loss keep distinct original ordinals");
+    }
+    source->Shutdown(); Require(source->WaitForShutdown(5s), "overflow case retires cleanly");
+}
+
+/** @brief An available authority cannot extend actual sensor evidence past its expiry. */
+void DelayedEvidenceExpiry() {
+    auto node = autolink::CreateNode("observation_delayed_expiry");
+    auto options = Options(p::SensorMode::kRgbdOnly, "delayed_expiry");
+    options.localization_wait_timeout = 80ms;
+    auto evidence = std::make_shared<DelayedEvidence>();
+    evidence->available[1] = true; evidence->now = 3.9;
+    auto source = DelayedSource(node, options, evidence);
+    Require(source->Start(), "expiry source starts"); Calibrate(node, options, source);
+    auto writer = node->CreateWriter<m::Image>(options.depth_topic);
+    Await([&] { return writer && writer->HasReader(); }, "expiry depth Reader discovered");
+    Require(writer->Write(Image()), "expired sensor input actually published");
+    Await([&] { return source->Snapshot().rejected[1] == 1; }, "expired measured depth rejected");
+    Require(source->Snapshot().accepted[1] == 0, "waiting never extends sensor evidence expiry");
+    source->Shutdown(); Require(source->WaitForShutdown(5s), "expiry source retires");
+}
+
+/** @brief Independent workers prevent delayed RGB-D localization from blocking healthy LiDAR. */
+void DelayedMixedSensors() {
+    auto node = autolink::CreateNode("observation_delayed_mixed");
+    auto options = Options(p::SensorMode::kLidarRgbd, "delayed_mixed");
+    options.localization_wait_timeout = 1500ms;
+    auto evidence = std::make_shared<DelayedEvidence>(); evidence->available[0] = true;
+    auto source = DelayedSource(node, options, evidence);
+    Require(source->Start(), "mixed deferred source starts"); Calibrate(node, options, source);
+    auto depth = node->CreateWriter<m::Image>(options.depth_topic);
+    Await([&] { return depth && depth->HasReader(); }, "mixed depth Reader discovered");
+    Require(depth->Write(Image()), "mixed delayed depth published");
+    Await([&] { return evidence->calls[1] > 0; }, "RGB-D authority still pending");
+    auto cloud = node->CreateWriter<m::PointCloud2>(options.lidar_topic); Publish(cloud);
+    Await([&] { return source->Snapshot().accepted[0] == 1; }, "healthy LiDAR admitted while depth waits");
+    Require(source->Snapshot().accepted[1] == 0, "LiDAR cannot attest another source's acquisition pose");
+    evidence->available[1] = true;
+    Await([&] { return source->Snapshot().accepted[1] == 1; }, "depth admitted by its own later authority");
+    source->Shutdown(); Require(source->WaitForShutdown(5s), "both sensor workers retire");
+}
+
+/** @brief Wall-time deadline, byte budget and cancellation all remain finite without a pose. */
+void DelayedBoundsAndCancellation() {
+    for (unsigned run = 0; run < 3; ++run) {
+        const auto suffix = "delayed_bounds_" + std::to_string(run);
+        auto node = autolink::CreateNode("observation_" + suffix);
+        auto options = Options(p::SensorMode::kLidarOnly, suffix);
+        options.localization_wait_timeout = run == 0 ? 60ms : 5s;
+        if (run == 1) options.localization_queue_bytes = 1;
+        auto evidence = std::make_shared<DelayedEvidence>();
+        auto source = DelayedSource(node, options, evidence);
+        Require(source->Start(), "bounded source starts");
+        auto writer = node->CreateWriter<m::PointCloud2>(options.lidar_topic); Publish(writer);
+        if (run != 2) {
+            Await([&] { return source->Snapshot().rejected[0] == 1; }, "bounded unavailable input rejected");
+            const auto snapshot = source->Snapshot();
+            Require(snapshot.accepted[0] == 0 && (run == 0 ? snapshot.localization_timeouts[0] == 1 :
+                snapshot.localization_overflows[0] == 1), "deadline and byte bounds report their actual cause");
+        } else Await([&] { return evidence->calls[0] > 0; }, "cancel case has a retained acquisition");
+        source->Shutdown(); Require(source->WaitForShutdown(1s), "shutdown interrupts a five-second association wait");
+        if (run == 2) Require(source->Snapshot().localization_canceled[0] == 1,
+            "retired pending acquisition counted separately from admitted or fused input");
+        CheckRegistered(node, options, false);
+    }
+}
+
+/** @brief Callback-triggered destruction cannot wait for its own association worker. */
+void FinalReferenceOnAssociationWorker() {
+    auto node = autolink::CreateNode("observation_association_last_reference");
+    auto options = Options(p::SensorMode::kLidarOnly, "association_last_reference");
+    options.localization_wait_timeout = 1500ms;
+    auto evidence = std::make_shared<CallbackEvidence>(); ReleaseSourceOnExit release{evidence};
+    auto source = std::make_shared<p::NativeObservationSource>(node, options, Localization(),
+        [evidence](auto packet, double now) {
+            evidence->packet_valid = packet.Valid(now);
+            evidence->native_coroutine = autolink::croutine::CRoutine::GetCurrentRoutine() != nullptr;
+            const auto owner = evidence->source.lock();
+            if (!owner) return false;
+            owner->Shutdown();
+            evidence->callback_wait_rejected = !owner->WaitForShutdown(0ms);
+            evidence->ReleaseSource();
+            evidence->entered.set_value(); return true;
+        }, [] { return 3.4; }, [](auto, auto) {});
+    evidence->source = source;
+    const auto completion = source->ShutdownCompletion();
+    const std::weak_ptr<p::NativeObservationSource> weak = source;
+    { std::lock_guard<std::mutex> lock(evidence->owner_mutex); evidence->final_owner = source; }
+    Require(source->Start(), "association final-reference source started"); source.reset();
+    auto writer = node->CreateWriter<m::PointCloud2>(options.lidar_topic); Publish(writer);
+    Require(evidence->entry.wait_for(5s) == std::future_status::ready, "association worker released final Source owner");
+    Require(completion.wait_for(5s) == std::future_status::ready && completion.get(),
+        "cleanup joins association worker after its callback exits");
+    Require(weak.expired() && !evidence->native_coroutine && evidence->packet_valid && evidence->callback_wait_rejected,
+        "real native wire input uses off-coroutine association with a refused self-wait");
+    CheckRegistered(node, options, false);
+}
 }  // namespace
 
 /** @brief Initialize actual Autolink and run independent native lifecycle cases. */
@@ -260,7 +470,11 @@ int main(int argc, char** argv) {
     const std::vector<std::pair<const char*, void(*)()>> cases = {
         {"rebuild_all_modes", RebuildAllModes}, {"partial_startup_ownership", PartialStartupOwnership},
         {"shutdown_from_callback", ShutdownFromCallback}, {"final_reference_on_callback", FinalReferenceOnCallback},
-        {"fatal_loss_retirement", FatalLossRetiresReaders}};
+        {"fatal_loss_retirement", FatalLossRetiresReaders},
+        {"delayed_rgbd_acquisition", DelayedRgbdAcquisition}, {"delayed_overflow_identity", DelayedOverflowIdentity},
+        {"delayed_evidence_expiry", DelayedEvidenceExpiry}, {"delayed_mixed_sensors", DelayedMixedSensors},
+        {"delayed_bounds_and_cancellation", DelayedBoundsAndCancellation},
+        {"final_reference_on_association_worker", FinalReferenceOnAssociationWorker}};
     int failures = 0;
     for (const auto& test : cases) {
         try { test.second(); std::cout << "PASS " << test.first << std::endl; }

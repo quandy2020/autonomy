@@ -134,7 +134,8 @@ bool TrajectoryTrackerOptions::Valid() const {
         validation_budget < command_duration && Positive(maximum_position_error) && Positive(maximum_yaw_error) &&
         maximum_yaw_error < std::acos(-1.0) && Positive(maximum_velocity_error) && Positive(stopped_velocity) &&
         Positive(stopped_yaw_velocity) && Positive(minimum_stopped_duration) && Positive(longitudinal_gain) &&
-        Positive(lateral_gain) && Positive(yaw_gain);
+        Positive(lateral_gain) && Positive(yaw_gain) && Positive(controller_budget) &&
+        controller_budget + validation_budget < command_duration;
 }
 
 TrajectoryTracker::TrajectoryTracker(TrajectoryTrackerOptions options) : options_(std::move(options)) {
@@ -175,6 +176,16 @@ TrajectoryTrackingResult TrajectoryTracker::RequestStop(const TrackingLease& lea
 
 TrajectoryTrackingResult TrajectoryTracker::Tick(const TrajectoryTrackingInput& input,
                                                 const ExecutionClock& clock, const TrackingCommandVerifier& verifier) {
+    return TickImpl(input, clock, verifier, nullptr);
+}
+
+TrajectoryTrackingResult TrajectoryTracker::TickWithController(const TrajectoryTrackingInput& input,
+    const ExecutionClock& clock, const TrackingCommandVerifier& verifier, const TrackingController& controller) {
+    return TickImpl(input, clock, verifier, &controller);
+}
+
+TrajectoryTrackingResult TrajectoryTracker::TickImpl(const TrajectoryTrackingInput& input,
+    const ExecutionClock& clock, const TrackingCommandVerifier& verifier, const TrackingController* controller) {
     if (in_tick_) return RequestStop(input.lease, last_clock_, "trajectory tracker callback reentry is forbidden");
     TickScope tick_scope(in_tick_);
     if (retired_) return StopResult("identity counter exhausted; this tracker remains retired");
@@ -285,7 +296,8 @@ TrajectoryTrackingResult TrajectoryTracker::Tick(const TrajectoryTrackingInput& 
         command.geometry_revision = active_->geometry()->options().revision;
         // Validation occurs before dispatch. The base must schedule begin_stamp;
         // a consumer that immediately publishes a naked Twist violates this contract.
-        command.begin_stamp = now + options_.validation_budget;
+        const double solve_deadline = now + (controller ? options_.controller_budget : 0.0);
+        command.begin_stamp = solve_deadline + options_.validation_budget;
         command.valid_until = std::min({now + options_.command_duration, trajectory.EndStamp(),
                                        active_->valid_until(), lease_.valid_until,
                                        now + lease_.actuator_watchdog});
@@ -295,9 +307,6 @@ TrajectoryTrackingResult TrajectoryTracker::Tick(const TrajectoryTrackingInput& 
         const auto target = trajectory.Evaluate(command.valid_until);
         const double reference_speed = std::cos(target.position[3]) * target.velocity[0] +
                                        std::sin(target.position[3]) * target.velocity[1];
-        command.linear_velocity = reference_speed * std::cos(yaw_error) + options_.longitudinal_gain * forward_error;
-        command.yaw_velocity = target.velocity[3] + options_.yaw_gain * yaw_error +
-                               options_.lateral_gain * reference_speed * Sinc(yaw_error) * lateral_error;
         const auto& drive = active_->drive();
         const double measured_forward = cosine * feedback.state.velocity[0] + sine * feedback.state.velocity[1];
         const double measured_lateral = -sine * feedback.state.velocity[0] + cosine * feedback.state.velocity[1];
@@ -309,6 +318,31 @@ TrajectoryTrackingResult TrajectoryTracker::Tick(const TrajectoryTrackingInput& 
             std::abs(expected_wheels[0] - feedback.wheel_velocity[0]) > options_.maximum_velocity_error ||
             std::abs(expected_wheels[1] - feedback.wheel_velocity[1]) > options_.maximum_velocity_error)
             return RequestStop(input.lease, now, "measured body/wheel feedback is inconsistent with the calibrated planar drive");
+        if (controller) {
+            if (!*controller) return RequestStop(input.lease, now, "missing required native tracking controller");
+            TrackingCommandQuery solve{command, feedback, active_, solve_deadline};
+            TrackingCommand candidate;
+            std::string reason;
+            const bool solved = (*controller)(solve, clock, &candidate, &reason);
+            const double finished = clock();
+            if (stop_latched_ || active_ != solve.reference || command_sequence_ != command.sequence)
+                return RequestStop(input.lease, last_clock_, "stop or reference ownership changed during native solve");
+            if (!std::isfinite(finished) || finished < last_clock_ || finished >= solve.deadline)
+                return RequestStop(input.lease, last_clock_, "native controller overran its deadline or execution clock regressed");
+            last_clock_ = finished;
+            if (!ValidFeedback(feedback, lease_, finished, options_))
+                return RequestStop(input.lease, finished, "measured feedback expired during native solve");
+            if (!solved)
+                return RequestStop(input.lease, finished, reason.empty() ? "native controller supplied no command" : reason);
+            command.linear_velocity = candidate.linear_velocity;
+            command.yaw_velocity = candidate.yaw_velocity;
+            if (!SameCommand(candidate, command))
+                return RequestStop(input.lease, finished, "native controller changed command identity, evidence or original timing");
+        } else {
+            command.linear_velocity = reference_speed * std::cos(yaw_error) + options_.longitudinal_gain * forward_error;
+            command.yaw_velocity = target.velocity[3] + options_.yaw_gain * yaw_error +
+                                   options_.lateral_gain * reference_speed * Sinc(yaw_error) * lateral_error;
+        }
         if (!std::isfinite(command.linear_velocity) || !std::isfinite(command.yaw_velocity) ||
             command.linear_velocity < -drive.maximum_reverse_velocity)
             return RequestStop(input.lease, now, "nonfinite or forbidden reverse feedback command");
@@ -325,7 +359,8 @@ TrajectoryTrackingResult TrajectoryTracker::Tick(const TrajectoryTrackingInput& 
                 return RequestStop(input.lease, now, "feedback command exceeds calibrated wheel speed/acceleration/jerk limits");
         }
         if (!verifier) return RequestStop(input.lease, now, "missing independent command body/ground/stopping verifier");
-        TrackingCommandQuery query{command, feedback, active_, command.begin_stamp};
+        const double verification_deadline = std::min(command.begin_stamp, last_clock_ + options_.validation_budget);
+        TrackingCommandQuery query{command, feedback, active_, verification_deadline};
         const auto verdict = verifier(query);
         const double finished = clock();
         if (stop_latched_ || active_ != query.reference || command_sequence_ != command.sequence)
@@ -336,6 +371,8 @@ TrajectoryTrackingResult TrajectoryTracker::Tick(const TrajectoryTrackingInput& 
         if (verdict.status != GeometryStatus::kClear || !SameCommand(verdict.command, command) ||
             !std::isfinite(verdict.valid_until) || verdict.valid_until < command.valid_until)
             return RequestStop(input.lease, finished, "command safety is blocked, unknown, expired or for a different proposal");
+        if (!ValidFeedback(feedback, lease_, finished, options_))
+            return RequestStop(input.lease, finished, "measured feedback expired during command validation");
         feedback_sequence_ = feedback.sequence;
         TrajectoryTrackingResult result;
         result.status = TrajectoryTrackingStatus::kTracking;

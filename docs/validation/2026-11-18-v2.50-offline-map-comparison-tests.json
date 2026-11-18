@@ -1,0 +1,22 @@
+{
+  "ssh_returncode": 0,
+  "passed": true,
+  "scope": "Synthetic offline score regressions with native automsgs only; no exploration or fusion acceptance.",
+  "command": [
+    "docker",
+    "exec",
+    "SpaceHero",
+    "timeout",
+    "--signal=TERM",
+    "--kill-after=5",
+    "60",
+    "env",
+    "PYTHONPATH=/workspace/autonomy/build/autonomy/automsgs/proto/gen/python",
+    "/opt/venv/bin/python3",
+    "/workspace/autonomy/src/autonomy/scripts/tests/test_compare_exploration_maps.py",
+    "-v"
+  ],
+  "returncode": 0,
+  "log": "/Users/duyongquan3/workspace/Opt/docs/validation/2026-11-18-v2.50-offline-map-comparison-tests.log",
+  "log_sha256": "2eeae64d021cb11b3b383b1283b929955ea5d5c5f0a4baa3fccab7bea2df7329"
+}

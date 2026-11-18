@@ -1,0 +1,29 @@
+{
+  "remote": {
+    "inventory_count": 386,
+    "inventory_matches": true,
+    "mismatches": [],
+    "map_file_count": 471,
+    "map_unchanged": true,
+    "task_server_preserved": true
+  },
+  "docker_returncode": 0,
+  "container": {
+    "inventory_count": 386,
+    "inventory_matches": true,
+    "mismatches": [],
+    "map_file_count": 471,
+    "map_unchanged": true,
+    "task_server_preserved": true
+  },
+  "date": "2026-11-18T14:35:02.079702+08:00",
+  "manifest": "docs/validation/2026-11-18-v2.43-input-evidence-manifest.json",
+  "manifest_sha256": "433a28ba9c9172dfdc19ca3413d8eb270f27d03e1ce85bdc020ffbc3e5005440",
+  "preserved_cmake_sha256": {
+    "autonomy/task/CMakeLists.txt": "68ac1fbb2f1f6800b050bf2ae383b17c76ef0bd9153f4183f322f665146f48b9",
+    "autonomy/planning/CMakeLists.txt": "c1bf4ff683a01c32f3117fffde3f904faf04cb8ad7816d19a41ee0ce4375991e"
+  },
+  "local_requested_file_count": 24,
+  "local_requested_files_match": true,
+  "passed": true
+}

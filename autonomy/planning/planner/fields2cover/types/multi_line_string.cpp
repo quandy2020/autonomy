@@ -28,12 +28,12 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 MultiLineString::MultiLineString() {
-  data_ = std::shared_ptr<OGRMultiLineString>(static_cast<OGRMultiLineString*>(
-      OGRGeometryFactory::createGeometry(wkbMultiLineString)),
-    [](OGRMultiLineString* f) {OGRGeometryFactory::destroyGeometry(f);});
+  data_ = std::shared_ptr<NativeGeom>(static_cast<NativeGeom*>(
+      GeomFactory::createGeometry(WkbKind::kMultiLineString)),
+    [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
 }
 
-MultiLineString::MultiLineString(const OGRGeometry* geom) {
+MultiLineString::MultiLineString(const NativeGeom* geom) {
   this->Append(geom);
 }
 
@@ -61,27 +61,28 @@ void MultiLineString::operator*=(double b) {
   }
 }
 
-void MultiLineString::Append(const OGRGeometry* geom) {
-  if (wkbFlatten(geom->getGeometryType()) ==
-      OGRwkbGeometryType::wkbLineString) {
+void MultiLineString::Append(const NativeGeom* geom) {
+  if (geom == nullptr) {
+    return;
+  }
+  const WkbKind kind = wkbFlatten(geom->getGeometryType());
+  if (kind == WkbKind::kLineString) {
     if (!geom->IsEmpty()) {
       data_->addGeometry(geom);
     }
-  } else if (wkbFlatten(geom->getGeometryType()) ==
-        OGRwkbGeometryType::wkbMultiLineString) {
-    for (auto&& line : *geom->toMultiLineString()) {
-      data_->addGeometry(line);
+  } else if (kind == WkbKind::kMultiLineString) {
+    for (int i = 0; i < geom->getNumGeometries(); ++i) {
+      data_->addGeometry(geom->getGeometryRef(i));
     }
-  } else if (wkbFlatten(geom->getGeometryType()) ==
-      OGRwkbGeometryType::wkbPolygon) {
-    for (auto&& ring : *geom->toPolygon()) {
-      data_->addGeometry(ring);
+  } else if (kind == WkbKind::kPolygon) {
+    for (int i = 0; i < geom->getNumGeometries(); ++i) {
+      data_->addGeometry(geom->getGeometryRef(i));
     }
-  } else if (wkbFlatten(geom->getGeometryType()) ==
-      OGRwkbGeometryType::wkbMultiPolygon) {
-    for (auto&& poly : *geom->toMultiPolygon()) {
-      for (auto&& ring : poly) {
-        data_->addGeometry(ring);
+  } else if (kind == WkbKind::kMultiPolygon) {
+    for (int i = 0; i < geom->getNumGeometries(); ++i) {
+      const NativeGeom* poly = geom->getGeometryRef(i);
+      for (int j = 0; j < poly->getNumGeometries(); ++j) {
+        data_->addGeometry(poly->getGeometryRef(j));
       }
     }
   }

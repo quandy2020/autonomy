@@ -29,6 +29,7 @@
 #include <limits>
 #include <optional>
 #include <vector>
+#include "autonomy/planning/planner/fields2cover/path_planning/constrained_connection.hpp"
 #include "autonomy/planning/planner/fields2cover/path_planning/path_planning.hpp"
 
 namespace autonomy::planning::planner::fields2cover::pp {
@@ -237,7 +238,14 @@ void AppendRoundedTrack(
   F2CPoint cursor = poly.front();
   size_t i = 0;
   while (i < n) {
-    if (sweeps[i] < robot.GetMinSweep()) {
+    // A short first leg may be a border spur. Fold it into the next turn
+    // while the entry pose is still pinned; driving it first leaves too
+    // little approach to satisfy the minimum turning radius.
+    const bool short_entry = i == 0 && start_angle && n > 2 &&
+        sweeps[1] >= robot.GetMinSweep() &&
+        poly[0].Distance(poly[1]) <
+            2.0 * robot.GetRadiusMargin() * robot.GetMinTurningRadius();
+    if (sweeps[i] < robot.GetMinSweep() && !short_entry) {
       path.AppendStraight(cursor, poly[i], robot.GetCruiseVel(),
           autonomy::planning::planner::fields2cover::types::PathSectionType::HL_SWATH);
       cursor = poly[i];
@@ -286,15 +294,24 @@ void AppendRoundedTrack(
 F2CPath PathPlanning::PlanPath(const F2CRobot& robot,
     const F2CRoute& route, TurningBase& turn) {
   F2CPath path;
+  const F2CCells* field = route.GetField() ? &*route.GetField() : nullptr;
   for (size_t i = 0; i < route.SizeVectorSwaths(); ++i) {
     auto prev_swaths = (i >0) ? route.GetSwaths(i-1) : F2CSwaths();
     path += PlanPathForConnection(robot,
-        prev_swaths, route.GetConnection(i), route.GetSwaths(i), turn);
-    path += PlanPath(robot, route.GetSwaths(i), turn);
+        prev_swaths, route.GetConnection(i), route.GetSwaths(i), turn, field);
+    const auto& group = route.GetSwaths(i);
+    for (size_t j = 0; j < group.size(); ++j) {
+      if (j > 0) {
+        path += PlanPathForConnection(robot, group[j - 1].EndPoint(),
+            group[j - 1].GetOutAngle(), F2CMultiPoint(), group[j].StartPoint(),
+            group[j].GetInAngle(), turn, field);
+      }
+      path.AppendSwath(group[j], robot.GetCruiseVel());
+    }
   }
   if (route.SizeConnections() > route.SizeVectorSwaths()) {
     path += PlanPathForConnection(robot,
-      route.GetLastSwaths(), route.GetLastConnection(), F2CSwaths(), turn);
+      route.GetLastSwaths(), route.GetLastConnection(), F2CSwaths(), turn, field);
   }
   return path;
 }
@@ -321,7 +338,7 @@ F2CPath PathPlanning::PlanPathForConnection(const F2CRobot& robot,
     const F2CSwaths& s1,
     const F2CMultiPoint& mp,
     const F2CSwaths& s2,
-    TurningBase& turn) {
+    TurningBase& turn, const F2CCells* field) {
   F2CPoint p1, p2;
   double ang1, ang2;
 
@@ -343,14 +360,14 @@ F2CPath PathPlanning::PlanPathForConnection(const F2CRobot& robot,
   } else {
     return {};
   }
-  return PlanPathForConnection(robot, p1, ang1, mp, p2, ang2, turn);
+  return PlanPathForConnection(robot, p1, ang1, mp, p2, ang2, turn, field);
 }
 
 F2CPath PathPlanning::PlanPathForConnection(const F2CRobot& robot,
     const F2CPoint& p1, double ang1,
     const F2CMultiPoint& mp,
     const F2CPoint& p2, double ang2,
-    TurningBase& turn) {
+    TurningBase& turn, const F2CCells* field) {
   std::vector<F2CPoint> pts{p1};
   const std::vector<F2CPoint> mid = mp.ToVectorPoint();
   pts.insert(pts.end(), mid.begin(), mid.end());
@@ -368,9 +385,19 @@ F2CPath PathPlanning::PlanPathForConnection(const F2CRobot& robot,
     const double hop = p1.Distance(p2);
     direct = reversal > robot.GetReversalSweep() && hop < robot.GetUturnMaxHop();
   }
-  if (direct) {
-    return turn.CreateTurn(robot, p1, ang1, p2, ang2);
-  }
+  const auto checked = [&](const F2CPath& candidate) {
+    if (field) {
+      detail::FreeSpace free(*field);
+      if (detail::ValidPath(candidate, robot, &free)) return candidate;
+      return detail::SearchConnection(robot, turn, p1, ang1, p2, ang2, free);
+    }
+    if (detail::ValidPath(candidate, robot)) return candidate;
+    auto corridor = F2CCells::buffer(F2CLineString(pts),
+        robot.GetMaxCornerCut() + 2.0 * robot.GetMinTurningRadius());
+    detail::FreeSpace free(corridor);
+    return detail::SearchConnection(robot, turn, p1, ang1, p2, ang2, free);
+  };
+  if (direct) return checked(turn.CreateTurn(robot, p1, ang1, p2, ang2));
 
   // Otherwise follow the detour, rounding its corners, rather than cutting
   // across ground the route deliberately routed around.
@@ -383,7 +410,7 @@ F2CPath PathPlanning::PlanPathForConnection(const F2CRobot& robot,
   F2CPath path;
   AppendRoundedTrack(path, poly, robot, turn, robot.GetMaxCornerCut(),
       turn.HasContinuousCurvature(), ang1, ang2);
-  return path;
+  return checked(path);
 }
 
 double PathPlanning::GetSmoothTurningRadius(const F2CRobot& robot) {

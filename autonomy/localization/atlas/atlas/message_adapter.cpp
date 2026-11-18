@@ -233,7 +233,7 @@ bool MessageAdapter::TrackMonocular(
         !system_->TrackMonocular(image, &result)) {
         return false;
     }
-    Record(result);
+    Record(result, &message.header().stamp());
     return true;
 }
 
@@ -248,7 +248,11 @@ bool MessageAdapter::TrackStereo(
         !system_->TrackStereo(left, right, &result)) {
         return false;
     }
-    Record(result);
+    const auto& first = left_message.header().stamp();
+    const auto& second = right_message.header().stamp();
+    const auto& acquisition = first.sec() > second.sec() ||
+        (first.sec() == second.sec() && first.nanosec() >= second.nanosec()) ? first : second;
+    Record(result, &acquisition);
     return true;
 }
 
@@ -263,11 +267,16 @@ bool MessageAdapter::TrackRgbd(
         !system_->TrackRgbd(color, depth, &result)) {
         return false;
     }
-    Record(result);
+    const auto& first = color_message.header().stamp();
+    const auto& second = depth_message.header().stamp();
+    const auto& acquisition = first.sec() > second.sec() ||
+        (first.sec() == second.sec() && first.nanosec() >= second.nanosec()) ? first : second;
+    Record(result, &acquisition);
     return true;
 }
 
-bool MessageAdapter::Record(const TrackingResult& result) {
+bool MessageAdapter::Record(const TrackingResult& result,
+    const ::automsgs::msgs::builtin_interfaces::Time* acquisition) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (result.map_id_valid) {
         const bool coordinate_frame_changed =
@@ -288,16 +297,20 @@ bool MessageAdapter::Record(const TrackingResult& result) {
         path_destructive_epoch_ = result.destructive_epoch;
     }
     latest_ = result;
+    latest_acquisition_.reset();
+    if (acquisition && acquisition->nanosec() < 1000000000U) latest_acquisition_ = *acquisition;
     if (!result.valid)
         return false;
     auto* stamped = path_.add_poses();
     SetHeader(stamped->mutable_header(), result.time, options_.map_frame);
+    if (latest_acquisition_) *stamped->mutable_header()->mutable_stamp() = *latest_acquisition_;
     FillPose(result, stamped->mutable_pose());
     while (static_cast<std::size_t>(path_.poses_size()) >
            options_.maximum_path_poses) {
         path_.mutable_poses()->DeleteSubrange(0, 1);
     }
     SetHeader(path_.mutable_header(), result.time, options_.map_frame);
+    if (latest_acquisition_) *path_.mutable_header()->mutable_stamp() = *latest_acquisition_;
     return true;
 }
 
@@ -310,9 +323,11 @@ bool MessageAdapter::GetOdometry(
         return false;
     message->Clear();
     SetHeader(message->mutable_header(), latest_.time, options_.map_frame);
+    if (latest_acquisition_) *message->mutable_header()->mutable_stamp() = *latest_acquisition_;
     message->set_child_frame_id(options_.camera_frame);
     auto* stamped = message->mutable_pose()->mutable_pose();
     SetHeader(stamped->mutable_header(), latest_.time, options_.map_frame);
+    if (latest_acquisition_) *stamped->mutable_header()->mutable_stamp() = *latest_acquisition_;
     FillPose(latest_, stamped->mutable_pose());
     for (int index = 0; index < 36; ++index) {
         message->mutable_pose()->add_covariance(0.0);

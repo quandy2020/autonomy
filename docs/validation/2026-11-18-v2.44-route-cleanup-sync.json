@@ -1,0 +1,21 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/planning/planner/vista/native_route_service_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-gzxh0118/backup",
+  "expected_sha256": {
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "608ba3e43dcb2b4ffe7ad44a6bf17a576888eda7c98f37e3234469eb8eb5e775"
+  },
+  "deployed_sha256": {
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "eab13917d4813e34e1aa068b3dad43721fafa9778ad0f1ccec9eb988b1bc382e"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "8e2b594304f16cee163dbe04c615e39a6711b76ebeef81237e47c4cecb0284b9",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

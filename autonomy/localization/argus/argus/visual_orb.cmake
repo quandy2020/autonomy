@@ -1,8 +1,12 @@
 # ORB-SLAM3 visual and visual-inertial pipeline migrated into Argus.
 # Upstream algorithm code remains GPLv3 and is isolated behind Argus APIs.
 
-find_package(OpenCV 4 REQUIRED
-  COMPONENTS core features2d imgproc imgcodecs calib3d)
+# Preserve the parent's OpenCV selection. Re-finding version 4 here selects a
+# second ABI when common/Atlas and the installed FBow already use OpenCV 5.
+if(NOT OpenCV_FOUND)
+  find_package(OpenCV REQUIRED
+    COMPONENTS core features2d imgproc imgcodecs calib3d)
+endif()
 find_package(Boost REQUIRED COMPONENTS serialization)
 find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 

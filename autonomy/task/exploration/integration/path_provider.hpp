@@ -7,12 +7,7 @@
 #include "autonomy/planning/planner/vista/route_planner.hpp"
 namespace autonomy::task::exploration {
 /** @brief Evidence copied from the actual graph owner, never invented by exploration. */
-struct RouteMapEvidence {
-    std::uint64_t map_epoch=0,geometry_revision=0,watermark=0;
-    perception::ObservationCut observation_cut{};
-    perception::ObservationCut observation_baseline{}; ///< Excluded prefix of the actual graph's evidence.
-    std::uint64_t observation_recovery_generation = 0; ///< Replacement baseline retained by graph ownership.
-};
+using RouteMapEvidence = planning::planner::vista::VistaMapEvidence;
 /** @brief Read-only route interface; task strategies never own a competing Vista graph. */
 class PathProvider {
 public:

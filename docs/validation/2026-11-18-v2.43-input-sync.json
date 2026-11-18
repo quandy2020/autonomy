@@ -1,0 +1,45 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/exploration/exploration.hpp",
+    "autonomy/task/exploration/exploration.cpp",
+    "autonomy/task/exploration/exploration_observation_source_test.cpp",
+    "autonomy/common/navigation/CMakeLists.txt",
+    "autonomy/perception/CMakeLists.txt",
+    "cmake/ExplorationTests.cmake",
+    "scripts/validate_native_exploration.py",
+    "docs/source/10_Perception/13_multisensor_observation.md",
+    "docs/source/17_Tasks/08_multisensor_exploration.md"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-r_cdweae/backup",
+  "expected_sha256": {
+    "autonomy/task/exploration/exploration.hpp": "16caf87de65be5c0ca4500ecdbecd6e7053e4e997af0ac15cb4fe401188952b7",
+    "autonomy/task/exploration/exploration.cpp": "8209aefb57b244263157423f578e4ae5792922bd28fa2d14bd6c1a54c43eed6d",
+    "autonomy/task/exploration/exploration_observation_source_test.cpp": null,
+    "autonomy/common/navigation/CMakeLists.txt": "944f314c844a6045d478b5d879932ea780fe9e02bc2e5724fd0d46602ab770c0",
+    "autonomy/perception/CMakeLists.txt": "e77e6aea167fa5b2b50829e3b08ed9d84d221f0e626d2bfc27b3cf11a3d3d897",
+    "cmake/ExplorationTests.cmake": "9744b6e5c7f90613fd943f0a6e1192e6d0e4240db6201bd53f26641965ffa08f",
+    "scripts/validate_native_exploration.py": "46168a6c3efba9bcf95453b2dd3c5ad17df92262be676ac8179ed00eb757678b",
+    "docs/source/10_Perception/13_multisensor_observation.md": "b56ae20664ad4f10d3dc88e85ec10f1f88218835d8f9b0d44af1388dcdc8257b",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "262ab65b3c9fa7a39307c97260350802f92c8137a45617c44f6c70900f8f90c0"
+  },
+  "deployed_sha256": {
+    "autonomy/task/exploration/exploration.hpp": "167d107db4426d11315c1e693706ccf002f699634e1b8f5ea15b74623e70ef45",
+    "autonomy/task/exploration/exploration.cpp": "6f9567c061a8a8d5c851eba40050e2afefc64c873a0a45fa52f9d15e2823ee45",
+    "autonomy/task/exploration/exploration_observation_source_test.cpp": "9fa9a73f901b2eaf5ee74bac2fe1d997bde117959544ad21eef032bb991456ae",
+    "autonomy/common/navigation/CMakeLists.txt": "4a20bd087c3ef3a532b9216fc48f23395b570d53e6bc67dab28ce57e9d6c120d",
+    "autonomy/perception/CMakeLists.txt": "ce23ca410c0d80ef48af0f2b06e4ebda152569a3c6ba844111763d0c3ec49bd6",
+    "cmake/ExplorationTests.cmake": "58f5fb795ca56f4b14d5bd86d0301dd12be7bdd7b7df4e94708bd5feba514419",
+    "scripts/validate_native_exploration.py": "17ee218d9008e38bdb79164fba42ba8c30327aa31a14d9a0be844c50c339f933",
+    "docs/source/10_Perception/13_multisensor_observation.md": "0f937d0fc284acc61c84d1d8eb2a11b92071cddd7fd7e2ad066d405aa39a8b7b",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "f92e5eed53075d178d06a3861105e562a71150805842366b35c62b3d2baa0529"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "5365cffd88fce42e8e2f3479b9189f96e91cb7c97751f40106fd344f6ab3de0f",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

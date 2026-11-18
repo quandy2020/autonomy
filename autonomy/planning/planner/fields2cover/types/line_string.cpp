@@ -28,10 +28,10 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 LineString::LineString() {
-  data_ = std::shared_ptr<OGRLineString>(
-    static_cast<OGRLineString*>(
-      OGRGeometryFactory::createGeometry(wkbLineString)),
-    [](OGRLineString* f) {OGRGeometryFactory::destroyGeometry(f);});
+  data_ = std::shared_ptr<NativeGeom>(
+    static_cast<NativeGeom*>(
+      GeomFactory::createGeometry(WkbKind::kLineString)),
+    [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
 }
 
 LineString::LineString(const LinearRing& ring) {
@@ -103,7 +103,7 @@ Point LineString::GetGeometry(size_t i) {
         "Error GetGeometry: LinearString does not contain point " +
         std::to_string(i));
   }
-  OGRPoint point;
+  NativeGeom point;
   data_->getPoint(i, &point);
   return Point(point);
 }

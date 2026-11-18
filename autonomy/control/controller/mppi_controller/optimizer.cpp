@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+/**
+ * @file optimizer.cpp
+ * @brief Existing MPPI optimization with explicit velocity-bound presence and constrained filtered commands.
+ */
+
 #include "autonomy/control/controller/mppi_controller/optimizer.hpp"
 
 #include <algorithm>
@@ -92,8 +97,8 @@ void Optimizer::getParams() {
   auto& s = settings_;
 
   // Load from proto options
-  // 如果 proto 中未设置（为 0），则回退到一组与 nav2_mppi_controller 类似的默认值，
-  // 以保证示例应用即使未加载 Lua 配置也能安全运行。
+  // Most legacy scalars use zero as the unset sentinel. vx_min instead has
+  // explicit presence so a configured zero can forbid reverse motion.
   s.model_dt = options_->model_dt() > 0.0 ? options_->model_dt() : 0.05;
   s.time_steps = options_->time_steps() > 0 ? options_->time_steps() : 56;
   s.batch_size = options_->batch_size() > 0 ? options_->batch_size() : 2000;
@@ -101,7 +106,8 @@ void Optimizer::getParams() {
   s.temperature = options_->temperature() > 0.0 ? options_->temperature() : 0.3;
   s.gamma = options_->gamma() > 0.0 ? options_->gamma() : 0.015;
   s.base_constraints.vx_max = options_->vx_max() != 0.0 ? options_->vx_max() : 0.5f;
-  s.base_constraints.vx_min = options_->vx_min() != 0.0 ? options_->vx_min() : -0.35f;
+  // Zero is a valid forward-only bound; absence alone selects the old default.
+  s.base_constraints.vx_min = options_->has_vx_min() ? options_->vx_min() : -0.35f;
   s.base_constraints.vy = options_->vy_max() != 0.0 ? options_->vy_max() : 0.5f;
   s.base_constraints.wz = options_->wz_max() != 0.0 ? options_->wz_max() : 1.9f;
   s.sampling_std.vx = options_->vx_std() != 0.0 ? options_->vx_std() : 0.2f;
@@ -225,6 +231,13 @@ automsgs::msgs::geometry_msgs::TwistStamped Optimizer::evalControl(const automsg
   } while (fallback(critics_data_.fail_flag));
 
   tools::savitskyGolayFilter(control_sequence_, control_history_, settings_);
+  // Polynomial smoothing can overshoot velocity/acceleration bounds. Preserve
+  // the existing model constraints on the sequence actually returned to the base.
+  applyControlSequenceConstraints();
+  if (control_sequence_.vx.size() > 20) {
+    const auto offset = settings_.shift_control_sequence ? 1 : 0; ///< Actual command index used by the existing filter.
+    control_history_.back() = {control_sequence_.vx(offset), control_sequence_.vy(offset), control_sequence_.wz(offset)};
+  }
   auto control = getControlFromSequenceAsTwist(plan.header().stamp());
 
   if (settings_.shift_control_sequence) {

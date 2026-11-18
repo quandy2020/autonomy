@@ -10,6 +10,12 @@
 
 namespace autonomy::planning::planner::vista {
 namespace {
+/** @brief Copy only evidence belonging to the locked graph/map pair. */
+VistaMapEvidence CopyEvidence(const VisibilityGraph& graph, const std::string& frame) {
+    return {graph.map_epoch, graph.geometry_revision, graph.observation_watermark,
+        graph.observation_cut, graph.observation_baseline,
+        graph.observation_recovery_generation, frame};
+}
 /** @brief Reject malformed views before replacing any accepted graph geometry. */
 void ValidateView(const perception::MapReadView& view,
                   const std::optional<perception::MapReadView>& previous) {
@@ -63,6 +69,11 @@ GraphUpdateStats VistaRoutePlanner::Update(const perception::MapReadView& map) {
 VisibilityGraph VistaRoutePlanner::GraphSnapshot() const {
     std::lock_guard<std::mutex> lock(mutex_); return graph_;
 }
+std::optional<VistaMapEvidence> VistaRoutePlanner::Evidence() const {
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (!ready_ || !map_) return {};
+    return CopyEvidence(graph_, map_->frame_id);
+}
 VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goal,
                                          const std::function<bool()>& canceled) const {
     std::optional<perception::MapReadView> map;
@@ -75,6 +86,7 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     if (!map || !opt::navigation::IsFinite(start) || !opt::navigation::IsFinite(goal)) return result;
     result.map_epoch = map->map_epoch; result.geometry_revision = map->geometry_revision;
     result.path.frame_id = map->frame_id;
+    result.evidence = CopyEvidence(graph, map->frame_id);
     auto is_canceled = [&] { return canceled && canceled(); };
     if (is_canceled()) { result.canceled = true; return result; }
     EdgeValidator validator(*map,options_);

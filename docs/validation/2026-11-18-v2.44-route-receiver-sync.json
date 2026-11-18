@@ -1,0 +1,36 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autolink/autolink/transport/receiver/receiver.hpp",
+    "autolink/autolink/transport/receiver/hybrid_receiver.hpp",
+    "autolink/autolink/transport/receiver/shm_receiver.hpp",
+    "autolink/autolink/transport/receiver/intra_receiver.hpp",
+    "autolink/autolink/transport/receiver/rtps_receiver.hpp",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-fgp36045/backup",
+  "expected_sha256": {
+    "autolink/autolink/transport/receiver/receiver.hpp": "d512c9cd76d4fd678afcef2b9bb0cfa8575482c0962810604431521b1edb638f",
+    "autolink/autolink/transport/receiver/hybrid_receiver.hpp": "656642fd1edc54089edfd562687083c6ae6cbc8b6bb8f9222419f307c5a7177b",
+    "autolink/autolink/transport/receiver/shm_receiver.hpp": "4b9890ac3d551734f82e7ad99a6ce30bdaa18e2e434601fa7a37ac2e47a458fe",
+    "autolink/autolink/transport/receiver/intra_receiver.hpp": "588acb99e846110bcf6f5be2c20b7e4f21da9264e294dd05dd300426878c68c4",
+    "autolink/autolink/transport/receiver/rtps_receiver.hpp": "9744ec5b1d1a3a9d1bcaa97ed1a59c7c1df64cc8a5215f5d871f46affdd769de",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "47922c3830ab2e5dbbcc2954372fb652b2cc690ca0c70bd01981f256c231d5ca"
+  },
+  "deployed_sha256": {
+    "autolink/autolink/transport/receiver/receiver.hpp": "b28be0ac2303ecd461de6f1ee3ffdda635f4b786ffc877d54f380b767d74b65a",
+    "autolink/autolink/transport/receiver/hybrid_receiver.hpp": "2ac8873baa14cef428f9fa062aad3fe2baafb5f9721d7501b091bc6ce6e3c638",
+    "autolink/autolink/transport/receiver/shm_receiver.hpp": "5d3b1f5a4bfeb68553b9da6c7ce83fe805e4e5898b317df6944bce76c4966f16",
+    "autolink/autolink/transport/receiver/intra_receiver.hpp": "5815caa943e2c659edbace29a6d5f26149712f175fb177400e1343361f1a0bca",
+    "autolink/autolink/transport/receiver/rtps_receiver.hpp": "b28b7176e8b9473488ff3d9a6bea668e2d2cbcbdd92df4b6ca874a854aa57754",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "433651e026646618524ffb33bf419159d39bf9ac5636c2a230f4f9fe3dca0f17"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "16aeeeef5eda99762463e9fd5ce9490f3e5b58fcca5f0290ddd2ecaa10fd964e",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

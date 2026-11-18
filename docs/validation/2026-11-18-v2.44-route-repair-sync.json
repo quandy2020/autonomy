@@ -1,0 +1,21 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/exploration/integration/native_vista_path_provider.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-df62yv27/backup",
+  "expected_sha256": {
+    "autonomy/task/exploration/integration/native_vista_path_provider.cpp": "efd536d07807ae30f52950c60d28946bf645b150779772bb66c68541112bb061"
+  },
+  "deployed_sha256": {
+    "autonomy/task/exploration/integration/native_vista_path_provider.cpp": "66c4c462c80725ad7dbf329997045011142113885d4eca7588891fdf0f14d408"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "c184925e209a0ab5dbf25f6b79cb6ced3a69f623fee36e689f87ef1d74d33b9f",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

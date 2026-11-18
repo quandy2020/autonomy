@@ -1,7 +1,7 @@
 # Private ORB-SLAM3 dependencies. These targets intentionally do not install
-# headers or leak global include directories into the rest of Atlas.
+# headers or leak global include directories into the rest of Argus.
 
-add_library(atlas_orb_dbow2 STATIC
+add_library(argus_orb_dbow2 STATIC
   DBoW2/DBoW2/BowVector.cpp
   DBoW2/DBoW2/FORB.cpp
   DBoW2/DBoW2/FeatureVector.cpp
@@ -9,13 +9,13 @@ add_library(atlas_orb_dbow2 STATIC
   DBoW2/DUtils/Random.cpp
   DBoW2/DUtils/Timestamp.cpp
 )
-target_include_directories(atlas_orb_dbow2 PUBLIC
+target_include_directories(argus_orb_dbow2 PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/DBoW2
 )
-target_link_libraries(atlas_orb_dbow2 PUBLIC ${OpenCV_LIBS})
-target_compile_features(atlas_orb_dbow2 PUBLIC cxx_std_17)
+target_link_libraries(argus_orb_dbow2 PUBLIC ${OpenCV_LIBS})
+target_compile_features(argus_orb_dbow2 PUBLIC cxx_std_17)
 
-add_library(atlas_orb_g2o STATIC
+add_library(argus_orb_g2o STATIC
   g2o/g2o/types/types_sba.cpp
   g2o/g2o/types/types_six_dof_expmap.cpp
   g2o/g2o/types/types_seven_dof_expmap.cpp
@@ -46,19 +46,19 @@ add_library(atlas_orb_g2o STATIC
   g2o/g2o/stuff/string_tools.cpp
   g2o/g2o/stuff/property.cpp
 )
-target_include_directories(atlas_orb_g2o PUBLIC
+target_include_directories(argus_orb_g2o PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}/g2o
 )
-target_compile_definitions(atlas_orb_g2o PRIVATE UNIX)
-target_link_libraries(atlas_orb_g2o PUBLIC Eigen3::Eigen)
-target_compile_features(atlas_orb_g2o PUBLIC cxx_std_17)
+target_compile_definitions(argus_orb_g2o PRIVATE UNIX)
+target_link_libraries(argus_orb_g2o PUBLIC Eigen3::Eigen)
+target_compile_features(argus_orb_g2o PUBLIC cxx_std_17)
 
-add_library(atlas_orb_sophus INTERFACE)
-target_include_directories(atlas_orb_sophus INTERFACE
+add_library(argus_orb_sophus INTERFACE)
+target_include_directories(argus_orb_sophus INTERFACE
   ${CMAKE_CURRENT_SOURCE_DIR}/Sophus
 )
-target_link_libraries(atlas_orb_sophus INTERFACE Eigen3::Eigen)
+target_link_libraries(argus_orb_sophus INTERFACE Eigen3::Eigen)
 
-add_library(atlas::orb_dbow2 ALIAS atlas_orb_dbow2)
-add_library(atlas::orb_g2o ALIAS atlas_orb_g2o)
-add_library(atlas::orb_sophus ALIAS atlas_orb_sophus)
+add_library(argus::orb_dbow2 ALIAS argus_orb_dbow2)
+add_library(argus::orb_g2o ALIAS argus_orb_g2o)
+add_library(argus::orb_sophus ALIAS argus_orb_sophus)

@@ -1,0 +1,24 @@
+{
+  "scope": "Targeted actual native route-service build and CTest, without replacement libraries",
+  "steps": [
+    {
+      "event": "step",
+      "stage": "build",
+      "returncode": 124,
+      "command": [
+        "cmake",
+        "--build",
+        "/workspace/autonomy/build/autonomy",
+        "--target",
+        "autonomy_native_route_service_test",
+        "-j",
+        "4"
+      ],
+      "remote_log": "/tmp/opt-v2.44-route-target-g4orqla1/build.log",
+      "local_log": "docs/validation/2026-11-18-v2.44-route-service-drain-target-build.log",
+      "log_sha256": "3467abab668a5401169139892c35f9331f99e7c7b9490b2c7c8ac207d506c881"
+    }
+  ],
+  "ssh_returncode": 0,
+  "passed": false
+}

@@ -24,7 +24,6 @@
  */
 
 
-#include <ogr_geometry.h>
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -40,11 +39,11 @@ namespace autonomy::planning::planner::fields2cover::types {
  * @class autonomy::planning::planner::fields2cover::types::Point
  * @brief 3D point geometry used throughout Fields2Cover.
  */
-struct Point : public Geometry<OGRPoint, wkbPoint> {
+struct Point : public Geometry<NativeGeom, WkbKind::kPoint> {
  public:
   // Hidden from SWIG, which would also wrap the base copy/move constructors.
 #ifndef SWIG
-  using Geometry<OGRPoint, wkbPoint>::Geometry;
+  using Geometry<NativeGeom, WkbKind::kPoint>::Geometry;
 #endif
   Point();
   Point(double x, double y, double z = 0);
@@ -89,7 +88,7 @@ struct Point : public Geometry<OGRPoint, wkbPoint> {
   void SetZ(double z);
 
   void SetPoint(double x, double y, double z = 0);
-  void SetPoint(const OGRPoint& p);
+  void SetPoint(const NativeGeom& p);
   void SetPoint(const Point& p);
 
   double GetAngleFromPoints(const Point& end) const;
@@ -144,11 +143,11 @@ T Point::RotateFromPoint(double angle, const T& t) const {
 }
 
 
-inline OGRPoint operator+(const OGRPoint& a, const autonomy::planning::planner::fields2cover::types::Point& b) {
+inline NativeGeom operator+(const NativeGeom& a, const autonomy::planning::planner::fields2cover::types::Point& b) {
   return {a.getX() + b.GetX(), a.getY() + b.GetY(), a.getZ() + b.GetZ()};
 }
 
-inline OGRPoint operator-(const OGRPoint& a, const autonomy::planning::planner::fields2cover::types::Point& b) {
+inline NativeGeom operator-(const NativeGeom& a, const autonomy::planning::planner::fields2cover::types::Point& b) {
   return {a.getX() - b.GetX(), a.getY() - b.GetY(), a.getZ() - b.GetZ()};
 }
 

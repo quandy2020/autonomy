@@ -1,5 +1,34 @@
 # SanD 的物理时间轨迹与执行安全
 
+## 2026-11-18：统一样条实现与真实模型接口
+
+样条数学入口统一为 `autonomy/common/math/bspline.hpp`。控制模块通过
+`ClampedCubicBSpline` 构造和采样曲线、计算参数导数与起始控制点；
+`TimedBSpline` 负责执行身份、绝对期限和物理时间换算。
+`NativeSplineTracker` 将采样后的既有 automsgs `Path` 交给已有
+NMPC/MPPI，最终输出既有 `TwistStamped`。这些适配层不另写基函数、
+De Boor 求值、导数曲线或控制器求解器。
+
+本次对实际 SpaceHero 内模型使用 ONNX Runtime 检查接口，发现已有
+`autonomy/control/conf/models/sand_planner_nomax_denoiser_step.onnx`，
+大小 56,276,091 字节，SHA-256 为
+`20988ab3b6d2f079f1f079fb4c6e8e5832ab604bbcff5dbb4317dc3098e2429d`。
+输入为 `observation_depth [1,4,168,224]`、`observation_goal [1,3]`、
+`observation_previous_velocity [1,3]`、`sample [1,24]`、
+`timestep [1]`；输出为 `action [1,24]`，全部为 float。
+模型自定义 metadata 为空；本次只确认文件及接口，没有确认其训练来源。
+
+已有冻结 DeFM 图接收 `depth_metric [1,1,480,640]`，输出
+`normalized_depth [1,3,224,224]`、`patch_tokens [1,256,384]` 和
+`global_feature [1,384]`。当前 SanD 图的原始深度条件不能直接当作
+DeFM token 条件。DeFM 图和 SanD 图分别可加载，不表示二者组合已通过
+适配训练或端到端运行验证。接口及真实模型摘要保存在
+`docs/validation/2026-11-18-v2.50-autosim-model-interfaces.json`。
+
+后续组合仍通过已有 RAW 特征入口接入经过验证的条件模型，并复用公共
+样条与原生跟踪器。不得通过改 tensor 名称或 reshape，把未适配的 token
+送入原始深度输入来宣称组合成立。
+
 新增实现位于 `autonomy/control/controller/policy_controller/sand_planner/`。
 它检查具有物理时间和明确执行身份的 B 样条，分别处理参考连续性、底盘
 运动学、机器人全身占据体积和实测地面支撑。
@@ -92,7 +121,7 @@ ValidateLocalTrajectory(trajectory, limits, validation_options, safety_options,
 
 ## 原生 SanD 跟踪接入
 
-生产执行链为 `PolicyController::ComputeVelocityCommands` →
+普通 PolicyController 的执行链为 `PolicyController::ComputeVelocityCommands` →
 `PolicyPipeline::ComputeCommand` → `PredictTwist` 选出完整样条 →
 `NativeSplineTracker` → 现有 `NMPCController` 或 `MPPIController` →
 `CommandSafetyFilter` → `ControllerServer::PublishVelocity(TwistStamped)`。
@@ -145,6 +174,13 @@ MPPI 使用既有 `DiffDrive` 模型。Configure/Activate/Deactivate/Cleanup
 `SetPlan` 会重置 warm start；本适配保留这一行为，相关效率需实测。
 局部端点不是任务终点，任务完成仍由外层 PolicyController 的原始目标判断。
 
+底盘禁止倒车时，既有 `mppi_controller_options` 需显式设置 `vx_min: 0`。
+该配置字段保持编号 8，新增 presence 以区分“省略”与“明确为零”：省略
+仍采用原来的 -0.35 m/s 默认值，已有非零设置保持原语义。
+优化器在 Savitzky-Golay 滤波后重新施加既有速度、加速度及运动模型约束，
+滤波历史保存实际约束后的指令。滤波本身可能越过约束边界，不能将其
+输出直接当作底盘允许的速度；再次约束同样不构成连续执行 jerk 的证明。
+
 SanD 扩散按单调时钟的周期缓存；观测编码、新鲜度检查、反馈控制和安全
 过滤仍逐控制周期执行。缓存原始期限不由 Compute 续期。消息采集/接收
 时间使用 system clock 秒，执行耗时和扩散周期使用 steady clock，避免
@@ -160,6 +196,42 @@ ControllerServer 缺少里程计时生成的仅含 Header 的默认消息被拒�
 否决都清除参考复用标志与上一规划先验，下一周期重新生成并校验参考。
 最后仍由现有 ControllerServer 发布 `TwistStamped`，没有新增消息协议。
 
+## 严格准入后的原生求解入口
+
+`TrajectoryTracker::TickWithController(input, clock, verifier,
+native.TrackingCallback())` 将既有 NMPC/MPPI 接入原来的轨迹准入、授权与
+停稳状态机。它先通过私有 `AdmittedReference`、实测反馈、执行租约和
+物理 C2 切换检查，再调用原生控制器；启动停稳未确认、参考尚未开始或
+授权已撤销时不调用求解器。原有 `Tick` 接口继续保留。显式原生入口缺少
+回调、求解失败、超时或抛出异常时锁存停止请求，不回退原有反馈公式。
+
+`BuildAdmittedPlannerPath` 通过 `TimedBSpline::Evaluate` 采样已准入参考，
+所有样条求值仍由 `common/math/bspline.hpp` 完成。它保留原非均匀结点、
+绝对 XYZ、连续 yaw、执行坐标系及原采样时刻，不随当前位置重新锚定。
+整个参考以 64 点的既有 `automsgs::msgs::nav_msgs::Path` 交给原生 `SetPlan`。
+采样点的时间戳不使 NMPC/MPPI 自动具有严格物理时间跟踪能力。静止几何
+不生成伪造路径，应由独立的停止或旋转执行动作处理。
+
+`NativeSplineTracker::SolveTrackingCommand` 将已验证反馈转换为既有
+`PoseStamped` 和 `TwistStamped`。世界线速度按实际 yaw 转为 body frame，
+保留实测侧向/竖向残差。采集时间转换为纳秒时向下取整，不通过舍入将
+测量时间变成未来时间；原有反馈新鲜度检查不放宽。原生参考复用保持
+原准入实例与证据期限，`Compute` 不续期轨迹、租约或地图证据。
+
+默认原生求解预算为 20 ms，独立指令校验预算为 5 ms；路径采样、设置
+与求解均计入原求解截止时间。未使用的求解时间不延长校验预算。指令
+最早生效时刻预留两段预算，绝对失效时刻仍受原 40 ms 指令窗口、
+轨迹/几何/租约期限、看门狗和待切换参考共同限制。求解后及独立校验后
+重新检查时钟、参考所有权和反馈年龄。这里检测预算超时，不能抢占
+阻塞的原生求解器；外部看门狗仍不可缺少。
+
+原生返回的 `TwistStamped` 是候选。回调只把 body-forward 速度和 yaw rate
+写入现有内部 `TrackingCommand`，不能修改参考、执行身份、反馈序号、
+地图版本或原始生效/失效时刻。跟踪器继续验证标定轮速、轮加速度、轮
+jerk 的必要过渡界，并把实际候选交给 `TrackingCommandVerifier` 验证
+全身、地面和停车扫掠。只有这些门控全部通过才返回可执行结果。
+本次没有增加 automsgs 消息；内部期限契约仍需底盘执行者完整落实。
+
 ## 当前执行边界
 
 `Path` 是几何参考，不编码原 SanD 样条的物理时间、速度或加速度。
@@ -167,12 +239,14 @@ NMPC/MPPI 根据自己的既有模型、速度约束、优化代价和实时反�
 不能由样条 C2 推断最终 Twist/轮速的 jerk 已受约束。严格时间跟踪、
 路径替换的 warm start、实测延迟、跟踪误差及最终速度平滑性仍需验收。
 
-上述原生接入复用原控制器的 costmap 碰撞检查和 PolicyPipeline 安全过滤。
-它尚未消费 `AdmittedReference`/`TrajectoryTracker` 的租约证书，也未接通
-独立实际指令扫掠、底盘授权/停稳权威和硬件 watchdog。
+普通 PolicyPipeline 分支仍调用几何参考入口，复用原控制器的 costmap
+碰撞检查和 PolicyPipeline 安全过滤。新的显式回调入口已经让 NMPC/MPPI
+消费 `AdmittedReference`，但普通 Pipeline 尚未组装这套严格状态机。
+独立实际指令扫掠的生产供应者、底盘授权/停稳权威和硬件 watchdog
+仍需由应用接通。
 普通 `TwistStamped` 不携带这些执行证据；写出零速度不是实际停稳回执。
-这些边界不能用原生 NMPC/MPPI 测试通过替代，既有几何/停止证明类型
-继续保留用于后续独立接入。
+这些边界不能用原生 NMPC/MPPI 测试通过替代，不能丢弃内部执行期限后
+立即发布普通 Twist 并声称严格门控已经接通。
 
 源码与模型约束测试也不验证轮地打滑、负载或材料承载，不能据此宣布
 机器人执行安全或平滑性已经通过实机验收。
@@ -182,6 +256,11 @@ NMPC/MPPI 根据自己的既有模型、速度约束、优化代价和实时反�
 `trajectory_tracker_test.cpp`。原生适配检查位于
 `native_spline_tracker_test.cpp`，涵盖 automsgs 消息、固定参考、默认反馈
 拒绝、生命周期、晚到命令拒绝、空输出拒绝，以及实际 NMPC/MPPI 求解。
+新增检查让真实 NMPC/MPPI 消费准入参考并经过严格门控，将实际原生工作
+耗时计入截止时间，覆盖参考采样、停稳等待、版本保留与授权撤销。
+独立跟踪器另测原生失败/异常/超时、指令元数据篡改、反馈计算中到期及
+独立校验预算超时拒绝。原生准入夹具显式采用宽轮动态界，只验证求解与
+接口义务，不代表物理底盘标定或实机 jerk 通过。
 原生求解夹具通过现有 costmap API 显式填充自由空间，MPPI 的 CostCritic
 保持启用，圆形机器人使用 `consider_footprint=false`，与夹具的机器人
 几何配置一致；该夹具只验证接入与求解，不验证障碍场景的避碰性能。

@@ -4,6 +4,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  */
 
+/** @file atlas_node.hpp
+ * @brief Native visual SLAM node with opt-in acquisition-time tracking diagnostics.
+ */
 #ifndef AUTONOMY_LOCALIZATION_ATLAS_ATLAS_ATLAS_NODE_HPP_
 #define AUTONOMY_LOCALIZATION_ATLAS_ATLAS_ATLAS_NODE_HPP_
 
@@ -17,6 +20,7 @@
 #include <thread>
 
 #include <Eigen/Geometry>
+#include <automsgs/msgs/diagnostic_msgs/diagnostic_array.pb.h>
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
@@ -56,6 +60,7 @@ public:
         std::string right_image_topic = "/camera/right/image";
         std::string depth_image_topic = "/camera/depth/image";
         std::string odometry_topic = "/atlas/odometry";
+        std::string localization_status_topic;  ///< Optional native DiagnosticArray endpoint; empty disables publication.
         std::string trajectory_topic = "/atlas/trajectory";
         std::string optimized_trajectory_topic =
             "/atlas/optimized_trajectory";
@@ -118,7 +123,18 @@ private:
     void OnTfMessage(const std::shared_ptr<TfMessage>& message, bool is_static);
     void TryTrackSynchronized(bool depth);
     bool AcceptTrackingTimestamp(double timestamp);
-    void Publish(double timestamp);
+    void Publish(double timestamp,
+        const ::automsgs::msgs::builtin_interfaces::Time* acquisition = nullptr);
+    /** @brief Publish actual tracker health/identity for one attempted acquisition.
+     * @param timestamp Original attempted camera acquisition time.
+     * @param result Actual MapBuilder result, possibly invalid or from an older attempt.
+     * @param have_odometry True only for estimated odometry matching this attempt's exact native stamp.
+     * @param acquisition Original native input stamp; null preserves legacy synthetic-test behavior.
+     * @details A stale result never becomes healthy for the new acquisition. Raw
+     * Atlas identities do not certify consumer fusion, coverage or persistence.
+     */
+    void PublishTrackingDiagnostics(double timestamp, const TrackingResult& result,
+        bool have_odometry, const ::automsgs::msgs::builtin_interfaces::Time* acquisition = nullptr);
     void RequestMapPublish(double timestamp);
     void MapPublishLoop();
     void PublishMaps(double timestamp);
@@ -137,6 +153,9 @@ private:
     std::unique_ptr<MapBuilder> system_;
     std::unique_ptr<MessageAdapter> messages_;
     std::shared_ptr<autolink::Node> node_;
+    std::shared_ptr<autolink::Writer<::automsgs::msgs::diagnostic_msgs::DiagnosticArray>>
+        localization_status_writer_;  ///< Optional generated automsgs writer, independent from pose availability.
+    std::string diagnostic_instance_;  ///< Process/start identity distinguishing backend restarts from equal map ids.
     ::autonomy::transform::Buffer* tf_buffer_ = nullptr;
     std::shared_ptr<autolink::Reader<TfMessage>> tf_reader_;
     std::shared_ptr<autolink::Reader<TfMessage>> tf_static_reader_;

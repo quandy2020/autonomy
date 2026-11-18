@@ -204,6 +204,19 @@ bool PassesTimeChecks(const ObservationSnapshot& snapshot,
                       const proto::ObservationInput& input,
                       const ObservationEncodeContext& context,
                       std::string* error) {
+    if (input.modality() == proto::OBSERVATION_RAW) {
+        const auto it = snapshot.raw_tensors.find(input.name());
+        if (it != snapshot.raw_tensors.end() && it->second && it->second->valid_until_sec != 0.0) {
+            const auto& frame = *it->second;
+            if (!std::isfinite(context.now_sec) || context.now_sec <= 0.0 ||
+                !std::isfinite(frame.stamp_sec) || frame.stamp_sec <= 0.0 ||
+                !std::isfinite(frame.valid_until_sec) || frame.valid_until_sec <= frame.stamp_sec ||
+                context.now_sec < frame.stamp_sec || context.now_sec >= frame.valid_until_sec) {
+                if (error) *error = "Stale or future RAW acquisition for " + input.name();
+                return false;
+            }
+        }
+    }
     const double modality_stamp =
         ModalityStamp(snapshot, input.modality(), input.name());
     if (modality_stamp <= 0.0) {
@@ -358,6 +371,14 @@ bool EncodeObservations(const ObservationSnapshot& snapshot,
 
         std::string time_error;
         if (!PassesTimeChecks(snapshot, input, context, &time_error)) {
+            // A finite acquisition lease is evidence, not an optional missing
+            // modality. Never substitute zero features when that lease expires.
+            const auto raw = snapshot.raw_tensors.find(input.name());
+            if (input.modality() == proto::OBSERVATION_RAW && raw != snapshot.raw_tensors.end() &&
+                raw->second && raw->second->valid_until_sec != 0.0) {
+                if (error) *error = time_error;
+                return false;
+            }
             if (!input.required()) {
                 continue;
             }
@@ -391,3 +412,4 @@ bool EncodeObservations(const ObservationSnapshot& snapshot,
 }  // namespace controller
 }  // namespace control
 }  // namespace autonomy
+

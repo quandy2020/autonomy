@@ -32,7 +32,7 @@ message MPPIControllerOptions {
 
     // Velocity Constraints
     double vx_max = 7;  // Default: 0.5
-    double vx_min = 8;  // Default: -0.35
+    optional double vx_min = 8;  // Omitted: -0.35; explicit 0 forbids reverse motion.
     double vy_max = 9;  // Default: 0.5
     double wz_max = 10;  // Default: 1.9
 

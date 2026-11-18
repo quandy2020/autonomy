@@ -1,0 +1,20 @@
+{
+  "passed": false,
+  "steps": [
+    {
+      "stage": "build",
+      "command": [
+        "cmake",
+        "--build",
+        "/tmp/opt-exploration-v2.35",
+        "--target",
+        "opt_trajectory_tracker_tests",
+        "-j",
+        "4"
+      ],
+      "returncode": 2,
+      "log": "docs/validation/2026-11-18-v2.48-admitted-controller-local-build.log",
+      "sha256": "53d2c3b5efb9266d3ea13cd0a57d5a18aa6f8182600c22a5cd18c19e5acd7168"
+    }
+  ]
+}

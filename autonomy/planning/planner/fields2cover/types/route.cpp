@@ -231,6 +231,7 @@ void Route::Reverse() {
 
 Route Route::Clone() const {
   Route new_r;
+  if (field_) new_r.SetField(*field_);
   for (auto&& s : this->v_swaths_) {
     new_r.v_swaths_.emplace_back(s.Clone());
   }

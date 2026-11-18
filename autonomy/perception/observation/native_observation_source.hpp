@@ -5,7 +5,10 @@
 #pragma once
 
 #include <array>
+#include <chrono>
+#include <cstddef>
 #include <memory>
+#include <optional>
 
 #include "autonomy/perception/observation/observation_ingress.hpp"
 #include "autonomy/perception/observation/reader_retirement.hpp"
@@ -24,7 +27,18 @@ struct NativeObservationSourceOptions {
     std::uint64_t depth_calibration_revision = 0;  ///< Authority-assigned revision, including extrinsics.
     bool depth_rectified = false;  ///< Explicit rectification assertion for depth_topic.
     double minimum_depth = .1, maximum_depth = 8;  ///< Valid axial depth range in meters.
+    std::optional<CameraModel> expected_depth_camera;  ///< When set, coverage and actual CameraInfo must use these exact intrinsics.
+    std::chrono::milliseconds localization_wait_timeout{0};  ///< Explicit wall-time wait for delayed acquisition localization; zero preserves immediate admission.
+    std::chrono::milliseconds localization_retry_interval{5};  ///< Minimum wall-time spacing between unresolved-pose lookups.
+    std::uint32_t localization_queue_size = 8;  ///< Maximum queued/in-flight messages per sensor, independent from the native Reader backlog.
+    std::size_t localization_queue_bytes = 32 * 1024 * 1024;  ///< Per-sensor serialized-payload retention bound, including the in-flight head.
 };
+
+/** @brief Validate immutable source settings before installing any native Reader.
+ * @param options Topics, calibration, ranges and bounded decoding policy.
+ * @throws std::invalid_argument For an unsupported mode or inconsistent configuration.
+ */
+void ValidateNativeObservationSourceOptions(const NativeObservationSourceOptions& options);
 
 /** @brief Receiver-side counters; they do not prove upstream delivery completeness. */
 struct NativeObservationSourceSnapshot {
@@ -33,12 +47,20 @@ struct NativeObservationSourceSnapshot {
     std::array<std::uint64_t, 2> rejected{0, 0};  ///< Invalid/degraded/overloaded input callbacks.
     bool running = false;  ///< All configured readers were created and admission is open.
     bool calibration_invalidated = false;  ///< Different calibration requires an explicit new revision/source.
+    bool depth_calibration_ready = false;  ///< Actual matching CameraInfo has been accepted by this source, not inferred from Reader creation.
+    std::array<std::size_t, 2> awaiting_localization{0, 0};  ///< Locally retained source inputs; never a fusion or coverage receipt.
+    std::array<std::uint64_t, 2> localization_timeouts{0, 0};  ///< Inputs whose acquisition proof remained unavailable through the wall-time deadline.
+    std::array<std::uint64_t, 2> localization_overflows{0, 0};  ///< Newly arriving inputs rejected without displacing retained source ordinals.
+    std::array<std::uint64_t, 2> localization_canceled{0, 0};  ///< Retained inputs released by source retirement, distinct from a fusion result or admitted packet.
     ReaderRetirementSnapshot retirement;  ///< Requested cleanup, completion and actual success.
 };
 
 /** @brief Own native readers without owning SLAM, map or motion.
  * Sink/loss bind to one ExplorationTask generation. Lookup must be provided by
  * the configured localization chain; default TF seeds do not attest health.
+ * Optional delayed admission retains the original message stamp and calibration
+ * on a bounded worker queue. It never substitutes a latest pose or extends sensor
+ * evidence expiry. Lookup and sink must tolerate off-callback worker invocation.
  * Native Header has no acquisition sequence, so receiver ordinals cannot prove
  * that upstream frames or packets were never lost.
  * The caller reserves these Node channels for the source until retirement ends;
@@ -66,7 +88,7 @@ public:
      */
     void Shutdown();
     /** @brief Audit successful Reader shutdown/unregistration within a deadline.
-     * @return False on timeout/failure or any native coroutine thread.
+     * @return False on timeout/failure, a native coroutine, or this source's association worker.
      * @pre Shutdown was requested and the caller owns the reserved Node channels.
      */
     bool WaitForShutdown(std::chrono::milliseconds timeout) const;

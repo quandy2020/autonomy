@@ -1,0 +1,20 @@
+{
+  "shared_spline_reuse_verified": true,
+  "native_sources_match_local": true,
+  "source_sha256": {
+    "autonomy/common/math/bspline.hpp": "4ad992f99b3df3df97dca3e5b091df94425fbe524e123c31e7cb51a565d60a70",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.hpp": "230160636602d2d423300ce08988aef723e063fd9a3647cf46b8040aebab44e3",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.cpp": "08be1be3cf8aec95b2ace38e1181f2ad07116dc18788a97661f1a15dc83a3c38",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker.cpp": "ac469fe0276e939df71754bb547fc0672208882194a4410cb86b2233f7ff8b3e"
+  },
+  "shared_math_header": "autonomy/common/math/bspline.hpp",
+  "control_implementation_unchanged_in_this_run": true,
+  "operations": {
+    "construction": "ClampedCubicBSpline",
+    "evaluation": "Evaluate/Sample",
+    "derivatives": "EvaluateDerivative",
+    "initial_control_points": "StartControlPoints"
+  },
+  "execution": "SanD -> common/math -> automsgs Path -> existing NMPC/MPPI -> automsgs TwistStamped",
+  "scope": "Current local and remote source consistency only; no claim of completed exploration or physical smoothness."
+}

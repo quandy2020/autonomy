@@ -1,0 +1,30 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autolink/autolink/service/client.hpp",
+    "autonomy/task/exploration/integration/native_vista_path_provider.hpp",
+    "autonomy/task/exploration/integration/native_vista_path_provider.cpp",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-79kalumx/backup",
+  "expected_sha256": {
+    "autolink/autolink/service/client.hpp": "d25baa6eb4510b98a4be9f9e73bcc491dcce2980a7c078d619f006c9c3972446",
+    "autonomy/task/exploration/integration/native_vista_path_provider.hpp": "06ee7783f04c4313c3bcb863b9dea0819f7766256f31b84d25d81391ed753418",
+    "autonomy/task/exploration/integration/native_vista_path_provider.cpp": "66c4c462c80725ad7dbf329997045011142113885d4eca7588891fdf0f14d408",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "67e6eaf3e25e19d57084bce8b06f8dfa990c0cfc2b43be79da36456dfaf9215a"
+  },
+  "deployed_sha256": {
+    "autolink/autolink/service/client.hpp": "c6be4753f6bcbfb286a790032a6a68078cc426ae2ba6f2da44c26afd14ebe345",
+    "autonomy/task/exploration/integration/native_vista_path_provider.hpp": "bf0a6f01929431a33139bbcf26193d5cf34e29104bf1e71be02f173d8b4e7f7a",
+    "autonomy/task/exploration/integration/native_vista_path_provider.cpp": "a20994e8bba026a7d1c053639273e8a9533ed8e6764f9bbda3589ee8f8a226cb",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "6b9da7166d4fe3a0c1dd4323949b6a1770229891a87aa9061f6302ae2c643250"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "1a308c06c2caa04baa4d918792c219fff732c90d8aea982fd6c35d94d2bd1d65",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

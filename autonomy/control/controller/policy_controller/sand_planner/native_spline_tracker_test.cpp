@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <iostream>
 #include <limits>
 #include <stdexcept>
@@ -53,6 +54,110 @@ TwistStamped Velocity() {
 }
 /** @brief A cubic Bezier-equivalent shared spline with a nonstraight terminal tangent. */
 std::vector<Eigen::Vector3d> Curve() { return {{0, 0, 0}, {1, 0, 0}, {1, 1, 0}, {2, 1, 0}}; }
+
+/** @brief Independent little-endian FLOAT32 encoding for real floor hit records. */
+void Float(std::string& bytes, std::size_t offset, float value) {
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    for (unsigned i = 0; i < 4; ++i) bytes[offset + i] = static_cast<char>((bits >> (8 * i)) & 255);
+}
+/** @brief Explicit broad solver-fixture bounds; not a calibration claim for a physical base. */
+s::DifferentialDriveLimits Drive() {
+    s::DifferentialDriveLimits drive;
+    drive.calibration_revision = 7; drive.track_width = .4;
+    drive.wheel_velocity = {1, 1}; drive.wheel_acceleration = {1000, 1000}; drive.wheel_jerk = {100000, 100000};
+    drive.maximum_lateral_velocity = .005; drive.maximum_lateral_acceleration = .025;
+    drive.maximum_vertical_velocity = 1e-8;
+    return drive;
+}
+/** @brief Build one real geometry/support fixture, retaining actual wire provenance. */
+std::shared_ptr<const s::LocalGroundSnapshot> Ground() {
+    constexpr unsigned count = 79 * 79;
+    std::string bytes(count * 12, '\0');
+    unsigned index = 0;
+    for (int y = -39; y <= 39; ++y)
+        for (int x = -39; x <= 39; ++x, ++index) {
+            Float(bytes, index * 12, x * .05F); Float(bytes, index * 12 + 4, y * .05F);
+            Float(bytes, index * 12 + 8, -2.0F);
+        }
+    autonomy::perception::PointCloudBytes cloud{count, 1, 12, count * 12, false, "lidar", 10,
+        {{"x", 0, autonomy::perception::FieldScalar::kFloat32, 1}, {"y", 4, autonomy::perception::FieldScalar::kFloat32, 1},
+         {"z", 8, autonomy::perception::FieldScalar::kFloat32, 1}}, bytes};
+    autonomy::perception::SensorDecodingOptions decoding; decoding.valid_for = 3; decoding.instantaneous_cloud = true;
+    autonomy::perception::ObservationPacket packet;
+    autonomy::perception::ObservationIngress ingress(autonomy::perception::SensorMode::kLidarOnly, decoding,
+        [](autonomy::perception::SensorKind sensor, const std::string& frame, double stamp) {
+            autonomy::perception::AcquisitionLocalization pose;
+            pose.world_frame = "map"; pose.sensor_frame = frame; pose.map_epoch = 7;
+            pose.calibration_revision = 3; pose.support = autonomy::perception::Mask(sensor); pose.healthy = true;
+            pose.valid_from = stamp - 1; pose.valid_until = stamp + 3;
+            pose.world_from_sensor.translation.z = 2;
+            return pose;
+        }, [&](auto value, double) { packet = std::move(value); return true; }, [] { return 10.05; });
+    Require(ingress.PushCloud(cloud, 1) == autonomy::perception::ObservationIngressResult::kAccepted, "real floor wire records accepted");
+    s::ExecutionAlignment alignment;
+    alignment.world_frame = "map"; alignment.execution_frame = "odom";
+    alignment.clock_domain = "tracker_test_clock"; alignment.map_epoch = 7; alignment.alignment_epoch = 9;
+    alignment.healthy = true; alignment.valid_from = 9; alignment.valid_until = 13;
+    s::LocalEsdfOptions options;
+    options.origin = {-2, -2, -1.125}; options.dimensions = {16, 16, 16}; options.resolution = .25;
+    options.mode = autonomy::perception::SensorMode::kLidarOnly; options.clock_domain = "tracker_test_clock"; options.revision = 17;
+    options.maximum_observation_age = 3; options.measurement_error = .002; options.surface_margin = .005;
+    options.deadline = 10.09;
+    auto geometry = s::BuildLocalEsdf({{packet, alignment}}, options, [] { return 10.05; });
+    Require(static_cast<bool>(geometry.snapshot), "actual ESDF built");
+    s::LocalGroundOptions ground_options;
+    ground_options.calibration = {"odom", "tracker_test_clock", 9, 9, 13, 0, .002, 0, true, true};
+    ground_options.deadline = 10.09;
+    auto ground = s::BuildLocalGround(geometry.snapshot, ground_options, [] { return 10.05; });
+    Require(static_cast<bool>(ground.snapshot), "actual ground patches fitted");
+    return ground.snapshot;
+}
+/** @brief Analytical x=.1*u^3 reference starts at rest with zero acceleration. */
+s::TimedBSpline Reference() {
+    s::BSplineData data;
+    data.control_points = {{0, 0, 0, 0}, {0, 0, 0, 0}, {0, 0, 0, 0}, {.1, 0, 0, 0}};
+    data.knots = {0, 0, 0, 0, 1, 1, 1, 1};
+    data.timing = {"odom", "test_execution", 9, 1, 10.25, 1, 13};
+    return s::TimedBSpline(std::move(data));
+}
+/** @brief Unforgeable certificate goes through the actual combined production validator. */
+std::shared_ptr<const s::AdmittedReference> Admit(const std::shared_ptr<const s::LocalGroundSnapshot>& ground,
+                                               const s::TimedBSpline& trajectory = Reference()) {
+    s::TrajectoryValidationOptions validation; validation.geometry_revision = 17; validation.deadline = 10.09;
+    s::LocalTrajectorySafetyOptions safety;
+    safety.body = {.12, .2, .8}; safety.position_margin = .005; safety.clock_domain = "tracker_test_clock";
+    const auto result = s::AdmitTrackingReference(std::make_shared<const s::TimedBSpline>(trajectory),
+        {3, 10, 100, 4, 10, 100}, validation, safety, ground->geometry(), ground, Drive(), [] { return 10.05; });
+    if (!result.reference) throw std::runtime_error(result.evidence.validation.reason);
+    Require(result.evidence.ground_work && result.evidence.differential_drive.admitted,
+            "certificate consumed real ground and differential-drive evidence");
+    return result.reference;
+}
+/** @brief Exact owner grant with independently attested watchdog. */
+s::TrackingLease Lease() { return {"test_execution", "odom", "tracker_test_clock", 9, 7, 1, 9, 13, .08, true}; }
+/** @brief Actual test measurements with explicit acquisition time and health owners. */
+s::TrackingFeedback Feedback(double now, std::uint64_t sequence, const s::TrajectoryState& state = {}) {
+    s::TrackingFeedback feedback;
+    feedback.state = state; feedback.wheel_velocity = {state.velocity[0], state.velocity[0]};
+    feedback.wheel_acceleration = {state.acceleration[0], state.acceleration[0]};
+    feedback.frame_id = "odom"; feedback.clock_domain = "tracker_test_clock";
+    feedback.alignment_epoch = 9; feedback.calibration_revision = 7;
+    feedback.sequence = sequence; feedback.stamp = now;
+    feedback.localization_healthy = true; feedback.actuator_healthy = true;
+    return feedback;
+}
+/** @brief Explicit physical-stop authority fixture; no zero command generates this receipt. */
+s::TrackingStopReceipt Receipt(const s::TrajectoryTrackingResult& request, double stamp) {
+    return {request.stop_lease, "base_test_authority", request.stop_request_sequence,
+            stamp, request.stop_requested_at, true, true};
+}
+/** @brief Controlled command verifier for separate identity/deadline tests, not production geometry. */
+s::TrackingCommandVerdict Clear(const s::TrackingCommandQuery& query) {
+    Require(query.reference && query.reference->geometry() && query.reference->ground(),
+            "independent command verifier receives actual retained snapshots");
+    return {s::GeometryStatus::kClear, query.command, query.command.valid_until};
+}
 
 /** @brief Shared C2 boundary fitting materializes Eigen expressions and preserves far controls. */
 void SharedVectorBoundary() {
@@ -198,8 +303,61 @@ void LateNativeCommand() {
     Near(command.twist().linear().x(), 0);
 }
 
+/** @brief Admission samples retain exact placement and native solves remain behind the stop gate. */
+void AdmittedNativeExecution(s::NativeSplineTracker& native, const std::string& backend) {
+    const auto ground = Ground();
+    const auto reference = Admit(ground);
+    Path path; std::string error;
+    Require(s::BuildAdmittedPlannerPath(*reference, 64, &path, &error), error);
+    Require(path.header().frame_id() == "odom" && path.poses_size() == 64,
+            "admitted sample lost its actual reference frame");
+    Near(path.poses(0).pose().position().x(), 0);
+    Near(path.poses(63).pose().position().x(), .1);
+    Near(path.poses(32).pose().position().x(), .1 * std::pow(32.0 / 63, 3));
+    s::TrajectoryTrackerOptions options; options.stop_authority = "base_test_authority";
+    s::TrajectoryTracker gate(options);
+    s::TrajectoryTrackingInput input; input.reference = reference; input.lease = Lease();
+    double now = 10.1; std::uint64_t sequence = 1;
+    input.feedback = Feedback(now, sequence);
+    const auto controller = native.TrackingCallback();
+    const auto tick = [&] {
+        const auto started = std::chrono::steady_clock::now();
+        bool first_read = true;
+        // Keep the fixture acquisition epoch while charging actual native work
+        // to the production solve/verification deadlines without scaling time.
+        const s::ExecutionClock clock = [&] {
+            if (first_read) { first_read = false; return now; }
+            return now + std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+        };
+        return gate.TickWithController(input, clock, Clear, controller);
+    };
+    const auto request = tick();
+    Require(!request.command && request.status == s::TrajectoryTrackingStatus::kStopRequested,
+            backend + " bypassed startup physical-stop confirmation");
+    now = 10.21; input.feedback = Feedback(now, ++sequence); input.stop_receipt = Receipt(request, now);
+    Require(tick().status == s::TrajectoryTrackingStatus::kWaiting, backend + " ran before scheduled reference");
+    input.stop_receipt.reset(); now = 10.25; input.feedback = Feedback(now, ++sequence);
+    const auto result = tick();
+    Require(result.command.has_value(), backend + " admitted native gate: " + result.reason);
+    Require(result.command->timing.reference_version == 1 && result.command->geometry_revision == 17 &&
+            result.command->valid_until == now + .04 && result.command->begin_stamp == now + .02 + .005,
+            "native command lost original identity, solve budget or absolute command expiry");
+    Require(native.reference_path().poses_size() == 64, backend + " did not receive the admitted Path");
+    Near(native.reference_path().poses(63).pose().position().x(), .1);
+    now = 10.29; input.feedback = Feedback(now, ++sequence, reference->trajectory().Evaluate(now));
+    input.lease.active = false;
+    Require(!tick().command, backend + " continued after actual owner revocation");
+    native.Reset();
+}
+
 /** @brief Exercise the actual NMPC and MPPI implementations with the existing map API. */
 void ExistingBackends() {
+    p::MPPIControllerOptions zero_bound;
+    Require(!zero_bound.has_vx_min(), "omitted MPPI lower bound acquired explicit presence");
+    zero_bound.set_vx_min(0);
+    p::MPPIControllerOptions decoded;
+    Require(decoded.ParseFromString(zero_bound.SerializeAsString()) && decoded.has_vx_min() && decoded.vx_min() == 0,
+            "explicit forward-only MPPI bound was lost in the existing configuration message");
     autonomy::map::proto::Costmap2DOptions map_options;
     map_options.set_frame_id("odom"); map_options.set_width(8); map_options.set_height(8);
     map_options.set_resolution(0.1); map_options.add_plugins("noop_layer");
@@ -222,10 +380,12 @@ void ExistingBackends() {
         options.mutable_policy_controller_options()->set_sand_replan_period(1.0);
         options.mutable_nmpc_controller_options()->set_horizon_steps(8);
         options.mutable_nmpc_controller_options()->set_model_dt(0.05);
-        options.mutable_mppi_controller_options()->set_time_steps(12);
+        // Exercise the real smoothing path, which requires more than 20 steps.
+        options.mutable_mppi_controller_options()->set_time_steps(32);
         options.mutable_mppi_controller_options()->set_model_dt(0.05);
         options.mutable_mppi_controller_options()->set_batch_size(64);
         options.mutable_mppi_controller_options()->set_motion_model("DiffDrive");
+        options.mutable_mppi_controller_options()->set_vx_min(0);
         // Match the native costmap's circular robot configuration; keep the
         // collision critic enabled rather than requesting an absent footprint.
         options.mutable_mppi_controller_options()->mutable_cost_critic()->set_enabled(true);
@@ -238,7 +398,10 @@ void ExistingBackends() {
         const auto status = tracker.Compute(Pose(), Velocity(), 1000.05, &command, &error);
         Require(status == p::CONTROLLER_RESULT_SUCCESS, name + " Compute: " + error);
         Require(std::isfinite(command.twist().linear().x()) && std::isfinite(command.twist().angular().z()), "nonfinite native solve");
+        Require(command.twist().linear().x() >= 0, name + " ignored the configured forward-only lower bound");
         Near(command.twist().linear().y(), 0); Near(command.twist().linear().z(), 0);
+        tracker.Reset();
+        AdmittedNativeExecution(tracker, name);
         tracker.Cleanup();
     }
 }

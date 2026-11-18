@@ -44,6 +44,7 @@
 #include <automsgs/actions/nav_actions.pb.h>
 #include <automsgs/srvs/is_path_valid.pb.h>
 #include <automsgs/srvs/clear_entire_costmap.pb.h>
+#include <automsgs/srvs/get_plan.pb.h>
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 #include "autonomy/planning/common/planner_interface.hpp"
 #include "autonomy/planning/common/smoother_interface.hpp"
@@ -86,6 +87,8 @@ public:
     using PathValidResponse = nav_srvs::IsPathValid_Response;
     using ClearCostmapRequest = nav_srvs::ClearEntireCostmap_Request;
     using ClearCostmapResponse = nav_srvs::ClearEntireCostmap_Response;
+    using GetPlanRequest = nav_srvs::GetPlan_Request;
+    using GetPlanResponse = nav_srvs::GetPlan_Response;
     using ComputePathToPoseServer =
         autolink::action::SimpleActionServer<nav_proto::ComputePathToPoseAction>;
     using ComputePathThroughPosesServer =
@@ -171,6 +174,15 @@ public:
     /** Clears transient layers on the global costmap (recovery / mapping). */
     void ClearEntireCostmap();
 
+    /** @brief Serve exact graph queries without altering the navigation action.
+     * @param request Existing automsgs service request with caller correlation.
+     * @param[out] response Path and evidence copied from the same graph snapshot.
+     * @details Unsupported plugins fail when graph evidence is required. Failures
+     * retain correlation and clear the path; checked NO_ROUTE retains source
+     * evidence. No LastRoute cache is consulted.
+     */
+    void QueryRoute(const GetPlanRequest& request, GetPlanResponse& response);
+
 private:
     void RegisterAutolinkEndpoints();
     void ComputePlan();
@@ -216,6 +228,8 @@ private:
         path_valid_service_;
     std::shared_ptr<autolink::Service<ClearCostmapRequest, ClearCostmapResponse>>
         clear_costmap_service_;
+    std::shared_ptr<autolink::Service<GetPlanRequest, GetPlanResponse>>
+        get_plan_service_;  ///< Graph query worker, retired before plugin destruction.
     std::shared_ptr<autolink::Reader<automsgs::msgs::map_msgs::OccupancyGrid>>
         map_reader_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>

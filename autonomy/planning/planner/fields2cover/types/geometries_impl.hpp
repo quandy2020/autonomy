@@ -28,40 +28,40 @@
 
 namespace autonomy::planning::planner::fields2cover::types {
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 double Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Area() const {
   return (this->data_ ? this->data_->get_Area() : 0.0);
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 SAMETYPE Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Clone() const {
   SAMETYPE cloned;
   cloned.ImportFromWkt(this->ExportToWkt());
   return cloned;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 SAMETYPE Geometries<SAMETYPE, T, R, CHILDRENTYPE>::simplify(
     double d_tol) const {
-  OGRGeometry* s = this->data_->SimplifyPreserveTopology(d_tol);
+  NativeGeom* s = this->data_->SimplifyPreserveTopology(d_tol);
   SAMETYPE f2c_s(s);
-  OGRGeometryFactory::destroyGeometry(s);
+  GeomFactory::destroyGeometry(s);
   return f2c_s;
 }
 
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::Private::Private()
   = default;
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::Private::~Private() {}
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 void Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::update() {
-  if (std::is_same<T, OGRMultiPoint>::value ||
-    std::is_same<T, OGRLinearRing>::value ||
-    std::is_same<T, OGRLineString>::value) {
+  if (R == WkbKind::kMultiPoint ||
+      R == WkbKind::kLinearRing ||
+      R == WkbKind::kLineString) {
     if (!MPoPrivate->MBUpdateChecked) {
       CHILDRENTYPE OChildBefore;
       static_cast<SAMETYPE*>(MPoPrivate->MPoSelf)->GetGeometry(
@@ -75,7 +75,7 @@ void Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::update() {
   }
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::Iterator(
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>* PoSelf, int NPos) :
       MPoPrivate(new Private()) {
@@ -83,12 +83,12 @@ Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::Iterator(
   MPoPrivate->MNPos = NPos;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::~Iterator() {
   update();
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 CHILDRENTYPE& Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::operator*() {
   update();
   static_cast<SAMETYPE*>(MPoPrivate->MPoSelf)->GetGeometry(
@@ -97,7 +97,7 @@ CHILDRENTYPE& Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::operator*() {
   return MPoPrivate->MOChild;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator&
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::operator++() {
   update();
@@ -105,22 +105,22 @@ typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator&
   return *this;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 bool Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator::operator!=(
     const Iterator& it) const {
   return MPoPrivate->MNPos != it.MPoPrivate->MNPos;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::Private::Private()
   = default;
 
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::ConstIterator(
     ConstIterator& OOther) = default;
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::ConstIterator(
     const Geometries<SAMETYPE, T, R, CHILDRENTYPE>* PoSelf,
         int NPos) : MPoPrivate(new Private()) {
@@ -128,11 +128,11 @@ Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::ConstIterator(
   MPoPrivate->MNPos = NPos;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::~ConstIterator()
   = default;
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 const CHILDRENTYPE& Geometries<SAMETYPE, T, R, CHILDRENTYPE>
         ::ConstIterator::operator*() const {
   static_cast<const SAMETYPE*>(
@@ -141,77 +141,77 @@ const CHILDRENTYPE& Geometries<SAMETYPE, T, R, CHILDRENTYPE>
   return MPoPrivate->MOChild;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator&
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::operator++() {
   ++MPoPrivate->MNPos;
   return *this;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 bool Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::operator!=(
     const ConstIterator& it) const {
   return MPoPrivate->MNPos != it.MPoPrivate->MNPos;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 bool Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator::operator==(
     const Iterator& it) const {
   return MPoPrivate->MNPos == it.MPoPrivate->MNPos;
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::begin() {
   return {this, 0};
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Iterator
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::end() { return {this,
   static_cast<int>(static_cast<SAMETYPE*>(this)->size())};
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::begin() const {
   return {this, 0};
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::end() const {
   return {this, static_cast<int>(static_cast<SAMETYPE const*>(this)->size())};
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::begin(const SAMETYPE* PoSelf) {
   return PoSelf->begin();
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 typename Geometries<SAMETYPE, T, R, CHILDRENTYPE>::ConstIterator
     Geometries<SAMETYPE, T, R, CHILDRENTYPE>::end(const SAMETYPE* PoSelf) {
   return PoSelf->end();
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 const CHILDRENTYPE Geometries<SAMETYPE, T, R, CHILDRENTYPE>::operator[](
     int i) const {
   return static_cast<SAMETYPE const*>(this)->GetGeometry(i);
 }
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 const CHILDRENTYPE Geometries<SAMETYPE, T, R, CHILDRENTYPE>::at(int i) const {
   return static_cast<SAMETYPE const*>(this)->GetGeometry(i);
 }
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 const CHILDRENTYPE Geometries<SAMETYPE, T, R, CHILDRENTYPE>::back() const {
   size_t N = static_cast<SAMETYPE const*>(this)->size();
   return static_cast<SAMETYPE const*>(this)->GetGeometry(N-1);
 }
 
-template <class SAMETYPE, class T, OGRwkbGeometryType R, class CHILDRENTYPE>
+template <class SAMETYPE, class T, WkbKind R, class CHILDRENTYPE>
 SAMETYPE& Geometries<SAMETYPE, T, R, CHILDRENTYPE>::Append(
     const SAMETYPE& other) {
   this->insert(this->end(), other.begin(), other.end());

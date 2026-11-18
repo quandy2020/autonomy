@@ -29,21 +29,22 @@
 namespace autonomy::planning::planner::fields2cover::types {
 
 Cell::Cell() {
-  this->data_ = std::shared_ptr<OGRPolygon>(
-    DownCast<OGRPolygon*>(OGRGeometryFactory::createGeometry(wkbPolygon)),
-    [](OGRPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
+  this->data_ = std::shared_ptr<NativeGeom>(
+    DownCast<NativeGeom*>(GeomFactory::createGeometry(WkbKind::kPolygon)),
+    [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
 }
 
-Cell::Cell(const OGRGeometry* geom) {
-  if (wkbFlatten(geom->getGeometryType()) == OGRwkbGeometryType::wkbPolygon) {
+Cell::Cell(const NativeGeom* geom) {
+  if (wkbFlatten(geom->getGeometryType()) == WkbKind::kPolygon) {
     this->data_ =
-      std::shared_ptr<OGRPolygon>(DownCast<OGRPolygon*>(geom->clone()),
-        [](OGRPolygon* f) {OGRGeometryFactory::destroyGeometry(f);});
+      std::shared_ptr<NativeGeom>(DownCast<NativeGeom*>(geom->clone()),
+        [](NativeGeom* f) {GeomFactory::destroyGeometry(f);});
   } else {
     throw std::invalid_argument(
-        sstr("Cell(const OGRGeometry*): Type of OGRGeometry* is ",
-        wkbFlatten(geom->getGeometryType()) , " instead of wkbPolygon(" ,
-          OGRwkbGeometryType::wkbPolygon , ")"));
+        sstr("Cell(const NativeGeom*): Type of NativeGeom* is ",
+        static_cast<int>(wkbFlatten(geom->getGeometryType())) ,
+        " instead of WkbKind::kPolygon(",
+          static_cast<int>(WkbKind::kPolygon) , ")"));
   }
 }
 
@@ -116,11 +117,11 @@ void Cell::operator*=(double b) {
 }
 
 Cell Cell::buffer(const Cell& geom, double width) {
-  return DestroyResGeom<Cell>(geom.OGRBuffer(width));
+  return DestroyResGeom<Cell>(geom.BufferNative(width));
 }
 
 Cell Cell::buffer(const LineString& geom, double width) {
-  return DestroyResGeom<Cell>(geom.OGRBuffer(width));
+  return DestroyResGeom<Cell>(geom.BufferNative(width));
 }
 
 Cell Cell::buffer(const LinearRing& geom, double width) {

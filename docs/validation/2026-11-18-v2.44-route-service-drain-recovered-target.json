@@ -1,0 +1,43 @@
+{
+  "scope": "Targeted actual native route-service build and CTest, without replacement libraries",
+  "steps": [
+    {
+      "event": "step",
+      "stage": "build",
+      "returncode": 0,
+      "command": [
+        "cmake",
+        "--build",
+        "/workspace/autonomy/build/autonomy",
+        "--target",
+        "autonomy_native_route_service_test",
+        "-j",
+        "4"
+      ],
+      "remote_log": "/tmp/opt-v2.44-route-target-n1mj4m9_/build.log",
+      "local_log": "docs/validation/2026-11-18-v2.44-route-service-drain-recovered-target-build.log",
+      "log_sha256": "2cea349164decd3dcdfe10a23a85dcc2b435379a99a9154cac32cc0ef038cd86"
+    },
+    {
+      "event": "step",
+      "stage": "tests",
+      "returncode": 0,
+      "command": [
+        "ctest",
+        "--test-dir",
+        "/workspace/autonomy/build/autonomy",
+        "-R",
+        "^autonomy[.]planning[.]native_route_service$",
+        "--output-on-failure",
+        "--no-tests=error",
+        "--repeat",
+        "until-fail:3"
+      ],
+      "remote_log": "/tmp/opt-v2.44-route-target-n1mj4m9_/tests.log",
+      "local_log": "docs/validation/2026-11-18-v2.44-route-service-drain-recovered-target-tests.log",
+      "log_sha256": "1baf1dd7e61445918d92c1edbade3b2e9d705d1d65a76878a04f0992a1cecb88"
+    }
+  ],
+  "ssh_returncode": 0,
+  "passed": true
+}

@@ -5,7 +5,9 @@
  */
 #pragma once
 
+#include <chrono>
 #include <functional>
+#include <future>
 #include <memory>
 #include <optional>
 #include <string>
@@ -15,6 +17,7 @@
 #include "autonomy/task/common/motion_admission.hpp"
 #include "autonomy/task/exploration/exploration_session.hpp"
 #include "autonomy/task/exploration/integration/navigation_dispatcher.hpp"
+#include "autonomy/perception/observation/native_observation_source.hpp"
 #include <automsgs/task/exploration.pb.h>
 #include <automsgs/task/mapping.pb.h>
 #include <automsgs/task/navigation.pb.h>
@@ -23,6 +26,12 @@ namespace autolink { class Node; }
 
 namespace autonomy {
 namespace task {
+
+/** @brief Real mapper operation executed by the task owner after packet validation.
+ * Generation zero updates bootstrap geometry only and is excluded from receipts.
+ */
+using ExplorationPacketProcessor = std::function<std::optional<exploration::MapReadView>(
+    std::uint64_t, const perception::ObservationPacket&, double)>;
 
 /**
  * @brief Dependencies supplied by the native observation/route integration.
@@ -40,6 +49,7 @@ struct ExplorationTaskBindings {
     std::function<bool(const std::string&)> prepare_mapping;
     /// Clock shared by observations, poses, map stamps and the owner loop.
     std::function<double()> clock;
+    ExplorationPacketProcessor process_sensor_packet;  ///< Actual mapper operation pinned to the native source revision.
     /// Initial immutable policy; per-goal map name/boundary are versioned.
     exploration::ExplorationSessionOptions options;
 };
@@ -59,6 +69,16 @@ struct ExplorationSensorInputBinding {
     ExplorationSensorInputIdentity identity;  ///< Fixed destination for this source.
     std::function<bool(perception::ObservationPacket, double)> sink;  ///< Atomic packet admission.
     std::function<void(perception::SensorKind, std::uint64_t)> loss;  ///< Rejection for the same destination.
+};
+
+/** @brief Native input lifecycle evidence, separate from task/motion completion. */
+struct ExplorationObservationSourceSnapshot {
+    bool configured = false;  ///< A real Node, source policy and localization lookup were installed.
+    bool retiring = false;  ///< Old Readers still reserve their channels until actual cleanup ends.
+    bool faulted = false;  ///< Startup, dependency or cleanup failure prevents automatic replacement.
+    std::string error;  ///< Concrete cause; a retirement timeout never asserts completed cleanup.
+    std::optional<ExplorationSensorInputIdentity> identity;  ///< Fixed destination of the current/retiring source.
+    perception::NativeObservationSourceSnapshot source;  ///< Actual Reader/callback evidence.
 };
 
 /**
@@ -124,6 +144,45 @@ public:
                                     CancelNavigationRequest cancel);
     /// Configure real session dependencies while idle or terminal.
     bool ConfigureSession(ExplorationTaskBindings bindings);
+    /** @brief Atomically install a session factory and its matching sensor dependencies.
+     * @param task Shared owner of this exact task; callbacks retain a weak reference.
+     * @param node Same native Node already installed by TaskServer.
+     * @param bindings Owner-executed factory, clock and immutable session policy.
+     * @param input Validated native source policy with the same sensor mode.
+     * @param localization Independent acquisition-time localization provider.
+     * @param retirement_timeout Bounded wait for an old source's real retirement.
+     * @return False without replacing either dependency for active work or invalid input.
+     * @details The owner observes a single configuration revision, so it never starts
+     *          a new factory with the previous source policy during a mode change.
+     */
+    bool ConfigureNativeRuntime(const std::shared_ptr<ExplorationTask>& task,
+        const std::shared_ptr<autolink::Node>& node, ExplorationTaskBindings bindings,
+        perception::NativeObservationSourceOptions input,
+        perception::ObservationIngress::LocalizationLookup localization,
+        std::chrono::milliseconds retirement_timeout = std::chrono::seconds(2));
+    /** @brief Install native sensor input on an idle, shared-owned configured task.
+     * @param task TaskServer's actual task owner; callbacks retain only a weak reference.
+     * @param options Explicit channels, calibration, units and the session's exact sensor mode.
+     * @param localization Healthy acquisition-time poses supplied by the real localization owner.
+     * @param retirement_timeout Maximum replacement wait, measured with steady_clock.
+     * @return False for missing dependencies, active task, mode mismatch or latched input failure.
+     * @details The task worker starts readiness input before the first START, rebuilds
+     * Readers for every accepted START and keeps the same input sequence across pause.
+     * Replacement requires successful old Reader retirement. This does not configure
+     * a localization backend, mapping session or exploration session factory.
+     */
+    static bool ConfigureObservationSource(const std::shared_ptr<ExplorationTask>& task,
+        perception::NativeObservationSourceOptions options,
+        perception::ObservationIngress::LocalizationLookup localization,
+        std::chrono::milliseconds retirement_timeout = std::chrono::seconds(5));
+    /** @brief Read native input lifecycle independently of the Session snapshot. */
+    ExplorationObservationSourceSnapshot GetObservationSourceSnapshot() const;
+    /** @brief Retain the most recently requested Reader cleanup result.
+     * @return Invalid future until a Source has existed; readiness means actual cleanup ended.
+     * After Shutdown and owner-thread joining, this handle audits input retirement.
+     * It is not evidence that the robot stopped or that map fusion completed.
+     */
+    std::shared_future<bool> ObservationSourceShutdownCompletion() const;
     /**
      * @brief Obtain this generation's asynchronous navigation services.
      * @pre Called by create_session on the task owner thread.
@@ -154,6 +213,14 @@ public:
      */
     bool PushSensorPacket(ExplorationSensorInputIdentity identity,
                           perception::ObservationPacket packet, double now);
+    /** @brief Admit native input with its captured platform operation and configuration revision.
+     * @details A stale revision is rejected at admission and owner delivery.
+     * Processor execution remains off sensor callbacks and bound to the source
+     * generation; ordinary injected packet APIs retain their existing semantics.
+     */
+    bool PushNativeSensorPacket(ExplorationSensorInputIdentity identity,
+        perception::ObservationPacket packet, double now,
+        ExplorationPacketProcessor processor, std::uint64_t input_revision);
     /** @brief Record source rejection in a bounded, generation-scoped loss slot.
      * Loss notification remains available when the ordinary inbox is full.
      */

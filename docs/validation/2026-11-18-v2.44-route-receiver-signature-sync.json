@@ -1,0 +1,30 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autolink/autolink/transport/receiver/receiver.hpp",
+    "autolink/autolink/transport/receiver/shm_receiver.hpp",
+    "autolink/autolink/transport/receiver/intra_receiver.hpp",
+    "autolink/autolink/transport/receiver/rtps_receiver.hpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-arulztb8/backup",
+  "expected_sha256": {
+    "autolink/autolink/transport/receiver/receiver.hpp": "b28be0ac2303ecd461de6f1ee3ffdda635f4b786ffc877d54f380b767d74b65a",
+    "autolink/autolink/transport/receiver/shm_receiver.hpp": "5d3b1f5a4bfeb68553b9da6c7ce83fe805e4e5898b317df6944bce76c4966f16",
+    "autolink/autolink/transport/receiver/intra_receiver.hpp": "5815caa943e2c659edbace29a6d5f26149712f175fb177400e1343361f1a0bca",
+    "autolink/autolink/transport/receiver/rtps_receiver.hpp": "b28b7176e8b9473488ff3d9a6bea668e2d2cbcbdd92df4b6ca874a854aa57754"
+  },
+  "deployed_sha256": {
+    "autolink/autolink/transport/receiver/receiver.hpp": "728fb495dcaa2d9a95bae87d0a874e2b81cc2e78546505db5ffaf436917214a8",
+    "autolink/autolink/transport/receiver/shm_receiver.hpp": "cfd4000099d2b13f5084276198c5b9a213d7ef56783a316d0f54ec1a223550cd",
+    "autolink/autolink/transport/receiver/intra_receiver.hpp": "67f0e90322bdf09a765e2249f86837235423f3f4e149401b7f98526c4a38fc23",
+    "autolink/autolink/transport/receiver/rtps_receiver.hpp": "1709c4b3133a5be49b70595946bac2969f6b578a8d376b49f14aa332523b2004"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "28096ba1d57c3f498decfee9cff614c8e6626ce07d38a17cad14121f5dbea2be",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

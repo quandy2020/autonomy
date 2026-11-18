@@ -1,0 +1,168 @@
+{
+  "recording_report": {
+    "passed": true,
+    "backend": "habitat",
+    "config_sha256": "727d4bf9a138b4dd91b148933d101a18613ee0290939d0e52ddd837c99563e88",
+    "channels": {
+      "cmd_vel": "/validation/exploration/v2_49_rgbd/cmd_vel",
+      "scan": "/validation/exploration/v2_49_rgbd/scan",
+      "points": "/validation/exploration/v2_49_rgbd/points",
+      "rgb": "/validation/exploration/v2_49_rgbd/camera/rgb/image_raw",
+      "depth": "/validation/exploration/v2_49_rgbd/camera/depth/image_raw",
+      "camera_info": "/validation/exploration/v2_49_rgbd/camera/camera_info",
+      "imu": "/validation/exploration/v2_49_rgbd/imu",
+      "odom": "/validation/exploration/v2_49_rgbd/odom",
+      "gt_pose": "/validation/exploration/v2_49_rgbd/ground_truth/pose",
+      "map_grid": "/validation/exploration/v2_49_rgbd/ground_truth/map",
+      "tf": "/validation/exploration/v2_49_rgbd/tf",
+      "tf_static": "/validation/exploration/v2_49_rgbd/tf_static",
+      "clock": "/validation/exploration/v2_49_rgbd/clock",
+      "footprint": "/validation/exploration/v2_49_rgbd/footprint",
+      "depth_points": "/validation/exploration/v2_49_rgbd/camera/depth/points",
+      "map_cloud": "/validation/exploration/v2_49_rgbd/overall/map",
+      "robot_description": "/validation/exploration/v2_49_rgbd/robot_description"
+    },
+    "maximum_steps": 350,
+    "exploration_task_started": false,
+    "coverage_comparison_performed": false,
+    "scope": "Real simulator startup and native sensor transport only; no exploration acceptance.",
+    "message_counts": {
+      "rgb": 70,
+      "depth": 70,
+      "camera_info": 70,
+      "map_grid": 7,
+      "gt_pose": 350,
+      "odom": 350,
+      "clock": 350
+    },
+    "last_arrival_seconds": {
+      "odom": 10.488663978176191,
+      "gt_pose": 10.48867884511128,
+      "clock": 10.488693136023358,
+      "map_grid": 9.507064096163958,
+      "depth": 10.489754390204325,
+      "camera_info": 10.489562291186303,
+      "rgb": 10.48962275707163
+    },
+    "payload_sha256": {
+      "odom": "be1b2dea0a0f3bfef6e0277d579ff7aab6ee5e87c4196d49494c748983851909",
+      "gt_pose": "f0f407cd2be86531a4df17e9a5486b52128c0f27815a746eb689f2700ddf54b9",
+      "clock": "3449b6de1d1fb8387cc085e6d9d89e3073deba993e4a66349562df79bb05ea5a",
+      "map_grid": "1c559f25cebc5511adc4d5fd1fc63cdaf02d63e39d4de30c868fcfb8f2432d68",
+      "depth": "92a63955b017beed87777ec46b10b34f8bcd965b12abe8afe111d4cbe83267a3",
+      "camera_info": "f63a152891a29e7fa24cb071f7de88cda8808d2c8f1f6dcec85af650f4ad57f8",
+      "rgb": "583411f44bb02b88d0bbe4f9caa775dde1c8f5a0a514658aef6ebd337448154a"
+    },
+    "missing_or_nonrepeating_streams": [],
+    "elapsed_seconds": 10.64478197414428
+  },
+  "models": {
+    "/workspace/autonomy/src/autonomy/autonomy/control/conf/models/sand_planner_nomax_denoiser_step.onnx": {
+      "sha256": "20988ab3b6d2f079f1f079fb4c6e8e5832ab604bbcff5dbb4317dc3098e2429d",
+      "bytes": 56276091,
+      "inputs": [
+        {
+          "name": "observation_depth",
+          "shape": [
+            1,
+            4,
+            168,
+            224
+          ],
+          "type": "tensor(float)"
+        },
+        {
+          "name": "observation_goal",
+          "shape": [
+            1,
+            3
+          ],
+          "type": "tensor(float)"
+        },
+        {
+          "name": "observation_previous_velocity",
+          "shape": [
+            1,
+            3
+          ],
+          "type": "tensor(float)"
+        },
+        {
+          "name": "sample",
+          "shape": [
+            1,
+            24
+          ],
+          "type": "tensor(float)"
+        },
+        {
+          "name": "timestep",
+          "shape": [
+            1
+          ],
+          "type": "tensor(float)"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "action",
+          "shape": [
+            1,
+            24
+          ],
+          "type": "tensor(float)"
+        }
+      ],
+      "custom_metadata": {}
+    },
+    "/tmp/autonomy-defm-v2.47/depth_features.onnx": {
+      "sha256": "334320ee2fc7794de959681a83755b69c75486ec64bdcb5daeb194b54ce199c4",
+      "bytes": 87268944,
+      "inputs": [
+        {
+          "name": "depth_metric",
+          "shape": [
+            1,
+            1,
+            480,
+            640
+          ],
+          "type": "tensor(float)"
+        }
+      ],
+      "outputs": [
+        {
+          "name": "normalized_depth",
+          "shape": [
+            1,
+            3,
+            224,
+            224
+          ],
+          "type": "tensor(float)"
+        },
+        {
+          "name": "patch_tokens",
+          "shape": [
+            1,
+            256,
+            384
+          ],
+          "type": "tensor(float)"
+        },
+        {
+          "name": "global_feature",
+          "shape": [
+            1,
+            384
+          ],
+          "type": "tensor(float)"
+        }
+      ],
+      "custom_metadata": {}
+    }
+  },
+  "scope": "Recorded real Habitat startup and real ONNX interfaces only; no exploration or mapping acceptance.",
+  "defm_conditioned_sand_verified": false,
+  "reason": "Existing SanD input observation_depth is raw [1,4,168,224]; its recorded interface is not a DeFM token condition."
+}

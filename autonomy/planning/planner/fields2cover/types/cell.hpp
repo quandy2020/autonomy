@@ -24,7 +24,7 @@
  */
 
 
-#include <ogr_geometry.h>
+#include <sstream>
 #include <string>
 #include <boost/math/constants/constants.hpp>
 #include "autonomy/planning/planner/fields2cover/types/geometries.hpp"
@@ -45,11 +45,11 @@ inline std::string sstr(Args &&... args) {
 }
 
 
-struct Cell : public Geometries<Cell, OGRPolygon, wkbPolygon, LinearRing> {
+struct Cell : public Geometries<Cell, NativeGeom, WkbKind::kPolygon, LinearRing> {
  public:
-  using Geometries<Cell, OGRPolygon, wkbPolygon, LinearRing>::Geometries;
+  using Geometries<Cell, NativeGeom, WkbKind::kPolygon, LinearRing>::Geometries;
   Cell();
-  explicit Cell(const OGRGeometry* geom);
+  explicit Cell(const NativeGeom* geom);
   explicit Cell(const autonomy::planning::planner::fields2cover::types::LinearRing& ring);
   ~Cell() = default;
 
@@ -80,7 +80,7 @@ struct Cell : public Geometries<Cell, OGRPolygon, wkbPolygon, LinearRing> {
 
   Cell ConvexHull() const;
 
-  template <class T, OGRwkbGeometryType R>
+  template <class T, WkbKind R>
   static Cell ConvexHull(const Geometry<T, R>& geom);
 
   void AddRing(const LinearRing& ring);
@@ -137,11 +137,11 @@ struct Cell : public Geometries<Cell, OGRPolygon, wkbPolygon, LinearRing> {
   Point ClosestPointOnBorderTo(const Point& p) const;
 };
 
-template <class T, OGRwkbGeometryType R>
+template <class T, WkbKind R>
 Cell Cell::ConvexHull(const Geometry<T, R>& geom) {
-  OGRGeometry* c_hull = geom->ConvexHull();
+  NativeGeom* c_hull = geom->ConvexHull();
   Cell cell {c_hull};
-  OGRGeometryFactory::destroyGeometry(c_hull);
+  GeomFactory::destroyGeometry(c_hull);
   return cell;
 }
 

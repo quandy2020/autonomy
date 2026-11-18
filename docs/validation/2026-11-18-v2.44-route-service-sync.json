@@ -1,0 +1,24 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autolink/autolink/service/service.hpp",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-j5uvow29/backup",
+  "expected_sha256": {
+    "autolink/autolink/service/service.hpp": "7e5316e0793a3995102c3034e1bf7301699270c4065b44697d51e6c547c4644a",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "6b9da7166d4fe3a0c1dd4323949b6a1770229891a87aa9061f6302ae2c643250"
+  },
+  "deployed_sha256": {
+    "autolink/autolink/service/service.hpp": "41b0d86bfba0a6d3306c8c014234e33a8de09031b1da47aa3900eecbc69e42a1",
+    "autonomy/planning/planner/vista/native_route_service_test.cpp": "47922c3830ab2e5dbbcc2954372fb652b2cc690ca0c70bd01981f256c231d5ca"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "ca867e88fd38d4bc94bd69f635922c75dc20c7b311048919db72ceeba44a53ea",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

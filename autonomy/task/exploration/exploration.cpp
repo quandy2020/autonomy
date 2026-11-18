@@ -55,6 +55,24 @@ const std::string& ProcessIdentity() {
     return identity;
 }
 
+/** @brief Build immutable callbacks without pinning a task on its owner thread. */
+ExplorationSensorInputBinding SensorBinding(const std::weak_ptr<ExplorationTask>& weak,
+    ExplorationSensorInputIdentity identity, ExplorationPacketProcessor processor = {},
+    std::uint64_t input_revision = 0) {
+    ExplorationSensorInputBinding binding;
+    binding.identity = identity;
+    binding.sink = [weak, identity, processor = std::move(processor), input_revision](perception::ObservationPacket packet, double now) {
+        const auto destination = weak.lock();
+        if (!destination) return false;
+        if (input_revision) return destination->PushNativeSensorPacket(identity, std::move(packet), now, processor, input_revision);
+        return destination->PushSensorPacket(identity, std::move(packet), now);
+    };
+    binding.loss = [weak, identity](perception::SensorKind sensor, std::uint64_t sequence) {
+        if (const auto destination = weak.lock()) destination->ReportSensorLoss(identity, sensor, sequence);
+    };
+    return binding;
+}
+
 /** @brief Return a validated rectangular task boundary, without centroiding. */
 std::optional<e::Bounds2d> Rectangle(
     const ::automsgs::msgs::geometry_msgs::Polygon& area) {
@@ -116,6 +134,8 @@ public:
     struct PacketInput {
         perception::ObservationPacket packet;  ///< Actual pose, rays and optional depth.
         double now;  ///< Original admission time in the configured clock domain.
+        ExplorationPacketProcessor processor;  ///< Actual operation captured when this native source was created.
+        std::uint64_t input_revision = 0;  ///< Native configuration revision; zero means ordinary injected input.
     };
     /** @brief Two fixed source slots preserve loss even when the data inbox is full. */
     struct SourceLoss {
@@ -149,6 +169,15 @@ public:
         std::uint64_t generation;
         /// Session command or a new START.
         std::variant<e::SessionCommand, StartRequest> value;
+    };
+
+    /** @brief Explicit native acquisition dependencies, replaced only while idle. */
+    struct NativeInputConfig {
+        std::weak_ptr<ExplorationTask> destination;  ///< TaskServer retains actual execution ownership.
+        perception::NativeObservationSourceOptions options;  ///< Exact session input policy and channels.
+        perception::ObservationIngress::LocalizationLookup localization;  ///< Real acquisition-time pose owner.
+        std::chrono::milliseconds timeout;  ///< Steady-clock bound on old Reader retirement.
+        ExplorationPacketProcessor processor;  ///< Actual platform operation for this immutable source revision.
     };
 
     /** @brief Test whether a task generation still owns lifecycle publication. */
@@ -191,10 +220,175 @@ public:
         bindings.options.driver = e::ExplorationDriver::kBehaviorTree;
         std::lock_guard<std::mutex> lock(inbox_mutex_);
         if (runtime_busy_ || pending_start_admissions_ || desired_ == TaskLifecycle::kRunning ||
-            desired_ == TaskLifecycle::kPaused || motion_fault_)
+            desired_ == TaskLifecycle::kPaused || motion_fault_ || input_fault_ ||
+            native_input_revision_ == std::numeric_limits<std::uint64_t>::max() ||
+            (native_input_ && native_input_->options.mode != bindings.options.mode))
             return false;
         bindings_ = std::move(bindings);
+        ++native_input_revision_;
+        ready_.notify_one();
         return true;
+    }
+
+    /** @brief Attach real input; the owner loop is the sole Source creator/caller. */
+    bool ConfigureRuntime(const std::shared_ptr<ExplorationTask>& task,
+                          const std::shared_ptr<autolink::Node>& node,
+                          ExplorationTaskBindings bindings,
+                          perception::NativeObservationSourceOptions options,
+                          perception::ObservationIngress::LocalizationLookup localization,
+                          std::chrono::milliseconds timeout) {
+        if (!task || !node || !bindings.create_session || !bindings.clock || !localization ||
+            timeout <= std::chrono::milliseconds::zero() || timeout > std::chrono::seconds(30) ||
+            options.mode != bindings.options.mode) return false;
+        try { perception::ValidateNativeObservationSourceOptions(options); }
+        catch (const std::invalid_argument&) { return false; }
+        bindings.options.driver = e::ExplorationDriver::kBehaviorTree;
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (node_ != node || input_fault_ || motion_fault_ || runtime_busy_ || pending_start_admissions_ ||
+            desired_ == TaskLifecycle::kRunning || desired_ == TaskLifecycle::kPaused ||
+            native_input_revision_ == std::numeric_limits<std::uint64_t>::max()) return false;
+        bindings_ = std::move(bindings);
+        native_input_ = NativeInputConfig{task, std::move(options), std::move(localization), timeout,
+            bindings_->process_sensor_packet};
+        ++native_input_revision_;
+        input_snapshot_.configured = true;
+        ready_.notify_one();
+        return true;
+    }
+
+    /** @brief Attach input separately for compatibility with existing integrations. */
+    bool ConfigureInput(const std::shared_ptr<ExplorationTask>& task,
+                        perception::NativeObservationSourceOptions options,
+                        perception::ObservationIngress::LocalizationLookup localization,
+                        std::chrono::milliseconds timeout) {
+        if (!task || !localization || timeout <= std::chrono::milliseconds::zero() ||
+            timeout > std::chrono::seconds(30)) return false;
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (!node_ || !bindings_ || !bindings_->clock || input_fault_ || motion_fault_ ||
+            runtime_busy_ || pending_start_admissions_ || desired_ == TaskLifecycle::kRunning ||
+            desired_ == TaskLifecycle::kPaused || options.mode != bindings_->options.mode ||
+            native_input_revision_ == std::numeric_limits<std::uint64_t>::max()) return false;
+        native_input_ = NativeInputConfig{task, std::move(options), std::move(localization), timeout,
+            bindings_->process_sensor_packet};
+        ++native_input_revision_;
+        input_snapshot_.configured = true;
+        ready_.notify_one();
+        return true;
+    }
+
+    /** @brief Publish actual Source evidence without holding inbox during native locks. */
+    void PublishInputSnapshot() {
+        const auto source = native_source_ ? native_source_->Snapshot() : last_source_snapshot_;
+        const auto completion = native_source_ ? native_source_->ShutdownCompletion() : last_source_completion_;
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        input_snapshot_.source = source;
+        input_snapshot_.identity = native_source_identity_;
+        input_snapshot_.retiring = native_source_retiring_;
+        input_snapshot_.faulted = input_fault_;
+        source_completion_ = completion;
+    }
+
+    /** @brief Latch failure once; future successful cleanup cannot silently clear it. */
+    void InputFault(const char* reason) {
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            if (input_fault_) return;
+            input_fault_ = true;
+            input_snapshot_.faulted = true;
+            input_snapshot_.error = reason;
+        }
+        throw std::runtime_error(reason);
+    }
+
+    /** @brief Reconcile generations without waiting for Reader teardown on this owner.
+     * Pause keeps the current source and receiver ordinals. Terminal generations
+     * stop input; only generation zero provides pre-START readiness seeding.
+     */
+    void ReconcileObservationSource() {
+        std::optional<NativeInputConfig> config;
+        std::shared_ptr<autolink::Node> node;
+        perception::ObservationIngress::Clock clock;
+        std::optional<ExplorationSensorInputIdentity> wanted;
+        std::uint64_t revision;
+        bool faulted;
+        {
+            std::lock_guard<std::mutex> lock(inbox_mutex_);
+            config = native_input_;
+            node = node_;
+            revision = native_input_revision_;
+            faulted = input_fault_;
+            if (config && bindings_ && !stopping_ && !faulted &&
+                (generation_ == 0 || desired_ == TaskLifecycle::kRunning ||
+                 desired_ == TaskLifecycle::kPaused)) {
+                wanted = ExplorationSensorInputIdentity{instance_, generation_};
+                clock = bindings_->clock;
+            }
+        }
+        const auto wall_now = std::chrono::steady_clock::now();
+        if (native_source_) {
+            const auto snapshot = native_source_->Snapshot();
+            if (!native_source_retiring_ &&
+                (snapshot.calibration_invalidated || !snapshot.running || snapshot.retirement.requested)) {
+                native_source_->Shutdown();
+                native_source_retiring_ = true;
+                native_retirement_started_ = wall_now;
+                PublishInputSnapshot();
+                InputFault(snapshot.calibration_invalidated ?
+                    "native input calibration changed without a new authority revision" :
+                    "native observation source closed unexpectedly");
+            }
+            const bool same = wanted && native_source_identity_ &&
+                wanted->instance == native_source_identity_->instance &&
+                wanted->generation == native_source_identity_->generation &&
+                revision == native_source_revision_;
+            if (!native_source_retiring_ && (faulted || !same)) {
+                native_source_->Shutdown();
+                native_source_retiring_ = true;
+                native_retirement_started_ = wall_now;
+            }
+            if (native_source_retiring_) {
+                PublishInputSnapshot();
+                const auto retirement = native_source_->ShutdownCompletion();
+                if (retirement.wait_for(std::chrono::milliseconds::zero()) != std::future_status::ready) {
+                    if (wall_now - native_retirement_started_ >= native_source_timeout_)
+                        InputFault("native Reader retirement timed out; channels remain reserved");
+                    return;
+                }
+                if (!retirement.get()) {
+                    InputFault("native Reader retirement failed; automatic replacement disabled");
+                    return;
+                }
+                last_source_snapshot_ = native_source_->Snapshot();
+                last_source_completion_ = retirement;
+                native_source_.reset();
+                native_source_identity_.reset();
+                native_source_retiring_ = false;
+            }
+        }
+        if (!native_source_ && wanted && config && !faulted) {
+            const auto binding = SensorBinding(config->destination, *wanted, config->processor, revision);
+            native_source_identity_ = *wanted;
+            native_source_revision_ = revision;
+            native_source_timeout_ = config->timeout;
+            try {
+                native_source_ = std::make_shared<perception::NativeObservationSource>(
+                    std::move(node), config->options, config->localization,
+                    binding.sink, std::move(clock), binding.loss);
+            } catch (...) {
+                native_source_identity_.reset();
+                PublishInputSnapshot();
+                InputFault("native observation source construction failed");
+                return;
+            }
+            if (!native_source_->Start()) {
+                native_source_->Shutdown();
+                native_source_retiring_ = true;
+                native_retirement_started_ = wall_now;
+                PublishInputSnapshot();
+                InputFault("native observation Reader creation failed");
+            }
+        }
+        PublishInputSnapshot();
     }
 
     /** @brief Queue a START without blocking ingress on session construction. */
@@ -212,7 +406,7 @@ public:
             }
         } pending{*this};
         std::unique_lock<std::mutex> lock(inbox_mutex_);
-        if (stopping_ || !worker_started_ || !bindings_ || motion_fault_)
+        if (stopping_ || !worker_started_ || !bindings_ || motion_fault_ || input_fault_)
             return false;
         if (!std::isfinite(goal.coverage_target()) || goal.coverage_target() < 0 ||
             goal.coverage_target() > 1) return false;
@@ -351,13 +545,15 @@ public:
 
     /** @brief Admit or record packet loss under the same generation lock. */
     bool PushPacket(ExplorationSensorInputIdentity identity,
-                    perception::ObservationPacket packet, double now) {
+        perception::ObservationPacket packet, double now,
+        ExplorationPacketProcessor processor = {}, std::uint64_t input_revision = 0) {
         // Every beam is checked without delaying START or cancellation on the inbox lock.
         const bool valid = packet.Valid(now);
         const auto sensor = packet.observation.sensor;
         const auto sequence = packet.observation.sequence;
         std::lock_guard<std::mutex> lock(inbox_mutex_);
         if (identity.instance != instance_ || identity.generation != generation_ ||
+            (input_revision && input_revision != native_input_revision_) ||
             stopping_ || !worker_started_ || !bindings_ ||
             (sensor != perception::SensorKind::kLidar && sensor != perception::SensorKind::kRgbd) ||
             !(perception::Mask(bindings_->options.mode) & perception::Mask(sensor))) return false;
@@ -367,7 +563,7 @@ public:
             ReportLossLocked(sensor, sequence);
             return false;
         }
-        inputs_.push_back({generation_, PacketInput{std::move(packet), now}});
+        inputs_.push_back({generation_, PacketInput{std::move(packet), now, std::move(processor), input_revision}});
         ready_.notify_one();
         return true;
     }
@@ -573,8 +769,31 @@ public:
                     throw std::runtime_error("session refused an admitted pose input");
         } else if (auto* packet = std::get_if<PacketInput>(&input.data)) {
             if (input.generation && input.generation != active_generation_) return;
+            if (packet->input_revision) {
+                std::lock_guard<std::mutex> lock(inbox_mutex_);
+                if (packet->input_revision != native_input_revision_) return;
+            }
             const auto processing_time = std::max(now, packet->now);
             if (packet->packet.Valid(processing_time)) {
+                if (packet->processor) {
+                    auto mapped = packet->processor(input.generation, packet->packet, processing_time);
+                    if (input.generation && !Current(input.generation)) return;
+                    if (packet->input_revision) {
+                        std::lock_guard<std::mutex> lock(inbox_mutex_);
+                        if (packet->input_revision != native_input_revision_) return;
+                    }
+                    if (!mapped || !mapped->grid || mapped->map_epoch != packet->packet.localization.map_epoch ||
+                        mapped->frame_id != packet->packet.localization.world_frame ||
+                        !std::isfinite(mapped->source_stamp)) {
+                        DeliverLoss({input.generation, packet->packet.observation.sensor,
+                            packet->packet.observation.sequence, packet->packet.observation.sequence});
+                        return;
+                    }
+                    if (!latest_map_ || mapped->map_epoch != latest_map_->map_epoch ||
+                        mapped->source_stamp >= latest_map_->source_stamp) latest_map_ = *mapped;
+                    if (session_ && input.generation == active_generation_ && !session_->PushMap(std::move(*mapped)))
+                        throw std::runtime_error("session refused actual mapped packet geometry");
+                }
                 const auto& localization = packet->packet.localization;
                 const auto stamp = packet->packet.observation.stamp;
                 if ((!latest_map_ || localization.map_epoch == latest_map_->map_epoch) &&
@@ -770,6 +989,7 @@ public:
                         }
                     }
                 }
+                ReconcileObservationSource();
                 const auto now = Now();
                 if (waiting_ && initialization_resumed_) {
                     waiting_since_ = now;
@@ -794,13 +1014,21 @@ public:
                 }
             } catch (const std::exception& exception) {
                 try { StopSession(last_now_); } catch (...) {}
-                Fail(exception.what(), active_generation_);
+                std::uint64_t failure_generation;
+                { std::lock_guard<std::mutex> lock(inbox_mutex_);
+                  failure_generation = input_fault_ ? generation_ : active_generation_; }
+                Fail(exception.what(), failure_generation);
             } catch (...) {
                 try { StopSession(last_now_); } catch (...) {}
                 Fail("exploration dependency threw a nonstandard exception", active_generation_);
             }
         }
         try { StopSession(last_now_); } catch (...) {}
+        if (native_source_) {
+            native_source_->Shutdown();
+            native_source_retiring_ = true;
+        }
+        PublishInputSnapshot();
     }
 
     /// Native lifecycle and result owner; outlives the worker.
@@ -840,6 +1068,19 @@ public:
     TaskLifecycle desired_ = TaskLifecycle::kIdle;
     /// Immutable configured dependencies, replaced only while inactive.
     std::optional<ExplorationTaskBindings> bindings_;
+    std::optional<NativeInputConfig> native_input_;  ///< Inbox-locked configuration, with weak task ownership.
+    std::uint64_t native_input_revision_ = 0;  ///< Configuration/node/clock changes require actual retirement.
+    bool input_fault_ = false;  ///< Inbox-locked failure latch checked by START/configuration.
+    ExplorationObservationSourceSnapshot input_snapshot_;  ///< Inbox-locked public input lifecycle evidence.
+    std::shared_future<bool> source_completion_;  ///< Stable public handle to the latest cleanup operation.
+    std::shared_ptr<perception::NativeObservationSource> native_source_;  ///< Owner-thread-only real Reader source.
+    std::optional<ExplorationSensorInputIdentity> native_source_identity_;  ///< Immutable callback destination.
+    std::uint64_t native_source_revision_ = 0;  ///< Configuration used to construct this Source.
+    bool native_source_retiring_ = false;  ///< Owner requested revocation; does not mean cleanup succeeded.
+    std::chrono::steady_clock::time_point native_retirement_started_;  ///< Independent of paused task time.
+    std::chrono::milliseconds native_source_timeout_{5000};  ///< Timeout of the retiring Source, not the replacement.
+    perception::NativeObservationSourceSnapshot last_source_snapshot_;  ///< Preserve completed cleanup evidence.
+    std::shared_future<bool> last_source_completion_;  ///< Keep success/failure observable after Source release.
     /// Current original goal for intent-preserving area updates.
     proto::ExplorationGoal current_goal_;
     /// High-priority commands bounded independently of observation backlog.
@@ -913,7 +1154,12 @@ ExplorationTask::~ExplorationTask() { Shutdown(); }
 }
 void ExplorationTask::SetNode(std::shared_ptr<autolink::Node> node) {
     std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
-    impl_->RequireIdleLocked(); impl_->node_ = std::move(node);
+    impl_->RequireIdleLocked();
+    if (impl_->native_input_revision_ == std::numeric_limits<std::uint64_t>::max())
+        throw std::overflow_error("exploration input configuration revision exhausted");
+    impl_->node_ = std::move(node);
+    ++impl_->native_input_revision_;
+    impl_->ready_.notify_one();
 }
 void ExplorationTask::SetSubmitNavigation(SubmitNavigation submit) {
     std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
@@ -947,6 +1193,29 @@ void ExplorationTask::SetVersionedNavigationProbe(GetVersionedNavigationResult r
 }
 bool ExplorationTask::ConfigureSession(ExplorationTaskBindings bindings) {
     return impl_->Configure(std::move(bindings));
+}
+bool ExplorationTask::ConfigureNativeRuntime(const std::shared_ptr<ExplorationTask>& task,
+    const std::shared_ptr<autolink::Node>& node, ExplorationTaskBindings bindings,
+    perception::NativeObservationSourceOptions input,
+    perception::ObservationIngress::LocalizationLookup localization,
+    std::chrono::milliseconds retirement_timeout) {
+    return task.get() == this && impl_->ConfigureRuntime(task, node, std::move(bindings),
+        std::move(input), std::move(localization), retirement_timeout);
+}
+bool ExplorationTask::ConfigureObservationSource(const std::shared_ptr<ExplorationTask>& task,
+    perception::NativeObservationSourceOptions options,
+    perception::ObservationIngress::LocalizationLookup localization,
+    std::chrono::milliseconds retirement_timeout) {
+    return task && task->impl_->ConfigureInput(task, std::move(options),
+                                              std::move(localization), retirement_timeout);
+}
+ExplorationObservationSourceSnapshot ExplorationTask::GetObservationSourceSnapshot() const {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    return impl_->input_snapshot_;
+}
+std::shared_future<bool> ExplorationTask::ObservationSourceShutdownCompletion() const {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    return impl_->source_completion_;
 }
 e::ExplorationServices ExplorationTask::NavigationServices(
     const std::string& frame_id, const std::string& planner_id) const {
@@ -1049,6 +1318,12 @@ bool ExplorationTask::PushSensorPacket(ExplorationSensorInputIdentity identity,
                                       perception::ObservationPacket packet, double now) {
     return impl_->PushPacket(identity, std::move(packet), now);
 }
+bool ExplorationTask::PushNativeSensorPacket(ExplorationSensorInputIdentity identity,
+    perception::ObservationPacket packet, double now,
+    ExplorationPacketProcessor processor, std::uint64_t input_revision) {
+    if (!input_revision) return false;
+    return impl_->PushPacket(identity, std::move(packet), now, std::move(processor), input_revision);
+}
 bool ExplorationTask::ReportSensorLoss(perception::SensorKind sensor, std::uint64_t sequence) {
     const auto identity = impl_->InputIdentity();
     return identity && impl_->ReportLoss(*identity, sensor, sequence);
@@ -1062,17 +1337,7 @@ std::optional<ExplorationSensorInputBinding> ExplorationTask::BindSensorInput(
     if (!task) return {};
     const auto identity = task->SensorInputIdentity();
     if (!identity) return {};
-    const std::weak_ptr<ExplorationTask> weak = task;
-    ExplorationSensorInputBinding binding;
-    binding.identity = *identity;
-    binding.sink = [weak, identity = *identity](perception::ObservationPacket packet, double now) {
-        const auto destination = weak.lock();
-        return destination && destination->PushSensorPacket(identity, std::move(packet), now);
-    };
-    binding.loss = [weak, identity = *identity](perception::SensorKind sensor, std::uint64_t sequence) {
-        if (const auto destination = weak.lock()) destination->ReportSensorLoss(identity, sensor, sequence);
-    };
-    return binding;
+    return SensorBinding(task, *identity);
 }
 bool ExplorationTask::PushCoverageUnit(e::CoverageUnit unit) { return impl_->Push(std::move(unit)); }
 std::optional<e::ExplorationSnapshot> ExplorationTask::GetExplorationSnapshot() const {

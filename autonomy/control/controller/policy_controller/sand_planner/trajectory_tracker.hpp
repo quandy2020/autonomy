@@ -126,6 +126,7 @@ struct TrajectoryTrackerOptions {
     double longitudinal_gain = 1.0; ///< Forward-position feedback gain, 1/s.
     double lateral_gain = 2.0; ///< Lateral error feedback gain, 1/m^2.
     double yaw_gain = 2.0; ///< Heading error feedback gain, 1/s.
+    double controller_budget = 0.02; ///< Exclusive native solve budget; does not renew any evidence or grant.
     /** @brief Validate all bounds and required authority before creating a tracker. */
     bool Valid() const;
 };
@@ -158,7 +159,7 @@ struct TrackingCommandQuery {
     TrackingCommand command; ///< Exact candidate whose feedback correction needs verification.
     TrackingFeedback feedback; ///< Actual start state and measured wheel dynamics.
     std::shared_ptr<const AdmittedReference> reference; ///< Immutable original body/ground contract.
-    double deadline = 0.0; ///< Exclusive command-validation deadline.
+    double deadline = 0.0; ///< Exclusive deadline for the native solve or independent command check.
 };
 
 /** @brief Command certificate must bind the exact proposal and cover its whole interval. */
@@ -170,6 +171,17 @@ struct TrackingCommandVerdict {
 
 /** @brief Required independent geometry verifier; no default success callback exists. */
 using TrackingCommandVerifier = std::function<TrackingCommandVerdict(const TrackingCommandQuery&)>;
+
+/** @brief Native controller fills the existing command proposal within query.deadline.
+ * The query pins the active admitted reference and measured feedback. The
+ * callback performs no dispatch and cannot change command identity or timing.
+ * Native adapters use existing automsgs feedback and TwistStamped internally.
+ * Returning a velocity is not safety admission: the tracker checks drive limits
+ * and calls the independent command verifier afterward. Missing/late callbacks
+ * stop execution. The clock uses the original acquisition/execution domain.
+ */
+using TrackingController = std::function<bool(const TrackingCommandQuery&, const ExecutionClock&,
+    TrackingCommand*, std::string*)>;
 
 /** @brief One owner-produced update; absent references never fabricate a safe local plan. */
 struct TrajectoryTrackingInput {
@@ -215,10 +227,26 @@ public:
     /** @brief Compute one feedback command or retain a latched stop; never throws dependency errors. */
     TrajectoryTrackingResult Tick(const TrajectoryTrackingInput& input,
                                   const ExecutionClock& clock, const TrackingCommandVerifier& verifier);
+    /** @brief Run the same admission/stop state machine using an existing feedback controller.
+     * @param input Actual grant, feedback, admitted reference and optional stop receipt.
+     * @param clock Original execution clock; checked after both solve and verification.
+     * @param verifier Independent check of the actual native command and stopping sweep.
+     * @param controller Required native solver; absence never falls back to built-in feedback.
+     * @return Finite identity-bound command only after every original gate passes.
+     * Native solve time is charged before the unchanged verifier budget. The
+     * total interval still fits command_duration and all original evidence horizons.
+     */
+    TrajectoryTrackingResult TickWithController(const TrajectoryTrackingInput& input,
+        const ExecutionClock& clock, const TrackingCommandVerifier& verifier,
+        const TrackingController& controller);
     /** @brief Latch a stop without claiming completion; cannot clear replay history. */
     TrajectoryTrackingResult RequestStop(const TrackingLease& lease, double now, std::string reason);
 
 private:
+    /** @brief Shared stop/admission implementation; native mode requires its explicit callback. */
+    TrajectoryTrackingResult TickImpl(const TrajectoryTrackingInput& input,
+        const ExecutionClock& clock, const TrackingCommandVerifier& verifier,
+        const TrackingController* controller);
     /** @brief Current stop result without issuing another request on every retry. */
     TrajectoryTrackingResult StopResult(std::string reason) const;
     TrajectoryTrackerOptions options_; ///< Validated tracker bounds and authority.

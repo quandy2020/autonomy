@@ -11,14 +11,18 @@ add_library(autonomy_navigation_support STATIC
   ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/lidar_observation_adapter.cpp
   ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/rgbd_observation_adapter.cpp
   ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/sensor_message_decoder.cpp
-  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/observation_ingress.cpp)
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/observation_ingress.cpp
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/native_sensor_messages.cpp
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/native_atlas_localization.cpp
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/native_observation_source.cpp
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/reader_retirement.cpp)
 add_library(autonomy::navigation_support ALIAS autonomy_navigation_support)
 target_include_directories(autonomy_navigation_support PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 target_compile_features(autonomy_navigation_support PUBLIC cxx_std_17)
-target_link_libraries(autonomy_navigation_support PUBLIC Threads::Threads)
+target_link_libraries(autonomy_navigation_support PUBLIC Threads::Threads autolink automsgs)
 set_target_properties(autonomy_navigation_support PROPERTIES
   POSITION_INDEPENDENT_CODE ON CXX_EXTENSIONS OFF)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/opt/navigation

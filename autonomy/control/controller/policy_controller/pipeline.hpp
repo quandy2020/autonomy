@@ -41,6 +41,7 @@
 #include "autonomy/control/controller/policy_controller/action/safety_filter.hpp"
 #include "autonomy/control/controller/policy_controller/manager.hpp"
 #include "autonomy/control/controller/policy_controller/observation/buffer.hpp"
+#include "autonomy/control/controller/policy_controller/observation/defm_features.hpp"
 #include "autonomy/control/controller/policy_controller/observation/frame_align.hpp"
 #include "autonomy/control/controller/policy_controller/runtime.hpp"
 #include "autonomy/control/controller/policy_controller/sand_planner/options.hpp"
@@ -206,6 +207,33 @@ public:
     void SetRawTensor(const TensorFrame& raw) {
         observation_buffer_.SetRawTensor(raw);
     }
+    /**
+     * @brief Inject shared frozen depth features into an explicitly trained RAW input.
+     * @param features Original shared encoder result; never independently re-encoded here.
+     * @param input_name Active policy input receiving these tokens.
+     * @param tensor_name Official patch_tokens or global_feature output.
+     * @param now_sec Current acquisition-compatible time, seconds.
+     * @param error Explicit rejection of missing model, incompatible shape or stale frame.
+     * @return True only after strict conversion into the existing observation buffer.
+     */
+    bool SetDepthFeatures(const perception::defm::DefmDepthFeatures& features,
+                          const std::string& input_name, const std::string& tensor_name,
+                          double now_sec, std::string* error = nullptr) {
+        const auto model = policy_manager_.Active();
+        if (!model || options_.missing_modality_policy() == proto::MISSING_MODALITY_ZERO_FILL) {
+            if (error) *error = "DeFM requires an active adapted model without zero-filled observations";
+            return false;
+        }
+        for (const auto& input : model->config().proto().inputs()) {
+            if (input.name() != input_name) continue;
+            TensorFrame frame;
+            if (!MakeDefmTensorFrame(features, input, tensor_name, now_sec, &frame, error)) return false;
+            observation_buffer_.SetRawTensor(frame);
+            return true;
+        }
+        if (error) *error = "DeFM input is not declared by the active model: " + input_name;
+        return false;
+    }
     void UpdateCostmap(map::costmap_2d::Costmap2DWrapper* costmap_wrapper) {
         observation_buffer_.UpdateCostmapFrom(costmap_wrapper,
                                               options_.costmap_cells());
@@ -353,6 +381,11 @@ public:
             return RecordFailure(error, command_velocity, message, timed_out || is_sand);
         }
 
+        if (!ValidateRawTensorLifetimes(snapshot, model->config(),
+                encode_context_.now_sec + std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - now).count(), &error)) {
+            return RecordFailure(error, command_velocity, message, true);
+        }
         if (is_sand) {
             if (zero_filled) {
                 return RecordFailure("SanD Missing required observation; zero-filled input cannot authorize motion",
@@ -380,12 +413,23 @@ public:
                                          : budget.ElapsedMs();
         diagnostics_.zero_filled_modality = zero_filled;
 
+        if (!ValidateRawTensorLifetimes(snapshot, model->config(),
+                encode_context_.now_sec + std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - now).count(), &error)) {
+            return RecordFailure(error, command_velocity, message, true);
+        }
+
         bool clamp = false;
         bool collision = false;
         const uint32_t status = safety_filter_.Apply(
             action, snapshot, costmap_wrapper, elapsed_seconds, command_velocity,
             message, &clamp, &collision);
         if (is_sand && command_velocity) command_velocity->mutable_header()->set_frame_id(options_.robot_frame());
+        if (!ValidateRawTensorLifetimes(snapshot, model->config(),
+                encode_context_.now_sec + std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - now).count(), &error)) {
+            return RecordFailure(error, command_velocity, message, true);
+        }
         diagnostics_.clamp_or_rate_limit = clamp;
         diagnostics_.collision_blocked = collision;
         if (is_sand && status != proto::CONTROLLER_RESULT_SUCCESS) {
