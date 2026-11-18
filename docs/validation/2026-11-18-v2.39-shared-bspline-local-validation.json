@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "steps": [
+    {
+      "stage": "configure",
+      "command": [
+        "cmake",
+        "-S",
+        ".",
+        "-B",
+        "/tmp/opt-exploration-v2.35"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-local-configure.log",
+      "sha256": "2dc4e9f0f9777b61df8ce91880ef273e1461db5e9ae774cc4c6c66b7f62394d8"
+    },
+    {
+      "stage": "build",
+      "command": [
+        "cmake",
+        "--build",
+        "/tmp/opt-exploration-v2.35",
+        "-j",
+        "4"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-local-build.log",
+      "sha256": "11ef75a86d2a23b960ba87700e1c32e5b7c149cadd72a2760a16aaf9745a5f7d"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "/tmp/opt-exploration-v2.35",
+        "--output-on-failure",
+        "--no-tests=error"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-local-tests.log",
+      "sha256": "e0d775ce2d325958bfcd0df2f6029a8cf61fef1a6b6c27b052cf535f2816e949"
+    }
+  ]
+}

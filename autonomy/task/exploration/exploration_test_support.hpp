@@ -1,5 +1,10 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file exploration_test_support.hpp
+ * @brief Real exploration consumers with explicitly controlled service replies.
+ * Mapping receipts in this fixture do not establish actual mapper fusion.
+ */
 #pragma once
+#include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <thread>
@@ -70,15 +75,26 @@ struct Fixture {
     std::optional<e::NavigationReply> reply;
     std::optional<e::RequestVersion> refresh_request, save_request;
     std::optional<e::MappingReply> refresh_reply, save_reply;
+    std::vector<e::RequestVersion> refresh_submissions;  ///< Every actual refresh callback identity.
+    std::vector<e::RequestVersion> mapping_cancellations;  ///< Versioned mapping cancel callback identities.
     std::size_t cancellation_count = 0;
+    std::size_t mapping_cancellation_count = 0;  ///< Actual versioned mapping cancel callbacks.
+    std::atomic<bool> hold_graph_updates{false};  ///< Keeps the real graph consumer behind mapper receipts.
     bool throw_poll = false, throw_cancel = false;
     std::uint64_t epoch = 0, sequence = 0;
     std::unique_ptr<e::ExplorationSession> session;
 
+    /** @brief Creates real exploration consumers with controlled external callbacks.
+     * @param configure Optional startup policy and budget overrides for fault regressions.
+     * @param seed_initial_input When false, omit synthetic initial pose and observation
+     * so a real decoded packet must establish sensing and localization readiness.
+     */
     explicit Fixture(std::vector<double> views, double dwell = .05,
         std::shared_ptr<e::ExplorationStrategy> strategy = {}, bool require_save = false,
         bool wait_for_navigation = true, double pose_age = 10, std::size_t event_budget = 32,
-        e::ExplorationDriver driver = e::ExplorationDriver::kAutomatic, bool require_return = false) {
+        e::ExplorationDriver driver = e::ExplorationDriver::kAutomatic, bool require_return = false,
+        std::function<void(e::ExplorationSessionOptions&)> configure = {},
+        bool seed_initial_input = true) {
         grid.Fill({n::CellState::kFree, 0});
         auto map = reader.Read(grid, 1, 0, 1);
         if (require_save) {
@@ -115,6 +131,7 @@ struct Fixture {
             if (throw_cancel) throw 44;
         };
         services.request_map_refresh = [this](const auto& version) {
+            refresh_submissions.push_back(version);
             refresh_request = version; return true;
         };
         services.poll_map_refresh = [this] {
@@ -126,8 +143,13 @@ struct Fixture {
         services.poll_map_save = [this] {
             auto result = save_reply; save_reply.reset(); return result;
         };
-        services.cancel_mapping = [](const auto&) {};
-        services.update_route_map = [this](const auto& view) { planner->Update(view); };
+        services.cancel_mapping = [this](const auto& version) {
+            mapping_cancellations.push_back(version);
+            ++mapping_cancellation_count;
+        };
+        services.update_route_map = [this](const auto& view) {
+            if (!hold_graph_updates.load()) planner->Update(view);
+        };
         services.navigation_still_valid = [](const auto&, const auto&, const auto&) { return true; };
         e::ExplorationSessionOptions options;
         options.validated_controller_modes = {p::Mask(p::SensorMode::kRgbdOnly)};
@@ -144,6 +166,7 @@ struct Fixture {
         options.pose_max_age = pose_age;
         options.health.recovery_hold = 0;
         options.minimum_observation_time = dwell;
+        if (configure) configure(options);
         session = std::make_unique<e::ExplorationSession>(
             strategy ? std::move(strategy) : std::make_shared<OneGoal>(std::move(views)),
             adapter, paths, services, options);
@@ -155,8 +178,10 @@ struct Fixture {
         unit.normal = {-1, 0, 0};
         unit.required_quality = .5;
         if (wait_for_navigation) Require(session->PushCoverageUnit(unit), "coverage requirement queued");
-        Pose(1, 0);
-        Observe(1, false);
+        if (seed_initial_input) {
+            Pose(1, 0);
+            Observe(1, false);
+        }
         if (!wait_for_navigation || driver == e::ExplorationDriver::kBehaviorTree) {
             session->Tick(1.01); return;
         }

@@ -1,0 +1,21 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/control/CMakeLists.txt"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-hu9o8kw3/backup",
+  "expected_sha256": {
+    "autonomy/control/CMakeLists.txt": "d17c30649e418eefeb8c19ca7fb1ac20a4c044ac2c81c0520b5ac03d617ee0d8"
+  },
+  "deployed_sha256": {
+    "autonomy/control/CMakeLists.txt": "5c69bcfbc6da9fbac162e63732c47729d7cc84405faf119fbf08041a384dfe82"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "dce8787b4e0784afc2800aa653082d22ba609192c431b8a4d5ea1a98fd7a0b30",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

@@ -1,4 +1,7 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file vista_path_provider.cpp
+ * @brief Forward exploration queries to the shared Vista planner instance.
+ */
 #include "autonomy/task/exploration/integration/vista_path_provider.hpp"
 #include <stdexcept>
 namespace autonomy::task::exploration {
@@ -6,7 +9,8 @@ std::optional<RouteMapEvidence> VistaPathProvider::Evidence() const {
     const auto graph=planner_->GraphSnapshot();
     if(!graph.map_epoch)return {};
     return RouteMapEvidence{graph.map_epoch,graph.geometry_revision,
-        graph.observation_watermark,graph.observation_cut};
+        graph.observation_watermark,graph.observation_cut,
+        graph.observation_baseline,graph.observation_recovery_generation};
 }
 VistaPathProvider::VistaPathProvider(std::shared_ptr<planning::planner::vista::VistaRoutePlanner> planner)
     :planner_(std::move(planner)){if(!planner_)throw std::invalid_argument("Vista provider needs shared planner instance");}

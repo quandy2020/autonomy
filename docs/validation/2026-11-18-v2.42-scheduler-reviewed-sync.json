@@ -1,0 +1,30 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/scheduler/scheduler.hpp",
+    "autonomy/task/navigation/navigation.hpp",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp",
+    "docs/source/17_Tasks/08_multisensor_exploration.md"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-0hl67c8h/backup",
+  "expected_sha256": {
+    "autonomy/task/scheduler/scheduler.hpp": "39ffe7576511e109bb32593c1bc2547afba97fa9bf25e8f447290a8daf7be0df",
+    "autonomy/task/navigation/navigation.hpp": "d5dcd29560b0e7bbaa25d1b3d0a539281fc7f114d9447ee6e713f399a6054148",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "5b42b90dee80fefe969db9d235f3976bdfae940919e12b2fddf3f8250dc3a691",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "eb22058c3ca2499bc5b74cfdfa68b57b4d68c54949032669c4ad206ff0be79b9"
+  },
+  "deployed_sha256": {
+    "autonomy/task/scheduler/scheduler.hpp": "f994083423f597f515e5da7f5b222054362eed057691feb0c45e138fdd1144ed",
+    "autonomy/task/navigation/navigation.hpp": "27619b77324bc453bfe27cf65bdcc96ef0c78ce12caca47bd53e4f5ac30f14eb",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "cff4cfce9a612a616b2bab6c97b337db7b8531089ccdebc2e18f6a263fa7d160",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "467f61bb2280fb05414af62d72e0f109f0c0b49c077856397a9a0d280242c6b0"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "74fa79af15a6d48a0edde4da0cab08898bc57ee3033e0b6fbafd2168f3c8a4fa",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

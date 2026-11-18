@@ -34,7 +34,7 @@ list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/(engine|inference|models|ta
 
 # Compiled once by autonomy_navigation_support in the common domain.
 list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/data/(map_reader|sensor_observation|observation_buffer)\\.cpp$")
-list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/observation/(lidar_observation_adapter|rgbd_observation_adapter)\\.cpp$")
+list(FILTER AUTONOMY_PERCEPTION_SRCS EXCLUDE REGEX "/observation/(lidar_observation_adapter|rgbd_observation_adapter|sensor_message_decoder|observation_ingress)\\.cpp$")
 
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_perception
@@ -47,6 +47,8 @@ autocmake_library(autonomy_perception
   DEPENDENCIES
     autonomy_common
     autonomy_navigation_support
+    autolink
+    automsgs
     autonomy_proto
     autonomy_transform
     autonomy_map

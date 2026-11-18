@@ -1,4 +1,7 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file hierarchical_coverage_strategy.cpp
+ * @brief Hierarchical candidate selection with reusable compatible sweep evidence.
+ */
 #include "autonomy/task/exploration/strategy/hierarchical_coverage_strategy.hpp"
 #include "autonomy/task/exploration/coverage/local_coverage_planner.hpp"
 #include <algorithm>
@@ -11,6 +14,8 @@ HierarchicalCoverageStrategy::HierarchicalCoverageStrategy(std::shared_ptr<const
        !std::isfinite(options.local_radius) || options.local_radius<=0 ||
        !std::isfinite(options.fairness_interval) || options.fairness_interval<=0)
         throw std::invalid_argument("invalid hierarchical coverage strategy");
+    if (!std::isfinite(options.sweep_max_age) || options.sweep_max_age <= 0)
+        throw std::invalid_argument("invalid sweep proof lifetime");
 }
 void HierarchicalCoverageStrategy::Reset() {
     regions_ = RegionManager(options_.region_size);
@@ -21,37 +26,67 @@ void HierarchicalCoverageStrategy::Reset() {
     sampling_sensors_ = sweep_start_sensors_ = 0;
     normal_cursor_ = sweep_cursor_ = region_cursor_ = 0;
     sweep_completed_ = false;
+    sweep_completed_at_ = 0;
     sweep_start_map_revision_ = sweep_start_coverage_revision_ = 0;
+    sampling_start_cell_.reset();
 }
 StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const Pose2d& home,const MapReadView& map,
     const CoverageState& state,perception::SensorMask active,double now,
     const std::function<bool()>& cancel_checker){
-    StrategyDecision decision;if(state.epoch()!=map.map_epoch || !active)return decision;
+    StrategyDecision decision;
+    if (cancel_checker && cancel_checker()) { decision.canceled = true; return decision; }
+    if(state.epoch()!=map.map_epoch || !active || !map.grid) {
+        sweep_completed_ = false;
+        return decision;
+    }
     if(epoch_!=map.map_epoch){epoch_=map.map_epoch;queue_.Reset();last_fair_selection_=-1e30;
-        sampling_map_revision_=0;region_cursor_=normal_cursor_=sweep_cursor_=0;sweep_completed_=false;}
-    if(sampling_map_revision_!=map.geometry_revision || sampling_coverage_revision_!=state.revision() ||
-       sampling_sensors_!=active) {
-        // Preserve progress through pages during frequent updates. A completed
-        // sweep is accepted only if its entire pass used one evidence revision.
+        sampling_map_revision_=0;region_cursor_=normal_cursor_=sweep_cursor_=0;sweep_completed_=false;
+        sampling_start_cell_.reset();}
+    const auto cell = map.grid->WorldToCell(start);
+    const auto origin = cell ? std::optional<std::pair<int, int>>{{cell->x, cell->y}} : std::nullopt;
+    if(sampling_map_revision_!=map.geometry_revision ||
+       sampling_coverage_revision_!=state.requirements_revision() ||
+       sampling_sensors_!=active || sampling_start_cell_!=origin) {
+        // Keep a bounded cursor moving, but do not accept a pass spanning new
+        // work, changed geometry/capabilities or a different reachability seed.
         sweep_completed_=false;
-        sampling_map_revision_=map.geometry_revision;sampling_coverage_revision_=state.revision();sampling_sensors_=active;
+        sampling_map_revision_=map.geometry_revision;
+        sampling_coverage_revision_=state.requirements_revision();sampling_sensors_=active;
+        if (sampling_start_cell_ != origin) sweep_cursor_ = 0;
+        sampling_start_cell_ = origin;
     }
     queue_.ReopenForMapChange(map.geometry_revision);
     queue_.Synchronize(state,now);
     regions_.Update(state);
+    if (sweep_completed_ && (now < sweep_completed_at_ ||
+                            now - sweep_completed_at_ > options_.sweep_max_age)) {
+        sweep_completed_ = false;
+        sweep_cursor_ = 0;
+    }
+    if (sweep_completed_ && !state.PendingCount()) {
+        decision.grid_fallback_checked = decision.sweep_checked = true;
+        return decision;
+    }
     auto sampled=ViewpointSampler{}.Sample(start,map,state,*evaluator_,regions_,active,options_.safety,options_.sampling,
                                          false,normal_cursor_,cancel_checker);
     normal_cursor_=sampled.finished?0:sampled.next_cursor;
+    if (sampled.canceled) { decision.canceled = true; return decision; }
     if(sampled.candidates.empty() || now-last_fair_selection_>=options_.fairness_interval){
         if(!sweep_cursor_) {
             sweep_start_map_revision_=map.geometry_revision;
-            sweep_start_coverage_revision_=state.revision();sweep_start_sensors_=active;
+            sweep_start_coverage_revision_=state.requirements_revision();sweep_start_sensors_=active;
         }
         auto swept=ViewpointSampler{}.Sample(start,map,state,*evaluator_,regions_,active,options_.safety,options_.sampling,
                                              true,sweep_cursor_,cancel_checker);
+        if (swept.canceled) {
+            sweep_cursor_ = swept.next_cursor;
+            decision.canceled = true;
+            return decision;
+        }
         if(swept.finished){
             sweep_completed_=sweep_start_map_revision_==map.geometry_revision &&
-                sweep_start_coverage_revision_==state.revision() && sweep_start_sensors_==active;
+                sweep_start_coverage_revision_==state.requirements_revision() && sweep_start_sensors_==active;
+            if (sweep_completed_) sweep_completed_at_ = now;
             sweep_cursor_=0;
         }else sweep_cursor_=swept.next_cursor;
         sampled=std::move(swept);

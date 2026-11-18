@@ -1,0 +1,21 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/scheduler/scheduler_motion_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-wl7d3sy5/backup",
+  "expected_sha256": {
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "f33a469cb1201a0074b78f851a9fb52e62c8715d7cef3bc3bbda5855445a8093"
+  },
+  "deployed_sha256": {
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "5b42b90dee80fefe969db9d235f3976bdfae940919e12b2fddf3f8250dc3a691"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "ffb54c85dca6c2cf4931dd29da80f0a88a7226c22f35dd4431dfa2eebab88d12",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

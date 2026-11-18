@@ -14,3 +14,5 @@ Tasks 导航任务
    5 任务架构 <05_architecture>
    6 执行模式 <06_execution_modes>
    7 API 参考 <07_api_reference>
+   8 多传感器探索 <08_multisensor_exploration>
+   9 探索原生验证 <09_native_exploration_validation>

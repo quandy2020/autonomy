@@ -1,0 +1,27 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker.cpp",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp",
+    "autonomy/control/controller/policy_controller/pipeline.hpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-bsv1kcxv/backup",
+  "expected_sha256": {
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker.cpp": "3c9ce5df38a4d018d07a7b36235d76a94d365e8b8643769226e690bc630640fd",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp": "ed75070706ad722b56b23042d8d60d58a49c4a1a341a9cd9a1a4450d6ac016c4",
+    "autonomy/control/controller/policy_controller/pipeline.hpp": "79173fc7968044062ccb36dfea6190af3922e73189c1202f8f0ae11b5a26e6c8"
+  },
+  "deployed_sha256": {
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker.cpp": "1fbe92f6ad69849438bed8956847b8150ddeb4927748434c3ca09ed16a232a20",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp": "a71668c7d84b762ab762b0e1750585bc6210480dfbc000e1238c2c0162958e83",
+    "autonomy/control/controller/policy_controller/pipeline.hpp": "53e2d2d576b8815f1571433cb94f82765661474d027c072b0beaed14e06de354"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "b2a87ec6d6adc0ef492ff9f2f90c8c2251a349f51dfff038531e9ae218b9fcbb",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

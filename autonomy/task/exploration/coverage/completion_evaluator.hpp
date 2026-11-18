@@ -1,4 +1,7 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file completion_evaluator.hpp
+ * @brief Evidence-based stable completion, including source-specific finite cuts.
+ */
 #pragma once
 #include <cstdint>
 #include <optional>
@@ -27,9 +30,15 @@ struct CompletionEvidence {
     std::size_t reachable_frontiers = 0, pending_observations = 0;
     std::size_t pending_revisits = 0, unresolved_regions = 0;
     bool sensing_healthy = false, localization_healthy = false;
-    bool observation_queue_empty = false, grid_fallback_checked = false, sweep_checked = false;
+    // Legacy field name: in source-cut mode this certifies the requested finite
+    // prefix was processed without loss; a later suffix may remain queued.
+    bool observation_queue_empty = false;  ///< Requested processing prefix is confirmed.
+    bool grid_fallback_checked = false;  ///< Grid connectivity has been independently checked.
+    bool sweep_checked = false;  ///< Compatible finite candidate sweep completed.
     bool require_source_cuts = false, mapping_synchronized = false;
-    perception::ObservationCut map_cut, graph_cut, observation_cut;
+    perception::ObservationCut map_cut;  ///< Source prefix fused by the actual map owner.
+    perception::ObservationCut graph_cut;  ///< Source prefix incorporated by the graph owner.
+    perception::ObservationCut observation_cut;  ///< Fixed requested completion prefix.
     // Accepted/processed input is not necessarily usable sensing evidence.
     perception::ObservationCut valid_observation_cut;
     perception::SensorMask required_observation_sources = 0;

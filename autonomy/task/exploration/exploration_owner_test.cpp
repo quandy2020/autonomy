@@ -421,6 +421,103 @@ void NativeShutdownReentry() {
     h.task.Shutdown();
     Require(state->destroyed == 1 && !state->wrong_owner, "external close joins owner after callback returns");
 }
+
+/** @brief Build independently attested RGB-D evidence for the real Task inbox. */
+p::ObservationPacket SensorPacket(const Harness& h, std::uint64_t sequence) {
+    p::ObservationPacket packet;
+    auto& localization = packet.localization;
+    localization.world_frame = "map"; localization.sensor_frame = "depth_optical";
+    localization.map_epoch = h.map.map_epoch; localization.calibration_revision = 1;
+    localization.support = p::Mask(p::SensorKind::kRgbd); localization.healthy = true;
+    localization.valid_from = 0; localization.valid_until = 11;
+    localization.world_from_base.translation = {1, 1, 0};
+    localization.world_from_sensor.translation = {1, 1, .5};
+    auto& observation = packet.observation;
+    observation.sensor = p::SensorKind::kRgbd; observation.sequence = sequence;
+    observation.map_epoch = h.map.map_epoch; observation.frame_id = "map";
+    observation.stamp = h.evidence->now; observation.valid_until = 11;
+    observation.valid_fraction = 1; observation.localization_valid = true;
+    observation.rays.push_back({{1, 1, .5}, {0, 1, 0}, .2, true, 1, observation.stamp});
+    Require(packet.Valid(h.evidence->now), "fixture is a valid actual localized packet");
+    return packet;
+}
+
+/** @brief A blocked old factory cannot let its input callbacks target the next START. */
+void SensorDestinationReplacement() {
+    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
+    Harness h(state); Require(h.Start("sensor-first"), "first START accepted"); h.Seed();
+    state->factory->WaitEntered();
+    const auto old = h.task.SensorInputIdentity(); Require(old.has_value(), "old destination captured");
+    Require(h.Start("sensor-second"), "replacement START accepted without waiting on factory");
+    const auto current = h.task.SensorInputIdentity();
+    Require(current && current->instance == old->instance && current->generation != old->generation,
+            "replacement advances the bound destination");
+    Require(!h.task.PushSensorPacket(*old, SensorPacket(h, 99), state->now), "late old packet rejected");
+    Require(!h.task.ReportSensorLoss(*old, p::SensorKind::kRgbd, 99), "late old loss rejected");
+    Require(h.task.PushSensorPacket(*current, SensorPacket(h, 1), state->now), "current packet admitted");
+    state->factory->Release();
+    Await([&] {
+        const auto snapshot = h.task.GetExplorationSnapshot();
+        return state->StartedCount() == 1 && snapshot &&
+            snapshot->valid_observations.sequence[1] == 1 &&
+            snapshot->processed_observations.sequence[1] == 1;
+    }, "replacement Session actually consumes the newly bound packet");
+    const auto snapshot = h.task.GetExplorationSnapshot();
+    Require(snapshot && snapshot->accepted_observations.sequence[1] == 1 &&
+            !snapshot->observation_losses.historical_gaps.sequence[1],
+            "old loss never contaminates the new observation ledger");
+}
+
+/** @brief Invalid packets preserve same-generation loss without a separate public call. */
+void SensorPacketRejectionLoss() {
+    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
+    Harness h(state); Require(h.Start("sensor-rejection"), "START accepted"); h.Seed();
+    state->factory->WaitEntered();
+    const auto identity = h.task.SensorInputIdentity(); Require(identity.has_value(), "destination captured");
+    auto rejected = SensorPacket(h, 17); rejected.localization.healthy = false;
+    Require(!h.task.PushSensorPacket(*identity, std::move(rejected), state->now), "invalid packet rejected");
+    h.Observe(); state->factory->Release();
+    Await([&] {
+        const auto snapshot = h.task.GetExplorationSnapshot();
+        // Explicit validation rejection is a discard. It cannot fabricate a
+        // missing sequence interval in the admitted source's monotonic stream.
+        return snapshot && snapshot->observation_losses.historical_discards.sequence[1] == 17;
+    }, "rejection retained by the real Session owner");
+    const auto snapshot = h.task.GetExplorationSnapshot();
+    Require(snapshot &&
+        (snapshot->observation_losses.historical_discards.present & p::Mask(p::SensorKind::kRgbd)) &&
+        !snapshot->observation_losses.historical_gaps.sequence[1],
+        "same-generation rejection remains audited without inventing a sequence gap");
+}
+
+/** @brief Pre-start and foreign-instance identities cannot seed accepted-task coverage. */
+void SensorIdentityScope() {
+    Harness h;
+    const auto seed = h.task.SensorInputIdentity(); Require(seed && !seed->generation, "pre-start identity is explicit");
+    Require(h.Start("sensor-scope"), "START accepted");
+    Require(!h.task.PushSensorPacket(*seed, SensorPacket(h, 1), h.evidence->now), "pre-start binding expires at START");
+    auto foreign = *h.task.SensorInputIdentity(); ++foreign.instance;
+    Require(!h.task.PushSensorPacket(foreign, SensorPacket(h, 2), h.evidence->now), "other task instance rejected");
+    Require(!h.task.ReportSensorLoss(foreign, p::SensorKind::kRgbd, 2), "foreign loss rejected");
+}
+
+/** @brief Production binding callbacks do not keep a shut-down task alive. */
+void WeakSensorBinding() {
+    auto task = std::make_shared<t::ExplorationTask>();
+    t::ExplorationTaskBindings bindings;
+    bindings.clock = [] { return 1.; };
+    bindings.create_session = [](const auto&, const auto&) { return std::shared_ptr<e::ExplorationSession>{}; };
+    Require(task->ConfigureSession(bindings), "unstarted destination configured");
+    proto::TaskServerOptions options;
+    Require(task->Initialize(options), "real owner initialized");
+    const auto binding = t::ExplorationTask::BindSensorInput(task);
+    Require(binding.has_value(), "weak production binding created");
+    std::weak_ptr<t::ExplorationTask> weak = task;
+    task.reset();
+    Require(weak.expired(), "sensor callbacks do not own Task lifetime");
+    Require(!binding->sink({}, 1), "callback rejects expired destination");
+    binding->loss(p::SensorKind::kRgbd, 1);
+}
 }  // namespace
 
 /** @brief Execute all real native lifecycle scenarios and retain each result. */
@@ -434,7 +531,10 @@ int main() {
         {"factory_clock_pause_resume", FactoryClockPauseResume},
         {"paused_initialization_budget", PausedInitializationBudget},
         {"paused_monitoring", PausedMonitoring},
-        {"native_submit_cancel", NativeSubmissionCancellation}, {"native_shutdown_reentry", NativeShutdownReentry}};
+        {"native_submit_cancel", NativeSubmissionCancellation}, {"native_shutdown_reentry", NativeShutdownReentry},
+        {"sensor_destination_replacement", SensorDestinationReplacement},
+        {"sensor_rejection_loss", SensorPacketRejectionLoss},
+        {"sensor_identity_scope", SensorIdentityScope}, {"weak_sensor_binding", WeakSensorBinding}};
     int failures = 0;
     for (const auto& test : cases) {
         try { test.second(); std::cout << "PASS " << test.first << std::endl; }

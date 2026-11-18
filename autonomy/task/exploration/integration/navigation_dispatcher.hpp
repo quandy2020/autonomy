@@ -24,8 +24,8 @@ class MotionGate {
 public:
     /// A lease is checked by the native task while waiting and before execution.
     using Permit = std::function<bool()>;
-    /** @brief Construct a disabled, nonretired generation gate. */
-    MotionGate();
+    /** @brief Construct a disabled generation gate with optional immutable parent ownership. */
+    explicit MotionGate(Permit parent = {});
     /**
      * @brief Publish pause/resume intent and revoke earlier revision leases.
      * @param enabled Whether newly captured leases may authorize movement.

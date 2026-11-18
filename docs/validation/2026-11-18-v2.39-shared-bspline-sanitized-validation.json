@@ -1,0 +1,33 @@
+{
+  "passed": true,
+  "steps": [
+    {
+      "stage": "compile",
+      "command": [
+        "c++",
+        "-std=c++17",
+        "-O1",
+        "-g",
+        "-pthread",
+        "-fsanitize=address,undefined,float-cast-overflow",
+        "-fno-omit-frame-pointer",
+        "-I.",
+        "autonomy/common/math/bspline_cache_test.cpp",
+        "-o",
+        "/tmp/opt-v2.39-bspline-sanitized"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-sanitized-compile.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "/tmp/opt-v2.39-bspline-sanitized"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-sanitized-tests.log",
+      "sha256": "6115576946eff836df987bd2f7f73e4c0c5d0bbfa59368a75aa3b73ba30ab06a"
+    }
+  ]
+}

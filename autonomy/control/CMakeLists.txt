@@ -42,6 +42,7 @@ autocmake_library(autonomy_control
     ${PROJECT_BINARY_DIR}
   DEPENDENCIES
     autonomy_common
+    autonomy_navigation_support
     autonomy_proto
     autonomy_transform
     autonomy_map
@@ -83,6 +84,20 @@ autocmake_test(control.policy_frame_align_test
 autocmake_test(control.policy_sand_planner_test
   SOURCES controller/policy_controller/sand_planner_test.cpp
   DEPENDENCIES autonomy_control)
+
+# These bounded scenario programs have their own main, rather than GTest cases.
+# Register them directly so autocmake's GTest XML verifier is not applied and
+# the native exploration gate can run while unrelated BUILD_TESTING stays OFF.
+if(BUILD_TEST OR AUTONOMY_BUILD_EXPLORATION_TESTS)
+  foreach(suite IN ITEMS differential_drive timed_trajectory local_ground local_trajectory_safety trajectory_tracker native_spline_tracker)
+    add_executable(control.policy_${suite}_test
+      controller/policy_controller/sand_planner/${suite}_test.cpp)
+    target_link_libraries(control.policy_${suite}_test PRIVATE
+      autonomy_control autonomy_navigation_support)
+    add_test(NAME control.policy_${suite}_test COMMAND control.policy_${suite}_test)
+    set_tests_properties(control.policy_${suite}_test PROPERTIES TIMEOUT 30)
+  endforeach()
+endif()
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(control

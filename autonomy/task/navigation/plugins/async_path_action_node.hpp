@@ -1,4 +1,7 @@
 /* Copyright 2026 The Openbot Authors */
+/** @file async_path_action_node.hpp
+ * @brief Native nonblocking plan acceptance, correlated results and map validation.
+ */
 #pragma once
 
 #include <chrono>
@@ -16,9 +19,9 @@
 
 namespace autonomy::task::plugins::navigation {
 
-// Shared nonblocking planning/smoothing lifecycle. Every stage is polled by the
-// BT owner: acceptance, correlated result, then current-map path validation.
-// No private thread, sleep or synchronous service wait is introduced.
+/** @brief Shared planning/smoothing lifecycle polled by the native BT owner.
+ * Each stage retains its own acceptance, result and map-validation evidence.
+ */
 template <typename ActionT>
 class AsyncPathActionNode : public BtStatefulAction {
 public:
@@ -59,6 +62,10 @@ private:
     }
     void CancelRequest() {
         if (cancellation_) cancellation_->RequestCancel();
+        // Published /plan can finish the local request before the native result.
+        // Release only planning registration; late acceptance still honors the
+        // transport-owned cancellation state configured for this exact UUID.
+        if (ticket_) ticket_->RetirePlanning();
         active_ = false;
         accept_ = {};
         result_ = {};
@@ -67,6 +74,7 @@ private:
         candidate_.Clear();
         checking_fallback_ = false;
         cancellation_.reset();
+        ticket_.reset();
     }
     BT::NodeStatus Fail(const std::string& reason) {
         CancelRequest();
@@ -84,6 +92,7 @@ private:
         return BT::NodeStatus::FAILURE;
     }
     BT::NodeStatus AcceptPath(NavClient& nav, bool computed) {
+        if (ticket_ && ticket_->Revoked()) return Fail("planning dispatch revision revoked");
         if (Epoch() != epoch_ || nav.planning_generation() != generation_)
             return Fail("path completed for a superseded goal");
         OutputPath(candidate_, computed);
@@ -152,9 +161,16 @@ private:
                 cancellation_ = client.MakeGoalCancellation();
                 typename Client::SendGoalOptions options;
                 const auto cancellation = cancellation_;
-                options.goal_response_callback = [cancellation](std::shared_ptr<GoalHandle> handle) {
-                    cancellation->OnAccepted(std::move(handle));
-                };
+                cancellation->Configure(options);
+                if (auto gate = ResolveMotionGate(*this)) {
+                    ticket_ = gate->Reserve([cancellation] { cancellation->RequestCancel(); },
+                        [cancellation] { return cancellation->HasFailure(); },
+                        common::MotionDispatchGate::Kind::kPlanning);
+                    if (!ticket_) return Fail("planning dispatch admission revoked");
+                    const auto ticket = ticket_;
+                    cancellation->SetTerminalCallback([ticket] { ticket->Finish(); });
+                    if (!ticket->Start()) return Fail("planning dispatch revision revoked");
+                }
                 started_ = std::chrono::steady_clock::now();
                 ResetResultMetadata();
                 active_ = true;
@@ -162,6 +178,7 @@ private:
                 return BT::NodeStatus::RUNNING;
             }
             const auto now = std::chrono::steady_clock::now();
+            if (ticket_ && ticket_->Revoked()) return Fail("planning dispatch revision revoked");
             if (validation_.valid()) {
                 if (now - validation_started_ > std::chrono::seconds(1)) return Fail("path validation timeout");
                 if (validation_.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
@@ -239,6 +256,7 @@ private:
     Path candidate_, last_good_;
     std::chrono::steady_clock::time_point started_{}, validation_started_{}, last_good_time_{};
     std::shared_ptr<typename Client::GoalCancellation> cancellation_;
+    std::shared_ptr<common::MotionDispatchGate::Ticket> ticket_; ///< Planning-only send ownership.
     std::shared_future<std::shared_ptr<GoalHandle>> accept_;
     std::shared_ptr<GoalHandle> goal_handle_;
     std::shared_future<WrappedResult> result_;

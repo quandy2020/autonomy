@@ -1,4 +1,7 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file completion_evaluator.cpp
+ * @brief Stable completion requires both real owners to cover a finite prefix.
+ */
 #include "autonomy/task/exploration/coverage/completion_evaluator.hpp"
 #include <stdexcept>
 
@@ -21,7 +24,7 @@ CompletionDecision CompletionEvaluator::Evaluate(const CompletionEvidence& e) {
     }
     if (!e.sensing_healthy || !e.localization_healthy) return fail("sensor or localization unavailable");
     if (e.require_source_cuts && (!e.mapping_synchronized ||
-        !e.map_cut.Covers(e.observation_cut) || !e.graph_cut.Covers(e.map_cut)))
+        !e.map_cut.Covers(e.observation_cut) || !e.graph_cut.Covers(e.observation_cut)))
         return fail("per-sensor map fusion barrier not confirmed");
     if (!e.observation_queue_empty || (!e.require_source_cuts &&
         (e.map_watermark != e.graph_watermark || e.graph_watermark != e.observation_watermark)))

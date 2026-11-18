@@ -114,9 +114,23 @@ std::chrono::milliseconds NavigationTask::NavigationReadyTimeout() const
     return std::chrono::seconds(20);
 }
 
+std::chrono::milliseconds NavigationTask::NavigationCancelTimeout() const
+{
+    return std::chrono::seconds(3);
+}
+
 void NavigationTask::CancelRemoteNavigation()
 {
-    if (navigation()) navigation()->CancelActiveMotion();
+    std::shared_ptr<common::MotionDispatchGate> gate;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        gate = motion_gate_;
+    }
+    if (gate) {
+        gate->Revoke();
+        if (!gate->WaitForDrain(NavigationCancelTimeout()))
+            throw std::runtime_error("native motion cancellation has no confirmed terminal drain");
+    }
 }
 
 NavigationTask::~NavigationTask()
@@ -137,6 +151,7 @@ void NavigationTask::FinishPendingGoal(uint64_t epoch)
 bool NavigationTask::CancelMatchingGoal(const std::string& expected_task_id)
 {
     uint64_t canceled_epoch = 0;
+    std::shared_ptr<common::MotionDispatchGate> gate;
     bool changed = false;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -161,10 +176,15 @@ bool NavigationTask::CancelMatchingGoal(const std::string& expected_task_id)
             canceled_epoch = active_epoch_;
             canceling_epoch_ = canceled_epoch;
             motion_epoch_.store(0);
+            gate = motion_gate_;
+            if (gate) gate->Close();
         }
     }
     ready_wake_.notify_all();
     if (canceled_epoch == 0) return changed;
+    // Cancellation remains available even while Begin holds its session mutex
+    // in transport. Close under lifecycle lock; invoke callbacks before join.
+    if (gate) gate->Revoke();
 
     // Revoke before waiting for replacement. A callback cannot wait for the
     // lock held by an external owner that is joining that very callback.
@@ -229,6 +249,7 @@ bool NavigationTask::PauseMatchingGoal(const std::string& expected_task_id)
     if (!runner()->IsWorkerThread()) goal_lock.lock();
     bool paused_pending = false;
     uint64_t epoch = 0;
+    std::shared_ptr<common::MotionDispatchGate> gate;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         if (shutting_down_.load() || motion_fault_.load()) return false;
@@ -247,12 +268,17 @@ bool NavigationTask::PauseMatchingGoal(const std::string& expected_task_id)
             motion_epoch_.load() == active_epoch_) {
             epoch = active_epoch_;
             motion_epoch_.store(0);
+            gate = motion_gate_;
+            // An already executing action tick must retain intent during this
+            // pause window. Cancel/replace/shutdown still use final Close().
+            if (gate) gate->Suspend();
             PauseTree();
             SetLifecycle(TaskLifecycle::kPaused);
         }
     }
     ready_wake_.notify_all();
     if (epoch == 0) return paused_pending;
+    if (gate) gate->Revoke();
     try { CancelRemoteNavigation(); }
     catch (...) {
         motion_fault_.store(true);
@@ -273,15 +299,31 @@ bool NavigationTask::ResumeMatchingGoal(const std::string& expected_task_id)
 {
     std::unique_lock<std::mutex> goal_lock(goal_mutex_, std::defer_lock);
     if (!runner()->IsWorkerThread()) goal_lock.lock();
+    std::shared_ptr<common::MotionDispatchGate> gate;
+    uint64_t epoch;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (shutting_down_.load() || motion_fault_.load() || active_epoch_ == 0 ||
+            canceling_epoch_ == active_epoch_ || !active_goal_ ||
+            (!expected_task_id.empty() &&
+             active_goal_->header().task_id() != expected_task_id) ||
+            Lifecycle() != TaskLifecycle::kPaused) return false;
+        gate = motion_gate_;
+        epoch = active_epoch_;
+    }
+    // An external owner query must never hold the lifecycle mutex.
+    if (!gate || !gate->Enable()) return false;
     std::lock_guard<std::recursive_mutex> lock(mutex_);
-    if (shutting_down_.load() || motion_fault_.load() || active_epoch_ == 0 ||
-        canceling_epoch_ == active_epoch_ || !active_goal_ ||
-        (!expected_task_id.empty() &&
-         active_goal_->header().task_id() != expected_task_id) ||
-        Lifecycle() != TaskLifecycle::kPaused) return false;
+    if (shutting_down_.load() || motion_fault_.load() || active_epoch_ != epoch ||
+        canceling_epoch_ == epoch || motion_gate_ != gate ||
+        Lifecycle() != TaskLifecycle::kPaused) {
+        gate->Close();
+        return false;
+    }
     SetLifecycle(TaskLifecycle::kRunning);
     motion_epoch_.store(active_epoch_);
     if (ResumeTree()) return true;
+    motion_gate_->Suspend();
     motion_epoch_.store(0);
     SetLifecycle(TaskLifecycle::kPaused);
     return false;
@@ -295,9 +337,23 @@ bool NavigationTask::ShouldUpdateGoalIdentity(const task_proto::NavigationGoal& 
 
 bool NavigationTask::BeforeTreeTick()
 {
+    std::shared_ptr<common::MotionDispatchGate> gate;
+    uint64_t epoch;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        gate = motion_gate_;
+        epoch = active_epoch_;
+    }
+    const bool permitted = gate && gate->PermitValid();
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     if (shutting_down_.load() || motion_fault_.load() || active_epoch_ == 0 ||
-        active_epoch_ != tree_epoch_.load()) return false;
+        active_epoch_ != tree_epoch_.load() || active_epoch_ != epoch ||
+        motion_gate_ != gate) return false;
+    if (!permitted) {
+        motion_epoch_.store(0);
+        gate->Close();
+        return false;
+    }
     // The runner rechecks its paused flag after this callback. A concurrent
     // pause must skip the tick rather than cancel the retained invocation.
     return Lifecycle() == TaskLifecycle::kPaused ||
@@ -307,16 +363,30 @@ bool NavigationTask::BeforeTreeTick()
 bool NavigationTask::OnTreeInitialize(
     const task_proto::TaskServerOptions& /*options*/)
 {
+    std::shared_ptr<common::MotionDispatchGate> previous;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        previous = motion_gate_;
+        if (previous) previous->Close();
+    }
+    if (previous) {
+        previous->Revoke();
+        // Reinitialization is not an escape from unresolved physical ownership.
+        if (!previous->Drained()) return false;
+    }
     const bool ready = EnsureNavigationClient();
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    shutting_down_.store(!ready);
-    if (ready) {
-        motion_fault_.store(false);
-        active_goal_.reset();
-        pending_goal_.reset();
-        active_epoch_ = pending_epoch_ = canceling_epoch_ = 0;
-        motion_epoch_.store(0);
-        SetLifecycle(TaskLifecycle::kIdle);
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        shutting_down_.store(!ready);
+        if (ready) {
+            motion_gate_ = std::make_shared<common::MotionDispatchGate>();
+            motion_fault_.store(false);
+            active_goal_.reset();
+            pending_goal_.reset();
+            active_epoch_ = pending_epoch_ = canceling_epoch_ = 0;
+            motion_epoch_.store(0);
+            SetLifecycle(TaskLifecycle::kIdle);
+        }
     }
     return ready;
 }
@@ -362,6 +432,7 @@ void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
                         navigation());
     }
 
+    blackboard->set(common::kMotionDispatchGateBlackboardKey, motion_gate_);
     blackboard->set("global_frame", std::string(kGlobalFrame));
     blackboard->set("robot_base_frame", std::string(kRobotBaseFrame));
     blackboard->set("default_planner_id", std::string(kDefaultPlannerId));
@@ -398,6 +469,50 @@ std::string NavigationTask::ResolveTreeForGoal(
 
 bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
 {
+    return AdmitGoal(goal, std::make_shared<common::MotionDispatchGate>());
+}
+
+bool NavigationTask::SubmitGoalWithMotionPermit(
+    const task_proto::NavigationGoal& goal, common::MotionDispatchGate::Permit permit,
+    std::shared_ptr<common::MotionAdmission> admission)
+{
+    using Command = task_proto::NavigationCommand;
+    if (!permit || !goal.has_header() || goal.header().task_id().empty() ||
+        (goal.command() != Command::NAV_CMD_START &&
+         goal.command() != Command::NAV_CMD_REPLAN)) return false;
+    auto gate = std::make_shared<common::MotionDispatchGate>(std::move(permit));
+    return SubmitGoalWithHandler(goal, [this, &goal, &gate, &admission] {
+        return AdmitGoal(goal, gate, std::move(admission));
+    });
+}
+
+void NavigationTask::SetMotionAdmission(common::MotionAdmission::Factory factory)
+{
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (active_epoch_ || pending_goal_ || canceling_epoch_)
+        throw std::logic_error("navigation scheduling requires an idle invocation");
+    motion_admission_factory_ = std::move(factory);
+}
+
+bool NavigationTask::MotionDrained() const
+{
+    std::shared_ptr<common::MotionDispatchGate> gate;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        if (pending_goal_ || active_epoch_ || canceling_epoch_ || motion_fault_.load()) return false;
+        gate = motion_gate_;
+    }
+    // A terminal OnTreeTick clears active_epoch_ before its native cancellation
+    // callback and tree destruction complete. The runner publishes nonrunning
+    // only after all of that work, so lifecycle alone cannot release ownership.
+    return (!gate || gate->Drained()) && !runner()->IsRunning();
+}
+
+bool NavigationTask::AdmitGoal(
+    const task_proto::NavigationGoal& goal,
+    const std::shared_ptr<common::MotionDispatchGate>& source_gate,
+    std::shared_ptr<common::MotionAdmission> admission)
+{
     using Command = task_proto::NavigationCommand;
     const std::string target = goal.has_header() ? goal.header().task_id() : std::string{};
     switch (goal.command()) {
@@ -415,11 +530,34 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
         return false;
     }
     if (runner()->IsWorkerThread() || shutting_down_.load() || motion_fault_.load() ||
-        !ValidNavigationGeometry(goal) || !EnsureNavigationClient()) return false;
+        !source_gate->PermitValid() || !ValidNavigationGeometry(goal) ||
+        !EnsureNavigationClient()) return false;
     const std::string tree = ResolveTreeForGoal(goal);
     std::error_code error;
     if (tree.empty() || !std::filesystem::is_regular_file(tree, error)) return false;
 
+    const bool parent_permit = source_gate->HasExternalPermit();
+    common::MotionAdmission::Factory factory;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        factory = motion_admission_factory_;
+    }
+    if (!admission && factory) admission = factory();
+    if (factory && !admission) return false;
+    auto candidate_gate = source_gate;
+    if (admission) {
+        if (!admission->Valid()) return false;
+        const auto scheduled = admission->PermitQuery();
+        candidate_gate = std::make_shared<common::MotionDispatchGate>(
+            [source_gate, scheduled] { return source_gate->PermitValid() && scheduled(); });
+    }
+
+    std::shared_ptr<common::MotionDispatchGate> retained_gate;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        retained_gate = motion_gate_;
+    }
+    const bool retained_permitted = !retained_gate || retained_gate->PermitValid();
     uint64_t epoch;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
@@ -427,18 +565,26 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
             goal_epoch_.load() == std::numeric_limits<uint64_t>::max() ||
             replan_epoch_ == static_cast<uint64_t>(std::numeric_limits<int>::max()))
             return false;
+        // A named retry/replan cannot silently strip (or attach) its owner's
+        // guard. New identities still follow ordinary replacement and drain.
+        if (active_goal_ && active_epoch_ != 0 && !target.empty() &&
+            active_goal_->header().task_id() == target && motion_gate_ &&
+            active_parent_permit_ != parent_permit)
+            return false;
         // An exact named retry is accepted without restarting, but it must
         // supersede an older pending replacement before publishing its identity.
         if (active_goal_ && active_epoch_ != 0 &&
             canceling_epoch_ != active_epoch_ &&
             (motion_epoch_.load() == active_epoch_ || Lifecycle() == TaskLifecycle::kPaused) &&
             SameNavigationGoals(*active_goal_, goal)) {
+            if (motion_gate_ != retained_gate || !retained_permitted) return false;
             if (pending_goal_) {
                 ++goal_epoch_;
                 pending_goal_.reset();
                 pending_epoch_ = 0;
                 ready_wake_.notify_all();
             }
+            if (admission) admission->Complete(true);
             return true;
         }
         epoch = ++goal_epoch_;
@@ -454,7 +600,7 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                               NavigationReadyTimeout();
         bool ready = false;
         while (!shutting_down_.load() && !motion_fault_.load() &&
-               goal_epoch_.load() == epoch) {
+               goal_epoch_.load() == epoch && candidate_gate->PermitValid()) {
             if (NavigationServersReady()) { ready = true; break; }
             const auto now = std::chrono::steady_clock::now();
             if (now >= deadline) break;
@@ -466,12 +612,15 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                            goal_epoch_.load() != epoch;
                 });
         }
-        if (!ready) { FinishPendingGoal(epoch); return false; }
+        if (!ready || !candidate_gate->PermitValid()) { FinishPendingGoal(epoch); return false; }
 
         // Readiness never owns this mutex, so cancellation can interrupt it.
         // No lifecycle lock is held while halting/joining a preceding worker.
         goal_lock.lock();
+        if (!candidate_gate->PermitValid()) { FinishPendingGoal(epoch); return false; }
         bool had_active = false;
+        uint64_t previous_epoch = 0;
+        std::shared_ptr<common::MotionDispatchGate> previous_gate;
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
             if (shutting_down_.load() || motion_fault_.load() ||
@@ -480,13 +629,34 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                 return false;
             }
             had_active = active_epoch_ != 0;
+            previous_epoch = active_epoch_;
             motion_epoch_.store(0);
+            previous_gate = motion_gate_;
+            if (previous_gate) previous_gate->Close();
             replacing = true;
         }
+        if (previous_gate) previous_gate->Revoke();
         StopTree();
         if (had_active && runner()->state() == BtRunState::kFailed)
             motion_fault_.store(true);
-        if (had_active) CancelRemoteNavigation();
+        if (had_active || (previous_gate && !previous_gate->Drained())) CancelRemoteNavigation();
+        // Confirmed disposal also clears the invocation identity. Permission
+        // may disappear before a replacement is installed; keeping the old
+        // epoch would falsely retain movement ownership forever in that case.
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            if (previous_epoch && active_epoch_ == previous_epoch && !motion_fault_.load() &&
+                (!previous_gate || previous_gate->Drained())) {
+                active_goal_.reset();
+                active_epoch_ = 0;
+                canceling_epoch_ = 0;
+                active_parent_permit_ = false;
+                SetLifecycle(TaskLifecycle::kCanceled);
+            }
+        }
+        // A parent may revoke while the preceding worker or motion is draining.
+        // Never install a fresh invocation with a replacement permission query.
+        if (!candidate_gate->Enable()) { FinishPendingGoal(epoch); return false; }
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
             if (shutting_down_.load() || motion_fault_.load() ||
@@ -494,6 +664,8 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                 FinishPendingGoal(epoch);
                 return false;
             }
+            motion_gate_ = candidate_gate;
+            active_parent_permit_ = parent_permit;
             active_goal_ = goal;
             active_epoch_ = epoch;
             canceling_epoch_ = 0;
@@ -514,23 +686,43 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
                 active_goal_.reset();
                 active_epoch_ = 0;
                 motion_epoch_.store(0);
+                if (motion_gate_) motion_gate_->Close();
                 SetLifecycle(TaskLifecycle::kFailed);
                 SetProgress(0.f, "navigation tree start failed");
             }
             return false;
         }
+        const bool still_permitted = candidate_gate->PermitValid();
         bool current;
         {
             std::lock_guard<std::recursive_mutex> lock(mutex_);
             current = !shutting_down_.load() && !motion_fault_.load() &&
-                      goal_epoch_.load() == epoch && canceling_epoch_ != epoch;
-            if (!current && tree_epoch_.load() == epoch) motion_epoch_.store(0);
+                      goal_epoch_.load() == epoch && canceling_epoch_ != epoch && still_permitted;
+            if (!current && tree_epoch_.load() == epoch) {
+                motion_epoch_.store(0);
+                if (motion_gate_) motion_gate_->Close();
+            }
         }
         if (!current) {
+            std::shared_ptr<common::MotionDispatchGate> gate;
+            { std::lock_guard<std::recursive_mutex> lock(mutex_); gate = motion_gate_; }
+            if (gate) gate->Revoke();
             StopTree();
             CancelRemoteNavigation();
+            {
+                std::lock_guard<std::recursive_mutex> lock(mutex_);
+                if (tree_epoch_.load() == epoch && !motion_fault_.load() &&
+                    (!gate || gate->Drained())) {
+                    active_goal_.reset();
+                    active_epoch_ = 0;
+                    canceling_epoch_ = 0;
+                    active_parent_permit_ = false;
+                    SetLifecycle(TaskLifecycle::kCanceled);
+                }
+            }
             return false;
         }
+        if (admission) admission->Complete(true);
         return true;
     } catch (...) {
         FinishPendingGoal(epoch);
@@ -549,17 +741,27 @@ bool NavigationTask::OnGoal(const task_proto::NavigationGoal& goal)
 
 void NavigationTask::OnTreeTick()
 {
+    std::shared_ptr<common::MotionDispatchGate> queried_gate;
+    {
+        std::lock_guard<std::recursive_mutex> lock(mutex_);
+        queried_gate = motion_gate_;
+    }
+    // A permit may be lost during the last node's successful tick.
+    const bool permitted = queried_gate && queried_gate->PermitValid();
     uint64_t epoch;
     bool terminal = false;
+    std::shared_ptr<common::MotionDispatchGate> gate;
     {
         std::lock_guard<std::recursive_mutex> lock(mutex_);
         epoch = active_epoch_;
-        if (epoch == 0 || epoch != tree_epoch_.load()) return;
+        if (epoch == 0 || epoch != tree_epoch_.load() || motion_gate_ != queried_gate) return;
         switch (runner()->state()) {
         case BtRunState::kSucceeded:
             SetLifecycle(motion_fault_.load() ? TaskLifecycle::kFailed
-                                             : TaskLifecycle::kSucceeded);
-            SetProgress(1.f, "bt succeeded: " + runner()->active_tree());
+                         : permitted ? TaskLifecycle::kSucceeded : TaskLifecycle::kCanceled);
+            SetProgress(permitted ? 1.f : progress_.progress(),
+                        permitted ? "bt succeeded: " + runner()->active_tree()
+                                  : "navigation owner permission revoked");
             terminal = true;
             break;
         case BtRunState::kFailed:
@@ -575,12 +777,19 @@ void NavigationTask::OnTreeTick()
         default:
             break;
         }
+        if (!permitted && !terminal) {
+            motion_epoch_.store(0);
+            if (motion_gate_) motion_gate_->Close();
+            return;
+        }
         if (terminal) {
             // Clear ownership before a remote cancellation can synchronously
             // reenter Cancel. The preceding worker still owns its tree epoch.
             active_goal_.reset();
             active_epoch_ = 0;
             motion_epoch_.store(0);
+            gate = motion_gate_;
+            if (gate) gate->Close();
             initial_distance_ = -1.f;
         } else if (Lifecycle() != TaskLifecycle::kRunning ||
                    motion_epoch_.load() != epoch) {
@@ -588,6 +797,7 @@ void NavigationTask::OnTreeTick()
         }
     }
     if (terminal) {
+        if (gate) gate->Revoke();
         try { CancelRemoteNavigation(); }
         catch (...) {
             motion_fault_.store(true);

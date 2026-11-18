@@ -1,9 +1,57 @@
 # Tests linked to actual native planning/task libraries and generated messages.
 # Independent from BUILD_TEST so unrelated optional domains are not reconfigured.
 if(AUTONOMY_BUILD_EXPLORATION_TESTS)
+  # Actual scheduler and parent/child native task admission, not a model scheduler.
+  add_executable(autonomy_scheduler_motion_test
+    autonomy/task/scheduler/scheduler_motion_test.cpp)
+  target_link_libraries(autonomy_scheduler_motion_test PRIVATE autonomy_task autonomy_planning autonomy_navigation_support)
+  add_test(NAME autonomy.task.scheduler_motion COMMAND autonomy_scheduler_motion_test)
+  set_tests_properties(autonomy.task.scheduler_motion PROPERTIES TIMEOUT 45)
+  # The exact retirement helper is also verified with the actual support target.
+  add_executable(autonomy_reader_retirement_test
+    autonomy/perception/observation/reader_retirement.cpp
+    autonomy/perception/observation/reader_retirement_test.cpp)
+  target_link_libraries(autonomy_reader_retirement_test PRIVATE autonomy_navigation_support)
+  add_test(NAME autonomy.exploration.reader_retirement COMMAND autonomy_reader_retirement_test)
+  set_tests_properties(autonomy.exploration.reader_retirement PROPERTIES TIMEOUT 15)
+
+  # Actual Node/Reader/Writer, generated messages and scheduler lifecycle.
+  # Explicit production sources keep this test available when optional perception
+  # applications are disabled; no replacement middleware types are provided.
+  add_executable(autonomy_native_observation_source_test
+    autonomy/perception/observation/native_observation_source.cpp
+    autonomy/perception/observation/native_sensor_messages.cpp
+    autonomy/perception/observation/reader_retirement.cpp
+    autonomy/perception/observation/native_observation_source_test.cpp)
+  target_link_libraries(autonomy_native_observation_source_test PRIVATE
+    autonomy_navigation_support autolink automsgs)
+  add_test(NAME autonomy.exploration.native_observation_source COMMAND autonomy_native_observation_source_test)
+  set_tests_properties(autonomy.exploration.native_observation_source PROPERTIES TIMEOUT 60)
+
+  add_executable(autonomy_observation_ingress_test
+    autonomy/perception/observation/observation_ingress_test.cpp)
+  target_link_libraries(autonomy_observation_ingress_test PRIVATE autonomy_task autonomy_navigation_support)
+  add_test(NAME autonomy.exploration.observation_ingress COMMAND autonomy_observation_ingress_test)
+  set_tests_properties(autonomy.exploration.observation_ingress PROPERTIES TIMEOUT 30)
   if(NOT TARGET autonomy_planning OR NOT TARGET autonomy_task)
     message(FATAL_ERROR "Exploration integration tests require planning and task")
   endif()
+  # Shared math used by both SanD sampling and timed-reference derivatives.
+  add_executable(autonomy_shared_bspline_cache_test
+    autonomy/common/math/bspline_cache_test.cpp)
+  target_include_directories(autonomy_shared_bspline_cache_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_compile_features(autonomy_shared_bspline_cache_test PRIVATE cxx_std_17)
+  target_link_libraries(autonomy_shared_bspline_cache_test PRIVATE Threads::Threads)
+  add_test(NAME autonomy.common.bspline_cache COMMAND autonomy_shared_bspline_cache_test)
+  set_tests_properties(autonomy.common.bspline_cache PROPERTIES TIMEOUT 15)
+  # Use actual generated automsgs and the production conversion implementation.
+  add_executable(autonomy_native_sensor_messages_test
+    autonomy/perception/observation/native_sensor_messages.cpp
+    autonomy/perception/observation/native_sensor_messages_test.cpp)
+  target_link_libraries(autonomy_native_sensor_messages_test PRIVATE
+    autonomy_navigation_support automsgs)
+  add_test(NAME autonomy.exploration.native_sensor_messages COMMAND autonomy_native_sensor_messages_test)
+  set_tests_properties(autonomy.exploration.native_sensor_messages PROPERTIES TIMEOUT 30)
   add_executable(autonomy_native_vista_test
     autonomy/planning/planner/vista/native_vista_test.cpp)
   target_link_libraries(autonomy_native_vista_test PRIVATE
@@ -17,6 +65,14 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
     autonomy_planning autonomy_task autonomy_navigation_support)
   add_test(NAME autonomy.planning.vista_server COMMAND autonomy_vista_server_test)
   set_tests_properties(autonomy.planning.vista_server PROPERTIES TIMEOUT 30)
+
+  # Real graph updater, skipped deltas, bounded spatial index and epoch contracts.
+  add_executable(autonomy_vista_incremental_graph_test
+    autonomy/planning/planner/vista/incremental_graph_test.cpp)
+  target_link_libraries(autonomy_vista_incremental_graph_test PRIVATE
+    autonomy_planning autonomy_task autonomy_navigation_support)
+  add_test(NAME autonomy.planning.vista_incremental_graph COMMAND autonomy_vista_incremental_graph_test)
+  set_tests_properties(autonomy.planning.vista_incremental_graph PROPERTIES TIMEOUT 30)
 
   # Exercise the real runner, typed host and node side effects, not a mock loop.
   add_executable(autonomy_bt_runner_test
@@ -39,9 +95,40 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   add_test(NAME autonomy.task.navigation COMMAND autonomy_navigation_task_test)
   set_tests_properties(autonomy.task.navigation PROPERTIES TIMEOUT 45)
 
+  # Exact production wait used by the native action Client; promises remain real.
+  add_executable(autonomy_result_response_wait_test
+    autonomy/task/navigation/result_response_wait_test.cpp)
+  target_include_directories(autonomy_result_response_wait_test PRIVATE
+    ${PROJECT_SOURCE_DIR}/autolink)
+  target_compile_features(autonomy_result_response_wait_test PRIVATE cxx_std_17)
+  add_test(NAME autonomy.task.result_response_wait COMMAND autonomy_result_response_wait_test)
+  set_tests_properties(autonomy.task.result_response_wait PROPERTIES TIMEOUT 15)
+
+  # The exact production route helper; no middleware seam or endpoint-only hash.
+  add_executable(autonomy_path_reference_test
+    autonomy/task/navigation/path_reference_test.cpp)
+  target_include_directories(autonomy_path_reference_test PRIVATE ${PROJECT_SOURCE_DIR})
+  target_compile_features(autonomy_path_reference_test PRIVATE cxx_std_17)
+  add_test(NAME autonomy.task.path_reference COMMAND autonomy_path_reference_test)
+  set_tests_properties(autonomy.task.path_reference PROPERTIES TIMEOUT 15)
+
+  # Real action sessions and NavigationTask, controlling only RPC ordering.
+  add_executable(autonomy_motion_dispatch_test
+    autonomy/task/navigation/motion_dispatch_test.cpp)
+  target_link_libraries(autonomy_motion_dispatch_test PRIVATE autonomy_task)
+  add_test(NAME autonomy.task.motion_dispatch COMMAND autonomy_motion_dispatch_test)
+  set_tests_properties(autonomy.task.motion_dispatch PROPERTIES TIMEOUT 45)
+
+  # Production gate races/lifetimes also run independently of controlled RPCs.
+  add_executable(autonomy_motion_dispatch_gate_test
+    autonomy/task/common/motion_dispatch_gate_test.cpp)
+  target_link_libraries(autonomy_motion_dispatch_gate_test PRIVATE autonomy_task)
+  add_test(NAME autonomy.task.motion_dispatch_gate COMMAND autonomy_motion_dispatch_gate_test)
+  set_tests_properties(autonomy.task.motion_dispatch_gate PROPERTIES TIMEOUT 15)
+
   # Run coverage, session, phase and BT checks against the real domain libraries.
   # Test sources are excluded from the task library's recursive source collection.
-  foreach(suite IN ITEMS multisensor_exploration exploration_session exploration_phase native_exploration_bt navigation_dispatcher exploration_owner)
+  foreach(suite IN ITEMS multisensor_exploration exploration_session exploration_phase native_exploration_bt navigation_dispatcher exploration_owner hierarchical_coverage_strategy exploration_input_prefix exploration_loss_recovery)
     add_executable(autonomy_${suite}_test
       autonomy/task/exploration/${suite}_test.cpp)
     target_link_libraries(autonomy_${suite}_test PRIVATE

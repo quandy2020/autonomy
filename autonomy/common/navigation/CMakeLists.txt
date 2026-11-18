@@ -9,7 +9,9 @@ add_library(autonomy_navigation_support STATIC
   ${PROJECT_SOURCE_DIR}/autonomy/perception/data/sensor_observation.cpp
   ${PROJECT_SOURCE_DIR}/autonomy/perception/data/observation_buffer.cpp
   ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/lidar_observation_adapter.cpp
-  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/rgbd_observation_adapter.cpp)
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/rgbd_observation_adapter.cpp
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/sensor_message_decoder.cpp
+  ${PROJECT_SOURCE_DIR}/autonomy/perception/observation/observation_ingress.cpp)
 add_library(autonomy::navigation_support ALIAS autonomy_navigation_support)
 target_include_directories(autonomy_navigation_support PUBLIC
   $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}>

@@ -1,0 +1,45 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/common/motion_dispatch_gate.hpp",
+    "autonomy/task/common/motion_dispatch_gate_test.cpp",
+    "autonomy/task/common/typed_task.hpp",
+    "autonomy/task/navigation/navigation.hpp",
+    "autonomy/task/navigation/navigation.cpp",
+    "autonomy/task/navigation/navigation_task_test.cpp",
+    "autonomy/task/navigation/motion_dispatch_test.cpp",
+    "docs/source/17_Tasks/08_multisensor_exploration.md",
+    "docs/source/17_Tasks/09_native_exploration_validation.md"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-sc6zi5i2/backup",
+  "expected_sha256": {
+    "autonomy/task/common/motion_dispatch_gate.hpp": "b36ad6c5d25179c6a27c784f81af6a1f7c73d418af4b1342df772666f933c054",
+    "autonomy/task/common/motion_dispatch_gate_test.cpp": "750dcc373d719baf5cb8efe27800ac2bebe960a6c332030f821a8d642f09756f",
+    "autonomy/task/common/typed_task.hpp": "2acf06664b4eb22a3f3d63381a8acd4e2d7322d9a4bbf325126e3420b8381fd8",
+    "autonomy/task/navigation/navigation.hpp": "630378c62000f1580658b891d455dc685b8427abb740a59a025c0a3afbc4827a",
+    "autonomy/task/navigation/navigation.cpp": "1732afa1c5c0e13b48cc49f7f9dad31654288e93cf7f7cf9d1bb85ef5433bbe1",
+    "autonomy/task/navigation/navigation_task_test.cpp": "33e49ad89a293d8eea867d77f55c029392149f6298f15f8832709dfff09cbc33",
+    "autonomy/task/navigation/motion_dispatch_test.cpp": "3606af0b0362bdc0f8e2d75144b05cfee5f46666f1c67081f7d03c0df4ef0352",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "9afdde110577cf302846aed4fe356ccf2ced9fb03eee0bf44a5b9be92727f369",
+    "docs/source/17_Tasks/09_native_exploration_validation.md": "c0f49de2b55ad4d17b35ac8b034ca73be4599a181c01464d96553c942bb6760d"
+  },
+  "deployed_sha256": {
+    "autonomy/task/common/motion_dispatch_gate.hpp": "671dda84d0cecfbd15a40fe050e87ec21eb87ebb8a4de72c3952751469aca939",
+    "autonomy/task/common/motion_dispatch_gate_test.cpp": "1f93b986e21faec1135522ecde25f22927b1c043eb92e6ee0f1ce7e4621a6f82",
+    "autonomy/task/common/typed_task.hpp": "0699048784fb8ab991c3850f9ccdf8ed7e25611df1c121822ab0dad397ffe492",
+    "autonomy/task/navigation/navigation.hpp": "beaef395501c8427172337f2262bd327f4956325ee099c127b63f729ab2b3202",
+    "autonomy/task/navigation/navigation.cpp": "4bf7506273a859611e6e7a4c49518560d29937de70d33930999757bc572b4ec2",
+    "autonomy/task/navigation/navigation_task_test.cpp": "fac596231a9f9df9865ffe910912b6fd20eef20425d94107b5e60a2533202e7d",
+    "autonomy/task/navigation/motion_dispatch_test.cpp": "13f87f6a5df8dae2f712ed52b3446d851cb4bc3e87e28cfb45b1189ab5cd8407",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "a6ff55035e958ba01187cc58d6dd369a6ff32e6a654b99732158b4f56f3e412b",
+    "docs/source/17_Tasks/09_native_exploration_validation.md": "ed7d59df016015c468858c41c8fe8a79ac48ecfd3392443d80f2f953a019c574"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "1b3effb741f9758b0cb7dcb22ce85a5dbe5fac3ea0bbdcd77949d1c912812262",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

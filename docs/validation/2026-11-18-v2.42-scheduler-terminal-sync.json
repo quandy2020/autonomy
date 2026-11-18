@@ -1,0 +1,27 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/behavior_tree/bt_task_app.hpp",
+    "autonomy/task/navigation/navigation.cpp",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-g503c0xj/backup",
+  "expected_sha256": {
+    "autonomy/task/behavior_tree/bt_task_app.hpp": "2a3dffe21c5fa7b30c0cebd0dcd793088ff372bd855dceafe11c67ca024021fc",
+    "autonomy/task/navigation/navigation.cpp": "941b9be9307cf9cf18a3f070bae5f244f02c89dcba47aa8859c2644707e984f8",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "a9551c363726ce01cd926820106f3c2bb8da093134e43e373bf72ab0c2b5ac95"
+  },
+  "deployed_sha256": {
+    "autonomy/task/behavior_tree/bt_task_app.hpp": "be65925ce016ff418fead9ff12b29fcc8dcc0eb32029f39678281b7068703d47",
+    "autonomy/task/navigation/navigation.cpp": "d8223952f53f2b22728f625d27df90ba0941c632db94b16055c4a922b25e0500",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "7cb968dd442bc2cb6e2856aae18b8a3e898d3c0dcf74ee1e84f6005f2a016fd9"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "83f00b688ddeea2210ec47cdaf0203cf4fa5676f9100198161c9bec004c810c7",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

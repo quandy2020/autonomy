@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "steps": [
+    {
+      "stage": "configure",
+      "command": [
+        "cmake",
+        "-S",
+        ".",
+        "-B",
+        "/tmp/opt-exploration-v2.35"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.40-native-permit-local-configure.log",
+      "sha256": "2dc4e9f0f9777b61df8ce91880ef273e1461db5e9ae774cc4c6c66b7f62394d8"
+    },
+    {
+      "stage": "build",
+      "command": [
+        "cmake",
+        "--build",
+        "/tmp/opt-exploration-v2.35",
+        "-j",
+        "4"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.40-native-permit-local-build.log",
+      "sha256": "f8ff886e9547d241ca2b432fce9743d1bc043f535ae194865bdd74ddda42aff2"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "/tmp/opt-exploration-v2.35",
+        "--output-on-failure",
+        "--no-tests=error"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.40-native-permit-local-tests.log",
+      "sha256": "aff1a028a831bf8404919e24419ba5abd24a6df0442dd4407d31ecc34e438224"
+    }
+  ]
+}

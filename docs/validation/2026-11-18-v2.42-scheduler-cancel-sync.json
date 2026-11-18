@@ -1,0 +1,21 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/scheduler/scheduler.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-jon50fpl/backup",
+  "expected_sha256": {
+    "autonomy/task/scheduler/scheduler.cpp": "2ff042e2e1f4241b3721ee7e9d404dac41f9842c413fcbae23f7cf03bed782a8"
+  },
+  "deployed_sha256": {
+    "autonomy/task/scheduler/scheduler.cpp": "dda5cf9c7cd6f68ec5abd724e8596fbacf5fc6ae5bf580055fdcaaeacb4f38ce"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "a22a7f8371775c06fac4f7204dddb852b83c505ac408b72f920dbed2a742391d",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

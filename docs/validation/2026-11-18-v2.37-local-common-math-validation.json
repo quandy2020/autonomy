@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "scope": "Portable Opt regression with common/math spline delegation; excludes native NMPC/MPPI integration tests.",
+  "tests": 22,
+  "elapsed_seconds": 10.32,
+  "build_directory": "/tmp/opt-exploration-v2.35",
+  "ctest_log_sha256": "21b75dcbcfee01c07930cb393d18ed07f7e2c8e64d0b6a8dd3f64ed135037173",
+  "source_sha256": {
+    "autonomy/common/math/bspline.hpp": "207448e0c5f3f678b24a3ed917f1d490aaf296263e52caae4c5bc176180b95d5",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.hpp": "230160636602d2d423300ce08988aef723e063fd9a3647cf46b8040aebab44e3",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.cpp": "c729b404edd02070e48b02518a805a6f01cddf9c21e0b336aaef75779dda65ec"
+  }
+}

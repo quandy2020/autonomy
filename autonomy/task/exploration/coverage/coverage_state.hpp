@@ -71,17 +71,30 @@ public:
     void Remove(const CoverageId& id);
     /** @brief Clears evidence after its geometry is invalidated. */
     void Invalidate(const CoverageId& id);
+    /** @brief Reopens lost-source evidence while preserving other sources and policy.
+     * Advances the work revision once, including an empty ledger, so a completed
+     * sweep cannot conceal unknown-scope loss. Quality gains remain independent.
+     * @throws std::invalid_argument If sources is empty or unsupported.
+     */
+    void InvalidateSources(perception::SensorMask sources);
     /** @brief Counts requirements awaiting measured quality evidence. */
     std::size_t PendingCount() const;
     /** @brief Read view valid until the owner's next mutation. */
     const std::map<CoverageId, CoverageUnit>& units() const { return units_; }
     /** @brief Alignment epoch of all requirements. */
     std::uint64_t epoch() const { return epoch_; }
-    /** @brief Requirement/evidence revision, excluding predictions. */
+    /** @brief Revision of requirements and measured quality, excluding predictions. */
     std::uint64_t revision() const { return revision_; }
+    /** @brief Revision of the work domain, unchanged by monotonic quality gains.
+     * Reset, changed/new requirements, removal and evidence invalidation advance
+     * this revision. Consumers bind sweep proofs and intents to this value;
+     * revision() remains available for measured-evidence diagnostics.
+     */
+    std::uint64_t requirements_revision() const { return requirements_revision_; }
 private:
     std::map<CoverageId, CoverageUnit> units_;  ///< Requirements and actual evidence.
     std::uint64_t epoch_ = 0;  ///< Coordinate-alignment epoch.
     std::uint64_t revision_ = 0;  ///< Monotonic requirement/evidence revision.
+    std::uint64_t requirements_revision_ = 0;  ///< Monotonic work-domain revision.
 };
 }  // namespace autonomy::task::exploration

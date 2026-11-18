@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/tmp/opt-vista-v2.38-sanitized/opt_vista_incremental_graph_tests"
+  ],
+  "returncode": 0,
+  "sanitizers": [
+    "address",
+    "undefined",
+    "float-cast-overflow"
+  ],
+  "leak_detection": false,
+  "note": "LeakSanitizer is unavailable on macOS; the initial unsupported attempt is retained separately.",
+  "log_sha256": "5add7cc8e3c0bce0f998efa94323c5570ffb2719453bb5f3742eb6c41905a30a"
+}

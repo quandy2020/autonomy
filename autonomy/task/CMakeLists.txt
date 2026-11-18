@@ -70,3 +70,7 @@ autocmake_binary(autonomy.task
 autocmake_install_share(task
   CONF
   LAUNCH_PATTERN "*.launch")
+
+autocmake_test(charging.auto_recharge_test
+  SOURCES charging/auto_recharge_test.cpp
+  DEPENDENCIES autonomy_task)

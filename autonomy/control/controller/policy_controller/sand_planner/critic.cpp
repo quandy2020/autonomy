@@ -139,14 +139,13 @@ double EvaluateSandPlannerCost(const std::vector<Eigen::Vector3d>& waypoints,
            options.lambda_goal() * goal_cost;
 }
 
-bool SelectSandPlannerTwist(
+bool SelectSandPlannerTrajectory(
     const std::vector<std::vector<float>>& candidates,
     const ObservationSnapshot& snapshot, const proto::SandPlanner& options,
-    automsgs::msgs::geometry_msgs::Twist* twist,
+    std::vector<Eigen::Vector3d>* selected_controls,
     Eigen::Vector3d* selected_heading, std::string* error) {
-    if (twist == nullptr) {
-        return false;
-    }
+    if (selected_controls == nullptr) return false;
+    selected_controls->clear();
     if (candidates.empty()) {
         if (error != nullptr) {
             *error = "SanD-Planner produced no candidates";
@@ -162,6 +161,8 @@ bool SelectSandPlannerTwist(
     double best_cost = std::numeric_limits<double>::infinity();
     std::vector<Eigen::Vector3d> best_controls;
     for (const auto& raw : candidates) {
+        if (raw.size() != static_cast<std::size_t>(control_points) * 3 ||
+            !std::all_of(raw.begin(), raw.end(), [](float value) { return std::isfinite(value); })) continue;
         std::vector<Eigen::Vector3d> controls =
             ControlPointsFromFlat(raw, control_points);
         const math::ClampedCubicBSpline<Eigen::Vector3d> curve(controls);
@@ -192,6 +193,22 @@ bool SelectSandPlannerTwist(
     if (selected_heading != nullptr) {
         *selected_heading = heading;
     }
+    *selected_controls = std::move(best_controls);
+    return true;
+}
+
+// Compatibility decoder for existing callers; the production SanD runtime
+// now consumes SelectSandPlannerTrajectory and delegates the full spline to native NMPC/MPPI.
+bool SelectSandPlannerTwist(
+    const std::vector<std::vector<float>>& candidates,
+    const ObservationSnapshot& snapshot, const proto::SandPlanner& options,
+    automsgs::msgs::geometry_msgs::Twist* twist,
+    Eigen::Vector3d* selected_heading, std::string* error) {
+    if (twist == nullptr) return false;
+    std::vector<Eigen::Vector3d> controls;
+    Eigen::Vector3d heading = Eigen::Vector3d::Zero();
+    if (!SelectSandPlannerTrajectory(candidates, snapshot, options, &controls, &heading, error)) return false;
+    if (selected_heading != nullptr) *selected_heading = heading;
     const double speed = options.execute_speed();
     twist->Clear();
     twist->mutable_linear()->set_x(speed * heading.x());

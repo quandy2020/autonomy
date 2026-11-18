@@ -1,6 +1,10 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file viewpoint_sampler.cpp
+ * @brief Bounded slot enumeration over immutable grid and yaw candidates.
+ */
 #include "autonomy/task/exploration/viewpoint/viewpoint_sampler.hpp"
 
+#include <limits>
 #include <stdexcept>
 #include "autonomy/task/exploration/coverage/coverage_fusion.hpp"
 
@@ -12,35 +16,50 @@ ViewpointSamplingResult ViewpointSampler::Sample(
     ViewpointSamplingOptions options, bool sweep, std::size_t cursor,
     const std::function<bool()>& cancel_checker) const {
     if (!map.grid || !options.yaw_samples || options.yaw_samples > 360 ||
-        !options.maximum_candidates || !options.maximum_evaluations ||
+        !options.maximum_candidates || !options.maximum_evaluations || !options.maximum_examined ||
         !std::isfinite(options.spacing) || options.spacing <= 0 ||
         !std::isfinite(options.nominal_speed) || options.nominal_speed <= 0 ||
         !std::isfinite(options.angular_speed) || options.angular_speed <= 0 ||
         !std::isfinite(options.observation_time) || options.observation_time <= 0)
         throw std::invalid_argument("invalid viewpoint sampling configuration");
+    const auto& grid = *map.grid;
+    if (grid.size() > std::numeric_limits<std::size_t>::max() / options.yaw_samples)
+        throw std::invalid_argument("viewpoint candidate domain exceeds cursor capacity");
+    const std::size_t total = grid.size() * options.yaw_samples;
+    const double requested_stride = sweep ? 1 : std::ceil(options.spacing / grid.resolution());
+    if (!std::isfinite(requested_stride) || requested_stride > std::numeric_limits<int>::max())
+        throw std::invalid_argument("viewpoint stride exceeds grid index capacity");
+    const int stride = std::max(1, static_cast<int>(requested_stride));
+    ViewpointSamplingResult result;
+    result.next_cursor = std::min(cursor, total);
+    if (cancel_checker && cancel_checker()) { result.canceled = true; return result; }
+    if (cursor >= total) { result.finished = true; return result; }
     if (map.footprint_inflated) {
         safety.robot_radius = 1e-9;
         safety.horizontal_margin = 0;
     }
-    ViewpointSamplingResult result;
     auto geometry = std::make_shared<opt::navigation::GeometrySafety>(map.grid, safety);
     opt::navigation::ReachabilityField reachable(geometry, start, 0, cancel_checker);
     if (reachable.canceled()) {
         result.canceled = true;
         return result;
     }
-    const auto& grid = *map.grid;
-    const int stride = sweep ? 1 : std::max(1, static_cast<int>(
-        std::ceil(options.spacing / grid.resolution())));
-    const std::size_t total = grid.size() * options.yaw_samples;
     const auto initial_cursor = cursor;
-    std::size_t evaluated = 0;
     for (; cursor < total; ++cursor) {
         if (cancel_checker && cancel_checker()) {
             result.canceled = true;
             result.next_cursor = cursor;
             return result;
         }
+        if (result.examined >= options.maximum_examined ||
+            result.evaluated >= options.maximum_evaluations ||
+            result.candidates.size() >= options.maximum_candidates) {
+            result.limited = true;
+            result.next_cursor = cursor;
+            return result;
+        }
+        ++result.examined;
+        result.next_cursor = cursor + 1;
         const auto cell = grid.FromIndex(cursor / options.yaw_samples);
         if (cell.x % stride || cell.y % stride ||
             grid.At(cell.x, cell.y).state != opt::navigation::CellState::kFree) continue;
@@ -51,7 +70,7 @@ ViewpointSamplingResult ViewpointSampler::Sample(
                    options.yaw_samples;
         auto contribution = evaluator.Predict(pose, state, map, active);
         const double gain = CoverageFusion::Gain(state, contribution);
-        ++evaluated;
+        ++result.evaluated;
         if (gain > 0) {
             Viewpoint view;
             view.id = cursor + 1;
@@ -64,14 +83,6 @@ ViewpointSamplingResult ViewpointSampler::Sample(
                              options.angular_speed;
             view.observation_time = options.observation_time;
             result.candidates.push_back(std::move(view));
-        }
-        if (result.candidates.size() >= options.maximum_candidates ||
-            evaluated >= options.maximum_evaluations) {
-            result.next_cursor = cursor + 1;
-            result.finished = result.next_cursor == total;
-            result.limited = !result.finished;
-            result.exhaustive = sweep && initial_cursor == 0 && result.finished;
-            return result;
         }
     }
     result.finished = true;

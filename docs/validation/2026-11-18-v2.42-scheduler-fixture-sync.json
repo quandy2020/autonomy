@@ -1,0 +1,24 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/scheduler/scheduler_motion_test.cpp",
+    "autonomy/task/navigation/navigation_task_test.cpp"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-k_54be44/backup",
+  "expected_sha256": {
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "cff4cfce9a612a616b2bab6c97b337db7b8531089ccdebc2e18f6a263fa7d160",
+    "autonomy/task/navigation/navigation_task_test.cpp": "97d8165ab74b25f7323e061ddd45eb426ead88917ae7e010bb49ea42f89610b1"
+  },
+  "deployed_sha256": {
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "a9551c363726ce01cd926820106f3c2bb8da093134e43e373bf72ab0c2b5ac95",
+    "autonomy/task/navigation/navigation_task_test.cpp": "abab6d3962657a8056f1e6491ad9cbf8ba6e08c8706e8763d6f5a42c5ffaa286"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "5cc1d10dd9e11232939c335841e12f9f493b3020fefca29665088a1d17f1582e",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

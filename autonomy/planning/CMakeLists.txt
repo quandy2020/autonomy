@@ -28,6 +28,18 @@ file(GLOB_RECURSE AUTONOMY_PLANNING_SRCS CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOUR
 list(FILTER AUTONOMY_PLANNING_SRCS EXCLUDE REGEX "main\\.cpp$")
 list(FILTER AUTONOMY_PLANNING_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
+# Fields2Cover is an optional coverage domain, independent of Vista exploration.
+# Keep its sources out of the core library until the application enables it.
+option(AUTONOMY_BUILD_FIELDS2COVER "Build the optional Fields2Cover coverage planner" OFF)
+set(AUTONOMY_PLANNING_OPTIONAL_DEPENDENCIES)
+if(AUTONOMY_BUILD_FIELDS2COVER)
+  # Supply both the OGR include directory and the GDAL geometry link dependency.
+  find_package(GDAL REQUIRED)
+  list(APPEND AUTONOMY_PLANNING_OPTIONAL_DEPENDENCIES GDAL::GDAL)
+else()
+  list(FILTER AUTONOMY_PLANNING_SRCS EXCLUDE REGEX "/fields2cover/")
+endif()
+
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_planning
   SHARED
@@ -36,13 +48,22 @@ autocmake_library(autonomy_planning
   INCLUDES
     ${PROJECT_SOURCE_DIR}
     ${PROJECT_BINARY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/planner
+    ${CMAKE_CURRENT_SOURCE_DIR}/planner/fields2cover
   DEPENDENCIES
     autonomy_common
     autonomy_navigation_support
     autonomy_proto
     autonomy_transform
-    autonomy_map)
+    autonomy_map
+    ${AUTONOMY_PLANNING_OPTIONAL_DEPENDENCIES})
 add_library(autonomy::planning ALIAS autonomy_planning)
+
+if(AUTONOMY_BUILD_FIELDS2COVER)
+  target_include_directories(autonomy_planning PRIVATE
+    ${PROJECT_SOURCE_DIR}/autolink/thirdparty/pugixml/src)
+  target_compile_definitions(autonomy_planning PRIVATE PUGIXML_HEADER_ONLY)
+endif()
 
 # --- binary ------------------------------------------------------------------
 autocmake_binary(autonomy.planning

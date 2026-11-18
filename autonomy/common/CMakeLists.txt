@@ -176,6 +176,18 @@ autocmake_test(common.math.bezier_test
 autocmake_test(common.math.bspline_test
   SOURCES math/bspline_test.cpp
   DEPENDENCIES autonomy_common)
+autocmake_test(common.math.steering_test
+  SOURCES math/steering_test.cpp
+  DEPENDENCIES autonomy_common)
+autocmake_test(common.math.steering_fresnel_test
+  SOURCES math/steering_fresnel_test.cpp
+  DEPENDENCIES autonomy_common)
+autocmake_test(common.math.steering_clothoid_circle_test
+  SOURCES math/steering_clothoid_circle_test.cpp
+  DEPENDENCIES autonomy_common)
+autocmake_test(common.math.steering_jacobian_test
+  SOURCES math/steering_jacobian_test.cpp
+  DEPENDENCIES autonomy_common)
 
 # Shared geometry and lightweight observations, independent of ML/perception.
 add_subdirectory(navigation)

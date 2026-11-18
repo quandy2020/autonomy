@@ -340,6 +340,11 @@ void TaskServer::Bind() {
             feedback.set_status(proto::DOCK_STATUS_FAILED);
             return feedback;
         });
+    if (charging_) {
+        charging_->StartAutoRecharge(
+            [this](const proto::ChargingGoal& goal) { return Submit(goal); },
+            [this] { return teleop_ && teleop_->IsActive(); });
+    }
 
     BindDomain(
         options_.apps().enable_mapping(), mapping_, kMappingGoal,
@@ -466,6 +471,9 @@ void TaskServer::Unbind() {
     exploration_waypoint_reached_writer_.reset();
     teleop_ingress_.Stop();
     tracking_ingress_.Stop();
+    if (charging_) {
+        charging_->StopAutoRecharge();
+    }
     charging_ingress_.Stop();
     mapping_ingress_.Stop();
     localization_ingress_.Stop();

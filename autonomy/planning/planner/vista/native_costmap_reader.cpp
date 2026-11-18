@@ -1,4 +1,7 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file native_costmap_reader.cpp
+ * @brief Copy the existing locked Costmap and forward externally verified fusion cuts.
+ */
 #include "autonomy/planning/planner/vista/native_costmap_reader.hpp"
 
 #include <cmath>
@@ -58,6 +61,8 @@ perception::MapReadView NativeCostmapReader::Read(
     auto view = reader_.Read(snapshot, metadata.observation_source_stamp,
                             metadata.alignment_id, 0, footprint_inflated);
     view.observation_cut = metadata.observation_cut;
+    view.observation_baseline = metadata.observation_baseline;
+    view.observation_recovery_generation = metadata.observation_recovery_generation;
     view.mapping_synchronized = metadata.fusion_confirmed;
     view.has_height_evidence = false;
     return view;

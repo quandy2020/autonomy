@@ -20,6 +20,8 @@ struct CostmapReadMetadata {
     double observation_source_stamp = 0; ///< Actual observation time, or zero when unavailable.
     perception::ObservationCut observation_cut{}; ///< Independent processed sequence per sensor.
     bool fusion_confirmed = false; ///< True only for verified upstream fusion acknowledgement.
+    perception::ObservationCut observation_baseline{}; ///< Excluded prefix of a verified replacement baseline.
+    std::uint64_t observation_recovery_generation = 0; ///< Genuine mapper recovery identity, not publication time.
 };
 
 /** @brief Serialize map reads without modifying native map ownership or interfaces. */

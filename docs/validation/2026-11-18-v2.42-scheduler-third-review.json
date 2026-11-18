@@ -1,0 +1,6 @@
+{
+  "scope_correction": "Third attempt compiled the scheduler target, but its CTest filter selected only the previous 30 tests. It is regression evidence, not scheduler runtime validation. The corrected script additionally checks selected test count and scheduler registration.",
+  "source_report": "docs/validation/2026-11-18-v2.42-scheduler-third-validation.json",
+  "build_passed": true,
+  "scheduler_runtime_verified": false
+}

@@ -1,0 +1,2298 @@
+{
+  "autonomy/control/controller_server.cpp": {
+    "sha256": "99ec14af79f6171153c536a01d80618fa436e3742d0acaf9d545f1487c0fa8bc",
+    "excerpts": [
+      {
+        "line": 425,
+        "text": "        AttachAutolinkNode(node_);"
+      },
+      {
+        "line": 426,
+        "text": "    }"
+      },
+      {
+        "line": 427,
+        "text": ""
+      },
+      {
+        "line": 428,
+        "text": "    LoadPlugins();"
+      },
+      {
+        "line": 429,
+        "text": "}"
+      },
+      {
+        "line": 430,
+        "text": ""
+      },
+      {
+        "line": 431,
+        "text": "void ControllerServer::Shutdown() {"
+      },
+      {
+        "line": 432,
+        "text": "    DetachAutolinkNode();"
+      },
+      {
+        "line": 433,
+        "text": "    cmd_vel_writer_.reset();"
+      },
+      {
+        "line": 434,
+        "text": "    plan_clear_writer_.reset();"
+      },
+      {
+        "line": 435,
+        "text": "    odom_reader_.reset();"
+      },
+      {
+        "line": 436,
+        "text": "    scan_reader_.reset();"
+      },
+      {
+        "line": 437,
+        "text": "    image_reader_.reset();"
+      },
+      {
+        "line": 438,
+        "text": "    point_cloud_reader_.reset();"
+      },
+      {
+        "line": 439,
+        "text": "    lidar_bev_reader_.reset();"
+      },
+      {
+        "line": 440,
+        "text": "    raw_tensor_reader_.reset();"
+      },
+      {
+        "line": 441,
+        "text": "    policy_reload_reader_.reset();"
+      },
+      {
+        "line": 442,
+        "text": "    policy_diagnostics_writer_.reset();"
+      },
+      {
+        "line": 443,
+        "text": "    map_reader_.reset();"
+      },
+      {
+        "line": 444,
+        "text": "    follow_grid_reader_.reset();"
+      },
+      {
+        "line": 445,
+        "text": "    if (costmap_wrapper_) {"
+      },
+      {
+        "line": 446,
+        "text": "        costmap_wrapper_->SetMapPublishCallback(nullptr);"
+      },
+      {
+        "line": 447,
+        "text": "    }"
+      },
+      {
+        "line": 448,
+        "text": "    costmap_writer_.reset();"
+      },
+      {
+        "line": 574,
+        "text": "common::ProgressChecker* ControllerServer::GetActiveProgressChecker() {"
+      },
+      {
+        "line": 575,
+        "text": "    if (current_progress_checker_.empty() ||"
+      },
+      {
+        "line": 576,
+        "text": "        progress_checkers_.count(current_progress_checker_) == 0) {"
+      },
+      {
+        "line": 577,
+        "text": "        return nullptr;"
+      },
+      {
+        "line": 578,
+        "text": "    }"
+      },
+      {
+        "line": 579,
+        "text": "    return progress_checkers_[current_progress_checker_].get();"
+      },
+      {
+        "line": 580,
+        "text": "}"
+      },
+      {
+        "line": 581,
+        "text": ""
+      },
+      {
+        "line": 582,
+        "text": "void ControllerServer::PublishVelocity("
+      },
+      {
+        "line": 583,
+        "text": "    const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {"
+      },
+      {
+        "line": 584,
+        "text": "    last_cmd_vel_ = cmd_vel;"
+      },
+      {
+        "line": 585,
+        "text": "    if (cmd_vel_writer_) {"
+      },
+      {
+        "line": 586,
+        "text": "        cmd_vel_writer_->Write(cmd_vel);"
+      },
+      {
+        "line": 587,
+        "text": "    }"
+      },
+      {
+        "line": 588,
+        "text": "}"
+      },
+      {
+        "line": 589,
+        "text": ""
+      },
+      {
+        "line": 590,
+        "text": "void ControllerServer::PublishZeroVelocity() {"
+      },
+      {
+        "line": 591,
+        "text": "    automsgs::msgs::geometry_msgs::TwistStamped zero;"
+      },
+      {
+        "line": 592,
+        "text": "    *zero.mutable_header()->mutable_stamp() = NowTime();"
+      },
+      {
+        "line": 593,
+        "text": "    zero.mutable_header()->set_frame_id( robot_base_frame_);"
+      },
+      {
+        "line": 594,
+        "text": "    PublishVelocity(zero);"
+      },
+      {
+        "line": 595,
+        "text": "}"
+      },
+      {
+        "line": 596,
+        "text": ""
+      },
+      {
+        "line": 597,
+        "text": "void ControllerServer::ComputeControl(bool reset_plugins) {"
+      },
+      {
+        "line": 598,
+        "text": "    if (!plugins_loaded_) {"
+      },
+      {
+        "line": 599,
+        "text": "        LoadPlugins();"
+      },
+      {
+        "line": 600,
+        "text": "    }"
+      },
+      {
+        "line": 601,
+        "text": ""
+      },
+      {
+        "line": 602,
+        "text": "    if (current_path_.poses().empty()) {"
+      },
+      {
+        "line": 603,
+        "text": "        throw common::InvalidPath(\"FollowPath received an empty path\");"
+      },
+      {
+        "line": 604,
+        "text": "    }"
+      },
+      {
+        "line": 605,
+        "text": ""
+      },
+      {
+        "line": 606,
+        "text": "    if (!FindControllerId(follow_controller_id_, current_controller_)) {"
+      },
+      {
+        "line": 607,
+        "text": "        throw common::InvalidController(\"No valid controller for FollowPath\");"
+      },
+      {
+        "line": 608,
+        "text": "    }"
+      },
+      {
+        "line": 609,
+        "text": "    if (!FindGoalCheckerId(follow_goal_checker_id_, current_goal_checker_)) {"
+      },
+      {
+        "line": 656,
+        "text": "                                               pose.pose().position().y()}"
+      },
+      {
+        "line": 657,
+        "text": "                  << \" stage=follow_start\";"
+      },
+      {
+        "line": 658,
+        "text": "            throw common::PatienceExceeded("
+      },
+      {
+        "line": 659,
+        "text": "                \"robot in obstacle; triggering backup recovery\");"
+      },
+      {
+        "line": 660,
+        "text": "        }"
+      },
+      {
+        "line": 661,
+        "text": "    }"
+      },
+      {
+        "line": 662,
+        "text": "}"
+      },
+      {
+        "line": 663,
+        "text": ""
+      },
+      {
+        "line": 664,
+        "text": "void ControllerServer::ComputeAndPublishVelocity() {"
+      },
+      {
+        "line": 665,
+        "text": "    if (!follow_path_active_) {"
+      },
+      {
+        "line": 666,
+        "text": "        return;"
+      },
+      {
+        "line": 667,
+        "text": "    }"
+      },
+      {
+        "line": 668,
+        "text": ""
+      },
+      {
+        "line": 669,
+        "text": "    auto* controller = GetActiveController();"
+      },
+      {
+        "line": 670,
+        "text": "    auto* goal_checker = GetActiveGoalChecker();"
+      },
+      {
+        "line": 671,
+        "text": "    auto* progress_checker = GetActiveProgressChecker();"
+      },
+      {
+        "line": 672,
+        "text": "    if (!controller || !goal_checker || !progress_checker) {"
+      },
+      {
+        "line": 673,
+        "text": "        throw common::InvalidController(\"Active controller/checker missing\");"
+      },
+      {
+        "line": 674,
+        "text": "    }"
+      },
+      {
+        "line": 675,
+        "text": ""
+      },
+      {
+        "line": 676,
+        "text": "    automsgs::msgs::geometry_msgs::PoseStamped pose;"
+      },
+      {
+        "line": 677,
+        "text": "    if (!GetRobotPose(pose)) {"
+      },
+      {
+        "line": 678,
+        "text": "        throw common::ControllerTFError(\"Failed to obtain robot pose\");"
+      },
+      {
+        "line": 679,
+        "text": "    }"
+      },
+      {
+        "line": 680,
+        "text": ""
+      },
+      {
+        "line": 681,
+        "text": "    automsgs::msgs::nav_msgs::Odometry odom;"
+      },
+      {
+        "line": 682,
+        "text": "    automsgs::msgs::geometry_msgs::TwistStamped velocity;"
+      },
+      {
+        "line": 683,
+        "text": "    velocity.mutable_header()->set_frame_id( robot_base_frame_);"
+      },
+      {
+        "line": 684,
+        "text": "    if (GetLatestOdometry(odom)) {"
+      },
+      {
+        "line": 685,
+        "text": "        *velocity.mutable_header()->mutable_stamp() = odom.header().stamp();"
+      },
+      {
+        "line": 686,
+        "text": "        *velocity.mutable_twist() = odom.twist().twist();"
+      },
+      {
+        "line": 687,
+        "text": "    } else {"
+      },
+      {
+        "line": 688,
+        "text": "        *velocity.mutable_header()->mutable_stamp() = pose.header().stamp();"
+      },
+      {
+        "line": 689,
+        "text": "    }"
+      },
+      {
+        "line": 690,
+        "text": ""
+      },
+      {
+        "line": 691,
+        "text": "    if (!progress_checker->Check(pose)) {"
+      },
+      {
+        "line": 692,
+        "text": "        throw common::FailedToMakeProgress("
+      },
+      {
+        "line": 693,
+        "text": "            \"Failed to make progress towards goal\");"
+      },
+      {
+        "line": 694,
+        "text": "    }"
+      },
+      {
+        "line": 695,
+        "text": ""
+      },
+      {
+        "line": 696,
+        "text": "    automsgs::msgs::geometry_msgs::TwistStamped cmd_vel;"
+      },
+      {
+        "line": 697,
+        "text": "    std::string message;"
+      },
+      {
+        "line": 698,
+        "text": "    uint32_t code = proto::CONTROLLER_RESULT_SUCCESS;"
+      },
+      {
+        "line": 699,
+        "text": ""
+      },
+      {
+        "line": 700,
+        "text": "    // PolicyController locks costmap internally for crop/collision and may"
+      },
+      {
+        "line": 701,
+        "text": "    // spend tens of ms in inference \u2014 avoid holding the map mutex across Run."
+      },
+      {
+        "line": 702,
+        "text": "    const bool is_policy ="
+      },
+      {
+        "line": 703,
+        "text": "        dynamic_cast<controller::policy_controller::PolicyController*>("
+      },
+      {
+        "line": 704,
+        "text": "            controller) != nullptr;"
+      },
+      {
+        "line": 705,
+        "text": "    std::unique_lock<map::costmap_2d::Costmap2D::mutex_t> costmap_lock;"
+      },
+      {
+        "line": 706,
+        "text": "    if (!is_policy && costmap_wrapper_ && costmap_wrapper_->getCostmap()) {"
+      },
+      {
+        "line": 707,
+        "text": "        costmap_lock = std::unique_lock<map::costmap_2d::Costmap2D::mutex_t>("
+      },
+      {
+        "line": 708,
+        "text": "            *(costmap_wrapper_->getCostmap()->getMutex()));"
+      },
+      {
+        "line": 709,
+        "text": "    }"
+      },
+      {
+        "line": 710,
+        "text": ""
+      },
+      {
+        "line": 711,
+        "text": "    try {"
+      },
+      {
+        "line": 712,
+        "text": "        code = controller->ComputeVelocityCommands("
+      },
+      {
+        "line": 713,
+        "text": "            pose, velocity, cmd_vel, goal_checker, message);"
+      },
+      {
+        "line": 714,
+        "text": "    } catch (const common::ControllerException& ex) {"
+      },
+      {
+        "line": 715,
+        "text": "        code = proto::CONTROLLER_RESULT_FAILURE;"
+      },
+      {
+        "line": 716,
+        "text": "        message = ex.what();"
+      },
+      {
+        "line": 717,
+        "text": "    }"
+      },
+      {
+        "line": 718,
+        "text": ""
+      },
+      {
+        "line": 719,
+        "text": "    if (is_policy) {"
+      },
+      {
+        "line": 720,
+        "text": "        PublishPolicyDiagnostics();"
+      },
+      {
+        "line": 721,
+        "text": "    }"
+      },
+      {
+        "line": 722,
+        "text": ""
+      },
+      {
+        "line": 723,
+        "text": "    if (code != proto::CONTROLLER_RESULT_SUCCESS) {"
+      },
+      {
+        "line": 724,
+        "text": "        // A failed computation grants no authority to replay a previous command."
+      },
+      {
+        "line": 725,
+        "text": "        // In particular, replay must never override a plugin's collision stop."
+      },
+      {
+        "line": 726,
+        "text": "        // failure_tolerance is a retry window while stationary."
+      },
+      {
+        "line": 727,
+        "text": "        PublishZeroVelocity();"
+      },
+      {
+        "line": 728,
+        "text": "        const bool retryable = code == proto::CONTROLLER_RESULT_NO_VALID_CMD ||"
+      },
+      {
+        "line": 762,
+        "text": "        }"
+      },
+      {
+        "line": 763,
+        "text": "        if (publish_zero_velocity_) {"
+      },
+      {
+        "line": 764,
+        "text": "            PublishZeroVelocity();"
+      },
+      {
+        "line": 765,
+        "text": "        }"
+      },
+      {
+        "line": 766,
+        "text": "        throw common::ControllerException(\"Controller failed: \" + message);"
+      },
+      {
+        "line": 767,
+        "text": "    }"
+      },
+      {
+        "line": 768,
+        "text": ""
+      },
+      {
+        "line": 769,
+        "text": "    last_valid_cmd_time_ = NowTime();"
+      },
+      {
+        "line": 770,
+        "text": "    if (cmd_vel.header().frame_id().empty()) {"
+      },
+      {
+        "line": 771,
+        "text": "        cmd_vel.mutable_header()->set_frame_id(robot_base_frame_);"
+      },
+      {
+        "line": 772,
+        "text": "    }"
+      },
+      {
+        "line": 773,
+        "text": "    if (cmd_vel.header().stamp().sec() == 0 &&"
+      },
+      {
+        "line": 774,
+        "text": "        cmd_vel.header().stamp().nanosec() == 0) {"
+      },
+      {
+        "line": 775,
+        "text": "        *cmd_vel.mutable_header()->mutable_stamp() = NowTime();"
+      },
+      {
+        "line": 776,
+        "text": "    }"
+      },
+      {
+        "line": 777,
+        "text": "    PublishVelocity(cmd_vel);"
+      },
+      {
+        "line": 778,
+        "text": "}"
+      },
+      {
+        "line": 779,
+        "text": ""
+      },
+      {
+        "line": 780,
+        "text": "void ControllerServer::UpdateGlobalPath() {"
+      },
+      {
+        "line": 781,
+        "text": "    if (!follow_path_active_ || current_path_.poses().empty()) {"
+      },
+      {
+        "line": 782,
+        "text": "        return;"
+      },
+      {
+        "line": 783,
+        "text": "    }"
+      },
+      {
+        "line": 784,
+        "text": "    auto* controller = GetActiveController();"
+      },
+      {
+        "line": 785,
+        "text": "    if (controller) {"
+      },
+      {
+        "line": 786,
+        "text": "        controller->SetPlan(current_path_);"
+      },
+      {
+        "line": 787,
+        "text": "    }"
+      },
+      {
+        "line": 788,
+        "text": "}"
+      },
+      {
+        "line": 789,
+        "text": ""
+      },
+      {
+        "line": 790,
+        "text": "void ControllerServer::OnGoalExit(bool clear_visual_plan) {"
+      },
+      {
+        "line": 791,
+        "text": "    // Drop MPPI / controller overlays before clearing active plugin ids."
+      },
+      {
+        "line": 792,
+        "text": "    if (auto* controller = GetActiveController()) {"
+      }
+    ]
+  },
+  "autonomy/control/controller_server.hpp": {
+    "sha256": "b1e4d3dc2967b0e3e6c2fca82416a0e7bcb68783d0646f9bce701ff9d7fd7a74",
+    "excerpts": [
+      {
+        "line": 120,
+        "text": "    void PublishLidarBevToControllers("
+      },
+      {
+        "line": 121,
+        "text": "        const automsgs::msgs::std_msgs::Float32MultiArray& array);"
+      },
+      {
+        "line": 122,
+        "text": "    void PublishRawTensorToControllers("
+      },
+      {
+        "line": 123,
+        "text": "        const automsgs::msgs::std_msgs::Float32MultiArray& array);"
+      },
+      {
+        "line": 124,
+        "text": "    void PublishPolicyDiagnostics();"
+      },
+      {
+        "line": 125,
+        "text": "    void ReloadPolicyConfig(const std::string& config_path);"
+      },
+      {
+        "line": 126,
+        "text": ""
+      },
+      {
+        "line": 127,
+        "text": "    bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose);"
+      },
+      {
+        "line": 128,
+        "text": "    void PublishVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);"
+      },
+      {
+        "line": 129,
+        "text": "    void PublishZeroVelocity();"
+      },
+      {
+        "line": 130,
+        "text": ""
+      },
+      {
+        "line": 131,
+        "text": "protected:"
+      },
+      {
+        "line": 132,
+        "text": ""
+      },
+      {
+        "line": 133,
+        "text": "    /**"
+      },
+      {
+        "line": 134,
+        "text": "     * @brief FollowPath action server callback. Handles action server updates"
+      },
+      {
+        "line": 135,
+        "text": "     * and spins server until goal is reached"
+      },
+      {
+        "line": 136,
+        "text": "     *"
+      },
+      {
+        "line": 137,
+        "text": "     * Provides global path to controller received from action client. Twist"
+      },
+      {
+        "line": 138,
+        "text": "     * velocities for the robot are calculated and published using controller at"
+      },
+      {
+        "line": 139,
+        "text": "     * the specified rate till the goal is reached."
+      },
+      {
+        "line": 140,
+        "text": "     * @throw nav2_core::PlannerException"
+      },
+      {
+        "line": 141,
+        "text": "     */"
+      },
+      {
+        "line": 142,
+        "text": "    void ComputeControl(bool reset_plugins = true);"
+      },
+      {
+        "line": 143,
+        "text": ""
+      },
+      {
+        "line": 168,
+        "text": "     * @param c_name The progress checker name"
+      },
+      {
+        "line": 169,
+        "text": "     * @param name Reference to the name to use for progress checking if any"
+      },
+      {
+        "line": 170,
+        "text": "     * valid available"
+      },
+      {
+        "line": 171,
+        "text": "     * @return bool Whether it found a valid progress checker to use"
+      },
+      {
+        "line": 172,
+        "text": "     */"
+      },
+      {
+        "line": 173,
+        "text": "    bool FindProgressCheckerId(const std::string& c_name, std::string& name);"
+      },
+      {
+        "line": 174,
+        "text": ""
+      },
+      {
+        "line": 175,
+        "text": "    /**"
+      },
+      {
+        "line": 176,
+        "text": "     * @brief Calculates velocity and publishes to \"cmd_vel\" topic"
+      },
+      {
+        "line": 177,
+        "text": "     */"
+      },
+      {
+        "line": 178,
+        "text": "    void ComputeAndPublishVelocity();"
+      },
+      {
+        "line": 179,
+        "text": ""
+      },
+      {
+        "line": 180,
+        "text": "    /**"
+      },
+      {
+        "line": 181,
+        "text": "     * @brief Calls setPlannerPath method with an updated path received from"
+      },
+      {
+        "line": 182,
+        "text": "     * action server"
+      },
+      {
+        "line": 183,
+        "text": "     */"
+      },
+      {
+        "line": 184,
+        "text": "    void UpdateGlobalPath();"
+      },
+      {
+        "line": 185,
+        "text": ""
+      },
+      {
+        "line": 186,
+        "text": "    /**"
+      },
+      {
+        "line": 187,
+        "text": "     * @brief Called on goal exit."
+      },
+      {
+        "line": 188,
+        "text": "     * @param clear_visual_plan When false (FollowPath preempt), keep /plan"
+      },
+      {
+        "line": 189,
+        "text": "     *        so Autoviz does not flash an empty overlay between paths."
+      },
+      {
+        "line": 190,
+        "text": "     */"
+      },
+      {
+        "line": 191,
+        "text": "    void OnGoalExit(bool clear_visual_plan = true);"
+      },
+      {
+        "line": 192,
+        "text": ""
+      },
+      {
+        "line": 193,
+        "text": "    /**"
+      },
+      {
+        "line": 249,
+        "text": "    // Whether we've published the single controller warning yet"
+      },
+      {
+        "line": 250,
+        "text": "    automsgs::msgs::geometry_msgs::PoseStamped end_pose_;"
+      },
+      {
+        "line": 251,
+        "text": ""
+      },
+      {
+        "line": 252,
+        "text": "    // Last time the controller generated a valid command"
+      },
+      {
+        "line": 253,
+        "text": "    automsgs::msgs::builtin_interfaces::Time last_valid_cmd_time_;"
+      },
+      {
+        "line": 254,
+        "text": ""
+      },
+      {
+        "line": 255,
+        "text": "    // Current path container"
+      },
+      {
+        "line": 256,
+        "text": "    automsgs::msgs::nav_msgs::Path current_path_;"
+      },
+      {
+        "line": 257,
+        "text": "    automsgs::msgs::geometry_msgs::TwistStamped last_cmd_vel_{};"
+      },
+      {
+        "line": 258,
+        "text": ""
+      },
+      {
+        "line": 259,
+        "text": "    std::string follow_controller_id_;"
+      },
+      {
+        "line": 260,
+        "text": "    std::string follow_goal_checker_id_;"
+      },
+      {
+        "line": 261,
+        "text": "    std::string follow_progress_checker_id_;"
+      },
+      {
+        "line": 262,
+        "text": ""
+      },
+      {
+        "line": 263,
+        "text": "    std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>"
+      },
+      {
+        "line": 264,
+        "text": "        cmd_vel_writer_;"
+      },
+      {
+        "line": 265,
+        "text": "    /** Clears latched Autoviz GlobalPlan overlays when FollowPath exits. */"
+      },
+      {
+        "line": 266,
+        "text": "    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>"
+      },
+      {
+        "line": 267,
+        "text": "        plan_clear_writer_;"
+      },
+      {
+        "line": 268,
+        "text": "    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>"
+      },
+      {
+        "line": 269,
+        "text": "        costmap_writer_;"
+      },
+      {
+        "line": 270,
+        "text": "    std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>"
+      },
+      {
+        "line": 271,
+        "text": "        odom_reader_;"
+      },
+      {
+        "line": 272,
+        "text": "    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::LaserScan>>"
+      },
+      {
+        "line": 273,
+        "text": "        scan_reader_;"
+      },
+      {
+        "line": 274,
+        "text": "    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::Image>>"
+      },
+      {
+        "line": 275,
+        "text": "        image_reader_;"
+      },
+      {
+        "line": 276,
+        "text": "    std::shared_ptr<autolink::Reader<automsgs::msgs::sensor_msgs::PointCloud2>>"
+      },
+      {
+        "line": 277,
+        "text": "        point_cloud_reader_;"
+      },
+      {
+        "line": 278,
+        "text": "    std::shared_ptr<autolink::Reader<automsgs::msgs::std_msgs::Float32MultiArray>>"
+      },
+      {
+        "line": 279,
+        "text": "        lidar_bev_reader_;"
+      }
+    ]
+  },
+  "autonomy/control/controller/policy_controller/controller.cpp": {
+    "sha256": "2a1cdddecb0dd63b4ea624b253507083939319960948adfa90a21c4ccea5c976",
+    "excerpts": [
+      {
+        "line": 120,
+        "text": "    std::shared_ptr<transform::Buffer> tf_buffer,"
+      },
+      {
+        "line": 121,
+        "text": "    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap_wrapper) {"
+      },
+      {
+        "line": 122,
+        "text": "    options_ = options;"
+      },
+      {
+        "line": 123,
+        "text": "    name_ = name;"
+      },
+      {
+        "line": 124,
+        "text": "    plugin_name_ = std::move(name);"
+      },
+      {
+        "line": 125,
+        "text": "    tf_buffer_ = std::move(tf_buffer);"
+      },
+      {
+        "line": 126,
+        "text": "    costmap_wrapper_ = std::move(costmap_wrapper);"
+      },
+      {
+        "line": 127,
+        "text": ""
+      },
+      {
+        "line": 128,
+        "text": "    pipeline_.Configure(options.policy_controller_options());"
+      },
+      {
+        "line": 129,
+        "text": "    pipeline_.SetTfBuffer(tf_buffer_);"
+      },
+      {
+        "line": 130,
+        "text": "    if (options.controller_frequency() > 0.0) {"
+      },
+      {
+        "line": 131,
+        "text": "        control_period_seconds_ = 1.0 / options.controller_frequency();"
+      },
+      {
+        "line": 132,
+        "text": "    }"
+      },
+      {
+        "line": 133,
+        "text": ""
+      },
+      {
+        "line": 134,
+        "text": "    std::string error;"
+      },
+      {
+        "line": 135,
+        "text": "    if (!pipeline_.LoadModel(&error)) {"
+      },
+      {
+        "line": 136,
+        "text": "        AWARN << \"PolicyController configured without active policy: \" << error;"
+      },
+      {
+        "line": 137,
+        "text": "        model_load_error_ = error;"
+      },
+      {
+        "line": 138,
+        "text": "    } else {"
+      },
+      {
+        "line": 139,
+        "text": "        AINFO << \"PolicyController loaded config for plugin \" << plugin_name_;"
+      },
+      {
+        "line": 140,
+        "text": "        model_load_error_.clear();"
+      },
+      {
+        "line": 141,
+        "text": "    }"
+      },
+      {
+        "line": 142,
+        "text": "    AINFO << \"Configured PolicyController: \" << plugin_name_;"
+      },
+      {
+        "line": 143,
+        "text": "}"
+      },
+      {
+        "line": 144,
+        "text": ""
+      },
+      {
+        "line": 145,
+        "text": "void PolicyController::Cleanup() {"
+      },
+      {
+        "line": 146,
+        "text": "    pipeline_.ClearModels();"
+      },
+      {
+        "line": 147,
+        "text": "    pipeline_.Reset();"
+      },
+      {
+        "line": 148,
+        "text": "    last_goal_checker_ = nullptr;"
+      },
+      {
+        "line": 149,
+        "text": "    AINFO << \"Cleaning up PolicyController: \" << plugin_name_;"
+      },
+      {
+        "line": 150,
+        "text": "}"
+      },
+      {
+        "line": 151,
+        "text": ""
+      },
+      {
+        "line": 152,
+        "text": "void PolicyController::Activate() {"
+      },
+      {
+        "line": 153,
+        "text": "    if (pipeline_.options().require_model() &&"
+      },
+      {
+        "line": 154,
+        "text": "        !pipeline_.policy_manager().HasActive()) {"
+      },
+      {
+        "line": 155,
+        "text": "        std::string error;"
+      },
+      {
+        "line": 156,
+        "text": "        if (!pipeline_.LoadModel(&error)) {"
+      },
+      {
+        "line": 157,
+        "text": "            AERROR << \"PolicyController Activate require_model failed: \""
+      },
+      {
+        "line": 158,
+        "text": "                   << (error.empty() ? model_load_error_ : error);"
+      },
+      {
+        "line": 159,
+        "text": "            throw common::ControllerException("
+      },
+      {
+        "line": 160,
+        "text": "                \"PolicyController require_model: no active policy\");"
+      },
+      {
+        "line": 161,
+        "text": "        }"
+      },
+      {
+        "line": 162,
+        "text": "    }"
+      },
+      {
+        "line": 163,
+        "text": "    AINFO << \"Activating PolicyController: \" << plugin_name_;"
+      },
+      {
+        "line": 164,
+        "text": "}"
+      },
+      {
+        "line": 165,
+        "text": ""
+      },
+      {
+        "line": 166,
+        "text": "void PolicyController::Deactivate() {"
+      },
+      {
+        "line": 167,
+        "text": "    last_goal_checker_ = nullptr;"
+      },
+      {
+        "line": 168,
+        "text": "    AINFO << \"Deactivating PolicyController: \" << plugin_name_;"
+      },
+      {
+        "line": 169,
+        "text": "}"
+      },
+      {
+        "line": 170,
+        "text": ""
+      },
+      {
+        "line": 171,
+        "text": "bool PolicyController::LoadConfig(const std::string& config_path,"
+      },
+      {
+        "line": 172,
+        "text": "                                  std::string* error) {"
+      },
+      {
+        "line": 173,
+        "text": "    return pipeline_.LoadConfig(config_path, error);"
+      },
+      {
+        "line": 174,
+        "text": "}"
+      },
+      {
+        "line": 175,
+        "text": ""
+      },
+      {
+        "line": 176,
+        "text": "bool PolicyController::LoadConfig(const proto::PolicyConfig& config,"
+      },
+      {
+        "line": 177,
+        "text": "                                  std::string* error) {"
+      },
+      {
+        "line": 178,
+        "text": "    return pipeline_.LoadConfig(config, error);"
+      },
+      {
+        "line": 179,
+        "text": "}"
+      },
+      {
+        "line": 180,
+        "text": ""
+      },
+      {
+        "line": 181,
+        "text": "bool PolicyController::LoadConfigAsync("
+      },
+      {
+        "line": 182,
+        "text": "    const std::string& config_path,"
+      },
+      {
+        "line": 183,
+        "text": "    std::function<void(bool, const std::string&)> done) {"
+      },
+      {
+        "line": 184,
+        "text": "    std::string error;"
+      },
+      {
+        "line": 185,
+        "text": "    if (!ReloadPathAllowed(pipeline_.options(), config_path, &error)) {"
+      },
+      {
+        "line": 186,
+        "text": "        AWARN << \"PolicyController: \" << error;"
+      },
+      {
+        "line": 187,
+        "text": "        if (done) {"
+      },
+      {
+        "line": 188,
+        "text": "            done(false, error);"
+      },
+      {
+        "line": 189,
+        "text": "        }"
+      },
+      {
+        "line": 190,
+        "text": "        return false;"
+      },
+      {
+        "line": 191,
+        "text": "    }"
+      },
+      {
+        "line": 192,
+        "text": "    return pipeline_.LoadConfigAsync(config_path, std::move(done));"
+      },
+      {
+        "line": 193,
+        "text": "}"
+      },
+      {
+        "line": 194,
+        "text": ""
+      },
+      {
+        "line": 195,
+        "text": "bool PolicyController::LoadConfigAsync("
+      },
+      {
+        "line": 196,
+        "text": "    const proto::PolicyConfig& config,"
+      },
+      {
+        "line": 197,
+        "text": "    std::function<void(bool, const std::string&)> done) {"
+      },
+      {
+        "line": 198,
+        "text": "    PolicyConfig parsed;"
+      },
+      {
+        "line": 199,
+        "text": "    std::string error;"
+      },
+      {
+        "line": 200,
+        "text": "    if (!PolicyConfig::LoadFromProto(config, &parsed, &error)) {"
+      },
+      {
+        "line": 201,
+        "text": "        if (done) {"
+      },
+      {
+        "line": 202,
+        "text": "            done(false, error);"
+      },
+      {
+        "line": 203,
+        "text": "        }"
+      },
+      {
+        "line": 204,
+        "text": "        return false;"
+      },
+      {
+        "line": 205,
+        "text": "    }"
+      },
+      {
+        "line": 206,
+        "text": "    return pipeline_.LoadConfigAsync(std::move(parsed), std::move(done));"
+      },
+      {
+        "line": 207,
+        "text": "}"
+      },
+      {
+        "line": 208,
+        "text": ""
+      },
+      {
+        "line": 209,
+        "text": "void PolicyController::SetLaserScan("
+      },
+      {
+        "line": 210,
+        "text": "    const automsgs::msgs::sensor_msgs::LaserScan& laser_scan) {"
+      },
+      {
+        "line": 211,
+        "text": "    pipeline_.SetLaserScan(laser_scan);"
+      },
+      {
+        "line": 212,
+        "text": "}"
+      },
+      {
+        "line": 213,
+        "text": ""
+      },
+      {
+        "line": 214,
+        "text": "void PolicyController::SetImage("
+      },
+      {
+        "line": 215,
+        "text": "    const automsgs::msgs::sensor_msgs::Image& image) {"
+      },
+      {
+        "line": 216,
+        "text": "    pipeline_.SetImage(image);"
+      },
+      {
+        "line": 217,
+        "text": "}"
+      },
+      {
+        "line": 218,
+        "text": ""
+      },
+      {
+        "line": 219,
+        "text": "void PolicyController::SetPointCloud("
+      },
+      {
+        "line": 220,
+        "text": "    const automsgs::msgs::sensor_msgs::PointCloud2& point_cloud) {"
+      },
+      {
+        "line": 221,
+        "text": "    pipeline_.SetPointCloud(point_cloud);"
+      },
+      {
+        "line": 222,
+        "text": "}"
+      },
+      {
+        "line": 223,
+        "text": ""
+      },
+      {
+        "line": 224,
+        "text": "void PolicyController::SetLidarBev(const TensorFrame& lidar_bev) {"
+      },
+      {
+        "line": 225,
+        "text": "    pipeline_.SetLidarBev(lidar_bev);"
+      },
+      {
+        "line": 226,
+        "text": "}"
+      },
+      {
+        "line": 227,
+        "text": ""
+      },
+      {
+        "line": 228,
+        "text": "void PolicyController::SetRawTensor(const TensorFrame& raw) {"
+      },
+      {
+        "line": 229,
+        "text": "    pipeline_.SetRawTensor(raw);"
+      },
+      {
+        "line": 230,
+        "text": "}"
+      },
+      {
+        "line": 231,
+        "text": ""
+      },
+      {
+        "line": 232,
+        "text": "void PolicyController::SetLidarBevArray("
+      },
+      {
+        "line": 233,
+        "text": "    const automsgs::msgs::std_msgs::Float32MultiArray& array) {"
+      },
+      {
+        "line": 234,
+        "text": "    TensorFrame frame;"
+      },
+      {
+        "line": 235,
+        "text": "    const auto& opts = pipeline_.options();"
+      },
+      {
+        "line": 236,
+        "text": "    const std::string name = opts.lidar_bev_name().empty()"
+      },
+      {
+        "line": 237,
+        "text": "                                 ? \"observation_lidar_bev\""
+      },
+      {
+        "line": 238,
+        "text": "                                 : opts.lidar_bev_name();"
+      },
+      {
+        "line": 239,
+        "text": "    if (!TensorFrameFromFloatArray(array, BevShape(opts), name,"
+      },
+      {
+        "line": 240,
+        "text": "                                   opts.require_tensor_stamp(), &frame)) {"
+      },
+      {
+        "line": 241,
+        "text": "        AWARN << \"PolicyController: invalid lidar_bev Float32MultiArray\";"
+      },
+      {
+        "line": 242,
+        "text": "        return;"
+      },
+      {
+        "line": 243,
+        "text": "    }"
+      },
+      {
+        "line": 244,
+        "text": "    pipeline_.SetLidarBev(frame);"
+      },
+      {
+        "line": 245,
+        "text": "}"
+      },
+      {
+        "line": 246,
+        "text": ""
+      },
+      {
+        "line": 247,
+        "text": "void PolicyController::SetRawTensorArray("
+      },
+      {
+        "line": 248,
+        "text": "    const automsgs::msgs::std_msgs::Float32MultiArray& array) {"
+      },
+      {
+        "line": 249,
+        "text": "    TensorFrame frame;"
+      },
+      {
+        "line": 250,
+        "text": "    const auto& opts = pipeline_.options();"
+      },
+      {
+        "line": 251,
+        "text": "    const std::string name ="
+      },
+      {
+        "line": 252,
+        "text": "        opts.raw_tensor_name().empty() ? \"observation_raw\" : opts.raw_tensor_name();"
+      },
+      {
+        "line": 253,
+        "text": "    if (!TensorFrameFromFloatArray(array, RawShape(opts), name,"
+      },
+      {
+        "line": 254,
+        "text": "                                   opts.require_tensor_stamp(), &frame)) {"
+      },
+      {
+        "line": 255,
+        "text": "        AWARN << \"PolicyController: invalid raw Float32MultiArray\";"
+      },
+      {
+        "line": 256,
+        "text": "        return;"
+      },
+      {
+        "line": 257,
+        "text": "    }"
+      },
+      {
+        "line": 258,
+        "text": "    pipeline_.SetRawTensor(frame);"
+      },
+      {
+        "line": 259,
+        "text": "}"
+      },
+      {
+        "line": 260,
+        "text": ""
+      },
+      {
+        "line": 261,
+        "text": "void PolicyController::SetPlan(const automsgs::msgs::nav_msgs::Path& plan) {"
+      },
+      {
+        "line": 262,
+        "text": "    {"
+      },
+      {
+        "line": 263,
+        "text": "        std::lock_guard<std::mutex> lock(goal_mutex_);"
+      },
+      {
+        "line": 264,
+        "text": "        if (plan.poses().empty()) {"
+      },
+      {
+        "line": 265,
+        "text": "            goal_pose_.reset();"
+      },
+      {
+        "line": 266,
+        "text": "        } else {"
+      },
+      {
+        "line": 267,
+        "text": "            goal_pose_ = plan.poses(plan.poses_size() - 1).pose();"
+      },
+      {
+        "line": 268,
+        "text": "        }"
+      },
+      {
+        "line": 269,
+        "text": "    }"
+      },
+      {
+        "line": 270,
+        "text": "    pipeline_.SetPath(plan);"
+      },
+      {
+        "line": 271,
+        "text": "}"
+      },
+      {
+        "line": 272,
+        "text": ""
+      },
+      {
+        "line": 273,
+        "text": "void PolicyController::Reset() {"
+      },
+      {
+        "line": 274,
+        "text": "    {"
+      },
+      {
+        "line": 275,
+        "text": "        std::lock_guard<std::mutex> lock(goal_mutex_);"
+      },
+      {
+        "line": 276,
+        "text": "        goal_pose_.reset();"
+      },
+      {
+        "line": 277,
+        "text": "        last_velocity_.reset();"
+      },
+      {
+        "line": 278,
+        "text": "    }"
+      },
+      {
+        "line": 279,
+        "text": "    last_goal_checker_ = nullptr;"
+      },
+      {
+        "line": 280,
+        "text": "    pipeline_.Reset();"
+      },
+      {
+        "line": 281,
+        "text": "}"
+      },
+      {
+        "line": 282,
+        "text": ""
+      },
+      {
+        "line": 283,
+        "text": "void PolicyController::SetSpeedLimit(const double& speed_limit,"
+      },
+      {
+        "line": 284,
+        "text": "                                     const bool& percentage) {"
+      },
+      {
+        "line": 285,
+        "text": "    if (percentage) {"
+      },
+      {
+        "line": 286,
+        "text": "        speed_limit_scale_ = std::max(0.0, speed_limit / 100.0);"
+      },
+      {
+        "line": 287,
+        "text": "    } else {"
+      },
+      {
+        "line": 288,
+        "text": "        double max_lin = 0.5;"
+      },
+      {
+        "line": 289,
+        "text": "        auto model = pipeline_.policy_manager().Active();"
+      },
+      {
+        "line": 290,
+        "text": "        if (model) {"
+      },
+      {
+        "line": 291,
+        "text": "            max_lin = MaxLinearLimit(model->config().proto().action().limits());"
+      },
+      {
+        "line": 292,
+        "text": "        }"
+      },
+      {
+        "line": 293,
+        "text": "        speed_limit_scale_ ="
+      },
+      {
+        "line": 294,
+        "text": "            max_lin > 0.0 ? std::max(0.0, speed_limit / max_lin) : 1.0;"
+      },
+      {
+        "line": 295,
+        "text": "    }"
+      },
+      {
+        "line": 296,
+        "text": "    pipeline_.SetSpeedScale(speed_limit_scale_ * near_goal_scale_);"
+      },
+      {
+        "line": 297,
+        "text": "}"
+      },
+      {
+        "line": 298,
+        "text": ""
+      },
+      {
+        "line": 299,
+        "text": "bool PolicyController::IsGoalReached(double distance_tolerance,"
+      },
+      {
+        "line": 300,
+        "text": "                                     double angle_tolerance) {"
+      },
+      {
+        "line": 301,
+        "text": "    automsgs::msgs::geometry_msgs::Pose goal;"
+      },
+      {
+        "line": 302,
+        "text": "    {"
+      },
+      {
+        "line": 303,
+        "text": "        std::lock_guard<std::mutex> lock(goal_mutex_);"
+      },
+      {
+        "line": 304,
+        "text": "        if (!goal_pose_.has_value()) {"
+      },
+      {
+        "line": 305,
+        "text": "            return false;"
+      },
+      {
+        "line": 306,
+        "text": "        }"
+      },
+      {
+        "line": 307,
+        "text": "        goal = *goal_pose_;"
+      },
+      {
+        "line": 308,
+        "text": "    }"
+      },
+      {
+        "line": 309,
+        "text": "    automsgs::msgs::geometry_msgs::PoseStamped pose;"
+      },
+      {
+        "line": 310,
+        "text": "    if (!pipeline_.observation_buffer().GetPose(&pose)) {"
+      },
+      {
+        "line": 311,
+        "text": "        return false;"
+      },
+      {
+        "line": 312,
+        "text": "    }"
+      },
+      {
+        "line": 313,
+        "text": ""
+      },
+      {
+        "line": 314,
+        "text": "    if (last_goal_checker_ != nullptr) {"
+      },
+      {
+        "line": 315,
+        "text": "        automsgs::msgs::geometry_msgs::Twist velocity;"
+      },
+      {
+        "line": 316,
+        "text": "        {"
+      },
+      {
+        "line": 317,
+        "text": "            std::lock_guard<std::mutex> lock(goal_mutex_);"
+      },
+      {
+        "line": 318,
+        "text": "            if (last_velocity_.has_value()) {"
+      },
+      {
+        "line": 319,
+        "text": "                velocity = *last_velocity_;"
+      },
+      {
+        "line": 320,
+        "text": "            }"
+      },
+      {
+        "line": 321,
+        "text": "        }"
+      },
+      {
+        "line": 322,
+        "text": "        return last_goal_checker_->IsGoalReached(pose.pose(), goal, velocity);"
+      },
+      {
+        "line": 323,
+        "text": "    }"
+      },
+      {
+        "line": 324,
+        "text": ""
+      },
+      {
+        "line": 325,
+        "text": "    const auto& position = pose.pose().position();"
+      },
+      {
+        "line": 328,
+        "text": "    const double distance = std::hypot(delta_x, delta_y);"
+      },
+      {
+        "line": 329,
+        "text": "    const double yaw_error = std::remainder("
+      },
+      {
+        "line": 330,
+        "text": "        YawFromQuaternion(goal.orientation()) -"
+      },
+      {
+        "line": 331,
+        "text": "            YawFromQuaternion(pose.pose().orientation()),"
+      },
+      {
+        "line": 332,
+        "text": "        2.0 * M_PI);"
+      },
+      {
+        "line": 333,
+        "text": "    const double distance_tol ="
+      },
+      {
+        "line": 334,
+        "text": "        distance_tolerance > 0.0"
+      },
+      {
+        "line": 335,
+        "text": "            ? distance_tolerance"
+      },
+      {
+        "line": 336,
+        "text": "            : pipeline_.options().goal_xy_tolerance();"
+      },
+      {
+        "line": 337,
+        "text": "    const double yaw_tol = angle_tolerance > 0.0"
+      },
+      {
+        "line": 338,
+        "text": "                               ? angle_tolerance"
+      },
+      {
+        "line": 339,
+        "text": "                               : pipeline_.options().goal_yaw_tolerance();"
+      },
+      {
+        "line": 340,
+        "text": "    return distance <= distance_tol && std::fabs(yaw_error) <= yaw_tol;"
+      },
+      {
+        "line": 341,
+        "text": "}"
+      },
+      {
+        "line": 342,
+        "text": ""
+      },
+      {
+        "line": 343,
+        "text": "uint32 PolicyController::ComputeVelocityCommands("
+      },
+      {
+        "line": 344,
+        "text": "    const automsgs::msgs::geometry_msgs::PoseStamped& pose,"
+      },
+      {
+        "line": 345,
+        "text": "    const automsgs::msgs::geometry_msgs::TwistStamped& velocity,"
+      },
+      {
+        "line": 346,
+        "text": "    automsgs::msgs::geometry_msgs::TwistStamped& command_velocity,"
+      },
+      {
+        "line": 347,
+        "text": "    common::GoalChecker* goal_checker, std::string& message) {"
+      },
+      {
+        "line": 348,
+        "text": "    last_goal_checker_ = goal_checker;"
+      },
+      {
+        "line": 349,
+        "text": "    {"
+      },
+      {
+        "line": 350,
+        "text": "        std::lock_guard<std::mutex> lock(goal_mutex_);"
+      },
+      {
+        "line": 351,
+        "text": "        last_velocity_ = velocity.twist();"
+      },
+      {
+        "line": 352,
+        "text": "    }"
+      },
+      {
+        "line": 353,
+        "text": ""
+      },
+      {
+        "line": 354,
+        "text": "    near_goal_scale_ = 1.0;"
+      },
+      {
+        "line": 355,
+        "text": "    const double near_goal_distance ="
+      },
+      {
+        "line": 356,
+        "text": "        pipeline_.options().near_goal_distance();"
+      },
+      {
+        "line": 357,
+        "text": "    if (near_goal_distance > 0.0) {"
+      },
+      {
+        "line": 358,
+        "text": "        automsgs::msgs::geometry_msgs::Pose goal;"
+      },
+      {
+        "line": 359,
+        "text": "        bool has_goal = false;"
+      },
+      {
+        "line": 360,
+        "text": "        {"
+      },
+      {
+        "line": 361,
+        "text": "            std::lock_guard<std::mutex> lock(goal_mutex_);"
+      },
+      {
+        "line": 362,
+        "text": "            if (goal_pose_.has_value()) {"
+      },
+      {
+        "line": 363,
+        "text": "                goal = *goal_pose_;"
+      },
+      {
+        "line": 364,
+        "text": "                has_goal = true;"
+      },
+      {
+        "line": 365,
+        "text": "            }"
+      },
+      {
+        "line": 366,
+        "text": "        }"
+      },
+      {
+        "line": 367,
+        "text": "        if (has_goal) {"
+      },
+      {
+        "line": 368,
+        "text": "            const double dx = goal.position().x() - pose.pose().position().x();"
+      },
+      {
+        "line": 369,
+        "text": "            const double dy = goal.position().y() - pose.pose().position().y();"
+      },
+      {
+        "line": 370,
+        "text": "            if (std::hypot(dx, dy) <= near_goal_distance) {"
+      },
+      {
+        "line": 371,
+        "text": "                near_goal_scale_ ="
+      },
+      {
+        "line": 372,
+        "text": "                    pipeline_.options().near_goal_speed_scale() > 0.0"
+      },
+      {
+        "line": 373,
+        "text": "                        ? pipeline_.options().near_goal_speed_scale()"
+      },
+      {
+        "line": 374,
+        "text": "                        : 0.3;"
+      },
+      {
+        "line": 375,
+        "text": "            }"
+      },
+      {
+        "line": 376,
+        "text": "        }"
+      },
+      {
+        "line": 377,
+        "text": "    }"
+      },
+      {
+        "line": 378,
+        "text": "    pipeline_.SetNearGoalScaled(near_goal_scale_ < 1.0);"
+      },
+      {
+        "line": 379,
+        "text": "    pipeline_.SetSpeedScale(speed_limit_scale_ * near_goal_scale_);"
+      },
+      {
+        "line": 380,
+        "text": "    return pipeline_.ComputeCommand(pose, velocity, costmap_wrapper_.get(),"
+      },
+      {
+        "line": 381,
+        "text": "                                    control_period_seconds_, &command_velocity,"
+      },
+      {
+        "line": 382,
+        "text": "                                    &message);"
+      },
+      {
+        "line": 383,
+        "text": "}"
+      },
+      {
+        "line": 384,
+        "text": ""
+      },
+      {
+        "line": 385,
+        "text": "}  // namespace policy_controller"
+      },
+      {
+        "line": 386,
+        "text": "}  // namespace controller"
+      },
+      {
+        "line": 387,
+        "text": "}  // namespace control"
+      },
+      {
+        "line": 388,
+        "text": "}  // namespace autonomy"
+      }
+    ]
+  },
+  "autonomy/control/controller/policy_controller/controller.hpp": {
+    "sha256": "2844a5dec0368c8f488920f67a21f1e81b2fbf0bcb8fad404b046e6bcea54fb9",
+    "excerpts": [
+      {
+        "line": 84,
+        "text": "     * @brief Deactivate the plugin before Cleanup."
+      },
+      {
+        "line": 85,
+        "text": "     */"
+      },
+      {
+        "line": 86,
+        "text": "    void Deactivate();"
+      },
+      {
+        "line": 87,
+        "text": ""
+      },
+      {
+        "line": 88,
+        "text": "    /**"
+      },
+      {
+        "line": 89,
+        "text": "     * @brief One control tick: encode \u2192 infer \u2192 decode \u2192 safety filter."
+      },
+      {
+        "line": 90,
+        "text": "     * @return Status code from @ref CommandSafetyFilter."
+      },
+      {
+        "line": 91,
+        "text": "     */"
+      },
+      {
+        "line": 92,
+        "text": "    uint32 ComputeVelocityCommands("
+      },
+      {
+        "line": 93,
+        "text": "        const automsgs::msgs::geometry_msgs::PoseStamped& pose,"
+      },
+      {
+        "line": 94,
+        "text": "        const automsgs::msgs::geometry_msgs::TwistStamped& velocity,"
+      },
+      {
+        "line": 95,
+        "text": "        automsgs::msgs::geometry_msgs::TwistStamped& command_velocity,"
+      },
+      {
+        "line": 96,
+        "text": "        common::GoalChecker* goal_checker, std::string& message) override;"
+      },
+      {
+        "line": 97,
+        "text": ""
+      },
+      {
+        "line": 98,
+        "text": "    /**"
+      },
+      {
+        "line": 99,
+        "text": "     * @brief Goal check using cached goal pose and latest ego pose."
+      },
+      {
+        "line": 100,
+        "text": "     * @param distance_tolerance Override; <=0 uses options default."
+      },
+      {
+        "line": 101,
+        "text": "     * @param angle_tolerance Override; <=0 uses options default."
+      },
+      {
+        "line": 102,
+        "text": "     */"
+      },
+      {
+        "line": 103,
+        "text": "    bool IsGoalReached(double distance_tolerance,"
+      },
+      {
+        "line": 104,
+        "text": "                       double angle_tolerance) override;"
+      },
+      {
+        "line": 105,
+        "text": ""
+      },
+      {
+        "line": 106,
+        "text": "    /**"
+      },
+      {
+        "line": 107,
+        "text": "     * @brief Store goal pose and publish path into the observation buffer."
+      },
+      {
+        "line": 108,
+        "text": "     */"
+      },
+      {
+        "line": 109,
+        "text": "    void SetPlan(const automsgs::msgs::nav_msgs::Path& plan) override;"
+      },
+      {
+        "line": 110,
+        "text": ""
+      },
+      {
+        "line": 172,
+        "text": "    bool LoadConfigAsync(const std::string& config_path,"
+      },
+      {
+        "line": 173,
+        "text": "                         std::function<void(bool, const std::string&)> done);"
+      },
+      {
+        "line": 174,
+        "text": "    bool LoadConfigAsync(const proto::PolicyConfig& config,"
+      },
+      {
+        "line": 175,
+        "text": "                         std::function<void(bool, const std::string&)> done);"
+      },
+      {
+        "line": 176,
+        "text": ""
+      },
+      {
+        "line": 177,
+        "text": "    /**"
+      },
+      {
+        "line": 178,
+        "text": "     * @brief Access the underlying pipeline (tests / advanced wiring)."
+      },
+      {
+        "line": 179,
+        "text": "     */"
+      },
+      {
+        "line": 180,
+        "text": "    PolicyPipeline& pipeline() { return pipeline_; }"
+      },
+      {
+        "line": 181,
+        "text": "    const PolicyDiagnostics& diagnostics() const {"
+      },
+      {
+        "line": 182,
+        "text": "        return pipeline_.diagnostics();"
+      },
+      {
+        "line": 183,
+        "text": "    }"
+      },
+      {
+        "line": 184,
+        "text": ""
+      },
+      {
+        "line": 185,
+        "text": "private:"
+      },
+      {
+        "line": 186,
+        "text": "    std::string plugin_name_;"
+      },
+      {
+        "line": 187,
+        "text": "    PolicyPipeline pipeline_;"
+      },
+      {
+        "line": 188,
+        "text": "    std::optional<automsgs::msgs::geometry_msgs::Pose> goal_pose_;"
+      },
+      {
+        "line": 189,
+        "text": "    std::optional<automsgs::msgs::geometry_msgs::Twist> last_velocity_;"
+      },
+      {
+        "line": 190,
+        "text": "    std::mutex goal_mutex_;"
+      },
+      {
+        "line": 191,
+        "text": "    double control_period_seconds_{0.05};"
+      },
+      {
+        "line": 192,
+        "text": "    double speed_limit_scale_{1.0};"
+      },
+      {
+        "line": 193,
+        "text": "    double near_goal_scale_{1.0};"
+      },
+      {
+        "line": 194,
+        "text": "    std::string model_load_error_;"
+      },
+      {
+        "line": 195,
+        "text": "    common::GoalChecker* last_goal_checker_{nullptr};"
+      },
+      {
+        "line": 196,
+        "text": "};"
+      },
+      {
+        "line": 197,
+        "text": ""
+      },
+      {
+        "line": 198,
+        "text": "}  // namespace policy_controller"
+      },
+      {
+        "line": 199,
+        "text": "}  // namespace controller"
+      },
+      {
+        "line": 200,
+        "text": "}  // namespace control"
+      },
+      {
+        "line": 201,
+        "text": "}  // namespace autonomy"
+      }
+    ]
+  }
+}

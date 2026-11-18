@@ -17,6 +17,8 @@
 #include <string>
 
 #include "autonomy/task/behavior_tree/bt_task_app.hpp"
+#include "autonomy/task/common/motion_dispatch_gate.hpp"
+#include "autonomy/task/common/motion_admission.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
 #include <automsgs/task/navigation.pb.h>
 #include "behaviortree_cpp/blackboard.h"
@@ -45,6 +47,26 @@ public:
     bool Resume() override;
     /** @brief Cancel only the matching pending or accepted navigation identity. */
     bool CancelForTask(const std::string& expected_task_id);
+    /**
+     * @brief Admit a named START/REPLAN with its parent's cooperative permission.
+     * @param goal Native goal with a nonempty task identity; controls use SubmitGoal.
+     * @param permit Bounded, thread-safe, nonblocking query that cannot reenter task
+     * control. Retained until this invocation's action cancellation has drained.
+     * @param admission Internal delegated ownership handle; omitted calls use
+     * the ordinary scheduler admission factory when one is installed.
+     * @return Acceptance, never arrival or physical-stop acknowledgment.
+     * Readiness, ticks and action sends query the same immutable permission;
+     * false/exception is sticky. Scheduler-supplied delegated admission retains
+     * its exploration root; other calls acquire ordinary root ownership.
+     */
+    bool SubmitGoalWithMotionPermit(
+        const ::autonomy::task::proto::NavigationGoal& goal,
+        common::MotionDispatchGate::Permit permit,
+        std::shared_ptr<common::MotionAdmission> admission = {});
+    /** @brief Install ordinary START/REPLAN scheduling while no invocation is pending or active. */
+    void SetMotionAdmission(common::MotionAdmission::Factory factory);
+    /** @return True only after readiness, worker cleanup and owned motion cancellation have drained. */
+    bool MotionDrained() const;
 
     /// Native task classification used by TaskServer and typed snapshots.
     ::automsgs::msgs::vehicle_msgs::RobotTaskType GetTaskType()
@@ -85,10 +107,16 @@ protected:
     virtual bool NavigationServersReady() const;
     /// Default admission deadline; overridable by an embedding application's policy.
     virtual std::chrono::milliseconds NavigationReadyTimeout() const;
-    /// Cancel remote work after revoking ticks; production client remains asynchronous.
+    /// Bound native terminal drain after closing the actual send gate.
+    virtual std::chrono::milliseconds NavigationCancelTimeout() const;
+    /// Drain this invocation's targeted cancellations; never issue CancelAll.
     virtual void CancelRemoteNavigation();
 
 private:
+    /** @brief Domain admission with one immutable candidate execution gate. */
+    bool AdmitGoal(const ::autonomy::task::proto::NavigationGoal& goal,
+                   const std::shared_ptr<common::MotionDispatchGate>& source_gate,
+                   std::shared_ptr<common::MotionAdmission> admission = {});
     ::autonomy::task::proto::NavigationStatus MapStatus() const;
     std::string ResolveTreeForGoal(
         const ::autonomy::task::proto::NavigationGoal& goal) const;
@@ -126,13 +154,17 @@ private:
     std::atomic<uint64_t> tree_epoch_{0};
     /// Current invocation eligibility; zero after pause/cancel/terminal cleanup.
     std::atomic<uint64_t> motion_epoch_{0};
+    /// Actual send ownership; retained until every old movement has terminal evidence.
+    std::shared_ptr<common::MotionDispatchGate> motion_gate_;
+    common::MotionAdmission::Factory motion_admission_factory_;  ///< Scheduler hook, protected by mutex_.
+    bool active_parent_permit_{false};  ///< Parent guard presence before scheduler eligibility is composed.
     /// Protect condition-variable waiting, independently of task state and tree joins.
     std::mutex ready_mutex_;
     /// Wake pending readiness probes on cancellation or replacement.
     std::condition_variable ready_wake_;
     /// Refuse queued requests after shutdown until a fresh initialization.
     std::atomic<bool> shutting_down_{false};
-    /// A cancellation exception prohibits subsequent motion until reinitialization.
+    /// A cancellation exception prohibits motion; reinitialization also requires drain.
     std::atomic<bool> motion_fault_{false};
 };
 

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+/** @file scheduler.hpp @brief Registry, revocable root ownership and native delegated navigation. */
 #ifndef AUTONOMY_TASK_SCHEDULER_SCHEDULER_HPP_
 #define AUTONOMY_TASK_SCHEDULER_SCHEDULER_HPP_
 
@@ -36,14 +37,15 @@ namespace autonomy {
 namespace task {
 
 /**
- * Coordinates registered TaskInterface plugins.
+ * @brief Coordinates registered TaskInterface plugins and movement ownership.
  *
  * Responsibilities (Nav2 NavigatorMuxer + session reaper):
  *   1. Own the plugin registry keyed by RobotTaskType.
- *   2. Guard navigation-class exclusivity (navigation / follow / teleop /
- *      dock shares the exclusive slot with navigation-class tasks when configured).
- *   3. Track active sessions and reclaim them when they reach a terminal
- *      lifecycle state.
+ *   2. Guard navigation-class exclusivity, including exploration and its
+ *      delegated NavigationTask. Ordinary navigation must acquire ownership
+ *      during domain admission even when TaskServer skips RequestActivation.
+ *   3. Reclaim finished native sessions only after admission and movement
+ *      cleanup have drained; preserve reservations across initial submission.
  *
  * Not responsible for behavior-tree ticking or outbound planner/controller
  * RPCs; those stay inside each TaskInterface implementation.
@@ -68,7 +70,7 @@ public:
      */
     bool Initialize(const proto::TaskServerOptions& server_options);
 
-    /** Stops reclaim, shuts down every registered plugin, clears state. */
+    /** @brief Close admission, stop reclaim and dispose plugins; retain unconfirmed cleanup barriers. */
     void Shutdown();
 
     /**
@@ -84,16 +86,17 @@ public:
      * Tries to take the exclusive navigation slot (when required) and
      * appends @p task to the active-session list.
      *
-     * When allow_preemption is enabled (default) and the slot is held by
-     * another navigation-class task, that holder is cancelled and the slot
-     * is granted to @p task.
+     * When preemption is enabled, retire the preceding root and delegated
+     * permits, cancel outside scheduler locks, and wait up to two seconds for
+     * native cleanup before granting a new generation. Unconfirmed cleanup
+     * retains the retired ownership barrier and rejects activation.
      *
      * @return false if uninitialized, unregistered, or the slot cannot be
      *         acquired (preemption disabled / preempt failed).
      */
     [[nodiscard]] bool RequestActivation(TaskPointer task);
 
-    /** Removes @p task from active sessions and frees the exclusive slot. */
+    /** @brief Release only the checked drained generation; active or pending work retains ownership. */
     void ReleaseActivation(TaskPointer task);
 
     /**
@@ -149,21 +152,18 @@ public:
     /** Stops the reclaim loop and joins the worker thread. */
     void Stop();
 
-    [[nodiscard]] bool IsRunning() const {
-        return running_.load(std::memory_order_acquire);
-    }
+    /** @return Whether the reclaim worker is enabled; independent of domain admission. */
+    [[nodiscard]] bool IsRunning() const;
 
     /** Snapshots of currently active (non-terminal) sessions. */
     [[nodiscard]] std::vector<proto::ActiveTaskSnapshot>
     GetActiveSnapshots() const;
 
     /** True when exclusive mode is enabled in SchedulerOptions. */
-    [[nodiscard]] bool ExclusiveNavigationEnabled() const {
-        return exclusive_navigation_enabled_;
-    }
+    [[nodiscard]] bool ExclusiveNavigationEnabled() const;
 
     /** True when a new activation may cancel the current exclusive holder. */
-    [[nodiscard]] bool AllowPreemption() const { return allow_preemption_; }
+    [[nodiscard]] bool AllowPreemption() const;
 
     /**
      * Navigation-class tasks that share the exclusive slot when exclusivity
@@ -176,6 +176,7 @@ public:
             case RobotTaskType::ROBOT_TASK_FOLLOW:
             case RobotTaskType::ROBOT_TASK_TELEOP:
             case RobotTaskType::ROBOT_TASK_DOCK:
+            case RobotTaskType::ROBOT_TASK_EXPLORATION:
                 return true;
             default:
                 return false;
@@ -183,38 +184,10 @@ public:
     }
 
 private:
-    [[nodiscard]] std::chrono::milliseconds FeedbackPeriod() const {
-        const int milliseconds = options_.feedback_period_ms();
-        return std::chrono::milliseconds(milliseconds > 0 ? milliseconds
-                                                          : 100);
-    }
-
-    // Returns false and leaves @p holder_snapshot unchanged on failure.
-    [[nodiscard]] bool TryAcquireExclusiveSlot(
-        RobotTaskType task_type, RobotTaskType* holder_snapshot = nullptr);
-    void ReleaseExclusiveSlot(RobotTaskType task_type);
-
-    // Cancels the holder (if still registered) and frees the exclusive slot.
-    [[nodiscard]] bool PreemptExclusiveHolder(RobotTaskType holder_type);
-
-    void ReclaimFinishedSessions();
-    void ReclaimLoop();
-
-    proto::SchedulerOptions options_;
-    proto::TaskServerOptions server_options_;
-    bool exclusive_navigation_enabled_ = true;
-    bool allow_preemption_ = true;
-
-    mutable std::mutex mutex_;
-    std::unordered_map<int, TaskPointer> registry_;
-    std::vector<TaskPointer> active_sessions_;
-
-    // Exclusive navigation-class holder (ROBOT_TASK_NONE == free).
-    RobotTaskType exclusive_holder_ = RobotTaskType::ROBOT_TASK_NONE;
-
-    std::thread reclaim_thread_;
-    std::atomic<bool> running_{false};
-    std::atomic<bool> initialized_{false};
+    class State;  ///< Shared ownership state; task callbacks never retain this scheduler object.
+    std::shared_ptr<State> state_;  ///< Weak callback targets remain safe during scheduler destruction.
+    mutable std::mutex worker_mutex_;  ///< Protects thread transfer, never held while joining a worker.
+    std::thread reclaim_thread_;  ///< Reaper captures State rather than a raw scheduler pointer.
 };
 
 }  // namespace task

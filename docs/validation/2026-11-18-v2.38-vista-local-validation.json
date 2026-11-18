@@ -1,0 +1,12 @@
+{
+  "command": [
+    "ctest",
+    "--test-dir",
+    "/tmp/opt-exploration-v2.35",
+    "--output-on-failure",
+    "--no-tests=error"
+  ],
+  "returncode": 0,
+  "log": "docs/validation/2026-11-18-v2.38-vista-local-tests.log",
+  "sha256": "eb1f64031d76e6b7b419cad7b7ec5273e74e31b33f545e7e3cde7a66b1a57cc3"
+}

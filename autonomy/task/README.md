@@ -76,3 +76,4 @@ autonomy.task --config_directory=config
 | `config/task/behavior_tree/` | 各域 BT XML（以 XML 节点名为准） |
 | `task_server.*` / `scheduler/` | 任务入口与互斥调度 |
 | `navigation/` | 导航任务与 BT 插件 |
+| `docs/charging.md` | 充电 / 自动回充：架构、数据流、I/O、启动 |

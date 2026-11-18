@@ -1,9 +1,11 @@
-/*
+/**
  * Copyright 2026 The Openbot Authors
+ * @file follow_path_action.cpp
+ * @brief Follow current paths through revocable, invocation-owned dispatch.
  */
 
-#include <cmath>
-#include <cstdint>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -14,99 +16,101 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/navigation/plugins/plugin_utils.hpp"
 #include "autonomy/task/navigation/plugins/async_remote_action_node.hpp"
-#include "autonomy/task/navigation/path_update.hpp"
+#include "autonomy/task/navigation/path_reference.hpp"
 
 namespace autonomy::task::plugins::navigation {
 
 namespace navigation_actions = automsgs::actions;
 
+/** @brief Follow complete route geometry with revocable replacement/resumption. */
 class FollowPathAction : public AsyncRemoteActionNode<navigation_actions::FollowPathAction>
 {
 public:
+    /** @brief Bind the native BT name and its shared navigation context. */
     FollowPathAction(const std::string& name, const BT::NodeConfig& config)
         : AsyncRemoteActionNode(name, config) {}
 
+    /** @brief Expose route, controller, transport budget and error ports. */
     static BT::PortsList providedPorts()
     {
         return {
             BT::InputPort<automsgs::msgs::nav_msgs::Path>("path"),
             BT::InputPort<std::string>("controller_id"),
-            BT::InputPort<uint64_t>("path_revision", 0, "installed path version"),
-            BT::InputPort<double>("goal_reached_tol", 0.10, "m"),
-            BT::InputPort<double>("goal_reached_yaw_tol", 0.10, "rad"),
+            BT::InputPort<int>("max_path_poses", 40,
+                               "Configured transport pose budget; necessary bends are never removed"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };
     }
 
 protected:
+    /** @brief Resolve the native FollowPath RPC client owned by navigation. */
     Client& GetClient(::autonomy::task::navigation::NavigationClient& client) override
     {
         return client.follow_path_client();
     }
 
+    /** @brief Reuse this navigation invocation's retained FollowPath session. */
     ::autonomy::task::navigation::ActionSession<navigation_actions::FollowPathAction>&
     GetSession(::autonomy::task::navigation::NavigationClient& client) override
     {
         return client.follow_session();
     }
 
+    /** @brief Validate and compact a complete route without deleting bends. */
     bool BuildGoal(Goal& goal) override
     {
         automsgs::msgs::nav_msgs::Path path;
         std::string controller_id;
+        arrived_without_path_ = false;
+        pending_reference_.reset();
         if (!getInput("path", path) || path.poses().empty()) {
-            AWARN_EVERY(20) << "nav follow missing_path";
+            std::vector<automsgs::msgs::geometry_msgs::PoseStamped> goals;
+            if (config().blackboard &&
+                config().blackboard->get("goals", goals) && goals.empty()) {
+                ClearErrorPorts(*this);
+                arrived_without_path_ = true;
+                return false;
+            }
+            AWARN_EVERY(20) << "FollowPath: missing path on blackboard";
             SetErrorPorts(*this, 1, "FollowPath: missing path");
             return false;
         }
         getInput("controller_id", controller_id);
-
-        // Keep FollowPath RPC within the SHM slot, but do not stride a long
-        // NavFn path down to 40 points — that makes ~0.5 m kinks and MPPI
-        // hunts (vx sawtooth on long corridors).
-        constexpr int kMaxPoses = 100;
-        constexpr double kMinSpacing = 0.15;
-        if (path.poses_size() > kMaxPoses) {
-            automsgs::msgs::nav_msgs::Path sparse;
-            sparse.mutable_header()->CopyFrom(path.header());
-            const int n = path.poses_size();
-            *sparse.add_poses() = path.poses(0);
-            double acc = 0.0;
-            for (int i = 1; i < n - 1; ++i) {
-                const auto& a = path.poses(i - 1).pose().position();
-                const auto& b = path.poses(i).pose().position();
-                acc += std::hypot(b.x() - a.x(), b.y() - a.y());
-                if (acc < kMinSpacing) {
-                    continue;
-                }
-                acc = 0.0;
-                *sparse.add_poses() = path.poses(i);
+        try {
+            std::vector<::autonomy::task::navigation::PathReferencePose> poses;
+            poses.reserve(static_cast<std::size_t>(path.poses_size()));
+            for (const auto& stamped : path.poses()) {
+                if (!stamped.header().frame_id().empty() &&
+                    stamped.header().frame_id() != path.header().frame_id())
+                    throw std::invalid_argument("path pose uses a different coordinate frame");
+                const auto& position = stamped.pose().position();
+                const auto& rotation = stamped.pose().orientation();
+                poses.push_back({{position.x(), position.y(), position.z()},
+                                 {rotation.x(), rotation.y(), rotation.z(), rotation.w()}});
             }
-            *sparse.add_poses() = path.poses(n - 1);
-            if (sparse.poses_size() > kMaxPoses) {
-                automsgs::msgs::nav_msgs::Path capped;
-                capped.mutable_header()->CopyFrom(sparse.header());
-                const int m = sparse.poses_size();
-                *capped.add_poses() = sparse.poses(0);
-                for (int i = 1; i < kMaxPoses - 1; ++i) {
-                    *capped.add_poses() =
-                        sparse.poses((i * (m - 1)) / (kMaxPoses - 1));
-                }
-                *capped.add_poses() = sparse.poses(m - 1);
-                *goal.mutable_path() = capped;
-            } else {
-                *goal.mutable_path() = sparse;
-            }
-        } else {
-            *goal.mutable_path() = path;
-        }
-        if (!controller_id.empty()) {
-            goal.set_controller_id(controller_id);
+            pending_reference_.emplace(path.header().frame_id(), controller_id, std::move(poses));
+            int max_path_poses = 40;
+            getInput("max_path_poses", max_path_poses);
+            const auto& retained = pending_reference_->retained_indices();
+            if (max_path_poses < 1 || retained.size() > static_cast<std::size_t>(max_path_poses))
+                throw std::invalid_argument("complete path exceeds configured transport pose budget; "
+                                            "necessary bends cannot be removed");
+            // Only numerically redundant collinear poses are removed. Uniform
+            // index sampling can shortcut a narrow doorway or obstacle detour.
+            goal.mutable_path()->mutable_header()->CopyFrom(path.header());
+            for (const auto index : retained)
+                *goal.mutable_path()->add_poses() = path.poses(static_cast<int>(index));
+            if (!controller_id.empty()) goal.set_controller_id(controller_id);
+        } catch (const std::exception& error) {
+            pending_reference_.reset();
+            SetErrorPorts(*this, 1, std::string("FollowPath: ") + error.what());
+            return false;
         }
         return true;
     }
 
+    /** @brief Admit a complete route or retain a concurrently paused session. */
     BT::NodeStatus OnFirstTick() override
     {
         auto client = ResolveClient(*this);
@@ -116,105 +120,119 @@ protected:
             return BT::NodeStatus::RUNNING;
         }
 
+        auto& session = GetSession(*client);
+        const auto gate = ResolveMotionGate(*this);
         Goal goal;
         if (!BuildGoal(goal)) {
+            if (gate && gate->Suspended()) {
+                remote_started_ = session.is_busy();
+                return BT::NodeStatus::RUNNING;
+            }
+            if (session.is_busy()) session.Cancel(GetClient(*client));
             remote_started_ = false;
-            GetSession(*client).Cancel(GetClient(*client));
-            has_sent_goal_ = false;
-            return BT::NodeStatus::FAILURE;
+            return arrived_without_path_ ? BT::NodeStatus::SUCCESS
+                                         : BT::NodeStatus::FAILURE;
         }
 
-        auto& session = GetSession(*client);
         // RateController replans often publish a near-identical /plan. Replacing
         // an in-flight FollowPath just spams preempt + unknown-goal feedback.
-        if (session.is_busy() && !NeedsReplacement(goal)) {
+        if (session.is_busy() && !session.NeedsResume(gate) &&
+            sent_reference_ && pending_reference_ &&
+            sent_reference_->HasSameRemainingPath(*pending_reference_)) {
             remote_started_ = true;
             return BT::NodeStatus::RUNNING;
         }
 
-        AINFO << "nav follow send poses=" << goal.path().poses_size()
-              << " controller=" << goal.controller_id();
-        session.Begin(GetClient(*client), goal);
-        RememberGoal(goal);
+        AINFO_EVERY(10) << "FollowPath: sending path (" << goal.path().poses_size()
+                        << " poses) controller_id=" << goal.controller_id();
+        if (!session.Begin(GetClient(*client), goal, gate)) {
+            // Pause may close admission after BuildGoal. Keep a retained action
+            // latched so OnExecute can resume it after authoritative termination.
+            if (gate && gate->Suspended()) {
+                remote_started_ = session.is_busy();
+                return BT::NodeStatus::RUNNING;
+            }
+            remote_started_ = false;
+            SetErrorPorts(*this, -1, "follow_path dispatch admission revoked");
+            return BT::NodeStatus::FAILURE;
+        }
+        OnGoalDispatched(goal);
         remote_started_ = true;
         return BT::NodeStatus::RUNNING;
     }
 
+    /** @brief Revalidate rolling references before polling or resuming execution. */
     BT::NodeStatus OnExecute() override
     {
+        auto client = ResolveClient(*this);
+        auto& session = GetSession(*client);
+        const auto gate = ResolveMotionGate(*this);
         // If blackboard path changed materially while following, upgrade the
         // active goal once instead of waiting for a node halt/restart.
-        automsgs::msgs::nav_msgs::Path path;
-        if (!getInput("path", path) || path.poses().empty()) {
-            auto client = ResolveClient(*this);
-            GetSession(*client).Cancel(GetClient(*client));
-            has_sent_goal_ = false;
+        Goal goal;
+        if (!BuildGoal(goal)) {
+            if (gate && gate->Suspended()) return BT::NodeStatus::RUNNING;
+            // A malformed or untransmittable new route cannot silently retain
+            // a preceding route which may now cross an obstacle. An exhausted
+            // goal list also completes a paused/resumable invocation here.
+            session.Cancel(GetClient(*client));
             remote_started_ = false;
-            return BT::NodeStatus::RUNNING;
+            return arrived_without_path_ ? BT::NodeStatus::SUCCESS
+                                         : BT::NodeStatus::FAILURE;
         }
-        if (getInput("path", path) && !path.poses().empty()) {
-            Goal goal;
-            if (BuildGoal(goal) && NeedsReplacement(goal)) {
-                auto client = ResolveClient(*this);
-                AINFO << "nav follow update poses=" << goal.path().poses_size();
-                GetSession(*client).Begin(GetClient(*client), goal);
-                RememberGoal(goal);
-                remote_started_ = true;
-            }
-        }
-        const auto status = AsyncRemoteActionNode::OnExecute();
-        if (status == BT::NodeStatus::SUCCESS && has_sent_goal_) {
-            double xy = 0.10, yaw = 0.10;
-            getInput("goal_reached_tol", xy);
-            getInput("goal_reached_yaw_tol", yaw);
-            const auto& endpoint = sent_goal_.path().poses(sent_goal_.path().poses_size()-1);
-            if (!ResolveClient(*this)->IsGoalReached(endpoint, xy, yaw)) {
-                SetErrorPorts(*this, 1, "FollowPath success without fresh full-pose arrival");
+
+        if (session.NeedsResume(gate))
+            return AsyncRemoteActionNode::OnExecute();
+
+        if (!sent_reference_ ||
+            !sent_reference_->HasSameRemainingPath(*pending_reference_)) {
+            AINFO_EVERY(10) << "FollowPath: path updated ("
+                            << goal.path().poses_size() << " poses)";
+            if (!session.Begin(GetClient(*client), goal, gate)) {
+                // Begin preserves the preceding session on refused admission;
+                // a concurrent pause must not publish an unadmitted reference.
+                if (gate && gate->Suspended()) return BT::NodeStatus::RUNNING;
+                SetErrorPorts(*this, -1, "updated follow_path dispatch admission revoked");
                 return BT::NodeStatus::FAILURE;
             }
+            OnGoalDispatched(goal);
         }
-        return status;
+        return AsyncRemoteActionNode::OnExecute();
     }
 
+    /** @brief Cancel the matching invocation and release its route references. */
     void OnHalted() override
     {
         AsyncRemoteActionNode::OnHalted();
-        has_sent_goal_ = false;
+        sent_reference_.reset();
+        pending_reference_.reset();
     }
 
+    /** @brief Identify the remote service in readiness and dispatch diagnostics. */
     const char* ServerLabel() const override { return "follow_path"; }
 
+    /**
+     * @brief Follow the latest absolute path after a confirmed paused stop.
+     * The controller resolves progress from current pose; rebuilding also
+     * verifies that a usable path remains available on the blackboard.
+     */
+    bool BuildResumeGoal(Goal& goal) override {
+        return BuildGoal(goal);
+    }
+
+    /** @brief Commit initial, rolling and resumed bookkeeping after admission. */
+    void OnGoalDispatched(const Goal& /*goal*/) noexcept override {
+        if (pending_reference_) {
+            sent_reference_.swap(pending_reference_);
+            pending_reference_.reset();
+        }
+    }
+
 private:
-    int GoalEpoch() const
-    {
-        int epoch = 0;
-        if (config().blackboard) config().blackboard->get("goal_epoch", epoch);
-        return epoch;
-    }
-    bool NeedsReplacement(const Goal& goal) const
-    {
-        // Ignore path_revision: ComputePath bumps it on every RateController
-        // tick. Preempt+MPPI reset on a 4 s replan is what stalls the robot.
-        if (!has_sent_goal_ || GoalEpoch() != sent_epoch_) {
-            return true;
-        }
-        if (goal.controller_id() != sent_goal_.controller_id()) {
-            return true;
-        }
-        return !::autonomy::task::navigation::EquivalentPathSuffix(
-            goal.path(), sent_goal_.path(), 0.35);
-    }
-    void RememberGoal(const Goal& goal)
-    {
-        sent_goal_ = goal;
-        sent_epoch_ = GoalEpoch();
-        getInput("path_revision", sent_path_revision_);
-        has_sent_goal_ = true;
-    }
-    Goal sent_goal_;
-    int sent_epoch_{0};
-    bool has_sent_goal_{false};
-    uint64_t sent_path_revision_{0};
+    using Reference = ::autonomy::task::navigation::PathReference;
+    std::optional<Reference> sent_reference_;    ///< Complete locally admitted route.
+    std::optional<Reference> pending_reference_; ///< Candidate awaiting local admission.
+    bool arrived_without_path_{false}; ///< Empty goal list means navigation finished.
 };
 
 }  // namespace autonomy::task::plugins::navigation

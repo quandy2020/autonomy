@@ -127,6 +127,7 @@ void PolicyController::Configure(
 
     pipeline_.Configure(options.policy_controller_options());
     pipeline_.SetTfBuffer(tf_buffer_);
+    pipeline_.ConfigureTrajectoryTracker(options, plugin_name_, tf_buffer_, costmap_wrapper_);
     if (options.controller_frequency() > 0.0) {
         control_period_seconds_ = 1.0 / options.controller_frequency();
     }
@@ -143,6 +144,7 @@ void PolicyController::Configure(
 }
 
 void PolicyController::Cleanup() {
+    pipeline_.CleanupTrajectoryTracker();
     pipeline_.ClearModels();
     pipeline_.Reset();
     last_goal_checker_ = nullptr;
@@ -160,10 +162,12 @@ void PolicyController::Activate() {
                 "PolicyController require_model: no active policy");
         }
     }
+    pipeline_.ActivateTrajectoryTracker();
     AINFO << "Activating PolicyController: " << plugin_name_;
 }
 
 void PolicyController::Deactivate() {
+    pipeline_.DeactivateTrajectoryTracker();
     last_goal_checker_ = nullptr;
     AINFO << "Deactivating PolicyController: " << plugin_name_;
 }

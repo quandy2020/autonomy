@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/tmp/opt-vista-v2.38-sanitized/opt_vista_incremental_graph_tests"
+  ],
+  "returncode": -6,
+  "sanitizers": [
+    "address",
+    "undefined",
+    "float-cast-overflow"
+  ],
+  "log_sha256": "27d7b5a6270cfc2fe6b12086685149425a9a6ec1bb7fafde2ef2b92657429b7c"
+}

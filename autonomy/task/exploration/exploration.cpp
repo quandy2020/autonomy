@@ -112,8 +112,19 @@ public:
         /// Admission time in the shared clock domain.
         double now;
     };
+    /** @brief Source packet remains indivisible across task admission and delivery. */
+    struct PacketInput {
+        perception::ObservationPacket packet;  ///< Actual pose, rays and optional depth.
+        double now;  ///< Original admission time in the configured clock domain.
+    };
+    /** @brief Two fixed source slots preserve loss even when the data inbox is full. */
+    struct SourceLoss {
+        std::uint64_t generation;  ///< Task identity at rejection.
+        perception::SensorKind sensor;  ///< Rejected configured source.
+        std::uint64_t first, last;  ///< Conservative receiver ordinal interval.
+    };
     /// Data events are processed in bounded batches on the owner.
-    using Data = std::variant<e::MapReadView, PoseInput, ObservationInput, e::CoverageUnit>;
+    using Data = std::variant<e::MapReadView, PoseInput, ObservationInput, e::CoverageUnit, PacketInput>;
     /** @brief An input belongs to the task generation that admitted it. */
     struct Input {
         /// Zero permits pre-start map/pose seeding, never coverage completion.
@@ -156,7 +167,7 @@ public:
 
     /** @brief Dependency replacement cannot race prepared/running native work. */
     void RequireIdleLocked() const {
-        if (runtime_busy_ || desired_ == TaskLifecycle::kRunning ||
+        if (runtime_busy_ || pending_start_admissions_ || desired_ == TaskLifecycle::kRunning ||
             desired_ == TaskLifecycle::kPaused)
             throw std::logic_error("exploration dependencies require an idle runtime");
     }
@@ -179,7 +190,7 @@ public:
         if (!bindings.create_session || !bindings.clock) return false;
         bindings.options.driver = e::ExplorationDriver::kBehaviorTree;
         std::lock_guard<std::mutex> lock(inbox_mutex_);
-        if (runtime_busy_ || desired_ == TaskLifecycle::kRunning ||
+        if (runtime_busy_ || pending_start_admissions_ || desired_ == TaskLifecycle::kRunning ||
             desired_ == TaskLifecycle::kPaused || motion_fault_)
             return false;
         bindings_ = std::move(bindings);
@@ -188,7 +199,19 @@ public:
 
     /** @brief Queue a START without blocking ingress on session construction. */
     bool Start(const proto::ExplorationGoal& goal) {
-        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        std::shared_ptr<common::MotionAdmission> admission;
+        /** @brief Finish local pending ownership after the inbox lock has been released. */
+        struct PendingStart {
+            Impl& owner;  ///< Admission owner remains alive for this synchronous call.
+            bool armed = false;  ///< Incremented only after domain validation succeeds.
+            ~PendingStart() {
+                if (!armed) return;
+                std::lock_guard<std::mutex> lock(owner.inbox_mutex_);
+                --owner.pending_start_admissions_;
+                owner.ready_.notify_all();
+            }
+        } pending{*this};
+        std::unique_lock<std::mutex> lock(inbox_mutex_);
         if (stopping_ || !worker_started_ || !bindings_ || motion_fault_)
             return false;
         if (!std::isfinite(goal.coverage_target()) || goal.coverage_target() < 0 ||
@@ -209,10 +232,25 @@ public:
         }
         if (goal.enable_mapping() && !bindings.prepare_mapping) return false;
         if (!goal.map_name().empty()) bindings.options.map_name = goal.map_name();
-        if (generation_ == std::numeric_limits<std::uint64_t>::max()) return false;
+        if (generation_ == std::numeric_limits<std::uint64_t>::max() ||
+            intent_revision_ == std::numeric_limits<std::uint64_t>::max()) return false;
+        const auto generation_before_admission = generation_;
+        const auto intent_before_admission = intent_revision_;
+        const auto factory = motion_admission_factory_;
+        ++pending_start_admissions_;
+        pending.armed = true;
+        lock.unlock();
+        if (factory) admission = factory();
+        if (factory && (!admission || !admission->Valid())) return false;
+        lock.lock();
+        if (stopping_ || !worker_started_ || motion_fault_ ||
+            generation_ != generation_before_admission || intent_revision_ != intent_before_admission ||
+            (admission && !admission->Valid())) return false;
+        ++intent_revision_;
         const auto generation = ++generation_;
         if (motion_gate_) motion_gate_->Retire();
-        auto gate = std::make_shared<e::MotionGate>();
+        auto gate = std::make_shared<e::MotionGate>(
+            admission ? admission->PermitQuery() : e::MotionGate::Permit{});
         gate->SetEnabled(true);
         motion_gate_ = gate;
         runtime_busy_ = true;
@@ -235,6 +273,7 @@ public:
             owner_.progress_.set_detail("waiting for real map and localization input");
         }
         ready_.notify_one();
+        if (admission) admission->Complete(true);
         return true;
     }
 
@@ -261,6 +300,7 @@ public:
                     return std::holds_alternative<e::SessionCommand>(queued.value);
                 }), commands_.end());
         }
+        if (intent_revision_ != std::numeric_limits<std::uint64_t>::max()) ++intent_revision_;
         commands_.push_back({generation_, command});
         ready_.notify_one();
         return true;
@@ -272,9 +312,62 @@ public:
         if (stopping_ || !worker_started_ || inputs_.size() >= 1024) return false;
         if (!std::holds_alternative<e::MapReadView>(data) &&
             !std::holds_alternative<PoseInput>(data) &&
+            !std::holds_alternative<PacketInput>(data) &&
             desired_ != TaskLifecycle::kRunning && desired_ != TaskLifecycle::kPaused)
             return false;
         inputs_.push_back({generation_, std::move(data)});
+        ready_.notify_one();
+        return true;
+    }
+
+    /** @brief Capture input identity before expensive decoding or validation. */
+    std::optional<ExplorationSensorInputIdentity> InputIdentity() const {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (stopping_ || !worker_started_ || !bindings_) return {};
+        return ExplorationSensorInputIdentity{instance_, generation_};
+    }
+
+    /** @brief Preserve loss under the caller-held inbox and generation lock. */
+    bool ReportLossLocked(perception::SensorKind sensor, std::uint64_t sequence) {
+        if (!sequence || (sensor != perception::SensorKind::kLidar &&
+            sensor != perception::SensorKind::kRgbd)) return false;
+        if (stopping_ || !worker_started_ || !bindings_ ||
+            !(perception::Mask(bindings_->options.mode) & perception::Mask(sensor)) ||
+            (desired_ != TaskLifecycle::kRunning && desired_ != TaskLifecycle::kPaused)) return false;
+        auto& slot = source_losses_[sensor == perception::SensorKind::kLidar ? 0 : 1];
+        if (!slot || slot->generation != generation_) slot = SourceLoss{generation_, sensor, sequence, sequence};
+        else { slot->first = std::min(slot->first, sequence); slot->last = std::max(slot->last, sequence); }
+        ready_.notify_one();
+        return true;
+    }
+
+    /** @brief Attach explicit rejection only to its original destination. */
+    bool ReportLoss(ExplorationSensorInputIdentity identity,
+                    perception::SensorKind sensor, std::uint64_t sequence) {
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (identity.instance != instance_ || identity.generation != generation_) return false;
+        return ReportLossLocked(sensor, sequence);
+    }
+
+    /** @brief Admit or record packet loss under the same generation lock. */
+    bool PushPacket(ExplorationSensorInputIdentity identity,
+                    perception::ObservationPacket packet, double now) {
+        // Every beam is checked without delaying START or cancellation on the inbox lock.
+        const bool valid = packet.Valid(now);
+        const auto sensor = packet.observation.sensor;
+        const auto sequence = packet.observation.sequence;
+        std::lock_guard<std::mutex> lock(inbox_mutex_);
+        if (identity.instance != instance_ || identity.generation != generation_ ||
+            stopping_ || !worker_started_ || !bindings_ ||
+            (sensor != perception::SensorKind::kLidar && sensor != perception::SensorKind::kRgbd) ||
+            !(perception::Mask(bindings_->options.mode) & perception::Mask(sensor))) return false;
+        if (generation_ && desired_ != TaskLifecycle::kRunning && desired_ != TaskLifecycle::kPaused)
+            return false;
+        if (!valid || inputs_.size() >= 1024) {
+            ReportLossLocked(sensor, sequence);
+            return false;
+        }
+        inputs_.push_back({generation_, PacketInput{std::move(packet), now}});
         ready_.notify_one();
         return true;
     }
@@ -346,6 +439,7 @@ public:
         initialization_resumed_ = false;
         posted_control_.reset();
         deferred_.clear();
+        deferred_losses_ = {};
         active_clock_ = {};
         {
             std::lock_guard<std::mutex> lock(inbox_mutex_);
@@ -445,6 +539,22 @@ public:
         waiting_.reset();
         for (auto& input : deferred_) Deliver(std::move(input), now);
         deferred_.clear();
+        auto losses = std::move(deferred_losses_);
+        deferred_losses_ = {};
+        for (const auto& loss : losses) if (loss) DeliverLoss(*loss);
+    }
+
+    /** @brief Loss remains attached to its original generation through startup. */
+    void DeliverLoss(const SourceLoss& loss) {
+        if (loss.generation != active_generation_) return;
+        if (session_) {
+            session_->RejectSensorInput(loss.sensor, loss.first);
+            if (loss.last != loss.first) session_->RejectSensorInput(loss.sensor, loss.last);
+        } else if (waiting_) {
+            auto& slot = deferred_losses_[loss.sensor == perception::SensorKind::kLidar ? 0 : 1];
+            if (!slot) slot = loss;
+            else { slot->first = std::min(slot->first, loss.first); slot->last = std::max(slot->last, loss.last); }
+        }
     }
 
     /** @brief Route input to the owner without renewing its evidence timestamp. */
@@ -461,6 +571,31 @@ public:
             if (session_ && input.generation == active_generation_)
                 if (!session_->PushPose(pose->pose, pose->stamp, pose->epoch, pose->support))
                     throw std::runtime_error("session refused an admitted pose input");
+        } else if (auto* packet = std::get_if<PacketInput>(&input.data)) {
+            if (input.generation && input.generation != active_generation_) return;
+            const auto processing_time = std::max(now, packet->now);
+            if (packet->packet.Valid(processing_time)) {
+                const auto& localization = packet->packet.localization;
+                const auto stamp = packet->packet.observation.stamp;
+                if ((!latest_map_ || localization.map_epoch == latest_map_->map_epoch) &&
+                    (!latest_pose_ || localization.map_epoch != latest_pose_->epoch || stamp >= latest_pose_->stamp))
+                    latest_pose_ = PoseInput{{localization.world_from_base.translation.x,
+                        localization.world_from_base.translation.y,
+                        std::atan2(localization.world_from_base.rotation[3], localization.world_from_base.rotation[0])},
+                        stamp, localization.map_epoch, localization.support};
+            }
+            if (!input.generation || input.generation != active_generation_) return;
+            if (!session_) {
+                if (waiting_) {
+                    if (deferred_.size() >= 1024) {
+                        DeliverLoss({input.generation, packet->packet.observation.sensor,
+                            packet->packet.observation.sequence, packet->packet.observation.sequence});
+                    } else deferred_.push_back(std::move(input));
+                }
+                return;
+            }
+            // Session records expected expiry/capacity rejection as source loss.
+            session_->PushSensorPacket(std::move(packet->packet), processing_time);
         } else if (input.generation == active_generation_) {
             if (!session_) {
                 if (waiting_) {
@@ -591,14 +726,17 @@ public:
         for (;;) {
             std::deque<Command> commands;
             std::deque<Input> inputs;
+            std::array<std::optional<SourceLoss>, 2> losses;
             bool stopping;
             {
                 std::unique_lock<std::mutex> lock(inbox_mutex_);
                 ready_.wait_for(lock, period_, [this] {
-                    return stopping_ || !commands_.empty() || !inputs_.empty();
+                    return stopping_ || !commands_.empty() || !inputs_.empty() || source_losses_[0] || source_losses_[1];
                 });
                 stopping = stopping_;
                 commands.swap(commands_);
+                losses = std::move(source_losses_);
+                source_losses_ = {};
                 for (std::size_t i = 0; i < 32 && !inputs_.empty(); ++i) {
                     inputs.push_back(std::move(inputs_.front()));
                     inputs_.pop_front();
@@ -638,6 +776,7 @@ public:
                     initialization_resumed_ = false;
                 }
                 for (auto& input : inputs) Deliver(std::move(input), now);
+                for (const auto& loss : losses) if (loss) DeliverLoss(*loss);
                 StartReady(now);
                 if (session_) {
                     if (dispatcher_ && dispatcher_->Failed())
@@ -668,6 +807,8 @@ public:
     ExplorationTask& owner_;
     /// Unique native request scope for the task object.
     const std::uint64_t instance_;
+    std::array<std::optional<SourceLoss>, 2> source_losses_;  ///< Inbox-locked loss slots independent from data capacity.
+    std::array<std::optional<SourceLoss>, 2> deferred_losses_;  ///< Owner-only loss accumulated before Session starts.
     /// Serializes inbox admission, configuration and generation changes.
     mutable std::mutex inbox_mutex_;
     /// Serializes external worker joins; never held by feedback/tick.
@@ -682,6 +823,9 @@ public:
     bool worker_started_ = false;
     /// Prepared/active generation must drain before dependency replacement.
     bool runtime_busy_ = false;
+    std::size_t pending_start_admissions_ = 0;  ///< Inbox-protected starts awaiting scheduler ownership.
+    std::uint64_t intent_revision_ = 0;  ///< START and control transitions invalidate late admission callbacks.
+    common::MotionAdmission::Factory motion_admission_factory_;  ///< Invoked outside inbox/lifecycle locks.
     /// Unconfirmed old cancellation prevents replacement by another START.
     bool motion_fault_ = false;
     /// Current generation permission, revoked directly by admission commands.
@@ -778,6 +922,15 @@ void ExplorationTask::SetSubmitNavigation(SubmitNavigation submit) {
 void ExplorationTask::SetGuardedSubmitNavigation(GuardedSubmitNavigation submit) {
     std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
     impl_->RequireIdleLocked(); impl_->guarded_submit_navigation_ = std::move(submit);
+}
+void ExplorationTask::SetMotionAdmission(common::MotionAdmission::Factory factory) {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    impl_->RequireIdleLocked();
+    impl_->motion_admission_factory_ = std::move(factory);
+}
+bool ExplorationTask::MotionDrained() const {
+    std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
+    return !impl_->runtime_busy_ && !impl_->pending_start_admissions_ && !impl_->motion_fault_;
 }
 void ExplorationTask::SetSubmitMapping(SubmitMapping submit) {
     std::lock_guard<std::mutex> lock(impl_->inbox_mutex_);
@@ -884,6 +1037,42 @@ bool ExplorationTask::PushPose(e::Pose2d pose, double stamp, std::uint64_t epoch
 bool ExplorationTask::PushObservation(perception::SensorObservation observation, double now) {
     if (!std::isfinite(now)) return false;
     return impl_->Push(Impl::ObservationInput{std::move(observation), now});
+}
+bool ExplorationTask::PushSensorPacket(perception::ObservationPacket packet, double now) {
+    const auto identity = impl_->InputIdentity();
+    return identity && impl_->PushPacket(*identity, std::move(packet), now);
+}
+std::optional<ExplorationSensorInputIdentity> ExplorationTask::SensorInputIdentity() const {
+    return impl_->InputIdentity();
+}
+bool ExplorationTask::PushSensorPacket(ExplorationSensorInputIdentity identity,
+                                      perception::ObservationPacket packet, double now) {
+    return impl_->PushPacket(identity, std::move(packet), now);
+}
+bool ExplorationTask::ReportSensorLoss(perception::SensorKind sensor, std::uint64_t sequence) {
+    const auto identity = impl_->InputIdentity();
+    return identity && impl_->ReportLoss(*identity, sensor, sequence);
+}
+bool ExplorationTask::ReportSensorLoss(ExplorationSensorInputIdentity identity,
+                                      perception::SensorKind sensor, std::uint64_t sequence) {
+    return impl_->ReportLoss(identity, sensor, sequence);
+}
+std::optional<ExplorationSensorInputBinding> ExplorationTask::BindSensorInput(
+    const std::shared_ptr<ExplorationTask>& task) {
+    if (!task) return {};
+    const auto identity = task->SensorInputIdentity();
+    if (!identity) return {};
+    const std::weak_ptr<ExplorationTask> weak = task;
+    ExplorationSensorInputBinding binding;
+    binding.identity = *identity;
+    binding.sink = [weak, identity = *identity](perception::ObservationPacket packet, double now) {
+        const auto destination = weak.lock();
+        return destination && destination->PushSensorPacket(identity, std::move(packet), now);
+    };
+    binding.loss = [weak, identity = *identity](perception::SensorKind sensor, std::uint64_t sequence) {
+        if (const auto destination = weak.lock()) destination->ReportSensorLoss(identity, sensor, sequence);
+    };
+    return binding;
 }
 bool ExplorationTask::PushCoverageUnit(e::CoverageUnit unit) { return impl_->Push(std::move(unit)); }
 std::optional<e::ExplorationSnapshot> ExplorationTask::GetExplorationSnapshot() const {

@@ -16,6 +16,16 @@ namespace autonomy::task::exploration {
 
 /** @brief Revision changes and permission publication share one short lock. */
 struct MotionGate::State {
+    explicit State(Permit parent) : parent(std::move(parent)) {}  ///< Capture a bounded external permit.
+    const Permit parent;  ///< Immutable scheduler ownership; queried outside the local gate mutex.
+    std::atomic<bool> denied{false};  ///< External denial is permanent, including across resume.
+    /** @return External eligibility; false/exception permanently retires outstanding leases. */
+    bool Allowed() {
+        if (denied.load()) return false;
+        try { if (!parent || parent()) return !denied.load(); } catch (...) {}
+        denied.store(true);
+        return false;
+    }
     /// Protects all gate fields; no external callback runs while locked.
     mutable std::mutex mutex;
     /// Current lease revision; exhaustion permanently retires the gate.
@@ -26,8 +36,9 @@ struct MotionGate::State {
     bool retired = false;
 };
 
-MotionGate::MotionGate() : state_(std::make_shared<State>()) {}
+MotionGate::MotionGate(Permit parent) : state_(std::make_shared<State>(std::move(parent))) {}
 void MotionGate::SetEnabled(bool enabled) {
+    if (enabled && !state_->Allowed()) return;
     std::lock_guard<std::mutex> lock(state_->mutex);
     if (state_->retired || state_->enabled == enabled) return;
     if (state_->revision == std::numeric_limits<std::uint64_t>::max()) {
@@ -50,11 +61,13 @@ MotionGate::Permit MotionGate::Lease() const {
         revision = state_->revision;
     }
     return [state = state_, revision] {
+        if (!state->Allowed()) return false;
         std::lock_guard<std::mutex> lock(state->mutex);
         return !state->retired && state->enabled && state->revision == revision;
     };
 }
 bool MotionGate::Enabled() const {
+    if (!state_->Allowed()) return false;
     std::lock_guard<std::mutex> lock(state_->mutex);
     return !state_->retired && state_->enabled;
 }

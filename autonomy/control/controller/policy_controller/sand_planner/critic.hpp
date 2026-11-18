@@ -83,6 +83,23 @@ bool SelectSandPlannerTwist(
     automsgs::msgs::geometry_msgs::Twist* twist,
     Eigen::Vector3d* selected_heading, std::string* error);
 
+/** @brief Select and retain the full candidate spline for an independent tracker.
+ * Malformed/nonfinite candidate tensors are skipped instead of zero-padding
+ * them into valid curves. This is candidate scoring, not final body/ground
+ * safety admission. The existing PolicyPipeline safety stage remains required.
+ * @param candidates Exact flattened xyz control-point tensors.
+ * @param snapshot Actual depth and relative path-goal observations.
+ * @param options Effective SanD candidate scoring configuration.
+ * @param selected_controls Full selected robot-frame control-point sequence.
+ * @param selected_heading Tangent seed used for the next SanD v_prev token.
+ * @param error Explicit rejection reason.
+ */
+bool SelectSandPlannerTrajectory(
+    const std::vector<std::vector<float>>& candidates,
+    const ObservationSnapshot& snapshot, const proto::SandPlanner& options,
+    std::vector<Eigen::Vector3d>* selected_controls,
+    Eigen::Vector3d* selected_heading, std::string* error);
+
 }  // namespace policy_controller
 }  // namespace controller
 }  // namespace control

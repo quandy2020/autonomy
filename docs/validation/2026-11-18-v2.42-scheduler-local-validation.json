@@ -1,0 +1,9 @@
+{
+  "passed": true,
+  "tests_passed": 30,
+  "duration_seconds": 20.52,
+  "build_directory": "build",
+  "ctest_log": "docs/validation/2026-11-18-v2.42-scheduler-local-tests.log",
+  "ctest_log_sha256": "851d10943f3577547b5d47a6729d2028d3ce67b5f8341f5327820419c17eec8c",
+  "scope": "Portable Opt and BT regression; native TaskScheduler test is built separately in SpaceHero."
+}

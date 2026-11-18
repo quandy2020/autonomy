@@ -1,0 +1,49 @@
+{
+  "passed": true,
+  "baseline_header_sha256": "207448e0c5f3f678b24a3ed917f1d490aaf296263e52caae4c5bc176180b95d5",
+  "checks": [
+    {
+      "kind": "baseline",
+      "compile_command": [
+        "c++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-I",
+        "/var/folders/v_/9mlycd1n1y30k3tnkq9nvw7w0000gp/T/opt-shared-bspline-baseline-2wchf9yq",
+        "/Users/duyongquan3/workspace/Opt/autonomy/common/math/bspline_cache_test.cpp",
+        "-o",
+        "/var/folders/v_/9mlycd1n1y30k3tnkq9nvw7w0000gp/T/opt-shared-bspline-baseline-2wchf9yq/baseline"
+      ],
+      "compile_returncode": 0,
+      "returncode": 1,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-baseline.log",
+      "sha256": "34bd48a0258eb6be476283f225a037feb18288fbae41e617c9782e49ba88e120"
+    },
+    {
+      "kind": "cached",
+      "compile_command": [
+        "c++",
+        "-std=c++17",
+        "-O2",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-I",
+        "/Users/duyongquan3/workspace/Opt",
+        "/Users/duyongquan3/workspace/Opt/autonomy/common/math/bspline_cache_test.cpp",
+        "-o",
+        "/var/folders/v_/9mlycd1n1y30k3tnkq9nvw7w0000gp/T/opt-shared-bspline-baseline-2wchf9yq/cached"
+      ],
+      "compile_returncode": 0,
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.39-shared-bspline-cached.log",
+      "sha256": "6115576946eff836df987bd2f7f73e4c0c5d0bbfa59368a75aa3b73ba30ab06a"
+    }
+  ],
+  "scope": "Scalar C++ heap allocations during repeated position and derivative evaluation; construction and dynamic point algebra excluded."
+}

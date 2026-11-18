@@ -322,4 +322,11 @@ message PolicyControllerOptions {
   // options (wall-clock assigned on receive is always set; this forces
   // age/skew checks to apply once stamp>0).
   bool require_tensor_stamp = 41;
+
+  // Existing native controller used after SanD spline generation.
+  // Empty selects NMPCController; MPPIController reuses mppi_controller_options.
+  string sand_tracker = 42;
+  // Monotonic generation period in seconds, default 0.1, maximum 1.0.
+  // Feedback control and safety still run at ControllerOptions.controller_frequency.
+  double sand_replan_period = 43;
 }

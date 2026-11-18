@@ -1,0 +1,51 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/common/motion_admission.hpp",
+    "autonomy/task/navigation/navigation.cpp",
+    "autonomy/task/navigation/navigation.hpp",
+    "autonomy/task/exploration/exploration.cpp",
+    "autonomy/task/exploration/exploration.hpp",
+    "autonomy/task/exploration/integration/navigation_dispatcher.cpp",
+    "autonomy/task/exploration/integration/navigation_dispatcher.hpp",
+    "autonomy/task/scheduler/scheduler.hpp",
+    "autonomy/task/scheduler/scheduler.cpp",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp",
+    "cmake/ExplorationTests.cmake"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-lv6i5vy0/backup",
+  "expected_sha256": {
+    "autonomy/task/common/motion_admission.hpp": null,
+    "autonomy/task/navigation/navigation.cpp": "4bf7506273a859611e6e7a4c49518560d29937de70d33930999757bc572b4ec2",
+    "autonomy/task/navigation/navigation.hpp": "beaef395501c8427172337f2262bd327f4956325ee099c127b63f729ab2b3202",
+    "autonomy/task/exploration/exploration.cpp": "4bc2a4ba43111053123bb5f9d92dbdb1d3bf9ee6b96b0ffdcc59f33145553373",
+    "autonomy/task/exploration/exploration.hpp": "7165544c7ed89e313eff8819c6b545818c74f56fa966b5651690e44886b13808",
+    "autonomy/task/exploration/integration/navigation_dispatcher.cpp": "2128ef79b06a22e5f32e80ff8b0c05dc5526d709d93e9f6102812b632963f66b",
+    "autonomy/task/exploration/integration/navigation_dispatcher.hpp": "689a3b9fedb07cb972bea206810698edb4810f460cb5179f15bc6f65b68d15d8",
+    "autonomy/task/scheduler/scheduler.hpp": "d58506897f85f7ec8c34af6bd0a1b46d6890261609dc4d73f79a50e1d6ea0d4f",
+    "autonomy/task/scheduler/scheduler.cpp": "c66914055a698210f2cfee7079efc45f3ca77c47e885efc1650c817752701372",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": null,
+    "cmake/ExplorationTests.cmake": "270199a4cc08b096714753fcdb98316aec0880817094c0efcdb14f3d490bddac"
+  },
+  "deployed_sha256": {
+    "autonomy/task/common/motion_admission.hpp": "3463b79e4e386f5d02ca01fe30c81583f274d3a87847da8411661de1bc2cb728",
+    "autonomy/task/navigation/navigation.cpp": "941b9be9307cf9cf18a3f070bae5f244f02c89dcba47aa8859c2644707e984f8",
+    "autonomy/task/navigation/navigation.hpp": "d5dcd29560b0e7bbaa25d1b3d0a539281fc7f114d9447ee6e713f399a6054148",
+    "autonomy/task/exploration/exploration.cpp": "8209aefb57b244263157423f578e4ae5792922bd28fa2d14bd6c1a54c43eed6d",
+    "autonomy/task/exploration/exploration.hpp": "16caf87de65be5c0ca4500ecdbecd6e7053e4e997af0ac15cb4fe401188952b7",
+    "autonomy/task/exploration/integration/navigation_dispatcher.cpp": "fa39dfd8ebb70de2f29b087f327899e276b53929fa54c3990366fa11e2d320da",
+    "autonomy/task/exploration/integration/navigation_dispatcher.hpp": "899e81e90e53d3d9a2e1ef54027175e620269d5d7df58711583ba7a5b12b760c",
+    "autonomy/task/scheduler/scheduler.hpp": "39ffe7576511e109bb32593c1bc2547afba97fa9bf25e8f447290a8daf7be0df",
+    "autonomy/task/scheduler/scheduler.cpp": "4d5558025eb3759bdf06cd12ac46dc91f6b692a834634fe29d0bb99673bc2d1c",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": "f33a469cb1201a0074b78f851a9fb52e62c8715d7cef3bc3bbda5855445a8093",
+    "cmake/ExplorationTests.cmake": "9744b6e5c7f90613fd943f0a6e1192e6d0e4240db6201bd53f26641965ffa08f"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "77cb1740ec1061f52a18b83ef5165e0fb55d7f8189288b1570e7aa6394358e36",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

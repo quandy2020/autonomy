@@ -1,0 +1,44 @@
+{
+  "passed": true,
+  "steps": [
+    {
+      "stage": "configure",
+      "command": [
+        "cmake",
+        "-S",
+        ".",
+        "-B",
+        "/tmp/opt-exploration-v2.35"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.41-shared-bspline-boundary-local-configure.log",
+      "sha256": "32e53547a2fee3cb3aaf51ff3de50411cb36ecb3df7170e7b2ab7a64982063fa"
+    },
+    {
+      "stage": "build",
+      "command": [
+        "cmake",
+        "--build",
+        "/tmp/opt-exploration-v2.35",
+        "-j",
+        "4"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.41-shared-bspline-boundary-local-build.log",
+      "sha256": "e1f3d42368f3fc29b776cdd6298ac6b7f305fd0c9b3c66bb977b4961772bd5a6"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "/tmp/opt-exploration-v2.35",
+        "--output-on-failure",
+        "--no-tests=error"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.41-shared-bspline-boundary-local-tests.log",
+      "sha256": "3afadb9ed9be7d8e45f4a5f485e72c784eaf8e42fb9ddf8e6384e4e9a33bffc5"
+    }
+  ]
+}

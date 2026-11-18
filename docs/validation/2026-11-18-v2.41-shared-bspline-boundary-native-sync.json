@@ -1,0 +1,33 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/common/math/bspline.hpp",
+    "autonomy/common/math/bspline_cache_test.cpp",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.cpp",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp",
+    "docs/source/09_Control/controller/08_sand_execution_safety.md"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-_qx0gjzq/backup",
+  "expected_sha256": {
+    "autonomy/common/math/bspline.hpp": "5b7f28942f81d96e740d023f74c220f75ac393f47f5e739399dff6bcb0dc8775",
+    "autonomy/common/math/bspline_cache_test.cpp": "6b08a3959cd522c063d15b64ee0b3646c6744ab38f55e797e57f68026f17addc",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.cpp": "c729b404edd02070e48b02518a805a6f01cddf9c21e0b336aaef75779dda65ec",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp": "a71668c7d84b762ab762b0e1750585bc6210480dfbc000e1238c2c0162958e83",
+    "docs/source/09_Control/controller/08_sand_execution_safety.md": "0271d3f64f0dd3064d445555e39629b2ceb246117d255a09e3e9faac6c7929da"
+  },
+  "deployed_sha256": {
+    "autonomy/common/math/bspline.hpp": "4ad992f99b3df3df97dca3e5b091df94425fbe524e123c31e7cb51a565d60a70",
+    "autonomy/common/math/bspline_cache_test.cpp": "91a4c04feefddecf5902531a764986e3882d414d5fff1acdc1db286921bb168e",
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.cpp": "08be1be3cf8aec95b2ace38e1181f2ad07116dc18788a97661f1a15dc83a3c38",
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp": "9a0e6bc23e0b7c3157a84b6fb0f1761a1ce75fe2ade114f235eb06cf3c2afe62",
+    "docs/source/09_Control/controller/08_sand_execution_safety.md": "16db68ca087b7a50972510d516b2b0776c64bae0ce37a727e9939a06908b024a"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "ca866b5e0831133be0be3bbc79ad5d178821e9e18f36263bd6db5799820264b2",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

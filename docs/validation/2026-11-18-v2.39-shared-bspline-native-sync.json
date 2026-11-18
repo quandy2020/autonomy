@@ -1,0 +1,33 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/common/math/bspline.hpp",
+    "autonomy/common/math/bspline_cache_test.cpp",
+    "cmake/ExplorationTests.cmake",
+    "docs/source/09_Control/controller/08_sand_execution_safety.md",
+    "docs/source/17_Tasks/08_multisensor_exploration.md"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-cfuzstu4/backup",
+  "expected_sha256": {
+    "autonomy/common/math/bspline.hpp": "207448e0c5f3f678b24a3ed917f1d490aaf296263e52caae4c5bc176180b95d5",
+    "autonomy/common/math/bspline_cache_test.cpp": null,
+    "cmake/ExplorationTests.cmake": "b49260fb98534cfd07fc3bfb10640d49a946fe4aa4fa3d603c18c792a9e244f9",
+    "docs/source/09_Control/controller/08_sand_execution_safety.md": "1316a43b02d736be57b11fe73e7205bcf74c1013af33751399238d0a7dffa4a2",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "4b2cff20e4b13ed6f10ee95e07c01a2108178f7651cdfcda38c99bab99cb03e0"
+  },
+  "deployed_sha256": {
+    "autonomy/common/math/bspline.hpp": "5b7f28942f81d96e740d023f74c220f75ac393f47f5e739399dff6bcb0dc8775",
+    "autonomy/common/math/bspline_cache_test.cpp": "6b08a3959cd522c063d15b64ee0b3646c6744ab38f55e797e57f68026f17addc",
+    "cmake/ExplorationTests.cmake": "270199a4cc08b096714753fcdb98316aec0880817094c0efcdb14f3d490bddac",
+    "docs/source/09_Control/controller/08_sand_execution_safety.md": "0271d3f64f0dd3064d445555e39629b2ceb246117d255a09e3e9faac6c7929da",
+    "docs/source/17_Tasks/08_multisensor_exploration.md": "38c041310a3524409ccf0cc80d4da327d3d2da6625574351e2bb46c73bbc8209"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "a906188167422b4763c09b116c427893f452af55e4b2b02c15277c1dc44eae14",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

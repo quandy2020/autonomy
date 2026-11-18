@@ -12,6 +12,7 @@
 
 #include "autonomy/common/macros.hpp"
 #include "autonomy/task/common/typed_task.hpp"
+#include "autonomy/task/common/motion_admission.hpp"
 #include "autonomy/task/exploration/exploration_session.hpp"
 #include "autonomy/task/exploration/integration/navigation_dispatcher.hpp"
 #include <automsgs/task/exploration.pb.h>
@@ -41,6 +42,23 @@ struct ExplorationTaskBindings {
     std::function<double()> clock;
     /// Initial immutable policy; per-goal map name/boundary are versioned.
     exploration::ExplorationSessionOptions options;
+};
+
+/** @brief Fixed sensor destination captured before asynchronous decoding.
+ * Generation zero permits readiness seeding only before the first START.
+ */
+struct ExplorationSensorInputIdentity {
+    std::uint64_t instance = 0;  ///< Unique task object identity.
+    std::uint64_t generation = 0;  ///< Accepted START generation at binding time.
+};
+
+/** @brief Sensor callbacks bound to one task generation through a weak owner.
+ * TaskServer owns the task during execution. Replacement START needs new callbacks.
+ */
+struct ExplorationSensorInputBinding {
+    ExplorationSensorInputIdentity identity;  ///< Fixed destination for this source.
+    std::function<bool(perception::ObservationPacket, double)> sink;  ///< Atomic packet admission.
+    std::function<void(perception::SensorKind, std::uint64_t)> loss;  ///< Rejection for the same destination.
 };
 
 /**
@@ -93,6 +111,10 @@ public:
     void SetSubmitNavigation(SubmitNavigation submit);
     /// Install cooperative native acceptance while no runtime is in flight.
     void SetGuardedSubmitNavigation(GuardedSubmitNavigation submit);
+    /** @brief Install root movement admission while no start or runtime is in flight. */
+    void SetMotionAdmission(common::MotionAdmission::Factory factory);
+    /** @return True only after pending starts, runtime disposal and owned dispatcher cleanup. */
+    bool MotionDrained() const;
     /// Retain mapping dispatcher; SAVE_MAP never maps to MAP_CMD_SWITCH.
     void SetSubmitMapping(SubmitMapping submit);
     /// Preserve old probe API; it is not used for authoritative completion.
@@ -118,6 +140,34 @@ public:
                   perception::SensorMask localization_support);
     /// Queue a real sensor observation for the current task generation.
     bool PushObservation(perception::SensorObservation observation, double now);
+    /** @brief Queue a whole localized sensor packet under one task generation.
+     * @details Before START only the current pose can seed readiness; pre-start
+     *          observations never become the new generation's coverage.
+     */
+    bool PushSensorPacket(perception::ObservationPacket packet, double now);
+    /** @brief Capture the destination before asynchronous decoding.
+     * @return No identity when the worker is stopped or dependencies are absent.
+     */
+    std::optional<ExplorationSensorInputIdentity> SensorInputIdentity() const;
+    /** @brief Admit or record loss atomically for the captured generation.
+     * Validation is outside the inbox lock; replacement START cannot retarget it.
+     */
+    bool PushSensorPacket(ExplorationSensorInputIdentity identity,
+                          perception::ObservationPacket packet, double now);
+    /** @brief Record source rejection in a bounded, generation-scoped loss slot.
+     * Loss notification remains available when the ordinary inbox is full.
+     */
+    bool ReportSensorLoss(perception::SensorKind sensor, std::uint64_t sequence);
+    /** @brief Reject stale source callbacks without changing the newer task. */
+    bool ReportSensorLoss(ExplorationSensorInputIdentity identity,
+                          perception::SensorKind sensor, std::uint64_t sequence);
+    /** @brief Bind source callbacks to a weak task and a fixed generation.
+     * @return No binding for a null, stopped or unconfigured task.
+     * Old callbacks fail after replacement START. Pre-start bindings expire at
+     * the first START and must be replaced for coverage input.
+     */
+    static std::optional<ExplorationSensorInputBinding> BindSensorInput(
+        const std::shared_ptr<ExplorationTask>& task);
     /// Queue an explicit coverage requirement for the current task generation.
     bool PushCoverageUnit(exploration::CoverageUnit unit);
     /// Read a consistent algorithm snapshot; absent until a session is started.

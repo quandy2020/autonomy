@@ -1,0 +1,63 @@
+{
+  "date": "2026-11-18",
+  "source_root": "/home/quandy/workspace/github/autonomy/src/autonomy",
+  "files": [
+    {
+      "path": "autonomy/task/task_main.cpp",
+      "sha256": "708cffe24c1507bb7f2d4c5b7dfd63e394a660ca0c4f8af9321f8b757de48fb7",
+      "lines": 89
+    },
+    {
+      "path": "autonomy/task/task_server.hpp",
+      "sha256": "d054a6f65a31324638bc866657be62949f6c8ed26736fe19eaa1d38623f1bc63",
+      "lines": 291
+    },
+    {
+      "path": "autonomy/task/task_server.cpp",
+      "sha256": "1e2863fd647210886a825ed33bac74fe28181e1ad393fd2e0647fd57f9084e66",
+      "lines": 661
+    },
+    {
+      "path": "autonomy/task/mapping/mapping_client.cpp",
+      "sha256": "2e7b88f5cbad8924d320f53d22793585e90574ec0395467af3e436d4de8b87b6",
+      "lines": 97
+    },
+    {
+      "path": "autonomy/localization/argus/app/visual_slam_system.hpp",
+      "sha256": "5035a6e412685b1d888bee21f81918c0c2c075d03a9c3eb02e6975c7210018b1",
+      "lines": 86
+    },
+    {
+      "path": "autonomy/localization/argus/app/voxel_slam_system.hpp",
+      "sha256": "0c202631bb91862a36dfec5b5892b52a3dda3e5600d89a30395fff5775bd7a34",
+      "lines": 86
+    },
+    {
+      "path": "autonomy/localization/cartographer/node/sensor_bridge.cpp",
+      "sha256": "840b0b6538a4038570c47902c30d77a77f7fc6ff626b8c8effaa3fa45d36e359",
+      "lines": 289
+    },
+    {
+      "path": "autonomy/localization/cartographer/mapping/internal/2d/local_trajectory_builder_2d.cpp",
+      "sha256": "3f7eb805791a38e35b6deb69dde7830f0530fd911896c60206a6910ea5fa3333",
+      "lines": 316
+    },
+    {
+      "path": "autonomy/map/costmap_2d/map_io.hpp",
+      "sha256": "b53c29f146a4c606d08ba4d560ec88589d517fe164c2941358f6778a5d34f7bd",
+      "lines": 105
+    }
+  ],
+  "verified_findings": {
+    "task_main_configures_exploration_session": false,
+    "remote_task_server_configure_exploration_session_wrapper": false,
+    "exploration_accessor_is_public": true,
+    "mapping_client_load_map_only_checks_name": true,
+    "mapping_client_initial_pose_has_real_owner_receipt": false,
+    "argus_noninertial_rgbd_entry": true,
+    "voxel_slam_requires_imu": true,
+    "cartographer_2d_has_no_imu_pointcloud_initialization": true,
+    "map_io_file_save_entry": true
+  },
+  "scope": "Read-only source findings; no live mapping, model inference, sensor quality, physical execution or persistence-fusion verification."
+}

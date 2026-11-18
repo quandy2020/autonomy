@@ -1,0 +1,19 @@
+{
+  "source_mismatches": {},
+  "protected_map_match": true,
+  "protected_task_match": true,
+  "task_cmake_sha256": "68ac1fbb2f1f6800b050bf2ae383b17c76ef0bd9153f4183f322f665146f48b9",
+  "sha256": {
+    "autonomy/task/common/motion_admission.hpp": null,
+    "autonomy/task/navigation/navigation.cpp": "4bf7506273a859611e6e7a4c49518560d29937de70d33930999757bc572b4ec2",
+    "autonomy/task/navigation/navigation.hpp": "beaef395501c8427172337f2262bd327f4956325ee099c127b63f729ab2b3202",
+    "autonomy/task/exploration/exploration.cpp": "4bc2a4ba43111053123bb5f9d92dbdb1d3bf9ee6b96b0ffdcc59f33145553373",
+    "autonomy/task/exploration/exploration.hpp": "7165544c7ed89e313eff8819c6b545818c74f56fa966b5651690e44886b13808",
+    "autonomy/task/exploration/integration/navigation_dispatcher.cpp": "2128ef79b06a22e5f32e80ff8b0c05dc5526d709d93e9f6102812b632963f66b",
+    "autonomy/task/exploration/integration/navigation_dispatcher.hpp": "689a3b9fedb07cb972bea206810698edb4810f460cb5179f15bc6f65b68d15d8",
+    "autonomy/task/scheduler/scheduler.hpp": "d58506897f85f7ec8c34af6bd0a1b46d6890261609dc4d73f79a50e1d6ea0d4f",
+    "autonomy/task/scheduler/scheduler.cpp": "c66914055a698210f2cfee7079efc45f3ca77c47e885efc1650c817752701372",
+    "autonomy/task/scheduler/scheduler_motion_test.cpp": null,
+    "cmake/ExplorationTests.cmake": "270199a4cc08b096714753fcdb98316aec0880817094c0efcdb14f3d490bddac"
+  }
+}

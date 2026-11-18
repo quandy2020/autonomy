@@ -97,7 +97,7 @@ void BtDefaults::Apply(proto::TaskServerOptions* options)
                nullptr, 50);
 
     SetProfile(bt->mutable_charging(), "behavior_tree/charging/dock.xml",
-               nullptr, 10);
+               "behavior_tree/charging/undock.xml", 10);
 
     SetProfile(bt->mutable_mapping(),
                "behavior_tree/mapping/map_load.xml",

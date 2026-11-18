@@ -71,7 +71,7 @@ PredictedQuality Aggregate(const std::vector<CoverageContribution>& contribution
 }  // namespace
 
 void CoverageState::Reset(std::uint64_t epoch) {
-    units_.clear(); epoch_ = epoch; ++revision_;
+    units_.clear(); epoch_ = epoch; ++revision_; ++requirements_revision_;
 }
 void CoverageState::Upsert(CoverageUnit unit) {
     if (!KindValid(unit.id.kind) || !unit.center.Finite() || !unit.normal.Finite() ||
@@ -96,7 +96,7 @@ void CoverageState::Upsert(CoverageUnit unit) {
         unit.observed_quality = {0, 0}; unit.observed_stamp = {0, 0};
     }
     unit.pending = !UnitComplete(unit);
-    units_[unit.id] = std::move(unit); ++revision_;
+    units_[unit.id] = std::move(unit); ++revision_; ++requirements_revision_;
 }
 bool CoverageState::Confirm(const CoverageId& id, perception::SensorKind sensor,
                             double quality, double stamp) {
@@ -129,14 +129,29 @@ double CoverageState::Remaining(const CoverageId& id) const {
 bool CoverageState::Complete(const CoverageId& id) const {
     const auto found = units_.find(id); return found != units_.end() && !found->second.pending;
 }
-void CoverageState::Remove(const CoverageId& id) { if (units_.erase(id)) ++revision_; }
+void CoverageState::Remove(const CoverageId& id) {
+    if (units_.erase(id)) { ++revision_; ++requirements_revision_; }
+}
 void CoverageState::Invalidate(const CoverageId& id) {
     const auto found = units_.find(id); if (found == units_.end()) return;
     found->second.observed_quality = {0, 0}; found->second.observed_stamp = {0, 0};
-    found->second.pending = true; ++revision_;
+    found->second.pending = true; ++revision_; ++requirements_revision_;
 }
 std::size_t CoverageState::PendingCount() const {
     return std::count_if(units_.begin(), units_.end(), [](const auto& item) { return item.second.pending; });
+}
+void CoverageState::InvalidateSources(perception::SensorMask sources) {
+    if (!sources || sources > 3) throw std::invalid_argument("invalid lost observation sources");
+    for (auto& entry : units_) {
+        auto& unit = entry.second;
+        for (unsigned i = 0; i < 2; ++i)
+            if (sources & (1U << i)) {
+                unit.observed_quality[i] = 0;
+                unit.observed_stamp[i] = 0;
+            }
+        unit.pending = !UnitComplete(unit);
+    }
+    ++revision_; ++requirements_revision_;
 }
 std::map<CoverageId, double> CoverageFusion::Fuse(const std::vector<CoverageContribution>& contributions) {
     return Aggregate(contributions).geometry;

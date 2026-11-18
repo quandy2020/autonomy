@@ -1,0 +1,30 @@
+{
+  "docker_returncode": 0,
+  "stderr": "",
+  "data": {
+    "last_test_log": "/workspace/autonomy/build/autonomy/Testing/Temporary/LastTest.log",
+    "last_test_log_sha256": "1f44eb0a99bb5db5ee8a7581de4a7cd71d890a34cb1be8887074126f45cbcd62",
+    "fields2cover_cache": [
+      "AUTONOMY_BUILD_FIELDS2COVER:BOOL=ON"
+    ],
+    "scheduler_output_log": "docs/validation/2026-11-18-v2.42-scheduler-terminal-output.log",
+    "scheduler_output_sha256": "5d2fcc4667b79792865044997941144c7cf3666a9656737dd0acfe1a3808eb7f",
+    "passed_scenario_count": 13,
+    "passed_scenarios": [
+      "admission_parent_gate",
+      "registration_reservations_active_domain",
+      "cancellation_failures_reentry",
+      "stale_release_snapshot",
+      "legacy_terminal_reaper",
+      "shutdown_reentry_worker_epochs",
+      "native_cleanup_barrier",
+      "native_terminal_callback_drain",
+      "pending_shutdown_reinitialize",
+      "navigation_first_parent_child",
+      "exploration_first_parent_child",
+      "shared_engine_without_global_exclusivity",
+      "no_preemption_parent_child"
+    ]
+  },
+  "scope": "Read-only extraction of the previously completed CTest run; no tests rerun."
+}

@@ -44,6 +44,7 @@
 #include "autonomy/control/controller/policy_controller/observation/frame_align.hpp"
 #include "autonomy/control/controller/policy_controller/runtime.hpp"
 #include "autonomy/control/controller/policy_controller/sand_planner/options.hpp"
+#include "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker.hpp"
 #include "autonomy/control/proto/controller_options.pb.h"
 #include "autonomy/control/proto/policy_controller.pb.h"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
@@ -93,6 +94,21 @@ public:
     void SetTfBuffer(std::shared_ptr<transform::Buffer> tf_buffer) {
         tf_buffer_ = std::move(tf_buffer);
     }
+
+    /** @brief Configure a native reference tracker with the server's existing options and map. */
+    void ConfigureTrajectoryTracker(const proto::ControllerOptions& options, const std::string& name,
+                                    std::shared_ptr<transform::Buffer> tf_buffer,
+                                    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap) {
+        native_tracker_.Configure(options, name, std::move(tf_buffer), std::move(costmap));
+    }
+    /** @brief Activate the owned existing NMPC/MPPI implementation. */
+    void ActivateTrajectoryTracker() { native_tracker_.Activate(); }
+    /** @brief Cancel the reference before deactivating the native controller. */
+    void DeactivateTrajectoryTracker() { native_tracker_.Deactivate(); }
+    /** @brief Release native controller resources at plugin cleanup. */
+    void CleanupTrajectoryTracker() { native_tracker_.Cleanup(); }
+    /** @brief Read the selected reference as the existing automsgs Path type. */
+    const automsgs::msgs::nav_msgs::Path& selected_sand_path() const { return native_tracker_.reference_path(); }
 
     bool LoadConfig(const std::string& config_path,
                     std::string* error = nullptr) {
@@ -169,6 +185,8 @@ public:
     }
 
     void SetPath(const automsgs::msgs::nav_msgs::Path& path) {
+        native_tracker_.Reset();
+        runtime_buffers_.reuse_sand_reference = false;
         observation_buffer_.SetPath(path);
     }
     void SetLaserScan(
@@ -209,6 +227,10 @@ public:
         runtime_buffers_.inputs.clear();
         runtime_buffers_.outputs.clear();
         runtime_buffers_.action_sequence.clear();
+        runtime_buffers_.selected_sand_controls.clear();
+        runtime_buffers_.reuse_sand_reference = false;
+        native_tracker_.Reset();
+        sand_model_.reset();
         runtime_buffers_.previous_plan_heading = Eigen::Vector3d::Zero();
         runtime_buffers_.has_previous_plan_heading = false;
         encode_context_.has_previous_plan_heading = false;
@@ -219,11 +241,15 @@ public:
 
     void ClearModels() {
         infer_watchdog_.Reset();
+        native_tracker_.Reset();
+        runtime_buffers_.selected_sand_controls.clear();
+        runtime_buffers_.reuse_sand_reference = false;
+        sand_model_.reset();
         policy_manager_.Clear();
     }
 
     /**
-     * @brief Full control tick: ego update → PredictTwist → safety.
+     * @brief Full control tick: observation → policy → native SanD tracker → safety.
      */
     uint32_t ComputeCommand(
         const automsgs::msgs::geometry_msgs::PoseStamped& pose,
@@ -238,8 +264,10 @@ public:
         last_tick_ = now;
         const double elapsed_seconds =
             elapsed > 0.0 && elapsed < 1.0 ? elapsed : control_period_seconds;
-        encode_context_.now_sec =
-            std::chrono::duration<double>(now.time_since_epoch()).count();
+        // Message acquisition stamps and modality receive ages are wall-clock
+        // seconds. The monotonic clock above is used only for elapsed budgets.
+        encode_context_.now_sec = std::chrono::duration<double>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
 
         observation_buffer_.SetEgoState(pose, velocity);
         UpdateCostmap(costmap_wrapper);
@@ -270,6 +298,18 @@ public:
         }
         RefreshSandPlanner();
 
+        const bool is_sand = model->config().is_sand_planner();
+        if (is_sand && sand_model_.lock() != model) {
+            native_tracker_.Reset();
+            runtime_buffers_.selected_sand_controls.clear();
+            sand_model_ = model;
+        }
+        if (is_sand && !native_tracker_.ValidateFeedback(pose, velocity, encode_context_.now_sec, &error)) {
+            return RecordFailure(error, command_velocity, message, true);
+        }
+        if (is_sand && command_velocity) command_velocity->mutable_header()->set_frame_id(options_.robot_frame());
+        runtime_buffers_.reuse_sand_reference = is_sand && native_tracker_.CanReuse(now);
+
         ObservationSnapshot raw = observation_buffer_.Snapshot();
         ObservationSnapshot snapshot;
         if (!AlignObservationFrames(raw, tf_buffer_, options_.robot_frame(),
@@ -277,7 +317,7 @@ public:
                                     options_.require_frame_match(), &snapshot,
                                     &error)) {
             diagnostics_.frame_align_fail = true;
-            return RecordFailure(error, command_velocity, message, false);
+            return RecordFailure(error, command_velocity, message, is_sand);
         }
 
         encode_context_.has_previous_plan_heading =
@@ -310,7 +350,29 @@ public:
                 error.find("Stale") != std::string::npos) {
                 diagnostics_.skew_or_age_fail = true;
             }
-            return RecordFailure(error, command_velocity, message, timed_out);
+            return RecordFailure(error, command_velocity, message, timed_out || is_sand);
+        }
+
+        if (is_sand) {
+            if (zero_filled) {
+                return RecordFailure("SanD Missing required observation; zero-filled input cannot authorize motion",
+                                     command_velocity, message, true);
+            }
+            const auto& sand = model->config().effective_sand_planner();
+            if (!runtime_buffers_.reuse_sand_reference &&
+                !native_tracker_.SetReference(runtime_buffers_.selected_sand_controls, pose,
+                                              sand.waypoint_count(), sand.execute_speed(), &error)) {
+                return RecordFailure(error, command_velocity, message, true);
+            }
+            automsgs::msgs::geometry_msgs::TwistStamped tracked;
+            const double tracking_now = std::chrono::duration<double>(
+                std::chrono::system_clock::now().time_since_epoch()).count();
+            if (native_tracker_.Compute(pose, velocity, tracking_now, &tracked, &error) !=
+                    proto::CONTROLLER_RESULT_SUCCESS || budget.Exceeded()) {
+                if (budget.Exceeded()) error = "SanD native tracking timeout";
+                return RecordFailure(error, command_velocity, message, true);
+            }
+            action.CopyFrom(tracked.twist());
         }
         diagnostics_.last_encode_ms = budget.encode_elapsed_ms;
         diagnostics_.last_infer_ms = budget.infer_elapsed_ms > 0.0
@@ -323,14 +385,24 @@ public:
         const uint32_t status = safety_filter_.Apply(
             action, snapshot, costmap_wrapper, elapsed_seconds, command_velocity,
             message, &clamp, &collision);
+        if (is_sand && command_velocity) command_velocity->mutable_header()->set_frame_id(options_.robot_frame());
         diagnostics_.clamp_or_rate_limit = clamp;
         diagnostics_.collision_blocked = collision;
+        if (is_sand && status != proto::CONTROLLER_RESULT_SUCCESS) {
+            native_tracker_.Reset();
+            runtime_buffers_.reuse_sand_reference = false;
+            runtime_buffers_.has_previous_plan_heading = false;
+        }
         diagnostics_.last_status = status;
         diagnostics_.last_error = message != nullptr ? *message : "";
         if (status ==
             static_cast<uint32_t>(proto::CONTROLLER_RESULT_SUCCESS)) {
             ++diagnostics_.success_count;
             diagnostics_.consecutive_failures = 0;
+            if (is_sand && command_velocity) {
+                runtime_buffers_.previous_plan_heading = Eigen::Vector3d(command_velocity->twist().linear().x(), 0.0, 0.0);
+                runtime_buffers_.has_previous_plan_heading = true;
+            }
             return status;
         }
         ++diagnostics_.failure_count;
@@ -424,7 +496,10 @@ private:
             options_.max_consecutive_failures() > 0 &&
             static_cast<int>(diagnostics_.consecutive_failures) >=
                 options_.max_consecutive_failures();
-        const bool force_zero = force_zero_hint || trip;
+        const bool force_zero = force_zero_hint || trip || !runtime_buffers_.selected_sand_controls.empty();
+        native_tracker_.Reset();
+        runtime_buffers_.reuse_sand_reference = false;
+        runtime_buffers_.has_previous_plan_heading = false;
         const uint32_t status = safety_filter_.ApplyFailure(
             error, command_velocity, message, force_zero);
         diagnostics_.last_status = status;
@@ -451,6 +526,8 @@ private:
     PolicyManager policy_manager_;
     CommandSafetyFilter safety_filter_;
     PolicyRuntimeBuffers runtime_buffers_;
+    sand_planner::NativeSplineTracker native_tracker_;  ///< Existing NMPC/MPPI implementation plus automsgs reference adapter.
+    std::weak_ptr<const PolicyModel> sand_model_;  ///< Invalidates cached geometry on model replacement.
     InferWatchdog infer_watchdog_;
     PolicyDiagnostics diagnostics_;
     std::shared_ptr<transform::Buffer> tf_buffer_;

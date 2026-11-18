@@ -1,0 +1,37 @@
+{
+  "build_directory": "/tmp/opt-exploration-v2.35",
+  "steps": [
+    {
+      "stage": "build",
+      "command": [
+        "cmake",
+        "--build",
+        "/tmp/opt-exploration-v2.35",
+        "-j",
+        "4"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.36-local-validation-build.log",
+      "sha256": "3772503a794e37382869b02774d45f6018de7dc0297490a8a5237955d3ee02ef"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "ctest",
+        "--test-dir",
+        "/tmp/opt-exploration-v2.35",
+        "--output-on-failure"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.36-local-validation-tests.log",
+      "sha256": "d5aadacdfd9dd0e89070be7eaa64ae163be469c3f74251eeb71877a196265f61"
+    }
+  ],
+  "scope": "Standalone Opt algorithms; excludes native BT/transport/model and robot validation.",
+  "passed": true,
+  "tracker_source_sha256": {
+    "autonomy/control/controller/policy_controller/sand_planner/trajectory_tracker.cpp": "eda71c78e6ad240861a84b54bd5b0860385d7633de5ba972959c20fda8703cab",
+    "autonomy/control/controller/policy_controller/sand_planner/trajectory_tracker.hpp": "dc255b8d38bf9a1dd5304f74d0c41b293df794c1e64ab77bf720a20f5a41a709",
+    "autonomy/control/controller/policy_controller/sand_planner/trajectory_tracker_test.cpp": "ff5988fea66553378c6c10b5c36e909ff1aecee83e036b7e5cda1000fd4c6a86"
+  }
+}

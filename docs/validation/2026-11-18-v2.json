@@ -1,0 +1,25 @@
+{
+  "fields2cover_option": [
+    "AUTONOMY_BUILD_FIELDS2COVER:BOOL=OFF"
+  ],
+  "date": "2026-11-18",
+  "source": "SpaceHero CTest Testing/Temporary/LastTest.log",
+  "scheduler_scenarios": [
+    "admission_parent_gate",
+    "registration_reservations_active_domain",
+    "cancellation_failures_reentry",
+    "stale_release_snapshot",
+    "legacy_terminal_reaper",
+    "shutdown_reentry_worker_epochs",
+    "native_cleanup_barrier",
+    "native_terminal_callback_drain",
+    "pending_shutdown_reinitialize",
+    "navigation_first_parent_child",
+    "exploration_first_parent_child",
+    "shared_engine_without_global_exclusivity",
+    "no_preemption_parent_child"
+  ],
+  "scheduler_scenario_count": 13,
+  "log_sha256": "5d2fcc4667b79792865044997941144c7cf3666a9656737dd0acfe1a3808eb7f",
+  "all_13_scenarios_observed": true
+}

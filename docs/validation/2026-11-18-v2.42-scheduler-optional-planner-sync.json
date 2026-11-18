@@ -1,0 +1,24 @@
+{
+  "ssh_returncode": 0,
+  "ssh_error": "",
+  "deployed": true,
+  "written": [
+    "autonomy/task/scheduler/scheduler.cpp",
+    "autonomy/planning/CMakeLists.txt"
+  ],
+  "rollback_conflicts": [],
+  "backup": "/tmp/opt-native-sync-k6c63_fb/backup",
+  "expected_sha256": {
+    "autonomy/task/scheduler/scheduler.cpp": "39bcf8d265144f65ca66d691caf317f5d8dd591ea503f3f972606fe47d015779",
+    "autonomy/planning/CMakeLists.txt": "6e4447ae381d9725b9a1f232b19fd36304db9859d7c0b9ac1e67af2c542dbe75"
+  },
+  "deployed_sha256": {
+    "autonomy/task/scheduler/scheduler.cpp": "2ff042e2e1f4241b3721ee7e9d404dac41f9842c413fcbae23f7cf03bed782a8",
+    "autonomy/planning/CMakeLists.txt": "e163a5c85eb988c7f99cd1c7c82f43fa0b6e74e09730ea26e42c1818fcb041d7"
+  },
+  "map_file_count": 471,
+  "map_unchanged": true,
+  "task_server_preserved": true,
+  "manifest_sha256": "b7214fa95fd4420ee729e396b5257071622cada8b4dd7eb917d33c08570c5edf",
+  "scope": "Native source sync only; no full build, robot or physical stopping evidence."
+}

@@ -121,24 +121,7 @@ public:
      * valid acceptance; an earlier late acceptance cannot replace a newer one.
      */
     bool SubmitGoal(const GoalType& goal) override {
-        uint64_t admission;
-        {
-            std::lock_guard<std::recursive_mutex> lock(mutex_);
-            if (!accepting_goals_ ||
-                next_admission_ == std::numeric_limits<uint64_t>::max() ||
-                pending_admissions_ == std::numeric_limits<uint64_t>::max())
-                return false;
-            admission = ++next_admission_;
-            ++pending_admissions_;
-        }
-        bool accepted;
-        try {
-            accepted = OnGoal(goal);
-        } catch (...) {
-            FinishAdmission(admission, goal, false);
-            throw;
-        }
-        return FinishAdmission(admission, goal, accepted);
+        return SubmitGoalWithHandler(goal, [this, &goal] { return OnGoal(goal); });
     }
 
     bool GetFeedback(FeedbackType* feedback) const override {
@@ -183,6 +166,36 @@ public:
     }
 
 protected:
+    /**
+     * @brief Retain typed admission/identity ordering for a domain-specific entry.
+     * @param goal Goal whose identity is published only after handler acceptance.
+     * @param handler Synchronous domain admission, invoked without mutex_.
+     * @return Domain acceptance after stale-admission and shutdown checks.
+     * Exceptions release the pending-result barrier before propagating. This
+     * helper does not bypass the domain's lifecycle or execution serialization.
+     */
+    template <class Handler>
+    bool SubmitGoalWithHandler(const GoalType& goal, Handler&& handler) {
+        uint64_t admission;
+        {
+            std::lock_guard<std::recursive_mutex> lock(mutex_);
+            if (!accepting_goals_ ||
+                next_admission_ == std::numeric_limits<uint64_t>::max() ||
+                pending_admissions_ == std::numeric_limits<uint64_t>::max())
+                return false;
+            admission = ++next_admission_;
+            ++pending_admissions_;
+        }
+        bool accepted;
+        try {
+            accepted = handler();
+        } catch (...) {
+            FinishAdmission(admission, goal, false);
+            throw;
+        }
+        return FinishAdmission(admission, goal, accepted);
+    }
+
     /**
      * @brief Decide whether acceptance replaces the active task identity.
      *

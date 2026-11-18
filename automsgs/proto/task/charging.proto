@@ -20,9 +20,11 @@ import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
 import "automsgs/msgs/geometry_msgs/pose.proto";
 import "automsgs/msgs/geometry_msgs/point.proto";
 import "automsgs/msgs/geometry_msgs/twist_stamped.proto";
+import "automsgs/msgs/status_msgs/status_msgs.proto";
 import "automsgs/task/task_common.proto";
 
-// charging — aligned with bridge DockCommand.
+// charging — OpenNav docking procedure (no ROS). Dock / undock goals ride
+// ChargingGoal; the tick-based DockingEngine owns the vision-control loop.
 
 enum DockCommand {
   DOCK_CMD_UNSPECIFIED = 0;
@@ -47,6 +49,17 @@ enum DockStatus {
   DOCK_STATUS_CANCELED = 9;
 }
 
+enum DockPhase {
+  DOCK_PHASE_NONE = 0;
+  DOCK_PHASE_NAV_TO_STAGING = 1;
+  DOCK_PHASE_INITIAL_PERCEPTION = 2;
+  DOCK_PHASE_CONTROLLING = 3;
+  DOCK_PHASE_WAIT_FOR_CHARGE = 4;
+  DOCK_PHASE_RETRY = 5;
+  DOCK_PHASE_UNDOCKING = 6;
+  DOCK_PHASE_HOLD_CHARGE = 7;
+}
+
 message ChargingGoal {
   TaskHeader header = 1;
   DockCommand command = 2;
@@ -56,6 +69,15 @@ message ChargingGoal {
     string dock_station_id = 5;
     automsgs.msgs.geometry_msgs.PoseStamped dock_pose = 6;
   }
+  // OpenNav DockRobot fields (optional; inferred from dock_target when unset).
+  bool use_dock_id = 7;
+  string dock_type = 8;
+  float max_staging_time = 9;
+  optional bool navigate_to_staging_pose = 10;
+  float max_undocking_time = 11;
+  // 0-100. Unset: auto-recharge uses resume_percent; manual OpenNav uses 0
+  // (succeed when charge current starts).
+  optional float battery_target_percent = 12;
 }
 
 message ChargingFeedback {
@@ -63,10 +85,115 @@ message ChargingFeedback {
   TaskProgress progress = 2;
   float battery_percent = 3;
   string dock_station_id = 4;
+  DockPhase phase = 5;
+  int32 num_retries = 6;
+  float docking_time_sec = 7;
+  automsgs.msgs.status_msgs.StatusCode error_code = 8;
+  bool auto_recharge_enabled = 9;
 }
 
 message ChargingResult {
   TaskResult result = 1;
   DockStatus final_status = 2;
   float battery_percent = 3;
+  int32 num_retries = 4;
+  bool success = 5;
+  automsgs.msgs.status_msgs.StatusCode error_code = 6;
+}
+
+message SimpleChargingDockOptions {
+  // OpenNav defaults: use_battery_status=true, translation_x=-0.20,
+  // pitch=1.57, roll=-1.57, staging_x_offset=-0.7. optional so 0 is valid.
+  optional bool use_battery_status = 1;
+  bool use_external_detection_pose = 2;
+  double external_detection_timeout = 3;
+  optional double external_detection_translation_x = 4;
+  double external_detection_translation_y = 5;
+  double external_detection_rotation_yaw = 6;
+  optional double external_detection_rotation_pitch = 7;
+  optional double external_detection_rotation_roll = 8;
+  double filter_coef = 9;
+  double charging_threshold = 10;
+  bool use_stall_detection = 11;
+  repeated string stall_joint_names = 12;
+  double stall_velocity_threshold = 13;
+  double stall_effort_threshold = 14;
+  double docking_threshold = 15;
+  optional double staging_x_offset = 16;
+  double staging_yaw_offset = 17;
+  string detected_dock_pose_topic = 18;
+  string battery_state_topic = 19;
+  string joint_states_topic = 20;
+}
+
+message DockPluginSpec {
+  string name = 1;
+  string type = 2;
+  SimpleChargingDockOptions simple = 3;
+}
+
+message DockInstance {
+  string name = 1;
+  string type = 2;
+  string frame = 3;
+  double x = 4;
+  double y = 5;
+  double yaw = 6;
+  string id = 7;
+}
+
+message DockControllerOptions {
+  double k_phi = 1;
+  double k_delta = 2;
+  double beta = 3;
+  double lambda = 4;
+  double v_linear_min = 5;
+  double v_linear_max = 6;
+  double v_angular_max = 7;
+  double slowdown_radius = 8;
+  double deceleration_max = 9;
+  optional bool use_collision_detection = 10;
+  string costmap_topic = 11;
+  string footprint_topic = 12;
+  double projection_time = 13;
+  double simulation_time_step = 14;
+  double dock_collision_threshold = 15;
+  double transform_tolerance = 16;
+  double robot_radius = 17;
+  string trajectory_topic = 18;
+}
+
+message DockingOptions {
+  double controller_frequency = 1;
+  double initial_perception_timeout = 2;
+  double wait_charge_timeout = 3;
+  double dock_approach_timeout = 4;
+  double undock_linear_tolerance = 5;
+  double undock_angular_tolerance = 6;
+  int32 max_retries = 7;
+  string base_frame = 8;
+  string fixed_frame = 9;
+  bool dock_backwards = 10;
+  double dock_prestaging_tolerance = 11;
+  string cmd_vel_topic = 12;
+  string dock_database = 13;
+  DockControllerOptions controller = 14;
+  repeated DockPluginSpec plugins = 15;
+  repeated DockInstance docks = 16;
+  AutoRechargeOptions auto_recharge = 17;
+}
+
+// Low-SOC return-to-dock supervisor (hysteresis + cooldown). Percent is 0-100.
+message AutoRechargeOptions {
+  bool enable = 1;
+  float return_percent = 2;
+  float resume_percent = 3;
+  bool auto_undock = 4;
+  float battery_stale_sec = 5;
+  float cooldown_sec = 6;
+  int32 max_consecutive_failures = 7;
+  string preferred_dock_id = 8;
+  bool skip_if_teleop = 9;
+  float max_hold_charge_sec = 10;
+  string battery_state_topic = 11;
 }

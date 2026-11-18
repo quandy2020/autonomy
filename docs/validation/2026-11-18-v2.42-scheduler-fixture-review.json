@@ -1,0 +1,31 @@
+{
+  "date": "2026-11-18",
+  "failed_native_report": "docs/validation/2026-11-18-v2.42-scheduler-reviewed-validation.json",
+  "observed_failure": "31 tests were selected; scheduler_motion reported SIGSEGV while the other 30 passed.",
+  "debugger_followup": {
+    "tool": "existing SpaceHero gdb",
+    "new_build": false,
+    "segfault_reproduced": false,
+    "observed_passes": [
+      "admission_parent_gate",
+      "registration_reservations_active_domain",
+      "cancellation_failures_reentry",
+      "stale_release_snapshot",
+      "legacy_terminal_reaper",
+      "shutdown_reentry_worker_epochs",
+      "native_cleanup_barrier",
+      "pending_shutdown_reinitialize"
+    ],
+    "terminal_error": "actual exploration BT delegated native navigation"
+  },
+  "corrections": [
+    "Wait for actual OwnerProbe::onStart and require the retained gate before dereferencing it; SubmitGoal commits admission before worker SetupBlackboard.",
+    "Explicitly configure the controlled RGB-D-only BT fixture, allowed room and zero recovery hold on its fixed clock; production controller readiness is unchanged.",
+    "Flush PASS output immediately so later failures preserve observed earlier scenarios.",
+    "Assert MotionDrained after permission is lost while joining a previous navigation worker.",
+    "Validate CTest selection before executing tests; build success alone is insufficient."
+  ],
+  "root_cause_limit": "The source contains an asynchronous null-gate access race. The original segfault has no captured backtrace; debugger execution avoided it and exposed the missing fixture configuration.",
+  "scope": "Real Scheduler/NavigationTask/ExplorationTask and BT consumers; fixture observations and external service replies are controlled. No actual localization, map fusion, trained model or physical stop evidence.",
+  "validation_report": "docs/validation/2026-11-18-v2.42-scheduler-fixture-validation.json"
+}

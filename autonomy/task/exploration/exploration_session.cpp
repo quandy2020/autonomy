@@ -1,10 +1,14 @@
 /* Copyright 2026 The Openbot Authors. */
+/** @file exploration_session.cpp
+ * @brief Exploration owner and worker coordination with finite input prefixes.
+ */
 #include "autonomy/task/exploration/exploration_session.hpp"
 
 #include <atomic>
 #include <condition_variable>
 #include <deque>
 #include <limits>
+#include <map>
 #include <mutex>
 #include <set>
 #include <stdexcept>
@@ -32,16 +36,32 @@ std::uint64_t NewSessionIdentity() {
 class ExplorationSession::Impl {
 public:
     struct PoseEvent {
-        Pose2d pose;
-        double stamp;
-        std::uint64_t epoch;
-        perception::SensorMask localization;
+        Pose2d pose;  ///< Ground robot pose at the actual acquisition time.
+        double stamp;  ///< Acquisition time in the Session clock domain.
+        std::uint64_t epoch;  ///< Alignment identity of this pose evidence.
+        perception::SensorMask localization;  ///< Sources attested by the localization owner.
     };
+    /** @brief Compact, immutable acquisition poses for one admitted observation.
+     * Retained independently from rolling pose_history_ until this observation
+     * is examined or discarded. Validity is bounded by the admitted observation,
+     * whose expiry was checked against every authoritative acquisition proof.
+     */
+    struct PacketPoses {
+        std::uint64_t epoch;  ///< Alignment shared by the packet and queued observation.
+        std::vector<PoseEvent> samples;  ///< Sorted exact-time samples, deduplicated by timestamp.
+    };
+    /** @brief Source-local identity; epochs are verified in the associated value. */
+    using ObservationIdentity = std::pair<perception::SensorKind, std::uint64_t>;
     struct CancelEvent { RequestVersion version; };
     struct PhaseCancelEvent { PhaseTicket ticket; };
+    /** @brief One ordinary event correlates its source evidence and base poses. */
+    struct PacketEvent {
+        perception::ObservationPacket packet;  ///< Owned real acquisition evidence.
+        double admitted_at;  ///< Original enqueue time, never used to renew expiry.
+    };
     struct ReturnCache { RequestVersion version; double length=0,traveled_distance=0; };
     using Event = std::variant<MapReadView, PoseEvent, CoverageUnit, SessionCommand,
-                               CancelEvent, PhaseCancelEvent>;
+                               CancelEvent, PhaseCancelEvent, PacketEvent>;
     struct Job {
         RequestVersion version;
         MapReadView map;
@@ -55,6 +75,7 @@ public:
         std::shared_ptr<std::atomic<bool>> canceled;
         std::optional<ExplorationPhase> phase;
         std::optional<ObservationGoal> selected_goal;
+        bool evidence_only = false;  ///< Update graph evidence without selection or motion.
     };
     struct Planned {
         RequestVersion version;
@@ -68,6 +89,7 @@ public:
         std::optional<RouteMapEvidence> graph_evidence;
         std::string error;
         std::optional<ExplorationPhase> phase;
+        bool evidence_only = false;  ///< A consumer evidence refresh, not an exploration decision.
     };
 
     Impl(std::shared_ptr<ExplorationStrategy> strategy,
@@ -83,6 +105,16 @@ public:
             throw std::invalid_argument("exploration requires planning and navigation services");
         if (!options.maximum_events_per_tick || !options.maximum_observations_per_tick)
             throw std::invalid_argument("exploration input processing budgets must be positive");
+        if (options.observation_recovery_policy != ObservationRecoveryPolicy::kReobserveScope &&
+            options.observation_recovery_policy != ObservationRecoveryPolicy::kRequireOriginalReplay)
+            throw std::invalid_argument("unsupported observation recovery policy");
+        if (options.allowed_region) {
+            const auto& bounds = *options.allowed_region;
+            if (!std::isfinite(bounds.min_x) || !std::isfinite(bounds.min_y) ||
+                !std::isfinite(bounds.max_x) || !std::isfinite(bounds.max_y) ||
+                bounds.min_x >= bounds.max_x || bounds.min_y >= bounds.max_y)
+                throw std::invalid_argument("exploration scope must be finite and have positive area");
+        }
         for (double value : {options.time_budget, options.distance_budget,
              options.navigation_timeout, options.observation_timeout,
              options.minimum_observation_time, options.position_tolerance,
@@ -111,6 +143,7 @@ public:
         if (worker_.joinable()) worker_.join();
         CancelNavigation();
         CancelMapOperation();
+        CancelRecoveryOperation();
     }
 
     bool Enqueue(Event event) {
@@ -119,8 +152,35 @@ public:
             std::holds_alternative<CancelEvent>(event) ||
             std::holds_alternative<PhaseCancelEvent>(event) ? priority_events_ : events_;
         if (queue.size() >= 128) return false;
+        if (&queue == &events_ && accepted_event_sequence_ ==
+            std::numeric_limits<std::uint64_t>::max()) return false;
         queue.push_back(std::move(event));
+        if (&queue == &events_) ++accepted_event_sequence_;
         return true;
+    }
+
+    /** @brief Admit a whole source packet, recording capacity/validity loss. */
+    bool PushPacket(perception::ObservationPacket packet, double now) {
+        std::lock_guard<std::mutex> lock(events_mutex_);
+        if (!(perception::Mask(options_.mode) & perception::Mask(packet.observation.sensor)) ||
+            packet.observation.map_epoch != admission_epoch_) return false;
+        if (!packet.Valid(now) || events_.size() >= 128 ||
+            accepted_event_sequence_ == std::numeric_limits<std::uint64_t>::max()) {
+            observations_.Reject(packet.observation.sensor, packet.observation.sequence);
+            return false;
+        }
+        events_.push_back(PacketEvent{std::move(packet), now});
+        ++accepted_event_sequence_;
+        return true;
+    }
+
+    /** @brief Share immutable raw depth with its original provenance and deadline. */
+    std::vector<std::shared_ptr<const perception::LocalizedDepthView>> DepthViews(double now) const {
+        std::vector<std::shared_ptr<const perception::LocalizedDepthView>> result;
+        std::lock_guard<std::mutex> lock(depth_mutex_);
+        for (const auto& view : depth_history_)
+            if (view->Valid(now)) result.push_back(view);
+        return result;
     }
 
     void Start(const Pose2d& home, std::uint64_t epoch, double now) {
@@ -133,11 +193,15 @@ public:
         CancelNavigation();
         CancelMapOperation();
         if (execution_fault_) throw std::runtime_error("previous navigation cancellation was not confirmed");
+        CancelRecoveryOperation();
         {
             std::lock_guard<std::mutex> lock(events_mutex_);
             events_.clear();
             priority_events_.clear();
+            accepted_event_sequence_ = processed_event_sequence_ = 0;
+            admission_epoch_ = epoch;
         }
+        { std::lock_guard<std::mutex> lock(depth_mutex_); depth_history_.clear(); }
         {
             std::lock_guard<std::mutex> lock(work_mutex_);
             planned_results_.clear();
@@ -164,11 +228,16 @@ public:
         localization_ = 0;
         coverage_.Reset(epoch);
         observations_.Reset(epoch);
+        packet_poses_.clear();
         observed_cut_ = {};
         valid_observation_cut_ = {};
+        recovery_loss_.reset(); observation_baseline_ = {};
+        observation_recovery_generation_ = 0; loss_recovery_attempts_ = 0;
         health_ = perception::SensorHealthMonitor(options_.mode, options_.health);
         completion_.Reset();
+        completion_version_.reset();
         confirmation_round_ = 0;
+        worker_reset_requested_.store(true);
         active_phase_.reset();
         phase_history_.clear();
         selected_version_.reset();
@@ -217,6 +286,14 @@ public:
         version.geometry_revision = map_ ? map_->geometry_revision : 0;
         version.sensor_epoch = snapshot_.sensors.sensor_epoch;
         version.coverage_revision = coverage_.revision();
+        version.requirements_revision = coverage_.requirements_revision();
+        {
+            std::lock_guard<std::mutex> lock(events_mutex_);
+            version.input_event_sequence = accepted_event_sequence_;
+        }
+        version.observation_cut = observations_.accepted_cut();
+        version.observation_baseline = observation_baseline_;
+        version.observation_recovery_generation = observation_recovery_generation_;
         version.valid_until = now + duration;
         return version;
     }
@@ -301,8 +378,10 @@ public:
         if (snapshot_.state == ExplorationState::kIdle ||
             snapshot_.state == ExplorationState::kFinished)
             return finish(PhaseStatus::kFailed, "session is not active");
-        if (snapshot_.state == ExplorationState::kPaused || !InputsDrained())
-            return finish(PhaseStatus::kRetryable, "session paused or input backlog pending");
+        if (snapshot_.state == ExplorationState::kPaused)
+            return finish(PhaseStatus::kRetryable, "session paused");
+        if (recovery_operation_)
+            return finish(PhaseStatus::kRetryable, "scope recovery still owns the mapper evidence request");
         if (phase != ExplorationPhase::kSave &&
             (!snapshot_.sensors.ready || !PoseReady(now) || execution_fault_)) {
             if (phase == ExplorationPhase::kReturn && finishing_) {
@@ -325,7 +404,7 @@ public:
                     selected_version_->map_epoch != map_->map_epoch ||
                     selected_version_->geometry_revision != map_->geometry_revision ||
                     selected_version_->sensor_epoch != snapshot_.sensors.sensor_epoch ||
-                    selected_version_->coverage_revision != coverage_.revision())
+                    selected_version_->requirements_revision != coverage_.requirements_revision())
                     return finish(PhaseStatus::kInvalidated, "selected observation intent is no longer current");
                 QueuePlanning(now, false, false, phase);
                 break;
@@ -333,6 +412,7 @@ public:
                 if (finishing_ || !snapshot_.goal || !prepared_version_ ||
                     prepared_version_->map_epoch != map_->map_epoch ||
                     prepared_version_->sensor_epoch != snapshot_.sensors.sensor_epoch ||
+                    prepared_version_->requirements_revision != coverage_.requirements_revision() ||
                     (prepared_version_->geometry_revision != map_->geometry_revision &&
                      (!services_.navigation_still_valid ||
                       !services_.navigation_still_valid(*snapshot_.goal, pose_, *map_))))
@@ -378,20 +458,20 @@ public:
     }
 
     void QueuePlanning(double now, bool returning = false, bool estimate_only = false,
-                       std::optional<ExplorationPhase> phase = {}) {
+                       std::optional<ExplorationPhase> phase = {}, bool evidence_only = false) {
         if (!map_) return;
         planning_cancel_ = std::make_shared<std::atomic<bool>>(false);
         planning_ = Version(now, options_.planning_timeout);
         Job job{*planning_, *map_, coverage_, pose_, home_,
                 snapshot_.sensors.active_sensors, now, returning, estimate_only,
                 options_.require_return,snapshot_.traveled_distance,planning_cancel_,
-                phase, snapshot_.selection};
+                phase, snapshot_.selection, evidence_only};
         {
             std::lock_guard<std::mutex> lock(work_mutex_);
             queued_job_ = std::move(job);
         }
         work_ready_.notify_one();
-        if(!estimate_only)
+        if(!estimate_only && !evidence_only)
             snapshot_.state = returning ? ExplorationState::kReturning : ExplorationState::kReplanning;
     }
 
@@ -411,22 +491,24 @@ public:
             result.returning = job->returning;
             result.estimate_only=job->estimate_only;
             result.phase = job->phase;
+            result.evidence_only = job->evidence_only;
             result.origin=job->pose;result.traveled_distance=job->traveled_distance;
             auto canceled = [token = job->canceled] { return token->load(); };
             try {
-                if (!canceled() && worker_session_ != job->version.session_id) {
+                if (!canceled() && (worker_reset_requested_.exchange(false) ||
+                                   worker_session_ != job->version.session_id)) {
                     strategy_->Reset();
                     worker_session_ = job->version.session_id;
                 }
                 if (!canceled() && services_.update_route_map) services_.update_route_map(job->map);
-                if (!canceled() && job->require_return) {
+                if (!canceled() && job->require_return && !job->evidence_only) {
                     const auto route = paths_->Route(job->pose, job->home, canceled);
                     result.route_valid = route.success && route.map_epoch == job->map.map_epoch &&
                                          route.geometry_revision == job->map.geometry_revision;
                     result.return_route_valid=result.route_valid;
                     result.return_length=route.length;
                 }
-                if (!canceled() && !job->returning && !job->estimate_only) {
+                if (!canceled() && !job->returning && !job->estimate_only && !job->evidence_only) {
                     if (job->phase == ExplorationPhase::kAdapt)
                         result.decision.goal = job->selected_goal;
                     else
@@ -472,8 +554,172 @@ public:
         }
     }
 
+    /** @brief Cancels only the recovery operation and retains unresolved loss history. */
+    void CancelRecoveryOperation() noexcept {
+        if (recovery_operation_) {
+            const auto version = *recovery_operation_;
+            recovery_operation_.reset();
+            CancelService(services_.cancel_mapping, version,
+                          "observation recovery cancellation callback failed", false);
+        }
+        recovery_reply_.reset();
+    }
+
+    /** @brief Checks that actual map/graph evidence describes the requested suffix. */
+    template <typename Evidence>
+    bool BaselineMatches(const Evidence& evidence, const RequestVersion& version) const {
+        return evidence.observation_baseline == version.observation_baseline &&
+            evidence.observation_recovery_generation == version.observation_recovery_generation;
+    }
+
+    /** @brief Rejects receipts that certify another baseline or only a shorter suffix. */
+    bool ReceiptCovers(const MappingReply& reply, const RequestVersion& version) const {
+        const auto& receipt = reply.version;
+        if (!receipt.SameRequest(version) || !BaselineMatches(receipt, version) ||
+            receipt.geometry_revision != version.geometry_revision ||
+            receipt.requirements_revision != version.requirements_revision ||
+            receipt.input_event_sequence != version.input_event_sequence ||
+            !(receipt.observation_cut == version.observation_cut) ||
+            receipt.recovery_region.has_value() != version.recovery_region.has_value()) return false;
+        if (version.recovery_region) {
+            const auto& actual = *receipt.recovery_region;
+            const auto& requested = *version.recovery_region;
+            if (actual.min_x != requested.min_x || actual.min_y != requested.min_y ||
+                actual.max_x != requested.max_x || actual.max_y != requested.max_y) return false;
+        }
+        return reply.fusion_confirmed && reply.fused_cut.Covers(version.observation_cut);
+    }
+
+    /** @brief Excludes pre-reopening queued observations from replacement coverage. */
+    bool ReplacementEligible(const perception::SensorObservation& observation) const {
+        if (!recovery_loss_ || !(recovery_loss_->pending_sources & perception::Mask(observation.sensor)))
+            return true;
+        const auto index = observation.sensor == perception::SensorKind::kLidar ? 0U : 1U;
+        return observation.sequence > std::max(recovery_loss_->admitted_cut.sequence[index],
+                                               recovery_loss_->last_loss.sequence[index]);
+    }
+
+    /** @brief Reopens unknown-scope source evidence before admitting replacements.
+     * Loss detected during Drain is handled again afterwards, discarding any
+     * evidence from that earlier admission boundary. Other-source ledger quality
+     * survives; full task-scope confirmation still requires the mapping owner.
+     */
+    void SyncObservationLoss(double now) {
+        const auto loss = observations_.LossSnapshot();
+        if (!loss.pending_sources) return;
+        const auto geometry = map_ ? map_->geometry_revision : 0;
+        if (recovery_loss_ && recovery_loss_->generation == loss.generation &&
+            recovery_loss_->map_epoch == loss.map_epoch && recovery_geometry_ == geometry &&
+            recovery_requirements_ == coverage_.requirements_revision() &&
+            recovery_sensor_epoch_ == snapshot_.sensors.sensor_epoch) return;
+        RevokeCompletion();
+        if (finishing_) return;  // Partial/canceled results retain loss but do not restart exploration.
+        CancelRecoveryOperation();
+        CancelActivePhase(PhaseStatus::kInvalidated, "observation loss reopened task requirements");
+        CancelPlanning(); CancelNavigation();
+        coverage_.InvalidateSources(loss.pending_sources);
+        snapshot_.goal.reset(); snapshot_.selection.reset();
+        selected_version_.reset(); prepared_version_.reset();
+        view_evidence_.clear(); view_started_.clear(); current_view_ = 0;
+        recovery_loss_ = loss;
+        recovery_geometry_ = geometry;
+        recovery_requirements_ = coverage_.requirements_revision();
+        recovery_sensor_epoch_ = snapshot_.sensors.sensor_epoch;
+        loss_recovery_attempts_ = 0; loss_recovery_after_ = now;
+        worker_reset_requested_.store(true);
+        snapshot_.completion_confirmed = false;
+        snapshot_.state = ExplorationState::kExploring;
+        snapshot_.reason = "observation loss requires new measured coverage and full scope confirmation";
+    }
+
+    /** @brief Starts a bounded, explicitly scoped mapper recovery after a fresh sweep. */
+    void BeginLossRecovery(const RequestVersion& planned, double now) {
+        if (!recovery_loss_ || recovery_operation_ || now < loss_recovery_after_) return;
+        if (!options_.allowed_region || !services_.request_map_refresh ||
+            !services_.poll_map_refresh || !services_.cancel_mapping) {
+            snapshot_.reason = "loss recovery requires an explicit task scope and a real mapper barrier";
+            return;
+        }
+        if (loss_recovery_attempts_ >= options_.maximum_recoveries) {
+            snapshot_.reason = "observation recovery exhausted its bounded mapper attempts";
+            return;
+        }
+        if (!valid_observation_cut_.Covers(planned.observation_cut)) return;
+        for (unsigned i = 0; i < 2; ++i)
+            if ((recovery_loss_->pending_sources & (1U << i)) &&
+                (!(planned.observation_cut.present & (1U << i)) || planned.observation_cut.sequence[i] <=
+                 std::max(recovery_loss_->admitted_cut.sequence[i], recovery_loss_->last_loss.sequence[i]))) return;
+        auto version = Version(now, options_.map_operation_timeout);
+        version.observation_cut = planned.observation_cut;
+        version.input_event_sequence = planned.input_event_sequence;
+        version.observation_baseline = recovery_loss_->admitted_cut;
+        version.observation_recovery_generation = recovery_loss_->generation;
+        version.recovery_loss = recovery_loss_;
+        version.recovery_region = options_.allowed_region;
+        recovery_operation_ = version;
+        ++loss_recovery_attempts_;
+        if (!services_.request_map_refresh(version)) {
+            CancelRecoveryOperation();
+            loss_recovery_after_ = now + options_.blocked_retry_delay;
+            snapshot_.reason = "mapper rejected observation scope recovery";
+        }
+    }
+
+    /** @brief Commits recovery only after a matched scope receipt and real map/graph evidence. */
+    void PollLossRecovery(double now) {
+        if (!recovery_operation_ || !recovery_loss_) return;
+        const auto version = *recovery_operation_;
+        const auto loss = observations_.LossSnapshot();
+        if (now > version.valid_until || !map_ || version.map_epoch != map_->map_epoch ||
+            loss.generation != recovery_loss_->generation ||
+            loss.map_epoch != recovery_loss_->map_epoch || !loss.pending_sources ||
+            version.geometry_revision != map_->geometry_revision ||
+            version.requirements_revision != coverage_.requirements_revision() ||
+            version.sensor_epoch != snapshot_.sensors.sensor_epoch ||
+            !snapshot_.sensors.ready || !PoseReady(now) || PendingInvalidation()) {
+            CancelRecoveryOperation();
+            loss_recovery_after_ = now + options_.blocked_retry_delay;
+            snapshot_.reason = "observation recovery dependency or deadline changed";
+            return;
+        }
+        if (!recovery_reply_) {
+            const auto reply = services_.poll_map_refresh();
+            if (reply && reply->version.SameRequest(version)) recovery_reply_ = reply;
+        }
+        if (!recovery_reply_) return;
+        if (!recovery_reply_->success || !ReceiptCovers(*recovery_reply_, version) ||
+            !recovery_reply_->recovery_scope_confirmed ||
+            (options_.observation_recovery_policy == ObservationRecoveryPolicy::kRequireOriginalReplay &&
+             !recovery_reply_->original_inputs_replayed)) {
+            CancelRecoveryOperation();
+            loss_recovery_after_ = now + options_.blocked_retry_delay;
+            snapshot_.reason = "mapper receipt did not certify the required loss recovery policy";
+            return;
+        }
+        const auto graph = paths_->Evidence();
+        if (map_->mapping_synchronized && BaselineMatches(*map_, version) &&
+            (!graph || !BaselineMatches(*graph, version) ||
+             !graph->observation_cut.Covers(version.observation_cut)) && !planning_)
+            QueuePlanning(now, false, false, {}, true);
+        if (!InputPrefixProcessed(version) || coverage_.PendingCount() || snapshot_.live_frontiers ||
+            !map_->mapping_synchronized || !BaselineMatches(*map_, version) ||
+            !map_->observation_cut.Covers(version.observation_cut) || !graph ||
+            graph->map_epoch != map_->map_epoch || graph->geometry_revision != map_->geometry_revision ||
+            !BaselineMatches(*graph, version) || !graph->observation_cut.Covers(version.observation_cut)) return;
+        if (!observations_.AcknowledgeRecovery(*recovery_loss_, version.observation_cut)) return;
+        observation_baseline_ = version.observation_baseline;
+        observation_recovery_generation_ = version.observation_recovery_generation;
+        recovery_operation_.reset(); recovery_reply_.reset(); recovery_loss_.reset();
+        completion_.Reset(); completion_version_.reset();
+        worker_reset_requested_.store(true);
+        snapshot_.state = ExplorationState::kExploring;
+        snapshot_.reason = "replacement observations and mapper/graph scope evidence established a new baseline";
+    }
+
     void RevokeCompletion() {
+        CancelRecoveryOperation();
         completion_.Reset();
+        completion_version_.reset();
         if(!snapshot_.completion_confirmed &&
             snapshot_.result.exploration!=ExplorationOutcome::kCompleted)return;
         CancelActivePhase(PhaseStatus::kInvalidated, "new work revoked the finish outcome");
@@ -505,6 +751,11 @@ public:
             CancelNavigation();
             coverage_.Reset(next.map_epoch);
             observations_.Reset(next.map_epoch);
+            packet_poses_.clear();
+            { std::lock_guard<std::mutex> lock(events_mutex_); admission_epoch_ = next.map_epoch; }
+            { std::lock_guard<std::mutex> lock(depth_mutex_); depth_history_.clear(); }
+            recovery_loss_.reset(); observation_baseline_ = {};
+            observation_recovery_generation_ = 0;
             observed_cut_ = {};
             valid_observation_cut_ = {};
             pose_history_.clear();view_evidence_.clear();view_started_.clear();
@@ -563,9 +814,77 @@ public:
         if(pose_history_.size()>512)pose_history_.pop_front();
     }
 
+    /** @brief Convert attested base rotation to the ground robot's actual yaw. */
+    static PoseEvent PacketPose(const perception::AcquisitionLocalization& pose, double stamp) {
+        return {{pose.world_from_base.translation.x, pose.world_from_base.translation.y,
+                 std::atan2(pose.world_from_base.rotation[3], pose.world_from_base.rotation[0])},
+                stamp, pose.map_epoch, pose.support};
+    }
+
+    /** @brief Apply attested acquisition poses without moving current time backward.
+     * @details An exact-time sample refreshes the current pose and localization
+     * support, including the untrusted Start seed. Older samples only update
+     * historical evidence. Neither case contributes fictitious traveled distance.
+     */
+    void RecordPacketPose(const PoseEvent& event) {
+        if (event.epoch != pose_epoch_ || event.stamp > pose_stamp_) {
+            ApplyPose(event);
+            return;
+        }
+        if (event.stamp == pose_stamp_) {
+            pose_ = event.pose;
+            localization_ = event.localization & perception::Mask(options_.mode);
+        }
+        auto position = std::lower_bound(pose_history_.begin(), pose_history_.end(), event.stamp,
+            [](const PoseEvent& pose, double stamp) { return pose.stamp < stamp; });
+        if (position != pose_history_.end() && position->stamp == event.stamp) {
+            // An exact acquisition sample replaces a prior seed/interpolation.
+            *position = event;
+        } else pose_history_.insert(position, event);
+        if (pose_history_.size() > 512) pose_history_.pop_front();
+    }
+
+    /** @brief Apply correlated input only after actual-time observation admission. */
+    void ApplyPacket(PacketEvent event, double now) {
+        auto& packet = event.packet;
+        const auto stamp = packet.observation.stamp;
+        const auto sensor = packet.observation.sensor;
+        const auto sequence = packet.observation.sequence;
+        now = std::max(now, event.admitted_at);
+        if (!packet.Valid(now) || !map_ || packet.observation.map_epoch != map_->map_epoch ||
+            packet.observation.frame_id != map_->frame_id) {
+            observations_.Reject(sensor, sequence);
+            return;
+        }
+        const double valid_until = packet.observation.valid_until;
+        PacketPoses poses{packet.observation.map_epoch, {}};
+        poses.samples.reserve(packet.acquisition_poses.size() + 1);
+        for (const auto& pose : packet.acquisition_poses) {
+            const auto sample = PacketPose(pose.localization, pose.stamp);
+            if (poses.samples.empty() || poses.samples.back().stamp != sample.stamp)
+                poses.samples.push_back(sample);
+        }
+        const auto end = PacketPose(packet.localization, stamp);
+        if (poses.samples.empty() || poses.samples.back().stamp != stamp)
+            poses.samples.push_back(end);
+        if (!observations_.Push(std::move(packet.observation), now)) return;
+        auto retained = packet_poses_.insert_or_assign(ObservationIdentity{sensor, sequence}, std::move(poses));
+        // Packet::Valid already requires ordered exact-time proofs. Rolling
+        // history remains bounded; observation qualification uses retained poses.
+        for (const auto& pose : retained.first->second.samples) RecordPacketPose(pose);
+        if (packet.depth_view) {
+            auto view = std::make_shared<const perception::LocalizedDepthView>(
+                perception::LocalizedDepthView{std::move(*packet.depth_view), packet.localization, valid_until});
+            std::lock_guard<std::mutex> lock(depth_mutex_);
+            depth_history_.push_back(std::move(view));
+            if (depth_history_.size() > 4) depth_history_.pop_front();
+        }
+    }
+
     void Command(SessionCommand command, double now) {
         if (snapshot_.state == ExplorationState::kFinished) return;
         if (command == SessionCommand::kCancel) {
+            CancelRecoveryOperation();
             CancelActivePhase(PhaseStatus::kCanceled, "session canceled");
             CancelPlanning();
             CancelNavigation();
@@ -577,6 +896,8 @@ public:
             else snapshot_.state = ExplorationState::kFinished;
         } else if (command == SessionCommand::kPause) {
             if (snapshot_.state == ExplorationState::kPaused) return;
+            CancelRecoveryOperation();
+            recovery_loss_.reset();
             CancelPlanning();
             CancelNavigation();
             paused_state_=snapshot_.state;
@@ -628,6 +949,44 @@ public:
         result.stamp=stamp;return result;
     }
 
+    /** @brief Resolve a ray only from its packet's actual pose when one exists.
+     * @param observation Source/ordinal/epoch identity of the consumed input.
+     * @param stamp Exact acquisition time used to transform this ray.
+     * @return Matching authoritative sample, or the legacy pose-history lookup
+     * for observations submitted without an associated native input packet.
+     * A packet sample that is missing or belongs to another epoch never falls
+     * back to interpolation or another observation's same-time localization.
+     */
+    std::optional<PoseEvent> ObservationPoseAt(const perception::SensorObservation& observation,
+                                             double stamp) const {
+        const auto packet = packet_poses_.find({observation.sensor, observation.sequence});
+        if (packet == packet_poses_.end()) return PoseAt(stamp);
+        if (packet->second.epoch != observation.map_epoch) return {};
+        const auto& samples = packet->second.samples;
+        const auto found = std::lower_bound(samples.begin(), samples.end(), stamp,
+            [](const PoseEvent& pose, double time) { return pose.stamp < time; });
+        if (found == samples.end() || found->stamp != stamp || found->epoch != observation.map_epoch)
+            return {};
+        return *found;
+    }
+
+    /** @brief Release packet poses only after the matching FIFO items are examined.
+     * Expired observations also advance processed_cut(), so rejection frees their
+     * evidence. Paused or unexamined suffixes retain proofs without extending the
+     * observation's expiry. Start and alignment reset clear all retained entries.
+     */
+    void PrunePacketPoses() {
+        const auto examined = observations_.processed_cut();
+        for (auto item = packet_poses_.begin(); item != packet_poses_.end();) {
+            const auto sensor = item->first.first;
+            const auto index = sensor == perception::SensorKind::kLidar ? 0U : 1U;
+            if (item->second.epoch != coverage_.epoch() ||
+                ((examined.present & perception::Mask(sensor)) && item->first.second <= examined.sequence[index]))
+                item = packet_poses_.erase(item);
+            else ++item;
+        }
+    }
+
     void RecordObservation(const perception::SensorObservation& observation,double now) {
         if(snapshot_.state!=ExplorationState::kObserving || !snapshot_.goal ||
             observation.valid_fraction<options_.health.minimum_valid_fraction ||
@@ -636,7 +995,7 @@ public:
             auto filtered=observation;filtered.rays.clear();
             for(const auto& ray:observation.rays) {
                 if(ray.stamp<arrived_at_)continue;
-                const auto acquisition=PoseAt(ray.stamp);
+                const auto acquisition=ObservationPoseAt(observation, ray.stamp);
                 if(!acquisition || !(acquisition->localization&perception::Mask(observation.sensor)) ||
                     opt::navigation::Distance(acquisition->pose,snapshot_.goal->execution_pose)>
                         options_.position_tolerance ||
@@ -710,6 +1069,7 @@ public:
     }
 
     void BeginFinish(ExplorationOutcome outcome, double now) {
+        CancelRecoveryOperation();
         CancelActivePhase(PhaseStatus::kRetryable, "exploration reached a finish outcome");
         CancelPlanning();
         CancelNavigation();
@@ -732,12 +1092,14 @@ public:
     }
 
     void BeginRefresh(double now) {
+        CancelRecoveryOperation();
         CancelPlanning();
         if (!options_.require_save && !options_.save_on_cancel) {
             snapshot_.state = ExplorationState::kFinished;
             return;
         }
         map_operation_ = Version(now, options_.map_operation_timeout);
+        BindCompletionPrefix(*map_operation_);
         saving_map_ = false;
         snapshot_.state = ExplorationState::kSaving;
         if (!services_.request_map_refresh || !services_.poll_map_refresh ||
@@ -763,8 +1125,7 @@ public:
                 FinishPhase(PhaseStatus::kFailed, "mapping operation failed");
             } else if (saving_map_) {
                 if (snapshot_.result.exploration == ExplorationOutcome::kCompleted &&
-                    (!FinalCompletionInputsValid(now) || !reply->fusion_confirmed ||
-                     !reply->fused_cut.Covers(observations_.accepted_cut()) ||
+                    (!FinalCompletionInputsValid(now) || !ReceiptCovers(*reply, *map_operation_) ||
                      map_operation_->map_epoch != map_->map_epoch ||
                      map_operation_->geometry_revision != map_->geometry_revision ||
                      map_operation_->sensor_epoch != snapshot_.sensors.sensor_epoch)) {
@@ -786,13 +1147,13 @@ public:
                 FinishPhase(PhaseStatus::kInvalidated, "new work appeared during refresh");
             } else {
                 if(snapshot_.result.exploration==ExplorationOutcome::kCompleted &&
-                    (!FinalCompletionInputsValid(now) || !reply->fusion_confirmed ||
-                     !reply->fused_cut.Covers(observations_.accepted_cut()))) {
+                    (!FinalCompletionInputsValid(now) || !ReceiptCovers(*reply, *map_operation_))) {
                     snapshot_.result.exploration=ExplorationOutcome::kIncompleteObservation;
                     snapshot_.completion_confirmed=false;
                     snapshot_.reason="final map refresh has no verified observation fusion barrier";
                 }
                 map_operation_ = Version(now, options_.map_operation_timeout);
+                BindCompletionPrefix(*map_operation_);
                 saving_map_ = true;
                 if (!services_.save_map || !services_.poll_map_save ||
                     !services_.save_map(options_.map_name, *map_operation_)) {
@@ -812,7 +1173,7 @@ public:
     }
 
     void ConsumePlan(double now) {
-        if (!InputsDrained()) return;
+        if (planning_ && (!InputPrefixProcessed(*planning_) || PendingInvalidation())) return;
         std::deque<Planned> results;
         {
             std::lock_guard<std::mutex> lock(work_mutex_);
@@ -825,12 +1186,20 @@ public:
                 result.version.geometry_revision != map_->geometry_revision ||
                 result.version.sensor_epoch != snapshot_.sensors.sensor_epoch ||
                 (!result.returning && !result.estimate_only &&
-                 result.version.coverage_revision != coverage_.revision())) {
+                 result.version.requirements_revision != coverage_.requirements_revision())) {
                 CancelPlanning();
                 FinishPhase(PhaseStatus::kInvalidated, "planning evidence or deadline changed");
                 continue;
             }
             planning_.reset();
+            if (result.evidence_only) {
+                if (!result.error.empty()) {
+                    CancelRecoveryOperation();
+                    loss_recovery_after_ = now + options_.blocked_retry_delay;
+                    snapshot_.reason = "route owner failed to update recovery evidence";
+                }
+                continue;
+            }
             if (!result.error.empty()) {
                 if(result.returning || finishing_) {
                     snapshot_.result.returned=ReturnOutcome::kReturnFailed;AfterReturn(now);
@@ -902,6 +1271,15 @@ public:
                 Retry(now, "no adaptation preserves required observation coverage");
                 continue;
             }
+            if (recovery_loss_) {
+                if (!coverage_.PendingCount() && !snapshot_.live_frontiers &&
+                    result.decision.sweep_checked && result.decision.grid_fallback_checked &&
+                    !result.decision.sampling_limited)
+                    BeginLossRecovery(result.version, now);
+                if (result.phase == ExplorationPhase::kSelect)
+                    FinishPhase(PhaseStatus::kRetryable, "observation loss requires verified scope recovery");
+                continue;
+            }
             CompletionEvidence evidence;
             evidence.map_epoch = map_->map_epoch;
             evidence.geometry_revision = map_->geometry_revision;
@@ -912,22 +1290,26 @@ public:
             evidence.mapping_synchronized = map_->mapping_synchronized;
             evidence.map_cut = map_->observation_cut;
             evidence.graph_cut = result.graph_evidence?result.graph_evidence->observation_cut:perception::ObservationCut{};
-            evidence.observation_cut = observations_.accepted_cut();
-            evidence.valid_observation_cut = valid_observation_cut_;
+            evidence.observation_cut = result.version.observation_cut;
+            for (auto source : {perception::SensorKind::kLidar, perception::SensorKind::kRgbd}) {
+                const auto index = source == perception::SensorKind::kLidar ? 0U : 1U;
+                if ((valid_observation_cut_.present & evidence.observation_cut.present &
+                     perception::Mask(source)))
+                    evidence.valid_observation_cut.Include(source, std::min(
+                        valid_observation_cut_.sequence[index], evidence.observation_cut.sequence[index]));
+            }
             evidence.required_observation_sources = snapshot_.sensors.active_sensors;
             for (const auto& item : coverage_.units())
                 evidence.required_observation_sources |= item.second.required_sensors;
             evidence.mapping_synchronized=evidence.mapping_synchronized && result.graph_evidence &&
                 result.graph_evidence->map_epoch==map_->map_epoch &&
-                result.graph_evidence->geometry_revision==map_->geometry_revision;
+                result.graph_evidence->geometry_revision==map_->geometry_revision &&
+                BaselineMatches(*map_, result.version) && BaselineMatches(*result.graph_evidence, result.version);
             evidence.sensing_healthy = snapshot_.sensors.ready;
             evidence.localization_healthy = PoseReady(now);
-            {
-                std::lock_guard<std::mutex> lock(events_mutex_);
-                evidence.observation_queue_empty=events_.empty() && priority_events_.empty() &&
-                    observations_.Empty() &&
-                    observations_.processed_cut().Covers(observations_.accepted_cut());
-            }
+            evidence.observation_queue_empty = InputPrefixProcessed(result.version) &&
+                !PendingInvalidation() && !observations_.LossSnapshot().pending_sources &&
+                !observations_.HasUnrecoveredLossThrough(evidence.observation_cut);
             evidence.pending_observations = coverage_.PendingCount();
             evidence.reachable_frontiers = std::count_if(coverage_.units().begin(),coverage_.units().end(),
                 [](const auto& entry){return entry.first.kind==CoverageKind::kFrontier && entry.second.pending;});
@@ -942,6 +1324,9 @@ public:
             if (result.phase == ExplorationPhase::kSelect)
                 FinishPhase(PhaseStatus::kRetryable, verified.reason);
             if (verified.complete) {
+                completion_version_ = result.version;
+                completion_version_->valid_until = now + options_.navigation_timeout +
+                    2 * options_.map_operation_timeout;
                 snapshot_.completion_confirmed = true;
                 BeginFinish(ExplorationOutcome::kCompleted, now);
             } else if (coverage_.PendingCount() && result.decision.sweep_checked &&
@@ -951,15 +1336,55 @@ public:
         }
     }
 
-    bool InputsDrained() const {
+    /** @brief Confirms a fixed admission prefix while allowing newer queued suffixes. */
+    bool InputPrefixProcessed(const RequestVersion& version) const {
         std::lock_guard<std::mutex> lock(events_mutex_);
-        return events_.empty() && priority_events_.empty() && observations_.Empty();
+        return processed_event_sequence_ >= version.input_event_sequence &&
+            priority_events_.empty() && observations_.ProcessedThrough(version.observation_cut);
     }
 
+    /** @brief Detects admitted work or health changes that cannot be hidden by a cut. */
+    bool PendingInvalidation() const {
+        std::lock_guard<std::mutex> lock(events_mutex_);
+        if (!priority_events_.empty()) return true;
+        for (const auto& event : events_) {
+            if (std::holds_alternative<CoverageUnit>(event)) return true;
+            if (const auto* map = std::get_if<MapReadView>(&event)) {
+                if (!map_ || map->map_epoch != map_->map_epoch ||
+                    map->geometry_revision != map_->geometry_revision) return true;
+            } else if (const auto* pose = std::get_if<PoseEvent>(&event)) {
+                if (!pose->localization || pose->epoch != pose_epoch_) return true;
+            } else if (const auto* packet = std::get_if<PacketEvent>(&event)) {
+                if (!packet->packet.Valid(last_now_) ||
+                    packet->packet.observation.map_epoch != pose_epoch_) return true;
+            }
+        }
+        return false;
+    }
+
+    /** @brief Keeps refresh/save receipts bound to the actual completed evidence cut. */
+    void BindCompletionPrefix(RequestVersion& version) const {
+        if (snapshot_.result.exploration != ExplorationOutcome::kCompleted || !completion_version_) return;
+        version.observation_cut = completion_version_->observation_cut;
+        version.input_event_sequence = completion_version_->input_event_sequence;
+        version.requirements_revision = completion_version_->requirements_revision;
+        version.observation_baseline = completion_version_->observation_baseline;
+        version.observation_recovery_generation = completion_version_->observation_recovery_generation;
+    }
+
+    /** @brief Validates current health, new work and loss-free finite completion evidence. */
     bool FinalCompletionInputsValid(double now) const {
-        return !execution_fault_ && snapshot_.sensors.ready && PoseReady(now) &&
-            InputsDrained() && !coverage_.PendingCount() && !snapshot_.live_frontiers &&
-            observations_.processed_cut().Covers(observations_.accepted_cut());
+        return completion_version_ && now <= completion_version_->valid_until &&
+            !execution_fault_ && snapshot_.sensors.ready && PoseReady(now) &&
+            completion_version_->map_epoch == map_->map_epoch &&
+            completion_version_->geometry_revision == map_->geometry_revision &&
+            completion_version_->sensor_epoch == snapshot_.sensors.sensor_epoch &&
+            completion_version_->requirements_revision == coverage_.requirements_revision() &&
+            InputPrefixProcessed(*completion_version_) && !PendingInvalidation() &&
+            !observations_.LossSnapshot().pending_sources &&
+            !observations_.HasUnrecoveredLossThrough(completion_version_->observation_cut) &&
+            BaselineMatches(*map_, *completion_version_) &&
+            !coverage_.PendingCount() && !snapshot_.live_frontiers;
     }
 
     ExplorationSnapshot Tick(double now) {
@@ -973,7 +1398,7 @@ public:
         } catch (...) {
             // Service exceptions must not escape the task owner or strand a
             // motion request. Cancellation callbacks themselves cannot throw.
-            CancelPlanning(); CancelNavigation(); CancelMapOperation();
+            CancelPlanning(); CancelNavigation(); CancelMapOperation(); CancelRecoveryOperation();
             FinishPhase(PhaseStatus::kFailed, "exploration owner service raised an exception");
             snapshot_.completion_confirmed = false;
             snapshot_.result.exploration = ExplorationOutcome::kIncompleteObservation;
@@ -1000,9 +1425,10 @@ public:
                 queue.pop_front();
             }
         }
-        for (const auto& event : events) {
+        for (auto& event : events) {
             if (const auto* map = std::get_if<MapReadView>(&event)) ApplyMap(*map);
             else if (const auto* pose = std::get_if<PoseEvent>(&event)) ApplyPose(*pose);
+            else if (auto* packet = std::get_if<PacketEvent>(&event)) ApplyPacket(std::move(*packet), now);
             else if (const auto* unit = std::get_if<CoverageUnit>(&event)) {
                 const auto before=coverage_.revision();coverage_.Upsert(*unit);
                 if(before!=coverage_.revision())RevokeCompletion();
@@ -1021,26 +1447,43 @@ public:
                     CancelMapOperation();snapshot_.result.saved=MapSaveOutcome::kSaveFailed;
                     snapshot_.state=ExplorationState::kFinished;
                 }
+                if (recovery_operation_ && recovery_operation_->SameRequest(version))
+                    CancelRecoveryOperation();
+            }
+            if (!std::holds_alternative<SessionCommand>(event) &&
+                !std::holds_alternative<CancelEvent>(event) &&
+                !std::holds_alternative<PhaseCancelEvent>(event)) {
+                std::lock_guard<std::mutex> lock(events_mutex_);
+                ++processed_event_sequence_;
             }
             if(snapshot_.state==ExplorationState::kFinished)break;
         }
         if (snapshot_.state == ExplorationState::kFinished) { Publish(); return Snapshot(); }
         if (snapshot_.state == ExplorationState::kPaused) { Publish(); return Snapshot(); }
+        SyncObservationLoss(now);
         for (const auto& observation : observations_.Drain(now, coverage_.epoch(),
                                                         options_.maximum_observations_per_tick)) {
-            if (map_ && observation.frame_id != map_->frame_id) continue;
+            if (map_ && observation.frame_id != map_->frame_id) {
+                observations_.Reject(observation.sensor, observation.sequence);
+                continue;
+            }
             health_.Observe(observation);
             observed_cut_.Include(observation.sensor, observation.sequence);
-            const auto acquisition = PoseAt(observation.stamp);
+            const auto acquisition = ObservationPoseAt(observation, observation.stamp);
             if (!observation.rays.empty() && acquisition &&
                 (acquisition->localization & perception::Mask(observation.sensor)) &&
                 observation.valid_fraction >= options_.health.minimum_valid_fraction &&
-                observation.scan_completeness >= options_.health.minimum_completeness)
+                observation.scan_completeness >= options_.health.minimum_completeness) {
                 valid_observation_cut_.Include(observation.sensor, observation.sequence);
-            CoverageEvaluator{}.Apply(observation, now, coverage_);
-            RecordObservation(observation,now);
+                if (ReplacementEligible(observation)) {
+                    CoverageEvaluator{}.Apply(observation, now, coverage_);
+                    RecordObservation(observation,now);
+                }
+            } else observations_.Reject(observation.sensor, observation.sequence);
         }
+        PrunePacketPoses();
         snapshot_.sensors = health_.Evaluate(now, localization_, options_.validated_controller_modes);
+        SyncObservationLoss(now);
         snapshot_.pending_units = coverage_.PendingCount();
         if (snapshot_.state == ExplorationState::kSaving) {
             if (snapshot_.result.exploration == ExplorationOutcome::kCompleted &&
@@ -1058,9 +1501,13 @@ public:
             Publish(); return Snapshot();
         }
         if (!snapshot_.sensors.ready || !PoseReady(now)) {
+            worker_reset_requested_.store(true);
+            completion_.Reset();
+            completion_version_.reset();
             CancelActivePhase(PhaseStatus::kRetryable, "sensor or localization unavailable");
             CancelPlanning();
             CancelNavigation();
+            CancelRecoveryOperation();
             snapshot_.state = ExplorationState::kWaitingForSensor;
             if (!wait_started_) wait_started_ = now;
             if (now - *wait_started_ > options_.maximum_sensor_wait)
@@ -1120,6 +1567,7 @@ public:
             } else Retry(now, "planning deadline exceeded");
         }
         ConsumePlan(now);
+        PollLossRecovery(now);
         if (navigation_) {
             const auto reply = services_.poll_navigation();
             if (reply && reply->version.SameRequest(*navigation_) && now <= navigation_->valid_until) {
@@ -1159,7 +1607,7 @@ public:
             } else if (now - arrived_at_ > options_.observation_timeout)
                 Retry(now, "arrival did not realize required observation");
         }
-        if (!BtDriven() && InputsDrained() && !planning_ && !navigation_ && now >= selection_after_ &&
+        if (!BtDriven() && !planning_ && !navigation_ && !recovery_operation_ && now >= selection_after_ &&
             snapshot_.state != ExplorationState::kObserving &&
             snapshot_.state != ExplorationState::kSaving &&
             snapshot_.state != ExplorationState::kFinished)
@@ -1177,9 +1625,16 @@ public:
             PoseReady(last_now_) && snapshot_.state != ExplorationState::kPaused &&
             snapshot_.state != ExplorationState::kIdle &&
             snapshot_.state != ExplorationState::kFinished;
-        snapshot_.active_request=navigation_?navigation_:(planning_?planning_:map_operation_);
+        snapshot_.active_request=navigation_?navigation_:(planning_?planning_:
+            (map_operation_?map_operation_:recovery_operation_));
         snapshot_.active_phase = active_phase_;
         snapshot_.finishing = finishing_;
+        snapshot_.observation_losses = observations_.LossSnapshot();
+        snapshot_.accepted_observations = observations_.accepted_cut();
+        snapshot_.processed_observations = observations_.processed_cut();
+        snapshot_.valid_observations = valid_observation_cut_;
+        snapshot_.observation_baseline = observation_baseline_;
+        snapshot_.observation_recovery_generation = observation_recovery_generation_;
         std::lock_guard<std::mutex> lock(snapshot_mutex_);
         published_ = snapshot_;
         published_phases_ = phase_history_;
@@ -1209,7 +1664,8 @@ public:
     std::optional<double> paused_at_, wait_started_;
     std::optional<ExplorationState> paused_state_;
     std::optional<ReturnCache> return_cache_;
-    std::deque<PoseEvent> pose_history_;
+    std::deque<PoseEvent> pose_history_;  ///< Bounded fallback history and current-motion accounting.
+    std::map<ObservationIdentity, PacketPoses> packet_poses_;  ///< Owner-only proofs for bounded pending observations.
     std::vector<std::map<CoverageId,std::array<double,2>>> view_evidence_;
     std::vector<std::optional<double>> view_started_;
     std::size_t current_view_=0;
@@ -1218,10 +1674,20 @@ public:
     unsigned recovery_count_ = 0;
     std::uint64_t request_counter_ = 0, confirmation_round_ = 0;
     std::uint64_t worker_session_ = 0;
+    std::atomic<bool> worker_reset_requested_{true};  ///< Rebuild proofs after real sensing/pose loss.
     std::optional<std::thread::id> owner_;
     ExplorationSnapshot snapshot_, published_;
     std::optional<RequestVersion> planning_, navigation_, map_operation_;
     std::optional<RequestVersion> selected_version_, prepared_version_;
+    std::optional<RequestVersion> completion_version_;  ///< Finite, expiring completed evidence cut.
+    std::optional<perception::ObservationLossSnapshot> recovery_loss_;  ///< Loss checkpoint whose scope is reopened.
+    std::optional<RequestVersion> recovery_operation_;  ///< Independently cancellable recovery refresh request.
+    std::optional<MappingReply> recovery_reply_;  ///< Matched receipt retained until consumer map/graph catch up.
+    perception::ObservationCut observation_baseline_{};  ///< Last verified excluded historical prefix.
+    std::uint64_t observation_recovery_generation_ = 0;  ///< Last verified replacement-baseline identity.
+    std::uint64_t recovery_geometry_ = 0, recovery_requirements_ = 0, recovery_sensor_epoch_ = 0;
+    unsigned loss_recovery_attempts_ = 0;  ///< Bounded refresh attempts for one compatible loss scope.
+    double loss_recovery_after_ = 0;  ///< Earliest owner-clock time of a retry.
     std::optional<PhaseTicket> active_phase_;
     std::deque<PhaseResult> phase_history_, published_phases_;
     bool resume_phase_ = false;
@@ -1232,6 +1698,11 @@ public:
     std::condition_variable work_ready_;
     std::deque<Event> events_;
     std::deque<Event> priority_events_;
+    std::uint64_t accepted_event_sequence_ = 0;  ///< Finite ordinary-event admission endpoint.
+    std::uint64_t admission_epoch_ = 0;  ///< Packet epoch protected by events_mutex_.
+    mutable std::mutex depth_mutex_;  ///< Protects immutable depth history readers.
+    std::deque<std::shared_ptr<const perception::LocalizedDepthView>> depth_history_;  ///< At most four real views.
+    std::uint64_t processed_event_sequence_ = 0;  ///< Owner-processed ordinary-event endpoint.
     std::optional<Job> queued_job_;
     std::deque<Planned> planned_results_;
     std::thread worker_;
@@ -1255,6 +1726,14 @@ bool ExplorationSession::PushPose(Pose2d pose, double stamp, std::uint64_t epoch
 bool ExplorationSession::PushObservation(perception::SensorObservation observation, double now) {
     return impl_->observations_.Push(std::move(observation), now);
 }
+bool ExplorationSession::PushSensorPacket(perception::ObservationPacket packet, double now) {
+    return impl_->PushPacket(std::move(packet), now);
+}
+void ExplorationSession::RejectSensorInput(perception::SensorKind sensor, std::uint64_t sequence) {
+    impl_->observations_.Reject(sensor, sequence);
+}
+std::vector<std::shared_ptr<const perception::LocalizedDepthView>>
+ExplorationSession::RecentDepthViews(double now) const { return impl_->DepthViews(now); }
 bool ExplorationSession::PushCoverageUnit(CoverageUnit unit) {
     return impl_->Enqueue(std::move(unit));
 }

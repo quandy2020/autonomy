@@ -131,6 +131,13 @@ bool PredictTwist(PolicyModel::ConstSharedPointer model,
     action->Clear();
     const auto infer_start = std::chrono::steady_clock::now();
 
+    if (model->config().is_sand_planner() && buffers->reuse_sand_reference &&
+        !buffers->selected_sand_controls.empty()) {
+        // Observation encoding above still checks required modality age/skew.
+        // The pipeline invokes the existing native tracker every control tick.
+        return true;
+    }
+
     if (model->config().is_diffusion()) {
         if (model->config().is_sand_planner()) {
             std::vector<std::vector<float>> candidates;
@@ -150,20 +157,21 @@ bool PredictTwist(PolicyModel::ConstSharedPointer model,
                         std::chrono::steady_clock::now() - infer_start)
                         .count();
             }
-            if (!candidates.empty()) {
-                buffers->action_sequence = candidates.front();
-            }
             Eigen::Vector3d heading = Eigen::Vector3d::Zero();
-            if (!SelectSandPlannerTwist(
-                    candidates, snapshot,
-                    model->config().effective_sand_planner(), action, &heading,
-                    error)) {
+            buffers->selected_sand_controls.clear();
+            if (!SelectSandPlannerTrajectory(
+                    candidates, snapshot, model->config().effective_sand_planner(),
+                    &buffers->selected_sand_controls, &heading, error)) {
                 return false;
             }
-            const double speed =
-                model->config().effective_sand_planner().execute_speed();
-            buffers->previous_plan_heading = heading * speed;
-            buffers->has_previous_plan_heading = true;
+            buffers->action_sequence.clear();
+            for (const auto& control : buffers->selected_sand_controls) {
+                buffers->action_sequence.push_back(static_cast<float>(control.x()));
+                buffers->action_sequence.push_back(static_cast<float>(control.y()));
+                buffers->action_sequence.push_back(static_cast<float>(control.z()));
+            }
+            // SanD only produces geometry. The pipeline delegates commands to
+            // the existing NMPC/MPPI controller and stores its actual v_prev.
             return true;
         }
         buffers->action_sequence.clear();

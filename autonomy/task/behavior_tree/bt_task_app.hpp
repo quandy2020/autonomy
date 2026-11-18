@@ -183,7 +183,10 @@ protected:
         return config_directory_;
     }
 
+    /** @return The owned runner for serialized lifecycle operations. */
     BtRunner* runner() { return &runner_; }
+    /** @return The runner for read-only completion checks, including terminal callbacks. */
+    const BtRunner* runner() const { return &runner_; }
 
     bool StartTree(const std::string& tree_xml_path = {}) {
         std::string path = tree_xml_path;

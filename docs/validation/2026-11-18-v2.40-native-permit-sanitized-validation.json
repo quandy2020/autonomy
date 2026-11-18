@@ -1,0 +1,35 @@
+{
+  "passed": true,
+  "steps": [
+    {
+      "stage": "compile",
+      "command": [
+        "clang++",
+        "-std=c++17",
+        "-pthread",
+        "-Wall",
+        "-Wextra",
+        "-Wpedantic",
+        "-Werror",
+        "-fsanitize=address,undefined",
+        "-fno-omit-frame-pointer",
+        "-I.",
+        "autonomy/task/common/motion_dispatch_gate_test.cpp",
+        "-o",
+        "/tmp/opt-native-permit-gate-sanitized"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.40-native-permit-sanitized-compile.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "stage": "tests",
+      "command": [
+        "/tmp/opt-native-permit-gate-sanitized"
+      ],
+      "returncode": 0,
+      "log": "docs/validation/2026-11-18-v2.40-native-permit-sanitized-tests.log",
+      "sha256": "d74e0c7ed852c0469448a3069826d8f41c419600b0c03ec4efdf56707a285d6f"
+    }
+  ]
+}

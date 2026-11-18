@@ -95,6 +95,8 @@ struct Probe {
     std::atomic<bool> invoke{false};
     /// Exercise cleanup failure in the real runner.
     std::atomic<bool> fail_halt{false};
+    /// Produce a successful last tick while testing concurrent owner revocation.
+    std::atomic<bool> complete{false};
     /// Installed before starting; never replaced while the worker is active.
     std::function<void()> callback;
     /// Protect the last identity observed inside a real node.
@@ -125,7 +127,7 @@ public:
     {
         ++probe_->ticks;
         if (probe_->invoke.exchange(false) && probe_->callback) probe_->callback();
-        return BT::NodeStatus::RUNNING;
+        return probe_->complete.load() ? BT::NodeStatus::SUCCESS : BT::NodeStatus::RUNNING;
     }
     /// Count native cleanup and optionally expose its exception path.
     void onHalted() override
@@ -194,6 +196,8 @@ public:
     std::atomic<bool> fail_cancel{false};
     /// Observe entry into actual readiness waiting.
     mutable std::atomic<unsigned> probes{0};
+    /// Installed before a tested submission to hold its actual readiness boundary.
+    std::function<void()> readiness_callback;
     /// Observe real domain requests to cancel its dependency.
     std::atomic<unsigned> cancels{0};
     /// Bounded production-policy seam; installed before any submission.
@@ -210,6 +214,7 @@ protected:
           probed_threads_.insert(std::this_thread::get_id()); }
         ++probes;
         if (fail_probe.load()) throw std::runtime_error("fixture readiness failure");
+        if (readiness_callback) readiness_callback();
         return ready.load();
     }
     /// Keep fixture deadlines bounded; production remains twenty seconds.
@@ -567,6 +572,152 @@ void SupersededDuringJoin()
     Require(Await([&]{return task.probe->starts==2;}), "only newest replacement executes");
 }
 
+/** @brief Reject malformed or initially denied cooperative starts without replacement. */
+void PermitAdmissionValidation()
+{
+    XmlFile xml; Harness task; Start(task,Goal(xml));
+    auto goal = Goal(xml,"B");
+    const auto probes = task.probes.load();
+    Require(!task.SubmitGoalWithMotionPermit(goal,{}) &&
+            !task.SubmitGoalWithMotionPermit(goal,[]{return false;}) &&
+            !task.SubmitGoalWithMotionPermit(goal,[]()->bool{throw std::runtime_error("lease");}),
+            "empty denied and throwing permission refuse new goal");
+    goal.clear_header();
+    Require(!task.SubmitGoalWithMotionPermit(goal,[]{return true;}), "cooperative goal requires identity");
+    goal = Goal(xml,"B"); goal.set_command(proto::NAV_CMD_PAUSE);
+    Require(!task.SubmitGoalWithMotionPermit(goal,[]{return true;}), "controls cannot install permission");
+    Identity(task,"A",TaskLifecycle::kRunning);
+    Require(task.probes == probes && task.probe->halts == 0, "denied permission never reaches readiness or old worker");
+}
+
+/** @brief Owner loss during readiness preserves the preceding accepted invocation. */
+void PermitDuringReadiness()
+{
+    XmlFile xml; Harness task; Start(task,Goal(xml));
+    task.ready = false; std::atomic<bool> allowed{true};
+    const auto probes = task.probes.load();
+    auto pending = std::async(std::launch::async,[&]{
+        return task.SubmitGoalWithMotionPermit(Goal(xml,"B"),[&]{return allowed.load();});
+    });
+    Require(Await([&]{return task.probes>probes;}), "guarded readiness entered");
+    allowed = false;
+    Require(pending.wait_for(500ms)==std::future_status::ready && !pending.get(), "revoked waiter refuses promptly");
+    Identity(task,"A",TaskLifecycle::kRunning);
+    Require(task.probe->starts==1 && task.probe->halts==0, "readiness revocation preserves accepted effects");
+}
+
+/** @brief Recheck a positive readiness result before closing the preceding gate. */
+void PermitAfterReadiness()
+{
+    XmlFile xml; Gate boundary; Harness task; Start(task,Goal(xml));
+    std::atomic<bool> allowed{true}; task.readiness_callback=[&]{boundary.Enter();};
+    auto pending = std::async(std::launch::async,[&]{
+        return task.SubmitGoalWithMotionPermit(Goal(xml,"B"),[&]{return allowed.load();});
+    });
+    const bool entered=boundary.WaitEntered(); allowed=false; boundary.Release();
+    Require(entered && pending.wait_for(500ms)==std::future_status::ready && !pending.get(),
+            "positive readiness does not bypass concurrent owner loss");
+    task.readiness_callback={};
+    Identity(task,"A",TaskLifecycle::kRunning);
+    Require(task.probe->halts==0, "owner loss at ready boundary does not cancel accepted goal");
+}
+
+/** @brief Permission revoked while joining the old worker never starts the new tree. */
+void PermitDuringJoin()
+{
+    XmlFile xml; Gate boundary; Harness task;
+    task.probe->callback=[&]{boundary.Enter();}; Start(task,Goal(xml));
+    task.probe->invoke=true; const bool entered=boundary.WaitEntered();
+    std::atomic<bool> allowed{true};
+    auto pending=std::async(std::launch::async,[&]{
+        return task.SubmitGoalWithMotionPermit(Goal(xml,"B"),[&]{return allowed.load();});
+    });
+    const bool replacing=Await([&]{return !task.eligible();});
+    allowed=false; boundary.Release();
+    Require(entered && replacing && pending.wait_for(500ms)==std::future_status::ready && !pending.get(),
+            "joined candidate rejects its lost owner");
+    Require(task.done() && task.probe->starts==1 && task.GetSnapshot().task_id()=="A",
+            "join revocation never publishes or executes B");
+    Require(task.MotionDrained(), "rejected replacement releases the already joined native invocation");
+}
+
+/** @brief Running owner loss cancels the real tree and publishes a matching result. */
+void PermitRuntimeRevocation()
+{
+    XmlFile xml; Harness task; proto::TaskServerOptions options;
+    Require(task.Initialize(options), "initialize guarded runtime");
+    std::atomic<bool> allowed{true};
+    Require(task.SubmitGoalWithMotionPermit(Goal(xml),[&]{return allowed.load();}) &&
+            Await([&]{return task.probe->starts==1;}), "guarded native node starts");
+    allowed=false;
+    Require(Await([&]{return task.done();}), "native worker terminates on owner loss");
+    Identity(task,"A",TaskLifecycle::kCanceled);
+    proto::NavigationResult result;
+    Require(task.probe->halts==1 && task.GetResultForTask("A",&result) &&
+            !task.GetResultForTask("stale",&result), "real halt and identity-specific result preserved");
+}
+
+/** @brief Exact retries and resume retain the original guard rather than replace it. */
+void PermitRetryAndPause()
+{
+    XmlFile xml; Harness task; proto::TaskServerOptions options;
+    Require(task.Initialize(options), "initialize guarded retry");
+    std::atomic<bool> allowed{true}; auto goal=Goal(xml);
+    Require(task.SubmitGoalWithMotionPermit(goal,[&]{return allowed.load();}) &&
+            Await([&]{return task.probe->starts==1;}), "guarded retry starts");
+    Require(!task.SubmitGoal(goal), "ordinary exact retry cannot strip parent guard");
+    auto replan=goal; replan.set_command(proto::NAV_CMD_REPLAN);
+    replan.mutable_goals(0)->mutable_pose()->mutable_position()->set_x(3);
+    Require(!task.SubmitGoal(replan), "ordinary same-identity replan cannot strip guard");
+    Require(task.SubmitGoalWithMotionPermit(goal,[]{return true;}) && task.probe->starts==1,
+            "guarded retry preserves original invocation without restart");
+    Require(task.Pause(), "pause guarded invocation"); allowed=false;
+    Require(!task.Resume(), "resume cannot revive revoked parent"); allowed=true;
+    Require(!task.Resume() && !task.SubmitGoalWithMotionPermit(goal,[]{return true;}),
+            "recovered callback and new retry callback cannot revive old guard");
+    Require(task.CancelForTask("A"), "revoked paused owner still cancels by identity");
+}
+
+/** @brief A last node success after owner loss is never reported as task success. */
+void PermitLastTickSuccess()
+{
+    XmlFile xml; Harness task; proto::TaskServerOptions options;
+    Require(task.Initialize(options), "initialize guarded final tick");
+    std::atomic<bool> allowed{true};
+    task.probe->callback=[&]{allowed=false; task.probe->complete=true;};
+    Require(task.SubmitGoalWithMotionPermit(Goal(xml),[&]{return allowed.load();}) &&
+            Await([&]{return task.probe->starts==1;}), "start guarded final tick");
+    task.probe->invoke=true;
+    Require(Await([&]{return task.done();}), "guarded final tick terminates");
+    Identity(task,"A",TaskLifecycle::kCanceled);
+    Require(task.GetSnapshot().progress()<1.f, "revoked successful tick cannot publish completed progress");
+}
+
+/** @brief A resume permission query lets another thread read task lifecycle. */
+void PermitResumeOutsideLifecycleLock()
+{
+    XmlFile xml; Harness task; proto::TaskServerOptions options;
+    Require(task.Initialize(options), "initialize resume lock check");
+    std::promise<void> observed; auto observation=observed.get_future().share();
+    std::thread observer;
+    std::atomic<bool> inspect{false};
+    const auto resume_thread=std::this_thread::get_id();
+    Require(task.SubmitGoalWithMotionPermit(Goal(xml),[&]{
+        if (std::this_thread::get_id()!=resume_thread || !inspect.exchange(false)) return true;
+        observer=std::thread([&]{ (void)task.GetSnapshot(); observed.set_value(); });
+        return observation.wait_for(500ms)==std::future_status::ready;
+    }) && Await([&]{return task.probe->starts==1;}), "guarded resume lock fixture starts");
+    Require(task.Pause(), "pause before checked resume");
+    inspect=true;
+    const bool resumed=task.Resume();
+    // Join only after Resume returns: a broken implementation can refuse the
+    // callback after its deadline, then release the incorrectly retained lock.
+    if (observer.joinable()) observer.join();
+    Require(resumed && observation.wait_for(0ms)==std::future_status::ready,
+            "external resume query runs without lifecycle mutex");
+    Require(task.Cancel(), "release checked resume fixture before captured evidence dies");
+}
+
 }  // namespace
 
 /** @brief Run all native scenarios with individually visible failures. */
@@ -596,6 +747,14 @@ int main()
             {"halt_failure",HaltFailure},
             {"cancellation_exception",CancellationException},
             {"superseded_during_join",SupersededDuringJoin},
+            {"permit_admission_validation",PermitAdmissionValidation},
+            {"permit_during_readiness",PermitDuringReadiness},
+            {"permit_after_readiness",PermitAfterReadiness},
+            {"permit_during_join",PermitDuringJoin},
+            {"permit_runtime_revocation",PermitRuntimeRevocation},
+            {"permit_retry_and_pause",PermitRetryAndPause},
+            {"permit_last_tick_success",PermitLastTickSuccess},
+            {"permit_resume_outside_lifecycle_lock",PermitResumeOutsideLifecycleLock},
         };
         for(const auto& item:cases) { item.second(); std::cout<<"PASS "<<item.first<<std::endl; }
     } catch(const std::exception& ex) {

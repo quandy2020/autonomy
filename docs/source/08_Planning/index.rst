@@ -15,3 +15,4 @@ Planning 路径规划
    4 Dijkstra 全局规划器 <04_dijkstra>
    5 Theta* 全局规划器 <05_theta_star>
    6 路径规划算法综述 <06_survey>
+   7 Vista 增量可见性图 <07_vista_planner>

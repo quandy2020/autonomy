@@ -1,0 +1,13 @@
+<!-- OpenNav-style undock: disable charge, reverse to staging pose. -->
+<root BTCPP_format="4" main_tree_to_execute="Undock">
+  <BehaviorTree ID="Undock">
+    <Sequence name="UndockSequence">
+      <UndockRobot
+        dock_type="{dock_type}"
+        max_undocking_time="{max_undocking_time}"
+        error_code_id="{dock_error_code}"
+        error_msg="{dock_error_msg}"
+        success="{dock_success}"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

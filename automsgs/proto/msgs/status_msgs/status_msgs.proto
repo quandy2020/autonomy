@@ -90,6 +90,11 @@ enum StatusCode {
   CHARGING_CANCELLED = 505;
   CHARGING_TIMEOUT = 506;
   CHARGING_NOT_READY = 507;
+  CHARGING_DOCK_NOT_VALID = 508;
+  CHARGING_FAILED_TO_STAGE = 509;
+  CHARGING_FAILED_TO_DETECT = 510;
+  CHARGING_FAILED_TO_CONTROL = 511;
+  CHARGING_FAILED_TO_CHARGE = 512;
 
   // ---------------------------------------------------------------------------
   // Thin: map storage (600-699) — distinct from fine MAP_* (7000+)

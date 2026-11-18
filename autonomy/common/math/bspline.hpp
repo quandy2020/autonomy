@@ -18,7 +18,8 @@
  * @file bspline.hpp
  * @brief Clamped cubic B-splines (Cox–de Boor) on scalars or Eigen points.
  *
- * Knots are uniform and clamped: the first and last four knots are 0 and 1,
+ * Knots are uniform by default, with an explicit nonuniform overload. Both
+ * constructors clamp the first and last four knots to 0 and 1,
  * so the curve interpolates the first and last control points. With exactly
  * four control points the knot vector is [0,0,0,0,1,1,1,1] and the curve is
  * the same cubic Bézier as @ref CubicBezier.
@@ -37,6 +38,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -104,10 +106,11 @@ inline int FindKnotSpan(const std::vector<double>& knots, int control_point_coun
 }  // namespace
 
 /**
- * @brief Clamped cubic B-spline with a cached uniform knot vector.
+ * @brief Clamped cubic B-spline with cached knots and derivative curves.
  *
- * Knots are built once in the constructor so repeated @ref Evaluate calls
- * (sampling a SanD candidate) do not rebuild the knot vector.
+ * Knots and derivative curves of orders 1..3 are built once in the constructor.
+ * Repeated @ref Evaluate and @ref EvaluateDerivative calls do not allocate
+ * spline storage. Point algebra may still allocate for dynamic point types.
  */
 template <typename Point>
 class ClampedCubicBSpline {
@@ -131,7 +134,35 @@ public:
         const int count = static_cast<int>(control_points_.size());
         if (count >= kDegree + 1) {
             knots_ = MakeClampedUniformKnots(count, kDegree);
+            CacheDerivatives();
         }
+    }
+
+    /**
+     * @brief Build a cubic with explicit normalized, clamped knots.
+     * @param control_points At least four controls in evaluation order.
+     * @param knots N+4 knots with simple interior spans; endpoints repeat four times.
+     * @throws std::invalid_argument For an invalid size, endpoint or interior span.
+     * This overload preserves nonuniform physical-reference geometry while
+     * reusing the same evaluator as the uniform SanD constructor.
+     */
+    ClampedCubicBSpline(std::vector<Point> control_points, std::vector<double> knots)
+        : control_points_(std::move(control_points)), knots_(std::move(knots)) {
+        const auto count = control_points_.size();
+        if (count < 4 || knots_.size() != count + 4) {
+            throw std::invalid_argument("cubic spline requires N>=4 and N+4 knots");
+        }
+        for (std::size_t i = 0; i < 4; ++i) {
+            if (knots_[i] != 0.0 || knots_[count + i] != 1.0) {
+                throw std::invalid_argument("cubic endpoints must be clamped at 0 and 1");
+            }
+        }
+        for (std::size_t i = 4; i <= count; ++i) {
+            if (!std::isfinite(knots_[i]) || knots_[i] - knots_[i - 1] < 1e-9) {
+                throw std::invalid_argument("interior cubic knots need simple positive spans");
+            }
+        }
+        CacheDerivatives();
     }
 
     /**
@@ -150,6 +181,51 @@ public:
      * @brief Cached knot vector; empty when there are fewer than four points.
      */
     const std::vector<double>& knots() const { return knots_; }
+
+    /**
+     * @brief Solve the first three controls for a prescribed C2 start state.
+     * @param position Position at normalized parameter u=0.
+     * @param first_derivative First derivative with respect to u, not seconds.
+     * @param second_derivative Second derivative with respect to u.
+     * @return Replacement controls Q0, Q1 and Q2, using this curve's actual knots.
+     * @throws std::invalid_argument For a short curve or nonfinite boundary data.
+     * @throws std::overflow_error If the replacement controls are nonfinite.
+     * @details The curve is unchanged. Copy these three controls into a new
+     * curve while preserving the remaining controls and knots. Physical-time
+     * callers multiply velocity by duration and acceleration by duration squared
+     * before calling. Point must be arithmetic or provide allFinite(). This
+     * operation neither matches jerk nor certifies dynamic or collision limits.
+     */
+    std::array<Point, 3> StartControlPoints(const Point& position,
+                                           const Point& first_derivative,
+                                           const Point& second_derivative) const {
+        if (control_points_.size() < kDegree + 1) {
+            throw std::invalid_argument("C2 start state requires a cubic spline");
+        }
+        const auto finite = [](const Point& point) {
+            if constexpr (std::is_arithmetic_v<Point>) {
+                return std::isfinite(point);
+            } else {
+                return point.allFinite();
+            }
+        };
+        if (!finite(position) || !finite(first_derivative) || !finite(second_derivative)) {
+            throw std::invalid_argument("nonfinite cubic start state");
+        }
+        const double first_span = knots_[4] - knots_[1];
+        const double second_span = knots_[5] - knots_[2];
+        const double acceleration_span = knots_[4] - knots_[2];
+        const Point next_derivative =
+            first_derivative + second_derivative * (acceleration_span / 2.0);
+        std::array<Point, 3> controls;
+        controls[0] = position;
+        controls[1] = position + first_derivative * (first_span / 3.0);
+        controls[2] = controls[1] + next_derivative * (second_span / 3.0);
+        for (const auto& control : controls) {
+            if (!finite(control)) throw std::overflow_error("cubic start controls overflow");
+        }
+        return controls;
+    }
 
     /**
      * @brief First control point, or zero when empty.
@@ -216,29 +292,26 @@ public:
             return DeBoor(control_points_, knots_, kDegree, u);
         }
 
-        std::vector<Point> points = control_points_;
-        std::vector<double> knots = knots_;
-        int degree = kDegree;
-        for (int step = 0; step < order; ++step) {
-            const int n = static_cast<int>(points.size());
-            std::vector<Point> next(static_cast<std::size_t>(n - 1));
-            for (int i = 0; i < n - 1; ++i) {
-                const double denom =
-                    knots[static_cast<std::size_t>(i + degree + 1)] -
-                    knots[static_cast<std::size_t>(i + 1)];
-                const Point delta =
-                    points[static_cast<std::size_t>(i + 1)] -
-                    points[static_cast<std::size_t>(i)];
-                next[static_cast<std::size_t>(i)] =
-                    denom > 1e-12 ? delta * (static_cast<double>(degree) / denom)
-                                  : BSplineZero<Point>();
-            }
-            points = std::move(next);
-            knots.erase(knots.begin());
-            knots.pop_back();
-            --degree;
+        const auto index = static_cast<std::size_t>(order - 1);
+        return DeBoor(derivative_controls_[index], derivative_knots_[index],
+                      kDegree - order, u);
+    }
+
+    /**
+     * @brief Controls of the derivative with respect to normalized u.
+     * @param order Derivative order, 0 through 3; out of range returns no controls.
+     * @return Controls whose convex hull bounds the derivative; physical-time
+     * callers divide by duration^order. The result is an owned copy, so changing
+     * it does not modify subsequent evaluations. Short curves retain the linear
+     * fallback.
+     */
+    std::vector<Point> DerivativeControlPoints(int order) const {
+        if (order < 0 || order > kDegree || control_points_.empty()) return {};
+        if (order == 0) return control_points_;
+        if (control_points_.size() < 4) {
+            return {order == 1 ? Point(end() - start()) : BSplineZero<Point>()};
         }
-        return DeBoor(points, knots, degree, u);
+        return derivative_controls_[static_cast<std::size_t>(order - 1)];
     }
 
     /**
@@ -259,6 +332,34 @@ public:
     }
 
 private:
+    /**
+     * @brief Build immutable derivative storage after cubic knots are validated.
+     * @details Each derivative reduces the degree and removes an endpoint knot
+     * pair. The original knots may be nonuniform. Construction is the only
+     * place that allocates this storage; const evaluation only reads it.
+     * @pre At least four controls and a valid normalized clamped knot vector.
+     */
+    void CacheDerivatives() {
+        for (int order = 1; order <= kDegree; ++order) {
+            const auto index = static_cast<std::size_t>(order - 1);
+            const auto& points = order == 1 ? control_points_
+                                            : derivative_controls_[index - 1];
+            const auto& knots = order == 1 ? knots_ : derivative_knots_[index - 1];
+            const int degree = kDegree - order + 1;
+            auto& next = derivative_controls_[index];
+            next.resize(points.size() - 1);
+            for (std::size_t i = 0; i < next.size(); ++i) {
+                const double denom = knots[i + static_cast<std::size_t>(degree) + 1] -
+                                     knots[i + 1];
+                const Point delta = points[i + 1] - points[i];
+                next[i] = denom > 1e-12
+                    ? delta * (static_cast<double>(degree) / denom)
+                    : BSplineZero<Point>();
+            }
+            derivative_knots_[index].assign(knots.begin() + 1, knots.end() - 1);
+        }
+    }
+
     static Point DeBoor(const std::vector<Point>& points,
                         const std::vector<double>& knots, int degree,
                         double parameter) {
@@ -297,8 +398,10 @@ private:
         return work[static_cast<std::size_t>(degree)];
     }
 
-    std::vector<Point> control_points_;
-    std::vector<double> knots_;
+    std::vector<Point> control_points_;  ///< Curve controls in evaluation order.
+    std::vector<double> knots_;          ///< Cached normalized, clamped knot vector.
+    std::array<std::vector<Point>, kDegree> derivative_controls_;  ///< Cached controls for orders 1..3.
+    std::array<std::vector<double>, kDegree> derivative_knots_;  ///< Cached reduced knot vectors for orders 1..3.
 };
 
 /**

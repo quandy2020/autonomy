@@ -1,0 +1,24 @@
+{
+  "files": {
+    "autonomy/common/math/bspline.hpp": {
+      "sha256": "4ad992f99b3df3df97dca3e5b091df94425fbe524e123c31e7cb51a565d60a70",
+      "lines": 459
+    },
+    "autonomy/common/math/bspline_cache_test.cpp": {
+      "sha256": "91a4c04feefddecf5902531a764986e3882d414d5fff1acdc1db286921bb168e",
+      "lines": 257
+    },
+    "autonomy/control/controller/policy_controller/sand_planner/timed_bspline.cpp": {
+      "sha256": "08be1be3cf8aec95b2ace38e1181f2ad07116dc18788a97661f1a15dc83a3c38",
+      "lines": 144
+    },
+    "autonomy/control/controller/policy_controller/sand_planner/native_spline_tracker_test.cpp": {
+      "sha256": "9a0e6bc23e0b7c3157a84b6fb0f1761a1ce75fe2ade114f235eb06cf3c2afe62",
+      "lines": 255
+    }
+  },
+  "shared_implementation": "autonomy/common/math/bspline.hpp",
+  "boundary_api": "ClampedCubicBSpline::StartControlPoints",
+  "local_tests": true,
+  "sanitizer_tests": true
+}

@@ -16,6 +16,7 @@
 
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <Eigen/Core>
+#include <Eigen/Core>
 
 #include "autonomy/common/network/common/tensor.hpp"
 #include "autonomy/control/controller/policy_controller/model.hpp"
@@ -33,6 +34,10 @@ struct PolicyRuntimeBuffers {
     ::autonomy::common::network::FloatTensorMap inputs;
     ::autonomy::common::network::FloatTensorMap outputs;
     std::vector<float> action_sequence;
+    /** @brief Complete selected robot-frame spline controls, retained for native tracking. */
+    std::vector<Eigen::Vector3d> selected_sand_controls;
+    /** @brief Set only while the native controller reference is reusable. */
+    bool reuse_sand_reference{false};
     /**
      * @brief Previous selected-plan velocity (SanD v_prev); robot frame.
      */
@@ -59,7 +64,7 @@ struct InferWatchdog {
 };
 
 /**
- * @brief Run one policy inference tick: encode → infer → decode Twist.
+ * @brief Run one policy inference tick; SanD retains spline geometry for native tracking.
  *
  * Pass a non-null @p watchdog with @c budget.Enabled() to enforce
  * single-shot forward via @c wait_for (abandoned late results stay in the
