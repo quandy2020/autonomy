@@ -115,6 +115,56 @@ void MeasuredCommandGate() {
     map.frame_id = "different_world";
     Require(!c::VerifyNativeCommand(command,state,map,options,now).safe,"command admission retains actual grid/feedback coordinate identity");
 }
+/** @brief Startup admission is yaw-only, drift-bounded and expires without map fabrication. */
+void StartupRotationGate() {
+    auto state = State();
+    const double now = state.header().stamp().sec() +
+        state.header().stamp().nanosec() * 1e-9;
+    Twist command;
+    *command.mutable_header() = state.header();
+    command.mutable_header()->set_frame_id("base_link");
+    command.mutable_twist()->mutable_angular()->set_z(.4);
+    c::NativeStartupRotationOptions options;
+    options.maximum_position_drift = .03;
+    Require(c::VerifyNativeStartupRotation(command, state, 2, 3, now + 5,
+        options, now).safe,
+        "pure yaw at the deployment-confirmed startup position is admitted");
+    command.mutable_twist()->mutable_linear()->set_x(.01);
+    Require(!c::VerifyNativeStartupRotation(command, state, 2, 3, now + 5,
+        options, now).safe,
+        "startup admission never permits translation");
+    command.mutable_twist()->mutable_linear()->set_x(0);
+    state.mutable_pose()->mutable_pose()->mutable_pose()->mutable_position()->set_x(2.1);
+    Require(!c::VerifyNativeStartupRotation(command, state, 2, 3, now + 5,
+        options, now).safe,
+        "measured drift revokes the startup envelope");
+    state = State();
+    Require(!c::VerifyNativeStartupRotation(command, state, 2, 3, now - 1,
+        options, now).safe,
+        "expired startup admission cannot authorize another motion command");
+}
+/** @brief Start support closes only an unknown self-occluded disc and never obstacles. */
+void StartupSupportSafety() {
+    auto grid = std::make_shared<opt::navigation::GridMap>(40, 30, .2);
+    grid->Fill({opt::navigation::CellState::kFree, 0, 1});
+    for (int y = 14; y <= 16; ++y)
+        for (int x = 19; x <= 21; ++x)
+            grid->Set(x, y, {opt::navigation::CellState::kUnknown, 0, 1});
+    opt::navigation::SafetyOptions body;
+    body.robot_radius = .1; body.horizontal_margin = .01;
+    body.robot_height = .2; body.vertical_margin = .02;
+    Require(!opt::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
+        "unconfirmed startup hole remains blocked");
+    body.startup_support = opt::navigation::StartupSupportRegion{4.1, 3.1, .45, 0, 1};
+    Require(opt::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
+        "bounded startup support admits only the measured self-occluded hole");
+    grid->Set(25, 15, {opt::navigation::CellState::kUnknown, 0, 1});
+    Require(!opt::navigation::GeometrySafety(grid, body).VerifyPose({5.1, 3.1, 0}).safe,
+        "startup support does not clear unknown space outside its envelope");
+    grid->Set(20, 15, {opt::navigation::CellState::kOccupied, 0, 1});
+    Require(!opt::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
+        "startup support never overrides an observed obstacle");
+}
 /** @brief Actual MPPI configuration recognizes the shared polygon mode selected by its original map proto. */
 void SharedMPPIConfiguration() {
     autonomy::map::proto::Costmap2DOptions map_options;
@@ -145,7 +195,7 @@ void SharedMPPIConfiguration() {
 int main(int argc,char** argv) {
     if (!autolink::Init(argv[0])) return 2;
     int code = 0;
-    try { StateContract(); CommandContract(); NativeRegistrations(); MeasuredCommandGate(); SharedMPPIConfiguration(); std::cout << "PASS native_controller_io" << std::endl; }
+    try { StateContract(); CommandContract(); NativeRegistrations(); MeasuredCommandGate(); StartupRotationGate(); StartupSupportSafety(); SharedMPPIConfiguration(); std::cout << "PASS native_controller_io" << std::endl; }
     catch (const std::exception& error) { code = 1; std::cerr << "FAIL native_controller_io: " << error.what() << std::endl; }
     autolink::Clear(); return code;
 }

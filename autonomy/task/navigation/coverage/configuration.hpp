@@ -11,6 +11,9 @@ namespace autonomy::task::coverage {
 struct Configuration {
   bool cartesian{true};
   double robot_width{1.5}, operation_width{3.0}, min_turning_radius{1.0};
+  /** Cleaning radius in metres; the swath width is twice this value.
+   *  Zero keeps the explicit operation_width. */
+  double robot_radius{0.0};
   double linear_curv_change{0.3}, cruise_speed{1.0}, turn_speed{0.5};
   bool allow_overlap{false};
   double headland_width{3.0};

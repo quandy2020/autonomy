@@ -138,6 +138,60 @@ void AutomaticDriverRejectsPhaseRequests() {
     Require(!fixture.session->RequestPhase(e::ExplorationPhase::kSelect, 1.02) &&
             fixture.submissions.size() == 1, "automatic and BT drivers cannot run together");
 }
+void StartupObservationGatesNormalSelection() {
+    Fixture fixture({0}, .05, {}, false, true, 10, 32,
+        e::ExplorationDriver::kBehaviorTree, false,
+        [](e::ExplorationSessionOptions& options) {
+            options.startup_observation.enabled = true;
+            options.startup_observation.target_yaw = 3.14159;
+            options.startup_observation.time_allowance = 2;
+            options.startup_observation.deadline_margin = 1;
+        });
+    auto startup = Request(fixture, e::ExplorationPhase::kStartupObservation, 1.02);
+    Require(fixture.session->PhaseState(startup).status == e::PhaseStatus::kPending &&
+            fixture.startup_request.has_value() && fixture.submissions.empty(),
+            "startup phase starts native rotation without planning coverage motion");
+    Require(!fixture.session->RequestPhase(e::ExplorationPhase::kSelect, 1.03),
+            "one active phase prevents concurrent selection");
+    fixture.startup_reply = e::StartupObservationReply{
+        *fixture.startup_request, true, "measured startup sweep confirmed"};
+    fixture.session->Tick(1.03);
+    Require(fixture.session->PhaseState(startup).status == e::PhaseStatus::kSucceeded &&
+            fixture.session->Snapshot().startup_observation_confirmed &&
+            fixture.submissions.empty(),
+            "native rotation evidence, not timeout, releases normal selection");
+    const auto selected = Request(fixture, e::ExplorationPhase::kSelect, 1.04);
+    Require(Await(fixture, selected, 1.04).status == e::PhaseStatus::kSucceeded,
+            "coverage selection proceeds only after startup observation");
+}
+void StartupObservationFailureAndCancelFailClosed() {
+    auto configure = [](e::ExplorationSessionOptions& options) {
+        options.startup_observation.enabled = true;
+        options.startup_observation.time_allowance = 2;
+        options.startup_observation.deadline_margin = 1;
+    };
+    Fixture failed({0}, .05, {}, false, true, 10, 32,
+        e::ExplorationDriver::kBehaviorTree, false, configure);
+    auto failed_ticket = Request(failed, e::ExplorationPhase::kStartupObservation, 1.02);
+    failed.startup_reply = e::StartupObservationReply{
+        *failed.startup_request, false, "measured translation exceeded startup drift"};
+    failed.session->Tick(1.03);
+    Require(failed.session->PhaseState(failed_ticket).status == e::PhaseStatus::kFailed &&
+            !failed.session->Snapshot().startup_observation_confirmed && failed.submissions.empty(),
+            "invalid native startup motion cannot unlock exploration");
+    const auto denied = Request(failed, e::ExplorationPhase::kSelect, 1.04);
+    Require(failed.session->PhaseState(denied).status == e::PhaseStatus::kRetryable &&
+            failed.submissions.empty(), "failed startup observation remains fail-closed");
+
+    Fixture canceled({0}, .05, {}, false, true, 10, 32,
+        e::ExplorationDriver::kBehaviorTree, false, configure);
+    auto canceled_ticket = Request(canceled, e::ExplorationPhase::kStartupObservation, 1.02);
+    Require(canceled.session->CancelPhase(canceled_ticket), "startup phase cancellation queued");
+    canceled.session->Tick(1.03);
+    Require(canceled.session->PhaseState(canceled_ticket).status == e::PhaseStatus::kCanceled &&
+            canceled.startup_cancellations == 1 && canceled.startup_request.has_value(),
+            "cancellation targets the accepted native startup action");
+}
 }  // namespace
 int main() {
     try {
@@ -147,6 +201,8 @@ int main() {
         PreparedPoseCanSurviveUnrelatedMapChange(); std::cout << "PASS prepared_pose_revalidation\n";
         PausePreservesPhaseButNotDwell(); std::cout << "PASS phase_pause_dwell\n";
         AutomaticDriverRejectsPhaseRequests(); std::cout << "PASS mutually_exclusive_drivers\n";
+        StartupObservationGatesNormalSelection(); std::cout << "PASS startup_observation_gate\n";
+        StartupObservationFailureAndCancelFailClosed(); std::cout << "PASS startup_observation_failure_cancel\n";
     } catch (const std::exception& error) {
         std::cerr << "FAIL phase: " << error.what() << '\n'; return 1;
     }

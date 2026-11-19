@@ -620,6 +620,8 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             const bool have_start = self->GetRobotPose(start_pose);
             const double start_yaw = have_start ? PoseYaw(start_pose) : 0.0;
             const double sign = target >= 0.0 ? 1.0 : -1.0;
+            double previous_yaw = start_yaw;
+            double cumulative_turn = 0.0;
             const auto started = std::chrono::steady_clock::now();
             AINFO << "nav recover spin yaw=" << target;
 
@@ -632,10 +634,17 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                     return;
                 }
                 automsgs::msgs::geometry_msgs::PoseStamped pose;
-                double turned = 0.0;
+                double turned = cumulative_turn;
                 if (self->GetRobotPose(pose) && have_start) {
-                    turned = std::abs(std::remainder(PoseYaw(pose) - start_yaw,
-                                                     2.0 * std::acos(-1.0)));
+                    const double current_yaw = PoseYaw(pose);
+                    const double delta = std::remainder(
+                        current_yaw - previous_yaw, 2.0 * std::acos(-1.0));
+                    // Accumulate signed progress before angle wrap. Re-measuring
+                    // the absolute remainder from start made a sweep crossing
+                    // +/-pi stop increasing before a half-turn target.
+                    if (delta * sign > 0.0) cumulative_turn += std::abs(delta);
+                    previous_yaw = current_yaw;
+                    turned = cumulative_turn;
                 } else {
                     const double elapsed = std::chrono::duration<double>(
                                                std::chrono::steady_clock::now() -

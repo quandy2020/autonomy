@@ -128,6 +128,26 @@ public:
             throw std::invalid_argument("invalid platform angular speed");
         if((options.require_save || options.save_on_cancel) && !services_.cancel_mapping)
             throw std::invalid_argument("mapping requests require versioned cancellation");
+        const auto& startup = options.startup_observation;
+        if (startup.enabled) {
+            if (!services_.request_startup_observation ||
+                !services_.poll_startup_observation ||
+                !services_.cancel_startup_observation)
+                throw std::invalid_argument("startup observation requires versioned native action services");
+            for (double value : {startup.target_yaw, startup.time_allowance,
+                                 startup.deadline_margin, startup.maximum_position_drift,
+                                 startup.completion_tolerance, startup.maximum_pose_age})
+                if (!std::isfinite(value) || value <= 0)
+                    throw std::invalid_argument("startup observation values must be finite and positive");
+            if (!std::isfinite(startup.support_radius) || startup.support_radius <= 0 ||
+                !std::isfinite(startup.support_ring_radius) ||
+                startup.support_ring_radius <= startup.support_radius ||
+                !std::isfinite(startup.support_timeout) || startup.support_timeout <= 0 ||
+                !startup.minimum_support_cells)
+                throw std::invalid_argument("invalid startup support-closure policy");
+            if (startup.target_yaw > opt::navigation::kPi + 1e-9)
+                throw std::invalid_argument("startup observation target exceeds the native spin envelope");
+        }
         if (!std::isfinite(options.return_margin) || options.return_margin < 0 ||
             !std::isfinite(options.frontier_observation_height))
             throw std::invalid_argument("invalid exploration return or observation configuration");
@@ -143,6 +163,7 @@ public:
         work_ready_.notify_all();
         if (worker_.joinable()) worker_.join();
         CancelNavigation();
+        CancelStartupObservation();
         CancelMapOperation();
         CancelRecoveryOperation();
     }
@@ -192,6 +213,7 @@ public:
             throw std::logic_error("exploration session already active");
         CancelPlanning();
         CancelNavigation();
+        CancelStartupObservation();
         CancelMapOperation();
         if (execution_fault_) throw std::runtime_error("previous navigation cancellation was not confirmed");
         CancelRecoveryOperation();
@@ -210,6 +232,13 @@ public:
         snapshot_ = {};
         snapshot_.state = ExplorationState::kInitializing;
         snapshot_.session_id = NewSessionIdentity();
+        snapshot_.startup_observation_required = options_.startup_observation.enabled;
+        snapshot_.startup_observation_confirmed = !options_.startup_observation.enabled;
+        snapshot_.startup_observation_reason = options_.startup_observation.enabled
+            ? "bounded in-place startup observation is pending"
+            : "startup observation is disabled";
+        startup_observation_confirmed_ = !options_.startup_observation.enabled;
+        startup_observation_failed_ = false;
         started_ = last_now_ = now;
         paused_time_ = 0;
         wait_started_.reset();
@@ -278,6 +307,65 @@ public:
         }
     }
 
+    /** @brief Cancel only the matching native startup action and revoke its movement admission. */
+    void CancelStartupObservation() noexcept {
+        if (!startup_observation_) return;
+        const auto version = *startup_observation_;
+        startup_observation_.reset();
+        CancelService(services_.cancel_startup_observation, version,
+                      "startup observation cancellation callback failed", true);
+    }
+
+    /** @brief Request one deployment-bounded, zero-translation yaw sweep. */
+    bool BeginStartupObservation(double now) {
+        if (!options_.startup_observation.enabled || startup_observation_confirmed_)
+            return true;
+        if (startup_observation_ || startup_observation_failed_) return false;
+        const auto& policy = options_.startup_observation;
+        startup_observation_ = Version(now, policy.time_allowance + policy.deadline_margin);
+        snapshot_.state = ExplorationState::kStartupObserving;
+        snapshot_.startup_observation_reason = "executing bounded in-place startup observation";
+        if (services_.request_startup_observation(*startup_observation_,
+                policy.target_yaw, policy.time_allowance)) return true;
+        startup_observation_.reset();
+        startup_observation_failed_ = true;
+        snapshot_.startup_observation_reason = "native startup rotation action was rejected";
+        snapshot_.reason = snapshot_.startup_observation_reason;
+        return false;
+    }
+
+    /** @brief Validate a terminal native rotation only after measured completion evidence. */
+    void PollStartupObservation(double now) {
+        if (!startup_observation_) return;
+        if (now > startup_observation_->valid_until) {
+            CancelStartupObservation();
+            startup_observation_failed_ = true;
+            snapshot_.startup_observation_reason = "startup observation deadline exceeded";
+            snapshot_.reason = snapshot_.startup_observation_reason;
+            FinishPhase(PhaseStatus::kFailed, snapshot_.reason);
+            if (!BtDriven()) BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
+            return;
+        }
+        const auto reply = services_.poll_startup_observation();
+        if (!reply || !reply->version.SameRequest(*startup_observation_)) return;
+        startup_observation_.reset();
+        startup_observation_confirmed_ = reply->success;
+        startup_observation_failed_ = !reply->success;
+        snapshot_.startup_observation_confirmed = reply->success;
+        snapshot_.startup_observation_reason = reply->reason.empty()
+            ? (reply->success ? "startup observation confirmed" : "startup observation failed")
+            : reply->reason;
+        snapshot_.reason = snapshot_.startup_observation_reason;
+        if (reply->success) {
+            FinishPhase(PhaseStatus::kSucceeded, snapshot_.reason);
+            selection_after_ = now;
+            snapshot_.state = finishing_ ? ExplorationState::kFinishing : ExplorationState::kExploring;
+        } else {
+            FinishPhase(PhaseStatus::kFailed, snapshot_.reason);
+            if (!BtDriven()) BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
+        }
+    }
+
     RequestVersion Version(double now, double duration) {
         RequestVersion version;
         version.session_id = snapshot_.session_id;
@@ -320,6 +408,7 @@ public:
         const auto phase = active_phase_->phase;
         CancelPlanning();
         CancelNavigation();
+        if (phase == ExplorationPhase::kStartupObservation) CancelStartupObservation();
         if (phase == ExplorationPhase::kSave) CancelMapOperation();
         if (phase == ExplorationPhase::kSelect || phase == ExplorationPhase::kAdapt) {
             snapshot_.selection.reset();
@@ -354,6 +443,9 @@ public:
         if (phase == ExplorationPhase::kObserve)
             duration = (options_.navigation_timeout + options_.observation_timeout) *
                 std::max<std::size_t>(1, snapshot_.goal ? snapshot_.goal->intent.required_views.size() : 1);
+        else if (phase == ExplorationPhase::kStartupObservation)
+            duration = options_.startup_observation.time_allowance +
+                options_.startup_observation.deadline_margin;
         else if (phase == ExplorationPhase::kReturn)
             duration += options_.navigation_timeout;
         else if (phase == ExplorationPhase::kSave)
@@ -393,7 +485,15 @@ public:
         }
         try {
             switch (phase) {
+            case ExplorationPhase::kStartupObservation:
+                if (!options_.startup_observation.enabled || startup_observation_confirmed_)
+                    return finish(PhaseStatus::kSucceeded, "startup observation is not required");
+                if (startup_observation_failed_ || !BeginStartupObservation(now))
+                    return finish(PhaseStatus::kRetryable, snapshot_.startup_observation_reason.c_str());
+                break;
             case ExplorationPhase::kSelect:
+                if (!startup_observation_confirmed_)
+                    return finish(PhaseStatus::kRetryable, "startup observation is not confirmed");
                 if (finishing_ || now < selection_after_)
                     return finish(PhaseStatus::kRetryable, "finishing or awaiting a bounded retry");
                 snapshot_.selection.reset(); snapshot_.goal.reset();
@@ -886,6 +986,7 @@ public:
         if (snapshot_.state == ExplorationState::kFinished) return;
         if (command == SessionCommand::kCancel) {
             CancelRecoveryOperation();
+            CancelStartupObservation();
             CancelActivePhase(PhaseStatus::kCanceled, "session canceled");
             CancelPlanning();
             CancelNavigation();
@@ -899,6 +1000,7 @@ public:
             if (snapshot_.state == ExplorationState::kPaused) return;
             CancelRecoveryOperation();
             recovery_loss_.reset();
+            CancelStartupObservation();
             CancelPlanning();
             CancelNavigation();
             paused_state_=snapshot_.state;
@@ -1515,6 +1617,7 @@ public:
             CancelActivePhase(PhaseStatus::kRetryable, "sensor or localization unavailable");
             CancelPlanning();
             CancelNavigation();
+            CancelStartupObservation();
             CancelRecoveryOperation();
             snapshot_.state = ExplorationState::kWaitingForSensor;
             if (!wait_started_) wait_started_ = now;
@@ -1525,6 +1628,12 @@ public:
             return Snapshot();
         }
         wait_started_.reset();
+        PollStartupObservation(now);
+        if (snapshot_.state == ExplorationState::kFinished ||
+            snapshot_.state == ExplorationState::kPaused) {
+            Publish();
+            return Snapshot();
+        }
         if (resume_phase_ && active_phase_) {
             resume_phase_ = false;
             const auto phase = active_phase_->phase;
@@ -1615,7 +1724,13 @@ public:
             } else if (now - arrived_at_ > options_.observation_timeout)
                 Retry(now, "arrival did not realize required observation");
         }
-        if (!BtDriven() && !planning_ && !navigation_ && !recovery_operation_ && now >= selection_after_ &&
+        if (!BtDriven() && options_.startup_observation.enabled &&
+            !startup_observation_confirmed_ && !startup_observation_) {
+            if (!BeginStartupObservation(now))
+                BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
+        }
+        if (!BtDriven() && startup_observation_confirmed_ && !planning_ && !navigation_ &&
+            !recovery_operation_ && now >= selection_after_ &&
             snapshot_.state != ExplorationState::kObserving &&
             snapshot_.state != ExplorationState::kSaving &&
             snapshot_.state != ExplorationState::kFinished)
@@ -1643,8 +1758,13 @@ public:
             PoseReady(last_now_) && snapshot_.state != ExplorationState::kPaused &&
             snapshot_.state != ExplorationState::kIdle &&
             snapshot_.state != ExplorationState::kFinished;
-        snapshot_.active_request=navigation_?navigation_:(planning_?planning_:
-            (map_operation_?map_operation_:recovery_operation_));
+        snapshot_.active_request=startup_observation_?startup_observation_:(navigation_?navigation_:(planning_?planning_:
+            (map_operation_?map_operation_:recovery_operation_)));
+        snapshot_.startup_observation_required = options_.startup_observation.enabled;
+        snapshot_.startup_observation_confirmed = startup_observation_confirmed_;
+        if (snapshot_.startup_observation_reason.empty())
+            snapshot_.startup_observation_reason = startup_observation_confirmed_
+                ? "startup observation confirmed" : "startup observation pending";
         snapshot_.active_phase = active_phase_;
         snapshot_.finishing = finishing_;
         snapshot_.observation_losses = observations_.LossSnapshot();
@@ -1696,6 +1816,9 @@ public:
     std::optional<std::thread::id> owner_;
     ExplorationSnapshot snapshot_, published_;
     std::optional<RequestVersion> planning_, navigation_, map_operation_;
+    std::optional<RequestVersion> startup_observation_;  ///< Bounded native in-place yaw sweep awaiting a measured result.
+    bool startup_observation_confirmed_ = true;  ///< Default remains true when the deployment policy is disabled.
+    bool startup_observation_failed_ = false;  ///< Native rejection or validation failure remains fail-closed.
     std::optional<RequestVersion> selected_version_, prepared_version_;
     std::optional<RequestVersion> completion_version_;  ///< Finite, expiring completed evidence cut.
     std::optional<perception::ObservationLossSnapshot> recovery_loss_;  ///< Loss checkpoint whose scope is reopened.

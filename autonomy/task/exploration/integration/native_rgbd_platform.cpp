@@ -5,14 +5,21 @@
 #include "autonomy/task/exploration/integration/native_rgbd_platform.hpp"
 
 #ifdef AUTONOMY_TASK_HAS_NATIVE_ATLAS_MAPPING
+#include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <fstream>
+#include <future>
 #include <mutex>
 #include <stdexcept>
+#include <thread>
 #include <unistd.h>
 #include <google/protobuf/util/json_util.h>
 #include <Eigen/Geometry>
+#include <autolink/action/client.hpp>
+#include <automsgs/actions/nav_actions.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 #include "autolink/autolink.hpp"
 #include "autolink/croutine/croutine.hpp"
@@ -30,6 +37,9 @@
 
 namespace autonomy::task::exploration {
 namespace {
+using StartupSpinAction = ::automsgs::actions::SpinAction;  ///< Existing native recovery action reused for observation.
+using StartupSpinClient = ::autolink::action::Client<StartupSpinAction>;  ///< Native action transport.
+constexpr char kStartupSpinAction[] = "/spin";  ///< Existing ControllerServer action endpoint.
 /** @brief Native-source clock explicitly selected by this platform configuration. */
 double Now() { return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count(); }
 /** @brief Resolve actual calibration/persistence files relative to the reviewed configuration. */
@@ -133,6 +143,27 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     config.session.validated_controller_modes = {static_cast<perception::SensorMask>(validated_mask)};
     config.session.time_budget = yaml["time_budget"].as<double>(); config.session.require_return = yaml["require_return"].as<bool>();
     config.session.require_save = yaml["require_save"].as<bool>(); config.session.map_name = yaml["map_name"].as<std::string>();
+    if (const auto startup = yaml["startup_observation"]; startup) {
+        auto& policy = config.session.startup_observation;
+        policy.enabled = startup["enabled"] ? startup["enabled"].as<bool>() : false;
+        if (startup["target_yaw"]) policy.target_yaw = startup["target_yaw"].as<double>();
+        if (startup["time_allowance"]) policy.time_allowance = startup["time_allowance"].as<double>();
+        if (startup["deadline_margin"]) policy.deadline_margin = startup["deadline_margin"].as<double>();
+        if (startup["maximum_position_drift"]) policy.maximum_position_drift =
+            startup["maximum_position_drift"].as<double>();
+        if (startup["completion_tolerance"]) policy.completion_tolerance =
+            startup["completion_tolerance"].as<double>();
+        if (startup["maximum_pose_age"]) policy.maximum_pose_age =
+            startup["maximum_pose_age"].as<double>();
+        if (startup["support_radius"]) policy.support_radius =
+            startup["support_radius"].as<double>();
+        if (startup["support_ring_radius"]) policy.support_ring_radius =
+            startup["support_ring_radius"].as<double>();
+        if (startup["support_timeout"]) policy.support_timeout =
+            startup["support_timeout"].as<double>();
+        if (startup["minimum_support_cells"]) policy.minimum_support_cells =
+            startup["minimum_support_cells"].as<unsigned>();
+    }
     auto& bounds = options.mapping.region;
     const auto region = yaml["region"];
     bounds = {region["min_x"].as<double>(),region["min_y"].as<double>(),region["max_x"].as<double>(),region["max_y"].as<double>()};
@@ -176,8 +207,34 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     return options;
 }
 
-class NativeRgbdPlatform::Impl {
+class NativeRgbdPlatform::Impl : public std::enable_shared_from_this<NativeRgbdPlatform::Impl> {
 public:
+    /** @brief One explicit yaw-only motion admission; no map cell is changed. */
+    struct StartupAdmission {
+        std::mutex mutex;  ///< Protects the admission used by controller callback threads.
+        bool active = false;  ///< True only between native request and validated terminal.
+        RequestVersion version;  ///< Session identity that authorized the sweep.
+        double start_x = 0;  ///< Measured startup X in the navigation frame.
+        double start_y = 0;  ///< Measured startup Y in the navigation frame.
+        double start_yaw = 0;  ///< Measured yaw at request time.
+        double deadline = 0;  ///< Absolute owner-clock deadline, seconds.
+        double target_yaw = 0;  ///< Requested nonzero sweep angle, radians.
+        double maximum_drift = 0;  ///< Deployment-confirmed position envelope, metres.
+        double maximum_yaw_rate = 0;  ///< Existing controller yaw-command bound, rad/s.
+    };
+    /** @brief Transport-only state for one accepted action; completion is measured separately. */
+    struct StartupOperation {
+        RequestVersion version;  ///< Matching Session request.
+        double deadline = 0;  ///< Duplicate native deadline in the owner clock.
+        double target_yaw = 0;  ///< Requested yaw travel, radians.
+        std::shared_ptr<StartupSpinClient::GoalHandle> handle;  ///< Accepted native goal, if available.
+        std::shared_future<std::shared_ptr<StartupSpinClient::GoalHandle>> accepted;  ///< Pending goal acceptance.
+        std::shared_future<StartupSpinClient::WrappedResult> result;  ///< Actual terminal action evidence.
+        bool acceptance_failed = false;  ///< Explicit rejection or transport failure.
+        bool terminal = false;  ///< A matching terminal result was received.
+        std::string terminal_reason;  ///< Rejection/error explanation for diagnostics.
+        bool cancel_requested = false;  ///< Session cancellation is in progress.
+    };
     /** @brief Construct genuine providers from immutable actual calibration. */
     Impl(std::shared_ptr<ExplorationTask> task,std::shared_ptr<autolink::Node> task_node,NativeRgbdPlatformOptions options)
         : task_(std::move(task)),task_node_(std::move(task_node)),options_(std::move(options)),
@@ -219,12 +276,18 @@ public:
             planner_->GetCostmapWrapper()->Start();
             const auto plugin = std::dynamic_pointer_cast<planning::planner::vista::VistaPlanner>(planner_->GetPlanner(options_.exploration.routes.planner_id));
             if (!plugin) throw std::invalid_argument("native exploration requires the existing configured Vista plugin");
-            plugin->SetMapViewSource([mapper = mapper_] { return mapper->LatestView(); });
+            plugin->SetMapViewSource([this] {
+                auto view = mapper_->LatestView();
+                if (view) AttachStartupSupport(*view);
+                return view;
+            });
         }
         if (options_.controller && (!planner_ || options_.command_topic.empty() || options_.controller_image_topic.empty() ||
             options_.controller_camera_frame.empty() || options_.controller_camera_frame == options_.localization.camera_frame ||
             options_.controller_camera_frame == options_.navigation_base_frame))
             throw std::invalid_argument("native execution requires its actual shared planner map, isolated IO and optical alias");
+        if (options_.exploration.session.startup_observation.enabled && !options_.controller)
+            throw std::invalid_argument("startup observation requires the existing native controller action server");
     }
     /** @brief Return current calibrated state only while its actual Atlas acquisition proof remains valid. */
     std::optional<::automsgs::msgs::nav_msgs::Odometry> ReadControlState() {
@@ -234,18 +297,493 @@ public:
         if (!localization_->Lookup(perception::SensorKind::kRgbd,options_.localization.camera_frame,stamp,Now())) return {};
         return control_state_;
     }
+    /** @brief Attach the actual native `/spin` action to one Session service bundle. */
+    void AttachStartupServices(ExplorationServices* services,
+                               const std::weak_ptr<Impl>& weak) {
+        if (!services || !options_.exploration.session.startup_observation.enabled) return;
+        services->request_startup_observation = [weak](const RequestVersion& version,
+            double target_yaw, double allowance) {
+            const auto self = weak.lock();
+            return self && self->RequestStartupObservation(version, target_yaw, allowance);
+        };
+        services->poll_startup_observation = [weak] {
+            const auto self = weak.lock();
+            return self ? self->PollStartupObservation()
+                        : std::optional<StartupObservationReply>{};
+        };
+        services->cancel_startup_observation = [weak](const RequestVersion& version) {
+            if (const auto self = weak.lock()) self->CancelStartupObservation(version);
+        };
+    }
+
+    /** @brief Start one action and arm a measured yaw-only command envelope. */
+    bool RequestStartupObservation(const RequestVersion& version, double target_yaw,
+                                   double allowance) {
+        if (closed_.load() || !controller_ || !std::isfinite(target_yaw) ||
+            !std::isfinite(allowance) || target_yaw <= 0 || allowance <= 0)
+            return false;
+        const auto feedback = ReadControlState();
+        if (!feedback || !feedback->has_pose() || !feedback->pose().has_pose() ||
+            !feedback->pose().pose().has_pose())
+            return false;
+        if (!command_writer_ || !command_writer_->HasReader()) {
+            const auto deadline = std::chrono::steady_clock::now() +
+                std::chrono::seconds(2);
+            while (command_writer_ && !command_writer_->HasReader() &&
+                   std::chrono::steady_clock::now() < deadline)
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        if (!command_writer_ || !command_writer_->HasReader()) {
+            AWARN << "NATIVE_STARTUP_OBSERVATION command channel has no actual receiver";
+            return false;
+        }
+        const auto& position = feedback->pose().pose().pose().position();
+        const auto& rotation = feedback->pose().pose().pose().orientation();
+        if (!std::isfinite(position.x()) || !std::isfinite(position.y()) ||
+            !std::isfinite(rotation.x()) || !std::isfinite(rotation.y()) ||
+            !std::isfinite(rotation.z()) || !std::isfinite(rotation.w()))
+            return false;
+        const double yaw = std::atan2(2 * (rotation.w() * rotation.z() +
+            rotation.x() * rotation.y()), 1 - 2 * (rotation.y() * rotation.y() +
+            rotation.z() * rotation.z()));
+        if (!startup_spin_client_)
+            startup_spin_client_ = std::make_shared<StartupSpinClient>(node_, kStartupSpinAction);
+        if (!startup_spin_client_->ActionServerIsReady() &&
+            !startup_spin_client_->WaitForActionServer(std::chrono::milliseconds(200)))
+            return false;
+        const double now = Now();
+        // Let the native action observe its own deadline and publish its final
+        // zero command before this independent completion check expires.
+        const double deadline = now + allowance + 1;
+        {
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (startup_operation_) return false;
+            StartupOperation operation;
+            operation.version = version;
+            operation.deadline = deadline;
+            operation.target_yaw = target_yaw;
+            startup_operation_ = std::move(operation);
+            startup_reply_.reset();
+        }
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            startup_admission_.active = true;
+            startup_admission_.version = version;
+            startup_admission_.start_x = position.x();
+            startup_admission_.start_y = position.y();
+            startup_admission_.start_yaw = yaw;
+            startup_admission_.deadline = deadline;
+            startup_admission_.target_yaw = target_yaw;
+            startup_admission_.maximum_drift =
+                options_.exploration.session.startup_observation.maximum_position_drift;
+            startup_admission_.maximum_yaw_rate = options_.command_gate.maximum_yaw_rate;
+        }
+        StartupSpinAction::Goal goal;
+        goal.set_target_yaw(static_cast<float>(target_yaw));
+        auto* duration = goal.mutable_time_allowance();
+        duration->set_sec(static_cast<std::int32_t>(allowance));
+        duration->set_nanosec(static_cast<std::uint32_t>((allowance -
+            std::floor(allowance)) * 1e9));
+        goal.set_disable_collision_checks(false);
+        StartupSpinClient::SendGoalOptions send;
+        const std::weak_ptr<Impl> weak = weak_from_this();
+        send.goal_response_callback = [weak, version](const auto& handle) {
+            const auto self = weak.lock();
+            if (!self || !handle) return;
+            bool cancel = false;
+            {
+                std::lock_guard<std::mutex> lock(self->startup_mutex_);
+                if (!self->startup_operation_ ||
+                    !self->startup_operation_->version.SameRequest(version)) {
+                    cancel = true;
+                } else {
+                    self->startup_operation_->handle = handle;
+                    cancel = self->startup_operation_->cancel_requested;
+                }
+            }
+            if (cancel) (void)self->startup_spin_client_->AsyncCancelGoal(handle);
+        };
+        send.goal_rejection_callback = [weak, version](const auto&) {
+            const auto self = weak.lock();
+            if (!self) return;
+            std::lock_guard<std::mutex> lock(self->startup_mutex_);
+            if (self->startup_operation_ &&
+                self->startup_operation_->version.SameRequest(version)) {
+                self->startup_operation_->acceptance_failed = true;
+                self->startup_operation_->terminal_reason =
+                    "native startup rotation goal was rejected";
+            }
+        };
+        send.goal_error_callback = [weak, version](const auto&, std::exception_ptr) {
+            const auto self = weak.lock();
+            if (!self) return;
+            std::lock_guard<std::mutex> lock(self->startup_mutex_);
+            if (self->startup_operation_ &&
+                self->startup_operation_->version.SameRequest(version)) {
+                self->startup_operation_->acceptance_failed = true;
+                self->startup_operation_->terminal_reason =
+                    "native startup rotation acceptance was uncertain";
+            }
+        };
+        send.result_callback = [weak, version](const auto&) {
+            const auto self = weak.lock();
+            if (!self) return;
+            bool revoke = false;
+            {
+                std::lock_guard<std::mutex> lock(self->startup_mutex_);
+                if (!self->startup_operation_ ||
+                    !self->startup_operation_->version.SameRequest(version) ||
+                    !self->startup_operation_->cancel_requested) return;
+                self->startup_operation_.reset();
+                revoke = true;
+            }
+            if (revoke) {
+                std::lock_guard<std::mutex> lock(self->startup_admission_.mutex);
+                self->startup_admission_.active = false;
+            }
+        };
+        try {
+            auto accepted = startup_spin_client_->AsyncSendGoal(goal, send);
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (!startup_operation_ ||
+                !startup_operation_->version.SameRequest(version))
+                return false;
+            startup_operation_->accepted = std::move(accepted);
+        } catch (...) {
+            SetStartupReply(version, false,
+                            "native startup rotation submission raised an exception");
+            return false;
+        }
+        AINFO << "NATIVE_STARTUP_OBSERVATION request yaw=" << target_yaw
+              << " allowance=" << allowance << " drift="
+              << options_.exploration.session.startup_observation.maximum_position_drift
+              << " base_frame=" << controller_->GetRobotBaseFrame()
+              << " command_reader=" << command_writer_->HasReader();
+        return true;
+    }
+
+    /** @brief Cancel one matching startup action without treating acceptance as a stop.
+     * Any matching terminal result still comes from the native action server; the
+     * admission remains short-lived until that result or its finite deadline.
+     */
+    void CancelStartupObservation(const RequestVersion& version) {
+        std::shared_ptr<StartupSpinClient::GoalHandle> handle;
+        {
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (!startup_operation_ ||
+                !startup_operation_->version.SameRequest(version)) return;
+            startup_operation_->cancel_requested = true;
+            handle = startup_operation_->handle;
+            startup_operation_->deadline = std::min(startup_operation_->deadline, Now() + 1);
+        }
+        if (handle) (void)startup_spin_client_->AsyncCancelGoal(handle);
+        std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+        startup_admission_.deadline = std::min(startup_admission_.deadline, Now() + 1);
+    }
+
+    /** @brief Validate available action evidence against measured pose, drift and yaw. */
+    std::optional<StartupObservationReply> PollStartupObservation() {
+        RequestVersion version;
+        double target_yaw = 0, deadline = 0;
+        std::shared_ptr<StartupSpinClient::GoalHandle> handle;
+        bool failed = false;
+        std::string failure;
+        {
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (startup_reply_) {
+                auto result = std::move(startup_reply_);
+                startup_reply_.reset();
+                return result;
+            }
+            if (!startup_operation_) return {};
+            auto& operation = *startup_operation_;
+            version = operation.version;
+            target_yaw = operation.target_yaw;
+            deadline = operation.deadline;
+            failed = operation.acceptance_failed;
+            failure = operation.terminal_reason;
+            if (!handle && operation.accepted.valid() &&
+                operation.accepted.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+                try {
+                    handle = operation.accepted.get();
+                    operation.handle = handle;
+                } catch (...) {
+                    failed = true;
+                    failure = "native startup rotation acceptance failed";
+                }
+            } else handle = operation.handle;
+            if (handle && !operation.result.valid()) {
+                try { operation.result = handle->AsyncGetResult(); }
+                catch (...) {
+                    failed = true;
+                    failure = "native startup rotation result subscription failed";
+                }
+            }
+        }
+        if (failed) {
+            SetStartupReply(version, false, failure);
+            return PollStartupObservation();
+        }
+        const double now = Now();
+        const auto feedback = ReadControlState();
+        if (now > deadline) {
+            if (handle) (void)startup_spin_client_->AsyncCancelGoal(handle);
+            SetStartupReply(version, false, "native startup rotation deadline exceeded");
+            return PollStartupObservation();
+        }
+        if (feedback && feedback->has_pose() && feedback->pose().has_pose() &&
+            feedback->pose().pose().has_pose()) {
+            const auto& position = feedback->pose().pose().pose().position();
+            double start_x = 0, start_y = 0, drift_limit = 0;
+            {
+                std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+                start_x = startup_admission_.start_x; start_y = startup_admission_.start_y;
+                drift_limit = startup_admission_.maximum_drift;
+            }
+            const double drift = std::hypot(position.x() - start_x, position.y() - start_y);
+            if (std::isfinite(drift) && drift > drift_limit) {
+                if (handle) (void)startup_spin_client_->AsyncCancelGoal(handle);
+                SetStartupReply(version, false,
+                    "startup rotation exceeded its deployment-confirmed position envelope");
+                return PollStartupObservation();
+            }
+        }
+        std::optional<StartupSpinClient::WrappedResult> terminal;
+        {
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (!startup_operation_ || !startup_operation_->version.SameRequest(version)) return {};
+            auto& result = startup_operation_->result;
+            if (!result.valid() || result.wait_for(std::chrono::seconds(0)) != std::future_status::ready)
+                return {};
+            try { terminal = result.get(); }
+            catch (...) {
+                SetStartupReply(version, false, "native startup rotation result failed");
+                return PollStartupObservation();
+            }
+        }
+        if (!terminal->result || terminal->code != ::autolink::action::ResultCode::SUCCEEDED ||
+            terminal->result->error_code() != ::automsgs::msgs::status_msgs::OK) {
+            SetStartupReply(version, false, "native startup rotation action did not succeed");
+            return PollStartupObservation();
+        }
+        const auto final_state = ReadControlState();
+        if (!final_state || !final_state->has_pose() || !final_state->pose().has_pose() ||
+            !final_state->pose().pose().has_pose()) {
+            SetStartupReply(version, false, "startup rotation lost calibrated pose evidence");
+            return PollStartupObservation();
+        }
+        const auto& rotation = final_state->pose().pose().pose().orientation();
+        const double final_yaw = std::atan2(2 * (rotation.w() * rotation.z() +
+            rotation.x() * rotation.y()), 1 - 2 * (rotation.y() * rotation.y() +
+            rotation.z() * rotation.z()));
+        double start_yaw = 0;
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            start_yaw = startup_admission_.start_yaw;
+        }
+        const double turned = std::abs(std::remainder(final_yaw - start_yaw, 2 * opt::navigation::kPi));
+        if (turned + options_.exploration.session.startup_observation.completion_tolerance < target_yaw) {
+            AWARN << "NATIVE_STARTUP_OBSERVATION measured_yaw=" << turned
+                  << " target_yaw=" << target_yaw;
+            SetStartupReply(version, false, "native startup rotation ended before the required yaw");
+            return PollStartupObservation();
+        }
+        const auto final_map = mapper_->LatestView();
+        double start_x = 0, start_y = 0;
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            start_x = startup_admission_.start_x;
+            start_y = startup_admission_.start_y;
+        }
+        if (!final_map || !EstablishStartupSupport(*final_map, start_x, start_y,
+                                                   final_yaw)) {
+            SetStartupReply(version, false,
+                "startup observation could not establish a measured support envelope");
+            return PollStartupObservation();
+        }
+        SetStartupReply(version, true, "measured startup observation confirmed");
+        return PollStartupObservation();
+    }
+
+    /** @brief Add the bounded support hint only while the robot is still inside it. */
+    void AttachStartupSupport(MapReadView& map) {
+        const auto feedback = ReadControlState();
+        std::lock_guard<std::mutex> lock(startup_support_mutex_);
+        if (!startup_support_ || Now() > startup_support_expires_) {
+            startup_support_.reset();
+            return;
+        }
+        if (!feedback || !feedback->has_pose() || !feedback->pose().has_pose() ||
+            !feedback->pose().pose().has_pose()) return;
+        const auto& position = feedback->pose().pose().pose().position();
+        const double distance = std::hypot(position.x() - startup_support_->center_x,
+                                           position.y() - startup_support_->center_y);
+        if (distance > startup_support_->radius) {
+            startup_support_.reset();
+            return;
+        }
+        map.startup_support = startup_support_;
+    }
+
+    /** @brief Derive a measured floor/ceiling closure from the observed startup ring. */
+    bool EstablishStartupSupport(const MapReadView& map, double start_x,
+                                 double start_y, double start_yaw) {
+        if (!map.grid || !map.has_height_evidence) return false;
+        opt::navigation::SafetyOptions body = options_.exploration.coverage.safety;
+        if (map.footprint_inflated) {
+            body.robot_radius = 1e-9;
+            body.horizontal_margin = 0;
+        }
+        body.startup_support.reset();
+        opt::navigation::GeometrySafety strict(map.grid, body);
+        if (strict.VerifyPose({start_x, start_y, start_yaw}).safe) {
+            std::lock_guard<std::mutex> lock(startup_support_mutex_);
+            startup_support_.reset();
+            AINFO << "NATIVE_STARTUP_SUPPORT unnecessary=true reason=start_already_safe";
+            return true;
+        }
+        const auto& policy = options_.exploration.session.startup_observation;
+        std::vector<double> floors, ceilings;
+        std::array<bool, 4> sectors{{false, false, false, false}};
+        for (int x = 0; x < map.grid->width(); ++x) {
+            for (int y = 0; y < map.grid->height(); ++y) {
+                const auto& cell = map.grid->At(x, y);
+                const auto center = map.grid->CellCenter(x, y);
+                const double distance = std::hypot(center.x - start_x, center.y - start_y);
+                if (distance <= policy.support_radius) {
+                    if (cell.state == opt::navigation::CellState::kOccupied) {
+                        AINFO << "NATIVE_STARTUP_SUPPORT rejected=occupied_inside_startup_envelope";
+                        return false;
+                    }
+                    continue;
+                }
+                if (distance > policy.support_ring_radius ||
+                    cell.state != opt::navigation::CellState::kFree ||
+                    !std::isfinite(cell.floor_height) ||
+                    !std::isfinite(cell.ceiling_height)) continue;
+                floors.push_back(cell.floor_height);
+                ceilings.push_back(cell.ceiling_height);
+                const double angle = std::atan2(center.y - start_y, center.x - start_x);
+                const int sector = static_cast<int>(std::floor((angle + opt::navigation::kPi) /
+                    (opt::navigation::kPi * 0.5))) % 4;
+                sectors[std::clamp(sector, 0, 3)] = true;
+            }
+        }
+        if (floors.size() < policy.minimum_support_cells ||
+            !std::all_of(sectors.begin(), sectors.end(), [](bool value) { return value; })) {
+            AINFO << "NATIVE_STARTUP_SUPPORT rejected=insufficient_measured_ring cells="
+                  << floors.size() << " sectors=" << sectors[0] << sectors[1]
+                  << sectors[2] << sectors[3];
+            return false;
+        }
+        const auto median = [](std::vector<double>* values) {
+            const auto middle = values->begin() + values->size() / 2;
+            std::nth_element(values->begin(), middle, values->end());
+            return *middle;
+        };
+        const double floor = median(&floors);
+        const double ceiling = median(&ceilings);
+        if (ceiling - floor < options_.exploration.coverage.safety.robot_height +
+                                 options_.exploration.coverage.safety.vertical_margin) {
+            AINFO << "NATIVE_STARTUP_SUPPORT rejected=insufficient_derived_clearance";
+            return false;
+        }
+        {
+            std::lock_guard<std::mutex> lock(startup_support_mutex_);
+            startup_support_ = opt::navigation::StartupSupportRegion{
+                start_x, start_y, policy.support_radius, floor, ceiling};
+            startup_support_expires_ = Now() + policy.support_timeout;
+        }
+        AINFO << "NATIVE_STARTUP_SUPPORT active=true radius=" << policy.support_radius
+              << " floor=" << floor << " ceiling=" << ceiling
+              << " ring_cells=" << floors.size()
+              << " expires_in=" << policy.support_timeout;
+        return true;
+    }
+
+    /** @brief Store one terminal result and revoke the startup-only motion admission. */
+    void SetStartupReply(const RequestVersion& version, bool success,
+                         const std::string& reason) {
+        {
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (!startup_operation_ ||
+                !startup_operation_->version.SameRequest(version)) return;
+            startup_operation_.reset();
+            startup_reply_ = StartupObservationReply{version, success, reason};
+        }
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            startup_admission_.active = false;
+        }
+        AINFO << "NATIVE_STARTUP_OBSERVATION result=" << (success ? "true" : "false")
+              << " reason=" << reason;
+    }
+
+    /** @brief Best-effort stop and irreversible admission revocation during platform shutdown. */
+    void StopStartupObservation() noexcept {
+        std::shared_ptr<StartupSpinClient::GoalHandle> handle;
+        {
+            std::lock_guard<std::mutex> lock(startup_mutex_);
+            if (startup_operation_) handle = startup_operation_->handle;
+            startup_operation_.reset();
+            startup_reply_.reset();
+        }
+        if (handle && startup_spin_client_) {
+            try { (void)startup_spin_client_->AsyncCancelGoal(handle); } catch (...) {}
+        }
+        try { if (controller_) controller_->PublishZeroVelocity(); } catch (...) {}
+        std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+        startup_admission_.active = false;
+        {
+            std::lock_guard<std::mutex> support_lock(startup_support_mutex_);
+            startup_support_.reset();
+            startup_support_expires_ = 0;
+        }
+    }
     /** @brief Independent actual-map command admission and existing TwistStamped transport. */
     bool PublishControlCommand(const ::automsgs::msgs::geometry_msgs::TwistStamped& command) {
         if (!command_writer_ || !command.has_header() || !command.has_twist() ||
-            command.header().frame_id() != options_.navigation_base_frame) return false;
+            command.header().frame_id() != options_.navigation_base_frame) {
+            AWARN_EVERY(20) << "NATIVE_EXECUTION_BLOCKED command envelope mismatch frame="
+                            << (command.has_header() ? command.header().frame_id() : "<missing>")
+                            << " expected=" << options_.navigation_base_frame;
+            return false;
+        }
         const auto& twist = command.twist();
         for (double value : {twist.linear().x(),twist.linear().y(),twist.linear().z(),twist.angular().x(),twist.angular().y(),twist.angular().z()})
             if (!std::isfinite(value)) return false;
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            if (startup_admission_.active) {
+                const auto feedback = ReadControlState();
+                if (!feedback) {
+                    AWARN << "NATIVE_EXECUTION_BLOCKED startup observation has no fresh pose";
+                    return false;
+                }
+                control::NativeStartupRotationOptions startup;
+                startup.maximum_position_drift = startup_admission_.maximum_drift;
+                startup.maximum_yaw_rate = startup_admission_.maximum_yaw_rate;
+                startup.maximum_feedback_age =
+                    options_.exploration.session.startup_observation.maximum_pose_age;
+                const auto verdict = control::VerifyNativeStartupRotation(command,*feedback,
+                    startup_admission_.start_x,startup_admission_.start_y,
+                    startup_admission_.deadline,startup,Now());
+                if (!verdict.safe) {
+                    AWARN << "NATIVE_EXECUTION_BLOCKED " << verdict.reason;
+                    return false;
+                }
+                const bool written = command_writer_->Write(command);
+                if (!written)
+                    AWARN << "NATIVE_EXECUTION_BLOCKED startup command transport rejected the write";
+                return written;
+            }
+        }
         const bool stationary = !twist.linear().x() && !twist.linear().y() && !twist.linear().z() &&
             !twist.angular().x() && !twist.angular().y() && !twist.angular().z();
         if (!stationary) {
-            const auto feedback = ReadControlState(); const auto map = mapper_->LatestView();
+            const auto feedback = ReadControlState(); auto map = mapper_->LatestView();
             if (closed_.load() || !feedback || !map) return false;
+            AttachStartupSupport(*map);
             const auto verdict = control::VerifyNativeCommand(command,*feedback,*map,options_.command_gate,Now());
             if (!verdict.safe) { AWARN << "NATIVE_EXECUTION_BLOCKED " << verdict.reason; return false; }
         }
@@ -260,7 +798,11 @@ public:
         map->resizeMap(view.grid->width(),view.grid->height(),view.grid->resolution(),view.grid->origin_x(),view.grid->origin_y());
         for (int x = 0; x < view.grid->width(); ++x) for (int y = 0; y < view.grid->height(); ++y) {
             const auto state = view.grid->At(x,y).state;
-            map->setCost(x,y,state == opt::navigation::CellState::kFree ? ::autonomy::map::costmap_2d::FREE_SPACE :
+            const auto center = view.grid->CellCenter(x,y);
+            const bool startup_free = state == opt::navigation::CellState::kUnknown &&
+                view.startup_support && view.startup_support->Contains(center.x,center.y);
+            map->setCost(x,y,state == opt::navigation::CellState::kFree || startup_free ?
+                ::autonomy::map::costmap_2d::FREE_SPACE :
                 state == opt::navigation::CellState::kOccupied ? ::autonomy::map::costmap_2d::LETHAL_OBSTACLE : ::autonomy::map::costmap_2d::NO_INFORMATION);
         }
     }
@@ -338,6 +880,14 @@ public:
     std::shared_ptr<NativeObservationMapper> mapper_;  ///< Existing-map fusion and versioned persistence owner.
     std::unique_ptr<planning::PlannerServer> planner_;  ///< Optional existing server; its single Vista graph reads this same mapper.
     std::unique_ptr<control::ControllerServer> controller_;  ///< Existing native plugins, checker, optimizer and action server on the same actual map.
+    std::shared_ptr<StartupSpinClient> startup_spin_client_;  ///< Existing `/spin` endpoint used only by explicit startup observation.
+    std::mutex startup_mutex_;  ///< Protects startup action identity and terminal/reply handoff.
+    std::optional<StartupOperation> startup_operation_;  ///< Current accepted or pending startup action.
+    std::optional<StartupObservationReply> startup_reply_;  ///< Validated terminal evidence awaiting Session poll.
+    StartupAdmission startup_admission_;  ///< Yaw-only command admission with a finite measured envelope.
+    std::mutex startup_support_mutex_;  ///< Protects the start-only support closure shared by map consumers.
+    std::optional<opt::navigation::StartupSupportRegion> startup_support_;  ///< Measured closure never written to the map.
+    double startup_support_expires_ = 0;  ///< Absolute expiry of the start-only closure, seconds.
     std::optional<::automsgs::msgs::nav_msgs::Odometry> control_state_;  ///< Original calibrated feedback retained under pose_mutex_, never a previous command.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::geometry_msgs::TwistStamped>> command_writer_;  ///< Actual isolated actuator transport after independent map checks.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::sensor_msgs::Image>> control_image_writer_;  ///< Full original depth in the calibrated private optical alias.
@@ -374,12 +924,15 @@ bool NativeRgbdPlatform::Install() {
     platform.create_mapping_services = [state](const auto&,const auto&) {
         const auto task = state->task_.lock(); const auto identity = task ? task->SensorInputIdentity() : std::nullopt;
         if (!identity || !identity->generation) throw std::logic_error("native mapping factory has no actual accepted task generation");
-        return state->mapper_->Services(identity->generation);
+        auto services = state->mapper_->Services(identity->generation);
+        state->AttachStartupServices(&services,state);
+        return services;
     };
     platform.process_sensor_packet = [state](std::uint64_t generation,const perception::ObservationPacket& packet,double now) {
         if (state->closed_.load()) return std::optional<MapReadView>{};
         auto mapped = state->mapper_->Process(generation,packet,now);
         if (mapped) {
+            state->AttachStartupSupport(*mapped);
             state->UpdateControlMap(*mapped);
             const auto occupancy = state->mapper_->Occupancy(); const auto grid = state->mapper_->Grid();
             if (occupancy && state->occupancy_writer_) state->occupancy_writer_->Write(*occupancy);
@@ -490,6 +1043,7 @@ bool NativeRgbdPlatform::Install() {
     } catch (...) { AERROR << "Native RGB-D provider/controller installation failed with an unknown exception"; Shutdown(); return false; }
 }
 void NativeRgbdPlatform::Shutdown() {
+    impl_->StopStartupObservation();
     impl_->closed_.store(true); if (impl_->retirement_) impl_->retirement_->Request();
 }
 bool NativeRgbdPlatform::WaitForShutdown(std::chrono::milliseconds timeout) const {

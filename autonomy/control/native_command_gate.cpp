@@ -56,10 +56,63 @@ opt::navigation::SafetyResult VerifyNativeCommand(
     if (!std::isfinite(distance)) return deny("native stopping envelope overflow");
     auto body = options.body;
     if (map.footprint_inflated) { body.robot_radius = 1e-9; body.horizontal_margin = 0; }
+    if (map.startup_support) body.startup_support = map.startup_support;
     const double yaw = std::atan2(2*(q.w()*q.z()+q.x()*q.y()),1-2*(q.y()*q.y()+q.z()*q.z()));
     try {
         opt::navigation::GeometrySafety geometry(map.grid,body);
         return geometry.VerifyPose({pose.position().x(),pose.position().y(),yaw},distance);
     } catch (const std::exception&) { return deny("native geometry checker rejected its input"); }
+}
+
+opt::navigation::SafetyResult VerifyNativeStartupRotation(
+    const automsgs::msgs::geometry_msgs::TwistStamped& command,
+    const automsgs::msgs::nav_msgs::Odometry& feedback, double start_x,
+    double start_y, double deadline,
+    const NativeStartupRotationOptions& options, double now) {
+    const auto deny = [](const char* reason) {
+        return opt::navigation::SafetyResult{false, 0, reason};
+    };
+    for (double value : {start_x, start_y, deadline, now,
+                         options.maximum_position_drift, options.maximum_yaw_rate,
+                         options.maximum_feedback_age})
+        if (!std::isfinite(value)) return deny("invalid startup envelope or clock");
+    if (options.maximum_position_drift <= 0 || options.maximum_yaw_rate <= 0 ||
+        options.maximum_feedback_age <= 0 || now > deadline)
+        return deny("startup envelope expired or has invalid bounds");
+    if (!command.has_header() || !command.has_twist() || !feedback.has_header() ||
+        !feedback.has_pose() || !feedback.pose().has_pose() ||
+        !feedback.pose().pose().has_pose() || !feedback.pose().pose().has_header())
+        return deny("missing startup command or actual feedback");
+    const auto stamp = Stamp(feedback.header()), command_stamp = Stamp(command.header());
+    if (!stamp || !command_stamp)
+        return deny("missing startup command or feedback timestamp");
+    if (now < *stamp) return deny("future startup feedback timestamp");
+    if (now - *stamp > options.maximum_feedback_age)
+        return deny("stale startup feedback timestamp");
+    if (now < *command_stamp) return deny("future startup command timestamp");
+    if (now - *command_stamp > options.maximum_feedback_age)
+        return deny("stale startup command timestamp");
+    if (Stamp(feedback.pose().pose().header()) != stamp)
+        return deny("mismatched startup pose acquisition timestamp");
+    if (command.header().frame_id().empty() ||
+        command.header().frame_id() != feedback.child_frame_id() ||
+        feedback.header().frame_id() != feedback.pose().pose().header().frame_id())
+        return deny("startup command/feedback frame mismatch");
+    const auto& twist = command.twist();
+    for (double value : {twist.linear().x(), twist.linear().y(), twist.linear().z(),
+                         twist.angular().x(), twist.angular().y(), twist.angular().z()})
+        if (!std::isfinite(value)) return deny("nonfinite startup rotation command");
+    if (std::abs(twist.linear().x()) > 1e-9 || std::abs(twist.linear().y()) > 1e-9 ||
+        std::abs(twist.linear().z()) > 1e-9 || std::abs(twist.angular().x()) > 1e-9 ||
+        std::abs(twist.angular().y()) > 1e-9 ||
+        std::abs(twist.angular().z()) > options.maximum_yaw_rate)
+        return deny("startup admission permits only bounded planar yaw");
+    const auto& position = feedback.pose().pose().pose().position();
+    if (!std::isfinite(position.x()) || !std::isfinite(position.y()))
+        return deny("nonfinite startup feedback position");
+    const double drift = std::hypot(position.x() - start_x, position.y() - start_y);
+    if (drift > options.maximum_position_drift)
+        return deny("startup rotation exceeded its deployment-confirmed position envelope");
+    return {true, options.maximum_position_drift - drift, "startup yaw admitted"};
 }
 }  // namespace autonomy::control

@@ -128,6 +128,15 @@
              return map::costmap_2d::utils::euclidean_distance(
                         global_plan_pose, robot_pose) > max_costmap_extent;
          });
+    // Sparse plans (a coverage swath reaches the controller as its two
+    // end points) can lose every pose beyond the robot when the next
+    // waypoint already lies outside the costmap window. Keep at least
+    // two poses so the lookahead point and the end-of-path direction
+    // stay well defined.
+    while (std::distance(transformation_begin, transformation_end) < 2 &&
+           transformation_end != global_plan_.poses().end()) {
+        ++transformation_end;
+    }
  
      // Lambda to transform a PoseStamped from global frame to local
      auto transformGlobalPoseToLocal = [&](const auto& global_plan_pose) {

@@ -77,6 +77,9 @@ build/autonomy/bin/task.coverage_client observe \
 ## 模式与适配范围
 
 - 地头：`CONSTANT`；可关闭地头生成，可选择单圈、同心多圈，以及先/后覆盖地头。
+- 扫地半径：`robot_radius`（米）决定条带间距，作业宽度等于半径的两倍；
+  配置文件、任务请求和 AutoViz 的 **Robot radius** 均可设置。
+  显式 `operation_width` 可覆盖为附件实际扫幅。
 - 分解：`NONE`、`TRAPEZOIDAL`、`BOUSTROPHEDON`。忽略沿边界的数值退化射线，保留有效组件；共享边界可预留通行带。
 - 条带：`BRUTE_FORCE`、`SET_ANGLE`；目标为 `LENGTH`、`NUMBER`、`NUMBER_MODIFIED`、`COVERAGE`。
 - 路线：`BOUSTROPHEDON`、`SNAKE`、`SPIRAL`、`CUSTOM`、`TSP`。`CUSTOM` 要求单区域的完整排列；起终点指定用于 TSP。
@@ -88,6 +91,8 @@ build/autonomy/bin/task.coverage_client observe \
 默认执行配置拒绝倒车。要执行 Reeds–Shepp，必须同时配置支持倒车的控制器和 `controller_supports_reverse`；仅选择转弯算法不会改变底盘能力。原生 FollowPath 控制器使用其速度限制，路径中的名义速度及工具段信息仍保留。
 
 GPS 规划仅支持本地坐标后端明确识别的 EPSG:4326/4258 与 UTM 转换，执行要求 Cartesian 请求。连续曲率候选无效时，本地库没有连续曲率约束搜索替代，会返回明确错误。实际全车体包络、动态障碍与工具扫掠需要应用层验收。
+
+原生执行把每个覆盖状态按不超过 0.25 m 的纵向间距展开为 transport pose，局部代价地图裁剪始终保留至少两个位姿，因此两点长路径不会退化为单点位姿。差速底盘遇到路径反方向（相差约 180°）时锁定同一转向，避免 atan2 在 ±π 接缝反复切换而造成原地来回摆动。
 
 ## 文件职责
 

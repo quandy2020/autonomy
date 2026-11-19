@@ -1,5 +1,6 @@
 {
   "robot_width": 0.35,
+  "robot_radius": 0.4,
   "operation_width": 0.8,
   "min_turning_radius": 0.4,
   "cruise_speed": 0.4,

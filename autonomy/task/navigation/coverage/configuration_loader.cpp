@@ -18,7 +18,15 @@ Configuration LoadConfiguration(const std::string& filename) {
   file >> data;
 #define LOAD_COVERAGE_VALUE(name) config.name = data.value(#name, config.name)
   LOAD_COVERAGE_VALUE(robot_width);
-  LOAD_COVERAGE_VALUE(operation_width);
+  LOAD_COVERAGE_VALUE(robot_radius);
+  // A cleaning robot covers one diameter per pass. An explicit
+  // operation_width still wins for attachments that are wider or
+  // narrower than the chassis.
+  if (data.contains("operation_width")) {
+    LOAD_COVERAGE_VALUE(operation_width);
+  } else if (config.robot_radius > 0.0) {
+    config.operation_width = 2.0 * config.robot_radius;
+  }
   LOAD_COVERAGE_VALUE(min_turning_radius);
   LOAD_COVERAGE_VALUE(linear_curv_change);
   LOAD_COVERAGE_VALUE(cruise_speed);

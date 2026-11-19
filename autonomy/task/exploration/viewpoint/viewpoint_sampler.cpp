@@ -22,6 +22,7 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         !std::isfinite(options.angular_speed) || options.angular_speed <= 0 ||
         !std::isfinite(options.observation_time) || options.observation_time <= 0)
         throw std::invalid_argument("invalid viewpoint sampling configuration");
+    if (map.startup_support) safety.startup_support = map.startup_support;
     const auto& grid = *map.grid;
     if (grid.size() > std::numeric_limits<std::size_t>::max() / options.yaw_samples)
         throw std::invalid_argument("viewpoint candidate domain exceeds cursor capacity");

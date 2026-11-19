@@ -21,7 +21,7 @@
 #include "Converter.h"
 #include "GeometricTools.h"
 
-#include "DUtils/Random.h"
+#include "OrbRandom.h"
 
 #include<thread>
 
@@ -78,7 +78,7 @@ namespace ORB_SLAM3
         // Generate sets of 8 points for each RANSAC iteration
         mvSets = vector< vector<size_t> >(mMaxIterations,vector<size_t>(8,0));
 
-        DUtils::Random::SeedRandOnce(0);
+        OrbRandom::Seed(0);
 
         for(int it=0; it<mMaxIterations; it++)
         {
@@ -87,7 +87,7 @@ namespace ORB_SLAM3
             // Select a minimum set
             for(size_t j=0; j<8; j++)
             {
-                int randi = DUtils::Random::RandomInt(0,vAvailableIndices.size()-1);
+                int randi = OrbRandom::RandomInt(0,vAvailableIndices.size()-1);
                 int idx = vAvailableIndices[randi];
 
                 mvSets[it][j] = idx;

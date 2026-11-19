@@ -23,6 +23,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <unordered_map>
 
 #include "KeyFrame.h"
 #include "Frame.h"
@@ -87,8 +88,8 @@ protected:
    // Associated vocabulary
    const ORBVocabulary* mpVoc;
 
-   // Inverted file
-   std::vector<list<KeyFrame*> > mvInvertedFile;
+   // Inverted file: word id -> keyframes containing the word
+   std::unordered_map<unsigned int, list<KeyFrame*> > mvInvertedFile;
 
    // For save relation without pointer, this is necessary for save/load function
    std::vector<list<long unsigned int> > mvBackupInvertedFileId;

@@ -75,6 +75,9 @@ struct Fixture {
     std::optional<e::NavigationReply> reply;
     std::optional<e::RequestVersion> refresh_request, save_request;
     std::optional<e::MappingReply> refresh_reply, save_reply;
+    std::optional<e::RequestVersion> startup_request;  ///< Actual startup phase request identity.
+    std::optional<e::StartupObservationReply> startup_reply;  ///< Controlled native rotation result.
+    std::size_t startup_cancellations = 0;  ///< Matching versioned startup cancellation count.
     std::vector<e::RequestVersion> refresh_submissions;  ///< Every actual refresh callback identity.
     std::vector<e::RequestVersion> mapping_cancellations;  ///< Versioned mapping cancel callback identities.
     std::size_t cancellation_count = 0;
@@ -151,6 +154,18 @@ struct Fixture {
             if (!hold_graph_updates.load()) planner->Update(view);
         };
         services.navigation_still_valid = [](const auto&, const auto&, const auto&) { return true; };
+        services.request_startup_observation = [this](const auto& version, double, double) {
+            startup_request = version;
+            return true;
+        };
+        services.poll_startup_observation = [this] {
+            auto result = startup_reply;
+            startup_reply.reset();
+            return result;
+        };
+        services.cancel_startup_observation = [this](const auto&) {
+            ++startup_cancellations;
+        };
         e::ExplorationSessionOptions options;
         options.validated_controller_modes = {p::Mask(p::SensorMode::kRgbdOnly)};
         options.require_return = options.require_save = false;

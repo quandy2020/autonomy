@@ -11,12 +11,12 @@
 #include "autonomy/task/exploration/coverage/completion_evaluator.hpp"
 namespace autonomy::task::exploration {
 /** @brief Owner lifecycle; reaching a pose does not certify coverage or saved maps. */
-enum class ExplorationState {kIdle,kInitializing,kExploring,kObserving,kReplanning,kRecovering,
+enum class ExplorationState {kIdle,kInitializing,kStartupObserving,kExploring,kObserving,kReplanning,kRecovering,
     kWaitingForSensor,kPaused,kVerifyingCompletion,kReturning,kSaving,kFinishing,kFinished};
 /** @brief Selects one owner driver without creating competing motion submitters. */
 enum class ExplorationDriver { kAutomatic, kBehaviorTree };
 /** @brief Independently tracked asynchronous exploration phases. */
-enum class ExplorationPhase { kSelect, kAdapt, kObserve, kReturn, kSave };
+enum class ExplorationPhase { kStartupObservation, kSelect, kAdapt, kObserve, kReturn, kSave };
 /** @brief Phase outcome; retryable and invalidated phases have not completed their intent. */
 enum class PhaseStatus { kPending, kSucceeded, kRetryable, kInvalidated, kFailed, kCanceled };
 /** @brief Priority commands processed before normal mapping and observation events. */
@@ -70,6 +70,12 @@ struct NavigationReply {
     RequestVersion version;  ///< Navigation identity that produced this reply.
     bool success = false;  ///< Execution service reported success; not a coverage receipt.
 };
+/** @brief Explicit result of the bounded, stationary startup observation. */
+struct StartupObservationReply {
+    RequestVersion version;  ///< Request identity whose native action produced this result.
+    bool success = false;  ///< The complete yaw sweep was measured without translating.
+    std::string reason;  ///< Actual validation failure or completion explanation.
+};
 /** @brief Receipt from the actual mapper; queue draining cannot create this receipt. */
 struct MappingReply {
     RequestVersion version;  ///< Identity of the requested refresh or save.
@@ -95,6 +101,27 @@ struct ExplorationServices {
     std::function<void(const MapReadView&)> update_route_map;  ///< Worker callback updating the owned Vista consumer.
     std::function<bool(const AdaptedObservationGoal&,const Pose2d&,const MapReadView&)> navigation_still_valid;  ///< Revalidates current intent against changed geometry.
     std::function<std::optional<Pose2d>(const Pose2d&,std::uint64_t,std::uint64_t)> reproject_pose;  ///< Transforms a pose between known alignment epochs.
+    std::function<bool(const RequestVersion&,double,double)> request_startup_observation;  ///< Starts a zero-translation yaw sweep with a finite allowance.
+    std::function<std::optional<StartupObservationReply>()> poll_startup_observation;  ///< Polls the native rotation action's validated result.
+    std::function<void(const RequestVersion&)> cancel_startup_observation;  ///< Cancels exactly the matching native rotation action.
+};
+/** @brief Deployment-confirmed, bounded startup sweep policy.
+ * The sweep is permitted only at the initial pose with zero commanded translation.
+ * It creates neither map cells nor coverage evidence; observations still enter
+ * the ordinary measured mapper and coverage evaluators. Disabled by default.
+ */
+struct StartupObservationOptions {
+    bool enabled = false;  ///< Require one native in-place observation sweep before selection.
+    double target_yaw = 3.14159265358979323846;  ///< Nonzero sweep angle; SpinAction accepts at most pi.
+    double time_allowance = 8;  ///< Native action deadline and Session request deadline basis, seconds.
+    double deadline_margin = 2;  ///< Extra Session time before canceling an unresponsive native action.
+    double maximum_position_drift = .03;  ///< Maximum measured translation from the startup pose, metres.
+    double completion_tolerance = .03;  ///< Maximum missing yaw at successful completion, radians.
+    double maximum_pose_age = 1;  ///< Maximum measured feedback age for the stationary startup sweep, seconds.
+    double support_radius = .45;  ///< Self-occluded central disc closed only during initial departure, metres.
+    double support_ring_radius = .9;  ///< Measured free ring used to derive floor and ceiling, metres.
+    double support_timeout = 30;  ///< Maximum lifetime of the start-only support hint, seconds.
+    std::size_t minimum_support_cells = 8;  ///< Minimum measured ring cells required before support closure.
 };
 /** @brief Fixed startup policy, bounded owner budgets and platform requirements.
  * Sensor dropout, candidate exhaustion and recovery do not weaken these
@@ -130,6 +157,7 @@ struct ExplorationSessionOptions {
     double nominal_angular_speed=.5;  ///< Angular speed used only for budget estimates, in radians per second.
     double frontier_observation_height=.5;  ///< Frontier requirement height above the map ground plane, in meters.
     std::optional<Bounds2d> allowed_region;  ///< Finite positive-area task scope required for full-scope recovery.
+    StartupObservationOptions startup_observation;  ///< Optional explicit in-place bootstrap observation.
     std::size_t maximum_events_per_tick = 32;  ///< Maximum ordinary events examined per owner tick.
     std::size_t maximum_observations_per_tick = 8;  ///< Maximum admitted observations examined per owner tick.
 };
@@ -151,6 +179,9 @@ struct ExplorationSnapshot {
     std::size_t live_frontiers=0;  ///< Current unknown-boundary requirements detected by the consumer.
     double traveled_distance=0;  ///< Accumulated same-epoch pose distance in meters.
     bool completion_confirmed=false;  ///< Finite-cut completion has passed the configured consumer checks.
+    bool startup_observation_required=false;  ///< Deployment policy requires a bounded in-place sweep.
+    bool startup_observation_confirmed=false;  ///< The native sweep was measured and validated.
+    std::string startup_observation_reason;  ///< Current startup admission or completion explanation.
     bool finishing=false;  ///< Owner has entered return/save or partial-result finalization.
     perception::ObservationLossSnapshot observation_losses;  ///< Historical first losses and currently unresolved sources.
     perception::ObservationCut accepted_observations{};  ///< Inputs admitted by the Session buffer; not coverage or fusion.

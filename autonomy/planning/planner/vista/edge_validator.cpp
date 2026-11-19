@@ -10,6 +10,7 @@ namespace {
 opt::navigation::SafetyOptions EffectiveOptions(const perception::MapReadView& map,
                                                  opt::navigation::SafetyOptions options) {
     if (map.footprint_inflated) { options.robot_radius = 1e-9; options.horizontal_margin = 0; }
+  if (map.startup_support) options.startup_support = map.startup_support;
     return options;
 }
 }  // namespace

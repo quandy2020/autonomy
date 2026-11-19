@@ -38,6 +38,9 @@ public:
             BT::InputPort<std::string>("controller_id"),
             BT::InputPort<int>("max_path_poses", 40,
                                "Configured transport pose budget; necessary bends are never removed"),
+            BT::InputPort<std::uint64_t>(
+                "path_revision", 0,
+                "Installed path version from ComputePathToPose; retained for XML compatibility"),
             BT::OutputPort<int>("error_code_id"),
             BT::OutputPort<std::string>("error_msg"),
         };

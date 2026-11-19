@@ -237,6 +237,18 @@
       */
      double findVelocitySignChange(
          const automsgs::msgs::nav_msgs::Path& transformed_plan);
+
+     /**
+      * @brief Keeps in-place rotation direction stable near the antipode.
+      *
+      * atan2() reports a carrot directly behind the robot as +pi or
+      * -pi depending on numerical noise in the lateral offset. Without
+      * a latch the commanded angular velocity alternates every cycle
+      * and the robot oscillates instead of turning around.
+      * @param angle_to_heading Heading error in the robot base frame.
+      * @return Heading target with a consistent half-turn direction.
+      */
+     double StabilizeRotateHeading(double angle_to_heading);
  
      std::shared_ptr<autolink::Node> node_;
      std::shared_ptr<transform::Buffer> tf_buffer_;
@@ -251,6 +263,9 @@
      bool finished_cancelling_ = false;
      bool is_rotating_to_heading_ = false;
      bool has_reached_xy_tolerance_ = false;
+     // Latched half-turn direction so a heading directly behind the
+     // robot rotates one way instead of alternating every cycle.
+     double rotate_heading_sign_ = 1.0;
      double last_dist_to_goal_ = std::numeric_limits<double>::infinity();
      double last_angle_to_goal_ = std::numeric_limits<double>::infinity();
  

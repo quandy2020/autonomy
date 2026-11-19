@@ -20,6 +20,7 @@ constexpr const char* kExplorationTree = R"xml(
         </Sequence>
         <Sequence>
           <SensorReady/>
+          <StartupObservation/>
           <Fallback>
             <CheckExplorationCompletion/>
             <Sequence>

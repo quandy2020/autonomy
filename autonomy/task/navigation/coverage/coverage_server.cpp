@@ -138,6 +138,14 @@ ComputeAction::Result CoverageServer::Compute(
     if (feedback) feedback(name, progress);
   };
   try {
+    Configuration effective = config_;
+    if (goal.has_robot_radius()) {
+      if (!std::isfinite(goal.robot_radius()) || goal.robot_radius() <= 0.0)
+        throw RequestException("robot_radius must be a positive metre value");
+      effective.robot_radius = goal.robot_radius();
+      effective.operation_width = 2.0 * goal.robot_radius();
+      RobotParams validate(effective);
+    }
     const bool headland =
         Enabled(goal.has_generate_headland(), goal.generate_headland());
     const bool route_enabled =
@@ -146,7 +154,7 @@ ComputeAction::Result CoverageServer::Compute(
         Enabled(goal.has_generate_path(), goal.generate_path());
     const bool cartesian = goal.has_coordinates_in_cartesian_frame()
                                ? goal.coordinates_in_cartesian_frame()
-                               : config_.cartesian;
+                               : effective.cartesian;
     if (path_enabled && !route_enabled)
       throw RequestException("generate_path requires generate_route");
     if (goal.generate_headland_swaths() && (!headland || !path_enabled))
@@ -156,7 +164,7 @@ ComputeAction::Result CoverageServer::Compute(
       throw RequestException("Row mode requires annotated rows");
     if (goal.use_start_pose() &&
         (!route_enabled ||
-         Upper(RouteGenerator(config_).Resolve(goal.route_mode()).mode()) !=
+         Upper(RouteGenerator(effective).Resolve(goal.route_mode()).mode()) !=
              "TSP"))
       throw RequestException("start_pose requires TSP route mode");
     stage("field", 0.0);
@@ -195,17 +203,17 @@ ComputeAction::Result CoverageServer::Compute(
     auto field = master.GetField().Clone();
     Validate(field);
     stage("headland", 0.1);
-    HeadlandGenerator hg(config_);
+    HeadlandGenerator hg(effective);
     auto core = headland ? hg.GenerateHeadlands(field, goal.headland_mode())
                          : field.Clone();
     F2CCells travel = core.Clone(), swath_cells = core.Clone();
     if (goal.generate_decomp()) {
       stage("decomposition", 0.2);
-      travel = DecompGenerator(config_).Decompose(core, goal.decomp_mode());
+      travel = DecompGenerator(effective).Decompose(core, goal.decomp_mode());
       swath_cells = headland ? hg.GenerateHeadlandsBetweenCells(
                                    travel, goal.route_headland_width() > 0
                                                ? goal.route_headland_width()
-                                               : config_.operation_width)
+                                               : effective.operation_width)
                              : travel.Clone();
     }
     Validate(swath_cells);
@@ -227,7 +235,7 @@ ComputeAction::Result CoverageServer::Compute(
       travel = field.Clone();
       core = field.Clone();
     } else
-      grouped = SwathGenerator(config_).GenerateSwathsByCells(
+      grouped = SwathGenerator(effective).GenerateSwathsByCells(
           swath_cells, goal.swath_mode());
     if (grouped.SizeTotal() == 0 || grouped.SizeTotal() > 1000)
       throw RequestException("Coverage needs 1..1000 swaths");
@@ -247,7 +255,7 @@ ComputeAction::Result CoverageServer::Compute(
         if (!field.IsPointIn(*start))
           throw RequestException("start_pose must lie in traversable field");
       }
-      route = RouteGenerator(config_).GenerateRoute(
+      route = RouteGenerator(effective).GenerateRoute(
           travel, swath_cells, grouped, goal.route_mode(), start);
       route.SetField(field);
       swaths = Flatten(route);
@@ -255,17 +263,17 @@ ComputeAction::Result CoverageServer::Compute(
         throw std::runtime_error("Route lost generated swaths");
       if (path_enabled) {
         stage("path", 0.7);
-        PathGenerator pp(config_);
+        PathGenerator pp(effective);
         path = pp.GeneratePath(route, goal.path_mode());
         if (goal.generate_headland_swaths()) {
           stage("headland_swaths", 0.8);
           F2CPath perimeter;
           if (goal.headland_full_coverage()) {
             for (const auto& ring : hg.GenerateHeadlandSwaths(
-                     field, config_.operation_width, goal.headland_mode())) {
+                     field, effective.operation_width, goal.headland_mode())) {
               auto next = pp.GeneratePerimeter(ring, field, path.AtStart(), goal.path_mode());
               if (perimeter.size() > 0 && next.size() > 0) {
-                RobotParams ring_robot(config_);
+                RobotParams ring_robot(effective);
                 auto ring_turn = pp.CreateCurve(goal.path_mode());
                 perimeter += f2c::pp::PathPlanning::PlanPathForConnection(
                     ring_robot.GetRobot(), perimeter.AtEnd(), perimeter.back().angle,
@@ -276,7 +284,7 @@ ComputeAction::Result CoverageServer::Compute(
           } else
             perimeter = pp.GeneratePerimeter(core, field, path.AtStart(),
                                              goal.path_mode());
-          RobotParams params(config_);
+          RobotParams params(effective);
           auto turn = pp.CreateCurve(goal.path_mode());
           auto connection = [&](const F2CPath& a, const F2CPath& b) {
             return f2c::pp::PathPlanning::PlanPathForConnection(
@@ -296,7 +304,7 @@ ComputeAction::Result CoverageServer::Compute(
           path = std::move(combined);
         }
         stage("validation", 0.9);
-        RobotParams robot(config_);
+        RobotParams robot(effective);
         f2c::pp::detail::FreeSpace free(field);
         if (!f2c::pp::detail::ValidPath(path, robot.GetRobot(), &free)) {
           for (size_t i = 0; i < path.size(); ++i) {
@@ -314,7 +322,7 @@ ComputeAction::Result CoverageServer::Compute(
         for (const auto& state : path)
           if (!std::isfinite(state.velocity) || state.velocity < 0)
             throw std::runtime_error("Invalid path velocity");
-        ExportPath(path, master, frame, cartesian, config_.turn_point_distance,
+        ExportPath(path, master, frame, cartesian, effective.turn_point_distance,
                    result);
         const double task_time = path.GetTaskTime();
         result.set_task_time(std::isfinite(task_time) ? task_time : 0);

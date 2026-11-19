@@ -20,6 +20,7 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
     for(const auto& id:goal.required_coverage_units)if(!coverage.units().count(id))return {};
     for(double yaw:goal.required_views)if(!std::isfinite(yaw))return {};
     auto options=safety_;if(map.footprint_inflated){options.robot_radius=1e-9;options.horizontal_margin=0;}
+    if(map.startup_support)options.startup_support=map.startup_support;
     auto safety=std::make_shared<opt::navigation::GeometrySafety>(map.grid,options);
     std::optional<AdaptedObservationGoal> best;
     auto evaluate=[&](Pose2d pose){

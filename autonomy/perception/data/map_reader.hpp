@@ -46,6 +46,7 @@ struct MapReadView {
     perception::ObservationCut observation_cut{};  ///< Actual upstream source fusion prefix.
     bool mapping_synchronized = false;  ///< Set only by an independently verified fusion barrier.
     bool has_height_evidence = true;  ///< False for planar Costmap projection; raw 3D execution checks remain separate.
+    std::optional<opt::navigation::StartupSupportRegion> startup_support;  ///< Start-only measured support hint; never map state.
     ObservationCut observation_baseline{};  ///< Excluded historical prefix for an explicitly recovered suffix.
     std::uint64_t observation_recovery_generation = 0;  ///< Actual upstream replacement-baseline identity.
 };

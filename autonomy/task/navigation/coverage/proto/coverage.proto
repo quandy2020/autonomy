@@ -29,6 +29,7 @@ message CoverageRequest {
   bool generate_headland_swaths = 17; bool headland_first = 18; bool headland_full_coverage = 19;
   repeated Row rows = 20; RowSwathMode row_swath_mode = 21;
   optional bool coordinates_in_cartesian_frame = 22;
+  optional double robot_radius = 23;
 }
 message Swath { int32 id = 1; double width = 2; automsgs.msgs.nav_msgs.Path path = 3; }
 message PathState {

@@ -47,10 +47,10 @@ struct Nodes {
 void RegistryAndNativeFirstTick() {
     Fixture fixture({0}, .05, {}, false, true, 10, 32, e::ExplorationDriver::kBehaviorTree);
     Nodes nodes(fixture);
-    for (const auto* name : {"SensorReady", "UpdateExploration", "SelectObservationPose",
+    for (const auto* name : {"SensorReady", "UpdateExploration", "StartupObservation", "SelectObservationPose",
         "AdaptObservationPose", "ObserveAtPose", "CheckExplorationCompletion",
         "ReturnToStart", "SaveExplorationMap"})
-        Require(nodes.factory.manifests().count(name) == 1, "all eight native ids are registered");
+        Require(nodes.factory.manifests().count(name) == 1, "all nine native ids are registered");
     auto select = nodes.Make("<SelectObservationPose observation_goal=\"{selected}\"/>");
     Require(dynamic_cast<autonomy::task::plugins::BtStatefulAction*>(select.rootNode()) != nullptr,
             "node inherits the actual native stateful base");

@@ -1,19 +1,16 @@
 # Private ORB-SLAM3 dependencies. These targets intentionally do not install
 # headers or leak global include directories into the rest of Argus.
 
-add_library(argus_orb_dbow2 STATIC
-  DBoW2/DBoW2/BowVector.cpp
-  DBoW2/DBoW2/FORB.cpp
-  DBoW2/DBoW2/FeatureVector.cpp
-  DBoW2/DBoW2/ScoringObject.cpp
-  DBoW2/DUtils/Random.cpp
-  DBoW2/DUtils/Timestamp.cpp
-)
-target_include_directories(argus_orb_dbow2 PUBLIC
-  ${CMAKE_CURRENT_SOURCE_DIR}/DBoW2
-)
-target_link_libraries(argus_orb_dbow2 PUBLIC ${OpenCV_LIBS})
-target_compile_features(argus_orb_dbow2 PUBLIC cxx_std_17)
+# ORB-SLAM3 originally depended on DBoW2 for its bag-of-words vocabulary.
+# Argus standardizes on FBoW, shared with autonomy/localization/atlas. The
+# vendored DBoW2 sources remain in the tree for reference but are not built.
+if(NOT TARGET fbow::fbow)
+  find_package(fbow CONFIG REQUIRED)
+endif()
+
+add_library(argus_orb_fbow INTERFACE)
+target_link_libraries(argus_orb_fbow INTERFACE fbow::fbow)
+target_compile_features(argus_orb_fbow INTERFACE cxx_std_17)
 
 add_library(argus_orb_g2o STATIC
   g2o/g2o/types/types_sba.cpp
@@ -59,6 +56,6 @@ target_include_directories(argus_orb_sophus INTERFACE
 )
 target_link_libraries(argus_orb_sophus INTERFACE Eigen3::Eigen)
 
-add_library(argus::orb_dbow2 ALIAS argus_orb_dbow2)
+add_library(argus::orb_fbow ALIAS argus_orb_fbow)
 add_library(argus::orb_g2o ALIAS argus_orb_g2o)
 add_library(argus::orb_sophus ALIAS argus_orb_sophus)

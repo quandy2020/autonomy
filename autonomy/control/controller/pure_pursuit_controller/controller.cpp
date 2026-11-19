@@ -236,10 +236,12 @@ uint32 RegulatedPurePursuitController::ComputeVelocityCommands(const automsgs::m
   if (shouldRotateToGoalHeading(carrot_pose)) {
     is_rotating_to_heading_ = true;
     double angle_to_goal = transform::tf2::getYaw(transformed_plan.poses(transformed_plan.poses_size() - 1).pose().orientation());
-    rotateToHeading(linear_vel, angular_vel, angle_to_goal, speed);
+    rotateToHeading(linear_vel, angular_vel,
+                     StabilizeRotateHeading(angle_to_goal), speed);
   } else if (shouldRotateToPath(rotate_to_path_carrot_pose, angle_to_heading, x_vel_sign)) {
     is_rotating_to_heading_ = true;
-    rotateToHeading(linear_vel, angular_vel, angle_to_heading, speed);
+    rotateToHeading(linear_vel, angular_vel,
+                     StabilizeRotateHeading(angle_to_heading), speed);
   } else {
     is_rotating_to_heading_ = false;
     double pose_cost = 0.0;
@@ -327,6 +329,19 @@ bool RegulatedPurePursuitController::shouldRotateToGoalHeading(const automsgs::m
   }
 
   return dist_to_goal < goal_dist_tol_;
+}
+
+double RegulatedPurePursuitController::StabilizeRotateHeading(
+    double angle_to_heading) {
+  // Rotating to a heading exactly behind the robot is a half turn in
+  // either direction. Latch the last unambiguous direction so the
+  // command does not flip whenever atan2() crosses the +/-pi seam.
+  constexpr double kAntipodeEpsilon = 0.05;
+  if (std::fabs(angle_to_heading) < M_PI - kAntipodeEpsilon) {
+    rotate_heading_sign_ = angle_to_heading >= 0.0 ? 1.0 : -1.0;
+    return angle_to_heading;
+  }
+  return rotate_heading_sign_ * M_PI;
 }
 
 void RegulatedPurePursuitController::rotateToHeading(double& linear_vel, double& angular_vel,
@@ -472,6 +487,7 @@ bool RegulatedPurePursuitController::IsGoalReached(double dist_tolerance, double
 
 void RegulatedPurePursuitController::SetPlan(const automsgs::msgs::nav_msgs::Path& path) {
   has_reached_xy_tolerance_ = false;
+  rotate_heading_sign_ = 1.0;
   path_handler_->setPlan(path);
 }
 

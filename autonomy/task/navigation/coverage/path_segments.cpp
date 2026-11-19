@@ -4,9 +4,12 @@
  * @brief Native complete-coverage path segments implementation. */
 #include "autonomy/task/navigation/coverage/path_segments.hpp"
 
+#include <algorithm>
 #include <cmath>
 namespace autonomy::task::coverage {
 namespace {
+/** @brief Maximum longitudinal spacing between transport poses. */
+constexpr double kMaxPoseSpacing = 0.25;
 void AppendPose(NavPath& path, double x, double y, double z, double yaw) {
   auto* p = path.add_poses();
   p->mutable_header()->CopyFrom(path.header());
@@ -53,13 +56,29 @@ std::vector<Segment> BuildSegments(const ComputeAction::Result& plan,
     current.velocity = state.velocity();
     if (current.path.poses_size() == 0)
       AppendPose(current.path, state.x(), state.y(), state.z(), state.angle());
-    AppendPose(
-        current.path,
-        state.x() + std::cos(state.angle()) * state.len() * state.direction(),
-        state.y() + std::sin(state.angle()) * state.len() * state.direction(),
-        state.z(), state.angle());
-    current.length += state.len();
-    if (static_cast<size_t>(current.path.poses_size()) >= max_poses) flush();
+    // Keep every state dense enough for lookahead control and for the
+    // AutoViz full-path overlay instead of a single long hop.
+    const int steps = std::max(
+        1, static_cast<int>(std::ceil(state.len() / kMaxPoseSpacing)));
+    const double direction_x = std::cos(state.angle()) * state.direction();
+    const double direction_y = std::sin(state.angle()) * state.direction();
+    const double step_length = state.len() / static_cast<double>(steps);
+    for (int step = 1; step <= steps; ++step) {
+      if (static_cast<std::size_t>(current.path.poses_size()) >= max_poses) {
+        // Continue the same state in a new transport segment; the next
+        // segment repeats the pose this one stopped at so the geometry
+        // stays continuous.
+        const auto carry = current.path.poses(current.path.poses_size() - 1);
+        flush();
+        *current.path.add_poses() = carry;
+      }
+      const double travelled =
+          state.len() * static_cast<double>(step) / static_cast<double>(steps);
+      AppendPose(current.path, state.x() + direction_x * travelled,
+                 state.y() + direction_y * travelled, state.z(),
+                 state.angle());
+      current.length += step_length;
+    }
   }
   flush();
   if (segments.empty())

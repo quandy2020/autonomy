@@ -91,7 +91,7 @@ MapReadView MapReader::Read(const opt::navigation::GridMap& map, double stamp,
     history_ = std::move(staged); anchor_x_ = ax; anchor_y_ = ay;
     alignment_id_ = alignment; resolution_ = map.resolution(); frame_id_ = map.frame_id();
     latest_ = MapReadView{epoch_, revision_, watermark, stamp, frame_id_, merged,
-                          std::move(dirty), inflated};
+                          std::move(dirty), inflated, {}, false, true, std::nullopt, {}, 0};
     return *latest_;
 }
 }  // namespace autonomy::perception

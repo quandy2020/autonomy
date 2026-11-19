@@ -49,6 +49,7 @@
 #include "MLPnPsolver.h"
 
 #include <Eigen/Sparse>
+#include "OrbRandom.h"
 
 
 namespace ORB_SLAM3 {
@@ -127,7 +128,7 @@ namespace ORB_SLAM3 {
 	        // Get min set of points
 	        for(short i = 0; i < mRansacMinSet; ++i)
 	        {
-	            int randi = DUtils::Random::RandomInt(0, vAvailableIndices.size()-1);
+	            int randi = OrbRandom::RandomInt(0, vAvailableIndices.size()-1);
 
 	            int idx = vAvailableIndices[randi];
 

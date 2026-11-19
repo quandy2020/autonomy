@@ -16,6 +16,8 @@ add_subdirectory(
 )
 
 add_library(argus_visual_orb STATIC
+  frontend/visual/orb_slam3/src/ORBVocabulary.cc
+  frontend/visual/orb_slam3/src/OrbRandom.cc
   frontend/visual/orb_slam3/src/System.cc
   frontend/visual/orb_slam3/src/Tracking.cc
   frontend/visual/orb_slam3/src/LocalMapping.cc
@@ -55,14 +57,16 @@ target_include_directories(argus_visual_orb
     ${OpenCV_INCLUDE_DIRS}
 )
 
+# ORB-SLAM3 public headers expose FBoW vocabulary types and g2o geometry
+# types, so consumers of argus::visual_orb need both include trees.
 target_link_libraries(argus_visual_orb
   PUBLIC
     Eigen3::Eigen
     Threads::Threads
     argus::orb_sophus
-  PRIVATE
-    argus::orb_dbow2
+    argus::orb_fbow
     argus::orb_g2o
+  PRIVATE
     Boost::serialization
     OpenSSL::Crypto
     ${OpenCV_LIBS}
@@ -71,7 +75,7 @@ target_link_libraries(argus_visual_orb
 target_compile_definitions(argus_visual_orb PRIVATE COMPILEDWITHC11)
 target_compile_features(argus_visual_orb PUBLIC cxx_std_17)
 set_target_properties(
-  argus_visual_orb argus_orb_dbow2 argus_orb_g2o
+  argus_visual_orb argus_orb_g2o
   PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 add_library(argus::visual_orb ALIAS argus_visual_orb)

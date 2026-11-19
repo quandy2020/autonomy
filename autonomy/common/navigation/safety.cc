@@ -55,6 +55,16 @@ GeometrySafety::GeometrySafety(std::shared_ptr<const GridMap> map, SafetyOptions
   if (!map_ || options.robot_radius <= 0.0 || options.robot_height <= 0.0) {
     throw std::invalid_argument("Safety needs a map and positive robot dimensions");
   }
+  if (options_.startup_support) {
+    const auto& support = *options_.startup_support;
+    if (!std::isfinite(support.center_x) || !std::isfinite(support.center_y) ||
+        !std::isfinite(support.radius) || support.radius <= 0.0 ||
+        !std::isfinite(support.floor_height) ||
+        !std::isfinite(support.ceiling_height) ||
+        support.ceiling_height - support.floor_height < 0.0) {
+      throw std::invalid_argument("Invalid startup support region");
+    }
+  }
   BuildDistanceField();
 }
 
@@ -63,7 +73,12 @@ void GeometrySafety::BuildDistanceField() {
   for (int x = 0; x < map_->width(); ++x) {
     std::vector<double> column(map_->height(), kFar);
     for (int y = 0; y < map_->height(); ++y) {
-      if (map_->At(x, y).state != CellState::kFree) column[y] = 0.0;
+      const auto& cell = map_->At(x, y);
+      const auto center = map_->CellCenter(x, y);
+      const bool startup_unknown = options_.startup_support &&
+          cell.state == CellState::kUnknown &&
+          options_.startup_support->Contains(center.x, center.y);
+      if (cell.state != CellState::kFree && !startup_unknown) column[y] = 0.0;
     }
     const auto transformed = SquaredDistanceTransform(column);
     for (int y = 0; y < map_->height(); ++y) distances_[map_->Index(x, y)] = transformed[y];
@@ -120,14 +135,24 @@ SafetyResult GeometrySafety::VerifyPose(const Pose2d& pose, double extra_padding
       const double dy = pose.y - std::clamp(pose.y, bottom, bottom + res);
       if (dx * dx + dy * dy > radius * radius + 1e-12) continue;
       const auto& surface = map_->At(x, y);
-      if (surface.state != CellState::kFree) return {false, clearance, "unknown or occupied footprint"};
-      if (!std::isfinite(surface.floor_height) || std::isnan(surface.ceiling_height) ||
-          surface.ceiling_height == -std::numeric_limits<double>::infinity()) {
+      const double cell_x = left + res * 0.5;
+      const double cell_y = bottom + res * 0.5;
+      const bool startup_unknown = options_.startup_support &&
+          surface.state == CellState::kUnknown &&
+          options_.startup_support->Contains(cell_x, cell_y);
+      if (surface.state != CellState::kFree && !startup_unknown)
+        return {false, clearance, "unknown or occupied footprint"};
+      const double floor_height = startup_unknown
+          ? options_.startup_support->floor_height : surface.floor_height;
+      const double ceiling_height = startup_unknown
+          ? options_.startup_support->ceiling_height : surface.ceiling_height;
+      if (!std::isfinite(floor_height) || std::isnan(ceiling_height) ||
+          ceiling_height == -std::numeric_limits<double>::infinity()) {
         return {false, clearance, "unknown surface geometry"};
       }
-      min_floor = std::min(min_floor, surface.floor_height);
-      max_floor = std::max(max_floor, surface.floor_height);
-      min_ceiling = std::min(min_ceiling, surface.ceiling_height);
+      min_floor = std::min(min_floor, floor_height);
+      max_floor = std::max(max_floor, floor_height);
+      min_ceiling = std::min(min_ceiling, ceiling_height);
     }
   }
   if (max_floor - min_floor > options_.max_floor_step + 1e-12) {
