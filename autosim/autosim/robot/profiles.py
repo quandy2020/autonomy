@@ -132,6 +132,25 @@ def resolve_path(relative: str) -> Path:
     return path.resolve()
 
 
+def shipped_robot_defaults(profile: str) -> Dict[str, Any]:
+    """Return ``habitat.robot`` from ``config/robots/<profile>.yaml``.
+
+    Keeps every entry point (runner, viewer, runtime profile switch) on the
+    same home joint pose, speed limits and control channels. Returns an empty
+    mapping when the profile has no shipped demo config.
+    """
+    from autosim.runtime.settings import Config
+
+    path = resolve_path(f"config/robots/{profile}.yaml")
+    if not path.is_file():
+        return {}
+    try:
+        block = Config.load(path).data["habitat"].get("robot") or {}
+    except (KeyError, ValueError):
+        return {}
+    return dict(block)
+
+
 def resolve_usd_paths(
     habitat: Mapping[str, Any], robot_cfg: Mapping[str, Any]
 ) -> Tuple[Path, Optional[Path]]:

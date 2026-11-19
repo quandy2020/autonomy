@@ -137,3 +137,62 @@ def test_encode_range_reports_inf_outside_the_limits():
     assert math.isinf(Messages.encode_range((0, 0), "tof.front", float("inf"), 0.02, 4.0).range)
     assert math.isinf(Messages.encode_range((0, 0), "tof.front", 0.001, 0.02, 4.0).range)
     assert math.isinf(Messages.encode_range((0, 0), "tof.front", 9.0, 0.02, 4.0).range)
+
+
+def test_cone_widens_the_spot_and_sets_the_reported_fov():
+    beams = range_sensors(
+        {
+            "range": {
+                "enabled": True,
+                "cone_deg": 10.0,
+                "samples": 9,
+                "sensors": {"tof.front": None},
+            }
+        }
+    )
+    assert beams[0]["cone_deg"] == pytest.approx(10.0)
+    assert beams[0]["samples"] == 9
+    assert beams[0]["fov"] == pytest.approx(math.radians(10.0))
+
+
+def test_explicit_fov_wins_over_the_cone_width():
+    beams = range_sensors(
+        {
+            "range": {
+                "enabled": True,
+                "cone_deg": 10.0,
+                "fov": 0.5,
+                "sensors": {"tof.front": None},
+            }
+        }
+    )
+    assert beams[0]["fov"] == pytest.approx(0.5)
+
+
+def test_zero_cone_collapses_to_a_single_ray():
+    beams = range_sensors(
+        {
+            "range": {
+                "enabled": True,
+                "cone_deg": 0.0,
+                "samples": 16,
+                "sensors": {"tof.front": None},
+            }
+        }
+    )
+    assert beams[0]["samples"] == 1
+
+
+@pytest.mark.parametrize(
+    "block",
+    [
+        {"enabled": True, "cone_deg": -1.0},
+        {"enabled": True, "cone_deg": 150.0},
+        {"enabled": True, "cone_deg": 10.0, "samples": 0},
+        {"enabled": True, "cone_deg": 10.0, "samples": 100},
+    ],
+)
+def test_cone_limits_are_validated(block):
+    block["sensors"] = {"tof.front": None}
+    with pytest.raises(ValueError):
+        range_sensors({"range": block})

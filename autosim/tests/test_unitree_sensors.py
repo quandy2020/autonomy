@@ -19,7 +19,8 @@ from pathlib import Path
 import pytest
 
 from autosim.robot.urdf import UrdfModel
-from autosim.robot.profiles import apply_profile
+from autosim.robot.joints import load_joints
+from autosim.robot.profiles import apply_profile, shipped_robot_defaults
 from autosim.runtime import Config
 
 
@@ -65,3 +66,34 @@ def test_g1_uses_the_urdf_mid360_mount():
     assert urdf.laser_xyz() == pytest.approx(urdf.mounts["mid360_link"])
     assert urdf.camera_xyz() == pytest.approx(urdf.mounts["d435_link"])
     assert urdf.imu_xyz() == pytest.approx(urdf.mounts["imu_in_torso"])
+
+
+@pytest.mark.parametrize("profile", ["unitree_g1", "unitree_go2"])
+def test_unitree_cameras_declare_body_axes(profile):
+    """d435_link and front_camera are URDF links, not optical frames."""
+    config = Config.load(ROOT / "config" / "robots" / f"{profile}.yaml")
+    camera = config["habitat"]["sensors"]["camera"]
+    assert camera["axes"] == "body"
+
+
+def test_g1_home_pose_keeps_arms_at_the_sides():
+    config = Config.load(ROOT / "config" / "robots" / "unitree_g1.yaml")
+    robot = apply_profile(config["habitat"]["robot"])
+    urdf = UrdfModel.load(robot["urdf"])
+    assert urdf is not None
+    pose = shipped_robot_defaults("unitree_g1")["joint_positions"]
+    joints = load_joints(urdf.path)
+    for name, value in pose.items():
+        assert joints[name].check(value) == pytest.approx(value)
+    # The URDF zero pose holds the forearms straight out; the shipped home
+    # pose bends the elbows so the hands hang beside the hips.
+    positions = {name: joint.home() for name, joint in joints.items() if not joint.mimic}
+    zero_hand = urdf.link_transform("left_rubber_hand", positions)
+    home_hand = urdf.link_transform("left_rubber_hand", {**positions, **pose})
+    assert home_hand[0, 3] < zero_hand[0, 3] - 0.15
+    assert home_hand[2, 3] < zero_hand[2, 3] - 0.15
+
+
+def test_shipped_robot_defaults_ignore_unknown_profiles():
+    assert shipped_robot_defaults("turtlebot3_burger") == {}
+    assert shipped_robot_defaults("no_such_robot") == {}

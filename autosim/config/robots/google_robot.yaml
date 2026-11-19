@@ -9,14 +9,16 @@ habitat:
   scenario:
     enabled: true
     type: floor
-    x_length: 8.0
-    y_length: 8.0
+    x_length: 24.0
+    y_length: 24.0
     z_length: 0.2
     resolution: 0.1
     spawn_radius: 1.0
     spawn_height: 1.5
   render:
     enable_hbao: true
+    # Neutral backdrop: an empty studio otherwise renders the sky as black.
+    clear_color: [0.55, 0.57, 0.60, 1.0]
   robot:
     profile: google_robot
     instance: true
@@ -90,7 +92,11 @@ habitat:
       rate_hz: 10.0
       min_range: 0.02
       max_range: 4.0
-      fov: 0.0349
+      # ToF emitters light up a spot, not a line: nine rays inside 6° keep a
+      # thin chair leg from slipping between beams. The reported fov follows
+      # cone_deg unless an entry overrides it.
+      cone_deg: 6.0
+      samples: 9
       sensors:
         time_of_flight.right_1: /tof/right_1
         time_of_flight.right_2: /tof/right_2
@@ -104,10 +110,14 @@ habitat:
           channel: /cliff/rear_right
           max_range: 0.5
           min_range: 0.01
+          cone_deg: 0.0
+          fov: 0.0349
         cliff.rear_left:
           channel: /cliff/rear_left
           max_range: 0.5
           min_range: 0.01
+          cone_deg: 0.0
+          fov: 0.0349
     joint_states:
       enabled: true
       channel: /joint_states

@@ -120,7 +120,22 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
           max_range: 0.5
 ```
 
-`/imu/data` 的朝向是 IMU 安装坐标系在 `map` 下的姿态，线加速度含重力。姿态来自 URDF 链路旋转，因此 `imu.neck` 这类带俯仰的安装点不会退化成平面航向；角速度和比力也从 `base_link` 旋转到安装坐标系。`orientation_covariance[0] = 0` 表示姿态可用，`-1` 表示后端只提供平面航向。Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` 轴投射一条射线，并跳过机器人自身的碰撞体：八个 ToF 用 4 m 量程，两个悬崖传感器用 0.5 m。无回波按 ROS 惯例报 `inf`，所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
+`/imu/data` 的朝向是 IMU 安装坐标系在 `map` 下的姿态，线加速度含重力。姿态来自 URDF 链路旋转，因此 `imu.neck` 这类带俯仰的安装点不会退化成平面航向；角速度和比力也从 `base_link` 旋转到安装坐标系。`orientation_covariance[0] = 0` 表示姿态可用，`-1` 表示后端只提供平面航向。
+
+Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` 轴投射射线，并跳过机器人自身的碰撞体。`cone_deg` 把单条射线扩成锥形光斑：Google 的八个 ToF 用 `cone_deg: 6.0`、`samples: 9`，在 6° 锥内按等面积螺旋取 9 条射线并取最近命中，细柱状障碍不会从两条射线之间漏过去；两个悬崖传感器保持单射线。`Range.field_of_view` 默认跟随 `cone_deg`，显式写 `fov` 时以 `fov` 为准。无回波按 ROS 惯例报 `inf`，所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
+
+## 传感器时序
+
+默认每个传感器都在采样当帧发布。需要模拟驱动缓冲时，给任意传感器块加 `latency_sec` 和 `jitter_sec`：
+
+```yaml
+    camera:
+      enabled: true
+      latency_sec: 0.035   # 固定延迟（秒）
+      jitter_sec: 0.005    # 在 ±5 ms 内均匀抖动
+```
+
+延迟帧保留采样时刻的 `header.stamp`，只是晚到，因此下游看到的是真实的时间错位，而不是被改写的时间戳。抖动由 `habitat.sensors.timing_seed`（默认 0）播种，同一配置重放得到相同的到达顺序。同一帧的多条消息共用一次抽样：RGB、深度和 `CameraInfo` 一起延迟，立体左右目一起延迟，IMU 一次 burst 内的子样本保持先后顺序。`odom`、`/tf`、`/joint_states` 和 `/clock` 不进延迟队列，位姿与速度始终一致。上限是 `latency_sec ≤ 2.0`、`jitter_sec ≤ 1.0`，抖动不会让帧早于采样时刻到达。
 
 ## 宇树传感器
 
@@ -131,7 +146,7 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
 | `unitree_g1` | `d435_link`，640×480，HFOV 69.4° | `imu_in_torso`，50 Hz | `mid360_link`，360 束，30 m |
 | `unitree_go2` | `front_camera`，640×480，HFOV 120° | `imu`，50 Hz | `laser_link`，360 束，30 m |
 
-`d435_link` 和 `front_camera` 的 URDF 坐标轴已经符合 ROS 光学坐标系，`follow_urdf: true` 会让相机随关节姿态和机身运动更新。Go2 的 `laser_link` 是配置层补的安装点，默认位于 URDF 根节点上方 0.1 m；`sensors.lidar_2d.height` 始终表示相对根节点的高度，`root_height` 只在射线世界坐标和 `odom→base` 变换中应用一次。G1 的 `mid360_link` 直接使用 URDF 安装位置。
+`d435_link` 和 `front_camera` 是普通 URDF 连杆坐标系（x 向前、y 向左、z 向上），不是 ROS 光学系。配置里用 `axes: body` 声明这一点，渲染时按 `Rz(-π/2) · Rx(π/2)` 转到 Habitat 相机系（-z 前、+y 上）；`axes` 缺省为 `optical`，表示连杆本身就是 x 右、y 下、z 前的光学系，Google 的 `camera_*_optical_frame` 走这条路径。两种写法都配合 `follow_urdf: true`，让相机随关节姿态和机身运动更新。Go2 的 `laser_link` 是配置层补的安装点，默认位于 URDF 根节点上方 0.1 m；`sensors.lidar_2d.height` 始终表示相对根节点的高度，`root_height` 只在射线世界坐标和 `odom→base` 变换中应用一次。G1 的 `mid360_link` 直接使用 URDF 安装位置。
 
 激光射线使用 `sensors.lidar_2d.frame` 的实时位姿：`mid360_link` 挂在 `torso_link` 上，转动 `waist_yaw_joint` 后 `/scan` 的方向随之旋转，地图裁剪也使用同一朝向。URDF 里没有该坐标系时（Go2 的 `laser_link`）回退到根节点上方 `height` 的虚拟安装点。`/scan` 的 `scan_time` 等于 `1 / rate_hz`，`time_increment` 等于 `scan_time / (num_beams - 1)`，便于下游做运动补偿。
 
@@ -140,6 +155,7 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
       enabled: true
       frame: d435_link
       follow_urdf: true
+      axes: body          # URDF 连杆系；光学系连杆用 optical（默认）
     imu:
       enabled: true
       channel: /imu/data
@@ -151,7 +167,7 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
 
 ## 预览场景与渲染
 
-`habitat.path` 为空时，`habitat.scenario` 会生成程序化场景。三个机器人配置都用 `type: floor`：只生成 8 m × 8 m 的地面三角形，不放置障碍物，机器人因此站在实地上而不是悬空。查看器在未指定 `--scene` 时使用同样的地面，并读取 `config/robots/<profile>.yaml` 的 `habitat.robot`，预览的初始姿态和速度上限与正式配置一致。
+`habitat.path` 为空时，`habitat.scenario` 会生成程序化场景。三个机器人配置都用 `type: floor`：只生成 24 m × 24 m 的地面三角形，不放置障碍物，机器人站在实地上而不是悬空，相机也不会一眼看到地面边缘。查看器在未指定 `--scene` 时使用同样的地面，并读取 `config/robots/<profile>.yaml` 的 `habitat.robot`，预览的初始姿态和速度上限与正式配置一致。
 
 地面 OBJ 旁边会写出同名 `.mtl`，包含中性灰的 `floor` 和浅灰的 `obstacle` 两种材质。没有材质文件时 Habitat 会用默认材质把地面渲染成棕色，看起来像泥土。
 
@@ -160,14 +176,19 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
 ```yaml
   render:
     enable_hbao: true     # 接触阴影，底座和脚部不再像浮在地面上
+    clear_color: [0.55, 0.57, 0.60, 1.0]  # 彩色传感器背景色
     lights:               # 可选，替换场景默认灯组
       - vector: [0.35, -0.9, -0.35, 0.0]   # w=0 方向光，w=1 点光
         color: [0.85, 0.86, 0.88]
 ```
 
+`clear_color` 只作用于彩色传感器。空场景里 Habitat 默认把天空画成纯黑，地面边缘和背景糊在一起；设成中性灰后，RGB、立体和环视相机看到的是干净的摄影棚背景。真实 GLB 场景通常自带天空几何，可按需覆盖或去掉这一项。
+
 `lights` 需要 `override_scene_light_defaults`，Habitat 才会接受 `set_light_setup`。未显式设置 `override_lights` 时，自定义灯组只作用于程序化场景；加载真实 GLB 时保留场景自带灯光。
 
 Google 的 URDF 零位把手臂竖直举过头顶，不适合作为展示姿态。`config/robots/google_robot.yaml` 用 `joint_positions` 把肩部转到 3.0 rad、肘部 -0.9 rad，bicep 和 wrist 归零，手臂向前下方自然下垂且夹爪不穿地，夹爪指张开 0.6 rad。
+
+G1 的零位把两条前臂水平前伸，看起来像端着东西。`config/robots/unitree_g1.yaml` 用 `joint_positions` 把肩部俯仰转到 0.10 rad、肩部横滚收到 ∓0.12 rad、肘部弯到 1.45 rad，手臂自然垂在身体两侧；`root_height` 仍按脚踝底面贴地，改动姿态不影响站立高度。查看器切换机型时会读取同一份 `habitat.robot`，“复位”按钮回到配置里的 home 姿态而不是 URDF 零位。
 
 ## 资源复现与验证
 

@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import logging
 import math
+import random
 import time
 import warnings
 from pathlib import Path as FilePath
@@ -47,6 +48,7 @@ from autosim.bridge.messages import Messages
 from autosim.bridge.sensors import Sensors
 from autosim.bridge.stitch import PANORAMA_UUID, panorama_spec
 from autosim.bridge.chase import chase_body_mount, chase_spec
+from autosim.bridge.timing import DelayQueue, SensorTiming
 from autosim.bridge.topdown import topdown_spec
 from autosim.dataset import DatasetCollector
 from autosim.robot import Robot
@@ -185,6 +187,14 @@ class Runner:
         self.lidar_3d = sensors["lidar_3d"]
         self.camera = sensors["camera"]
         self.sensors_block = sensors
+        # Perception streams can be held to mimic driver latency; odom, TF and
+        # joint state stay on the control tick so pose and twist never disagree.
+        self.timings = {
+            name: SensorTiming.from_block(sensors.get(name), f"habitat.sensors.{name}")
+            for name in ("camera", "stereo", "lidar_2d", "lidar_3d", "imu", "range")
+        }
+        self.delay_queue = DelayQueue()
+        self.timing_rng = random.Random(int(sensors.get("timing_seed", 0) or 0))
         # Resolved in assemble_plant once WorldBackend capabilities are known.
         self.surround: tuple = ()
         self.panorama = None
@@ -705,6 +715,9 @@ class Runner:
             self.simulator.step()
         self.clock.tick(dt)
         stamp = self.clock.stamp()
+        # Frames held by a sensor latency model reach the bridge here, still
+        # carrying the stamp from the cycle that captured them.
+        self.flush_delayed()
         # HuNavManager: SFM (+ USD People) after plant/world; stamp matches TF.
         step_hunav = getattr(self.simulator, "step_hunav", None)
         if callable(step_hunav) and getattr(self.simulator, "hunav_manager", None):
@@ -806,7 +819,7 @@ class Runner:
         self.encode_publish_scan(ranges, stamp)
 
     def encode_publish_scan(self, ranges: Any, stamp: Tuple[int, int]) -> None:
-        self.bridge.publish(
+        self.publish(
             "scan",
             Messages.encode_laser_scan(
                 ranges=ranges,
@@ -821,6 +834,7 @@ class Runner:
                 # per-beam offset so consumers can deskew a moving scan.
                 scan_time=1.0 / max(float(self.lidar_2d.get("rate_hz", 10.0)), 1e-3),
             ),
+            sensor="lidar_2d",
         )
 
     def submit_cloud(self, stamp: Tuple[int, int]) -> None:
@@ -849,11 +863,12 @@ class Runner:
             intensity = np.linalg.norm(pts.reshape(-1, 3), axis=1).astype(np.float32)
             if rings is not None:
                 ring = np.asarray(rings, dtype=np.float32).reshape(-1)
-        self.bridge.publish(
+        self.publish(
             "points",
             Messages.encode_point_cloud2(
                 pts, stamp, self.lidar_3d["frame"], intensity=intensity, ring=ring
             ),
+            sensor="lidar_3d",
         )
 
     def publish_stereo(self, stamp: Tuple[int, int]) -> None:
@@ -871,6 +886,7 @@ class Runner:
             return
         images = read()
         self.stereo_last_time = now
+        delay = self.sensor_delay("stereo")
         for camera in cameras:
             image = images.get(camera['side'])
             if image is None:
@@ -880,8 +896,13 @@ class Runner:
             # Right rectified projection encodes the baseline (Tx = -fx * B).
             if camera['side'] == 'right':
                 info.p[3] = -float(matrix[0]) * camera['baseline_m']
-            self.bridge.publish(camera['rgb_key'], Messages.encode_image(image, stamp, camera['frame'], 'rgb8'))
-            self.bridge.publish(camera['info_key'], info)
+            self.publish(
+                camera['rgb_key'],
+                Messages.encode_image(image, stamp, camera['frame'], 'rgb8'),
+                sensor='stereo',
+                delay=delay,
+            )
+            self.publish(camera['info_key'], info, sensor='stereo', delay=delay)
 
     def publish_range(self, stamp: Tuple[int, int]) -> None:
         """Publish ToF / cliff beams as ``sensor_msgs.Range``.
@@ -903,11 +924,12 @@ class Runner:
             return
         readings = read()
         self.range_last_time = now
+        delay = self.sensor_delay('range')
         for index, spec in enumerate(specs):
             distance = readings.get(spec['frame'])
             if distance is None:
                 continue
-            self.bridge.publish(
+            self.publish(
                 f'range_{index}',
                 Messages.encode_range(
                     stamp,
@@ -918,6 +940,8 @@ class Runner:
                     spec['fov'],
                     spec['radiation_type'],
                 ),
+                sensor='range',
+                delay=delay,
             )
 
     def submit_camera(self, stamp: Tuple[int, int]) -> None:
@@ -1149,9 +1173,12 @@ class Runner:
         )
         info_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
         info_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
-        self.bridge.publish("rgb", rgb_msg)
-        self.bridge.publish("depth", depth_msg)
-        self.bridge.publish("camera_info", info_msg)
+        # RGB, depth and intrinsics are one frame: hold them by the same delay
+        # so a latency model cannot split the trio.
+        delay = self.sensor_delay("camera")
+        self.publish("rgb", rgb_msg, sensor="camera", delay=delay)
+        self.publish("depth", depth_msg, sensor="camera", delay=delay)
+        self.publish("camera_info", info_msg, sensor="camera", delay=delay)
         depth_points_channel = str(
             self.camera.get("depth_points_channel") or ""
         ).strip()
@@ -1165,13 +1192,15 @@ class Runner:
                 max_depth=3.5,
             )
             if points.shape[0] > 0:
-                self.bridge.publish(
+                self.publish(
                     "depth_points",
                     Messages.encode_point_cloud2(
                         Messages.optical_to_camera_link(points),
                         stamp,
                         frame,
                     ),
+                    sensor="camera",
+                    delay=delay,
                 )
             self.publish_camera_fov_marker(stamp, frame)
         if (
@@ -1186,7 +1215,7 @@ class Runner:
             semantic_msg = Messages.encode_image(colored, stamp, frame, "rgb8")
             semantic_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
             semantic_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
-            self.bridge.publish("semantic", semantic_msg)
+            self.publish("semantic", semantic_msg, sensor="camera", delay=delay)
         ids_channel = str(self.camera.get("semantic_ids_channel") or "").strip()
         if semantic is not None and ids_channel and "semantic_ids" in self.bridge.writers:
             ids_msg = Messages.encode_image(
@@ -1194,7 +1223,7 @@ class Runner:
             )
             ids_msg.header.stamp.sec = int(rgb_msg.header.stamp.sec)
             ids_msg.header.stamp.nanosec = int(rgb_msg.header.stamp.nanosec)
-            self.bridge.publish("semantic_ids", ids_msg)
+            self.publish("semantic_ids", ids_msg, sensor="camera", delay=delay)
 
     def map_sample_origin(self) -> Tuple[float, float]:
         """Planar hint for map sampling; use robot pose after spawn relocation."""
@@ -1356,6 +1385,51 @@ class Runner:
             action(*args)
         except Exception as exc:
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
+
+    def sensor_delay(self, sensor: str | None) -> float:
+        """Delivery delay for one frame of ``sensor`` (0 when timing is off).
+
+        Args:
+            sensor: Key into :attr:`timings`, e.g. ``camera`` or ``lidar_2d``.
+
+        Returns:
+            Seconds to hold the frame; jitter is drawn from a seeded RNG so a
+            replay of the same config produces the same arrival order.
+        """
+        timing = self.timings.get(sensor) if sensor else None
+        if timing is None or not timing.enabled:
+            return 0.0
+        return timing.delay(self.timing_rng)
+
+    def publish(
+        self,
+        key: str,
+        message: Any,
+        sensor: str | None = None,
+        delay: float | None = None,
+    ) -> None:
+        """Publish now, or hold the frame for the sensor's configured latency.
+
+        Args:
+            key: Logical bridge stream such as ``rgb`` or ``scan``.
+            message: Encoded protobuf; its header keeps the capture stamp.
+            sensor: Timing block to consult.
+            delay: Shared delay for a group of messages (RGB + depth + info);
+                ``None`` samples a fresh one.
+        """
+        if delay is None:
+            delay = self.sensor_delay(sensor)
+        if delay > 0.0:
+            self.delay_queue.push(self.clock.now() + float(delay), key, message)
+            return
+        self.bridge.publish(key, message)
+
+    def flush_delayed(self) -> None:
+        """Release held sensor frames whose latency has elapsed."""
+        if not len(self.delay_queue):
+            return
+        for key, message in self.delay_queue.pop_ready(self.clock.now()):
+            self.bridge.publish(key, message)
 
     def poll_joint_command(self) -> None:
         """Consume named JointState position commands on the simulation thread."""
@@ -1841,6 +1915,8 @@ class Runner:
                 isaac_imu = read_imu()
             except Exception:
                 isaac_imu = None
+        # One delay for the whole burst keeps the substeps in order.
+        delay = self.sensor_delay("imu")
         for i in range(1, n + 1):
             alpha = float(i) / float(n)
             yaw_i = yaw0 + alpha * dyaw
@@ -1851,7 +1927,7 @@ class Runner:
                 ang = tuple(isaac_imu.get("ang_vel") or (0.0, 0.0, 0.0))
                 lin = tuple(isaac_imu.get("lin_acc") or (0.0, 0.0, 0.0))
                 # Repeat latest Isaac sample across substeps (sensor owns rate).
-                self.bridge.publish(
+                self.publish(
                     "imu",
                     Messages.encode_inertial(
                         stamp_i,
@@ -1862,6 +1938,8 @@ class Runner:
                         gyro_variance=gyro_var,
                         accel_variance=accel_var,
                     ),
+                    sensor="imu",
+                    delay=delay,
                 )
                 continue
             gyro_z, accel_x, accel_y, accel_z = self.robot.update_inertial(
@@ -1870,7 +1948,7 @@ class Runner:
             orientation, angular, specific = self.imu_sample(
                 frame, yaw_i, gyro_z, (accel_x, accel_y, accel_z)
             )
-            self.bridge.publish(
+            self.publish(
                 "imu",
                 Messages.encode_inertial(
                     stamp_i,
@@ -1881,6 +1959,8 @@ class Runner:
                     gyro_variance=gyro_var,
                     accel_variance=accel_var,
                 ),
+                sensor="imu",
+                delay=delay,
             )
         self.imu_yaw = float(yaw)
 

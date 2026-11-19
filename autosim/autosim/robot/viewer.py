@@ -10,28 +10,12 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import numpy as np
-from autosim.robot.profiles import PROFILES, apply_profile
+from autosim.robot.profiles import PROFILES, apply_profile, shipped_robot_defaults
 from autosim.robot.joints import load_joints
 from autosim.robot.urdf import UrdfModel
 from autosim.robot.plant import Robot
 from autosim.runtime.settings import Config
 from autosim.backends.habitat.simulator import Simulator
-
-
-def shipped_robot_defaults(profile: str) -> dict:
-    """``habitat.robot`` from ``config/robots/<profile>.yaml`` when present.
-
-    Keeps the preview in step with the shipped demo config: home joint pose,
-    speed limits, and control channels.
-    """
-    path = Path(__file__).resolve().parents[2] / 'config' / 'robots' / f'{profile}.yaml'
-    if not path.is_file():
-        return {}
-    try:
-        block = Config.load(path).data['habitat'].get('robot') or {}
-    except (KeyError, ValueError):
-        return {}
-    return dict(block)
 
 
 def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int = 720) -> dict:
@@ -54,11 +38,12 @@ def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int
         # A floating robot is hard to read: give the preview a lit studio floor.
         habitat['scenario'] = {
             'enabled': True, 'type': 'floor',
-            'x_length': 8.0, 'y_length': 8.0, 'z_length': 0.2,
+            'x_length': 24.0, 'y_length': 24.0, 'z_length': 0.2,
             'resolution': 0.1, 'spawn_radius': 1.0, 'spawn_height': 1.5,
         }
         habitat['render'] = {
             'enable_hbao': True,
+            'clear_color': [0.55, 0.57, 0.60, 1.0],
         }
     return Config.load({'habitat': habitat}).data
 
@@ -149,6 +134,14 @@ def main(argv=None) -> None:
         serve(sim, joints, camera, args.host, args.port, args.profile, cv2, args.cmd_vel_channel)
     finally:
         sim.close()
+
+
+def home_pose(sim, joints: dict) -> dict:
+    """Configured home pose, falling back to the URDF zero pose."""
+    block = sim.settings['habitat']['robot'].get('joint_positions') or {}
+    if block:
+        return dict(block)
+    return {n:j.home() for n,j in joints.items() if not j.mimic}
 
 
 def serve(sim, joints, camera, host, port, profile, cv2, cmd_vel_channel='/cmd_vel'):
@@ -248,7 +241,7 @@ def serve(sim, joints, camera, host, port, profile, cv2, cmd_vel_channel='/cmd_v
                         plant.set_twist(0.0, 0.0, now)
                         plant.linear = plant.angular = 0.0
                     if payload.get('reset'):
-                        sim.set_joint_positions({n:j.home() for n,j in joints.items() if not j.mimic})
+                        sim.set_joint_positions(home_pose(sim, joints))
                     if 'cmd_vel' in payload:
                         twist = payload['cmd_vel']
                         plant.set_twist(twist['linear_x'], twist['angular_z'], now)

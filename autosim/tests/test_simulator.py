@@ -14,11 +14,37 @@
 
 import numpy as np
 import pytest
+import math
 from pathlib import Path
 
 from autosim.bridge import Sensors
 from autosim.backends.habitat.simulator import Simulator
 from tests.fake_simulator import FakeSimulator
+
+
+def test_cone_directions_cover_the_spot():
+    """ToF cone samples stay inside the half-angle and reach the rim."""
+    half = math.radians(5.0)
+    directions = Simulator.cone_directions(np.eye(3), half, 9)
+    assert len(directions) == 9
+    angles = [math.acos(max(-1.0, min(1.0, float(direction[0])))) for direction in directions]
+    assert max(angles) <= half + 1e-9
+    assert max(angles) > half * 0.5, "samples must fill the cone, not hug the axis"
+    assert all(abs(float(np.linalg.norm(d)) - 1.0) < 1e-9 for d in directions)
+
+
+def test_cone_directions_follow_the_link_rotation():
+    yaw = math.pi / 2.0
+    rotation = np.array(
+        [[math.cos(yaw), -math.sin(yaw), 0.0], [math.sin(yaw), math.cos(yaw), 0.0], [0.0, 0.0, 1.0]]
+    )
+    axis = Simulator.cone_directions(rotation, 0.0, 4)
+    assert len(axis) == 1
+    assert np.allclose(axis[0], [0.0, 1.0, 0.0], atol=1e-9)
+
+
+def test_cone_directions_reject_a_degenerate_axis():
+    assert Simulator.cone_directions(np.zeros((3, 3)), math.radians(5.0), 9) == []
 
 
 def test_fake_laser_ranges_and_points():

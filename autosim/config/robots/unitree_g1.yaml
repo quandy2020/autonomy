@@ -9,18 +9,28 @@ habitat:
   scenario:
     enabled: true
     type: floor
-    x_length: 8.0
-    y_length: 8.0
+    x_length: 24.0
+    y_length: 24.0
     z_length: 0.2
     resolution: 0.1
     spawn_radius: 1.0
     spawn_height: 1.5
   render:
     enable_hbao: true
+    # Neutral backdrop: an empty studio otherwise renders the sky as black.
+    clear_color: [0.55, 0.57, 0.60, 1.0]
   robot:
     profile: unitree_g1
     instance: true
     fixed_base: true
+    # Arms at the sides: the URDF zero pose holds both forearms straight out.
+    joint_positions:
+      left_shoulder_pitch_joint: 0.10
+      right_shoulder_pitch_joint: 0.10
+      left_shoulder_roll_joint: -0.12
+      right_shoulder_roll_joint: 0.12
+      left_elbow_joint: 1.45
+      right_elbow_joint: 1.45
     max_linear: 1.2
     max_angular: 1.5
     max_linear_accel: 0.8
@@ -70,6 +80,8 @@ habitat:
       info_channel: /camera/camera_info
       frame: d435_link
       follow_urdf: true
+      # URDF link axes: x forward, y left, z up (not a ROS optical frame).
+      axes: body
       rate_hz: 10.0
     imu:
       enabled: true

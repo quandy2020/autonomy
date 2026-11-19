@@ -262,6 +262,30 @@ class Simulator:
         block = (self.settings.get("habitat") or {}).get("render")
         return block if isinstance(block, Mapping) else {}
 
+    def apply_clear_color(self, spec: Any) -> Any:
+        """Give a color sensor the configured backdrop.
+
+        An empty studio renders everything above the floor as pure black, which
+        reads as a broken image and hides where the ground ends. ``render.
+        clear_color`` sets that background; unset keeps Habitat's default.
+
+        Args:
+            spec: Habitat camera sensor spec.
+
+        Returns:
+            The same spec, for chaining.
+        """
+        color = self.render_configuration().get("clear_color")
+        if color is None or not hasattr(spec, "clear_color"):
+            return spec
+        values = [float(value) for value in color]
+        if len(values) == 3:
+            values.append(1.0)
+        if len(values) != 4:
+            raise ValueError("habitat.render.clear_color needs 3 or 4 components")
+        spec.clear_color = values
+        return spec
+
     def apply_light_setup(self, habitat_sim: Any) -> None:
         """Install ``habitat.render.lights`` as a Habitat light rig.
 
@@ -539,6 +563,7 @@ class Simulator:
                 spec.near = 0.05
             if hasattr(spec, "far"):
                 spec.far = 100.0
+        self.apply_clear_color(color_sensor)
         sensor_specs = []
         if camera_cfg.get("enabled", True):
             sensor_specs.extend([color_sensor, depth_sensor])
@@ -552,6 +577,7 @@ class Simulator:
                     semantic_sensor.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
                 semantic_sensor.position = [offset[0], offset[1], offset[2]]
                 semantic_sensor.orientation = [0.0, 0.0, 0.0]
+                self.apply_clear_color(semantic_sensor)
                 sensor_specs.append(semantic_sensor)
         sensors = self.settings.get("habitat", {}).get("sensors")
         from autosim.bridge.stereo import stereo_cameras
@@ -564,16 +590,23 @@ class Simulator:
             spec.hfov = camera['hfov_deg']
             if hasattr(habitat_sim, 'SensorSubType'):
                 spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+            self.apply_clear_color(spec)
             sensor_specs.append(spec)
         surround = camera_rig(sensors)
         for camera in resolve_surround(surround, urdf=self.urdf):
-            sensor_specs.append(self.surround_color_spec(habitat_sim, camera))
+            sensor_specs.append(
+                self.apply_clear_color(self.surround_color_spec(habitat_sim, camera))
+            )
         pano = panorama_spec(sensors)
         if pano is not None:
-            sensor_specs.append(self.panorama_color_spec(habitat_sim, pano))
+            sensor_specs.append(
+                self.apply_clear_color(self.panorama_color_spec(habitat_sim, pano))
+            )
         topdown = topdown_spec(sensors if isinstance(sensors, Mapping) else None)
         if topdown is not None:
-            sensor_specs.append(self.topdown_color_spec(habitat_sim, topdown))
+            sensor_specs.append(
+                self.apply_clear_color(self.topdown_color_spec(habitat_sim, topdown))
+            )
         chase = chase_spec(sensors if isinstance(sensors, Mapping) else None)
         if chase is not None:
             sensor_specs.append(self.chase_color_spec(habitat_sim, chase))
@@ -1293,9 +1326,11 @@ class Simulator:
     def switch_robot(self, profile: str) -> None:
         """Replace the displayed robot in the same Habitat session."""
         import habitat_sim
-        from autosim.robot.profiles import apply_profile
+        from autosim.robot.profiles import apply_profile, shipped_robot_defaults
 
         config = apply_profile({"profile": profile, "instance": True, "fixed_base": True})
+        # Keep the runtime switch on the shipped demo pose and speed limits.
+        config.update(shipped_robot_defaults(profile))
         model = UrdfModel.load(config["urdf"])
         old_config = self.settings["habitat"]["robot"]
         old_model, old_robot, old_control = self.urdf, self.articulated, self.articulation
@@ -1342,24 +1377,38 @@ class Simulator:
 
         sensors = self.settings['habitat'].get('sensors') or {}
         camera = sensors.get('camera') or {}
+        axes = str(camera.get('axes') or 'optical').strip().lower()
+        if axes not in ('optical', 'body'):
+            raise ValueError("habitat.sensors.camera.axes must be optical or body")
+        # ROS optical is x-right/y-down/z-forward. Habitat's camera is
+        # x-right/y-up/-z-forward: a 180-degree X rotation maps the two.
+        optical_to_camera = mn.Matrix4.rotation_x(mn.Rad(math.pi))
+        # A plain URDF link is x-forward/y-left/z-up; camera forward is -z and
+        # up is +y, so the link needs a different mapping.
+        body_to_camera = (
+            mn.Matrix4.rotation_z(mn.Rad(-0.5 * math.pi))
+            @ mn.Matrix4.rotation_x(mn.Rad(0.5 * math.pi))
+        )
+        camera_to_link = body_to_camera if axes == 'body' else optical_to_camera
         mounts = []
         if camera.get('follow_urdf', False):
             frame = str(camera.get('frame') or 'camera_optical_frame')
-            mounts.extend((uuid, frame) for uuid in ('rgb', 'depth', 'semantic'))
-        mounts.extend((c['uuid'], c['frame']) for c in stereo_cameras(sensors))
+            mounts.extend(
+                (uuid, frame, camera_to_link) for uuid in ('rgb', 'depth', 'semantic')
+            )
+        mounts.extend(
+            (c['uuid'], c['frame'], optical_to_camera) for c in stereo_cameras(sensors)
+        )
         if not mounts:
             return
         root = mn.Matrix4.from_(self.articulated.rotation.to_matrix(), self.articulated.translation)
         positions = self.joint_states()
         suite = self.session.get_agent(0)._sensors
-        # ROS optical is x-right/y-down/z-forward. Habitat's camera is
-        # x-right/y-up/-z-forward: a 180-degree X rotation maps the two.
-        optical_to_camera = mn.Matrix4.rotation_x(mn.Rad(math.pi))
-        for uuid, frame in mounts:
+        for uuid, frame, conversion in mounts:
             if uuid not in suite or (frame != self.urdf.root and frame not in self.urdf.parents):
                 continue
             matrix = self.urdf.link_transform(frame, positions)
-            world = root @ mn.Matrix4(matrix) @ optical_to_camera
+            world = root @ mn.Matrix4(matrix) @ conversion
             sensor = suite[uuid]
             node = getattr(sensor, '_sensor_object', sensor).node
             node.transformation = node.parent.absolute_transformation().inverted() @ world
@@ -1375,11 +1424,13 @@ class Simulator:
         return {camera['side']: self.rgb_to_uint8(observations[camera['uuid']]) for camera in cameras}
 
     def range_observations(self) -> dict[str, float]:
-        """Cast one ray per configured ToF / cliff frame.
+        """Cast rays for every configured ToF / cliff frame.
 
-        Habitat-Sim ships no range sensor, so every URDF frame contributes a
-        single ray along its ``+x`` axis. The robot's own collision hull is
-        skipped: the emitters are mounted on the shell and would self-hit.
+        Habitat-Sim ships no range sensor, so each URDF frame contributes rays
+        around its ``+x`` axis: one by default, or ``samples`` rays inside
+        ``cone_deg``. The nearest hit wins, the way a real emitter reports the
+        first surface in its spot. The robot's own collision hull is skipped:
+        the emitters are mounted on the shell and would self-hit.
 
         Returns:
             Frame name → range (m). Misses report ``inf`` the way a real
@@ -1418,25 +1469,77 @@ class Simulator:
             if frame != self.urdf.root and frame not in self.urdf.parents:
                 continue
             world = root @ np.asarray(self.urdf.link_transform(frame, positions), dtype=float)
-            axis = world[:3, 0]
-            length = float(np.linalg.norm(axis))
+            origin = world[:3, 3]
+            directions = self.cone_directions(
+                world[:3, :3],
+                math.radians(float(spec.get('cone_deg', 0.0))) * 0.5,
+                int(spec.get('samples', 1)),
+            )
+            if not directions:
+                continue
+            nearest: float | None = None
+            for direction in directions:
+                ray = habitat_sim.geo.Ray(
+                    mn.Vector3(float(origin[0]), float(origin[1]), float(origin[2])),
+                    mn.Vector3(float(direction[0]), float(direction[1]), float(direction[2])),
+                )
+                try:
+                    results = self.session.cast_ray(ray, max_distance=float(spec['max_range']))
+                except TypeError:
+                    results = self.session.cast_ray(ray)
+                distance = self.raycast_hit_distance(
+                    results, ray.origin, ignore_object_id=robot_id
+                )
+                if distance is None or not math.isfinite(float(distance)):
+                    continue
+                nearest = float(distance) if nearest is None else min(nearest, float(distance))
+            readings[frame] = float(nearest) if nearest is not None else float('inf')
+        return readings
+
+    @staticmethod
+    def cone_directions(
+        rotation: np.ndarray, half_angle: float, count: int
+    ) -> list[np.ndarray]:
+        """World-frame unit directions inside a cone around the link ``+x``.
+
+        A ToF emitter lights up a spot rather than a line, so a thin pole can
+        sit between two rays. Sampling the cap and reporting the nearest hit
+        matches what the sensor would see.
+
+        Args:
+            rotation: ``3×3`` link-to-world rotation.
+            half_angle: Cone half-angle in radians.
+            count: Number of rays; ``1`` (or a zero angle) is the axis itself.
+
+        Returns:
+            Unit direction vectors; empty when the axis is degenerate.
+        """
+        matrix = np.asarray(rotation, dtype=float).reshape(3, 3)
+        axis = matrix[:, 0]
+        norm = float(np.linalg.norm(axis))
+        if norm < 1e-9:
+            return []
+        if count <= 1 or half_angle <= 0.0:
+            return [axis / norm]
+        golden = math.pi * (3.0 - math.sqrt(5.0))
+        directions: list[np.ndarray] = []
+        for index in range(int(count)):
+            # sqrt radius spreads the samples evenly over the cap area.
+            radius = float(half_angle) * math.sqrt((index + 0.5) / float(count))
+            phi = golden * index
+            local = np.array(
+                [
+                    math.cos(radius),
+                    math.sin(radius) * math.cos(phi),
+                    math.sin(radius) * math.sin(phi),
+                ]
+            )
+            direction = matrix @ local
+            length = float(np.linalg.norm(direction))
             if length < 1e-9:
                 continue
-            origin = world[:3, 3]
-            direction = axis / length
-            ray = habitat_sim.geo.Ray(
-                mn.Vector3(float(origin[0]), float(origin[1]), float(origin[2])),
-                mn.Vector3(float(direction[0]), float(direction[1]), float(direction[2])),
-            )
-            try:
-                results = self.session.cast_ray(ray, max_distance=float(spec['max_range']))
-            except TypeError:
-                results = self.session.cast_ray(ray)
-            distance = self.raycast_hit_distance(
-                results, ray.origin, ignore_object_id=robot_id
-            )
-            readings[frame] = float(distance) if distance is not None else float('inf')
-        return readings
+            directions.append(direction / length)
+        return directions
 
     def set_articulated_visible(
         self, robot: Any | None = None, visible: bool = True

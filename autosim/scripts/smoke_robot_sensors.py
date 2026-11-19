@@ -171,7 +171,9 @@ try:
         left = decode(received[cameras[0]['rgb_key']]).astype(float)
         right = decode(received[cameras[1]['rgb_key']]).astype(float)
         parallax = float(np.abs(left - right).mean())
-        if float(left.mean()) > 1.0:
+        # A bare studio floor is flat and featureless: both cameras see the
+        # same backdrop, so disparity only means something in a real scene.
+        if args.scene and float(left.mean()) > 1.0:
             assert parallax > 1.0, f'stereo pair shows no parallax: {parallax}'
         fx = float(received[cameras[0]['info_key']].p[0])
         baseline = float(cameras[0]['baseline_m'])

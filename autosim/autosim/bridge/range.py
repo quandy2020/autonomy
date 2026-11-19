@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""URDF-mounted range sensors (ToF and cliff) resolved to single ray casts."""
+"""URDF-mounted range sensors (ToF and cliff) resolved to ray casts."""
 
 from __future__ import annotations
 
@@ -22,6 +22,10 @@ from typing import Any, Mapping
 # A single-zone ToF emitter reports one spot; 2° keeps the reported field of
 # view honest without pretending the beam is a cone.
 DEFAULT_FOV = 0.0349
+# ``cone_deg`` widens the spot into a sampled cone: a real ToF averages an
+# emitter footprint, so a thin pole can pass between two rays and be missed.
+MAX_CONE_DEG = 120.0
+MAX_SAMPLES = 64
 INFRARED = 1
 ULTRASOUND = 0
 
@@ -32,7 +36,7 @@ def _check_limits(name: str, spec: Mapping[str, Any]) -> None:
     Args:
         name: Sensor frame (or ``habitat.sensors.range`` for block defaults).
         spec: Dict carrying ``min_range`` / ``max_range`` / ``fov`` /
-            ``rate_hz`` / ``radiation_type``.
+            ``rate_hz`` / ``radiation_type`` / ``cone_deg`` / ``samples``.
 
     Raises:
         ValueError: Non-finite, inverted or out-of-range value.
@@ -49,6 +53,10 @@ def _check_limits(name: str, spec: Mapping[str, Any]) -> None:
         raise ValueError(
             f"range sensor {name} radiation_type must be 0 (ultrasound) or 1 (infrared)"
         )
+    if not math.isfinite(spec["cone_deg"]) or not 0.0 <= spec["cone_deg"] <= MAX_CONE_DEG:
+        raise ValueError(f"range sensor {name} cone_deg must be in [0, {MAX_CONE_DEG}]")
+    if not 1 <= spec["samples"] <= MAX_SAMPLES:
+        raise ValueError(f"range sensor {name} samples must be in [1, {MAX_SAMPLES}]")
 
 
 def range_sensors(sensors: Mapping[str, Any]) -> list[dict]:
@@ -59,8 +67,8 @@ def range_sensors(sensors: Mapping[str, Any]) -> list[dict]:
 
     Returns:
         Per-sensor dicts with ``frame``, ``channel``, ``min_range``,
-        ``max_range``, ``fov``, ``rate_hz`` and ``radiation_type``. Disabled
-        blocks yield an empty list.
+        ``max_range``, ``fov``, ``rate_hz``, ``radiation_type``, ``cone_deg``
+        and ``samples``. Disabled blocks yield an empty list.
 
     Raises:
         ValueError: Malformed block, empty frame or out-of-range limits.
@@ -70,12 +78,18 @@ def range_sensors(sensors: Mapping[str, Any]) -> list[dict]:
         raise ValueError("habitat.sensors.range must be a mapping")
     if not block.get("enabled", False):
         return []
+    cone_deg = float(block.get("cone_deg", 0.0))
     defaults = {
         "min_range": float(block.get("min_range", 0.02)),
         "max_range": float(block.get("max_range", 4.0)),
-        "fov": float(block.get("fov", DEFAULT_FOV)),
+        # A widened spot reports that width; an explicit fov still wins.
+        "fov": float(
+            block.get("fov", math.radians(cone_deg) if cone_deg > 0.0 else DEFAULT_FOV)
+        ),
         "rate_hz": float(block.get("rate_hz", 10.0)),
         "radiation_type": int(block.get("radiation_type", INFRARED)),
+        "cone_deg": cone_deg,
+        "samples": int(block.get("samples", 1)),
     }
     _check_limits("habitat.sensors.range", defaults)
     entries = block.get("sensors")
@@ -121,7 +135,12 @@ def range_sensors(sensors: Mapping[str, Any]) -> list[dict]:
             "radiation_type": int(
                 options.get("radiation_type", defaults["radiation_type"])
             ),
+            "cone_deg": float(options.get("cone_deg", defaults["cone_deg"])),
+            "samples": int(options.get("samples", defaults["samples"])),
         }
         _check_limits(name, spec)
+        if spec["cone_deg"] <= 0.0:
+            # A zero-width cone is a single ray; extra samples would repeat it.
+            spec["samples"] = 1
         specs.append(spec)
     return specs
