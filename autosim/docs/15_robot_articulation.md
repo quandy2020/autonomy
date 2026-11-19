@@ -118,6 +118,31 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
 
 `/imu/data` 的朝向是平面航向四元数，线加速度含重力。Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` 轴投射一条射线，并跳过机器人自身的碰撞体：八个 ToF 用 4 m 量程，两个悬崖传感器用 0.5 m。无回波按 ROS 惯例报 `inf`，所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
 
+## 宇树传感器
+
+宇树模型使用 URDF 已有的安装坐标系，不额外假设不存在的 ToF 或悬崖传感器：
+
+| 模型 | RGB-D | IMU | 2D 激光 |
+|------|-------|-----|---------|
+| `unitree_g1` | `d435_link`，640×480，HFOV 69.4° | `imu_in_torso`，50 Hz | `mid360_link`，360 束，30 m |
+| `unitree_go2` | `front_camera`，640×480，HFOV 120° | `imu`，50 Hz | `laser_link`，360 束，30 m |
+
+`d435_link` 和 `front_camera` 的 URDF 坐标轴已经符合 ROS 光学坐标系，`follow_urdf: true` 会让相机随关节姿态和机身运动更新。Go2 的 `laser_link` 是配置层补的安装点，默认位于 URDF 根节点上方 0.1 m；`sensors.lidar_2d.height` 始终表示相对根节点的高度，`root_height` 只在射线世界坐标和 `odom→base` 变换中应用一次。G1 的 `mid360_link` 直接使用 URDF 安装位置。
+
+```yaml
+    camera:
+      enabled: true
+      frame: d435_link
+      follow_urdf: true
+    imu:
+      enabled: true
+      channel: /imu/data
+      frame: imu_in_torso
+    lidar_2d:
+      enabled: true
+      frame: mid360_link
+```
+
 ## 资源复现与验证
 
 资源导入脚本固定两个上游 Git revision，逐文件核对 Git blob 哈希。它只下载所需 URDF、mesh 和伴随材质/纹理。G1 展示资源使用 GLB 转换和最多 5000 面的网格简化；Go2 保留全部原始三角面，不做简化，避免机身和腿部的薄壳表面出现缺失。纹理 UV 使用最近原始顶点采样，source.json 记录原始哈希、输出哈希和面数。关节定义、mesh 尺寸和坐标变换保留。Google 资源不简化。需要高精度外观或碰撞网格时，使用完整下载资源。URDF 中的 mesh 路径被改为本机器人目录内的相对路径，兼容 Habitat 和 Autoviz，不需要 ROS package URI 或 xacro。资源转换和路径变化记录在 source.json。
@@ -133,7 +158,7 @@ mesh 转换脚本需要 Python 3.10+ 和 trimesh、fast-simplification、pycolla
 
 导入目标目录必须不存在，以免覆盖已有模型；下载缓存可复用。`source.json` 记录每份复制资源的 SHA-256。Google 上游快照没有 LICENSE 文件，未给其资源重新指定许可证。宇树资源携带该仓库的 LICENSE。
 
-`scripts/smoke_cmdvel_robots.py --profile unitree_go2` 验证真实 Autolink 指令传输、Habitat 底座移动、里程计/TF 和超时停止，使用独立验证频道。`scripts/smoke_robot_sensors.py --scene <glb>` 验证中心 RGB-D 与立体相机话题、分辨率、frame_id、0.124 m 基线和左右视差。
+`scripts/smoke_cmdvel_robots.py --profile unitree_go2` 验证真实 Autolink 指令传输、Habitat 底座移动、里程计/TF 和超时停止，使用独立验证频道。`scripts/smoke_robot_sensors.py --profile <name> --scene <glb>` 按模型实际启用的传感器校验 RGB-D、立体相机、IMU、ToF/悬崖和 2D 激光；Google 的立体基线为 0.124 m。
 
 Smoke 检查每个模型是否真实加载、每个可独立控制的自由度能否移动，以及组合关节变化是否改变渲染图。输出控制前后的 PNG 和 `results.json`。多个模型分别在子进程运行，以便记录原生导入器崩溃。该检查不验证行走与碰撞动力学。
 

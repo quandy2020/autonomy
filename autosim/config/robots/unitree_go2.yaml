@@ -31,6 +31,18 @@ habitat:
       enabled: true
       channel: /clock
   sensors:
+    lidar_2d:
+      enabled: true
+      channel: /scan
+      frame: laser_link
+      height: 0.1
+      num_beams: 360
+      angle_min: -3.14159
+      angle_max: 3.14159
+      range_min: 0.1
+      range_max: 30.0
+      noise: 0.0
+      rate_hz: 10.0
     odom:
       enabled: true
       channel: /odom
@@ -38,14 +50,24 @@ habitat:
       child_frame: base_link
       noise: 0.0
     camera:
-      enabled: false
+      enabled: true
       width: 640
       height: 480
+      hfov_deg: 120.0
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
       info_channel: /camera/camera_info
-      frame: camera_link
+      frame: front_camera
+      follow_urdf: true
       rate_hz: 10.0
+    imu:
+      enabled: true
+      channel: /imu/data
+      frame: imu
+      rate_hz: 50.0
+      noise:
+        gyro: 0.0
+        accel: 0.0
     joint_states:
       enabled: true
       channel: /joint_states

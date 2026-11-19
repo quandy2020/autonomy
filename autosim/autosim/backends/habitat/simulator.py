@@ -1579,24 +1579,34 @@ class Simulator:
 
         Articulated models ship no lidar link. Falling back to the root would
         cast every ray along the floor, so use ``sensors.lidar_2d.height``
-        above the root instead.
+        above the root instead. The returned offset is relative to the URDF
+        root; ``root_height`` is applied when the ray origin is placed in the
+        world.
 
         Returns:
             ``(x, y, z)`` offset from the URDF root.
         """
-        if self.urdf is not None:
-            for name in ("laser_link", "base_scan"):
-                xyz = self.urdf.mounts.get(name)
-                if xyz is not None:
-                    return (float(xyz[0]), float(xyz[1]), float(xyz[2]))
         sensors = (self.settings["habitat"] or {}).get("sensors") or {}
         block = sensors.get("lidar_2d") or {}
+        frame = str(block.get("frame") or "laser_link")
+        if self.urdf is not None:
+            if frame in self.urdf.mounts:
+                xyz = self.urdf.mounts[frame]
+                return (float(xyz[0]), float(xyz[1]), float(xyz[2]))
+            if frame in self.urdf.parents:
+                xyz = self.urdf.link_xyz(frame, self.urdf.parents, self.urdf.root)
+                return (float(xyz[0]), float(xyz[1]), float(xyz[2]))
+            if frame == self.urdf.root:
+                return (0.0, 0.0, 0.0)
         height = block.get("height")
         if height is None:
             height = 0.2
+        return (0.0, 0.0, float(height))
+
+    def root_height(self) -> float:
+        """URDF root height above the Habitat floor in metres."""
         robot = (self.settings["habitat"] or {}).get("robot") or {}
-        root = float(robot.get("root_height", 0.0))
-        return (0.0, 0.0, root + float(height))
+        return float(robot.get("root_height", 0.0))
 
     def laser_origin(self) -> Tuple[float, float, float]:
         """Habitat world origin for lidar rays (Y-up).
@@ -1614,7 +1624,7 @@ class Simulator:
         # map_y = -Habitat_Z  →  Habitat_Z = -map_y
         return (
             self.x + cos_y * mx - sin_y * my,
-            self.floor_y + mz,
+            self.floor_y + self.root_height() + mz,
             -(self.y + sin_y * mx + cos_y * my),
         )
 
@@ -2196,7 +2206,7 @@ class Simulator:
         sin_y = math.sin(yaw)
         return (
             float(x) + cos_y * mx - sin_y * my,
-            self.floor_y + mz,
+            self.floor_y + self.root_height() + mz,
             -(float(y) + sin_y * mx + cos_y * my),
         )
 

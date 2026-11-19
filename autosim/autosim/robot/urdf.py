@@ -24,7 +24,19 @@ from typing import Dict, Mapping, Optional, Tuple
 class UrdfModel:
     """Resolved URDF path plus link mounts in base frame (z-up)."""
 
-    SENSOR_LINKS = ("laser_link", "base_scan", "imu_link", "camera_link")
+    SENSOR_LINKS = (
+        "laser_link",
+        "base_scan",
+        "mid360_link",
+        "radar",
+        "imu_link",
+        "imu_in_torso",
+        "imu_in_pelvis",
+        "imu",
+        "camera_link",
+        "d435_link",
+        "front_camera",
+    )
 
     def __init__(
         self,
@@ -342,20 +354,25 @@ class UrdfModel:
         return self.root
 
     def laser_xyz(self) -> Tuple[float, float, float]:
-        """Preferred lidar mount: ``laser_link`` then ``base_scan``."""
-        if "laser_link" in self.mounts:
-            return self.mounts["laser_link"]
-        if "base_scan" in self.mounts:
-            return self.mounts["base_scan"]
+        """Preferred lidar mount in root coordinates."""
+        for name in ("laser_link", "base_scan", "mid360_link", "radar"):
+            if name in self.mounts:
+                return self.mounts[name]
         return (0.0, 0.0, 0.0)
 
     def imu_xyz(self) -> Tuple[float, float, float]:
         """IMU mount or origin."""
-        return self.mounts.get("imu_link", (0.0, 0.0, 0.0))
+        for name in ("imu_link", "imu_in_torso", "imu_in_pelvis", "imu"):
+            if name in self.mounts:
+                return self.mounts[name]
+        return (0.0, 0.0, 0.0)
 
     def camera_xyz(self) -> Tuple[float, float, float]:
         """Camera mount or origin."""
-        return self.mounts.get("camera_link", (0.0, 0.0, 0.0))
+        for name in ("camera_link", "d435_link", "front_camera"):
+            if name in self.mounts:
+                return self.mounts[name]
+        return (0.0, 0.0, 0.0)
 
     def link_transform(self, link: str, positions: Mapping[str, float] | None = None):
         """Full URDF root-to-link transform, including moving joint angles."""

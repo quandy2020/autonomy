@@ -20,7 +20,7 @@ from autosim.backends.habitat.simulator import Simulator
 from autosim.robot.urdf import UrdfModel
 
 
-def bare_simulator(root_height=0.0, lidar_height=None):
+def bare_simulator(root_height=0.0, lidar_height=None, lidar_frame=None):
     lidar = {
         "enabled": True,
         "num_beams": 8,
@@ -31,6 +31,8 @@ def bare_simulator(root_height=0.0, lidar_height=None):
     }
     if lidar_height is not None:
         lidar["height"] = lidar_height
+    if lidar_frame is not None:
+        lidar["frame"] = lidar_frame
     return Simulator(
         backend="minimal",
         width=64,
@@ -57,7 +59,7 @@ def test_lidar_mount_uses_the_urdf_link_when_present():
 def test_lidar_mount_falls_back_above_the_root():
     simulator = bare_simulator(root_height=0.85, lidar_height=0.25)
     simulator.urdf = None
-    assert simulator.lidar_mount() == pytest.approx((0.0, 0.0, 1.10))
+    assert simulator.lidar_mount() == pytest.approx((0.0, 0.0, 0.25))
     simulator.floor_y = 0.0
     simulator.x = simulator.y = simulator.yaw = 0.0
     assert simulator.laser_origin()[1] == pytest.approx(1.10)
@@ -68,3 +70,15 @@ def test_lidar_mount_defaults_to_twenty_centimetres():
     simulator = bare_simulator()
     simulator.urdf = None
     assert simulator.lidar_mount() == pytest.approx((0.0, 0.0, 0.2))
+
+
+def test_lidar_mount_uses_unitree_mid360_link():
+    simulator = bare_simulator(root_height=0.85, lidar_frame="mid360_link")
+    simulator.urdf = UrdfModel.load("robot/unitree_g1/unitree_g1.urdf")
+    assert simulator.urdf is not None
+    assert simulator.lidar_mount() == pytest.approx(simulator.urdf.mounts["mid360_link"])
+    simulator.floor_y = 0.0
+    simulator.x = simulator.y = simulator.yaw = 0.0
+    assert simulator.laser_origin()[1] == pytest.approx(
+        0.85 + simulator.urdf.mounts["mid360_link"][2]
+    )
