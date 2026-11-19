@@ -204,3 +204,7 @@ pip install -e ".[isaac,dev]"      # Isaac extras（仍需 Isaac 环境）
 `colcon build --packages-select autonomy` 时若 `BUILD_AUTOSIM=ON`（默认）会 `pip install -e autosim`。
 
 细节、配置字段、话题表与排错见 [`docs/`](docs/)。
+
+## Articulated robot models
+
+Google Robot and Unitree humanoid/quadruped models are available under `robot/`, with Habitat rendering and named joint controls. See [robot usage](docs/15_robot_articulation.md).

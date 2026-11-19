@@ -35,5 +35,11 @@ def project_root() -> Path:
             return parent
         if (parent / "config").is_dir() and (parent / "usd").is_dir():
             return parent
+    # Wheel data-files are installed under share/autosim, including with
+    # pip --target. Search ancestors after preferring a source checkout.
+    for parent in here.parents:
+        installed = parent / "share" / "autosim"
+        if (installed / "config" / "default.yaml").is_file():
+            return installed
     # Fallback: autosim/paths.py → package → project
     return here.parents[1]

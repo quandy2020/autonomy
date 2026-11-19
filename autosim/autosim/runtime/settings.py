@@ -97,6 +97,9 @@ class Config:
         if ground_truth_odometry_channel:
             channels["gt_odom"] = ground_truth_odometry_channel
         joint_cfg = sensors.get("joint_states") or {}
+        joint_command = robot.get("joint_command") or {}
+        if isinstance(joint_command, Mapping) and joint_command.get("enabled", False):
+            channels["joint_command"] = joint_command.get("channel", "/joint_commands")
         if isinstance(joint_cfg, Mapping) and joint_cfg.get("enabled", False):
             channels["joint_states"] = str(
                 joint_cfg.get("channel") or "/joint_states"
@@ -499,6 +502,7 @@ class Config:
                 "habitat.robot.truth.odometry_channel must be a string"
             )
         cls.validate_urdf(robot_resolved.get("urdf", ""))
+        cls.validate_joint_control(robot_resolved, sensors=habitat.get("sensors") or {}, backend=backend)
         cls.require_nonneg(robot.get("max_linear", 0.0), "habitat.robot.max_linear")
         cls.require_nonneg(robot.get("max_angular", 0.0), "habitat.robot.max_angular")
         cls.require_nonneg(
@@ -532,6 +536,8 @@ class Config:
             raise ValueError("habitat.backend=fake requires habitat.scenario.enabled")
         if backend == "isaac":
             cls.validate_isaac_usd(habitat)
+            if profile_name and get_profile(profile_name).articulated and not robot.get("usd_robot"):
+                raise ValueError(f"profile {profile_name} provides Habitat URDF assets; Isaac requires robot.usd_robot")
         cls.validate_map(habitat.get("map"), procedural=scenario_on)
         cls.validate_dataset(habitat.get("dataset") or habitat.get("record"))
         cls.validate_hunav(habitat.get("hunav"))
@@ -548,6 +554,12 @@ class Config:
             sensors["odom"]["channel"],
             truth["channel"],
         ]
+        joint_command = robot.get("joint_command") or {}
+        if joint_command.get("enabled", False):
+            names.append(joint_command.get("channel", "/joint_commands"))
+        joint_states = sensors.get("joint_states") or {}
+        if joint_states.get("enabled", False):
+            names.append(joint_states.get("channel", "/joint_states"))
         if odometry_channel.strip():
             names.append(odometry_channel.strip())
         camera_cfg = sensors.get("camera") or {}
@@ -603,6 +615,46 @@ class Config:
                 raise ValueError("empty channel name in habitat.sensors or habitat.robot")
         if len(names) != len(set(names)):
             raise ValueError("duplicate channel names")
+
+    @classmethod
+    def validate_joint_control(cls, robot: Mapping[str, Any], sensors: Mapping[str, Any], backend: str) -> None:
+        from autosim.robot.joints import load_joints, complete_positions
+
+        for name in ("joint_command",):
+            block = robot.get(name)
+            if block is not None:
+                if not isinstance(block, Mapping):
+                    raise ValueError(f"habitat.robot.{name} must be a mapping")
+                cls.require_bool(block, f"habitat.robot.{name}")
+                if block.get("enabled", False):
+                    if backend != "habitat" or not robot.get("instance", False):
+                        raise ValueError("joint_command requires habitat backend and robot.instance=true")
+        state = sensors.get("joint_states")
+        if state is not None:
+            if not isinstance(state, Mapping):
+                raise ValueError("habitat.sensors.joint_states must be a mapping")
+            cls.require_bool(state, "habitat.sensors.joint_states")
+        for name in ("instance", "fixed_base"):
+            if name in robot and not isinstance(robot[name], bool):
+                raise ValueError(f"habitat.robot.{name} must be a bool")
+        if "root_height" in robot:
+            import math
+
+            height = cls.require_nonneg(robot["root_height"], "habitat.robot.root_height")
+            if not math.isfinite(height):
+                raise ValueError("habitat.robot.root_height must be finite")
+        initial = robot.get("joint_positions")
+        if initial is not None:
+            if not isinstance(initial, Mapping):
+                raise ValueError("habitat.robot.joint_positions must be a mapping")
+            path = UrdfModel.resolve(robot.get("urdf", ""))
+            if path is None:
+                raise ValueError("joint_positions requires a URDF")
+            joints = load_joints(path)
+            for name in initial:
+                if name in joints and joints[name].mimic:
+                    raise ValueError(f"command mimic source instead of {name}")
+            complete_positions(joints, initial)
 
     @classmethod
     def validate_footprint(cls, block: Any, urdf: Any = "") -> None:

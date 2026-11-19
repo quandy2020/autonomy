@@ -59,11 +59,16 @@ class Bridge:
         self.writers = {
             key: node.create_writer(channels[key], types[key], qos_depth=10)
             for key in types
-            if key in channels and key != "cmd_vel"
+            if key in channels and key not in ("cmd_vel", "joint_command")
         }
         self.command_reader = CommandReader(
             node, channels["cmd_vel"], types["cmd_vel"]
         )
+        self.joint_command_reader = None
+        if "joint_command" in channels and "joint_command" in types:
+            self.joint_command_reader = CommandReader(
+                node, channels["joint_command"], types["joint_command"]
+            )
 
     def publish(self, key: str, message: Any) -> None:
         """Publish on a registered logical channel; ignore unknown keys.

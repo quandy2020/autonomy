@@ -34,6 +34,8 @@ class RobotProfile:
     base_link_height: float
     sensor_frames: Mapping[str, str]
     usd_prim: str = "/World/Robot"
+    articulated: bool = False
+    root_height: float = 0.0
 
 
 PROFILES: Dict[str, RobotProfile] = {
@@ -65,6 +67,20 @@ PROFILES: Dict[str, RobotProfile] = {
     ),
 }
 
+# URDF-only Habitat models; these do not claim to provide Isaac USD assets.
+_ARTICULATED = {
+    "google_robot": 0.0,
+    "unitree_g1": 0.85,
+    "unitree_go2": 0.45,
+}
+
+for _name, _height in _ARTICULATED.items():
+    PROFILES[_name] = RobotProfile(
+        name=_name, urdf=f"robot/{_name}/{_name}.urdf", usd_robot="",
+        wheel_separation=0.5, base_link_height=_height,
+        sensor_frames={}, articulated=True, root_height=_height,
+    )
+
 
 def get_profile(name: str) -> RobotProfile:
     """Return a registered profile.
@@ -95,6 +111,10 @@ def apply_profile(robot_cfg: Mapping[str, Any]) -> Dict[str, Any]:
     out.setdefault("wheel_separation", profile.wheel_separation)
     out.setdefault("base_link_height", profile.base_link_height)
     out.setdefault("sensor_frames", dict(profile.sensor_frames))
+    if profile.articulated:
+        out.setdefault("instance", True)
+        out.setdefault("fixed_base", True)
+        out.setdefault("root_height", profile.root_height)
     return out
 
 

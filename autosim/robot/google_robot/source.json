@@ -1,0 +1,268 @@
+{
+  "repository": "https://github.com/haosulab/ManiSkill-GoogleRobot",
+  "revision": "3aa86c751ba508acb1272f73dbbd827cd25337b0",
+  "urdf": "google_robot_meta_sim_fix_fingertip.urdf",
+  "changes": [
+    "mesh paths made relative to this robot folder"
+  ],
+  "files": {
+    "meshes/3obj/link_base.glb": {
+      "upstream": "3obj/link_base.glb",
+      "sha256": "922dcf219018381dfe1afeb238a49135bbad0478230747e4f01d518a4eda7600"
+    },
+    "meshes/coarse_meshes/link_base_0.glb": {
+      "upstream": "coarse_meshes/link_base_0.glb",
+      "sha256": "2ff7c2d354ca23d031c05f1ab106c64fabdcdcc21e46d92f550df31bc3e3339a"
+    },
+    "meshes/coarse_meshes/link_base_1.glb": {
+      "upstream": "coarse_meshes/link_base_1.glb",
+      "sha256": "d8f4cf1e722b061a8cd0c9df1006e4b8486f50bc7b163da2a640387e9f745816"
+    },
+    "meshes/coarse_meshes/link_base_2.glb": {
+      "upstream": "coarse_meshes/link_base_2.glb",
+      "sha256": "6081ef0a739f538ff8fdcc2b29e9c0324928ae7af56bb8db51fd709231998d5d"
+    },
+    "meshes/coarse_meshes/link_base_3.glb": {
+      "upstream": "coarse_meshes/link_base_3.glb",
+      "sha256": "254d6300453b41cba7259307586ce55b8416a80861cea125d8baf700fc282243"
+    },
+    "meshes/coarse_meshes/link_base_4.glb": {
+      "upstream": "coarse_meshes/link_base_4.glb",
+      "sha256": "594dcc696cb7e3c7e1b147c7b64e75cd0fc61106babe1cfb1e36d04c9c7f65a3"
+    },
+    "meshes/coarse_meshes/link_base_5.glb": {
+      "upstream": "coarse_meshes/link_base_5.glb",
+      "sha256": "8de3d8d288c3f7adaf0cc39603d4a9ab7390c07cb5eae0cfe54fc1c5254aa7e7"
+    },
+    "meshes/3obj/link_wheel.3obj.obj": {
+      "upstream": "3obj/link_wheel.3obj.obj",
+      "sha256": "cb7a4c554db06d3741ef5f233cf535674f876ddfda1da1df48c25873f2361e8e"
+    },
+    "meshes/coarse_meshes/link_wheel_vhacd.obj": {
+      "upstream": "coarse_meshes/link_wheel_vhacd.obj",
+      "sha256": "1f3bde56fe8b6f04123c2ccda8c5568c8a0955fc8e7b13716904bca4c0703db9"
+    },
+    "meshes/coarse_meshes/link_rear_wheel.glb": {
+      "upstream": "coarse_meshes/link_rear_wheel.glb",
+      "sha256": "ee1ccae560d15ba40adcbf3d54620b3416f5d3c5adb77375b3dc63d10beed4d9"
+    },
+    "meshes/3obj/link_torso.3obj.obj": {
+      "upstream": "3obj/link_torso.3obj.obj",
+      "sha256": "18a6625393734dc119074e11dc5c67edf028049f1f29189f57eb1ab599b7ea40"
+    },
+    "meshes/coarse_meshes/link_torso_vhacd.obj": {
+      "upstream": "coarse_meshes/link_torso_vhacd.obj",
+      "sha256": "b75b4966e4fcbdc4eb00dbf4076f657bc82302a46a329bd4e85e7fb5a8f1fa39"
+    },
+    "meshes/3obj/link_shoulder.3obj.obj": {
+      "upstream": "3obj/link_shoulder.3obj.obj",
+      "sha256": "571fab77c96300db0568df0d40cbbab54d5f6fa15bca802c5e88a311f0669219"
+    },
+    "meshes/coarse_meshes/link_shoulder_vhacd.obj": {
+      "upstream": "coarse_meshes/link_shoulder_vhacd.obj",
+      "sha256": "87c3c723424f333cf17b7279b6278a9acbc346b2110fdcea1237526790a3d0be"
+    },
+    "meshes/3obj/link_bicep.3obj.obj": {
+      "upstream": "3obj/link_bicep.3obj.obj",
+      "sha256": "c05ff716758d7961df3582900c799c35e3314a5911e93ceb899729621798a1ee"
+    },
+    "meshes/coarse_meshes/link_bicep_vhacd.obj": {
+      "upstream": "coarse_meshes/link_bicep_vhacd.obj",
+      "sha256": "286a4cba33d69f8352e895c0bd2501b1f5d119ea9dc8cb12e37ecd15ad4364c6"
+    },
+    "meshes/3obj/link_elbow.3obj.obj": {
+      "upstream": "3obj/link_elbow.3obj.obj",
+      "sha256": "52ae77af4144a78a41d0d4a197d5f9d21d95c606d2fc0a7e11c648cc865563cd"
+    },
+    "meshes/coarse_meshes/link_elbow_vhacd.obj": {
+      "upstream": "coarse_meshes/link_elbow_vhacd.obj",
+      "sha256": "557cfc6780f5816a61f7e64adbb57eae9a612753368695bc6d90b0bc713787ac"
+    },
+    "meshes/3obj/link_forearm.3obj.obj": {
+      "upstream": "3obj/link_forearm.3obj.obj",
+      "sha256": "1be7b9200631f5ab6b17f1a071de17e9f3a280491d832049d985d6c4c80187c8"
+    },
+    "meshes/coarse_meshes/link_forearm_vhacd.obj": {
+      "upstream": "coarse_meshes/link_forearm_vhacd.obj",
+      "sha256": "1d06877d686951eba3301ee2b4aace0b3023ac0060fe0a6fef67c4c8b5437294"
+    },
+    "meshes/3obj/link_wrist.3obj.obj": {
+      "upstream": "3obj/link_wrist.3obj.obj",
+      "sha256": "5db97cb22075951f626b174b371c8e27b61d92f3b84ccbbef7243771d5c6da5b"
+    },
+    "meshes/coarse_meshes/link_wrist_vhacd.obj": {
+      "upstream": "coarse_meshes/link_wrist_vhacd.obj",
+      "sha256": "701f71f75ac1d37da6ddf843ba357411f84ccb0fe0040aeabbb927dfdd7ffd10"
+    },
+    "meshes/3obj/link_gripper.3obj.obj": {
+      "upstream": "3obj/link_gripper.3obj.obj",
+      "sha256": "50bbc7904e03bd5b09d9988d69ba3d6f9df256ef753156aa37d029bc01cb2040"
+    },
+    "meshes/coarse_meshes/link_gripper_vhacd.obj": {
+      "upstream": "coarse_meshes/link_gripper_vhacd.obj",
+      "sha256": "3bbe3e5f1c512ea137db775c874303fc25720fc4e8fa20a4d00024ec61698eb4"
+    },
+    "meshes/3obj/link_finger_base_simplified.3obj.obj": {
+      "upstream": "3obj/link_finger_base_simplified.3obj.obj",
+      "sha256": "1ba2d7710df21654b5db94c025a311994ea72c8297e227a607451a977dfc41f3"
+    },
+    "meshes/coarse_meshes/link_finger_base_boxified.obj": {
+      "upstream": "coarse_meshes/link_finger_base_boxified.obj",
+      "sha256": "15e86ae266fad64055e0c8cb628f613cea65d17fd1bbfb006e9a3aa2d856e36e"
+    },
+    "meshes/3obj/link_finger_tip_simplified.3obj.obj": {
+      "upstream": "3obj/link_finger_tip_simplified.3obj.obj",
+      "sha256": "c2998539fa6e32167c55c672692d98caddf55c4bf9c9e83771b5d51a72d08f12"
+    },
+    "meshes/coarse_meshes/link_finger_tip_boxified.obj": {
+      "upstream": "coarse_meshes/link_finger_tip_boxified.obj",
+      "sha256": "91821edfc53fd2aa44255f8143fb7eb2fd1af12d89f3e5801548b781d70624de"
+    },
+    "meshes/3obj/link_finger_nail.3obj.obj": {
+      "upstream": "3obj/link_finger_nail.3obj.obj",
+      "sha256": "4e5152d947c9e0e2a28d7e8f1fc348a4b9e34585c2b6ca1eea731de872f36feb"
+    },
+    "meshes/coarse_meshes/link_finger_nail.obj": {
+      "upstream": "coarse_meshes/link_finger_nail.obj",
+      "sha256": "93db10e8937d3261a8b547bec07804d903450e091c72b1a7b4fc48eee83dbb8a"
+    },
+    "meshes/3obj/link_head_pan.3obj.obj": {
+      "upstream": "3obj/link_head_pan.3obj.obj",
+      "sha256": "64af1477e65c30d4c8ab9cf82f4c0d5d4b3ae85b68cc4665b7de684ebad6383a"
+    },
+    "meshes/coarse_meshes/link_head_pan_vhacd.obj": {
+      "upstream": "coarse_meshes/link_head_pan_vhacd.obj",
+      "sha256": "6607d30ed81e836b1c5e1249fb7f5779cd9b69c5f5a18250fee78b7d1b70e961"
+    },
+    "meshes/3obj/link_head_tilt.3obj.obj": {
+      "upstream": "3obj/link_head_tilt.3obj.obj",
+      "sha256": "92e1e6ee0e2f648a59006f54cb777dc64660ce48c6a873f3682ae28fc3d8e189"
+    },
+    "meshes/coarse_meshes/link_head_tilt_vhacd.obj": {
+      "upstream": "coarse_meshes/link_head_tilt_vhacd.obj",
+      "sha256": "8ef91f6f8e78e0341cd4d36c115ee918582f5495f8eef7d6a450bf21eeb728ab"
+    },
+    "meshes/3obj/link_base.3obj.mtl": {
+      "upstream": "3obj/link_base.3obj.mtl",
+      "sha256": "e9ee4fb4371fd1855408dbf10d0e06af604d86b56b1719ee7e64b06a01aed8cb"
+    },
+    "meshes/3obj/link_base.mtl": {
+      "upstream": "3obj/link_base.mtl",
+      "sha256": "47fe534b6a89762ee0142a7b80d50a0e5a87f15b5025825d2c0bde9ed1468d08"
+    },
+    "meshes/3obj/link_base_no_wheel.mtl": {
+      "upstream": "3obj/link_base_no_wheel.mtl",
+      "sha256": "2445fca565dd3765dbab1d1fc3c70ff951c40dc4b750ed1c5d641a4d8d8eda07"
+    },
+    "meshes/3obj/link_bicep.3obj.mtl": {
+      "upstream": "3obj/link_bicep.3obj.mtl",
+      "sha256": "75b41a94f1fe7397a4b021c20a89573f438dff3779ce737562e6e664ffec8955"
+    },
+    "meshes/3obj/link_bin.3obj.mtl": {
+      "upstream": "3obj/link_bin.3obj.mtl",
+      "sha256": "29c976fe4dea13143696a46bacb39fc82ee2b98ea8a44fff1d3df54e629e12fb"
+    },
+    "meshes/3obj/link_elbow.3obj.mtl": {
+      "upstream": "3obj/link_elbow.3obj.mtl",
+      "sha256": "ed45bfd9126459aebb22a9f8ff072bc22c7a52a0e73a6dac80e26211a36f4090"
+    },
+    "meshes/3obj/link_finger_base_diffuse.png": {
+      "upstream": "3obj/link_finger_base_diffuse.png",
+      "sha256": "62d70b98b61d0dd0ee991bf0959f3800559cb28e5a4eb07882befd55e35d4cab"
+    },
+    "meshes/3obj/link_finger_base_simplified.3obj.mtl": {
+      "upstream": "3obj/link_finger_base_simplified.3obj.mtl",
+      "sha256": "4f7a4794582562135c7d6b94f15e9caebe65158ba7d9abec5b8b7d6be1281857"
+    },
+    "meshes/3obj/link_finger_nail.3obj.mtl": {
+      "upstream": "3obj/link_finger_nail.3obj.mtl",
+      "sha256": "624758f243a0efec0e032fe90b6ec7bd3cf1dde4d99c07d05c931148ff0a5464"
+    },
+    "meshes/3obj/link_finger_nail_diffuse.png": {
+      "upstream": "3obj/link_finger_nail_diffuse.png",
+      "sha256": "121d520ddbf455b9e75806d8148f7581c2b5fb93ed3e8b5845e3bd867d0c6333"
+    },
+    "meshes/3obj/link_finger_tip_diffuse.png": {
+      "upstream": "3obj/link_finger_tip_diffuse.png",
+      "sha256": "2590d99286cf8cf5de280e78148b855632a32e362a892f23d396f35246d10a56"
+    },
+    "meshes/3obj/link_finger_tip_simplified.3obj.mtl": {
+      "upstream": "3obj/link_finger_tip_simplified.3obj.mtl",
+      "sha256": "25318aef1acdbeb025e63fae107d35f58c47000d2e7fba44e9aaeb3d635f0724"
+    },
+    "meshes/3obj/link_forearm.3obj.mtl": {
+      "upstream": "3obj/link_forearm.3obj.mtl",
+      "sha256": "2ffa3f54f6aa7cfc2509c8dcfa67cc812e897d2fdff86426771c87a086eac4d9"
+    },
+    "meshes/3obj/link_gripper.3obj.mtl": {
+      "upstream": "3obj/link_gripper.3obj.mtl",
+      "sha256": "7014ff0b9101117c7a237f6d305a8932bfda3072c70b8f2600c302e2102a4a82"
+    },
+    "meshes/3obj/link_head_pan.3obj.mtl": {
+      "upstream": "3obj/link_head_pan.3obj.mtl",
+      "sha256": "f80e61538906fd51e96e6f7165ce360c24975126b6e8412fc3c0c3ea1e935400"
+    },
+    "meshes/3obj/link_head_tilt.3obj.mtl": {
+      "upstream": "3obj/link_head_tilt.3obj.mtl",
+      "sha256": "28d60b535bbfcd78bf4a07a1009e639d4c18bfcd3bef0974ce34d73511fc2866"
+    },
+    "meshes/3obj/link_head_tilt.mtl": {
+      "upstream": "3obj/link_head_tilt.mtl",
+      "sha256": "47fe534b6a89762ee0142a7b80d50a0e5a87f15b5025825d2c0bde9ed1468d08"
+    },
+    "meshes/3obj/link_shoulder.3obj.mtl": {
+      "upstream": "3obj/link_shoulder.3obj.mtl",
+      "sha256": "71be6804e67584d36e4826ff6c09caa3694e7af3724197e756569b6d5e1316f0"
+    },
+    "meshes/3obj/link_torso.3obj.mtl": {
+      "upstream": "3obj/link_torso.3obj.mtl",
+      "sha256": "bf5fba19cf3f5f3064af9cf3b025a0b3d244d0ac21ea54c501db90c987626bb8"
+    },
+    "meshes/3obj/link_wheel.3obj.mtl": {
+      "upstream": "3obj/link_wheel.3obj.mtl",
+      "sha256": "64784429e00cee65e79a5715c5fe9f19bee2753d5cbf22d4e6480f9e25d5bd16"
+    },
+    "meshes/3obj/link_wrist.3obj.mtl": {
+      "upstream": "3obj/link_wrist.3obj.mtl",
+      "sha256": "99e5dbd7d0af36394264219a71ab3e43368656f7146c54f5a8f6b170b38e67ba"
+    },
+    "meshes/3obj/meta_ao_roughness_metalness.png": {
+      "upstream": "3obj/meta_ao_roughness_metalness.png",
+      "sha256": "2fee1de0e7112c27b9e52b8c246b06be37d11b4b83aaa44958df3476dfe768ed"
+    },
+    "meshes/3obj/meta_diffuse.png": {
+      "upstream": "3obj/meta_diffuse.png",
+      "sha256": "6f5b97ff641f7fe9f19040855e701c9d20d4572658df1705c5bffb75388b214b"
+    },
+    "meshes/3obj/meta_emissive.png": {
+      "upstream": "3obj/meta_emissive.png",
+      "sha256": "049f315c2cacf071e3e1b6e6a51ecd2209981b26da9a2067c352b328853ac70b"
+    },
+    "meshes/3obj/meta_normal.png": {
+      "upstream": "3obj/meta_normal.png",
+      "sha256": "0a6657b716e61ac06e2f57ae3bd469c4d943562008954ff5c46849042a66040d"
+    },
+    "meshes/coarse_meshes/link_finger_base_simplified.mtl": {
+      "upstream": "coarse_meshes/link_finger_base_simplified.mtl",
+      "sha256": "d469dcec38364985ab38c021ea9a29807a0c2048afe81b9d7402839be8f37590"
+    },
+    "meshes/coarse_meshes/link_finger_distal_boxified_nail.mtl": {
+      "upstream": "coarse_meshes/link_finger_distal_boxified_nail.mtl",
+      "sha256": "cf40b53c8fa84551c9ad184d4b689f04bd6619fbaae71b8bc688af0d8f14f0d7"
+    },
+    "meshes/coarse_meshes/link_finger_nail_simplified.mtl": {
+      "upstream": "coarse_meshes/link_finger_nail_simplified.mtl",
+      "sha256": "ad9b72778223691fec7bba6e8ad8f6dacc1f701273080960d7665c78f2ea6061"
+    },
+    "meshes/coarse_meshes/link_finger_tip_simplified.mtl": {
+      "upstream": "coarse_meshes/link_finger_tip_simplified.mtl",
+      "sha256": "e21b3048bddd429e2383852b70dd680a60cd1331af89a0bfecc22e9c1c3432a4"
+    },
+    "meshes/coarse_meshes/meta_finger_yellow.png": {
+      "upstream": "coarse_meshes/meta_finger_yellow.png",
+      "sha256": "164be410a13c499642c747f51c9b75dfded726f725e6d451da13131c3388b024"
+    }
+  },
+  "upstream_urdf_sha256": "e80eac082e870627344e05c61263b18f8a980c24b19b8c6c9fba795b68f965e0",
+  "normalized_urdf_sha256": "f042ed43c7c11759b14931edb16e0493f9805985c4ee187d4885aa2b685fd929"
+}

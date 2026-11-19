@@ -1,0 +1,73 @@
+{
+  "repository": "https://github.com/unitreerobotics/unitree_ros",
+  "revision": "157ff950351e5f535e03c5d85a16b7d594b3dbcc",
+  "urdf": "robots/go2_description/urdf/go2_description.urdf",
+  "changes": [
+    "mesh paths made relative to this robot folder",
+    "Unitree STL/DAE converted to GLB and limited to 5000 faces per geometry; texture UVs sampled from nearest original vertices"
+  ],
+  "files": {
+    "meshes/dae/base.dae.glb": {
+      "upstream": "robots/go2_description/dae/base.dae",
+      "sha256": "7e619978f8e09c549333cc9d9480ab5820ac0d3b2517187885b78730e398c1ff",
+      "upstream_sha256": "e52bebbb5c7ff1f6aedee620c9b5b349f6e965360ecc63a9bb743eeff2d0be64",
+      "original_faces": 77928,
+      "display_faces": 18964,
+      "format": "glb"
+    },
+    "meshes/dae/hip.dae.glb": {
+      "upstream": "robots/go2_description/dae/hip.dae",
+      "sha256": "10f2b266b6d5fde42115bc0a7413953ce012adab4c365638454fa777bcf76401",
+      "upstream_sha256": "8735e10617afe252cef0844c1d139d15bc6d4c653660d742fea9fe05c2704d8f",
+      "original_faces": 37040,
+      "display_faces": 10000,
+      "format": "glb"
+    },
+    "meshes/dae/thigh.dae.glb": {
+      "upstream": "robots/go2_description/dae/thigh.dae",
+      "sha256": "51bfac20af22fa562cf3a204f32f810dc6a3c24fb4053a34712c19188a3ac54e",
+      "upstream_sha256": "a622381ae308897ff143b8bbf02f075457c342b22984205040424a5a983246fa",
+      "original_faces": 30134,
+      "display_faces": 9999,
+      "format": "glb"
+    },
+    "meshes/dae/calf.dae.glb": {
+      "upstream": "robots/go2_description/dae/calf.dae",
+      "sha256": "582bb47ec5840b931a1165cd3819e2b9ac3e0165a8f239492b4d0ce49d1eb5b7",
+      "upstream_sha256": "29872fa1a435b92bc2b395fdfa7f0aee26101db3c494681896bd4ef24ee7883c",
+      "original_faces": 8602,
+      "display_faces": 7090,
+      "format": "glb"
+    },
+    "meshes/dae/foot.dae.glb": {
+      "upstream": "robots/go2_description/dae/foot.dae",
+      "sha256": "d1d4b5ee43910ef24aa07b3767d3977796b0bdfd367830cbaa76e90a04315574",
+      "upstream_sha256": "ffbd95fd641866ce9bd277aa249b92dafc9148d70131fa2c52709a35ce5b710b",
+      "original_faces": 4404,
+      "display_faces": 4404,
+      "format": "glb"
+    },
+    "meshes/dae/thigh_mirror.dae.glb": {
+      "upstream": "robots/go2_description/dae/thigh_mirror.dae",
+      "sha256": "5cc6a1e9be64e5f119440b395d7341ba177d415791e4ed19922f2105c3462477",
+      "upstream_sha256": "c7bae0b0565c2aa4b7cc15a538d795e9153e0f10c821cc18429e92693172bdc6",
+      "original_faces": 30126,
+      "display_faces": 9999,
+      "format": "glb"
+    },
+    "meshes/dae/calf_mirror.dae.glb": {
+      "upstream": "robots/go2_description/dae/calf_mirror.dae",
+      "sha256": "4595c255ff4e638299a29389ad2933efb937ed298f0e8d699d2b202382408eaf",
+      "upstream_sha256": "79c66be7ed06760bd5001c067a1fb0ac517f639d8b1a5f89be471903b3f359e1",
+      "original_faces": 8602,
+      "display_faces": 7089,
+      "format": "glb"
+    },
+    "LICENSE": {
+      "upstream": "LICENSE",
+      "sha256": "84aac59fd3246e3ddc49d1387644e8fcf43b0def4f0b9fe687f372e90446df2d"
+    }
+  },
+  "upstream_urdf_sha256": "7d19fe48e2e689ee1a032ab99f2a4a8b671d87e73de48d3e65811682a5b48b9e",
+  "normalized_urdf_sha256": "f76f188b676d6f36f21a86eb4993da2a5c50e72950a5c8942b315cc8a48076af"
+}

@@ -1,0 +1,49 @@
+# Habitat URDF model with kinematic joint control (no walking policy).
+habitat:
+  backend: habitat
+  mode: nav
+  path: ""  # Optional scene GLB; empty opens the robot in an empty scene.
+  gpu: 0
+  spawn: [0.0, 0.0, 0.0]
+  robot:
+    profile: unitree_g1
+    instance: true
+    fixed_base: true
+    max_linear: 0.0
+    max_angular: 0.0
+    map_frame: map
+    control_hz: 50.0
+    watchdog_sec: 0.5
+    cmd_vel: /cmd_vel
+    joint_command:
+      enabled: true
+      channel: /joint_commands
+    tf:
+      enabled: true
+      channel: /tf
+      static_channel: /tf_static
+      publish_map_odom: true
+    clock:
+      enabled: true
+      channel: /clock
+  sensors:
+    camera:
+      enabled: false
+      width: 640
+      height: 480
+      rgb_channel: /camera/rgb/image_raw
+      depth_channel: /camera/depth/image_raw
+      info_channel: /camera/camera_info
+      frame: camera_link
+      rate_hz: 10.0
+    joint_states:
+      enabled: true
+      channel: /joint_states
+    chase:
+      enabled: true
+      width: 640
+      height: 480
+      distance_m: 3.0
+      height_m: 2.0
+      look_at_height_m: 0.8
+      rate_hz: 10.0

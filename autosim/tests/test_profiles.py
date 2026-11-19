@@ -32,8 +32,9 @@ def test_profile_urdf_exists(name: str):
     profile = get_profile(name)
     path = UrdfModel.resolve(profile.urdf)
     assert path is not None and path.is_file(), profile.urdf
-    usd = resolve_path(profile.usd_robot)
-    assert usd.is_file(), profile.usd_robot
+    if profile.usd_robot:
+        usd = resolve_path(profile.usd_robot)
+        assert usd.is_file(), profile.usd_robot
 
 
 def test_apply_profile_fills_defaults():

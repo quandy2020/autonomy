@@ -16,6 +16,7 @@ dependencies = [
 
 [project.optional-dependencies]
 habitat = ["habitat-sim>=0.3.0"]
+viewer = ["opencv-python-headless>=4.8"]
 # Isaac Sim is typically provided by the Omniverse / Isaac Kit Python env.
 # The extra documents the intended install; omni.* packages are not on PyPI.
 isaac = []
@@ -25,10 +26,14 @@ dev = ["pytest>=7.0", "pyarrow>=14.0"]
 [project.scripts]
 autosim = "autosim.__main__:run"
 autosim-teleop = "autosim.bridge.teleop:Teleop.main"
+autosim-robot-viewer = "autosim.robot.viewer:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["autosim*"]
+
+[tool.setuptools.package-data]
+"autosim.robot" = ["viewer.html"]
 
 [tool.setuptools.data-files]
 "share/autosim/config" = ["config/*.yaml"]
@@ -60,6 +65,50 @@ include = ["autosim*"]
   "usd/worlds/simple_room/simple_room.usd",
   "usd/robots/turtlebot3_burger/turtlebot3_burger.usd",
   "usd/robots/husky/husky.usd",
+]
+
+"share/autosim/config/robots" = ["config/robots/*.yaml"]
+
+"share/autosim/robot/google_robot" = [
+  "robot/google_robot/*.json",
+  "robot/google_robot/*.md",
+  "robot/google_robot/*.urdf",
+]
+
+"share/autosim/robot/google_robot/meshes/3obj" = [
+  "robot/google_robot/meshes/3obj/*.glb",
+  "robot/google_robot/meshes/3obj/*.mtl",
+  "robot/google_robot/meshes/3obj/*.obj",
+  "robot/google_robot/meshes/3obj/*.png",
+]
+
+"share/autosim/robot/google_robot/meshes/coarse_meshes" = [
+  "robot/google_robot/meshes/coarse_meshes/*.glb",
+  "robot/google_robot/meshes/coarse_meshes/*.mtl",
+  "robot/google_robot/meshes/coarse_meshes/*.obj",
+  "robot/google_robot/meshes/coarse_meshes/*.png",
+]
+
+"share/autosim/robot/unitree_g1" = [
+  "robot/unitree_g1/*.json",
+  "robot/unitree_g1/*.md",
+  "robot/unitree_g1/*.urdf",
+  "robot/unitree_g1/LICENSE",
+]
+
+"share/autosim/robot/unitree_g1/meshes" = [
+  "robot/unitree_g1/meshes/*.glb",
+]
+
+"share/autosim/robot/unitree_go2" = [
+  "robot/unitree_go2/*.json",
+  "robot/unitree_go2/*.md",
+  "robot/unitree_go2/*.urdf",
+  "robot/unitree_go2/LICENSE",
+]
+
+"share/autosim/robot/unitree_go2/meshes/dae" = [
+  "robot/unitree_go2/meshes/dae/*.glb",
 ]
 
 [tool.pytest.ini_options]

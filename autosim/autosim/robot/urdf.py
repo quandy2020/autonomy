@@ -333,11 +333,7 @@ class UrdfModel:
 
     def odom_child_frame(self, fallback: str = "base_link") -> str:
         """Preferred dynamic child frame for ``odom``."""
-        if self.root == "base_footprint":
-            return "base_footprint"
-        if "base_link" in self.parents or self.root == "base_link":
-            return "base_link"
-        return fallback
+        return self.root or fallback
 
     def body_frame(self) -> str:
         """Preferred robot body frame for sensor mounts."""

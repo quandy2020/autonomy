@@ -431,6 +431,8 @@ class Runner:
         ) or {}
         if isinstance(joint_cfg, dict) and joint_cfg.get("enabled", False):
             types["joint_states"] = JointState
+        if (self.robot_cfg.get("joint_command") or {}).get("enabled", False):
+            types["joint_command"] = JointState
         if self.robot_cfg["truth"]["enabled"]:
             types["gt_pose"] = PoseStamped
             if str(
@@ -646,6 +648,7 @@ class Runner:
             dt: Period length in seconds (``1 / control_hz``).
         """
         self.poll_command(dt)
+        self.poll_joint_command()
         drive_wheels = getattr(self.simulator, "drive_wheels", None)
         wheeled = callable(drive_wheels) and getattr(self.simulator, "wheeled", None)
         if wheeled:
@@ -1272,6 +1275,20 @@ class Runner:
         except Exception as exc:
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
 
+    def poll_joint_command(self) -> None:
+        """Consume named JointState position commands on the simulation thread."""
+        reader = getattr(self.bridge, "joint_command_reader", None)
+        if reader is None or not reader.has_msg():
+            return
+        message = reader.get_msg()
+        try:
+            names, positions = list(message.name), list(message.position)
+            if not names or len(names) != len(positions) or len(set(names)) != len(names):
+                raise ValueError("joint command requires unique names and matching positions")
+            self.simulator.set_joint_positions(dict(zip(names, positions)))
+        except (ValueError, RuntimeError) as exc:
+            logger.warning("joint command rejected: %s", exc)
+
     def poll_command(self, dt: float = 0.02) -> None:
         """Apply teleop ``cmd_vel`` and/or an optional ONNX twist policy.
 
@@ -1449,9 +1466,7 @@ class Runner:
             )
             return
         variance = float(self.odom.get("noise", 0.0)) ** 2
-        self.bridge.publish(
-            "odom",
-            Messages.encode_odometry(
+        message = Messages.encode_odometry(
                 ox,
                 oy,
                 oyaw,
@@ -1462,8 +1477,9 @@ class Runner:
                 self.odom_child_frame(),
                 pose_variance=variance,
                 twist_variance=variance,
-            ),
-        )
+            )
+        message.pose.pose.pose.position.z = float(self.robot_cfg.get("root_height", 0.0))
+        self.bridge.publish("odom", message)
         self.publish_odom_path(ox, oy, oyaw, stamp)
 
     def publish_odom_path(
@@ -1809,7 +1825,8 @@ class Runner:
         )
         dynamic = [
             Messages.encode_transform(
-                stamp, odom_frame, odom_child, (ox, oy, 0.0), oyaw
+                stamp, odom_frame, odom_child,
+                (ox, oy, float(self.robot_cfg.get("root_height", 0.0))), oyaw
             ),
         ]
         if publish_map_odom:
@@ -1831,6 +1848,14 @@ class Runner:
                 )
             )
         elif urdf is not None:
+            from autosim.robot.joints import load_joints, joint_transform
+
+            joint_defs = getattr(urdf, "scalar_joints", None)
+            if joint_defs is None:
+                joint_defs = load_joints(urdf.path)
+                urdf.scalar_joints = joint_defs
+            state_fn = getattr(self.simulator, "joint_states", None)
+            positions = state_fn() if callable(state_fn) else {}
             for child, (parent, xyz) in urdf.parents.items():
                 if child == odom_child:
                     continue
@@ -1838,15 +1863,21 @@ class Runner:
                 rpy = urdf.joint_rpy.get(
                     child, (0.0, 0.0, float(urdf.joint_yaw.get(child, 0.0)))
                 )
-                mounts.append(
-                    Messages.encode_transform(
-                        static_stamp,
-                        parent,
-                        child,
-                        xyz,
-                        rpy=rpy,
+                name = urdf.joint_name.get(child)
+                joint = joint_defs.get(name)
+                if joint is not None and name in positions:
+                    xyz, quaternion = joint_transform(
+                        xyz, rpy, urdf.joint_axis.get(child, (1, 0, 0)),
+                        joint.kind, positions[name],
                     )
-                )
+                    transform = Messages.encode_transform(stamp, parent, child, xyz)
+                    rotation = transform.transform.rotation
+                    rotation.x, rotation.y, rotation.z, rotation.w = quaternion
+                    dynamic.append(transform)
+                else:
+                    mounts.append(Messages.encode_transform(
+                        static_stamp, parent, child, xyz, rpy=rpy,
+                    ))
             if capability(self.simulator, "fallback_camera_tf"):
                 # Prefer URDF camera_link; else place optics at sensor_height.
                 cam_frame = str(self.camera.get("frame") or "camera_link")

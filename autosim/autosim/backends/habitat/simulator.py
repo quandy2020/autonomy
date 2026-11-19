@@ -69,12 +69,18 @@ class Simulator:
         self.width = int(width)
         self.height = int(height)
         self.settings = dict(settings or {})
+        from autosim.robot.profiles import apply_profile
+
+        habitat = dict(self.settings.get("habitat") or {})
+        habitat["robot"] = apply_profile(habitat.get("robot") or {})
+        self.settings["habitat"] = habitat
         self.x = 0.0
         self.y = 0.0
         self.yaw = 0.0
         self.floor_y = 0.0
         self.session = None
         self.articulated = None
+        self.articulation = None
         self.urdf = self.load_urdf_model()
         self.traffic = None
         self.humanoid_sync = None
@@ -85,7 +91,11 @@ class Simulator:
         self.map_builder = None
 
         if open_session:
-            self.open_habitat()
+            try:
+                self.open_habitat()
+            except Exception:
+                self.close()
+                raise
 
     @classmethod
     def create(cls, settings: Mapping[str, Any]) -> "Simulator":
@@ -147,17 +157,21 @@ class Simulator:
             habitat_sim.Configuration(configuration, [agent_configuration])
         )
         try:
-            self.session.set_stage_is_collidable(True)
+            # Habitat 0.3.3 dereferences a missing stage for an empty scene.
+            if str(configuration.scene_id) != "NONE":
+                self.session.set_stage_is_collidable(True)
         except Exception:
             pass
         self.attach_urdf(habitat_sim)
         spawn = self.settings["habitat"].get("spawn", [0.0, 0.0, 0.0])
         self.reset(float(spawn[0]), float(spawn[1]), float(spawn[2]))
-        self.snap_to_navmesh()
-        self.ensure_semantic_spawn()
+        if str(configuration.scene_id) != "NONE":
+            self.snap_to_navmesh()
+            self.ensure_semantic_spawn()
         # ensure_semantic_spawn re-snaps; call again so any late pathfinder
         # init / mesh cast sees the final pose before humanoids attach.
-        self.snap_to_navmesh()
+        if str(configuration.scene_id) != "NONE":
+            self.snap_to_navmesh()
         self.attach_humanoids()
 
     def habitat_configuration(self, habitat_sim: Any) -> Any:
@@ -1173,10 +1187,13 @@ class Simulator:
             return
         try:
             manager = self.session.get_articulated_object_manager()
+            config = self.settings["habitat"]["robot"]
             robot = manager.add_articulated_object_from_urdf(
                 filepath=str(self.urdf.path),
-                fixed_base=False,
+                fixed_base=bool(config.get("fixed_base", False)),
             )
+            if robot is None:
+                raise RuntimeError(f"could not load {self.urdf.path}")
             robot.motion_type = habitat_sim.physics.MotionType.KINEMATIC
             try:
                 robot.override_collidable_state(False)
@@ -1188,13 +1205,60 @@ class Simulator:
             # Keep hidden by default so ego RGB-D stays clean; chase toggles.
             self.set_articulated_visible(robot, False)
             self.articulated = robot
+            from autosim.backends.habitat.articulation import Articulation
+            from autosim.robot.joints import load_joints
+
+            self.articulation = Articulation(robot, load_joints(self.urdf.path))
+            self.articulation.set_positions(config.get("joint_positions") or {})
             self.urdf_z_up = True
         except Exception as exc:
+            if self.articulated is not None:
+                manager.remove_object_by_id(self.articulated.object_id)
+            self.articulation = None
+            self.articulated = None
+            if self.settings["habitat"]["robot"].get("instance", False):
+                raise RuntimeError(f"Habitat URDF load failed: {self.urdf.path}") from exc
             warnings.warn(
                 f"Habitat URDF load failed ({exc!r}); mounts still applied to rays",
                 stacklevel=2,
             )
             self.articulated = None
+
+    def joint_states(self) -> dict[str, float]:
+        """Current named scalar joint positions (radians or metres)."""
+        return self.articulation.positions() if self.articulation else {}
+
+    def switch_robot(self, profile: str) -> None:
+        """Replace the displayed robot in the same Habitat session."""
+        import habitat_sim
+        from autosim.robot.profiles import apply_profile
+
+        config = apply_profile({"profile": profile, "instance": True, "fixed_base": True})
+        model = UrdfModel.load(config["urdf"])
+        old_config = self.settings["habitat"]["robot"]
+        old_model, old_robot, old_control = self.urdf, self.articulated, self.articulation
+        self.settings["habitat"]["robot"] = config
+        self.urdf, self.articulated, self.articulation = model, None, None
+        try:
+            self.attach_urdf(habitat_sim)
+            if self.articulated is None:
+                raise RuntimeError(f"robot {profile} could not be instanced")
+        except Exception:
+            self.settings["habitat"]["robot"] = old_config
+            self.urdf, self.articulated, self.articulation = old_model, old_robot, old_control
+            raise
+        if old_robot is not None:
+            self.session.get_articulated_object_manager().remove_object_by_id(old_robot.object_id)
+        self.set_pose(self.x, self.y, self.yaw)
+
+    def joint_velocities(self) -> dict[str, float]:
+        return self.articulation.velocities() if self.articulation else {}
+
+    def set_joint_positions(self, positions: Mapping[str, float]) -> None:
+        """Apply a partial pose atomically after validating names and limits."""
+        if self.articulation is None:
+            raise RuntimeError("joint control requires an instanced URDF")
+        self.articulation.set_positions(positions)
 
     def set_articulated_visible(
         self, robot: Any | None = None, visible: bool = True
@@ -1283,7 +1347,8 @@ class Simulator:
         # URDF uses z-up; Habitat is y-up → rotate −90° about X.
         z_up_to_y_up = mn.Quaternion.rotation(mn.Rad(-math.pi / 2.0), mn.Vector3(1, 0, 0))
         # map_y = -Habitat_Z  →  Habitat_Z = -map_y
-        self.articulated.translation = mn.Vector3(self.x, self.floor_y, -self.y)
+        height = float(self.settings["habitat"]["robot"].get("root_height", 0.0))
+        self.articulated.translation = mn.Vector3(self.x, self.floor_y + height, -self.y)
         self.articulated.rotation = yaw * z_up_to_y_up
 
     def reset(self, x: float, y: float, yaw: float) -> None:
