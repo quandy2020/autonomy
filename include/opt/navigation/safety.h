@@ -2,6 +2,7 @@
 #define OPT_NAVIGATION_SAFETY_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -15,6 +16,7 @@ struct SafetyOptions {
   double robot_height = 0.60;
   double vertical_margin = 0.05;
   double max_floor_step = 0.08;
+  std::optional<StartupSupportRegion> startup_support;  ///< Explicit start-only closure of self-occluded unknown cells.
 };
 struct SafetyResult {
   bool safe = false;

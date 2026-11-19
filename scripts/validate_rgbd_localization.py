@@ -111,9 +111,15 @@ def main():
     parser.add_argument('--task-start', action='store_true', help='Send an actual native exploration START after measured map/pose bootstrap')
     parser.add_argument('--task-controller', default='policy_controller', help='Exact requested existing plugin; no controller fallback is selected')
     parser.add_argument('--controller-options', type=Path, help='Actual existing ControllerOptions JSON for the embedded native execution server')
+    parser.add_argument('--startup-observation', action='store_true',
+                        help='Require one measured zero-translation startup yaw sweep before exploration')
+    parser.add_argument('--exploration-time-budget', type=float, default=30.,
+                        help='Active exploration time budget written into the native task configuration')
     args = parser.parse_args()
     if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 10000:
         parser.error('use an isolated validation prefix and 500..10000 steps')
+    if not 1 <= args.exploration_time_budget <= 600:
+        parser.error('exploration time budget must be within 1..600 seconds')
     if not args.localization.is_file() or not args.vocabulary.is_file():
         parser.error('actual application and vocabulary are required')
     if (args.task and not args.task.is_file()) or (args.task_start and not args.task):
@@ -296,7 +302,8 @@ def main():
                     'navigation_base_frame': 'native_exploration_base', 'atlas_odometry_topic': args.prefix + '/atlas/odometry',
                     'atlas_status_topic': args.prefix + '/atlas/localization_status', 'route_service': '/get_plan',
                     'planner_id': 'vista_planner', 'controller_id': args.task_controller, 'validated_sensor_mask': 2,
-                    'time_budget': 30., 'require_return': True, 'require_save': True, 'map_name': 'native_rgbd_exploration',
+                    'time_budget': args.exploration_time_budget, 'require_return': True, 'require_save': True,
+                    'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': -6., 'min_y': -6., 'max_x': 6., 'max_y': 6.}, 'mapping_resolution': .15,
                     'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .15, 'horizontal_margin': .02,
                     'map_output_directory': str(args.output / 'native-mapping'),
@@ -319,6 +326,15 @@ def main():
                         'maximum_yaw_rate': habitat['robot']['max_angular'],
                         'actuator_watchdog': habitat['robot']['watchdog_sec'], 'reaction_time': .1,
                         'minimum_braking_deceleration': habitat['robot']['max_linear_decel'],
+                        'startup_observation': {
+                            'enabled': bool(args.startup_observation),
+                            'target_yaw': 3.141592653589793,
+                            'time_allowance': 10., 'deadline_margin': 3.,
+                            'maximum_position_drift': .04, 'completion_tolerance': .08,
+                            'maximum_pose_age': 1.,
+                            'support_radius': .45, 'support_ring_radius': .9,
+                            'support_timeout': 30., 'minimum_support_cells': 8,
+                        },
                     })
                 config_file.write_text(yaml.safe_dump(settings, sort_keys=False))
                 command = [str(args.task), '--native_rgbd_config', str(config_file)]

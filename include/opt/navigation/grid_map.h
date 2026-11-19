@@ -1,6 +1,7 @@
 #ifndef OPT_NAVIGATION_GRID_MAP_H_
 #define OPT_NAVIGATION_GRID_MAP_H_
 
+#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <string>
@@ -18,6 +19,22 @@ struct GridCell {
   double ceiling_height = std::numeric_limits<double>::infinity();
 };
 struct CellIndex { int x = 0; int y = 0; };
+
+/** @brief Bounded start-only support inferred from a measured surrounding ring.
+ * The region may close only unknown cells; observed occupied or conflicting
+ * surfaces are never overridden. It is never serialized into the map.
+ */
+struct StartupSupportRegion {
+  double center_x = 0.0;  ///< Startup pose X in the map frame, metres.
+  double center_y = 0.0;  ///< Startup pose Y in the map frame, metres.
+  double radius = 0.0;  ///< Maximum closed-cell radius around the startup pose, metres.
+  double floor_height = 0.0;  ///< Measured surrounding-ring floor estimate, metres.
+  double ceiling_height = 0.0;  ///< Measured surrounding-ring ceiling estimate, metres.
+  /** @brief Test one world-coordinate position against the closed startup disc. */
+  bool Contains(double x, double y) const {
+    return std::hypot(x - center_x, y - center_y) <= radius + 1e-12;
+  }
+};
 
 class GridMap {
  public:

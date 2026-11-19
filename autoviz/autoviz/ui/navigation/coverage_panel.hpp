@@ -62,6 +62,7 @@ class CoveragePanel : public QWidget {
   QPlainTextEdit* polygons_{nullptr};
   QLineEdit* frame_{nullptr};
   QDoubleSpinBox* headland_{nullptr};
+  QDoubleSpinBox* radius_{nullptr};
   QComboBox* route_mode_{nullptr};
   QComboBox* path_mode_{nullptr};
   QCheckBox* approach_{nullptr};

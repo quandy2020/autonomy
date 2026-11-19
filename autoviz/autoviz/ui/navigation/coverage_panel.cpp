@@ -30,7 +30,8 @@ CoveragePanel::CoveragePanel(common::VisualizationManager* manager,
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 2, 0, 0);
   auto* hint = new QLabel(tr("Cover a complete region. First ring is the outer "
-                             "boundary; following rings are obstacles."),
+                             "boundary; following rings are obstacles. "
+                             "Swath width equals twice the robot radius."),
                           this);
   hint->setWordWrap(true);
   layout->addWidget(hint);
@@ -38,6 +39,16 @@ CoveragePanel::CoveragePanel(common::VisualizationManager* manager,
   frame_ = new QLineEdit("map", this);
   frame_->setObjectName("coverageFrame");
   form->addRow(tr("Frame"), frame_);
+  radius_ = new QDoubleSpinBox(this);
+  radius_->setObjectName("coverageRobotRadius");
+  radius_->setRange(.05, 5.0);
+  radius_->setSingleStep(.05);
+  radius_->setDecimals(2);
+  radius_->setValue(.4);
+  radius_->setSuffix(" m");
+  radius_->setToolTip(
+      tr("Cleaning radius; every pass covers twice this width."));
+  form->addRow(tr("Robot radius"), radius_);
   headland_ = new QDoubleSpinBox(this);
   headland_->setRange(.1, 20);
   headland_->setValue(1.2);
@@ -150,6 +161,7 @@ autonomy::task::coverage::proto::CoverageRequest CoveragePanel::BuildRequest()
       out->set_axis2(p[1].toDouble());
     }
   }
+  request.set_robot_radius(radius_->value());
   request.mutable_headland_mode()->set_mode("CONSTANT");
   request.mutable_headland_mode()->set_width(headland_->value());
   request.mutable_route_mode()->set_mode(
