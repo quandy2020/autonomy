@@ -26,6 +26,11 @@
 | 出 | `chase_rgb` | `/camera/chase/image_raw` | Image（第三人称跟随 rgb8，可选） |
 | 出 | `chase_info` | `/camera/chase/camera_info` | CameraInfo（可选） |
 | 出 | `imu` | `/imu` | Imu |
+| 出 | `stereo_left_rgb` / `stereo_right_rgb` | `/camera/left\|right/image_raw` | Image（rgb8，可选） |
+| 出 | `stereo_left_info` / `stereo_right_info` | `/camera/left\|right/camera_info` | CameraInfo（可选） |
+| 出 | `range_0` … `range_n` | `/tof/*`、`/cliff/*` | Range（顺序同 `sensors.range.sensors`） |
+| 出 | `joint_states` | `/joint_states` | JointState（可选） |
+| 入 | `joint_command` | `/joint_commands` | JointState（可选） |
 | 出 | `tf` / `tf_static` | `/tf` `/tf_static` | TFMessage |
 | 出 | `clock` | `/clock` | Time |
 | 出 | `footprint` | `/footprint` | PolygonStamped |
@@ -59,3 +64,13 @@
 - `map.enabled && map.publish` 时建 `map_cloud`（`/overall/map`）；`map_grid`（`/map`）仅在 `mode: nav` 下创建（`slam` 留给 Atlas / Cartographer）。
 - `lidar_3d.enabled` 才发 `/points`。
 - `robot.truth.enabled` 启用 `/gt/pose`；仅当 `robot.truth.odometry_channel` 非空时同时创建 `gt_odom` writer。
+
+---
+
+## 4. 关节与机器人专用通道
+
+`sensors.stereo.enabled` 建左右目图像和 `camera_info`。右目 `P[3] = -fx × baseline_m`，符合校正立体惯例；左右图共用同一 `header.stamp`。
+
+`sensors.range.enabled` 按 `sensors.range.sensors` 的书写顺序建 `range_0` … `range_n`，每个键对应一条 `sensor_msgs/Range`。Habitat-Sim 没有测距传感器，后端沿该坐标系 URDF `+x` 轴投射单条射线并跳过机器人自身碰撞体；无回波按 ROS 惯例报 `inf`。所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
+
+`robot.joint_command.enabled` 建 `joint_command` 读端，`sensors.joint_states.enabled` 建 `joint_states` 写端。活动关节走 `/tf`，固定关节走 `/tf_static`，`/robot_description` 发布带相对 mesh 路径的 URDF XML。

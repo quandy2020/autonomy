@@ -1574,6 +1574,30 @@ class Simulator:
             return sx, sy
         return float(placed_x), float(placed_y)
 
+    def lidar_mount(self) -> Tuple[float, float, float]:
+        """Lidar mount in URDF root coordinates.
+
+        Articulated models ship no lidar link. Falling back to the root would
+        cast every ray along the floor, so use ``sensors.lidar_2d.height``
+        above the root instead.
+
+        Returns:
+            ``(x, y, z)`` offset from the URDF root.
+        """
+        if self.urdf is not None:
+            for name in ("laser_link", "base_scan"):
+                xyz = self.urdf.mounts.get(name)
+                if xyz is not None:
+                    return (float(xyz[0]), float(xyz[1]), float(xyz[2]))
+        sensors = (self.settings["habitat"] or {}).get("sensors") or {}
+        block = sensors.get("lidar_2d") or {}
+        height = block.get("height")
+        if height is None:
+            height = 0.2
+        robot = (self.settings["habitat"] or {}).get("robot") or {}
+        root = float(robot.get("root_height", 0.0))
+        return (0.0, 0.0, root + float(height))
+
     def laser_origin(self) -> Tuple[float, float, float]:
         """Habitat world origin for lidar rays (Y-up).
 
@@ -1584,9 +1608,7 @@ class Simulator:
         Returns:
             ``(x, y, z)`` with planar offsets rotated by yaw.
         """
-        mx = my = mz = 0.0
-        if self.urdf is not None:
-            mx, my, mz = self.urdf.laser_xyz()
+        mx, my, mz = self.lidar_mount()
         cos_y = math.cos(self.yaw)
         sin_y = math.sin(self.yaw)
         # map_y = -Habitat_Z  →  Habitat_Z = -map_y
@@ -2169,9 +2191,7 @@ class Simulator:
         self, x: float, y: float, yaw: float
     ) -> Tuple[float, float, float]:
         """Habitat lidar origin for an arbitrary planar pose (Y-up)."""
-        mx = my = mz = 0.0
-        if self.urdf is not None:
-            mx, my, mz = self.urdf.laser_xyz()
+        mx, my, mz = self.lidar_mount()
         cos_y = math.cos(yaw)
         sin_y = math.sin(yaw)
         return (

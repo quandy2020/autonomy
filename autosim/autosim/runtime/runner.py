@@ -1968,6 +1968,17 @@ class Runner:
                             static_stamp, body_frame, cam_frame, (0.0, 0.0, eye), 0.0
                         )
                     )
+            laser_frame = str(self.lidar_2d.get("frame") or "laser_link")
+            if laser_frame not in urdf.parents and laser_frame != urdf.root:
+                # Articulated models carry no lidar link; publish the mount so
+                # /scan has a parent instead of a dangling frame.
+                mount = getattr(self.simulator, "lidar_mount", None)
+                xyz = mount() if callable(mount) else (0.0, 0.0, 0.2)
+                mounts.append(
+                    Messages.encode_transform(
+                        static_stamp, body_frame, laser_frame, xyz
+                    )
+                )
         else:
             mounts.append(
                 Messages.encode_transform(

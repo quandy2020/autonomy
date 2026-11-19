@@ -36,7 +36,7 @@ habitat:
   path: usd/worlds/...    # 场景路径（相对 autosim/ 或绝对）
   spawn: [x, y, yaw]
   robot: { ... }
-  sensors: { lidar_2d, lidar_3d, camera, topdown, chase, imu, odom }
+  sensors: { lidar_2d, lidar_3d, camera, stereo, range, topdown, chase, imu, odom, joint_states }
   map: { enabled, publish, ply, grid }
   scenario: { enabled, ... }   # Fake / Habitat 过程场景
   isaac: { headless, physics } # 仅 Isaac
@@ -52,7 +52,7 @@ habitat:
 
 | 字段 | 含义 |
 |------|------|
-| `robot.profile` | `turtlebot3_burger` / `husky`（填 URDF、USD、轮距） |
+| `robot.profile` | `turtlebot3_burger` / `husky`（填 URDF、USD、轮距）；`google_robot` / `unitree_g1` / `unitree_go2` 为 Habitat 关节模型，自动填 URDF、`instance`、`fixed_base` 和 `root_height` |
 | `robot.control_hz` | 控制与积分频率 |
 | `robot.tf.publish_map_odom` | 可被 `mode` 覆盖 |
 | `robot.truth.enabled` | 同时启用真值 PoseStamped 与可选 Odometry 输出 |
