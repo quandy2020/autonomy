@@ -103,6 +103,9 @@ class Scenario:
         "random_forest": "random_forest",
         "random_room": "random_room",
         "room": "random_room",
+        "floor": "floor",
+        "ground": "floor",
+        "studio": "floor",
     }
 
     def __init__(self, settings: Mapping[str, Any] | None = None) -> None:
@@ -135,7 +138,7 @@ class Scenario:
         except KeyError as exc:
             raise ValueError(
                 "scenario.type must be perlin, perlin2d, posts, maze, maze3d, "
-                "forest, building, random_forest, random_room, or 1–6"
+                "forest, building, random_forest, random_room, floor, or 1–6"
             ) from exc
 
     def build(self, *, write_mesh: bool = True) -> "Scenario":
@@ -205,6 +208,7 @@ class Scenario:
             ValueError: The type has no generator.
         """
         fillers = {
+            "floor": lambda: np.zeros(shape, dtype=bool),
             "perlin": lambda: self.fill_perlin(shape),
             "perlin2d": lambda: self.fill_perlin2d(shape),
             "posts": lambda: self.fill_posts(shape, resolution, origin),

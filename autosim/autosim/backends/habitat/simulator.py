@@ -84,6 +84,7 @@ class Simulator:
         self.urdf = self.load_urdf_model()
         self.traffic = None
         self.humanoid_sync = None
+        self.lights_enabled = False
         robot = self.settings.get("habitat", {}).get("robot", {})
         self.block_motion = bool(robot.get("block_motion", True)) if isinstance(
             robot, Mapping
@@ -156,6 +157,7 @@ class Simulator:
         self.session = habitat_sim.Simulator(
             habitat_sim.Configuration(configuration, [agent_configuration])
         )
+        self.apply_light_setup(habitat_sim)
         try:
             # Habitat 0.3.3 dereferences a missing stage for an empty scene.
             if str(configuration.scene_id) != "NONE":
@@ -194,6 +196,20 @@ class Simulator:
         dataset_config = str(hab_cfg.get("dataset_config") or "").strip()
         scene_id = str(hab_cfg.get("scene_id") or "").strip()
         scene_path = str(hab_cfg.get("path") or "").strip()
+
+        render = self.render_configuration()
+        # A custom rig only takes effect when the scene defaults are released.
+        # Unset ``override_lights`` keeps a real GLB scene's own lighting and
+        # applies the rig to the generated studio only.
+        override = render.get("override_lights")
+        if override is None:
+            override = not scene_path
+        self.lights_enabled = bool(render.get("lights")) and bool(override)
+        if self.lights_enabled:
+            configuration.override_scene_light_defaults = True
+            configuration.scene_light_setup = ""
+        if "enable_hbao" in render:
+            configuration.enable_hbao = bool(render["enable_hbao"])
 
         resolved = self.resolve_scene_dataset(hab_cfg)
         if resolved is not None:
@@ -240,6 +256,39 @@ class Simulator:
 
         configuration.scene_id = scene_path
         return configuration
+
+    def render_configuration(self) -> Mapping[str, Any]:
+        """``habitat.render`` block (lighting and ambient occlusion)."""
+        block = (self.settings.get("habitat") or {}).get("render")
+        return block if isinstance(block, Mapping) else {}
+
+    def apply_light_setup(self, habitat_sim: Any) -> None:
+        """Install ``habitat.render.lights`` as a Habitat light rig.
+
+        Each entry is ``{vector: [x, y, z, w], color: [r, g, b]}`` in Habitat
+        axes (y up); ``w=0`` is a directional light and ``w=1`` a point light.
+        Ignored when the scene ships its own lighting and ``override_lights``
+        is false.
+        """
+        render = self.render_configuration()
+        lights = render.get("lights") or []
+        if not lights or self.session is None or not self.lights_enabled:
+            return
+        import magnum as mn
+
+        try:
+            model = habitat_sim.gfx.LightPositionModel.Global
+            setup = [
+                habitat_sim.gfx.LightInfo(
+                    mn.Vector4(*[float(value) for value in light.get("vector", (0.0, -1.0, 0.0, 0.0))]),
+                    mn.Color3(*[float(value) for value in light.get("color", (1.0, 1.0, 1.0))]),
+                    model,
+                )
+                for light in lights
+            ]
+            self.session.set_light_setup(setup)
+        except Exception as exc:
+            warnings.warn(f"Habitat light setup failed ({exc!r})", stacklevel=2)
 
     def install_scenario(self, hab_cfg: Mapping[str, Any]) -> str | None:
         """Build a mockamap stage when ``habitat.path`` is empty and scenario is on.
@@ -1274,6 +1323,16 @@ class Simulator:
         self.articulation.set_positions(positions)
         self.sync_robot_sensors()
 
+    def hold_joint_positions(self) -> None:
+        """Re-apply the current pose so ``/joint_states`` velocity decays.
+
+        Kinematic joints only move when commanded; without this the last
+        finite-difference velocity would stay latched forever.
+        """
+        if self.articulation is None:
+            return
+        self.articulation.set_positions({})
+
     def sync_robot_sensors(self) -> None:
         """Place RGB-D and stereo cameras at their current URDF optical frames."""
         if self.session is None or self.articulated is None or self.urdf is None:
@@ -1588,7 +1647,7 @@ class Simulator:
         """
         sensors = (self.settings["habitat"] or {}).get("sensors") or {}
         block = sensors.get("lidar_2d") or {}
-        frame = str(block.get("frame") or "laser_link")
+        frame = self.lidar_frame()
         if self.urdf is not None:
             if frame in self.urdf.mounts:
                 xyz = self.urdf.mounts[frame]
@@ -1602,6 +1661,12 @@ class Simulator:
         if height is None:
             height = 0.2
         return (0.0, 0.0, float(height))
+
+    def lidar_frame(self) -> str:
+        """Configured ``sensors.lidar_2d.frame`` (default ``laser_link``)."""
+        sensors = (self.settings["habitat"] or {}).get("sensors") or {}
+        block = sensors.get("lidar_2d") or {}
+        return str(block.get("frame") or "laser_link")
 
     def root_height(self) -> float:
         """URDF root height above the Habitat floor in metres."""
@@ -1627,6 +1692,93 @@ class Simulator:
             self.floor_y + self.root_height() + mz,
             -(self.y + sin_y * mx + cos_y * my),
         )
+
+    def link_pose_at(
+        self, frame: str, x: float, y: float, yaw: float
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Map-frame pose of a URDF link for an arbitrary planar root pose.
+
+        Uses the live joint state, so a sensor bolted to a moving arm or waist
+        follows its parent chain instead of staying at the home mount.
+
+        Args:
+            frame: URDF link name.
+            x: Planar root x (m).
+            y: Planar root y (m).
+            yaw: Root heading (rad).
+
+        Returns:
+            ``(position, rotation)`` in map axes (x forward, y left, z up), or
+            ``None`` when the frame is not part of the URDF.
+        """
+        urdf = self.urdf
+        if urdf is None:
+            return None
+        if frame != urdf.root and frame not in urdf.parents:
+            return None
+        local = np.asarray(urdf.link_transform(frame, self.joint_states()), dtype=float)
+        cos_y, sin_y = math.cos(float(yaw)), math.sin(float(yaw))
+        root = np.array(
+            [[cos_y, -sin_y, 0.0], [sin_y, cos_y, 0.0], [0.0, 0.0, 1.0]],
+            dtype=float,
+        )
+        base = np.array(
+            [float(x), float(y), float(self.floor_y) + self.root_height()],
+            dtype=float,
+        )
+        return base + root @ local[:3, 3], root @ local[:3, :3]
+
+    def link_pose(self, frame: str) -> tuple[np.ndarray, np.ndarray] | None:
+        """:meth:`link_pose_at` at the current pose."""
+        return self.link_pose_at(frame, self.x, self.y, self.yaw)
+
+    def link_rotation(self, frame: str) -> np.ndarray | None:
+        """URDF link rotation in the root frame (map-aligned at yaw ``0``).
+
+        Returns:
+            ``3×3`` rotation, or ``None`` when the frame is not in the URDF.
+        """
+        pose = self.link_pose_at(frame, 0.0, 0.0, 0.0)
+        return None if pose is None else pose[1]
+
+    def laser_pose_at(
+        self, x: float, y: float, yaw: float
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Map-frame lidar pose for an arbitrary planar root pose.
+
+        Falls back to ``sensors.lidar_2d.height`` above the root when the model
+        ships no lidar link (Unitree Go2 mounts one virtually).
+
+        Returns:
+            ``(position, rotation)`` in map axes (x forward, y left, z up).
+        """
+        pose = self.link_pose_at(self.lidar_frame(), x, y, yaw)
+        if pose is not None:
+            return pose
+        mx, my, mz = self.lidar_mount()
+        cos_y, sin_y = math.cos(float(yaw)), math.sin(float(yaw))
+        position = np.array(
+            [
+                float(x) + cos_y * mx - sin_y * my,
+                float(y) + sin_y * mx + cos_y * my,
+                float(self.floor_y) + self.root_height() + mz,
+            ],
+            dtype=float,
+        )
+        rotation = np.array(
+            [[cos_y, -sin_y, 0.0], [sin_y, cos_y, 0.0], [0.0, 0.0, 1.0]],
+            dtype=float,
+        )
+        return position, rotation
+
+    def laser_pose(self) -> tuple[np.ndarray, np.ndarray]:
+        """:meth:`laser_pose_at` at the current pose."""
+        return self.laser_pose_at(self.x, self.y, self.yaw)
+
+    def laser_heading(self) -> float:
+        """Map-frame heading of the lidar ``+x`` axis (rad)."""
+        _, rotation = self.laser_pose()
+        return math.atan2(float(rotation[1, 0]), float(rotation[0, 0]))
 
     def attach_humanoids(self) -> None:
         """Create TrackVLA-style SMPL-X humanoid sync from ``habitat.humanoids``."""
@@ -1720,6 +1872,10 @@ class Simulator:
         """
         if self.session is None:
             return float(self.floor_y)
+        # The robot is attached before the first floor probe.  Its collision
+        # hull sits directly over the spawn point, so an unfiltered downward
+        # ray returns the torso/legs instead of the ground and shifts the
+        # whole model by that height (Go2 floated, Google buried its wheels).
         hit = self.cast_from_origin(
             float(self.x),
             float(self.floor_y) + float(probe_height),
@@ -1727,6 +1883,7 @@ class Simulator:
             float(self.yaw),
             -math.pi / 2.0,
             float(range_max),
+            ignore_object_id=getattr(self.articulated, "object_id", None),
         )
         if hit is None:
             return float(self.floor_y)
@@ -1900,6 +2057,8 @@ class Simulator:
         yaw: float,
         pitch: float,
         range_max: float,
+        *,
+        ignore_object_id: int | None = None,
     ) -> Tuple[float, float, float] | None:
         """Cast one ray; return map-frame hit ``(x, y, z)`` with z up.
 
@@ -1910,6 +2069,8 @@ class Simulator:
             yaw: Azimuth in the horizontal plane (rad).
             pitch: Elevation (rad).
             range_max: Maximum range (m).
+            ignore_object_id: Skip this Habitat object (the articulated robot)
+                so a floor probe cannot hit the model itself.
 
         Returns:
             Map-frame point, or ``None`` on miss.
@@ -1934,7 +2095,9 @@ class Simulator:
             results = self.session.cast_ray(ray, max_distance=float(range_max))
         except TypeError:
             results = self.session.cast_ray(ray)
-        distance = self.raycast_hit_distance(results, origin)
+        distance = self.raycast_hit_distance(
+            results, origin, ignore_object_id=ignore_object_id
+        )
         if distance is None or not math.isfinite(distance) or distance > float(range_max):
             return None
         if distance <= 1e-4:
@@ -2060,18 +2223,67 @@ class Simulator:
         Returns:
             Distance in meters, or ``None`` on miss / beyond ``range_max``.
         """
-        ox, oy, oz = self.laser_origin()  # Habitat: (x, floor_y, -map_y)
         # Single-height ray for 2D SLAM: a vertical min-fan pulls ranges onto
         # furniture tops/edges and paints fuzzy / double walls in Cartographer.
-        hit = self.cast_from_origin(ox, oy, oz, self.yaw + yaw_offset, pitch, range_max)
-        # hit is map frame; laser_origin is Habitat → map: (ox, -oz, oy)
-        return self.closer_actor(
-            self.hit_distance(hit, ox, oy, oz),
-            (ox, -oz, oy),
-            self.yaw + yaw_offset,
-            pitch,
-            range_max,
+        origin, rotation = self.laser_pose()
+        local = np.array(
+            [
+                math.cos(yaw_offset) * math.cos(pitch),
+                math.sin(yaw_offset) * math.cos(pitch),
+                math.sin(pitch),
+            ],
+            dtype=float,
         )
+        return self.cast_direction(origin, rotation @ local, range_max)
+
+    def cast_direction(
+        self,
+        origin: tuple[float, float, float] | np.ndarray,
+        direction: tuple[float, float, float] | np.ndarray,
+        range_max: float,
+    ) -> float | None:
+        """Cast one ray along a map-frame direction; return hit distance.
+
+        Args:
+            origin: Map-frame ``(x, y, z)`` with z up.
+            direction: Map-frame direction; normalised here.
+            range_max: Maximum valid range (m).
+
+        Returns:
+            Distance in meters, or ``None`` on miss / beyond ``range_max``.
+        """
+        if self.session is None:
+            raise RuntimeError("Habitat session is not open")
+        import habitat_sim
+        import magnum as mn
+
+        ox, oy, oz = float(origin[0]), float(origin[1]), float(origin[2])
+        dx, dy, dz = float(direction[0]), float(direction[1]), float(direction[2])
+        length = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if length < 1e-12:
+            return None
+        dx, dy, dz = dx / length, dy / length, dz / length
+        # map (x, y, z) → Habitat (x, z, -y)
+        ray = habitat_sim.geo.Ray(
+            mn.Vector3(ox, oz, -oy), mn.Vector3(dx, dz, -dy)
+        )
+        try:
+            results = self.session.cast_ray(ray, max_distance=float(range_max))
+        except TypeError:
+            results = self.session.cast_ray(ray)
+        distance = self.raycast_hit_distance(
+            results,
+            ray.origin,
+            ignore_object_id=getattr(self.articulated, "object_id", None),
+        )
+        if distance is None or not math.isfinite(distance):
+            distance = None
+        elif distance <= 1e-4 or distance > float(range_max):
+            distance = None
+        actor = self.actor_distance_direction((ox, oy, oz), (dx, dy, dz), range_max)
+        if actor is not None and (distance is None or actor < distance):
+            distance = actor
+        return distance
 
     @staticmethod
     def hit_distance(
@@ -2107,6 +2319,18 @@ class Simulator:
         if traffic is None:
             return None
         return traffic.nearest(origin, self.ray_direction(yaw, pitch), float(range_max))
+
+    def actor_distance_direction(
+        self,
+        origin: tuple[float, float, float],
+        direction: tuple[float, float, float] | np.ndarray,
+        range_max: float,
+    ) -> float | None:
+        """Distance to the nearest dynamic body along a map-frame direction."""
+        traffic = self.traffic
+        if traffic is None:
+            return None
+        return traffic.nearest(origin, direction, float(range_max))
 
     def closer_actor(
         self,
@@ -2168,12 +2392,15 @@ class Simulator:
             range_max = 30.0
         # Keep a little headroom above the farthest Habitat hit.
         range_max = max(range_max, 30.0)
+        # Clip in the lidar frame: a waist/arm joint can rotate the sensor away
+        # from the base heading, and the mount sits off the root origin.
+        origin, _ = self.laser_pose()
         return clip(
             ranges,
             angles,
-            float(self.x),
-            float(self.y),
-            float(self.yaw),
+            float(origin[0]),
+            float(origin[1]),
+            self.laser_heading(),
             float(range_max),
         )
 
@@ -2225,17 +2452,9 @@ class Simulator:
         yaw: float,
     ) -> Tuple[float, float, float]:
         """Express a map-frame hit in the lidar frame at ``(x, y, yaw)``."""
-        ox, oy, oz = self.map_laser_origin_at(x, y, yaw)
-        dx = float(hit[0]) - ox
-        dy = float(hit[1]) - oy
-        dz = float(hit[2]) - oz
-        cosine = math.cos(yaw)
-        sine = math.sin(yaw)
-        return (
-            cosine * dx + sine * dy,
-            -sine * dx + cosine * dy,
-            dz,
-        )
+        origin, rotation = self.laser_pose_at(x, y, yaw)
+        delta = np.asarray(hit, dtype=float).reshape(3) - origin
+        return tuple(float(value) for value in rotation.T @ delta)
 
     @staticmethod
     def pose_at_scan_fraction(
@@ -2276,21 +2495,21 @@ class Simulator:
         range_max: float,
     ) -> Tuple[float, float, float] | None:
         """Cast from an arbitrary pose; return map-frame hit or ``None``."""
-        ox, oy, oz = self.laser_origin_at(x, y, yaw)
-        heading = float(yaw) + float(yaw_offset)
-        elevation = float(pitch)
-        hit = self.cast_from_origin(ox, oy, oz, heading, elevation, float(range_max))
-        origin = (ox, -oz, oy)
-        habitat = self.hit_distance(hit, ox, oy, oz)
-        actor = self.actor_distance(origin, heading, elevation, range_max)
-        if actor is not None and (habitat is None or actor < habitat):
-            direction = self.ray_direction(heading, elevation)
-            return (
-                origin[0] + actor * direction[0],
-                origin[1] + actor * direction[1],
-                origin[2] + actor * direction[2],
-            )
-        return hit
+        origin, rotation = self.laser_pose_at(x, y, yaw)
+        local = np.array(
+            [
+                math.cos(yaw_offset) * math.cos(pitch),
+                math.sin(yaw_offset) * math.cos(pitch),
+                math.sin(pitch),
+            ],
+            dtype=float,
+        )
+        direction = rotation @ local
+        distance = self.cast_direction(origin, direction, range_max)
+        if distance is None:
+            return None
+        point = origin + distance * direction
+        return (float(point[0]), float(point[1]), float(point[2]))
 
     def raycast_cloud(
         self,

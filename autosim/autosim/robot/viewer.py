@@ -18,11 +18,28 @@ from autosim.runtime.settings import Config
 from autosim.backends.habitat.simulator import Simulator
 
 
+def shipped_robot_defaults(profile: str) -> dict:
+    """``habitat.robot`` from ``config/robots/<profile>.yaml`` when present.
+
+    Keeps the preview in step with the shipped demo config: home joint pose,
+    speed limits, and control channels.
+    """
+    path = Path(__file__).resolve().parents[2] / 'config' / 'robots' / f'{profile}.yaml'
+    if not path.is_file():
+        return {}
+    try:
+        block = Config.load(path).data['habitat'].get('robot') or {}
+    except (KeyError, ValueError):
+        return {}
+    return dict(block)
+
+
 def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int = 720) -> dict:
     robot = apply_profile({'profile': profile, 'instance': True, 'fixed_base': True,
                            'cmd_vel': '/cmd_vel',
                            'watchdog_sec': 0.5, 'control_hz': 50.0, 'map_frame': 'map'})
-    return Config.load({'habitat': {
+    robot.update(shipped_robot_defaults(profile))
+    habitat = {
         'backend': 'habitat', 'path': scene, 'gpu': 0, 'spawn': [0,0,0], 'robot': robot,
         'sensors': {'camera': {'enabled': False, 'width': width, 'height': height,
                               'rgb_channel': '/camera/rgb/image_raw',
@@ -32,7 +49,18 @@ def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int
                     'chase': {'enabled': True, 'width': width, 'height': height,
                               'clear_color': [0.3, 0.34, 0.4, 1.0],
                               'distance_m': 3.5, 'height_m': 2.2, 'look_at_height_m': 0.8}},
-    }}).data
+    }
+    if not str(scene or '').strip():
+        # A floating robot is hard to read: give the preview a lit studio floor.
+        habitat['scenario'] = {
+            'enabled': True, 'type': 'floor',
+            'x_length': 8.0, 'y_length': 8.0, 'z_length': 0.2,
+            'resolution': 0.1, 'spawn_radius': 1.0, 'spawn_height': 1.5,
+        }
+        habitat['render'] = {
+            'enable_hbao': True,
+        }
+    return Config.load({'habitat': habitat}).data
 
 
 def camera_pose(sim: Simulator, azimuth: float, elevation: float, distance: float, target_height: float) -> None:

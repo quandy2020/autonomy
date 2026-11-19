@@ -24,6 +24,13 @@ import numpy as np
 class Stage:
     """Ground plane plus exposed voxel faces, written as a Y-up OBJ."""
 
+    # Neutral studio greys: an untextured OBJ otherwise renders brown under
+    # Habitat's default material, which reads as dirt rather than a floor.
+    MATERIALS = {
+        "floor": {"kd": (0.60, 0.60, 0.62), "ks": (0.04, 0.04, 0.04), "ns": 8.0},
+        "obstacle": {"kd": (0.80, 0.80, 0.82), "ks": (0.06, 0.06, 0.06), "ns": 16.0},
+    }
+
     def write(
         self,
         occupied: np.ndarray,
@@ -42,17 +49,52 @@ class Stage:
         Returns:
             ``path``.
         """
-        triangles = [self.ground(occupied.shape, origin, resolution)]
-        triangles.extend(self.exposed_faces(occupied, origin, resolution))
-        vertices = self.to_habitat(np.concatenate(triangles, axis=0)).reshape(-1, 3)
+        groups = [("floor", self.ground(occupied.shape, origin, resolution))]
+        groups.extend(
+            ("obstacle", part)
+            for part in self.exposed_faces(occupied, origin, resolution)
+            if part.shape[0]
+        )
+        triangles = np.concatenate([part for _, part in groups], axis=0)
+        vertices = self.to_habitat(triangles).reshape(-1, 3)
         path.parent.mkdir(parents=True, exist_ok=True)
+        self.write_material(path)
         with path.open("w", encoding="utf-8") as handle:
             handle.write("# autosim scenario stage, Habitat Y-up\n")
+            handle.write(f"mtllib {path.with_suffix('.mtl').name}\n")
             for x, y, z in vertices:
                 handle.write(f"v {x:.5f} {y:.5f} {z:.5f}\n")
-            for index in range(0, vertices.shape[0], 3):
-                handle.write(f"f {index + 1} {index + 2} {index + 3}\n")
+            index = 0
+            for material, part in groups:
+                handle.write(f"usemtl {material}\n")
+                for _ in range(part.shape[0]):
+                    handle.write(f"f {index + 1} {index + 2} {index + 3}\n")
+                    index += 3
         return path
+
+    def write_material(self, path: Path) -> Path:
+        """Write the companion ``.mtl`` for the stage OBJ.
+
+        Args:
+            path: OBJ path; the material file replaces its suffix.
+
+        Returns:
+            Material file path.
+        """
+        material_path = path.with_suffix(".mtl")
+        with material_path.open("w", encoding="utf-8") as handle:
+            handle.write("# autosim scenario materials\n")
+            for name, values in self.MATERIALS.items():
+                kd = values["kd"]
+                ks = values["ks"]
+                handle.write(f"newmtl {name}\n")
+                handle.write("Ka 0.20 0.20 0.20\n")
+                handle.write(f"Kd {kd[0]:.3f} {kd[1]:.3f} {kd[2]:.3f}\n")
+                handle.write(f"Ks {ks[0]:.3f} {ks[1]:.3f} {ks[2]:.3f}\n")
+                handle.write(f"Ns {values['ns']:.1f}\n")
+                handle.write("d 1.0\n")
+                handle.write("illum 2\n\n")
+        return material_path
 
     @staticmethod
     def ground(shape: tuple[int, int, int], origin: np.ndarray, resolution: float) -> np.ndarray:

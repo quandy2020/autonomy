@@ -108,6 +108,49 @@ class Messages:
         )
 
     @staticmethod
+    def rotation_to_quaternion(
+        rotation: np.ndarray,
+    ) -> Tuple[float, float, float, float]:
+        """Rotation matrix → ``(x, y, z, w)`` quaternion (Shepperd's method).
+
+        Args:
+            rotation: ``3×3`` orthonormal matrix.
+
+        Returns:
+            Unit quaternion ``(x, y, z, w)``.
+        """
+        matrix = np.asarray(rotation, dtype=float).reshape(3, 3)
+        trace = float(matrix[0, 0] + matrix[1, 1] + matrix[2, 2])
+        if trace > 0.0:
+            scale = math.sqrt(trace + 1.0) * 2.0
+            w = 0.25 * scale
+            x = (matrix[2, 1] - matrix[1, 2]) / scale
+            y = (matrix[0, 2] - matrix[2, 0]) / scale
+            z = (matrix[1, 0] - matrix[0, 1]) / scale
+        elif matrix[0, 0] > matrix[1, 1] and matrix[0, 0] > matrix[2, 2]:
+            scale = math.sqrt(1.0 + matrix[0, 0] - matrix[1, 1] - matrix[2, 2]) * 2.0
+            w = (matrix[2, 1] - matrix[1, 2]) / scale
+            x = 0.25 * scale
+            y = (matrix[0, 1] + matrix[1, 0]) / scale
+            z = (matrix[0, 2] + matrix[2, 0]) / scale
+        elif matrix[1, 1] > matrix[2, 2]:
+            scale = math.sqrt(1.0 + matrix[1, 1] - matrix[0, 0] - matrix[2, 2]) * 2.0
+            w = (matrix[0, 2] - matrix[2, 0]) / scale
+            x = (matrix[0, 1] + matrix[1, 0]) / scale
+            y = 0.25 * scale
+            z = (matrix[1, 2] + matrix[2, 1]) / scale
+        else:
+            scale = math.sqrt(1.0 + matrix[2, 2] - matrix[0, 0] - matrix[1, 1]) * 2.0
+            w = (matrix[1, 0] - matrix[0, 1]) / scale
+            x = (matrix[0, 2] + matrix[2, 0]) / scale
+            y = (matrix[1, 2] + matrix[2, 1]) / scale
+            z = 0.25 * scale
+        norm = math.sqrt(x * x + y * y + z * z + w * w)
+        if norm < 1e-12:
+            return (0.0, 0.0, 0.0, 1.0)
+        return (x / norm, y / norm, z / norm, w / norm)
+
+    @staticmethod
     def diagonal_covariance(values: Sequence[float], size: int = 36) -> list:
         """Build a row-major covariance with diagonal ``values`` (rest zero)."""
         dim = int(round(math.sqrt(int(size))))
@@ -177,6 +220,7 @@ class Messages:
         range_max: float,
         scan_time: float,
         intensities: np.ndarray | None = None,
+        time_increment: float | None = None,
     ) -> LaserScan:
         """Build a ``sensor_msgs.LaserScan``.
 
@@ -191,6 +235,8 @@ class Messages:
             range_max: Maximum valid range (m).
             scan_time: Full-scan duration (s).
             intensities: Optional intensity array.
+            time_increment: Duration between beams (s); derived from
+                ``scan_time`` and the beam count when ``None``.
 
         Returns:
             Populated :class:`LaserScan`.
@@ -200,7 +246,10 @@ class Messages:
         message.angle_min = float(angle_min)
         message.angle_max = float(angle_max)
         message.angle_increment = float(angle_increment)
-        message.time_increment = 0.0
+        count = int(np.asarray(ranges).size)
+        if time_increment is None:
+            time_increment = float(scan_time) / max(count - 1, 1)
+        message.time_increment = float(time_increment)
         message.scan_time = float(scan_time)
         message.range_min = float(range_min)
         message.range_max = float(range_max)
@@ -474,6 +523,7 @@ class Messages:
         linear_acceleration: Tuple[float, float, float],
         gyro_variance: float = 0.0,
         accel_variance: float = 0.0,
+        orientation_variance: float | None = 0.0,
     ) -> Imu:
         """Build a ``sensor_msgs.Imu``.
 
@@ -485,6 +535,9 @@ class Messages:
             linear_acceleration: Linear acceleration ``(ax, ay, az)`` (m/s²).
             gyro_variance: Diagonal angular-velocity variance (rad²/s²).
             accel_variance: Diagonal linear-acceleration variance ((m/s²)²).
+            orientation_variance: Diagonal orientation variance (rad²).
+                ``None`` marks the orientation as unknown (``-1`` in
+                ``orientation_covariance[0]``), per ``sensor_msgs/Imu``.
 
         Returns:
             Populated :class:`Imu`.
@@ -501,7 +554,13 @@ class Messages:
         message.linear_acceleration.x = linear_acceleration[0]
         message.linear_acceleration.y = linear_acceleration[1]
         message.linear_acceleration.z = linear_acceleration[2]
-        message.orientation_covariance.extend([-1.0] + [0.0] * 8)
+        if orientation_variance is None:
+            message.orientation_covariance.extend([-1.0] + [0.0] * 8)
+        else:
+            ov = float(orientation_variance)
+            message.orientation_covariance.extend(
+                cls.diagonal_covariance([ov, ov, ov], 9)
+            )
         gv = float(gyro_variance)
         av = float(accel_variance)
         message.angular_velocity_covariance.extend(cls.diagonal_covariance([gv, gv, gv], 9))

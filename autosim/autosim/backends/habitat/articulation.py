@@ -1,6 +1,7 @@
 """Named kinematic control using Habitat's actual joint-position offsets."""
 from __future__ import annotations
 
+import time
 from typing import Mapping, Any
 import numpy as np
 
@@ -13,6 +14,7 @@ class Articulation:
         self.joints = dict(joints)
         self.offsets = {}
         self.velocity_offsets = {}
+        self.stamp: float | None = None
         for link_id in robot.get_link_ids():
             if robot.get_link_num_joint_pos(link_id) == 0:
                 continue
@@ -34,15 +36,38 @@ class Articulation:
         values = self.robot.joint_velocities
         return {name: float(values[offset]) for name, offset in self.velocity_offsets.items()}
 
-    def set_positions(self, updates: Mapping[str, float]) -> None:
+    def set_positions(
+        self, updates: Mapping[str, float], dt: float | None = None
+    ) -> None:
+        """Apply a partial pose and derive joint velocities from the change.
+
+        Habitat is kinematic, so ``joint_velocities`` stays zero unless this
+        controller writes it. Finite differences over the wall-clock interval
+        since the previous write give ``/joint_states`` a usable velocity for
+        controllers that watch it; re-applying the same pose decays it to zero.
+
+        Args:
+            updates: Partial ``name → position`` commands (rad or m).
+            dt: Interval override in seconds; wall clock when ``None``.
+        """
         for name in updates:
             if name not in self.joints:
                 raise ValueError(f"unknown joint: {name}")
             if self.joints[name].mimic:
                 raise ValueError(f"joint {name} mimics {self.joints[name].mimic}; command its source")
-        positions = complete_positions(self.joints, {**self.positions(), **updates})
+        previous = self.positions()
+        positions = complete_positions(self.joints, {**previous, **updates})
         values = np.array(self.robot.joint_positions, copy=True)
         for name, position in positions.items():
             values[self.offsets[name]] = position
         self.robot.joint_positions = values
-        self.robot.joint_velocities = np.zeros_like(self.robot.joint_velocities)
+        now = time.monotonic()
+        span = float(dt) if dt is not None else (
+            now - self.stamp if self.stamp is not None else 0.0
+        )
+        self.stamp = now
+        velocities = np.zeros_like(self.robot.joint_velocities)
+        if span > 1e-6:
+            for name, offset in self.velocity_offsets.items():
+                velocities[offset] = (positions[name] - previous[name]) / span
+        self.robot.joint_velocities = velocities

@@ -5,12 +5,24 @@ habitat:
   path: ""  # Optional scene GLB; empty opens the robot in an empty scene.
   gpu: 0
   spawn: [0.0, 0.0, 0.0]
+  # Studio floor for the empty-scene preview (ignored when path is set).
+  scenario:
+    enabled: true
+    type: floor
+    x_length: 8.0
+    y_length: 8.0
+    z_length: 0.2
+    resolution: 0.1
+    spawn_radius: 1.0
+    spawn_height: 1.5
+  render:
+    enable_hbao: true
   robot:
     profile: unitree_g1
     instance: true
     fixed_base: true
-    max_linear: 0.5
-    max_angular: 1.0
+    max_linear: 1.2
+    max_angular: 1.5
     max_linear_accel: 0.8
     max_linear_decel: 1.2
     max_angular_accel: 2.0

@@ -517,3 +517,29 @@ def test_pedestrian_does_not_enter_an_obstacle():
     agent.goal[:] = [0.0, 3.0]
     agent.step(0.1, bodies=np.array([[0.25, 0.0]]), body_radius=0.2)
     assert agent.position[0, 0] < 0.0
+
+
+def test_floor_scenario_keeps_only_the_ground_plane(tmp_path):
+    settings = dict(SMALL)
+    settings.update({"type": "floor", "mesh": str(tmp_path / "floor.obj")})
+    world = Scenario(settings).build()
+    assert world.occupied is not None
+    assert not world.occupied.any()
+    assert world.points.shape == (0, 3)
+    assert world.mesh is not None and world.mesh.is_file()
+    text = world.mesh.read_text()
+    assert text.count("\nf ") == 2  # two ground triangles, no walls
+
+
+def test_stage_writes_material_groups(tmp_path):
+    from autosim.scene.gen.stage import Stage
+
+    occupied = np.zeros((4, 4, 2), dtype=bool)
+    occupied[1, 1, 0] = True
+    path = Stage().write(occupied, np.zeros(3), 0.1, tmp_path / "stage.obj")
+    text = path.read_text()
+    assert "mtllib stage.mtl" in text
+    assert "usemtl floor" in text
+    assert "usemtl obstacle" in text
+    material = (tmp_path / "stage.mtl").read_text()
+    assert "newmtl floor" in material and "newmtl obstacle" in material

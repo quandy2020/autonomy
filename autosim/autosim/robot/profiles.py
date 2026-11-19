@@ -70,10 +70,12 @@ PROFILES: Dict[str, RobotProfile] = {
 }
 
 # URDF-only Habitat models; these do not claim to provide Isaac USD assets.
+# Heights place the lowest visual point on the floor for the URDF home pose:
+# Google wheel radius, G1 ankle sole, and Go2 foot sole respectively.
 _ARTICULATED = {
-    "google_robot": 0.0,
-    "unitree_g1": 0.85,
-    "unitree_go2": 0.45,
+    "google_robot": 0.1975,
+    "unitree_g1": 0.7162,
+    "unitree_go2": 0.3848,
 }
 
 for _name, _height in _ARTICULATED.items():

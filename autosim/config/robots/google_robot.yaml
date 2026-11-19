@@ -5,10 +5,31 @@ habitat:
   path: ""  # Optional scene GLB; empty opens the robot in an empty scene.
   gpu: 0
   spawn: [0.0, 0.0, 0.0]
+  # Studio floor for the empty-scene preview (ignored when path is set).
+  scenario:
+    enabled: true
+    type: floor
+    x_length: 8.0
+    y_length: 8.0
+    z_length: 0.2
+    resolution: 0.1
+    spawn_radius: 1.0
+    spawn_height: 1.5
+  render:
+    enable_hbao: true
   robot:
     profile: google_robot
     instance: true
     fixed_base: true
+    # Arm hanging down with a slight elbow bend: the URDF zero pose points
+    # straight up, and a straight arm would reach through the floor.
+    joint_positions:
+      joint_shoulder: 3.0
+      joint_bicep: 0.0
+      joint_elbow: -0.9
+      joint_wrist: 0.0
+      joint_finger_right: 0.6
+      joint_finger_left: 0.6
     max_linear: 0.5
     max_angular: 1.0
     max_linear_accel: 0.8

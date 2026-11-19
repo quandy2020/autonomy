@@ -171,14 +171,42 @@ def test_refine_floor_y_from_mesh_pulls_down_to_glb():
     simulator.y = 2.0
     simulator.yaw = 0.3
 
-    def fake_cast(ox, oy, oz, yaw, pitch, range_max):
+    def fake_cast(ox, oy, oz, yaw, pitch, range_max, *, ignore_object_id=None):
         assert pitch < 0.0  # downward
         assert oy > simulator.floor_y  # probe above agent
+        assert ignore_object_id is None  # no articulated robot in this fixture
         return (ox, -oz, 0.01)  # map z_up = geometric floor
 
     simulator.cast_from_origin = fake_cast  # type: ignore[method-assign]
     assert simulator.refine_floor_y_from_mesh() == pytest.approx(0.01)
     assert simulator.floor_y == pytest.approx(0.01)
+
+
+def test_refine_floor_y_ignores_articulated_robot():
+    """The floor probe must skip the robot hull sitting over the spawn point."""
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    simulator.session = object()
+    simulator.floor_y = 0.0
+
+    class Robot:
+        object_id = 42
+
+    simulator.articulated = Robot()
+    seen = {}
+
+    def fake_cast(ox, oy, oz, yaw, pitch, range_max, *, ignore_object_id=None):
+        seen["ignore_object_id"] = ignore_object_id
+        return (ox, -oz, 0.0)
+
+    simulator.cast_from_origin = fake_cast  # type: ignore[method-assign]
+    assert simulator.refine_floor_y_from_mesh() == pytest.approx(0.0)
+    assert seen["ignore_object_id"] == 42
 
 
 def test_navmesh_height_candidates_include_bounds_and_samples():

@@ -721,6 +721,11 @@ class Runner:
         # still fill /imu at rate_hz — lightning rejects IMU Δt > 0.1 s.
         self.emit("imu", self.publish_imu, yaw, linear, stamp, dt)
         self.emit("joint_states", self.publish_joint_states, stamp)
+        # Kinematic joints only move when commanded; re-apply the held pose so
+        # the finite-difference velocity decays to zero on the next tick.
+        hold = getattr(self.simulator, "hold_joint_positions", None)
+        if callable(hold):
+            hold()
         self.emit("truth", self.publish_truth, stamp)
         self.emit("footprint", self.publish_footprint, stamp)
         self.emit("tf", self.publish_tf, stamp)
@@ -812,8 +817,9 @@ class Runner:
                 angle_increment=self.sensors.angle_increment,
                 range_min=self.sensors.range_min,
                 range_max=self.sensors.range_max,
-                # Instantaneous cast: do not advertise a spinning-lidar duration.
-                scan_time=0.0,
+                # One sweep per period: report the sweep duration and the
+                # per-beam offset so consumers can deskew a moving scan.
+                scan_time=1.0 / max(float(self.lidar_2d.get("rate_hz", 10.0)), 1e-3),
             ),
         )
 
@@ -1667,7 +1673,7 @@ class Runner:
                 angle_increment=self.sensors.angle_increment,
                 range_min=self.sensors.range_min,
                 range_max=self.sensors.range_max,
-                scan_time=0.0,
+                scan_time=1.0 / max(float(self.lidar_2d.get("rate_hz", 10.0)), 1e-3),
             ),
         )
 
@@ -1861,21 +1867,77 @@ class Runner:
             gyro_z, accel_x, accel_y, accel_z = self.robot.update_inertial(
                 yaw_i, linear, t_i
             )
-            half = 0.5 * yaw_i
-            orientation = (0.0, 0.0, math.sin(half), math.cos(half))
+            orientation, angular, specific = self.imu_sample(
+                frame, yaw_i, gyro_z, (accel_x, accel_y, accel_z)
+            )
             self.bridge.publish(
                 "imu",
                 Messages.encode_inertial(
                     stamp_i,
                     frame,
                     orientation,
-                    (0.0, 0.0, gyro_z),
-                    (accel_x, accel_y, accel_z),
+                    angular,
+                    specific,
                     gyro_variance=gyro_var,
                     accel_variance=accel_var,
                 ),
             )
         self.imu_yaw = float(yaw)
+
+    def imu_sample(
+        self,
+        frame: str,
+        yaw: float,
+        gyro_z: float,
+        accel: Tuple[float, float, float],
+    ) -> Tuple[
+        Tuple[float, float, float, float],
+        Tuple[float, float, float],
+        Tuple[float, float, float],
+    ]:
+        """Express base-link inertial readings in the mounted IMU frame.
+
+        Habitat has no physics IMU, so the plant integrates yaw rate and
+        specific force at ``base_link``. A tilted or arm-mounted sensor sees
+        those vectors rotated into its own axes, and its orientation has to
+        include the URDF link chain (G1 ``imu_in_torso`` sits above a yawing
+        waist joint).
+
+        Args:
+            frame: IMU link from ``sensors.imu.frame``.
+            yaw: Base heading for this sample (rad).
+            gyro_z: Base yaw rate (rad/s).
+            accel: Base specific force ``(ax, ay, az)`` (m/s²).
+
+        Returns:
+            ``(orientation, angular_velocity, linear_acceleration)``.
+        """
+        local = None
+        rotation_fn = getattr(self.simulator, "link_rotation", None)
+        if callable(rotation_fn):
+            try:
+                local = rotation_fn(str(frame))
+            except Exception:
+                local = None
+        if local is None:
+            half = 0.5 * float(yaw)
+            return (
+                (0.0, 0.0, math.sin(half), math.cos(half)),
+                (0.0, 0.0, float(gyro_z)),
+                (float(accel[0]), float(accel[1]), float(accel[2])),
+            )
+        rotation = np.asarray(local, dtype=float).reshape(3, 3)
+        cos_y, sin_y = math.cos(float(yaw)), math.sin(float(yaw))
+        world = np.array(
+            [[cos_y, -sin_y, 0.0], [sin_y, cos_y, 0.0], [0.0, 0.0, 1.0]]
+        ) @ rotation
+        angular = rotation.T @ np.array([0.0, 0.0, float(gyro_z)])
+        specific = rotation.T @ np.asarray(accel, dtype=float).reshape(3)
+        return (
+            Messages.rotation_to_quaternion(world),
+            (float(angular[0]), float(angular[1]), float(angular[2])),
+            (float(specific[0]), float(specific[1]), float(specific[2])),
+        )
 
     def publish_tf(self, stamp: Tuple[int, int]) -> None:
         """Publish robot TF for Autoviz / Cartographer / planning.

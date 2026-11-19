@@ -50,7 +50,11 @@ simulator.set_joint_positions({"joint_elbow": 0.6})
 print(simulator.joint_states())
 ```
 
-`habitat.robot.joint_positions` 可以设置初始姿态。`root_height` 设置 URDF 根节点离场景地面的高度；各 profile 提供展示默认值，可针对不同零姿态自行调整。默认固定底座，关节采用运动学位置控制。该功能支持模型展示与关节姿态操作；人形平衡、四足步态、接触动力学和行走策略需要另外接入控制器。三个模型均订阅 `/cmd_vel`（Autolink TwistStamped，读取 `twist.linear.x` 和 `twist.angular.z`），线速度上限 0.5 m/s，角速度上限 1.0 rad/s。0.5 秒无新指令后减速停止。支持前进、后退、原地转向和弧线运动；底座位姿、里程计和 TF 同步。
+`habitat.robot.joint_positions` 可以设置初始姿态。`root_height` 设置 URDF 根节点离场景地面的高度；各 profile 提供展示默认值，可针对不同零姿态自行调整。默认固定底座，关节采用运动学位置控制。该功能支持模型展示与关节姿态操作；人形平衡、四足步态、接触动力学和行走策略需要另外接入控制器。三个模型均订阅 `/cmd_vel`（Autolink TwistStamped，读取 `twist.linear.x` 和 `twist.angular.z`）。0.5 秒无新指令后减速停止。支持前进、后退、原地转向和弧线运动；底座位姿、里程计和 TF 同步。
+
+速度上限按机型配置：Google 0.5 m/s、1.0 rad/s，G1 1.2 m/s、1.5 rad/s，Go2 2.0 m/s、2.0 rad/s。
+
+`/joint_states` 的 `velocity` 由相邻两次位置写入的差值除以实际间隔得到。Habitat 是运动学后端，不会自己积分关节速度；仿真循环在发布后重新写入当前姿态，因此命令到达的那一帧速度非零，下一帧回到零。
 
 ## 支持模型
 
@@ -116,7 +120,7 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
           max_range: 0.5
 ```
 
-`/imu/data` 的朝向是平面航向四元数，线加速度含重力。Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` 轴投射一条射线，并跳过机器人自身的碰撞体：八个 ToF 用 4 m 量程，两个悬崖传感器用 0.5 m。无回波按 ROS 惯例报 `inf`，所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
+`/imu/data` 的朝向是 IMU 安装坐标系在 `map` 下的姿态，线加速度含重力。姿态来自 URDF 链路旋转，因此 `imu.neck` 这类带俯仰的安装点不会退化成平面航向；角速度和比力也从 `base_link` 旋转到安装坐标系。`orientation_covariance[0] = 0` 表示姿态可用，`-1` 表示后端只提供平面航向。Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` 轴投射一条射线，并跳过机器人自身的碰撞体：八个 ToF 用 4 m 量程，两个悬崖传感器用 0.5 m。无回波按 ROS 惯例报 `inf`，所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
 
 ## 宇树传感器
 
@@ -128,6 +132,8 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
 | `unitree_go2` | `front_camera`，640×480，HFOV 120° | `imu`，50 Hz | `laser_link`，360 束，30 m |
 
 `d435_link` 和 `front_camera` 的 URDF 坐标轴已经符合 ROS 光学坐标系，`follow_urdf: true` 会让相机随关节姿态和机身运动更新。Go2 的 `laser_link` 是配置层补的安装点，默认位于 URDF 根节点上方 0.1 m；`sensors.lidar_2d.height` 始终表示相对根节点的高度，`root_height` 只在射线世界坐标和 `odom→base` 变换中应用一次。G1 的 `mid360_link` 直接使用 URDF 安装位置。
+
+激光射线使用 `sensors.lidar_2d.frame` 的实时位姿：`mid360_link` 挂在 `torso_link` 上，转动 `waist_yaw_joint` 后 `/scan` 的方向随之旋转，地图裁剪也使用同一朝向。URDF 里没有该坐标系时（Go2 的 `laser_link`）回退到根节点上方 `height` 的虚拟安装点。`/scan` 的 `scan_time` 等于 `1 / rate_hz`，`time_increment` 等于 `scan_time / (num_beams - 1)`，便于下游做运动补偿。
 
 ```yaml
     camera:
@@ -142,6 +148,26 @@ IMU 和测距传感器按同一套 URDF 坐标系发布：
       enabled: true
       frame: mid360_link
 ```
+
+## 预览场景与渲染
+
+`habitat.path` 为空时，`habitat.scenario` 会生成程序化场景。三个机器人配置都用 `type: floor`：只生成 8 m × 8 m 的地面三角形，不放置障碍物，机器人因此站在实地上而不是悬空。查看器在未指定 `--scene` 时使用同样的地面，并读取 `config/robots/<profile>.yaml` 的 `habitat.robot`，预览的初始姿态和速度上限与正式配置一致。
+
+地面 OBJ 旁边会写出同名 `.mtl`，包含中性灰的 `floor` 和浅灰的 `obstacle` 两种材质。没有材质文件时 Habitat 会用默认材质把地面渲染成棕色，看起来像泥土。
+
+`habitat.render` 控制观感：
+
+```yaml
+  render:
+    enable_hbao: true     # 接触阴影，底座和脚部不再像浮在地面上
+    lights:               # 可选，替换场景默认灯组
+      - vector: [0.35, -0.9, -0.35, 0.0]   # w=0 方向光，w=1 点光
+        color: [0.85, 0.86, 0.88]
+```
+
+`lights` 需要 `override_scene_light_defaults`，Habitat 才会接受 `set_light_setup`。未显式设置 `override_lights` 时，自定义灯组只作用于程序化场景；加载真实 GLB 时保留场景自带灯光。
+
+Google 的 URDF 零位把手臂竖直举过头顶，不适合作为展示姿态。`config/robots/google_robot.yaml` 用 `joint_positions` 把肩部转到 3.0 rad、肘部 -0.9 rad，bicep 和 wrist 归零，手臂向前下方自然下垂且夹爪不穿地，夹爪指张开 0.6 rad。
 
 ## 资源复现与验证
 
