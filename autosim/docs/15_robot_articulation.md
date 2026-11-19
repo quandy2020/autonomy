@@ -162,4 +162,4 @@ mesh 转换脚本需要 Python 3.10+ 和 trimesh、fast-simplification、pycolla
 
 Smoke 检查每个模型是否真实加载、每个可独立控制的自由度能否移动，以及组合关节变化是否改变渲染图。输出控制前后的 PNG 和 `results.json`。多个模型分别在子进程运行，以便记录原生导入器崩溃。该检查不验证行走与碰撞动力学。
 
-新 profile 提供 URDF 资源，Isaac 后端仍需要用户指定实际的 `robot.usd_robot`。
+这三个模型只适配 Habitat，提供 URDF 与 mesh 资源；Isaac 后端不在适配范围内，对它们选择 `isaac` 会直接报错。
