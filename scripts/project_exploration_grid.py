@@ -36,15 +36,18 @@ def rotation_matrix(quaternion):
                      [2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y)]])
 
 
-def project_grid(source, target, transform, allow_parallel_plane_projection=False):
+def project_grid(source, target, transform, allow_parallel_plane_projection=False, aggregation='maximum'):
     """Use conservative source-cell bounds for each complete target cell.
 
     Every source cell in the inverse-projected target square's bounding box must
-    be known. Values use the largest probability in that box, so obstacle and
-    uncertain evidence take precedence over free. Bounding boxes may include
-    extra cells for a rotated lattice; this intentionally reduces free coverage.
+    be known. Default maximum aggregation preserves obstacle precedence for
+    occupancy; explicit minimum aggregation preserves the weakest measured
+    target-ledger quality. Bounding boxes may include extra cells for a rotated
+    lattice; neither mode invents known evidence in an unknown source region.
     No target occupancy values participate in output classification.
     """
+    if aggregation not in ('maximum', 'minimum'):
+        raise ValueError('unsupported explicit projection aggregation')
     values = validate_grid(source, require_axis_aligned=False)
     validate_grid(target)
     if transform.DESCRIPTOR.full_name != 'automsgs.msgs.geometry_msgs.TransformStamped':
@@ -112,7 +115,7 @@ def project_grid(source, target, transform, allow_parallel_plane_projection=Fals
         if (span <= 0).any():
             raise ValueError('target cell vanished at numerical precision')
         known = np.ones(len(selected), dtype=bool)
-        maximum = np.zeros(len(selected), dtype=np.int32)
+        maximum = np.full(len(selected), 0 if aggregation == 'maximum' else 100, dtype=np.int32)
         for dy in range(int(span[:, 1].max())):
             for dx in range(int(span[:, 0].max())):
                 active = (dx < span[:, 0]) & (dy < span[:, 1])
@@ -125,7 +128,10 @@ def project_grid(source, target, transform, allow_parallel_plane_projection=Fals
                 valid = active & inside
                 sample[valid] = values[y[valid], x[valid]]
                 known &= ~active | (sample >= 0)
-                np.maximum(maximum, sample, out=maximum, where=active)
+                if aggregation == 'maximum':
+                    np.maximum(maximum, sample, out=maximum, where=active)
+                else:
+                    np.minimum(maximum, sample, out=maximum, where=active)
         output[begin + selected[known]] = maximum[known]
     result = type(source)()
     result.header.CopyFrom(source.header)
@@ -135,7 +141,8 @@ def project_grid(source, target, transform, allow_parallel_plane_projection=Fals
     result.data.extend(output.tolist())
     details = {
         'projected': False,
-        'method': 'All source cells in the inverse target-cell bounding box; unknown veto, maximum probability.',
+        'method': 'All source cells in the inverse target-cell bounding box; unknown veto, ' + aggregation + ' value.',
+        'aggregation': aggregation,
         'target_values_used_for_classification': False,
         'transform_fitted_from_maps': False,
         'source_frame': source.header.frame_id, 'target_frame': target.header.frame_id,
@@ -160,6 +167,8 @@ def main():
     parser.add_argument('--target-grid', type=Path, required=True)
     parser.add_argument('--transform', type=Path, required=True)
     parser.add_argument('--allow-parallel-plane-projection', action='store_true')
+    parser.add_argument('--aggregation', choices=('maximum', 'minimum'), default='maximum',
+                        help='Maximum for occupancy; minimum for conservative target-ledger quality projection')
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--report', type=Path, required=True)
     args = parser.parse_args()
@@ -176,7 +185,7 @@ def main():
         transform, transform_hash = load_message(args.transform, TransformStamped)
         if args.source_map.resolve() == args.target_grid.resolve() or source_hash == target_hash:
             raise ValueError('algorithm and target recordings must be independent')
-        result, report = project_grid(source, target, transform, args.allow_parallel_plane_projection)
+        result, report = project_grid(source, target, transform, args.allow_parallel_plane_projection, args.aggregation)
         report['input_sha256'] = {'source_map': source_hash, 'target_grid': target_hash,
                                  'transform': transform_hash}
         payload = result.SerializeToString()

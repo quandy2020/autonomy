@@ -36,6 +36,14 @@ file(GLOB_RECURSE AUTONOMY_TASK_SRCS CONFIGURE_DEPENDS
 list(FILTER AUTONOMY_TASK_SRCS EXCLUDE REGEX "main\\.cpp$")
 list(FILTER AUTONOMY_TASK_SRCS EXCLUDE REGEX "_test\\.cpp$")
 
+option(AUTONOMY_BUILD_COVERAGE "Build native complete coverage task navigation" OFF)
+if(AUTONOMY_BUILD_COVERAGE AND NOT AUTONOMY_BUILD_FIELDS2COVER)
+  message(FATAL_ERROR "Coverage task requires AUTONOMY_BUILD_FIELDS2COVER=ON")
+endif()
+if(NOT AUTONOMY_BUILD_COVERAGE)
+  list(FILTER AUTONOMY_TASK_SRCS EXCLUDE REGEX "/navigation/coverage/")
+endif()
+
 # --- library -----------------------------------------------------------------
 autocmake_library(autonomy_task
   SHARED
@@ -74,3 +82,25 @@ autocmake_install_share(task
 autocmake_test(charging.auto_recharge_test
   SOURCES charging/auto_recharge_test.cpp
   DEPENDENCIES autonomy_task)
+
+if(AUTONOMY_BUILD_COVERAGE)
+  target_compile_definitions(autonomy_task PUBLIC AUTONOMY_BUILD_COVERAGE=1)
+  target_compile_definitions(autonomy_task PRIVATE
+    AUTONOMY_COVERAGE_DEFAULT_TREE="${CMAKE_CURRENT_SOURCE_DIR}/navigation/coverage/conf/navigate_complete_coverage.xml")
+  install(DIRECTORY navigation/coverage/conf/ DESTINATION share/autonomy/task/navigation/coverage)
+  add_executable(task.coverage_client navigation/coverage/examples/coverage_client.cc)
+  target_link_libraries(task.coverage_client PRIVATE autonomy_task)
+  option(AUTONOMY_BUILD_COVERAGE_TESTS "Build native coverage task regressions" ON)
+  if(AUTONOMY_BUILD_COVERAGE_TESTS)
+    enable_testing()
+    add_executable(task.coverage_test navigation/coverage/tests/coverage_test.cpp)
+    target_link_libraries(task.coverage_test PRIVATE autonomy_task)
+    add_test(NAME task.coverage_test COMMAND task.coverage_test)
+    set_tests_properties(task.coverage_test PROPERTIES TIMEOUT 120)
+    add_executable(task.coverage_endpoint_test navigation/coverage/tests/coverage_endpoint_test.cpp)
+    target_link_libraries(task.coverage_endpoint_test PRIVATE autonomy_task)
+    add_test(NAME task.coverage_endpoint_test COMMAND task.coverage_endpoint_test)
+    set_tests_properties(task.coverage_endpoint_test PROPERTIES TIMEOUT 30)
+
+  endif()
+endif()

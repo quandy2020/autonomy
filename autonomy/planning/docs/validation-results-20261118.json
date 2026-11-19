@@ -1,0 +1,211 @@
+{
+  "date": "2026-11-18",
+  "scope": "Archived fixed-input validation, not a claim about later source revisions",
+  "batches": {
+    "original100": {
+      "total": 100,
+      "passed": 100,
+      "failed": 0,
+      "seed": 20261118,
+      "families": {
+        "rectangle": {
+          "total": 20,
+          "passed": 20,
+          "failed": 0
+        },
+        "trapezoid": {
+          "total": 15,
+          "passed": 15,
+          "failed": 0
+        },
+        "convex_polygon": {
+          "total": 15,
+          "passed": 15,
+          "failed": 0
+        },
+        "concave_L": {
+          "total": 15,
+          "passed": 15,
+          "failed": 0
+        },
+        "concave_U": {
+          "total": 15,
+          "passed": 15,
+          "failed": 0
+        },
+        "obstacles": {
+          "total": 20,
+          "passed": 20,
+          "failed": 0
+        }
+      },
+      "parameters": {
+        "robot_width_m": 1.5,
+        "coverage_width_m": 3.0,
+        "minimum_turning_radius_m": 1.0,
+        "headland_m": 3.0
+      },
+      "thresholds": {
+        "minimum_core_coverage_pct": 95,
+        "inset_symmetric_difference_m2": 0.0001,
+        "native_coverage_difference_pp": 1,
+        "path_boundary_tolerance_m": 0.01,
+        "path_join_tolerance_m": 0.05,
+        "curvature_relative_tolerance": 0.02,
+        "maximum_obstacle_or_outside_length_m": 0.0001
+      },
+      "library_sha256": "9d96a5c2550854938a9837a46f25b03146b7e41c41713f62ec44ecea7949f04a",
+      "library_stable_during_batch": true,
+      "processes_total": 200,
+      "processes_exit_zero": 200,
+      "minimum_core_coverage_pct": 98.00312855035546,
+      "started_at_utc": "2026-11-18T10:18:52.528433+00:00",
+      "finished_at_utc": "2026-11-18T10:19:03.646268+00:00",
+      "input_manifest_sha256": "aa4c2e5b9c9d5edddf09392f4eddab2074e7731b01960f7d55e8464d5a357d90",
+      "before_passed": 68,
+      "before_failed": 32
+    },
+    "expanded500": {
+      "total": 500,
+      "passed": 500,
+      "failed": 0,
+      "seed": 20261118500,
+      "families": {
+        "rectangle": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "trapezoid": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "convex_polygon": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "concave_L": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "concave_U": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "obstacles": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "parallelogram": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "beveled": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "stepped": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        },
+        "irregular": {
+          "total": 50,
+          "passed": 50,
+          "failed": 0
+        }
+      },
+      "parameters": {
+        "robot_width_m": 1.5,
+        "coverage_width_m": 3.0,
+        "minimum_turning_radius_m": 1.0,
+        "headland_m": 3.0
+      },
+      "thresholds": {
+        "minimum_core_coverage_pct": 95,
+        "inset_symmetric_difference_m2": 0.0001,
+        "native_coverage_difference_pp": 1,
+        "path_boundary_tolerance_m": 0.01,
+        "path_join_tolerance_m": 0.05,
+        "curvature_relative_tolerance": 0.02,
+        "maximum_obstacle_or_outside_length_m": 0.0001
+      },
+      "library_sha256": "9d96a5c2550854938a9837a46f25b03146b7e41c41713f62ec44ecea7949f04a",
+      "library_stable_during_batch": true,
+      "processes_total": 1000,
+      "processes_exit_zero": 1000,
+      "minimum_core_coverage_pct": 96.54729321494004,
+      "started_at_utc": "2026-11-18T10:18:53.913707+00:00",
+      "finished_at_utc": "2026-11-18T10:19:52.723861+00:00",
+      "input_manifest_sha256": "c79feefd377ad4f926accef6629d7c26a258e38bf828f31cfae04d3ee615a8e8",
+      "initial_recorded_passed": 496,
+      "initial_recorded_failed": 4,
+      "true_initial_coverage_failures": [
+        "case_029",
+        "case_244",
+        "case_309"
+      ],
+      "verifier_numerical_false_failure": "case_412"
+    }
+  },
+  "fields2cover_regression": {
+    "checks_passed": 28,
+    "checks_total": 28
+  },
+  "archived_full_ctest": {
+    "passed": 35,
+    "total": 36,
+    "failed": [
+      "control.policy_native_spline_tracker_test"
+    ]
+  },
+  "numerical_verifier_evidence": {
+    "case": "case_412",
+    "core_area_m2": 5681.687966476996,
+    "sum_of_individually_clipped_footprints_m2": 5638.444493012313,
+    "pairwise_overlap_area_m2": 1.6119247552148865e-11,
+    "global_frame_geos_union_clipped_area_m2": 5029.0431321691485,
+    "global_frame_coverage_pct": 88.51318766256486,
+    "local_frame_coverage_pct": 99.23889742414855,
+    "precision_grid_1e_9m_coverage_pct": 99.23889742303717,
+    "native_coverage_pct": 99.23889639042855,
+    "conclusion": "Initial case_412 FAIL is a global-frame GEOS union numerical misclassification. Local-frame union and a 1e-9 m precision-grid union independently agree with the analytic sum for non-overlapping parallel footprints. The 95% quality threshold is unchanged."
+  },
+  "images": [
+    {
+      "file": "images/case-244-after.png",
+      "sha256": "6f8948eeb69776ba9651aa85944390f1cce0f83be11b81e6827f2c6f501dce1c"
+    },
+    {
+      "file": "images/case-244-before.png",
+      "sha256": "c0f5ab5241571ae069af6e41250ed0743b9c380a47582a5d0b7566e458e53593"
+    },
+    {
+      "file": "images/documentation-example.png",
+      "sha256": "be842bbe9b92602cde42edf67f9d9d6987b6d94b452c685251ecbe6c0f9f9d45"
+    },
+    {
+      "file": "images/fields2cover-architecture.png",
+      "sha256": "3c60f3d72086e056bdb968d9cbdff04c2960b38aa301b11100227be092b84930"
+    },
+    {
+      "file": "images/fields2cover-dataflow.png",
+      "sha256": "44af3de75c15add87ebe018f7acbb031834356b65fb23ad66e9b2592a92d74cf"
+    },
+    {
+      "file": "images/validation-500-summary-20261118.png",
+      "sha256": "0ed91ca739845e69849f7d2cba3c562357a58acd716a9e04559c01ef745debc4"
+    },
+    {
+      "file": "images/validation-comparison-20261118.png",
+      "sha256": "793d5183ea65cd4c707efb6094229102685c69060dcfd9a135c00fa61f6749ce"
+    }
+  ]
+}

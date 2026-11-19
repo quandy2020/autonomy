@@ -157,6 +157,8 @@ class Robot:
 
     def set_twist(self, linear_x: float, angular_z: float, t: float) -> None:
         """Accept a velocity *command* (clamped); actual speed updates in ``step``."""
+        if not all(math.isfinite(float(v)) for v in (linear_x, angular_z, t)):
+            raise ValueError("cmd_vel and command time must be finite")
         self.cmd_linear = self.clamp(float(linear_x), -self.max_linear, self.max_linear)
         self.cmd_angular = self.clamp(float(angular_z), -self.max_angular, self.max_angular)
         self.last_command_time = float(t)

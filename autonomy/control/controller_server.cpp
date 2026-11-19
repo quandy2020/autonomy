@@ -151,6 +151,23 @@ ControllerServer::ControllerServer(const proto::ControllerOptions& options)
     odom_smoother_ = std::make_shared<utils::OdomSmoother>();
 }
 
+ControllerServer::ControllerServer(const proto::ControllerOptions& options,
+    std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap, NativeControllerIO io)
+    : ControllerServer([&] {
+        auto configured = options;
+        configured.mutable_costmap_2d_options()->set_enabled(false);
+        return configured;
+    }()) {
+    if (!costmap || !io.read_odometry || !io.publish_command || !std::isfinite(io.maximum_state_age) ||
+        io.maximum_state_age <= 0 || io.maximum_state_age > 1)
+        throw std::invalid_argument("native controller requires actual shared map, state and bounded command IO");
+    options_ = options;
+    native_io_ = std::move(io);
+    costmap_wrapper_ = std::move(costmap);
+    global_frame_ = costmap_wrapper_->getGlobalFrameID();
+    robot_base_frame_ = costmap_wrapper_->getBaseFrameID();
+}
+
 ControllerServer::~ControllerServer() {
     Shutdown();
 }
@@ -474,7 +491,34 @@ void ControllerServer::UpdateOdometry(
 
 bool ControllerServer::GetLatestOdometry(
     automsgs::msgs::nav_msgs::Odometry& odom) const {
+    if (native_io_) return ReadNativeOdometry(odom);
     return odom_smoother_ && odom_smoother_->GetLatestOdometry(odom);
+}
+
+bool ControllerServer::ReadNativeOdometry(automsgs::msgs::nav_msgs::Odometry& output) const {
+    if (!native_io_) return false;
+    try {
+        const auto state = native_io_->read_odometry();
+        if (!state || !state->has_header() || !state->header().has_stamp() || state->header().stamp().nanosec() >= 1000000000U ||
+            state->header().frame_id() != global_frame_ || state->child_frame_id() != robot_base_frame_ ||
+            !state->has_pose() || !state->pose().has_pose() || !state->pose().pose().has_pose() ||
+            !state->has_twist() || !state->twist().has_twist()) return false;
+        const auto& pose = state->pose().pose().pose(); const auto& q = pose.orientation();
+        if (!state->pose().pose().has_header() || state->pose().pose().header().frame_id() != global_frame_ ||
+            !state->pose().pose().header().has_stamp() ||
+            state->pose().pose().header().stamp().sec() != state->header().stamp().sec() ||
+            state->pose().pose().header().stamp().nanosec() != state->header().stamp().nanosec()) return false;
+        if (!pose.has_position() || !pose.has_orientation()) return false;
+        for (double value : {pose.position().x(),pose.position().y(),pose.position().z(),q.x(),q.y(),q.z(),q.w(),
+            state->twist().twist().linear().x(),state->twist().twist().linear().y(),state->twist().twist().linear().z(),
+            state->twist().twist().angular().x(),state->twist().twist().angular().y(),state->twist().twist().angular().z()})
+            if (!std::isfinite(value)) return false;
+        if (std::abs(q.x()*q.x()+q.y()*q.y()+q.z()*q.z()+q.w()*q.w()-1)>1e-3) return false;
+        const double stamp = state->header().stamp().sec()+state->header().stamp().nanosec()*1e-9;
+        const auto now = NowTime(); const double current = now.sec()+now.nanosec()*1e-9;
+        if (stamp <= 0 || current < stamp || current-stamp > native_io_->maximum_state_age) return false;
+        output = *state; return true;
+    } catch (...) { return false; }
 }
 
 bool ControllerServer::FindControllerId(const std::string& c_name,
@@ -581,6 +625,24 @@ common::ProgressChecker* ControllerServer::GetActiveProgressChecker() {
 
 void ControllerServer::PublishVelocity(
     const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel) {
+    if (native_io_) {
+        bool accepted = false;
+        try { accepted = native_io_->publish_command(cmd_vel); } catch (...) {}
+        if (!accepted) {
+            last_cmd_vel_.Clear();
+            *last_cmd_vel_.mutable_header()->mutable_stamp() = NowTime();
+            last_cmd_vel_.mutable_header()->set_frame_id(robot_base_frame_);
+            last_cmd_vel_.mutable_twist();  // Native transport requires an explicit actual zero-command payload.
+            if (cmd_vel.twist().linear().x() || cmd_vel.twist().linear().y() || cmd_vel.twist().linear().z() ||
+                cmd_vel.twist().angular().x() || cmd_vel.twist().angular().y() || cmd_vel.twist().angular().z()) {
+                try { (void)native_io_->publish_command(last_cmd_vel_); } catch (...) {}
+                throw common::ControllerException("native command admission or transport rejected the proposal");
+            }
+            AWARN << "native stop-command transport has not accepted zero velocity";
+            return;
+        }
+        last_cmd_vel_ = cmd_vel; return;
+    }
     last_cmd_vel_ = cmd_vel;
     if (cmd_vel_writer_) {
         cmd_vel_writer_->Write(cmd_vel);
@@ -589,6 +651,7 @@ void ControllerServer::PublishVelocity(
 
 void ControllerServer::PublishZeroVelocity() {
     automsgs::msgs::geometry_msgs::TwistStamped zero;
+    zero.mutable_twist();
     *zero.mutable_header()->mutable_stamp() = NowTime();
     zero.mutable_header()->set_frame_id( robot_base_frame_);
     PublishVelocity(zero);
@@ -685,6 +748,7 @@ void ControllerServer::ComputeAndPublishVelocity() {
         *velocity.mutable_header()->mutable_stamp() = odom.header().stamp();
         *velocity.mutable_twist() = odom.twist().twist();
     } else {
+        if (native_io_) throw common::ControllerTFError("native control has no actual acquisition velocity feedback");
         *velocity.mutable_header()->mutable_stamp() = pose.header().stamp();
     }
 
@@ -859,6 +923,12 @@ bool ControllerServer::IsGoalReached() {
 
 bool ControllerServer::GetRobotPose(
     automsgs::msgs::geometry_msgs::PoseStamped& pose) {
+    if (native_io_) {
+        automsgs::msgs::nav_msgs::Odometry state;
+        if (!ReadNativeOdometry(state)) return false;
+        pose = state.pose().pose(); *pose.mutable_header() = state.header();
+        return true;
+    }
     if (costmap_wrapper_ && costmap_wrapper_->getRobotPose(pose)) {
         return true;
     }

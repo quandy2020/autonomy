@@ -347,6 +347,25 @@ void DelayedRgbdAcquisition() {
     CheckRegistered(node, options, false);
 }
 
+/** @brief A valid first depth acquisition waits for its actual CameraInfo callback instead of becoming source loss. */
+void DelayedInitialCalibration() {
+    auto node = autolink::CreateNode("observation_initial_calibration");
+    auto options = Options(p::SensorMode::kRgbdOnly,"initial_calibration");
+    options.localization_wait_timeout = 1500ms;
+    auto evidence = std::make_shared<DelayedEvidence>(); evidence->available[1] = true;
+    auto source = DelayedSource(node,options,evidence);
+    Require(source->Start(),"actual source starts before CameraInfo publication");
+    auto writer = node->CreateWriter<m::Image>(options.depth_topic);
+    Await([&] { return writer && writer->HasReader(); },"actual first-depth Reader discovered");
+    Require(writer->Write(Image()),"first real depth arrives before calibration callback");
+    Await([&] { return source->Snapshot().awaiting_localization[1] == 1; },"first depth retained while actual calibration is pending");
+    Require(!source->Snapshot().depth_calibration_ready && source->Snapshot().rejected[1] == 0,
+        "missing callback does not invent calibration or permanently discard the valid frame");
+    Calibrate(node,options,source);
+    Await([&] { return source->Snapshot().accepted[1] == 1; },"actual CameraInfo releases original first acquisition");
+    Require(source->Snapshot().rejected[1] == 0,"startup ordering introduces no synthetic source gap");
+    source->Shutdown(); Require(source->WaitForShutdown(5s),"first-calibration association and native Readers retire");
+}
 /** @brief Overflow reports the newly rejected ordinal instead of the most recently received one. */
 void DelayedOverflowIdentity() {
     auto node = autolink::CreateNode("observation_delayed_overflow");
@@ -472,6 +491,7 @@ int main(int argc, char** argv) {
         {"shutdown_from_callback", ShutdownFromCallback}, {"final_reference_on_callback", FinalReferenceOnCallback},
         {"fatal_loss_retirement", FatalLossRetiresReaders},
         {"delayed_rgbd_acquisition", DelayedRgbdAcquisition}, {"delayed_overflow_identity", DelayedOverflowIdentity},
+        {"delayed_initial_calibration", DelayedInitialCalibration},
         {"delayed_evidence_expiry", DelayedEvidenceExpiry}, {"delayed_mixed_sensors", DelayedMixedSensors},
         {"delayed_bounds_and_cancellation", DelayedBoundsAndCancellation},
         {"final_reference_on_association_worker", FinalReferenceOnAssociationWorker}};

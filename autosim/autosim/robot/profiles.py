@@ -36,6 +36,8 @@ class RobotProfile:
     usd_prim: str = "/World/Robot"
     articulated: bool = False
     root_height: float = 0.0
+    max_linear: float = 0.5
+    max_angular: float = 1.0
 
 
 PROFILES: Dict[str, RobotProfile] = {
@@ -115,6 +117,8 @@ def apply_profile(robot_cfg: Mapping[str, Any]) -> Dict[str, Any]:
         out.setdefault("instance", True)
         out.setdefault("fixed_base", True)
         out.setdefault("root_height", profile.root_height)
+        out.setdefault("max_linear", profile.max_linear)
+        out.setdefault("max_angular", profile.max_angular)
     return out
 
 

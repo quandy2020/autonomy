@@ -30,6 +30,7 @@ struct NativeExplorationConfiguration {
     HierarchicalCoverageOptions coverage;  ///< Sampling, fair revisit and footprint policy.
     perception::NativeObservationSourceOptions input;  ///< Native topics, depth calibration, units and beam timing.
     NativeVistaPathOptions routes;  ///< Same planner id and frame used for native navigation dispatch.
+    std::string controller_id;  ///< Explicit existing local-controller plugin; empty retains the ordinary navigation default.
     std::optional<NativeCameraCoverage> camera;  ///< Required exactly when RGB-D participates in this mode.
     std::optional<NativeLidarCoverage> lidar;  ///< Required exactly when LiDAR participates in this mode.
     std::chrono::milliseconds retirement_timeout{2000};  ///< Old readers reserve their channels until actual cleanup.

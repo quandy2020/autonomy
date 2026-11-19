@@ -1,0 +1,76 @@
+// Copyright (c) 2023 Open Navigation LLC; Autonomy adaptation 2026.
+// SPDX-License-Identifier: Apache-2.0
+syntax = "proto3";
+package autonomy.task.coverage.proto;
+import "automsgs/msgs/nav_msgs/path.proto";
+import "automsgs/msgs/geometry_msgs/pose_stamped.proto";
+
+message Coordinate { double axis1 = 1; double axis2 = 2; }
+message Coordinates { repeated Coordinate coordinates = 1; }
+message HeadlandMode { string mode = 1; optional double width = 2; }
+message SwathMode { string mode = 1; string objective = 2; double best_angle = 3; optional double step_angle = 4; }
+message RouteMode {
+  string mode = 1; optional uint32 spiral_n = 2; repeated uint32 custom_order = 3;
+  optional bool tsp_redirect_swaths = 4; optional uint32 tsp_time_limit = 5;
+  bool tsp_search_for_optimum = 6; optional double tsp_d_tol = 7;
+}
+message PathMode { string mode = 1; string continuity_mode = 2; optional double turn_point_distance = 3; }
+message DecompMode { string mode = 1; optional double split_angle = 2; }
+message RowSwathMode { string mode = 1; repeated int32 skip_ids = 2; double offset = 3; }
+message Row { int32 id = 1; repeated Coordinate coordinates = 2; }
+message CoverageRequest {
+  optional bool generate_headland = 1; optional bool generate_route = 2; optional bool generate_path = 3;
+  bool generate_decomp = 4; DecompMode decomp_mode = 5;
+  double route_headland_width = 6; bool use_gml_file = 7; string gml_field = 8;
+  repeated Coordinates polygons = 9; string frame_id = 10;
+  HeadlandMode headland_mode = 11; SwathMode swath_mode = 12;
+  RouteMode route_mode = 13; PathMode path_mode = 14;
+  bool use_start_pose = 15; Coordinate start_pose = 16;
+  bool generate_headland_swaths = 17; bool headland_first = 18; bool headland_full_coverage = 19;
+  repeated Row rows = 20; RowSwathMode row_swath_mode = 21;
+  optional bool coordinates_in_cartesian_frame = 22;
+}
+message Swath { int32 id = 1; double width = 2; automsgs.msgs.nav_msgs.Path path = 3; }
+message PathState {
+  double x = 1; double y = 2; double z = 3; double angle = 4; double len = 5;
+  int32 direction = 6; int32 type = 7; double velocity = 8;
+}
+message PathComponents {
+  string frame_id = 1; repeated Swath swaths = 2; repeated automsgs.msgs.nav_msgs.Path turns = 3;
+  bool contains_turns = 4; bool swaths_ordered = 5;
+  repeated double velocities = 6; repeated bool is_backward = 7;
+  repeated PathState states = 8;
+}
+enum ErrorCode {
+  NONE = 0; GOAL_REJECTED = 1; SEND_GOAL_FAILURE = 2;
+  UNKNOWN = 800; INTERNAL_F2C_ERROR = 801; INVALID_MODE_SET = 802;
+  INVALID_REQUEST = 803; TIMEOUT = 804; CANCELED = 805;
+  MOTION_BUSY = 806; CONTROLLER_UNSUPPORTED = 807; TOOL_FAILURE = 808;
+}
+message ComputeCoveragePathAction {
+  message Goal { CoverageRequest request = 1; }
+  message Feedback { string stage = 1; double progress = 2; }
+  message Result {
+    automsgs.msgs.nav_msgs.Path nav_path = 1; PathComponents coverage_path = 2;
+    double planning_time = 3; double task_time = 4; ErrorCode error_code = 5; string error_msg = 6;
+    double core_coverage = 7; string field_wkt = 8; string core_wkt = 9;
+    repeated string warnings = 10;
+  }
+}
+message NavigateCompleteCoverageAction {
+  message Goal {
+    CoverageRequest request = 1; string task_id = 2; string client_id = 3; string behavior_tree = 4;
+    bool navigate_to_start = 5; string controller_id = 6; optional double timeout_sec = 7;
+    bool tool_required = 8;
+  }
+  message Feedback {
+    automsgs.msgs.geometry_msgs.PoseStamped current_pose = 1;
+    double navigation_time = 2; double estimated_time_remaining = 3;
+    int32 number_of_recoveries = 4; double distance_remaining = 5;
+    double progress = 6; string stage = 7;
+  }
+  message Result { ErrorCode error_code = 1; string error_msg = 2; double navigation_time = 3; uint32 completed_segments = 4; }
+}
+message ToolCommand { string task_id = 1; uint64 sequence = 2; bool enabled = 3; double speed = 4; }
+message ToolAcknowledgment { string task_id = 1; uint64 sequence = 2; bool accepted = 3; bool enabled = 4; }
+message CoverageDebug { string frame_id = 1; string stage = 2; string field_wkt = 3; string core_wkt = 4; automsgs.msgs.nav_msgs.Path path = 5; }

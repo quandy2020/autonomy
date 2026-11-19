@@ -35,6 +35,7 @@ from automsgs.msgs.sensor_msgs.joint_state_pb2 import JointState
 from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
 from automsgs.msgs.sensor_msgs.point_field_pb2 import PointField
+from automsgs.msgs.sensor_msgs.range_pb2 import Range
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
 from automsgs.msgs.std_msgs.string_pb2 import String
 from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
@@ -505,6 +506,48 @@ class Messages:
         av = float(accel_variance)
         message.angular_velocity_covariance.extend(cls.diagonal_covariance([gv, gv, gv], 9))
         message.linear_acceleration_covariance.extend(cls.diagonal_covariance([av, av, av], 9))
+        return message
+
+    @classmethod
+    def encode_range(
+        cls,
+        stamp: Tuple[int, int],
+        frame_id: str,
+        distance: float,
+        min_range: float,
+        max_range: float,
+        field_of_view: float = 0.0349,
+        radiation_type: int = 1,
+    ) -> Range:
+        """Build a ``sensor_msgs.Range`` for one ToF or cliff beam.
+
+        Args:
+            stamp: Timestamp.
+            frame_id: Beam frame; the ray leaves along its ``+x`` axis.
+            distance: Measured range (m).
+            min_range: Lower reportable bound (m).
+            max_range: Upper reportable bound (m).
+            field_of_view: Beam width (rad).
+            radiation_type: 0 ultrasound, 1 infrared.
+
+        Returns:
+            Populated :class:`Range`; out-of-range readings become ``inf``,
+            matching the ROS convention for "no return".
+        """
+        message = Range()
+        cls.set_header(message.header, stamp, frame_id)
+        message.radiation_type = int(radiation_type)
+        message.field_of_view = float(field_of_view)
+        message.min_range = float(min_range)
+        message.max_range = float(max_range)
+        measured = float(distance)
+        if (
+            not math.isfinite(measured)
+            or measured < float(min_range)
+            or measured > float(max_range)
+        ):
+            measured = float("inf")
+        message.range = measured
         return message
 
     @classmethod

@@ -29,6 +29,11 @@
 </p>
 
 <p align="center">
+    <img src="images/autonomy-cover-header.png" alt="Autonomy" width="100%"/>
+</p>
+
+* System architecture
+<p align="center">
   <a href="docs/source/01_Instructions/03_system_architecture.md">
     <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
   </a>

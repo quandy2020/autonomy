@@ -19,6 +19,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -67,6 +68,18 @@
 namespace autonomy {
 namespace control {
 
+/** @brief Actual platform state and command transport for an embedded native controller.
+ * Callbacks are bounded and thread safe. read_odometry returns healthy calibrated
+ * acquisition feedback in the supplied shared map frame. publish_command owns
+ * independent command admission and transport; accepting a write is not a
+ * physical-stop receipt. No global odom/map or command channel is used in this mode.
+ */
+struct NativeControllerIO {
+    std::function<std::optional<automsgs::msgs::nav_msgs::Odometry>()> read_odometry;  ///< Actual calibrated state, absent when its owner is unhealthy.
+    std::function<bool(const automsgs::msgs::geometry_msgs::TwistStamped&)> publish_command;  ///< Actual safety/transport operation; failure cannot fall back to global cmd_vel.
+    double maximum_state_age = .25;  ///< Maximum original acquisition age in system-epoch seconds.
+};
+
 class ControllerServer
 {
 public:
@@ -87,6 +100,13 @@ public:
      * @param options Additional options to control creation of the node.
      */
     ControllerServer(const proto::ControllerOptions& options);
+    /** @brief Embed existing controller/checker plugins on an actual shared map and native platform IO.
+     * @details The map is retained before plugin configuration. Callback absence
+     * or malformed age policy throws; native input never falls back to global TF
+     * or unverified zero-filled velocity. The requested plugins remain unchanged.
+     */
+    ControllerServer(const proto::ControllerOptions& options,
+        std::shared_ptr<map::costmap_2d::Costmap2DWrapper> costmap, NativeControllerIO io);
 
     /**
      * @brief Destrructor for ControllerServer
@@ -125,6 +145,8 @@ public:
     void ReloadPolicyConfig(const std::string& config_path);
 
     bool GetRobotPose(automsgs::msgs::geometry_msgs::PoseStamped& pose);
+    /** @brief Actual configured body frame used by existing tracking and recovery commands. */
+    const std::string& GetRobotBaseFrame() const { return robot_base_frame_; }
     void PublishVelocity(const automsgs::msgs::geometry_msgs::TwistStamped& cmd_vel);
     void PublishZeroVelocity();
 
@@ -306,6 +328,9 @@ protected:
 
 private:
     proto::ControllerOptions options_;
+    std::optional<NativeControllerIO> native_io_;  ///< Immutable native state/command bindings, empty for ordinary applications.
+    /** @brief Read and validate actual same-frame acquisition feedback without global-source fallback. */
+    bool ReadNativeOdometry(automsgs::msgs::nav_msgs::Odometry& odometry) const;
 
     struct AutolinkActionServers;
     AutolinkActionServers* autolink_actions_{nullptr};

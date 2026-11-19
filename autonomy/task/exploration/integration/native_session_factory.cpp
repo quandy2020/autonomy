@@ -110,7 +110,7 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
         if (!owner || options.mode != settings->session.mode || options.driver != ExplorationDriver::kBehaviorTree)
             throw std::logic_error("native exploration factory has a different owner or mode");
         // NavigationServices proves this callback runs on the current task factory owner.
-        auto native_navigation = owner->NavigationServices(settings->routes.frame_id, settings->routes.planner_id);
+        auto native_navigation = owner->NavigationServices(settings->routes.frame_id, settings->routes.planner_id,settings->controller_id);
         auto services = create_mapping(goal, options);
         ValidateMappingServices(services, options);
         services.submit_navigation = std::move(native_navigation.submit_navigation);

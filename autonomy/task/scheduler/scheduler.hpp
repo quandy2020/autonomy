@@ -172,6 +172,7 @@ public:
     [[nodiscard]] static constexpr bool IsNavigationClass(
         RobotTaskType task_type) {
         switch (task_type) {
+            case RobotTaskType::ROBOT_TASK_COVERAGE:
             case RobotTaskType::ROBOT_TASK_NAVIGATION:
             case RobotTaskType::ROBOT_TASK_FOLLOW:
             case RobotTaskType::ROBOT_TASK_TELEOP:

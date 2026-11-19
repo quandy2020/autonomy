@@ -16,3 +16,4 @@ Tasks 导航任务
    7 API 参考 <07_api_reference>
    8 多传感器探索 <08_multisensor_exploration>
    9 探索原生验证 <09_native_exploration_validation>
+   10 RGB-D 原生平台 <10_native_rgbd_platform>

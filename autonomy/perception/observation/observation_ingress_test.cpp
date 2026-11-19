@@ -67,6 +67,24 @@ void DepthUnitsAndMasks() {
     Require(!tampered.Valid(1.1), "depth ray origin cannot diverge from the acquisition pose");
 }
 
+/** @brief Geometry sampling preserves full-raster quality and the complete actual encoder depth view. */
+void DepthRaySampling() {
+    std::string data(64,'\0');
+    for (unsigned i = 0; i < 16; ++i) Float(data,i*4,i == 15 ? std::numeric_limits<float>::quiet_NaN() : 1.f);
+    p::DepthImageBytes image{4,4,16,false,"32FC1","depth_optical",1,data};
+    p::SensorDecodingOptions options; options.rgbd_pixel_stride = 2;
+    std::optional<p::ObservationPacket> packet;
+    p::ObservationIngress ingress(p::SensorMode::kRgbdOnly,options,Localization,
+        [&](auto value,double) { packet = std::move(value); return true; },[] { return 1.1; });
+    Require(ingress.PushDepth(image,Calibration(4,4),1) == p::ObservationIngressResult::kAccepted,
+        "actual sampled ray packet admitted");
+    Require(packet && packet->observation.rays.size() == 4 && packet->observation.valid_fraction == 15./16 &&
+        packet->depth_view && packet->depth_view->axial_depth.size() == 16 && !packet->depth_view->valid[15],
+        "ray work bound cannot shrink encoder depth or invent pixel quality");
+    options.rgbd_pixel_stride = 0; bool rejected = false;
+    try { p::ValidateSensorDecodingOptions(options); } catch (const std::invalid_argument&) { rejected = true; }
+    Require(rejected,"zero pixel stride is not a valid acquisition policy");
+}
 /** @brief Reject invalid layouts and policies before allocation or byte access. */
 void LayoutAndPolicy() {
     std::string data(2,'\0'); p::DepthImageBytes image{1,1,4,false,"16UC1","depth_optical",1,data};
@@ -424,6 +442,7 @@ void QueuedLongScanExpires() { ExerciseLongScanProofs(true, true); }
 int main(){
     const std::pair<const char*,void(*)()> tests[]={
         {"depth units masks",DepthUnitsAndMasks},{"layout policy",LayoutAndPolicy},{"cloud timing",CloudTiming},
+        {"depth ray sampling",DepthRaySampling},
         {"identity expiry",IdentityAndExpiry},{"modes close failures",ModesCloseAndFailures},
         {"actual Session depth",ActualSessionDepth},{"delayed loss",DelayedInputLoss},
         {"first packet localization", FirstPacketSeedsLocalization},

@@ -54,6 +54,10 @@ public:
         const perception::ObservationPacket& packet, double now);
     /** @brief Create independent versioned refresh/save/cancel operations for one task generation. */
     ExplorationServices Services(std::uint64_t generation);
+    /** @brief Activate the actual allocated mapper for a named accepted task generation.
+     * No ordinal is fused by preparation; real packet processing establishes the prefix.
+     */
+    bool PrepareGeneration(std::uint64_t generation, const std::string& map_name);
     /** @brief Shared immutable source for PlannerServer's existing Vista graph; creates no second graph. */
     std::optional<MapReadView> LatestView() const;
     /** @brief Read the actual native occupancy output; absence is not a successful fusion result. */

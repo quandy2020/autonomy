@@ -197,6 +197,53 @@ void Check(const std::string& model, const nlohmann::json& fixture) {
     bad = options; bad.inference.model_path.clear();
     Require(!d::DefmEncoder::Create(bad, &error), "missing weights replaced by a model");
 }
+/** @brief Actual model features are stacked without resampling, duplicate padding or lease renewal. */
+void SharedHistory(const std::string& model, const nlohmann::json& fixture) {
+    auto options = Options(model, fixture); options.cache_capacity = 4;
+    std::string error;
+    auto encoder = d::DefmEncoder::Create(options, &error); Require(encoder != nullptr, error);
+    const auto depth = fixture.at("depth_metric").get<std::vector<float>>();
+    std::vector<std::shared_ptr<const d::DefmDepthFeatures>> history;
+    for (unsigned i = 0; i < 4; ++i) {
+        auto image = std::make_shared<Image>(*DepthImage(depth, options.calibration.camera.height, options.calibration.camera.width));
+        image->mutable_header()->mutable_stamp()->set_nanosec(i*100000000);
+        auto actual = encoder->Encode(image, 1000.31, &error);
+        Require(actual != nullptr, error); history.push_back(std::move(actual));
+    }
+    proto::ObservationInput input;
+    input.set_name("observation_depth_tokens"); input.set_modality(proto::OBSERVATION_RAW); input.set_required(true);
+    for (const auto axis : {1, 4, history.front()->patch_count, 384}) input.add_shape(axis);
+    p::TensorFrame frame;
+    Require(p::MakeDefmHistoryTensorFrame(history, input, 1000.31, &frame, &error), error);
+    Require(frame.shape == std::vector<int64_t>({1,4,history.front()->patch_count,384}) &&
+        frame.stamp_sec == history.back()->stamp && frame.valid_until_sec == history.front()->valid_until,
+        "history preserves exact axes, newest acquisition and earliest original expiration");
+    std::vector<float> expected;
+    for (const auto& actual : history) {
+        const auto values = actual->tensors.at("patch_tokens").ToFloat32();
+        expected.insert(expected.end(),values.begin(),values.end());
+    }
+    Require(frame.data == expected && encoder->inference_count() == 4,
+        "history assembly changed real tokens or performed another backbone inference");
+    p::ObservationBuffer buffer; buffer.SetRawTensor(frame);
+    std::vector<float> encoded;
+    Require(p::EncodeRawTensor(buffer.Snapshot(),input,&encoded,&error) && encoded == expected,
+        "existing native RAW encoder preserves the actual four-frame token order");
+    auto invalid = history; std::swap(invalid[0],invalid[1]);
+    Require(!p::MakeDefmHistoryTensorFrame(invalid,input,1000.31,&frame,&error) && frame.data.empty(),
+        "reordered acquisitions cannot enter the history-conditioned head");
+    invalid = history; invalid.back() = invalid.front();
+    Require(!p::MakeDefmHistoryTensorFrame(invalid,input,1000.31,&frame,&error),"duplicating a real frame is not valid history padding");
+    invalid = history; invalid[2].reset();
+    Require(!p::MakeDefmHistoryTensorFrame(invalid,input,1000.31,&frame,&error),"missing history cannot be filled with zero tokens");
+    auto changed = std::make_shared<d::DefmDepthFeatures>(*history[1]); ++changed->calibration_revision;
+    invalid = history; invalid[1] = changed;
+    Require(!p::MakeDefmHistoryTensorFrame(invalid,input,1000.31,&frame,&error),"different camera calibration revokes history input");
+    auto wrong = input; wrong.set_shape(2,384); wrong.set_shape(3,history.front()->patch_count);
+    Require(!p::MakeDefmHistoryTensorFrame(history,wrong,1000.31,&frame,&error),"equal element counts cannot hide incorrect token axes");
+    Require(!p::MakeDefmHistoryTensorFrame(history,input,1010.01,&frame,&error) && frame.data.empty(),
+        "newer frames cannot renew expired oldest context");
+}
 }  // namespace
 
 /** @brief Test requires an actual exported official model and its independent fixture. */
@@ -206,6 +253,7 @@ int main(int argc, char** argv) {
         std::ifstream file(argv[2]); Require(file.good(), "official fixture is missing");
         nlohmann::json fixture; file >> fixture;
         Check(argv[1], fixture);
+        SharedHistory(argv[1], fixture);
         std::cout << "Real DeFM native inference and official preprocessing parity passed\n";
         return 0;
     } catch (const std::exception& exception) {

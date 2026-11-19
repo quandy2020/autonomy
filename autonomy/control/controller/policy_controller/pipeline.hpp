@@ -234,6 +234,45 @@ public:
         if (error) *error = "DeFM input is not declared by the active model: " + input_name;
         return false;
     }
+    /** @brief Supply complete shared DeFM history to the currently declared token model input.
+     * @param history Original immutable depth features, oldest first; no independent encoding occurs.
+     * @param input_name Exact active-model RAW input receiving [1,T,N,D].
+     * @param now_sec Current acquisition-clock time; the earliest original expiry remains authoritative.
+     * @param error Optional shape/time/calibration or model replacement rejection.
+     * @return True only after complete valid history is installed in the existing buffer.
+     * @details Caller serializes pipeline lifecycle, model configuration and
+     * computation. A denied update replaces this named RAW slot with an empty
+     * input, so a previously accepted history cannot mask a later invalid one.
+     * Generic RAW injection and the model loader do not grant motion admission.
+     */
+    bool SetDepthFeatureHistory(
+        const std::vector<std::shared_ptr<const perception::defm::DefmDepthFeatures>>& history,
+        const std::string& input_name, double now_sec, std::string* error = nullptr) {
+        if (error) error->clear();
+        if (input_name.empty()) {
+            if (error) *error = "DeFM history input name is empty";
+            return false;
+        }
+        TensorFrame frame;
+        const auto reject = [&](const std::string& reason) {
+            TensorFrame invalid; invalid.name = input_name;
+            observation_buffer_.SetRawTensor(invalid);
+            if (error) *error = reason;
+            return false;
+        };
+        const auto model = policy_manager_.Active();
+        if (!model || options_.missing_modality_policy() == proto::MISSING_MODALITY_ZERO_FILL)
+            return reject("DeFM history requires an active adapted model without zero-filled observations");
+        for (const auto& input : model->config().proto().inputs()) {
+            if (input.name() != input_name) continue;
+            std::string reason;
+            if (!MakeDefmHistoryTensorFrame(history, input, now_sec, &frame, &reason)) return reject(reason);
+            if (policy_manager_.Active() != model) return reject("DeFM history model changed during input preparation");
+            observation_buffer_.SetRawTensor(frame);
+            return true;
+        }
+        return reject("DeFM history input is not declared by the active model: " + input_name);
+    }
     void UpdateCostmap(map::costmap_2d::Costmap2DWrapper* costmap_wrapper) {
         observation_buffer_.UpdateCostmapFrom(costmap_wrapper,
                                               options_.costmap_cells());

@@ -1,4 +1,4 @@
-# Habitat URDF model with kinematic joint control (no walking policy).
+# Habitat URDF model: /cmd_vel planar motion plus named joint control.
 habitat:
   backend: habitat
   mode: nav
@@ -9,8 +9,12 @@ habitat:
     profile: unitree_g1
     instance: true
     fixed_base: true
-    max_linear: 0.0
-    max_angular: 0.0
+    max_linear: 0.5
+    max_angular: 1.0
+    max_linear_accel: 0.8
+    max_linear_decel: 1.2
+    max_angular_accel: 2.0
+    block_motion: true
     map_frame: map
     control_hz: 50.0
     watchdog_sec: 0.5
@@ -27,6 +31,12 @@ habitat:
       enabled: true
       channel: /clock
   sensors:
+    odom:
+      enabled: true
+      channel: /odom
+      frame: odom
+      child_frame: base_link
+      noise: 0.0
     camera:
       enabled: false
       width: 640
@@ -41,6 +51,7 @@ habitat:
       channel: /joint_states
     chase:
       enabled: true
+      clear_color: [0.3, 0.34, 0.4, 1.0]
       width: 640
       height: 480
       distance_m: 3.0

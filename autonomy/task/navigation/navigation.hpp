@@ -65,6 +65,11 @@ public:
         std::shared_ptr<common::MotionAdmission> admission = {});
     /** @brief Install ordinary START/REPLAN scheduling while no invocation is pending or active. */
     void SetMotionAdmission(common::MotionAdmission::Factory factory);
+    /** @brief Set native world/base frame defaults while no invocation is active.
+     * @details Explicit goal frames remain authoritative. This supports an
+     * isolated exploration world without replacing another robot's TF branch.
+     */
+    bool SetFrameNames(const std::string& global_frame, const std::string& robot_base_frame);
     /** @return True only after readiness, worker cleanup and owned motion cancellation have drained. */
     bool MotionDrained() const;
 
@@ -113,6 +118,8 @@ protected:
     virtual void CancelRemoteNavigation();
 
 private:
+    std::string global_frame_{"map"};  ///< Idle-configured native navigation world default.
+    std::string robot_base_frame_{"base_link"};  ///< Actual embedding application's robot TF frame.
     /** @brief Domain admission with one immutable candidate execution gate. */
     bool AdmitGoal(const ::autonomy::task::proto::NavigationGoal& goal,
                    const std::shared_ptr<common::MotionDispatchGate>& source_gate,

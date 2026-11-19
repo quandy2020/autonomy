@@ -13,13 +13,14 @@ import numpy as np
 from autosim.robot.profiles import PROFILES, apply_profile
 from autosim.robot.joints import load_joints
 from autosim.robot.urdf import UrdfModel
+from autosim.robot.plant import Robot
 from autosim.runtime.settings import Config
 from autosim.backends.habitat.simulator import Simulator
 
 
 def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int = 720) -> dict:
     robot = apply_profile({'profile': profile, 'instance': True, 'fixed_base': True,
-                           'cmd_vel': '/cmd_vel', 'max_linear': 0, 'max_angular': 0,
+                           'cmd_vel': '/cmd_vel',
                            'watchdog_sec': 0.5, 'control_hz': 50.0, 'map_frame': 'map'})
     return Config.load({'habitat': {
         'backend': 'habitat', 'path': scene, 'gpu': 0, 'spawn': [0,0,0], 'robot': robot,
@@ -29,6 +30,7 @@ def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int
                               'info_channel': '/camera/camera_info',
                               'frame': 'camera_link', 'rate_hz': 10.0},
                     'chase': {'enabled': True, 'width': width, 'height': height,
+                              'clear_color': [0.3, 0.34, 0.4, 1.0],
                               'distance_m': 3.5, 'height_m': 2.2, 'look_at_height_m': 0.8}},
     }}).data
 
@@ -61,12 +63,19 @@ def frame_robot(sim: Simulator) -> dict:
     import magnum as mn
     import itertools
 
-    node = sim.articulated.root_scene_node
-    node.compute_cumulative_bb()
-    bb = node.cumulative_bb
-    transform = node.absolute_transformation()
-    points = np.array([tuple(transform.transform_point(mn.Vector3(*corner)))
-                       for corner in itertools.product(*zip(bb.min, bb.max))])
+    # Habitat's AO root bounds can contain only the base; articulated arm
+    # visuals are separate link nodes. Frame the union of every visual link.
+    corners = []
+    for link_id in [-1, *sim.articulated.get_link_ids()]:
+        for node in sim.articulated.get_link_visual_nodes(link_id):
+            node.compute_cumulative_bb()
+            bb = node.cumulative_bb
+            transform = node.absolute_transformation()
+            corners.extend(tuple(transform.transform_point(mn.Vector3(*corner)))
+                           for corner in itertools.product(*zip(bb.min, bb.max)))
+    if not corners:
+        raise RuntimeError('robot has no visual bounds')
+    points = np.asarray(corners, dtype=float)
     low, high = points.min(axis=0), points.max(axis=0)
     size = max(float((high-low).max()), 0.5)
     return {'azimuth': math.radians(140), 'elevation': math.radians(15),
@@ -82,6 +91,8 @@ def main(argv=None) -> None:
     parser.add_argument('--output', type=Path, help='Render one PNG and exit')
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8765)
+    parser.add_argument('--cmd-vel-channel', default='/cmd_vel',
+                        help='Autolink TwistStamped channel; empty disables subscription')
     args = parser.parse_args(argv)
     cfg = viewer_settings(args.profile, args.scene)
     joints = load_joints(UrdfModel.resolve(cfg['habitat']['robot']['urdf']))
@@ -107,12 +118,30 @@ def main(argv=None) -> None:
                 raise RuntimeError(f'could not write {args.output}')
             print(args.output.resolve())
             return
-        serve(sim, joints, camera, args.host, args.port, args.profile, cv2)
+        serve(sim, joints, camera, args.host, args.port, args.profile, cv2, args.cmd_vel_channel)
     finally:
         sim.close()
 
 
-def serve(sim, joints, camera, host, port, profile, cv2):
+def serve(sim, joints, camera, host, port, profile, cv2, cmd_vel_channel='/cmd_vel'):
+    from autosim.bridge.bridge import CommandReader
+    from autosim.bridge.messages import Messages
+    from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
+
+    config = sim.settings['habitat']['robot']
+    plant = Robot(max_linear=config['max_linear'], max_angular=config['max_angular'],
+                  watchdog_sec=config.get('watchdog_sec', 0.5),
+                  x=sim.x, y=sim.y, yaw=sim.yaw)
+    link = None
+    reader = None
+    if cmd_vel_channel:
+        import autolink
+
+        link = autolink
+        link.init('autosim_robot_viewer')
+        node = link.Node('autosim_robot_viewer')
+        reader = CommandReader(node, cmd_vel_channel, TwistStamped)
+    last_tick = time.monotonic()
     requests: queue.Queue = queue.Queue(maxsize=32)
     lock = threading.Lock()
     shared = {'image': b'', 'state': {}}
@@ -163,6 +192,15 @@ def serve(sim, joints, camera, host, port, profile, cv2):
     print(f'Habitat viewer: http://{host}:{port} ({profile})',flush=True)
     try:
         while True:
+            now = time.monotonic()
+            dt = min(now - last_tick, 0.1)
+            last_tick = now
+            if reader is not None and reader.has_msg():
+                try:
+                    linear, angular = Messages.parse_command_velocity(reader.get_msg())
+                    plant.set_twist(linear, angular, now)
+                except ValueError as exc:
+                    print(f'cmd_vel rejected: {exc}', flush=True)
             while not requests.empty():
                 payload, done, result = requests.get_nowait()
                 try:
@@ -176,8 +214,16 @@ def serve(sim, joints, camera, host, port, profile, cv2):
                         profile = selected
                         joints = dict(sim.articulation.joints)
                         camera = frame_robot(sim)
+                        settings = apply_profile({'profile': selected})
+                        plant.max_linear = settings.get('max_linear', 0.5)
+                        plant.max_angular = settings.get('max_angular', 1.0)
+                        plant.set_twist(0.0, 0.0, now)
+                        plant.linear = plant.angular = 0.0
                     if payload.get('reset'):
                         sim.set_joint_positions({n:j.home() for n,j in joints.items() if not j.mimic})
+                    if 'cmd_vel' in payload:
+                        twist = payload['cmd_vel']
+                        plant.set_twist(twist['linear_x'], twist['angular_z'], now)
                     if 'joints' in payload:
                         sim.set_joint_positions(payload['joints'])
                     if 'camera' in payload:
@@ -197,6 +243,12 @@ def serve(sim, joints, camera, host, port, profile, cv2):
                     result['error'] = str(exc)
                 finally:
                     done.set()
+            sx, sy, _ = sim.pose()
+            x, y, yaw = plant.step(dt, now)
+            x, y = sim.constrain_motion(sx, sy, x, y)
+            plant.x, plant.y = x, y
+            sim.set_pose(x, y, yaw)
+            sim.step()
             rgb = render(sim,camera)
             ok,jpeg = cv2.imencode('.jpg',rgb[...,::-1])
             if not ok:
@@ -207,6 +259,9 @@ def serve(sim, joints, camera, host, port, profile, cv2):
                 'camera':dict(camera),'joints':[
                 {'name':n,'type':j.kind,'position':positions[n],
                  'lower':j.lower,'upper':j.upper,'mimic':j.mimic} for n,j in joints.items()]}
+            state.update(pose=dict(zip(('x', 'y', 'yaw'), sim.pose())),
+                         velocity=dict(zip(('linear_x', 'angular_z'), plant.velocity())),
+                         cmd_vel_channel=cmd_vel_channel)
             with lock:
                 shared.update(image=jpeg.tobytes(),state=state)
             time.sleep(0.05)
@@ -215,6 +270,8 @@ def serve(sim, joints, camera, host, port, profile, cv2):
     finally:
         server.shutdown()
         server.server_close()
+        if link is not None:
+            link.shutdown()
 
 
 if __name__ == '__main__':

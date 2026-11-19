@@ -104,7 +104,7 @@ public:
         esdf.min_ray_length = 0; esdf.occupancy_probability = .5;
         esdf_ = std::make_unique<::autonomy::map::esdf::EsdfMap>(esdf);
         seen_.resize(count, false);
-        layers_ = std::make_unique<::grid_map::GridMap>(std::vector<std::string>{"occupancy", "elevation", "floor_min", "ceiling"});
+        layers_ = std::make_unique<::grid_map::GridMap>(std::vector<std::string>{"occupancy", "elevation", "floor_min", "ceiling", "navigation_state"});
         layers_->setGeometry(::grid_map::Length(sizes_.x()*options_.resolution, sizes_.y()*options_.resolution),
             options_.resolution, ::grid_map::Position(b.min_x+sizes_.x()*options_.resolution/2,
                                                      b.min_y+sizes_.y()*options_.resolution/2));
@@ -131,7 +131,7 @@ public:
         occupancy_->Reset();
         esdf_ = std::make_unique<::autonomy::map::esdf::EsdfMap>(esdf_->options());
         std::fill(seen_.begin(),seen_.end(),false);
-        for (const char* layer : {"occupancy","elevation","floor_min","ceiling"}) layers_->get(layer).setConstant(NAN);
+        for (const char* layer : {"occupancy","elevation","floor_min","ceiling","navigation_state"}) layers_->get(layer).setConstant(NAN);
         ledgers_.clear(); latest_.reset(); epoch_ = epoch; stamp_ = 0;
     }
     /** @brief Convert a bounded voxel into this receiver's measured-voxel mask index. */
@@ -193,9 +193,11 @@ public:
             }
             layers_->at("ceiling",index) = static_cast<float>(cell.ceiling_height);
             layers_->at("occupancy",index) = !known ? NAN : static_cast<float>(probability);
+            layers_->at("navigation_state",index) = cell.state == n::CellState::kFree ? 0.f :
+                cell.state == n::CellState::kOccupied ? 100.f : -1.f;
             grid->Set(x,y,cell);
         }
-        auto view = reader_.Read(*grid,stamp_,epoch_,0,false);
+        auto view = reader_.Read(*grid,stamp_,epoch_,0,false,perception::UnknownCellPolicy::kReplace);
         // MapReader owns change detection; the actual acquisition localization
         // owner supplies the externally shared coordinate identity.
         view.map_epoch = epoch_; view.has_height_evidence = true;
@@ -361,6 +363,15 @@ ExplorationServices NativeObservationMapper::Services(std::uint64_t generation) 
                 return reply.version.SameRequest(version); }),queue->end());
     };
     return services;
+}
+bool NativeObservationMapper::PrepareGeneration(std::uint64_t generation,const std::string& map_name) {
+    if (!generation || map_name.empty() || map_name.size() > 128 ||
+        map_name.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-") != std::string::npos) return false;
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    if (!impl_->esdf_ || !impl_->occupancy_ || !impl_->layers_ || !std::filesystem::is_directory(impl_->options_.output_directory)) return false;
+    impl_->ledgers_.try_emplace(generation);
+    while (impl_->ledgers_.size() > 8) impl_->ledgers_.erase(impl_->ledgers_.begin());
+    return true;
 }
 std::optional<MapReadView> NativeObservationMapper::LatestView() const {
     std::lock_guard<std::mutex> lock(impl_->mutex_); return impl_->latest_;

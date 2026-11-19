@@ -3,7 +3,11 @@
   "revision": "3aa86c751ba508acb1272f73dbbd827cd25337b0",
   "urdf": "google_robot_meta_sim_fix_fingertip.urdf",
   "changes": [
-    "mesh paths made relative to this robot folder"
+    "mesh paths made relative to this robot folder",
+    "Google visual meshes converted to opaque GLB with the reference palette; torso gold area recoloured grey-white; original vents/logos, gold fingers and arm rings retained; head emissive texture embedded",
+    "every visual material flagged KHR_materials_unlit so Habitat-Sim 0.3.3 renders the authored colours without the default light rig tint",
+    "head sensor panel modelled from the reference photo set (black face plate, five lenses, two LEDs) and added as a second visual on link_head_tilt",
+    "head camera, IMU, ToF and cliff frames kept from upstream; ROS optical frames added for the centre and stereo cameras"
   ],
   "files": {
     "meshes/3obj/link_base.glb": {
@@ -261,8 +265,138 @@
     "meshes/coarse_meshes/meta_finger_yellow.png": {
       "upstream": "coarse_meshes/meta_finger_yellow.png",
       "sha256": "164be410a13c499642c747f51c9b75dfded726f725e6d451da13131c3388b024"
+    },
+    "meshes/habitat/link_base.glb.glb": {
+      "upstream": "3obj/link_base.glb",
+      "upstream_sha256": "922dcf219018381dfe1afeb238a49135bbad0478230747e4f01d518a4eda7600",
+      "sha256": "5ae81b56f49fe6aafe37c9f3335e9d6adc8597bd1bb893973099a8e8ed23f71b",
+      "original_faces": 1342,
+      "display_faces": 1342,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_wheel.3obj.obj.glb": {
+      "upstream": "3obj/link_wheel.3obj.obj",
+      "upstream_sha256": "cb7a4c554db06d3741ef5f233cf535674f876ddfda1da1df48c25873f2361e8e",
+      "sha256": "5a6bbad8df32b30590b672a3612fcc625546b787596b6fb0484eb0198f47c8e7",
+      "original_faces": 316,
+      "display_faces": 316,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_rear_wheel.glb.glb": {
+      "upstream": "coarse_meshes/link_rear_wheel.glb",
+      "upstream_sha256": "ee1ccae560d15ba40adcbf3d54620b3416f5d3c5adb77375b3dc63d10beed4d9",
+      "sha256": "1040e845ed6a1f21b30a8bdead2a8878e8c2fb2391c5d5780306560027173025",
+      "original_faces": 80,
+      "display_faces": 80,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_torso.3obj.obj.glb": {
+      "upstream": "3obj/link_torso.3obj.obj",
+      "upstream_sha256": "18a6625393734dc119074e11dc5c67edf028049f1f29189f57eb1ab599b7ea40",
+      "sha256": "3e34f7ce1a5bafc3b57f88d53275b5cc1394c7743bba6ec28f32bdd4a35f3178",
+      "original_faces": 400,
+      "display_faces": 400,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_shoulder.3obj.obj.glb": {
+      "upstream": "3obj/link_shoulder.3obj.obj",
+      "upstream_sha256": "571fab77c96300db0568df0d40cbbab54d5f6fa15bca802c5e88a311f0669219",
+      "sha256": "fd92f3ce9727c54ad61697c065f0997b7bb6c8899091d89b8d367049f64a71c4",
+      "original_faces": 648,
+      "display_faces": 648,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_bicep.3obj.obj.glb": {
+      "upstream": "3obj/link_bicep.3obj.obj",
+      "upstream_sha256": "c05ff716758d7961df3582900c799c35e3314a5911e93ceb899729621798a1ee",
+      "sha256": "8ecaf1e371649cf614c02946a24618fb950d11c4a21619e9acf10f22190a462c",
+      "original_faces": 614,
+      "display_faces": 614,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_elbow.3obj.obj.glb": {
+      "upstream": "3obj/link_elbow.3obj.obj",
+      "upstream_sha256": "52ae77af4144a78a41d0d4a197d5f9d21d95c606d2fc0a7e11c648cc865563cd",
+      "sha256": "8ab938546175ceff03257bd412a158145abfac28ed92ec0225ec36461601f431",
+      "original_faces": 620,
+      "display_faces": 620,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_forearm.3obj.obj.glb": {
+      "upstream": "3obj/link_forearm.3obj.obj",
+      "upstream_sha256": "1be7b9200631f5ab6b17f1a071de17e9f3a280491d832049d985d6c4c80187c8",
+      "sha256": "c4c5e8e991537f400cd6c768b54ea3fdbbbb1c5031a8d6dea664b3f0c3997c79",
+      "original_faces": 568,
+      "display_faces": 568,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_wrist.3obj.obj.glb": {
+      "upstream": "3obj/link_wrist.3obj.obj",
+      "upstream_sha256": "5db97cb22075951f626b174b371c8e27b61d92f3b84ccbbef7243771d5c6da5b",
+      "sha256": "c9cd0026496765629089248a6caa26c482247cd746624648b1d47c6bc6605054",
+      "original_faces": 390,
+      "display_faces": 390,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_gripper.3obj.obj.glb": {
+      "upstream": "3obj/link_gripper.3obj.obj",
+      "upstream_sha256": "50bbc7904e03bd5b09d9988d69ba3d6f9df256ef753156aa37d029bc01cb2040",
+      "sha256": "fd034c2e3e483ec25fb2427c9fff84edbfb79e6dcfe12bae4d428eaabbc5365d",
+      "original_faces": 740,
+      "display_faces": 740,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_finger_base_simplified.3obj.obj.glb": {
+      "upstream": "3obj/link_finger_base_simplified.3obj.obj",
+      "upstream_sha256": "1ba2d7710df21654b5db94c025a311994ea72c8297e227a607451a977dfc41f3",
+      "sha256": "13848b85c44da104131f06d189ae69b130df8ed1417a761c9e54aa057cafbc70",
+      "original_faces": 1737,
+      "display_faces": 1737,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_finger_tip_simplified.3obj.obj.glb": {
+      "upstream": "3obj/link_finger_tip_simplified.3obj.obj",
+      "upstream_sha256": "c2998539fa6e32167c55c672692d98caddf55c4bf9c9e83771b5d51a72d08f12",
+      "sha256": "b38d65824db795b839b27d06c30ab6445d0970efadfb7357e454d54bf94d7cea",
+      "original_faces": 1406,
+      "display_faces": 1406,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_finger_nail.3obj.obj.glb": {
+      "upstream": "3obj/link_finger_nail.3obj.obj",
+      "upstream_sha256": "4e5152d947c9e0e2a28d7e8f1fc348a4b9e34585c2b6ca1eea731de872f36feb",
+      "sha256": "3466b65f8fb59cc609b03fb9150b95d067573b5068fd78f00a7a2a13bf0e1b3c",
+      "original_faces": 90,
+      "display_faces": 90,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_head_pan.3obj.obj.glb": {
+      "upstream": "3obj/link_head_pan.3obj.obj",
+      "upstream_sha256": "64af1477e65c30d4c8ab9cf82f4c0d5d4b3ae85b68cc4665b7de684ebad6383a",
+      "sha256": "12abf668b8e17159635729b505bf0dec029df7f19551cb0f2e74ca5b4872e7bc",
+      "original_faces": 197,
+      "display_faces": 197,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "meshes/habitat/link_head_tilt.3obj.obj.glb": {
+      "upstream": "3obj/link_head_tilt.3obj.obj",
+      "upstream_sha256": "92e1e6ee0e2f648a59006f54cb777dc64660ce48c6a873f3682ae28fc3d8e189",
+      "sha256": "59a1f48582e1cb36d288aecfbc97582441171729c3dd20d363e9e1343c6a5114",
+      "original_faces": 690,
+      "display_faces": 690,
+      "conversion": "opaque GLB; reference palette; KHR_materials_unlit; original UVs and faces"
+    },
+    "appearance.json": {
+      "source": "reference colour preparation",
+      "sha256": "5be7e77ced25b8163d05090266dee546fc2eb2214539d5da654108666bd8f43a"
+    },
+    "meshes/habitat/head_sensor_panel.glb": {
+      "source": "modelled from the Everyday Robots reference photo set",
+      "sha256": "0cc8b9efc00a8c1a5110cc68c2be3c4415fea101663987b2181a987e91dd46c2",
+      "display_faces": 1728,
+      "conversion": "opaque GLB; 4x2 colour atlas; KHR_materials_unlit"
     }
   },
   "upstream_urdf_sha256": "e80eac082e870627344e05c61263b18f8a980c24b19b8c6c9fba795b68f965e0",
-  "normalized_urdf_sha256": "f042ed43c7c11759b14931edb16e0493f9805985c4ee187d4885aa2b685fd929"
+  "normalized_urdf_sha256": "757ae1566485b035cdf76021f6d2853dfc12674a9e809089c0f2ee01f4240605"
 }

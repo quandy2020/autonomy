@@ -10,6 +10,9 @@
 #include "autonomy/common/logging.hpp"
 #include "autonomy/task/exploration/exploration.hpp"
 #include "autonomy/task/navigation/navigation.hpp"
+#ifdef AUTONOMY_BUILD_COVERAGE
+#include "autonomy/task/navigation/coverage/coverage_navigator.hpp"
+#endif
 
 namespace autonomy::task {
 
@@ -67,6 +70,11 @@ public:
             const auto owner = domain.lock();
             return state && owner ? state->Admit(owner) : nullptr;
         };
+#ifdef AUTONOMY_BUILD_COVERAGE
+        if (auto cover = std::dynamic_pointer_cast<coverage::CoverageNavigator>(task)) {
+            cover->SetMotionAdmission(factory);
+        }
+#endif
         if (auto nav = std::dynamic_pointer_cast<NavigationTask>(task)) {
             nav->SetMotionAdmission(std::move(factory));
         } else if (auto explore = std::dynamic_pointer_cast<ExplorationTask>(task)) {
@@ -197,6 +205,9 @@ public:
     /** @return Native software cleanup, including work still awaiting admission. */
     static bool Drained(const TaskPointer& task) {
         if (!task) return true;
+#ifdef AUTONOMY_BUILD_COVERAGE
+        if (const auto cover = std::dynamic_pointer_cast<coverage::CoverageNavigator>(task)) return cover->MotionDrained();
+#endif
         if (const auto nav = std::dynamic_pointer_cast<NavigationTask>(task)) return nav->MotionDrained();
         if (const auto explore = std::dynamic_pointer_cast<ExplorationTask>(task)) return explore->MotionDrained();
         // Legacy plugins expose only their cancellation/lifecycle contract.
@@ -234,7 +245,7 @@ public:
     /** @return Conflict over the chassis or over the shared native navigation engine. */
     bool Conflicts(RobotTaskType left, RobotTaskType right) const {
         const auto engine = [](RobotTaskType type) {
-            return type == RobotTaskType::ROBOT_TASK_NAVIGATION || type == RobotTaskType::ROBOT_TASK_EXPLORATION;
+            return type == RobotTaskType::ROBOT_TASK_NAVIGATION || type == RobotTaskType::ROBOT_TASK_EXPLORATION || type == RobotTaskType::ROBOT_TASK_COVERAGE;
         };
         return (exclusive && IsNavigationClass(left) && IsNavigationClass(right)) || (engine(left) && engine(right));
     }

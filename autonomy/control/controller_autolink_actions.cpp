@@ -92,7 +92,7 @@ void PublishBodyCmd(ControllerServer* self, double vx, double wz) {
     automsgs::msgs::geometry_msgs::TwistStamped cmd;
     *cmd.mutable_header()->mutable_stamp() =
         automsgs::msgs::builtin_interfaces::TimeNow();
-    cmd.mutable_header()->set_frame_id("base_link");
+    cmd.mutable_header()->set_frame_id(self->GetRobotBaseFrame());
     cmd.mutable_twist()->mutable_linear()->set_x(vx);
     cmd.mutable_twist()->mutable_angular()->set_z(wz);
     self->PublishVelocity(cmd);
@@ -193,7 +193,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
     }
     node_ = node;
 
-    if (!cmd_vel_writer_) {
+    if (!native_io_ && !cmd_vel_writer_) {
         cmd_vel_writer_ =
             node_->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(
                 options_.publish_navigation_candidate()
@@ -205,14 +205,14 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!plan_clear_writer_) {
+    if (!native_io_ && !plan_clear_writer_) {
         // Same channel as PlannerServer::PublishPlan — empty Path is ignored by
         // NavigationClient and clears Autoviz PathDisplay latch on goal exit.
         plan_clear_writer_ =
             node_->CreateWriter<automsgs::msgs::nav_msgs::Path>("/plan");
     }
 
-    if (!odom_reader_) {
+    if (!native_io_ && !odom_reader_) {
         ControllerServer* self = this;
         odom_reader_ = node_->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
             kOdomTopicName,
@@ -229,7 +229,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!map_reader_ && costmap_wrapper_) {
+    if (!native_io_ && !map_reader_ && costmap_wrapper_) {
         ControllerServer* self = this;
         map_reader_ =
             node_->CreateReader<automsgs::msgs::map_msgs::OccupancyGrid>(
@@ -265,7 +265,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!follow_grid_reader_ && follow_grid_buffer_) {
+    if (!native_io_ && !follow_grid_reader_ && follow_grid_buffer_) {
         ControllerServer* self = this;
         follow_grid_reader_ =
             node_->CreateReader<automsgs::msgs::map_msgs::GridMap>(
@@ -289,7 +289,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!scan_reader_ && costmap_wrapper_) {
+    if (!native_io_ && !scan_reader_ && costmap_wrapper_) {
         costmap_wrapper_->AttachSensorReaders(node_);
     }
 
@@ -316,7 +316,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                                          ? kPolicyReloadConfigTopicName
                                          : policy_opts.reload_config_topic();
 
-    if (!scan_reader_) {
+    if (!scan_reader_ && (!native_io_ || !policy_opts.scan_topic().empty())) {
         ControllerServer* self = this;
         scan_reader_ =
             node_->CreateReader<automsgs::msgs::sensor_msgs::LaserScan>(
@@ -333,7 +333,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!image_reader_) {
+    if (!image_reader_ && (!native_io_ || !policy_opts.image_topic().empty())) {
         ControllerServer* self = this;
         image_reader_ =
             node_->CreateReader<automsgs::msgs::sensor_msgs::Image>(
@@ -350,7 +350,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!point_cloud_reader_) {
+    if (!point_cloud_reader_ && (!native_io_ || !policy_opts.point_cloud_topic().empty())) {
         ControllerServer* self = this;
         point_cloud_reader_ =
             node_->CreateReader<automsgs::msgs::sensor_msgs::PointCloud2>(
@@ -367,7 +367,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!lidar_bev_reader_) {
+    if (!lidar_bev_reader_ && (!native_io_ || !policy_opts.lidar_bev_topic().empty())) {
         ControllerServer* self = this;
         lidar_bev_reader_ =
             node_->CreateReader<automsgs::msgs::std_msgs::Float32MultiArray>(
@@ -384,7 +384,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!raw_tensor_reader_) {
+    if (!raw_tensor_reader_ && (!native_io_ || !policy_opts.raw_tensor_topic().empty())) {
         ControllerServer* self = this;
         raw_tensor_reader_ =
             node_->CreateReader<automsgs::msgs::std_msgs::Float32MultiArray>(
@@ -400,7 +400,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!policy_reload_reader_) {
+    if (!policy_reload_reader_ && (!native_io_ || !policy_opts.reload_config_topic().empty())) {
         ControllerServer* self = this;
         policy_reload_reader_ =
             node_->CreateReader<automsgs::msgs::std_msgs::String>(
@@ -416,7 +416,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!policy_diagnostics_writer_) {
+    if (!policy_diagnostics_writer_ && (!native_io_ || !policy_opts.diagnostics_topic().empty())) {
         policy_diagnostics_writer_ =
             node_->CreateWriter<
                 automsgs::msgs::diagnostic_msgs::DiagnosticArray>(diag_topic);
@@ -425,7 +425,7 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
         }
     }
 
-    if (!costmap_writer_ && costmap_wrapper_) {
+    if (!native_io_ && !costmap_writer_ && costmap_wrapper_) {
         costmap_writer_ =
             node_->CreateWriter<automsgs::msgs::map_msgs::OccupancyGrid>(
                 kLocalCostmapTopicName);

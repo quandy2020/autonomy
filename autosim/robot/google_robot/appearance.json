@@ -1,0 +1,96 @@
+{
+  "reference": "Everyday Robots photo set (CNET kitchen tour)",
+  "palette_srgb": {
+    "shell": [
+      236,
+      236,
+      236
+    ],
+    "finger_gold": [
+      219,
+      176,
+      61
+    ],
+    "tyre": [
+      26,
+      26,
+      28
+    ],
+    "head_panel": {
+      "plate": [
+        12,
+        12,
+        14
+      ],
+      "bezel": [
+        58,
+        58,
+        61
+      ],
+      "lens_bezel": [
+        74,
+        74,
+        77
+      ],
+      "lens_rim": [
+        150,
+        150,
+        152
+      ],
+      "lens_chrome": [
+        206,
+        206,
+        209
+      ],
+      "lens_glass": [
+        26,
+        30,
+        38
+      ],
+      "lens_iris": [
+        10,
+        12,
+        18
+      ],
+      "led": [
+        248,
+        250,
+        255
+      ]
+    }
+  },
+  "materials": {
+    "extension": "KHR_materials_unlit",
+    "reason": "Habitat-Sim 0.3.3 samples base-colour textures without sRGB decoding and tints lit shells yellow under its default rig",
+    "alpha_mode": "OPAQUE"
+  },
+  "head_panel": {
+    "file": "meshes/habitat/head_sensor_panel.glb",
+    "description": "black face plate, dark bezel, five lenses with silver rims (chrome ring on the centre lens), two status LEDs",
+    "lens_centres_m": [
+      -0.062,
+      -0.031,
+      0.0,
+      0.031,
+      0.062
+    ]
+  },
+  "triangles": {
+    "link_base.glb.glb": 1342,
+    "link_bicep.3obj.obj.glb": 614,
+    "link_elbow.3obj.obj.glb": 620,
+    "link_forearm.3obj.obj.glb": 568,
+    "link_gripper.3obj.obj.glb": 740,
+    "link_head_pan.3obj.obj.glb": 197,
+    "link_head_tilt.3obj.obj.glb": 690,
+    "link_shoulder.3obj.obj.glb": 648,
+    "link_torso.3obj.obj.glb": 400,
+    "link_wrist.3obj.obj.glb": 390,
+    "link_finger_base_simplified.3obj.obj.glb": 1737,
+    "link_finger_tip_simplified.3obj.obj.glb": 1406,
+    "link_finger_nail.3obj.obj.glb": 90,
+    "link_wheel.3obj.obj.glb": 316,
+    "link_rear_wheel.glb.glb": 80,
+    "head_sensor_panel.glb": 1728
+  }
+}

@@ -97,6 +97,15 @@ class Config:
         if ground_truth_odometry_channel:
             channels["gt_odom"] = ground_truth_odometry_channel
         joint_cfg = sensors.get("joint_states") or {}
+        from autosim.bridge.stereo import stereo_cameras
+
+        for camera in stereo_cameras(sensors):
+            channels[camera['rgb_key']] = camera['rgb_channel']
+            channels[camera['info_key']] = camera['info_channel']
+        from autosim.bridge.range import range_sensors
+
+        for index, spec in enumerate(range_sensors(sensors)):
+            channels[f'range_{index}'] = spec['channel']
         joint_command = robot.get("joint_command") or {}
         if isinstance(joint_command, Mapping) and joint_command.get("enabled", False):
             channels["joint_command"] = joint_command.get("channel", "/joint_commands")
@@ -530,6 +539,28 @@ class Config:
         cls.validate_surround(camera_rig(sensors), robot_resolved.get("urdf", ""))
         cls.validate_topdown(sensors.get("topdown"))
         cls.validate_chase(sensors.get("chase"))
+        from autosim.bridge.stereo import stereo_cameras
+
+        stereo = stereo_cameras(sensors)
+        if stereo:
+            if backend != 'habitat':
+                raise ValueError('stereo head cameras currently require the Habitat backend')
+            model = UrdfModel.load(robot_resolved.get('urdf', ''))
+            if model is None:
+                raise ValueError('stereo cameras require a URDF')
+            for camera in stereo:
+                model.link_transform(camera['frame'])
+        from autosim.bridge.range import range_sensors
+
+        beams = range_sensors(sensors)
+        if beams:
+            if backend != 'habitat':
+                raise ValueError('range sensors currently require the Habitat backend')
+            model = UrdfModel.load(robot_resolved.get('urdf', ''))
+            if model is None:
+                raise ValueError('range sensors require a URDF')
+            for spec in beams:
+                model.link_transform(spec['frame'])
         cls.validate_footprint(robot.get("footprint"), robot_resolved.get("urdf", ""))
         scenario_on = cls.validate_scenario(habitat.get("scenario"))
         if backend == "fake" and not scenario_on:
@@ -554,6 +585,10 @@ class Config:
             sensors["odom"]["channel"],
             truth["channel"],
         ]
+        for camera in stereo:
+            names.extend((camera['rgb_channel'], camera['info_channel']))
+        for spec in beams:
+            names.append(spec['channel'])
         joint_command = robot.get("joint_command") or {}
         if joint_command.get("enabled", False):
             names.append(joint_command.get("channel", "/joint_commands"))

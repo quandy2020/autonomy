@@ -20,14 +20,15 @@ std::optional<DepthView> RgbdObservationAdapter::MakeDepthView(const RgbdFrame& 
     }
     return view;
 }
-std::optional<SensorObservation> RgbdObservationAdapter::Adapt(const RgbdFrame& f) const {
+std::optional<SensorObservation> RgbdObservationAdapter::Adapt(const RgbdFrame& f,unsigned pixel_stride) const {
+    if (!pixel_stride || pixel_stride > 32) return {};
     auto view = MakeDepthView(f);
     if (!view) return std::nullopt;
     SensorObservation o;
     o.sensor = SensorKind::kRgbd; o.sequence = f.sequence; o.map_epoch = f.map_epoch;
     o.stamp = f.stamp; o.valid_until = f.stamp + f.valid_for;
     o.localization_valid = f.localization_valid; o.frame_id = f.frame_id;
-    for (int y = 0; y < f.camera.height; ++y) for (int x = 0; x < f.camera.width; ++x) {
+    for (int y = 0; y < f.camera.height; y += pixel_stride) for (int x = 0; x < f.camera.width; x += pixel_stride) {
         const auto i = static_cast<std::size_t>(y)*f.camera.width+x;
         if (!view->valid[i]) continue;
         const double z = view->axial_depth[i];
@@ -37,7 +38,7 @@ std::optional<SensorObservation> RgbdObservationAdapter::Adapt(const RgbdFrame& 
                           f.world_from_camera.Rotate(p*(1.0/range)), range,
                           true, 1.0, f.stamp});
     }
-    o.valid_fraction = static_cast<double>(o.rays.size()) / f.depth.size();
+    o.valid_fraction = static_cast<double>(std::count(view->valid.begin(),view->valid.end(),std::uint8_t{1})) / f.depth.size();
     return o;
 }
 }  // namespace autonomy::perception

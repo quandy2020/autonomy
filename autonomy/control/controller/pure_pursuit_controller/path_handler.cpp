@@ -17,6 +17,7 @@
  #include "autonomy/control/controller/pure_pursuit_controller/path_handler.hpp"
 
  #include <algorithm>
+ #include <iterator>
  #include <limits>
  #include <memory>
  #include <string>
@@ -86,6 +87,16 @@
              break;
          }
      }
+
+     // A bound that stopped at the second pose cannot supply the two points
+     // needed to interpolate the end-of-path direction, so widen it while the
+     // plan still has another pose. Sparse paths whose first hop already
+     // exceeds the search distance reach this case.
+     if (closest_pose_upper_bound != global_plan_.poses().end() &&
+         closest_pose_upper_bound == std::next(global_plan_.poses().begin()) &&
+         global_plan_.poses_size() > 2) {
+         closest_pose_upper_bound = std::next(closest_pose_upper_bound);
+     }
  
      // First find the closest pose on the path to the robot
      // bounded by when the path turns around (if it does) so we don't get a pose
@@ -98,10 +109,14 @@
  
      // Make sure we always have at least 2 points on the transformed plan and
      // that we don't prune the global plan below 2 points in order to have
-     // always enough point to interpolate the end of path direction
+     // always enough point to interpolate the end of path direction. Stepping
+     // back twice requires two poses before the bound; otherwise the iterator
+     // would move ahead of the first pose and read outside the plan.
      if (global_plan_.poses().begin() != closest_pose_upper_bound &&
          global_plan_.poses_size() > 1 &&
-         transformation_begin == std::prev(closest_pose_upper_bound)) {
+         transformation_begin == std::prev(closest_pose_upper_bound) &&
+         std::distance(global_plan_.poses().begin(),
+                       closest_pose_upper_bound) > 1) {
          transformation_begin = std::prev(std::prev(closest_pose_upper_bound));
      }
  

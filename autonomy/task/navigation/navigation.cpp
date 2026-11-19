@@ -33,8 +33,6 @@ namespace autonomy {
 namespace task {
 namespace {
 
-constexpr char kGlobalFrame[] = "map";
-constexpr char kRobotBaseFrame[] = "base_link";
 constexpr char kDefaultPlannerId[] = "navfn_planner";
 constexpr char kDefaultControllerId[] = "mppi_controller";
 constexpr char kDefaultSmootherId[] = "simple_smoother";
@@ -417,6 +415,7 @@ void NavigationTask::ApplyGoalToBlackboard(
     blackboard->set("number_of_goals", static_cast<int>(goals.size()));
     if (!goals.empty()) {
         blackboard->set("goal", goals.back());
+        blackboard->set("global_frame",goals.front().header().frame_id());
     }
 }
 
@@ -433,8 +432,8 @@ void NavigationTask::PopulateBlackboard(const BT::Blackboard::Ptr& blackboard)
     }
 
     blackboard->set(common::kMotionDispatchGateBlackboardKey, motion_gate_);
-    blackboard->set("global_frame", std::string(kGlobalFrame));
-    blackboard->set("robot_base_frame", std::string(kRobotBaseFrame));
+    blackboard->set("global_frame", global_frame_);
+    blackboard->set("robot_base_frame", robot_base_frame_);
     blackboard->set("default_planner_id", std::string(kDefaultPlannerId));
     blackboard->set("default_controller_id", std::string(kDefaultControllerId));
     blackboard->set("default_smoother_id", std::string(kDefaultSmootherId));
@@ -484,6 +483,18 @@ bool NavigationTask::SubmitGoalWithMotionPermit(
     return SubmitGoalWithHandler(goal, [this, &goal, &gate, &admission] {
         return AdmitGoal(goal, gate, std::move(admission));
     });
+}
+
+bool NavigationTask::SetFrameNames(const std::string& global_frame,const std::string& robot_base_frame)
+{
+    if (global_frame.empty() || robot_base_frame.empty() || global_frame.size() > 256 || robot_base_frame.size() > 256)
+        return false;
+    std::unique_lock<std::mutex> admission_lock(goal_mutex_,std::try_to_lock);
+    if (!admission_lock.owns_lock()) return false;
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    if (active_goal_ || pending_goal_ || active_epoch_ || pending_epoch_ || canceling_epoch_) return false;
+    global_frame_ = global_frame; robot_base_frame_ = robot_base_frame;
+    return true;
 }
 
 void NavigationTask::SetMotionAdmission(common::MotionAdmission::Factory factory)

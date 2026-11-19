@@ -158,6 +158,28 @@ void PauseDoesNotSatisfyDwell() {
     Require(fixture.session->Tick(2.25).last_observed_goal_id == 42,
             "fresh post-resume observation and dwell can confirm goal");
 }
+/** @brief Fresh sensing and a full empty candidate sweep cannot certify an unobserved or blocked robot domain. */
+void EmptyDomainCannotComplete() {
+    for (auto state : {n::CellState::kUnknown,n::CellState::kOccupied}) {
+        Fixture fixture({},.05,std::make_shared<EmptyComplete>(),true,false);
+        fixture.grid.Fill({state,0,1});
+        auto map = fixture.reader.Read(fixture.grid,1.02,0,fixture.sequence,false,p::UnknownCellPolicy::kReplace);
+        map.mapping_synchronized = true; map.observation_cut.Include(p::SensorKind::kRgbd,fixture.sequence);
+        Require(fixture.session->PushMap(map),"actual empty/blocked traversable-domain change queued");
+        for (unsigned round = 0; round < 30; ++round) {
+            const double now = 1.03+round*.01;
+            fixture.Pose(now,0); fixture.Observe(now,false);
+            map.source_stamp = now; map.observation_cut.Include(p::SensorKind::kRgbd,fixture.sequence);
+            Require(fixture.session->PushMap(map),"actual current finite map/source prefix queued");
+            fixture.session->Tick(now);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        const auto result = fixture.session->Snapshot();
+        Require(!result.completion_confirmed && result.result.exploration != e::ExplorationOutcome::kCompleted &&
+            !fixture.refresh_request && !fixture.save_request,
+            "fresh observations and no candidates cannot fabricate completed coverage or a final save");
+    }
+}
 }  // namespace
 
 int main() {
@@ -174,6 +196,8 @@ int main() {
         std::cout << "PASS callback_exception_boundaries\n";
         RestartAndCancellationUnderBacklog();
         std::cout << "PASS restart_cancel_backlog\n";
+        EmptyDomainCannotComplete();
+        std::cout << "PASS empty_domain_cannot_complete\n";
     } catch (const std::exception& error) {
         std::cerr << "FAIL session: " << error.what() << '\n';
         return 1;

@@ -1,0 +1,23 @@
+[
+  {
+    "profile": "google_robot",
+    "ok": true,
+    "joints": 15,
+    "controlled": 15,
+    "image_delta": 1.3776128472222222
+  },
+  {
+    "profile": "unitree_g1",
+    "ok": true,
+    "joints": 29,
+    "controlled": 29,
+    "image_delta": 3.3677159288194445
+  },
+  {
+    "profile": "unitree_go2",
+    "ok": true,
+    "joints": 12,
+    "controlled": 12,
+    "image_delta": 3.9973404947916666
+  }
+]

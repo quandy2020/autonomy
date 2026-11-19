@@ -74,6 +74,7 @@ from automsgs.msgs.sensor_msgs.imu_pb2 import Imu
 from automsgs.msgs.sensor_msgs.joint_state_pb2 import JointState
 from automsgs.msgs.sensor_msgs.laser_scan_pb2 import LaserScan
 from automsgs.msgs.sensor_msgs.point_cloud2_pb2 import PointCloud2
+from automsgs.msgs.sensor_msgs.range_pb2 import Range
 from automsgs.msgs.std_msgs.string_pb2 import String
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
 from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
@@ -416,6 +417,15 @@ class Runner:
         for camera in self.surround:
             types[camera.rgb_key] = Image
             types[camera.info_key] = CameraInfo
+        from autosim.bridge.stereo import stereo_cameras
+
+        for camera in stereo_cameras(self.sensors_block):
+            types[camera['rgb_key']] = Image
+            types[camera['info_key']] = CameraInfo
+        from autosim.bridge.range import range_sensors
+
+        for index, _spec in enumerate(range_sensors(self.sensors_block)):
+            types[f'range_{index}'] = Range
         if self.panorama is not None:
             types["surround_panorama"] = Image
         if self.topdown is not None:
@@ -716,6 +726,8 @@ class Runner:
         self.emit("tf", self.publish_tf, stamp)
         self.emit("clock", self.publish_clock, stamp)
         self.emit("robot_description", self.publish_robot_description, stamp)
+        self.emit("stereo", self.publish_stereo, stamp)
+        self.emit("range", self.publish_range, stamp)
         self.emit("hunav_agents", self.publish_hunav_agents, stamp)
         # Occupancy / PLY map is static; never block teleop after first sample.
         self.emit("map", self.submit_map, stamp)
@@ -837,6 +849,70 @@ class Runner:
                 pts, stamp, self.lidar_3d["frame"], intensity=intensity, ring=ring
             ),
         )
+
+    def publish_stereo(self, stamp: Tuple[int, int]) -> None:
+        """Publish rectified stereo images and intrinsics with one shared stamp."""
+        from autosim.bridge.stereo import stereo_cameras
+
+        cameras = stereo_cameras(self.sensors_block)
+        if not cameras:
+            return
+        now = self.clock.now()
+        if now - getattr(self, 'stereo_last_time', -float('inf')) < 1.0 / cameras[0]['rate_hz']:
+            return
+        read = getattr(self.simulator, 'stereo_observations', None)
+        if not callable(read):
+            return
+        images = read()
+        self.stereo_last_time = now
+        for camera in cameras:
+            image = images.get(camera['side'])
+            if image is None:
+                continue
+            matrix = Messages.camera_intrinsics(camera['width'], camera['height'], camera['hfov_deg'])
+            info = Messages.encode_camera_info(stamp, camera['frame'], camera['width'], camera['height'], matrix)
+            # Right rectified projection encodes the baseline (Tx = -fx * B).
+            if camera['side'] == 'right':
+                info.p[3] = -float(matrix[0]) * camera['baseline_m']
+            self.bridge.publish(camera['rgb_key'], Messages.encode_image(image, stamp, camera['frame'], 'rgb8'))
+            self.bridge.publish(camera['info_key'], info)
+
+    def publish_range(self, stamp: Tuple[int, int]) -> None:
+        """Publish ToF / cliff beams as ``sensor_msgs.Range``.
+
+        Every beam shares one stamp so a consumer can fuse the ring as a
+        single scan. The slowest configured rate gates the whole group.
+        """
+        from autosim.bridge.range import range_sensors
+
+        specs = range_sensors(self.sensors_block)
+        if not specs:
+            return
+        now = self.clock.now()
+        rate = min(spec['rate_hz'] for spec in specs)
+        if now - getattr(self, 'range_last_time', -float('inf')) < 1.0 / rate:
+            return
+        read = getattr(self.simulator, 'range_observations', None)
+        if not callable(read):
+            return
+        readings = read()
+        self.range_last_time = now
+        for index, spec in enumerate(specs):
+            distance = readings.get(spec['frame'])
+            if distance is None:
+                continue
+            self.bridge.publish(
+                f'range_{index}',
+                Messages.encode_range(
+                    stamp,
+                    spec['frame'],
+                    distance,
+                    spec['min_range'],
+                    spec['max_range'],
+                    spec['fov'],
+                    spec['radiation_type'],
+                ),
+            )
 
     def submit_camera(self, stamp: Tuple[int, int]) -> None:
         """Render and publish RGB-D on the control thread with one shared stamp.
@@ -1300,6 +1376,10 @@ class Runner:
         twist_cmd: Optional[Tuple[float, float]] = None
         if has_external:
             linear, angular = Messages.parse_command_velocity(reader.get_msg())
+            if not (math.isfinite(linear) and math.isfinite(angular)):
+                logger.warning("cmd_vel rejected: velocities must be finite")
+                self.robot.set_twist(0.0, 0.0, t=self.clock.now())
+                return
             twist_cmd = (float(linear), float(angular))
 
         if has_external and not (policy is not None and policy.exclusive):

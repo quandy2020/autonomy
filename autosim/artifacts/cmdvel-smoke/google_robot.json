@@ -1,0 +1,41 @@
+{
+  "profile": "google_robot",
+  "ok": true,
+  "transport": "Autolink TwistStamped",
+  "trajectories": [
+    {
+      "command": "forward",
+      "pose": [
+        0.3037200000000002,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "command": "backward",
+      "pose": [
+        0.11099999999999999,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "command": "turn",
+      "pose": [
+        0.07344510488947323,
+        -0.00039932505844128427,
+        0.6300000000000004
+      ]
+    },
+    {
+      "command": "arc",
+      "pose": [
+        0.2053358666709168,
+        0.16718706063206926,
+        1.1200000000000003
+      ]
+    }
+  ],
+  "watchdog_stopped": true,
+  "odom_tf_match": true
+}

@@ -36,3 +36,55 @@ def test_shipped_articulated_assets(name):
     assert config.channel_map()['joint_states']=='/joint_states'
     model=UrdfModel.load(PROFILES[name].urdf)
     assert model.odom_child_frame()==model.root
+
+
+def test_go2_display_keeps_all_upstream_triangles():
+    """Open CAD surfaces must not lose panels during mesh decimation."""
+    import struct
+    folder=UrdfModel.resolve(PROFILES['unitree_go2'].urdf).parent
+    provenance=json.loads((folder/'source.json').read_text())
+    mesh_records={name:record for name,record in provenance['files'].items() if name.endswith('.glb')}
+    assert len(mesh_records)==7
+    for name,record in mesh_records.items():
+        assert record['display_faces']==record['original_faces']
+        data=(folder/name).read_bytes()
+        assert data[:4]==b'glTF'
+        size=struct.unpack_from('<I',data,12)[0]
+        gltf=json.loads(data[20:20+size])
+        triangles=0
+        for mesh in gltf['meshes']:
+            for primitive in mesh['primitives']:
+                assert primitive.get('mode',4)==4
+                triangles+=gltf['accessors'][primitive['indices']]['count']//3
+        assert triangles==record['original_faces']
+
+def test_google_visuals_are_unlit():
+    """Habitat 0.3.3 skips sRGB decoding, so the shells rely on unlit materials."""
+    import struct
+    folder=UrdfModel.resolve(PROFILES['google_robot'].urdf).parent/'meshes/habitat'
+    files=sorted(folder.glob('*.glb'))
+    assert len(files)>=16
+    for path in files:
+        data=path.read_bytes()
+        assert data[:4]==b'glTF'
+        size=struct.unpack_from('<I',data,12)[0]
+        gltf=json.loads(data[20:20+size])
+        assert 'KHR_materials_unlit' in gltf.get('extensionsUsed',[]),path.name
+        for material in gltf['materials']:
+            assert 'KHR_materials_unlit' in material.get('extensions',{}),path.name
+
+
+def test_google_head_panel_is_modelled_and_attached():
+    """The five-lens sensor face must ship and stay on the head link."""
+    import struct
+    folder=UrdfModel.resolve(PROFILES['google_robot'].urdf).parent
+    root=ET.parse(folder/'google_robot.urdf').getroot()
+    link=next(item for item in root.findall('link') if item.attrib['name']=='link_head_tilt')
+    meshes=[mesh.attrib['filename'] for mesh in link.findall('visual/geometry/mesh')]
+    assert 'meshes/habitat/head_sensor_panel.glb' in meshes
+    data=(folder/'meshes/habitat/head_sensor_panel.glb').read_bytes()
+    size=struct.unpack_from('<I',data,12)[0]
+    gltf=json.loads(data[20:20+size])
+    triangles=sum(gltf['accessors'][primitive['indices']]['count']//3
+                  for mesh in gltf['meshes'] for primitive in mesh['primitives'])
+    assert triangles>=1500

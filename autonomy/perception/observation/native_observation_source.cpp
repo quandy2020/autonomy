@@ -166,6 +166,10 @@ public:
             std::lock_guard<std::mutex> lock(stats_mutex_);
             auto& counter = result == ObservationIngressResult::kAccepted ? stats_.accepted[index] : stats_.rejected[index];
             if (counter != std::numeric_limits<std::uint64_t>::max()) ++counter;
+            const auto reason = static_cast<unsigned>(result);
+            if (result != ObservationIngressResult::kAccepted && reason < stats_.rejected_by_reason[index].size() &&
+                stats_.rejected_by_reason[index][reason] != std::numeric_limits<std::uint64_t>::max())
+                ++stats_.rejected_by_reason[index][reason];
         }
         if (result != ObservationIngressResult::kAccepted) {
             try { loss_(index == 0 ? SensorKind::kLidar : SensorKind::kRgbd, sequence); }
@@ -207,20 +211,26 @@ public:
     /** @brief Query only the original acquisition time before repeated depth decoding. */
     ObservationIngressResult TryPending(const PendingInput& input) {
         try {
-            if (input.depth && input.calibration) {
+            if (input.depth) {
+                std::optional<DepthCalibration> calibration = input.calibration;
                 {
                     std::lock_guard<std::mutex> lock(calibration_mutex_);
-                    if (calibration_invalidated_ || !calibration_)
+                    if (calibration_invalidated_)
                         return ObservationIngressResult::kInvalidMessage;
+                    if (!calibration) calibration = calibration_;
                 }
                 auto image = NativeDepthImage(*input.depth);
                 if (!image) return ObservationIngressResult::kInvalidMessage;
+                // CameraInfo and Image callbacks can be scheduled in either
+                // order. Wait for the actual calibration of this fixed revision
+                // instead of dropping an otherwise valid first acquisition.
+                if (!calibration) return ObservationIngressResult::kInvalidLocalization;
                 auto pose = lookup_(SensorKind::kRgbd, image->frame_id, image->stamp);
                 if (!pose || !pose->Valid(SensorKind::kRgbd, image->frame_id, image->stamp, clock_()))
                     return ObservationIngressResult::kInvalidLocalization;
                 if (std::chrono::steady_clock::now() >= input.deadline)
                     return ObservationIngressResult::kInvalidLocalization;
-                return ingress_.PushDepth(*image, *input.calibration, input.sequence);
+                return ingress_.PushDepth(*image, *calibration, input.sequence);
             }
             auto cloud = input.cloud ? NativePointCloud(*input.cloud) : std::optional<PointCloudBytes>{};
             return cloud ? ingress_.PushCloud(*cloud, input.sequence) : ObservationIngressResult::kInvalidMessage;
@@ -274,7 +284,7 @@ public:
                     std::lock_guard<std::mutex> calibration_lock(calibration_mutex_);
                     input.calibration = calibration_;
                 }
-                if (!message || !input.calibration) {
+                if (!message) {
                     Result(1, sequence, ObservationIngressResult::kInvalidMessage); return;
                 }
                 input.bytes = message->ByteSizeLong();

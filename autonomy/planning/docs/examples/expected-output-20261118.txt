@@ -1,0 +1,6 @@
+Coordinates: local metric plane; headland=3 m; width=1.5 m; coverage_width=3 m; minimum_radius=1 m
+field_area_m2=4764.000000, core_area_m2=3852.000000, swaths=22, core_coverage_pct=99.688474
+stage Dubins: states=8964, length_m=1383.039280, backward_states=0
+Dubins: states=8964, length_m=1383.039280, backward_states=0
+Reeds-Shepp: states=8730, length_m=1383.004531, backward_states=28
+top-level Dubins: states=8964, length_m=1383.039280, backward_states=0

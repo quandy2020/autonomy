@@ -836,3 +836,371 @@ v2.64 的 `NativeAtlasLocalization` 为平台提供原生定位 lookup：两个
 `task_main` 平台装配、指定观测的真实融合与保存凭据、移动探索任务及
 GT 对实测覆盖账本比较仍需继续完成；DeFM token 条件 SanD 权重也未
 建立真实验证。不能以定位状态、原生回归或静止占用图替代这些验收项。
+
+## v2.65–v2.69：实际 mapper 和 task_main 平台接入
+
+NativeObservationMapper 已复用现有 GroundClassifier、OccupancyGridMap、
+ESDF、Raycast 与 grid_map。真实 packet processor 在任务 owner 执行，
+并保留原生配置版本；旧版本输入不能被重新绑定到新的 mapper。
+mapper 为 task generation/sensor ordinal 建立实际连续融合前缀，保存
+实际 OccupancyGrid 和 GridMap，并在文件/目录同步成功后才返回保存成功。
+缺失输入、取消、未知高度和实际落盘的原生回归已通过。
+
+首次 mapper 回归发现 MapReader 不接受未知高度 NaN。已修复为未知或
+占用格子允许缺失高度，free 格子仍要求完整有效高度证据。NaN 对 NaN
+的比较不再制造持续几何变化；完整快照的 unknown 可以撤销旧 free，
+滚动窗口的历史保留默认行为继续保留。v2.65 高度契约回归 37/37 通过。
+
+v2.66 将 NativeRgbdPlatform 接入实际 task_main，提供真实标定文件、
+Atlas 健康定位、底盘导航坐标、mapper 与原生 Session 工厂；可嵌入
+现有 PlannerServer，由其 Vista 插件读取相同不可变地图。实际应用
+完成编译及 CLI 检查，新增入口为 `--native_rgbd_config`。
+代码、配置与数据流说明见本目录 `10_native_rgbd_platform.md`。
+
+v2.67 真实运行中，315 条底盘位姿输出已接通，但没有融合地图输出。
+源码核对发现 RGB-D 每个有效像素都会生成射线，640×480 的输入可能
+超过 mapper 的 100000 射线预算；因此不是“没有相机位姿”。首次 TF
+等待日志也不能据此认定整个启动死锁。
+
+v2.68 增加明确的几何射线采样策略。默认原生通用输入步长为 1；RGB-D
+平台配置步长 4，完整深度和实际有效比例继续保留。新的采样回归和全部
+37 项原生测试通过，真实运行收到 338 条校准底盘 Odometry、307 条
+实际融合 OccupancyGrid，Atlas 位姿/状态各 499 条。
+
+原生 START 在 `/autonomy/task/exploration/goal` 被实际接收并接受，
+真正的 ExplorationSession 已启动：容器自身 INFO 日志记录
+`NATIVE_EXPLORATION_SESSION session_id=1 generation=1`。初始验证器只
+读取 stderr 捕获文件，漏掉独立 INFO 文件，因此它原始报告中的
+`exploration_task_started=false` 保留原样。独立确认及原始 INFO 日志
+位于 `2026-11-18-v2.68-native-task-session-evidence.json` 与同版本
+`-info.log`，不能修改旧报告来伪装原始检查已经通过。
+
+该次探索终态为 FAILED，原因是观测丢失需要重新测量和整域确认。
+不能降低消费者的融合/覆盖条件来通过验收。GT 起止位置均为 (-4, 1)，
+该次运行没有证明移动探索。当前仍未完成实际控制接入与覆盖账本比较。
+
+v2.69 给原生源补充实际拒绝类别，并让先到的有效深度在显式有界关联
+队列中等待实际 CameraInfo 回调，减少启动顺序制造的缺口。新的首次
+标定等待回归和全部 37 项原生测试通过。实际验证器同时保存 INFO 到
+本次独立 task 日志，继续检查真实 Session 与下一步具体丢失原因。
+
+全过程保留 471 个 map 文件、TaskServer 及用户 Task/Planning CMake。
+后续必需验收仍包括移动、真实执行许可/停止状态、SanD 的 DeFM 条件
+权重、实测覆盖地图、GT 比较以及完整探索/返回/保存结果。
+
+v2.69 随后重跑真实 AutoSim + Atlas + autonomy.task 接入检查，通过了
+实际平台和 Session 启动：335 条底盘位姿、309 条融合地图，Atlas
+位姿/健康状态各 499 条。原生 START 已接受，独立 task 日志直接包含
+真实 Session 启动记录。`native_platform_verified=true` 和启动检查通过
+只说明生产接入有实际数据；终态反馈仍为 FAILED，原因是
+`unresolved regions cannot be declared complete`。该次日志未记录新的
+输入丢失掩码，进入了尚未解决区域的处理，不能把终态改成完成。
+
+原始记录位于 `2026-11-18-v2.69-native-task-recording/`，逐文件校验记录
+为同版本 `-export.json`。这一步没有提供成功移动、完整覆盖、返回或
+最终保存的验收结果。接下来的主要工作是实际局部控制/安全状态接入，
+并让观察与导航行为真正解决这些区域，然后再评估实测覆盖账本。
+
+## v2.70–v2.76：原有控制服务接入与误完成修复
+
+ControllerServer 增加 NativeControllerIO，使用实际校准 Odometry 和
+独立命令校验/写入回调。原生模式不订阅全局 odom/map 或默认未配置的
+感知通道，也不向全局 cmd_vel 回退。NativeRgbdPlatform 可加载已有
+ControllerOptions JSON，在同一个实际共享 Costmap 上装配原有
+PolicyController、SanD 和 MPPI/NMPC。命令仍为 automsgs TwistStamped，
+样条仍复用 common/math。独立命令出口采用实际地图的 footprint、
+高度、状态年龄和停止余量校验；它不替代严格三维参考与基座停止回执。
+代码/配置与实际边界见 Control/controller 的原生探索 IO 文档。
+
+真实运行先后发现并记录了三项接入问题：评估器与 AutoSim 同 Node 的
+cmd_vel Reader 注册冲突；MPPI model_dt 与 10 Hz 控制周期不匹配；
+共享 Costmap 在构造时选择半径模式，而 critic 配置要求 footprint。
+已分别使用独立评估 Node、0.1 秒 rollout 步长，以及构造时写入原生
+Point2D footprint 修复。实际机器人包络通过已有 footprint API 生成；
+没有修改任何受保护 map 源码。
+
+v2.75 的实际 AutoSim、Atlas、PlannerServer、ControllerServer 和
+ExplorationSession 已一起启动，控制器为原有 PolicyController +
+MPPI，加载现有 SanD ONNX（仍以原始深度为条件）。原生 START 已接受。
+原始 41 个记录文件导出并按摘要验证，见同版本 `-export.json` 和
+`-recording/`。该次**没有非零速度命令**，但任务反馈为 SUCCEEDED。
+这不是完整探索成功，而是发现了完成判据的问题：全 unknown/occupied
+导航域没有 frontier，空候选遍历可能让条件被真空满足。
+
+v2.76 修复 owner 完成确认：机器人所在的导航格未被确认 free 时，
+域仍为 unresolved，不能通过空候选遍历声明完成。新增回归使用真实
+Session、未知/占用地图、持续新观测及已同步输入前缀，确认不会产生
+完成或最终保存请求。这是完成确认的必要条件补充，并不证明已探索
+所有区域。v2.76 随后真实运行保持平台/Session 正常，终态为 FAILED，
+原因是 `unresolved regions cannot be declared complete`，仍无非零命令。
+
+还修复了停止消息的原生字段存在性：普通零速度创建和拒绝后的零速度
+回退现在包含显式 Twist payload，使实际出口不再把合法零命令当作
+缺失 payload。传输接受零命令仍不是物理停止证明。
+
+38 项原生回归在完成判据修复后通过。显式停止 payload 的回归运行中，
+37 项通过，路由服务与实际仿真共用 `/get_plan` 时失败；待实际应用
+全部退出后，该测试串行复测通过，见 `v2.76-route-service-serial-check`。
+后续实际运行与使用固定原生服务的测试需要串行，防止端点竞争。
+
+完整目标保持未验收：当前控制服务完成真实装配，但尚未执行移动导航，
+不能声称 SanD 推理或 MPPI 闭环运动已成功。还需解决 RGB-D 导航域/
+可执行视点、严格执行许可与停止、真实移动、实测覆盖账本和 GT 比较。
+现有 SanD 权重不满足 DeFM token 条件接口，这一模型义务仍需真实权重
+和验证，不能用接入测试或原始深度模型代替。
+
+## v2.77–v2.78：导航域记录与渲染/TF 外参冲突
+
+v2.77 在实际 GridMap 中记录 navigation_state，并用已有 converter
+恢复已保存消息，逐格验证它与真实导航 MapReadView 一致。真实运行
+同时记录完整原生 grid_map 和 Session 启动时的域统计。SpaceHero
+38/38 原生回归通过，实际运行已完成；起点 unknown/完整包络不安全，
+导航 free 为零，occupied 为 85，unknown 为 6315。二维占用层的
+370 个 free 格子不能替代缺失的地面和垂直净空证据。
+
+检查实际 GridMap 发现在 272 个候选地面柱中，ceiling-floor 都为零。
+实测地面为导航 Z≈-0.409～-0.362 m，低于 mapper 的 -0.2 m 下界。
+继续核对实际 AutoSim 代码确认了外参冲突：Habitat camera_local_offset
+在配置 sensor_height 存在时用它覆盖 URDF 的 Z；Runner 的静态 TF
+仍发布 URDF 安装。此前独立验证配置的 sensor_height 为 0.6 m，而
+实际发布安装 TF 为 0.21 m，造成约 -0.39 m 地面偏差。
+
+旧静止运行及初始地图分数保留原始记录，但它们不能证明度量外参已经
+对齐；只验证 TF 链的 0.21 m 高度遗漏了渲染器实际原点。这是本次
+实测几何调查发现的问题，不能由既有 SLAM 消息计数推导外参正确。
+
+v2.78 只调整新的独立验证配置，删除相机 sensor_height 覆盖，让
+渲染器与 TF 同时使用实际 URDF；没有修改用户原始 AutoSim 或 map
+源码。验证脚本新增渲染原点高度与实际 TF 的一致性检查及拒绝不一致
+配置的回归。5 项配置检查通过，随后实际 AutoSim、Atlas、规划/控制
+服务和探索 Session 再次运行。
+
+实际渲染偏移为 Habitat (-0.0, 0.21, -0.03)，TF 高度为 0.21 m，
+二者一致。地面恢复到导航 Z≈-0.025～0.031 m，导航 free 从零恢复到
+177 个。收到 389 条校准底盘位姿、308 条融合 OccupancyGrid、308 条
+GridMap；完整运行正常退出。43 个原始文件已导出校验，见
+`2026-11-19-v2.78-native-calibration-export.json` 及同版本 recording。
+
+这仍不是移动探索通过。起点格和它的完整机器人包络缺少实际观测，
+不能通过当前位置重定位、清空 unknown 或填充名义地面获得假可达性。
+终态为 FAILED：`pending coverage has no confirmed reachable observation pose`，
+未输出非零速度。接下来必须解决起始主动观测与实际安全执行许可，
+再取得移动、实测覆盖账本和 GT 对比证据。
+
+## v2.79–v2.80：实测目标账本与 GT 离线对比
+
+v2.79 为 ExplorationSession 增加不可变的实际目标账本投影，原生平台
+使用现有 OccupancyGrid 与 DiagnosticArray 发布。已知地图或预测值
+不产生覆盖；所有目标和要求的传感器完成后才编码为 100，未完成的小
+面积目标不能被平均取整隐藏。实际源失效和地图版本变化会更新投影。
+新回归及全部 39 项原生测试在 SpaceHero 通过。
+
+随后运行真实 AutoSim、Atlas、原有规划/控制服务和 Session。收到
+303 个 measured_coverage 消息及 303 个同时间的原生元数据，实际
+Session 仍报告 FAILED，原因是 frontier/observation/revisit 尚待解决；
+没有非零速度命令。该输出是实际目标账本，不是 obstacle OccupancyGrid
+或整屋已观测面积图。原始运行证据为同版本 attempt/export/recording。
+
+v2.80 给原有离线格网投影增加显式 minimum 聚合，避免覆盖质量被
+maximum 取值乐观扩大。occupancy 默认最大值规则保持不变，unknown
+仍否决整个反投影目标格。9 项投影回归通过，GT 占用值不参与算法
+投影结果的分类，也不拟合地图变换改善分数。
+
+实际目标账本已与 GT 栅格离线对比。变换来自原始初始 GT 底盘位姿和
+对应导航坐标的初始估计底盘位姿；运行未运动，报告明确保留静止初始
+关联假设与时间差，而不声称严格同步。GT 只由离线评价程序读取。
+使用显式 0.17 m 圆形 footprint 后，GT 起点连通域为 13078 格。
+保守投影有 281 格带目标账本要求，其中 235 格的目标全部由测量确认。
+这只是目标账本与可达真值域的空间关系，不能把 235/13078 当成已通过
+验收的整屋覆盖率，也不能据此声明导航、返回或保存成功。
+
+原始对齐变换、目标投影图和比较报告位于
+`2026-11-19-v2.80-target-coverage-comparison-recording/`，程序及来源
+记录位于同版本 attempt。报告保留 `exploration_accepted=false` 和
+`whole_room_coverage_verified=false`。
+
+起始主动观察仍缺少足够的包络/支撑证据：前向相机看不到机器人下方
+与身后，现有几何门拒绝在该 unknown 包络内转动。代码没有使用纯
+速度状态、静态 TF 或默认地面制造安全凭据。可采用经部署确认的有限
+安全初始化域，或接入真正提供当前包络/支撑证明的底盘/观测方式；
+必须明确这一启动条件，且初始化先验不得计入上述实测覆盖账本。
+
+## v2.81：离线 DeFM 条件头训练入口
+
+本轮重新检查实际来源和可推进项。主 SSH 地址 192.168.66.124 与用户
+提供的备用地址 10.253.164.127 均在连接阶段超时，未进入身份验证，
+不能执行新的远端同步、Docker 编译或仿真。没有据此重启或终止任何
+用户进程；先前验证结果不升级为本轮通过结果。
+
+已读取官方 SanD 仓库的固定源码版本，并在本地增加真正的冻结 DeFM
+条件编码器和专家监督训练入口。保留上游条件 Transformer、UNet 与
+v-prediction，输入为官方预处理的真实度量深度/共享 patch tokens。
+数据失败产生的 dummy 以及缺失归一化标签均拒绝。训练不改变运行时
+common/math 样条代码，也不放宽当前起点几何门。
+
+五项本地契约检查通过，覆盖冻结参数/统计、错误输入拒绝、原始专家
+输入要求和共享 tokens 无第二次 backbone 执行/源梯度。测试使用
+明确的受控模型与数据，不代表真实 DeFM 模型、新权重或闭环通过。
+详细设计在 Control/controller 下 `10_defm_sand_training.md`，
+来源与本地检查记录在 v2.81 的 source-inspection/contracts 文件。
+
+目前只完成训练代码，实际专家训练尚未开始；需要真实数据、已验证
+DeFM checkpoint、训练依赖和统计文件。该阶段没有显式上一规划条件，
+也未完成原生 ONNX 导出及 parity。新源码/文档仍在本地，等待连接恢复
+后校验远端摘要并同步。初始化安全条件、真实移动探索和完整覆盖验收
+保持未解决，不能通过未训练头或接口测试宣称已经完成。
+
+## v2.84–v2.88：连接恢复、真实 checkpoint 与同图条件输入
+
+用户恢复目标后，主地址重新可达，SpaceHero 为 running。已重新核对
+整个同步清单和受保护文件，只有之前六个待同步目标与计划内不同。
+这六个文件完成实际同步，39 项原生回归与五项容器条件编码契约通过。
+固定版本的官方 SanD UNet 在实际 Torch/CUDA 环境也完成构造。
+
+实际 DeFM ViT-S/14 checkpoint 已下载，字节数为 86599124，SHA256
+为 `37a6e95befea3a16732a743b2ebec854fd5eaed912ebaf9fbffc63a2306f1e90`，
+与已有官方导出记录一致。官方专家 archive 的固定来源也已确认；
+完整文件约 14.28 GB，必须完成下载和摘要验证才能用于本训练入口。
+原先缓慢的单流下载进程已经按本次实际 PID 终止并确认退出，保留
+部分文件，再使用实际官方 Hub/Xet 客户端获取同一固定版本。
+
+使用真实 checkpoint 和一帧实际 RGB-D 数据检查时，当前 Torch 的
+特征结果与旧 ONNX 图出现少量偏差；失败记录保留，改变注意力后端
+没有消除该差异，未通过放宽阈值将其视为成功。为了统一训练/执行
+基座，训练入口现在直接消费已验证并部署的冻结 ONNX graph tokens。
+该图的 source/checkpoint/export 摘要被显式校验，Torch backbone
+保持冻结而不重复执行。实际原始深度与共享 tokens 到投影层的结果
+已验证完全一致；这是单帧路径验证，尚不是新头的训练或闭环结果。
+
+还修复了真实专家身份接口：上游 original_run_id 是短 run 名字，
+不能当作文件目录使用。训练包装器从实际选中 split 的 run_info
+解析 canonical run_path，保留原始 run id，单独记录 source_run_path，
+并拒绝越出指定数据目录或丢失归一化/专家拟合的输入。本地相关回归
+和同图输入/cache 契约合计七项通过。
+
+截至该阶段，专家完整下载/摘要校验仍待完成，实际训练没有开始，
+上一规划条件、原生新头导出、安全初始化及真实移动探索继续保留为
+未完成项。网络恢复和这些接口验证不代表完整探索目标达成。
+
+## v2.89–v2.95：真实专家先导训练与 token 去噪图
+
+远端有并行新增的 complete-coverage CMake、Scheduler 与 task_main
+接入。已核对并保留这些改动；同步保护清单采用它们的实际新摘要，
+没有用 Opt 的旧副本覆盖。期间 coverage 源码还在改动，容器构建记录
+保留相应编译/链接失败及源码漂移，不能把之前的绿测试当作当前结果。
+代码更新稳定后，v2.94 当前原生构建和 39 项 CTests 均通过。
+
+官方 Hub/Xet 专家下载进程存活，但长时间没有新的文件增长，已按
+本次实际进程身份终止并确认退出，保留部分字节。随后通过 HTTPS
+Range 读取固定 archive 的 ZIP64 目录，并检查早期完整专家成员。
+第一次先导提取因计算出的本地文件头长度截断最后成员而触发 CRC
+失败，该结果保留且未用于训练。使用实际已接收的完整前缀重新提取
+后，三个完整 run 的 176 个成员均通过 ZIP CRC32，并逐文件记录
+SHA256 和字节数。它们属于真实官方专家，不是合成或 dummy 输入。
+
+完整 archive 的 SHA256 尚未验证，先导数据 manifest 因此标记
+`pilot_only=true`。训练 CLI 显式接受该先导标识；正式训练仍要求
+完整 archive。训练前后都检查数据文件集合和摘要。固定 seed=42
+将 run_0019、run_0026 分为训练集，run_0003 独立用于验证，三个
+run 之间没有交叉。数据为真实 480×640 uint16 深度，显式按
+1000 单位/米转换；没有改变专家轨迹、归一化或上游 DDPM 损失。
+
+实际 RTX 4090 D 上完成三轮先导训练，每轮 64 个样本、batch=4。
+训练损失约为 0.3987、0.3113、0.2333；验证损失约为 0.3934、
+0.3247、0.2496。checkpoint 排除共享 backbone 权重，DeFM 保持
+冻结，训练记录明确未验证上一规划条件、原生消费或闭环。
+checkpoint 元数据的 TorchVersion 类型导致 weights_only 加载
+被拒绝，已将元数据转换为普通 JSON 类型，并确认 448 个张量值
+完全不变；新训练代码也采用该可移植格式，不关闭安全加载。
+
+v2.92–v2.95 导出真实训练权重的 token 去噪头。先后发现自适应
+平均池化和融合 Transformer 的 legacy ONNX 算子限制；固定窗口
+分解保持原始池化语义，实际权重的融合/非融合差异约为 (2.7\times10^{-7})。
+四组独立验证样本的 ONNX/Torch 最大绝对误差低于 (10^{-6})。
+输出图没有第二个 DeFM backbone，输入为四帧共享 tokens、目标、
+噪声与 timestep；timestep 随后统一为原生扩散接口的 float32。
+这是张量层导出一致性，原生在线消费和移动执行尚未验证。
+
+全量专家 archive 已开始新的分段传输，只有整包最终 SHA256 相同
+才会标记 archive_verified。传输进度及本次实际 PID 在
+`/tmp/opt-native-defm-sand-v2.92-ranged-experts/state.json` 和
+`download-identity.json`，本次 attempt 保留在 docs/validation。
+分段/先导结果不替代完整专家集训练。较大 checkpoint 向本地传输
+发生超时，未校验的文件已标记 `.partial`，不能当作有效模型链接。
+
+完整目标仍未达成：缺少安全的起始观测条件，未验证真实移动、
+完整专家集与上一规划条件、原生新头消费、返回/保存和整域覆盖。
+上述先导训练和导出不改变这些验收要求，也不放行 unknown 起点。
+
+## v2.97–v2.103：四帧原生消费与独立推理验证
+
+原有 MakeDefmTensorFrame 为单帧 `[1,N,D]`，新去噪头需要四帧
+`[1,4,N,D]`。新增 MakeDefmHistoryTensorFrame 使用原始不可变特征
+组帧，逐帧复用严格的标定/时间/有限值检查。缺失、重复、乱序、
+相机尺寸/标定或轴不一致不能成为合法输入。组帧不执行 DeFM，不
+额外归一化，也不以最新帧续期旧上下文。新增真实 DeFM 回归验证
+该输入能经过已有 RAW encoder，并保留旧帧失效时的拒绝。
+
+v2.97 构建完成、特征/历史用例通过，但路由服务用例失败。实际
+进程检查发现另有 autonomy.planning、autonomy.control 和
+autonomy.task 正在运行，固定 `/get_plan` 等端点可能选到另一
+实例。失败记录保留，不被称为全套通过；未停止其他用户实例。
+传输层也在并行修改，相关源码摘要检查中止记录被保留。
+
+为独立验证模型消费，导出程序生成来自实际 held-out run 的四组
+Image 历史及 Torch 输出，各文件与头部/DeFM 图都有摘要记录。
+像素是真实专家数据，Header 时间及相机元数据为明确标记的离线
+测试参数，不构造定位、覆盖或运动凭据。
+
+v2.101 在 SpaceHero 独立临时目录编译 C++ 测试，采用现有实际
+DeFM 测试目标的编译/链接参数，链接当前真实生产库；没有伪造
+头文件、库或随机模型，也不重建运行中的库。实际深度经过原生
+DeFM、四帧 TensorFrame、RAW 和 Engine 后进入训练过的 token
+去噪图。四组与 Torch 输出的最大绝对误差约 `8.34465e-7`，
+原生测试通过。输入、模型、链接库及编译参数前后摘要一致。
+报告为 `2026-11-19-v2.101-native-linked-head-validation.json`
+及同名前缀日志。它只证明实际 C++ 张量推理和输入完整性，
+在线 PolicyPipeline、NMPC/MPPI 执行及安全运动仍未验证。
+
+v2.102 的完整原生验证器先检查固定服务端点是否由实际应用占用。
+当前存在这些服务，检查在 configure/build/test 前明确拒绝启动，
+没有把跳过的用例报为通过。新的单独推理不使用这些在线端点。
+
+专家下载诊断也发现了真实失败：旧 16 MB 区块批次存在 170 个
+残片，超过 12 个工作线程，而没有任何成功 `.range` 文件。
+按原记录代码的成功路径，至少 158 个任务已失败，主进程仍在
+清理排队工作，不能由存活 PID 和 downloading 字段判为有效等待。
+已核对 PID/启动时间并停止本次进程，确认退出后保留原始残片。
+
+v2.103 以 1 MB 区块及 8 个并发请求继续实际 HTTPS 下载，使用
+有界队列、有限重试/请求时间并及时记录失败。可复用旧失败请求
+中收到的完整小块，但所有小块仍须在最终完整 archive SHA256
+一致后才可用于正式训练。实际日志已从复用的 241 块增长到
+257 块，传输在继续；不再用失败排队或先导专家代替完整数据。
+
+完整目标仍未通过：上一规划因果条件、完整训练、在线原生头部
+消费、起始安全观测、实际移动探索、整域覆盖/GT 对比、返回与
+保存仍需实际验证。此阶段没有产生任何新的运动许可。
+
+## v2.105–v2.106：原有 PolicyPipeline 的共享历史注入
+
+原有 Pipeline 的 SetDepthFeatures 只面向单帧。新增
+SetDepthFeatureHistory 按实际激活模型声明组装 `[1,T,N,D]`；
+完整输入要求、原始时间/标定、最早过期时间由已经验证的历史适配
+函数保留。ZERO_FILL 模式不能接受这一路，失败更新会使该 RAW
+槽失效，避免残留旧成功历史继续参与推理。没有改变 common/math
+样条和底盘消息结构。
+
+新增检查使用实际 held-out 专家和训练过的 ONNX，既检查原生
+Engine，也由 PolicyPipeline 加载真实模型并通过原有 PolicyModel
+推理。四组预测与 Torch 参照一致；缺失新输入清除旧可用历史，
+有效完整输入可恢复，过期上下文仍拒绝。SpaceHero 独立目录的
+CMake 构建和原生检查通过，真实链接库与模型/源码前后摘要一致。
+记录为 `2026-11-19-v2.106-native-policy-head-validation.json`。
+
+这是输入接口及实际模型推理验证，不是 ComputeCommand 的整条
+控制周期或真实运动；不会用先导模型向机器人发非零命令。实际
+感知回调、扩散采样与安全选择、原有 NMPC/MPPI 和停止 authority
+仍需完整接入。全套固定服务测试需要与其他正在运行的实例隔离。
+全量专家下载继续由本次已确认的有限小块传输进程处理，部分块和
+模型试验不替代完整训练、安全起始观测或探索终态验证。

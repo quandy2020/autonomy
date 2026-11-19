@@ -16,6 +16,7 @@
 #include <variant>
 #include "autonomy/perception/data/observation_buffer.hpp"
 #include "autonomy/task/exploration/coverage/coverage_evaluator.hpp"
+#include "autonomy/task/exploration/coverage/measured_coverage_map.hpp"
 #include "autonomy/task/exploration/frontier/frontier_extractor.hpp"
 
 namespace autonomy::task::exploration {
@@ -1314,6 +1315,13 @@ public:
             evidence.reachable_frontiers = std::count_if(coverage_.units().begin(),coverage_.units().end(),
                 [](const auto& entry){return entry.first.kind==CoverageKind::kFrontier && entry.second.pending;});
             evidence.unresolved_regions = result.decision.sampling_limited ? 1 : 0;
+            // A complete enumeration over an empty/unobserved traversable
+            // domain is not exploration completion. This also prevents a
+            // newly known all-occupied/unknown map from erasing the last work
+            // item and vacuously satisfying the frontier-free predicate.
+            const auto current_cell = map_->grid ? map_->grid->WorldToCell(pose_) : std::nullopt;
+            if (!current_cell || map_->grid->At(current_cell->x,current_cell->y).state != opt::navigation::CellState::kFree)
+                evidence.unresolved_regions = std::max<std::size_t>(evidence.unresolved_regions,1);
             evidence.grid_fallback_checked = result.decision.grid_fallback_checked;
             evidence.sweep_checked = result.decision.sweep_checked;
             evidence.sweep_revision = map_->geometry_revision;
@@ -1617,6 +1625,16 @@ public:
     }
 
     void Publish() {
+        if (map_ && map_->grid && coverage_.epoch() == map_->map_epoch &&
+            (!snapshot_.measured_coverage_map || snapshot_.measured_coverage_revision != coverage_.revision() ||
+             snapshot_.measured_coverage_map_epoch != coverage_.epoch() ||
+             snapshot_.measured_coverage_geometry_revision != map_->geometry_revision)) {
+            snapshot_.measured_coverage_map = std::make_shared<const ::automsgs::msgs::map_msgs::OccupancyGrid>(
+                BuildMeasuredCoverageMap(coverage_,*map_,last_now_));
+            snapshot_.measured_coverage_revision = coverage_.revision();
+            snapshot_.measured_coverage_map_epoch = coverage_.epoch();
+            snapshot_.measured_coverage_geometry_revision = map_->geometry_revision;
+        }
         // Early paused/terminal paths still consume admitted requirement events.
         // Publish ledger counts from actual state on every path, never from a
         // prediction or a previous running tick's cached progress.

@@ -505,6 +505,17 @@ class Simulator:
                 semantic_sensor.orientation = [0.0, 0.0, 0.0]
                 sensor_specs.append(semantic_sensor)
         sensors = self.settings.get("habitat", {}).get("sensors")
+        from autosim.bridge.stereo import stereo_cameras
+
+        for camera in stereo_cameras(sensors or {}):
+            spec = habitat_sim.CameraSensorSpec()
+            spec.uuid = camera['uuid']
+            spec.sensor_type = habitat_sim.SensorType.COLOR
+            spec.resolution = [camera['height'], camera['width']]
+            spec.hfov = camera['hfov_deg']
+            if hasattr(habitat_sim, 'SensorSubType'):
+                spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
+            sensor_specs.append(spec)
         surround = camera_rig(sensors)
         for camera in resolve_surround(surround, urdf=self.urdf):
             sensor_specs.append(self.surround_color_spec(habitat_sim, camera))
@@ -617,6 +628,8 @@ class Simulator:
         spec.sensor_type = habitat_sim.SensorType.COLOR
         spec.resolution = [int(chase["height"]), int(chase["width"])]
         spec.hfov = float(chase["hfov_deg"])
+        if chase.get("clear_color") is not None and hasattr(spec, "clear_color"):
+            spec.clear_color = chase["clear_color"]
         if hasattr(habitat_sim, "SensorSubType"):
             spec.sensor_subtype = habitat_sim.SensorSubType.PINHOLE
         spec.position = [
@@ -1259,6 +1272,112 @@ class Simulator:
         if self.articulation is None:
             raise RuntimeError("joint control requires an instanced URDF")
         self.articulation.set_positions(positions)
+        self.sync_robot_sensors()
+
+    def sync_robot_sensors(self) -> None:
+        """Place RGB-D and stereo cameras at their current URDF optical frames."""
+        if self.session is None or self.articulated is None or self.urdf is None:
+            return
+        import magnum as mn
+        from autosim.bridge.stereo import stereo_cameras
+
+        sensors = self.settings['habitat'].get('sensors') or {}
+        camera = sensors.get('camera') or {}
+        mounts = []
+        if camera.get('follow_urdf', False):
+            frame = str(camera.get('frame') or 'camera_optical_frame')
+            mounts.extend((uuid, frame) for uuid in ('rgb', 'depth', 'semantic'))
+        mounts.extend((c['uuid'], c['frame']) for c in stereo_cameras(sensors))
+        if not mounts:
+            return
+        root = mn.Matrix4.from_(self.articulated.rotation.to_matrix(), self.articulated.translation)
+        positions = self.joint_states()
+        suite = self.session.get_agent(0)._sensors
+        # ROS optical is x-right/y-down/z-forward. Habitat's camera is
+        # x-right/y-up/-z-forward: a 180-degree X rotation maps the two.
+        optical_to_camera = mn.Matrix4.rotation_x(mn.Rad(math.pi))
+        for uuid, frame in mounts:
+            if uuid not in suite or (frame != self.urdf.root and frame not in self.urdf.parents):
+                continue
+            matrix = self.urdf.link_transform(frame, positions)
+            world = root @ mn.Matrix4(matrix) @ optical_to_camera
+            sensor = suite[uuid]
+            node = getattr(sensor, '_sensor_object', sensor).node
+            node.transformation = node.parent.absolute_transformation().inverted() @ world
+
+    def stereo_observations(self) -> dict[str, np.ndarray]:
+        from autosim.bridge.stereo import stereo_cameras
+
+        cameras = stereo_cameras(self.settings['habitat'].get('sensors') or {})
+        if not cameras or self.session is None:
+            return {}
+        self.sync_robot_sensors()
+        observations = self.session.get_sensor_observations()
+        return {camera['side']: self.rgb_to_uint8(observations[camera['uuid']]) for camera in cameras}
+
+    def range_observations(self) -> dict[str, float]:
+        """Cast one ray per configured ToF / cliff frame.
+
+        Habitat-Sim ships no range sensor, so every URDF frame contributes a
+        single ray along its ``+x`` axis. The robot's own collision hull is
+        skipped: the emitters are mounted on the shell and would self-hit.
+
+        Returns:
+            Frame name → range (m). Misses report ``inf`` the way a real
+            ``sensor_msgs/Range`` does.
+        """
+        from autosim.bridge.range import range_sensors
+
+        specs = range_sensors(self.settings['habitat'].get('sensors') or {})
+        if not specs or self.session is None or self.articulated is None or self.urdf is None:
+            return {}
+        import habitat_sim
+        import magnum as mn
+        import numpy as np
+
+        quaternion = self.articulated.rotation
+        vx = float(quaternion.vector.x)
+        vy = float(quaternion.vector.y)
+        vz = float(quaternion.vector.z)
+        qw = float(quaternion.scalar)
+        root = np.eye(4)
+        root[:3, :3] = np.array([
+            [1 - 2 * (vy * vy + vz * vz), 2 * (vx * vy - vz * qw), 2 * (vx * vz + vy * qw)],
+            [2 * (vx * vy + vz * qw), 1 - 2 * (vx * vx + vz * vz), 2 * (vy * vz - vx * qw)],
+            [2 * (vx * vz - vy * qw), 2 * (vy * vz + vx * qw), 1 - 2 * (vx * vx + vy * vy)],
+        ])
+        root[:3, 3] = np.array([
+            float(self.articulated.translation.x),
+            float(self.articulated.translation.y),
+            float(self.articulated.translation.z),
+        ])
+        positions = self.joint_states()
+        robot_id = getattr(self.articulated, "object_id", None)
+        readings: dict[str, float] = {}
+        for spec in specs:
+            frame = spec['frame']
+            if frame != self.urdf.root and frame not in self.urdf.parents:
+                continue
+            world = root @ np.asarray(self.urdf.link_transform(frame, positions), dtype=float)
+            axis = world[:3, 0]
+            length = float(np.linalg.norm(axis))
+            if length < 1e-9:
+                continue
+            origin = world[:3, 3]
+            direction = axis / length
+            ray = habitat_sim.geo.Ray(
+                mn.Vector3(float(origin[0]), float(origin[1]), float(origin[2])),
+                mn.Vector3(float(direction[0]), float(direction[1]), float(direction[2])),
+            )
+            try:
+                results = self.session.cast_ray(ray, max_distance=float(spec['max_range']))
+            except TypeError:
+                results = self.session.cast_ray(ray)
+            distance = self.raycast_hit_distance(
+                results, ray.origin, ignore_object_id=robot_id
+            )
+            readings[frame] = float(distance) if distance is not None else float('inf')
+        return readings
 
     def set_articulated_visible(
         self, robot: Any | None = None, visible: bool = True
@@ -1384,6 +1503,7 @@ class Simulator:
         state.rotation = [qx, qy, qz, qw]
         agent.set_state(state, infer_sensor_states=True)
         self.sync_articulated(mn)
+        self.sync_robot_sensors()
 
     def constrain_motion(
         self, start_x: float, start_y: float, end_x: float, end_y: float
@@ -1794,11 +1914,22 @@ class Simulator:
         return (hx, -hz, hy)
 
     @staticmethod
-    def raycast_hit_distance(results: Any, origin: Any = None) -> float | None:
+    def raycast_hit_distance(
+        results: Any, origin: Any = None, ignore_object_id: int | None = None
+    ) -> float | None:
         """Closest hit range from Habitat ``RaycastResults``.
 
         Bullet may return multiple intersections; always take the nearest so
         rays stop at the first wall instead of a far surface behind it.
+
+        Args:
+            results: ``RaycastResults`` returned by ``cast_ray``.
+            origin: Ray origin, used when a hit only exposes ``point``.
+            ignore_object_id: Skip hits on this object; ToF emitters sit on the
+                robot shell and would otherwise measure their own hull.
+
+        Returns:
+            Nearest hit distance (m), or ``None``.
         """
         if results is None:
             return None
@@ -1826,6 +1957,10 @@ class Simulator:
 
         best: float | None = None
         for target in candidates:
+            if ignore_object_id is not None:
+                hit_id = getattr(target, "object_id", None)
+                if hit_id is not None and int(hit_id) == int(ignore_object_id):
+                    continue
             distance = None
             if hasattr(target, "ray_distance"):
                 try:
@@ -2255,6 +2390,7 @@ class Simulator:
         """
         if self.session is None:
             raise RuntimeError("Habitat session is not open")
+        self.sync_robot_sensors()
         observations = self.session.get_sensor_observations()
         rgb_key = self.observation_key(observations, ("rgb", "color_sensor", "color"))
         depth_key = self.observation_key(observations, ("depth", "depth_sensor"))

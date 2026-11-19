@@ -1,3 +1,8 @@
+#if __has_include(<opencv2/geometry/3d.hpp>)
+#include <opencv2/geometry/3d.hpp>
+#else
+#include <opencv2/calib3d.hpp>
+#endif
 /**
 * This file is part of ORB-SLAM3
 *

@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<!-- Adapted from opennav_coverage_bt: compute once, optionally go to start, then follow. -->
+<root BTCPP_format="4" main_tree_to_execute="NavigateCompleteCoverage">
+  <BehaviorTree ID="NavigateCompleteCoverage">
+    <Sequence name="CompleteCoverage">
+      <ComputeCoveragePath nav_path="{path}" coverage_path="{coverage_path}" error_code_id="{coverage_error}"/>
+      <NavigateToCoverageStart error_code_id="{approach_error}"/>
+      <FollowCoveragePath error_code_id="{follow_coverage_error}"/>
+    </Sequence>
+  </BehaviorTree>
+</root>

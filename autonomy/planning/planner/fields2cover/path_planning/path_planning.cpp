@@ -386,12 +386,18 @@ F2CPath PathPlanning::PlanPathForConnection(const F2CRobot& robot,
     direct = reversal > robot.GetReversalSweep() && hop < robot.GetUturnMaxHop();
   }
   const auto checked = [&](const F2CPath& candidate) {
+    // A valid connection must meet both swath headings as well as its geometry.
+    // Otherwise a terminal straight can leave a square corner at the swath.
+    const bool headings_match = candidate.size() > 0 &&
+        F2CPoint::GetAngleDiffAbs(candidate[0].angle, ang1) < 1e-4 &&
+        F2CPoint::GetAngleDiffAbs(candidate.back().angle, ang2) < 1e-4;
+
     if (field) {
       detail::FreeSpace free(*field);
-      if (detail::ValidPath(candidate, robot, &free)) return candidate;
+      if (headings_match && detail::ValidPath(candidate, robot, &free)) return candidate;
       return detail::SearchConnection(robot, turn, p1, ang1, p2, ang2, free);
     }
-    if (detail::ValidPath(candidate, robot)) return candidate;
+    if (headings_match && detail::ValidPath(candidate, robot)) return candidate;
     auto corridor = F2CCells::buffer(F2CLineString(pts),
         robot.GetMaxCornerCut() + 2.0 * robot.GetMinTurningRadius());
     detail::FreeSpace free(corridor);

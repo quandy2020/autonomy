@@ -60,6 +60,7 @@ struct DepthCalibration {
 
 /** @brief Explicit decoding/timing policy; no automatic unit or timing inference. */
 struct SensorDecodingOptions {
+    unsigned rgbd_pixel_stride = 1;  ///< Explicit measured-ray sampling stride; full depth pixels and validity remain available to encoders.
     double uint16_depth_scale = .001;  ///< Meters per 16UC1 native unit; 32FC1 is already meters.
     double minimum_range = .1, maximum_range = 30;  ///< LiDAR ray limits, meters.
     std::string time_offset_field = "time";  ///< Relative per-point time field.

@@ -27,4 +27,5 @@ enum RobotTaskType {
   ROBOT_TASK_MAP = 6;
   ROBOT_TASK_MANIPULATION = 7;
   ROBOT_TASK_VOICE = 8;
+  ROBOT_TASK_COVERAGE = 9;  // Complete area coverage navigation
 }

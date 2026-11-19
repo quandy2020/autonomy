@@ -32,6 +32,17 @@ def transform(source='source', target='target'):
 
 
 class ProjectionTest(unittest.TestCase):
+    def test_target_coverage_projection_uses_minimum_and_unknown_veto(self):
+        source = grid('source', 4, 2, [100, 100, 100, -1, 100, 20, 100, 100])
+        target = grid('target', 2, 1, [100, 100], resolution=2)
+        output, details = project_grid(source, target, transform(), aggregation='minimum')
+        self.assertEqual(list(output.data), [20, -1])
+        self.assertEqual(details['aggregation'], 'minimum')
+        target.data[:] = [0, 0]
+        repeated, _ = project_grid(source, target, transform(), aggregation='minimum')
+        self.assertEqual(output, repeated)
+        with self.assertRaises(ValueError):
+            project_grid(source, target, transform(), aggregation='average')
     def test_identity_retains_unknown_and_ignores_target_values(self):
         source = grid('source', 2, 2, [0, -1, 40, 100])
         target = grid('target', 3, 2, [100] * 6)

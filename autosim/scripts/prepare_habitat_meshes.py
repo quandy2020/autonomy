@@ -48,7 +48,7 @@ def prepare(source: Path, destination: Path, max_faces: int=5000):
                         for key,mesh in list(scene.geometry.items()):
                             if not isinstance(mesh,trimesh.Trimesh):continue
                             total_before+=len(mesh.faces)
-                            if len(mesh.faces)>max_faces:
+                            if folder.name != 'unitree_go2' and len(mesh.faces)>max_faces:
                                 simplified=mesh.simplify_quadric_decimation(face_count=max_faces)
                                 # URDF solid materials remain in the URDF; retain
                                 # the original dominant vertex/face colour too.
@@ -87,10 +87,10 @@ def prepare(source: Path, destination: Path, max_faces: int=5000):
         ET.ElementTree(root).write(output,encoding='utf-8',xml_declaration=True)
         provenance['files']=files
         provenance['normalized_urdf_sha256']=hashlib.sha256(output.read_bytes()).hexdigest()
-        provenance['changes'].append(f'Unitree STL/DAE converted to GLB and limited to {max_faces} faces per geometry; texture UVs sampled from nearest original vertices')
+        provenance['changes'].append('Go2 DAE converted to GLB at full resolution; all material primitives and faces preserved' if folder.name == 'unitree_go2' else f'Unitree STL/DAE converted to GLB and limited to {max_faces} faces per geometry; texture UVs sampled from nearest original vertices')
         (target/'source.json').write_text(json.dumps(provenance,indent=2)+'\n')
         (target/'README.md').write_text((target/'README.md').read_text()+
-            f'\nHabitat display meshes: GLB, up to {max_faces} faces per geometry. Original URDF kinematics and scene transforms are retained. Texture UVs use nearest original vertices. Source hashes and face counts are in source.json.\n')
+            ('\nGo2 meshes: full resolution GLB with all original faces and materials preserved. See source.json.\n' if folder.name == 'unitree_go2' else f'\nHabitat display meshes: GLB, up to {max_faces} faces per geometry. Original URDF kinematics and scene transforms are retained. Texture UVs use nearest original vertices. Source hashes and face counts are in source.json.\n'))
         print(f'{folder.name}: {sum(p.stat().st_size for p in target.rglob("*") if p.is_file())/1e6:.2f} MB',flush=True)
 
 

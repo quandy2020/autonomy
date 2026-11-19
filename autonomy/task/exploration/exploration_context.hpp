@@ -5,6 +5,7 @@
 #pragma once
 #include <functional>
 #include <optional>
+#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include "autonomy/perception/data/observation_buffer.hpp"
 #include "autonomy/task/exploration/integration/goal_pose_adapter.hpp"
 #include "autonomy/task/exploration/coverage/completion_evaluator.hpp"
@@ -134,6 +135,10 @@ struct ExplorationSessionOptions {
 };
 /** @brief Immutable published owner snapshot; predictions never populate measured coverage. */
 struct ExplorationSnapshot {
+    std::shared_ptr<const ::automsgs::msgs::map_msgs::OccupancyGrid> measured_coverage_map;  ///< Actual target-ledger percentages; never an obstacle map or whole-room coverage claim.
+    std::uint64_t measured_coverage_revision = 0;  ///< Actual ledger revision represented by measured_coverage_map.
+    std::uint64_t measured_coverage_map_epoch = 0;  ///< Coordinate identity of the projected actual requirements.
+    std::uint64_t measured_coverage_geometry_revision = 0;  ///< Actual map lattice revision associated with the projection.
     ExplorationState state=ExplorationState::kIdle;  ///< Current owner lifecycle state.
     ExplorationResult result;  ///< Independent exploration, return and persistence outcomes.
     std::optional<AdaptedObservationGoal> goal;  ///< Prepared or executing intent with preserved observation requirements.

@@ -45,6 +45,7 @@ struct NativeObservationSourceSnapshot {
     std::array<std::uint64_t, 2> received{0, 0};  ///< Local callback ordinals per source.
     std::array<std::uint64_t, 2> accepted{0, 0};  ///< Correlated packets admitted by the sink.
     std::array<std::uint64_t, 2> rejected{0, 0};  ///< Invalid/degraded/overloaded input callbacks.
+    std::array<std::array<std::uint64_t, 8>, 2> rejected_by_reason{};  ///< Actual ingress result categories per source, excluding successful admission.
     bool running = false;  ///< All configured readers were created and admission is open.
     bool calibration_invalidated = false;  ///< Different calibration requires an explicit new revision/source.
     bool depth_calibration_ready = false;  ///< Actual matching CameraInfo has been accepted by this source, not inferred from Reader creation.

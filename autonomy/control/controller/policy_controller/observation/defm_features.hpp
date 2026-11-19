@@ -5,6 +5,7 @@
  */
 #pragma once
 #include <string>
+#include <vector>
 #include "autonomy/control/controller/policy_controller/config.hpp"
 #include "autonomy/control/controller/policy_controller/types.hpp"
 #include "autonomy/perception/models/defm/defm_encoder.hpp"
@@ -27,6 +28,23 @@ bool MakeDefmTensorFrame(const perception::defm::DefmDepthFeatures& features,
                         const proto::ObservationInput& input,
                         const std::string& tensor_name, double now_sec,
                         TensorFrame* output, std::string* error = nullptr);
+
+/** @brief Stack actual shared patch features in chronological order for a trained history input.
+ * @param history Original immutable features, oldest first; count must match the model's static history axis.
+ * @param input Mandatory RAW input declared as [1, history, patches, channels], without extra normalization.
+ * @param now_sec Actual current acquisition-clock time used to revalidate every feature.
+ * @param output Existing TensorFrame; empty for any missing, incompatible, expired or unordered history.
+ * @param error Optional rejection reason.
+ * @return True only for the exact complete model axes and consistent camera/calibration.
+ * @details Copies existing tokens without invoking DeFM again. Acquisition stamp
+ * is the newest real frame; expiration is the earliest original feature expiry.
+ * Duplicate frames, inferred history padding and calibration changes are rejected.
+ * These features remain perception evidence, not a motion or collision certificate.
+ */
+bool MakeDefmHistoryTensorFrame(
+    const std::vector<std::shared_ptr<const perception::defm::DefmDepthFeatures>>& history,
+    const proto::ObservationInput& input, double now_sec,
+    TensorFrame* output, std::string* error = nullptr);
 
 /**
  * @brief Recheck finite RAW acquisition leases after inference and tracking.

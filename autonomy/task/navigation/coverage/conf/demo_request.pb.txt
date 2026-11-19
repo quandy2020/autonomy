@@ -1,0 +1,12 @@
+frame_id: "map"
+coordinates_in_cartesian_frame: true
+polygons {
+  coordinates { axis1: -3 axis2: -2 }
+  coordinates { axis1: 3 axis2: -2 }
+  coordinates { axis1: 3 axis2: 2 }
+  coordinates { axis1: -3 axis2: 2 }
+  coordinates { axis1: -3 axis2: -2 }
+}
+headland_mode { mode: "CONSTANT" width: 1.2 }
+route_mode { mode: "BOUSTROPHEDON" }
+path_mode { mode: "DUBIN" continuity_mode: "DISCONTINUOUS" turn_point_distance: 0.05 }

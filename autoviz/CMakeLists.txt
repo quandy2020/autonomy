@@ -45,6 +45,11 @@ autocmake_binary(autoviz_app
   OUTPUT_NAME autoviz
   SOURCES ${AUTOVIZ_SRC_ROOT}/main.cpp
   DEPENDENCIES autoviz)
+if(AUTONOMY_BUILD_COVERAGE)
+  target_compile_definitions(autoviz PRIVATE AUTONOMY_BUILD_COVERAGE=1)
+  target_include_directories(autoviz PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
+  target_link_libraries(autoviz PRIVATE autonomy_proto)
+endif()
 target_link_libraries(autoviz_app PRIVATE
   Qt6::Core Qt6::Gui Qt6::Widgets glog::glog)
 

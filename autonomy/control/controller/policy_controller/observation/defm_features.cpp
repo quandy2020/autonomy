@@ -5,6 +5,7 @@
 #include "autonomy/control/controller/policy_controller/observation/defm_features.hpp"
 #include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace autonomy::control::controller::policy_controller {
 namespace {
@@ -62,6 +63,47 @@ bool MakeDefmTensorFrame(const perception::defm::DefmDepthFeatures& features,
     output->data.assign(values, values + count);
     output->stamp_sec = features.stamp;
     output->valid_until_sec = features.valid_until;
+    return true;
+}
+
+bool MakeDefmHistoryTensorFrame(
+    const std::vector<std::shared_ptr<const perception::defm::DefmDepthFeatures>>& history,
+    const proto::ObservationInput& input, double now_sec,
+    TensorFrame* output, std::string* error) {
+    if (error) error->clear();
+    if (!output) return Reject(error, "null history TensorFrame output");
+    *output = {};
+    if (history.empty() || history.size() > 8 || !history.front() ||
+        input.modality() != proto::OBSERVATION_RAW || input.name().empty() || !input.required() ||
+        input.norm().ByteSizeLong() || input.shape_size() != 4 || input.shape(0) != 1 ||
+        input.shape(1) != static_cast<std::int64_t>(history.size()) ||
+        input.shape(2) != history.front()->patch_count || input.shape(3) != history.front()->feature_dimensions)
+        return Reject(error, "history requires exact mandatory [1,T,N,D] RAW axes");
+    const auto& first = *history.front();
+    if (!first.image || first.patch_count <= 0 || first.patch_count > 1024 || first.feature_dimensions != 384)
+        return Reject(error, "history has no valid original camera/token contract");
+    proto::ObservationInput one;
+    one.set_name(input.name()); one.set_modality(proto::OBSERVATION_RAW); one.set_required(true);
+    one.add_shape(1); one.add_shape(first.patch_count); one.add_shape(first.feature_dimensions);
+    TensorFrame staged;  ///< Complete output becomes visible only after all original acquisitions pass.
+    staged.name = input.name(); staged.shape = {1, static_cast<std::int64_t>(history.size()), first.patch_count, first.feature_dimensions};
+    staged.valid_until_sec = std::numeric_limits<double>::infinity();
+    staged.data.reserve(history.size()*static_cast<std::size_t>(first.patch_count)*first.feature_dimensions);
+    double previous_stamp = 0;  ///< Strict chronological identity; no temporal reorder or duplicate padding.
+    for (const auto& features : history) {
+        if (!features || !features->image || features->calibration_revision != first.calibration_revision ||
+            features->image->header().frame_id() != first.image->header().frame_id() ||
+            features->image->width() != first.image->width() || features->image->height() != first.image->height() ||
+            features->patch_count != first.patch_count || features->feature_dimensions != first.feature_dimensions ||
+            features->stamp <= previous_stamp)
+            return Reject(error, "history is missing, reordered or has incompatible real acquisitions");
+        TensorFrame frame;
+        if (!MakeDefmTensorFrame(*features, one, "patch_tokens", now_sec, &frame, error)) return false;
+        staged.data.insert(staged.data.end(), frame.data.begin(), frame.data.end());
+        staged.valid_until_sec = std::min(staged.valid_until_sec, frame.valid_until_sec);
+        staged.stamp_sec = frame.stamp_sec; previous_stamp = frame.stamp_sec;
+    }
+    *output = std::move(staged);
     return true;
 }
 

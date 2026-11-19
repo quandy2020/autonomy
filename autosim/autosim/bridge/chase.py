@@ -66,6 +66,7 @@ def chase_spec(sensors: Mapping[str, Any] | None) -> dict[str, Any] | None:
         pitch_deg = float(pitch)
     return {
         "uuid": str(block.get("uuid") or CHASE_UUID),
+        "clear_color": block.get("clear_color"),
         "width": width,
         "height": height,
         "hfov_deg": float(block.get("hfov_deg", 70.0)),

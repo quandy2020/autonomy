@@ -1,0 +1,16 @@
+{
+  "robot_width": 0.35,
+  "operation_width": 0.8,
+  "min_turning_radius": 0.4,
+  "cruise_speed": 0.4,
+  "turn_speed": 0.25,
+  "headland_width": 1.2,
+  "route_type": "BOUSTROPHEDON",
+  "path_type": "DUBIN",
+  "path_continuity_type": "DISCONTINUOUS",
+  "turn_point_distance": 0.05,
+  "controller_id": "rpp_controller",
+  "controller_supports_reverse": false,
+  "max_transport_poses": 40,
+  "navigation_timeout": 600.0
+}

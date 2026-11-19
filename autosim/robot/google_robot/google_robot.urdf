@@ -19,7 +19,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_base.glb" />
+        <mesh filename="meshes/habitat/link_base.glb.glb" />
       </geometry>
     </visual>
     <collision>
@@ -73,7 +73,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_wheel.3obj.obj" />
+        <mesh filename="meshes/habitat/link_wheel.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -97,7 +97,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_wheel.3obj.obj" />
+        <mesh filename="meshes/habitat/link_wheel.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -117,7 +117,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/coarse_meshes/link_rear_wheel.glb" />
+        <mesh filename="meshes/habitat/link_rear_wheel.glb.glb" />
       </geometry>
     </visual>
   </link>
@@ -131,7 +131,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/coarse_meshes/link_rear_wheel.glb" />
+        <mesh filename="meshes/habitat/link_rear_wheel.glb.glb" />
       </geometry>
     </visual>
   </link>
@@ -144,7 +144,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_torso.3obj.obj" />
+        <mesh filename="meshes/habitat/link_torso.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -163,7 +163,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_shoulder.3obj.obj" />
+        <mesh filename="meshes/habitat/link_shoulder.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -182,7 +182,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_bicep.3obj.obj" />
+        <mesh filename="meshes/habitat/link_bicep.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -201,7 +201,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_elbow.3obj.obj" />
+        <mesh filename="meshes/habitat/link_elbow.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -220,7 +220,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_forearm.3obj.obj" />
+        <mesh filename="meshes/habitat/link_forearm.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -239,7 +239,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_wrist.3obj.obj" />
+        <mesh filename="meshes/habitat/link_wrist.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -258,7 +258,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 -1.57079632679" />
       <geometry>
-        <mesh filename="meshes/3obj/link_gripper.3obj.obj" />
+        <mesh filename="meshes/habitat/link_gripper.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -277,7 +277,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_finger_base_simplified.3obj.obj" />
+        <mesh filename="meshes/habitat/link_finger_base_simplified.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -301,7 +301,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_finger_tip_simplified.3obj.obj" />
+        <mesh filename="meshes/habitat/link_finger_tip_simplified.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -324,7 +324,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_finger_nail.3obj.obj" />
+        <mesh filename="meshes/habitat/link_finger_nail.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -343,7 +343,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_finger_base_simplified.3obj.obj" />
+        <mesh filename="meshes/habitat/link_finger_base_simplified.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -367,7 +367,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_finger_tip_simplified.3obj.obj" />
+        <mesh filename="meshes/habitat/link_finger_tip_simplified.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -390,7 +390,7 @@
     <visual>
       <origin xyz="0 0 0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_finger_nail.3obj.obj" />
+        <mesh filename="meshes/habitat/link_finger_nail.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -409,7 +409,7 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_head_pan.3obj.obj" />
+        <mesh filename="meshes/habitat/link_head_pan.3obj.obj.glb" />
       </geometry>
     </visual>
     <collision>
@@ -428,7 +428,13 @@
     <visual>
       <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
       <geometry>
-        <mesh filename="meshes/3obj/link_head_tilt.3obj.obj" />
+        <mesh filename="meshes/habitat/link_head_tilt.3obj.obj.glb" />
+      </geometry>
+    </visual>
+    <visual>
+      <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="meshes/habitat/head_sensor_panel.glb" />
       </geometry>
     </visual>
     <collision>
@@ -451,6 +457,9 @@
     <child link="link_gripper_tcp" />
   </joint>
   <link name="link_camera" />
+  <link name="camera_center_optical_frame" />
+  <link name="camera_left_optical_frame" />
+  <link name="camera_right_optical_frame" />
   <link name="link_base_imu_mount" />
   <link name="imu.base" />
   <link name="link_neck_imu_mount" />
@@ -595,6 +604,24 @@
     <child link="link_camera" />
     <axis xyz="0 0 0" />
     <origin rpy="-1.57079632679 0 -1.57079632679" xyz="0.10488 0.0 0.0" />
+  </joint>
+  <joint name="joint_camera_center_optical" type="fixed">
+    <parent link="link_head_tilt" />
+    <child link="camera_center_optical_frame" />
+    <axis xyz="0 0 0" />
+    <origin rpy="-1.57079632679 0 -1.57079632679" xyz="0.1240 0.000 0.004" />
+  </joint>
+  <joint name="joint_camera_left_optical" type="fixed">
+    <parent link="link_head_tilt" />
+    <child link="camera_left_optical_frame" />
+    <axis xyz="0 0 0" />
+    <origin rpy="-1.57079632679 0 -1.57079632679" xyz="0.1240 0.062 0.004" />
+  </joint>
+  <joint name="joint_camera_right_optical" type="fixed">
+    <parent link="link_head_tilt" />
+    <child link="camera_right_optical_frame" />
+    <axis xyz="0 0 0" />
+    <origin rpy="-1.57079632679 0 -1.57079632679" xyz="0.1240 -0.062 0.004" />
   </joint>
   <joint name="joint_base_imu_mount" type="fixed">
     <parent link="link_base" />

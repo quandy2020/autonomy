@@ -138,7 +138,7 @@ ObservationIngressResult ObservationIngress::PushDepth(const DepthImageBytes& im
         frame->world_from_camera = pose->world_from_sensor;
         frame->sequence = sequence; frame->map_epoch = pose->map_epoch;
         frame->localization_valid = true; frame->frame_id = pose->world_frame;
-        auto observation = RgbdObservationAdapter{}.Adapt(*frame);
+        auto observation = RgbdObservationAdapter{}.Adapt(*frame,options_.rgbd_pixel_stride);
         if (!observation) return ObservationIngressResult::kInvalidEvidence;
         observation->valid_until = std::min(observation->valid_until, pose->valid_until);
         ObservationPacket packet{*pose, std::move(*observation), RgbdObservationAdapter{}.MakeDepthView(*frame), {}};

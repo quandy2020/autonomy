@@ -16,6 +16,8 @@ import sys
 
 
 TEST_TARGETS = (
+    'autonomy_measured_coverage_map_test',
+    'autonomy_native_controller_io_test',
     'autonomy_defm_encoder_test',
     'autonomy_scheduler_motion_test',
     'autonomy_shared_bspline_cache_test',
@@ -82,6 +84,31 @@ def check_sources():
     if any(digest(source_root / n) != value for n, value in protected_task.items()):
         raise RuntimeError('protected TaskServer changed')
 
+def check_service_ownership():
+    # Several actual native tests register the fixed production route/action
+    # names. Running alongside an application can select the wrong peer and
+    # also expose a test planner to another owner's requests. Fail before any
+    # configure/build/test mutation, retaining the running application's state.
+    code = r"""from pathlib import Path
+import json
+active = []
+for path in Path('/proc').glob('[0-9]*/cmdline'):
+    try:
+        fields = path.read_bytes().split(b'\0')
+        executable = fields[0].decode(errors='replace') if fields else ''
+        if Path(executable).name in ('autonomy.task', 'autonomy.planning', 'autonomy.control'):
+            active.append({'pid': path.parent.name, 'executable': executable})
+    except (FileNotFoundError, PermissionError, ProcessLookupError):
+        pass
+print(json.dumps(active))
+"""
+    result = subprocess.run(['docker', 'exec', container, 'python3', '-c', code],
+                            capture_output=True, text=True, timeout=20, check=True)
+    active = json.loads(result.stdout)
+    if active:
+        emit({'event': 'active_native_services', 'active_native_services': active})
+        raise RuntimeError('fixed native test endpoints are currently owned by running applications; full service tests require isolation')
+
 def emit(event):
     print(json.dumps(event), flush=True)
 
@@ -101,6 +128,7 @@ def run(stage, inner, timeout):
     return code == 0
 
 try:
+    check_service_ownership()
     check_sources()
     emit({'event': 'sources', 'source_sha256': expected, 'remote_logs': str(log_root)})
     passed = run('configure', ['cmake', '-S', native_root, '-B', build,
@@ -133,7 +161,7 @@ try:
             time.sleep(min(5.0, max(0.0, deadline - time.monotonic())))
         check_artifacts()
         emit({'event': 'artifacts', 'defm_artifacts_sha256': expected_artifacts})
-        pattern = ('^(autonomy[.](perception[.]defm_encoder|common[.]bspline_cache|native[.]vista|planning[.](vista_server|vista_incremental_graph|native_route_service)|'
+        pattern = ('^(autonomy[.](control[.]native_controller_io|perception[.]defm_encoder|common[.]bspline_cache|native[.]vista|planning[.](vista_server|vista_incremental_graph|native_route_service)|'
                    'task[.](scheduler_motion|bt_runner|typed_task|navigation|result_response_wait|path_reference|'
                    'motion_dispatch|motion_dispatch_gate)|exploration[.].*)|'
                    'control[.]policy_(differential_drive|timed_trajectory|local_ground|local_trajectory_safety|trajectory_tracker|native_spline_tracker)_test)$')

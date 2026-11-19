@@ -5,11 +5,13 @@
  * and generated automsgs. Controlled localization does not replace a SLAM run.
  */
 #include <cstring>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <unistd.h>
 #include "autonomy/task/exploration/integration/native_observation_mapper.hpp"
+#include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
 
 namespace {
 namespace e = autonomy::task::exploration;
@@ -101,8 +103,18 @@ void PrefixAndPersistence(const std::filesystem::path& directory) {
     Require(reply && reply->success && reply->fusion_confirmed,"native save follows actual file synchronization");
     const auto occupancy = Read<::automsgs::msgs::map_msgs::OccupancyGrid>(directory/"actual_map.occupancy.pb");
     const auto grid = Read<::automsgs::msgs::map_msgs::GridMap>(directory/"actual_map.grid.pb");
-    Require(occupancy.data_size() == 400 && occupancy.header().frame_id() == "map" && grid.layers_size() == 4,
+    Require(occupancy.data_size() == 400 && occupancy.header().frame_id() == "map" && grid.layers_size() == 5 &&
+        std::find(grid.layers().begin(),grid.layers().end(),"navigation_state") != grid.layers().end(),
         "both persisted maps retain actual bounded geometry and native grid_map layers");
+    ::grid_map::GridMap restored;
+    Require(::grid_map::GridMapConverter::fromMessage(grid,restored),"actual saved native grid_map decodes through the existing converter");
+    for (int x = 0; x < complete->grid->width(); ++x) for (int y = 0; y < complete->grid->height(); ++y) {
+        const auto center = complete->grid->CellCenter(x,y); ::grid_map::Index index;
+        Require(restored.getIndex(::grid_map::Position(center.x,center.y),index),"saved navigation cell has the same world location");
+        const auto state = complete->grid->At(x,y).state;
+        const float expected = state == n::CellState::kFree ? 0.f : state == n::CellState::kOccupied ? 100.f : -1.f;
+        Require(restored.at("navigation_state",index) == expected,"persisted navigation state matches actual footprint-height route geometry");
+    }
     version = Version(*complete,4,4);
     Require(services.save_map("missing_input",version),"incomplete save operation reports an actual result");
     reply = services.poll_map_save();
@@ -131,6 +143,26 @@ void UnknownHeight(const std::filesystem::path& directory) {
         "ESDF's unobserved-free default cannot fake missing vertical clearance");
     Require(mapped->grid->At(19,19).state == n::CellState::kUnknown,"unmeasured map corner remains unknown");
 }
+/** @brief Unknown numeric evidence stays stable; authoritative loss cannot retain an old traversable cell. */
+void ReaderUnknownContract() {
+    n::GridMap grid(2,2,.2);
+    grid.Fill({n::CellState::kUnknown,NAN,NAN}); p::MapReader reader;
+    const auto first = reader.Read(grid,10,1,0,false,p::UnknownCellPolicy::kReplace);
+    const auto same = reader.Read(grid,10.1,1,0,false,p::UnknownCellPolicy::kReplace);
+    Require(first.geometry_revision == same.geometry_revision,"unchanged unknown heights do not continuously invalidate decisions");
+    grid.Set(0,0,{n::CellState::kFree,0,1});
+    const auto free = reader.Read(grid,10.2,1,0,false,p::UnknownCellPolicy::kReplace);
+    grid.Set(0,0,{n::CellState::kUnknown,NAN,NAN});
+    const auto rolling = reader.Read(grid,10.3,1,0);
+    Require(rolling.grid->At(0,0).state == n::CellState::kFree,"rolling-window default preserves legitimate historical evidence");
+    const auto replaced = reader.Read(grid,10.4,1,0,false,p::UnknownCellPolicy::kReplace);
+    Require(replaced.grid->At(0,0).state == n::CellState::kUnknown && replaced.geometry_revision > free.geometry_revision,
+        "authoritative missing clearance revokes the old free cell");
+    grid.Set(0,0,{n::CellState::kFree,0,NAN}); bool rejected = false;
+    try { (void)reader.Read(grid,10.5,1,0,false,p::UnknownCellPolicy::kReplace); }
+    catch (const std::invalid_argument&) { rejected = true; }
+    Require(rejected,"a traversable cell still requires known height evidence");
+}
 }  // namespace
 
 /** @brief Run real mapping and persistence checks in this test's own temporary directory. */
@@ -139,7 +171,7 @@ int main() {
     char* made = ::mkdtemp(pattern.data()); if (!made) return 2;
     const std::filesystem::path root(made);
     try {
-        PrefixAndPersistence(root/"prefix"); UnknownHeight(root/"height");
+        PrefixAndPersistence(root/"prefix"); UnknownHeight(root/"height"); ReaderUnknownContract();
         std::filesystem::remove_all(root);
         std::cout << "PASS native_observation_mapper" << std::endl; return 0;
     } catch (const std::exception& error) {

@@ -16,7 +16,11 @@ struct RgbdFrame {
 };
 class RgbdObservationAdapter {
 public:
-    std::optional<SensorObservation> Adapt(const RgbdFrame& frame) const;
+    /** @brief Generate rays only from the explicitly selected actual valid pixels.
+     * @details valid_fraction describes the full actual raster, independent from
+     * the ray work budget; unsampled pixels do not become no-hit free-space rays.
+     */
+    std::optional<SensorObservation> Adapt(const RgbdFrame& frame, unsigned pixel_stride = 1) const;
     std::optional<DepthView> MakeDepthView(const RgbdFrame& frame) const;
 };
 }  // namespace autonomy::perception

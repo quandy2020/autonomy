@@ -77,7 +77,8 @@ bool Coordinate(const CloudField* field) {
 }  // namespace
 
 void ValidateSensorDecodingOptions(const SensorDecodingOptions& o) {
-    if (!std::isfinite(o.uint16_depth_scale) || o.uint16_depth_scale <= 0 ||
+    if (!o.rgbd_pixel_stride || o.rgbd_pixel_stride > 32 ||
+        !std::isfinite(o.uint16_depth_scale) || o.uint16_depth_scale <= 0 ||
         !std::isfinite(o.minimum_range) || o.minimum_range <= 0 ||
         !std::isfinite(o.maximum_range) || o.maximum_range <= o.minimum_range ||
         !std::isfinite(o.time_offset_scale) || o.time_offset_scale <= 0 ||

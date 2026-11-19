@@ -1,6 +1,24 @@
 # Tests linked to actual native planning/task libraries and generated messages.
 # Independent from BUILD_TEST so unrelated optional domains are not reconfigured.
 if(AUTONOMY_BUILD_EXPLORATION_TESTS)
+  set(AUTONOMY_DEFM_SAND_TEST_MODEL "" CACHE FILEPATH "Actual trained token-condition denoising graph")
+  set(AUTONOMY_DEFM_SAND_TEST_FIXTURE "" CACHE FILEPATH "Actual held-out expert/native-step fixture")
+  if(AUTONOMY_DEFM_SAND_TEST_MODEL AND AUTONOMY_DEFM_SAND_TEST_FIXTURE)
+    add_executable(autonomy_native_defm_head_test
+      autonomy/control/controller/policy_controller/sand_planner/native_defm_head_test.cpp)
+    target_link_libraries(autonomy_native_defm_head_test PRIVATE autonomy_depth_features autonomy_control)
+    add_test(NAME autonomy.control.native_defm_head COMMAND autonomy_native_defm_head_test
+      "${AUTONOMY_DEFM_SAND_TEST_MODEL}" "${AUTONOMY_DEFM_TEST_MODEL}" "${AUTONOMY_DEFM_SAND_TEST_FIXTURE}")
+    set_tests_properties(autonomy.control.native_defm_head PROPERTIES TIMEOUT 90)
+  endif()
+  add_executable(autonomy_measured_coverage_map_test autonomy/task/exploration/measured_coverage_map_test.cpp)
+  target_link_libraries(autonomy_measured_coverage_map_test PRIVATE autonomy_task)
+  add_test(NAME autonomy.exploration.measured_coverage_map COMMAND autonomy_measured_coverage_map_test)
+  set_tests_properties(autonomy.exploration.measured_coverage_map PROPERTIES TIMEOUT 30)
+  add_executable(autonomy_native_controller_io_test autonomy/control/native_controller_io_test.cpp)
+  target_link_libraries(autonomy_native_controller_io_test PRIVATE autonomy_control)
+  add_test(NAME autonomy.control.native_controller_io COMMAND autonomy_native_controller_io_test)
+  set_tests_properties(autonomy.control.native_controller_io PROPERTIES TIMEOUT 45)
   # Production Atlas bridge is optional; this regression retains native epoch
   # nanoseconds rather than weakening acquisition association with a tolerance.
   if(TARGET atlas_automsgs_bridge)

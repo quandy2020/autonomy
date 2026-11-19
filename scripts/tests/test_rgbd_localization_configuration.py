@@ -7,7 +7,7 @@ import unittest
 import cv2
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from validate_rgbd_localization import camera_settings, sensor_height
+from validate_rgbd_localization import camera_settings, sensor_height, verify_rendered_camera_height
 from automsgs.msgs.sensor_msgs.camera_info_pb2 import CameraInfo
 from automsgs.msgs.sensor_msgs.image_pb2 import Image
 from automsgs.msgs.tf2_msgs.tf_message_pb2 import TFMessage
@@ -55,6 +55,12 @@ class RgbdConfigurationTest(unittest.TestCase):
         del self.info.d[:]
         with self.assertRaises(ValueError):
             camera_settings(self.info, self.rgb, self.depth, 10.5, .21)
+
+    def test_rendering_origin_must_match_actual_installation(self):
+        verify_rendered_camera_height(.21, (0., .21, -.05))
+        for actual in [(0., .6, -.05), (0., float('nan'), 0.), (0., .21)]:
+            with self.assertRaises(ValueError):
+                verify_rendered_camera_height(.21, actual)
 
     def test_height_comes_from_the_complete_static_chain(self):
         transforms = TFMessage()

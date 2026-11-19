@@ -357,6 +357,47 @@ class UrdfModel:
         """Camera mount or origin."""
         return self.mounts.get("camera_link", (0.0, 0.0, 0.0))
 
+    def link_transform(self, link: str, positions: Mapping[str, float] | None = None):
+        """Full URDF root-to-link transform, including moving joint angles."""
+        import numpy as np
+        from autosim.robot.joints import load_joints, joint_transform
+
+        joints = getattr(self, "scalar_joints", None)
+        if joints is None:
+            joints = load_joints(self.path)
+            self.scalar_joints = joints
+        state = positions or {}
+        chain = []
+        current = link
+        for _ in range(len(self.parents) + 1):
+            if current == self.root:
+                break
+            if current not in self.parents:
+                raise ValueError(f"unknown or disconnected URDF link: {link}")
+            chain.append(current)
+            current = self.parents[current][0]
+        else:
+            raise ValueError(f"URDF cycle at {link}")
+        result = np.eye(4)
+        for child in reversed(chain):
+            name = self.joint_name[child]
+            joint = joints.get(name)
+            xyz, quaternion = joint_transform(
+                self.parents[child][1], self.joint_rpy[child],
+                self.joint_axis[child] if joint else (1, 0, 0),
+                joint.kind if joint else "fixed", state.get(name, 0.0),
+            )
+            x, y, z, w = quaternion
+            rotation = np.array([
+                [1-2*(y*y+z*z), 2*(x*y-z*w), 2*(x*z+y*w)],
+                [2*(x*y+z*w), 1-2*(x*x+z*z), 2*(y*z-x*w)],
+                [2*(x*z-y*w), 2*(y*z+x*w), 1-2*(x*x+y*y)],
+            ])
+            step = np.eye(4)
+            step[:3, :3], step[:3, 3] = rotation, xyz
+            result = result @ step
+        return result
+
     def footprint_polygon(self) -> Tuple[Tuple[float, float, float], ...]:
         """Ground-plane footprint polygon derived from the URDF when available."""
         return self.footprint

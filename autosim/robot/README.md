@@ -20,4 +20,6 @@ python -m autosim.robot.viewer --profile unitree_go2
 
 The Habitat viewer exposes joint sliders and numeric inputs, orbit camera controls, reset and PNG export. Bridge configurations are in `config/robots/<profile>.yaml`. `/joint_commands` accepts named JointState position commands and `/joint_states` reports the current pose. These are kinematic joint controls; locomotion policies are a separate integration.
 
-Unitree display meshes are converted to GLB and simplified to up to 5000 faces per geometry. Geometry transforms and joint definitions are retained; texture UVs use nearest original vertices. Original and display hashes and face counts are recorded in source.json. Full resolution assets can be downloaded using scripts/import_robot_assets.py. Google meshes remain unchanged.
+G1 display meshes are converted to GLB and simplified to up to 5000 faces per geometry. Go2 uses full resolution GLB conversion with every original triangle retained. Geometry transforms and joint definitions are retained; texture UVs use nearest original vertices. Original and display hashes and face counts are recorded in source.json. Full resolution assets can be downloaded using scripts/import_robot_assets.py. Google meshes remain unchanged.
+
+Google Robot, G1 and Go2 support /cmd_vel (Autolink TwistStamped) planar forward/backward motion and turning, odometry and TF, with a 0.5-second command watchdog. Viewer drive buttons support hold-to-move. Legged locomotion is kinematic base motion; walking balance/gaits are not provided.

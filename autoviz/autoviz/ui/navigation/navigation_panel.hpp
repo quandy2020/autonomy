@@ -55,6 +55,9 @@ class StatusBadge;
 }
 
 namespace navigation {
+#ifdef AUTONOMY_BUILD_COVERAGE
+class CoveragePanel;
+#endif
 
 struct PoseRow {
   QWidget* widget = nullptr;
@@ -156,6 +159,10 @@ class NavigationPanel : public QWidget {
   std::unique_ptr<Impl> impl_;
 
   UiMode mode_ = UiMode::kIdle;
+#ifdef AUTONOMY_BUILD_COVERAGE
+  CoveragePanel* coverage_panel_ = nullptr;
+  bool coverage_selected_ = false;
+#endif
   int loop_no_ = 0;
 
   widget::StatusBadge* nav_badge_ = nullptr;

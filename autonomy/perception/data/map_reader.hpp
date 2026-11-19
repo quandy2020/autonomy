@@ -15,6 +15,8 @@
 
 namespace autonomy::perception {
 using Pose2d = opt::navigation::Pose2d;
+/** @brief Whether an unknown cell is absent rolling-window evidence or an authoritative invalidation. */
+enum class UnknownCellPolicy { kRetainHistory, kReplace };
 /** @brief Closed world-coordinate region used for incremental invalidation. */
 struct Bounds2d {
     double min_x = 0;  ///< Minimum world X, meters.
@@ -59,7 +61,8 @@ public:
      */
     MapReadView Read(const opt::navigation::GridMap& snapshot, double source_stamp,
                      std::uint64_t alignment_id, std::uint64_t observation_watermark,
-                     bool footprint_inflated = false);
+                     bool footprint_inflated = false,
+                     UnknownCellPolicy unknowns = UnknownCellPolicy::kRetainHistory);
     /** @brief Last owned snapshot; caller must serialize use of this reader. */
     const std::optional<MapReadView>& latest() const { return latest_; }
 private:

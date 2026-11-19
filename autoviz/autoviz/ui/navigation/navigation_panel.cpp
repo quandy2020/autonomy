@@ -58,6 +58,9 @@
 #include <automsgs/task/navigation.pb.h>
 
 #include "autoviz/common/session_config.hpp"
+#ifdef AUTONOMY_BUILD_COVERAGE
+#include "autoviz/ui/navigation/coverage_panel.hpp"
+#endif
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/widget/display/status_badge.hpp"
 #include "autoviz/plugins/displays/display.hpp"
@@ -533,6 +536,9 @@ void NavigationPanel::buildUi() {
   mode_segment_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   mode_segment_->AddSegment(tr("AB point"));
   mode_segment_->AddSegment(tr("Waypoints"));
+#ifdef AUTONOMY_BUILD_COVERAGE
+  mode_segment_->AddSegment(tr("Coverage"));
+#endif
   mode_segment_->SetCurrentIndex(0);
   mode_segment_->setToolTip(
       tr("AB point sends NavigateToPose. Waypoints accumulate poses for ThroughPoses or Follow."));
@@ -638,6 +644,10 @@ void NavigationPanel::buildUi() {
   wp_layout->addWidget(pause_waypoint_button_);
   wp_layout->addStretch(1);
   mode_stack_->addWidget(waypoint_page_);
+#ifdef AUTONOMY_BUILD_COVERAGE
+  coverage_panel_ = new CoveragePanel(manager_, mode_stack_);
+  mode_stack_->addWidget(coverage_panel_);
+#endif
   layout->addWidget(mode_stack_, 1);
 
   advanced_ = new widget::CollapsiblePanel(content);
@@ -717,6 +727,18 @@ bool NavigationPanel::isBusy() const {
 }
 
 void NavigationPanel::applyUi() {
+#ifdef AUTONOMY_BUILD_COVERAGE
+  start_reset_button_->setVisible(!coverage_selected_);
+  pause_resume_button_->setVisible(!coverage_selected_);
+  if (coverage_selected_) {
+    setMinimumSize(400, 700);
+    const QSignalBlocker blocker(mode_segment_);
+    mode_segment_->SetCurrentIndex(2);
+    mode_stack_->setCurrentIndex(2);
+    return;
+  }
+  setMinimumSize(0, 0);
+#endif
   const bool idle = mode_ == UiMode::kIdle;
   const bool paused = mode_ == UiMode::kPaused;
   const bool accumulating = mode_ == UiMode::kAccumulating;
@@ -925,6 +947,16 @@ void NavigationPanel::onPauseResumeClicked() {
 }
 
 void NavigationPanel::onModeSegmentChanged(int index) {
+#ifdef AUTONOMY_BUILD_COVERAGE
+  if (!isBusy()) {
+    coverage_selected_ = index == 2;
+    if (coverage_selected_) {
+      mode_ = UiMode::kIdle;
+      applyUi();
+      return;
+    }
+  }
+#endif
   if (isBusy() || mode_ == UiMode::kPaused || mode_ == UiMode::kPausedWp) {
     applyUi();
     return;
