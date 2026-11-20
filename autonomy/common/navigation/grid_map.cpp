@@ -3,13 +3,13 @@
  * @brief Internal Opt grid map implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/grid_map.h"
+#include "autonomy/common/navigation/grid_map.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 GridMap::GridMap(int width, int height, double resolution, double origin_x,
                  double origin_y, std::string frame_id)
@@ -55,4 +55,4 @@ const GridCell& GridMap::At(int x, int y) const { return cells_.at(Index(x, y));
 void GridMap::Set(int x, int y, const GridCell& cell) { cells_.at(Index(x, y)) = cell; }
 void GridMap::Fill(const GridCell& cell) { std::fill(cells_.begin(), cells_.end(), cell); }
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

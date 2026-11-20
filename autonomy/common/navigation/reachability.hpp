@@ -5,9 +5,9 @@
 #include <functional>
 #include <vector>
 
-#include "opt/navigation/safety.h"
+#include "autonomy/common/navigation/safety.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 // A single four-connected Dijkstra field serves every candidate. Edges and
 // endpoint connections are checked with the same swept-footprint safety rules.
@@ -47,5 +47,5 @@ class GridPlanner final : public IPathPlanner {
   SafetyOptions options_;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_REACHABILITY_H_

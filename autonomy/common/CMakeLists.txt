@@ -188,6 +188,3 @@ autocmake_test(common.math.steering_clothoid_circle_test
 autocmake_test(common.math.steering_jacobian_test
   SOURCES math/steering_jacobian_test.cpp
   DEPENDENCIES autonomy_common)
-
-# Shared geometry and lightweight observations, independent of ML/perception.
-add_subdirectory(navigation)

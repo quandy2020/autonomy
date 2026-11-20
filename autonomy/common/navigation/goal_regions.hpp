@@ -1,9 +1,9 @@
 #ifndef OPT_NAVIGATION_GOAL_REGIONS_H_
 #define OPT_NAVIGATION_GOAL_REGIONS_H_
 
-#include "opt/navigation/goal_adapter.h"
+#include "autonomy/common/navigation/goal_adapter.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 struct GeometricRegion {
   std::string id;
@@ -33,5 +33,5 @@ class ConnectedGoalRegionProvider final : public IGoalRegionProvider {
   double search_radius_;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_GOAL_REGIONS_H_

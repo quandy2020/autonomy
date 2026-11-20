@@ -1,9 +1,9 @@
 #ifndef OPT_NAVIGATION_POSE_SAMPLER_H_
 #define OPT_NAVIGATION_POSE_SAMPLER_H_
 
-#include "opt/navigation/goal_adapter.h"
+#include "autonomy/common/navigation/goal_adapter.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 // Coarse coverage followed by bounded local refinement. Sampling alone neither
 // establishes safety nor proves that a region is unreachable.
 class PoseSampler {
@@ -19,5 +19,5 @@ class PoseSampler {
  private:
   AdaptationOptions options_;
 };
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_POSE_SAMPLER_H_

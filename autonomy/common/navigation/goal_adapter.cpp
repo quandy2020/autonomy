@@ -3,7 +3,7 @@
  * @brief Internal Opt goal adapter implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/goal_adapter.h"
+#include "autonomy/common/navigation/goal_adapter.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -11,10 +11,10 @@
 #include <stdexcept>
 #include <utility>
 
-#include "opt/navigation/pose_sampler.h"
-#include "opt/navigation/pose_scorer.h"
+#include "autonomy/common/navigation/pose_sampler.hpp"
+#include "autonomy/common/navigation/pose_scorer.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 std::optional<GoalRegion> GeometricRegionProvider::Resolve(const GoalRequest& goal,
                                                           const GridMap&) const {
@@ -286,4 +286,4 @@ AdaptationResult GoalAdapter::Adapt(const AdaptationInput& input) const {
   return result;
 }
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

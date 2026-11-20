@@ -3,13 +3,13 @@
  * @brief Internal Opt safety implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/safety.h"
+#include "autonomy/common/navigation/safety.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 namespace {
 constexpr double kFar = 1e30;
 
@@ -217,4 +217,4 @@ SafetyResult GeometrySafety::VerifyPath(const Path& path) const {
   return {true, clearance, "safe"};
 }
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

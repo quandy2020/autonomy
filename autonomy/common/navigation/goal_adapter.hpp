@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "opt/navigation/reachability.h"
+#include "autonomy/common/navigation/reachability.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 struct AdaptationOptions {
   double ring_min_radius = 0.30;
@@ -110,5 +110,5 @@ class GoalAdapter {
   std::shared_ptr<const IGoalRegionProvider> regions_;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_GOAL_ADAPTER_H_

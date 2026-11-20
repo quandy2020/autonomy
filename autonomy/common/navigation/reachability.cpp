@@ -3,7 +3,7 @@
  * @brief Internal Opt reachability implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/reachability.h"
+#include "autonomy/common/navigation/reachability.hpp"
 
 #include <algorithm>
 #include <array>
@@ -11,7 +11,7 @@
 #include <stdexcept>
 #include <utility>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 ReachabilityField::ReachabilityField(std::shared_ptr<const GeometrySafety> safety, Pose2d start,
                                      std::size_t max_expansions,
@@ -121,4 +121,4 @@ PlanningResult GridPlanner::Plan(const PlanningRequest& request) const {
   return result;
 }
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

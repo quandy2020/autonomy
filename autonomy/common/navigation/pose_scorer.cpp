@@ -3,13 +3,13 @@
  * @brief Internal Opt pose scorer implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/pose_scorer.h"
+#include "autonomy/common/navigation/pose_scorer.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <stdexcept>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 PoseScorer::PoseScorer(SafetyOptions safety, AdaptationOptions options)
     : safety_(safety), options_(options) {
   for (double value : {options_.preferred_clearance, options_.goal_weight,
@@ -55,4 +55,4 @@ PoseScoreComponents PoseScorer::Score(const CandidateEvaluation& candidate,
                  options_.heading_weight * score.heading_alignment) / weight;
   return score;
 }
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

@@ -3,14 +3,14 @@
  * @brief Internal Opt pose sampler implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/pose_sampler.h"
+#include "autonomy/common/navigation/pose_sampler.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <stdexcept>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 PoseSampler::PoseSampler(AdaptationOptions options) : options_(options) {
   if (!std::isfinite(options_.ring_min_radius) || options_.ring_min_radius < 0 ||
       !std::isfinite(options_.ring_max_radius) ||
@@ -138,4 +138,4 @@ std::vector<Pose2d> PoseSampler::Refine(const AdaptationInput& input, const Pose
   }
   return samples;
 }
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

@@ -7,9 +7,9 @@
 #include <string>
 #include <vector>
 
-#include "opt/navigation/types.h"
+#include "autonomy/common/navigation/types.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 enum class CellState { kUnknown, kFree, kOccupied };
 struct GridCell {
@@ -66,5 +66,5 @@ class GridMap {
   std::vector<GridCell> cells_;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_GRID_MAP_H_

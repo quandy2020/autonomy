@@ -3,12 +3,12 @@
  * @brief Internal Opt goal confirmation implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/goal_confirmation.h"
+#include "autonomy/common/navigation/goal_confirmation.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 namespace {
 double DistanceToCell(const Pose2d& pose, const Pose2d& center, double half) {
   return std::hypot(std::max(0.0, std::abs(pose.x - center.x) - half),
@@ -180,4 +180,4 @@ AdaptationResult ObservationGoalSelector::Select(const AdaptationInput& input,
           : "no safe reachable observation pose; target unconfirmed";
   return result;
 }
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

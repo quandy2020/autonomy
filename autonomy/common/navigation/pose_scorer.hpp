@@ -1,9 +1,9 @@
 #ifndef OPT_NAVIGATION_POSE_SCORER_H_
 #define OPT_NAVIGATION_POSE_SCORER_H_
 
-#include "opt/navigation/goal_adapter.h"
+#include "autonomy/common/navigation/goal_adapter.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 class PoseScorer {
  public:
   PoseScorer(SafetyOptions safety = {}, AdaptationOptions options = {});
@@ -14,5 +14,5 @@ class PoseScorer {
   SafetyOptions safety_;
   AdaptationOptions options_;
 };
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_POSE_SCORER_H_

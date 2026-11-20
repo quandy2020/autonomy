@@ -3,13 +3,13 @@
  * @brief Internal Opt navigator implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/navigator.h"
+#include "autonomy/common/navigation/navigator.hpp"   
 
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 Navigator::Navigator(NavigatorOptions options, std::shared_ptr<const IGoalRegionProvider> regions)
     : options_(options), adapter_(options.safety, options.adaptation, std::move(regions)) {
@@ -313,4 +313,4 @@ NavigationUpdate Navigator::Tick(const NavigationInput& input) {
   return Current();
 }
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

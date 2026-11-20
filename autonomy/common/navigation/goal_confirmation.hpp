@@ -1,9 +1,9 @@
 #ifndef OPT_NAVIGATION_GOAL_CONFIRMATION_H_
 #define OPT_NAVIGATION_GOAL_CONFIRMATION_H_
 
-#include "opt/navigation/goal_adapter.h"
+#include "autonomy/common/navigation/goal_adapter.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 // Evidence, not physical ground truth. Includes the complete circular footprint,
 // ground and overhead space; missing geometry remains unknown.
@@ -33,5 +33,5 @@ class ObservationGoalSelector {
   ObservationOptions options_;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_GOAL_CONFIRMATION_H_

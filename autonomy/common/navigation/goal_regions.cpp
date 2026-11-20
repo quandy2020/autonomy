@@ -3,13 +3,13 @@
  * @brief Internal Opt goal regions implementation reused by native navigation.
  * @details Keeps the geometry implementation independent of ROS and map ownership.
  */
-#include "opt/navigation/goal_regions.h"
+#include "autonomy/common/navigation/goal_regions.hpp"
 
 #include <algorithm>
 #include <queue>
 #include <stdexcept>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 std::vector<GeometricRegion> GeometricSemanticParser::Parse(const GridMap& map) const {
   std::vector<GeometricRegion> regions;
@@ -77,4 +77,4 @@ std::optional<GoalRegion> ConnectedGoalRegionProvider::Resolve(const GoalRequest
   return std::nullopt;
 }
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation

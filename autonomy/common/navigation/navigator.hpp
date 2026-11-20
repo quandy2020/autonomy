@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "opt/navigation/goal_adapter.h"
+#include "autonomy/common/navigation/goal_adapter.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 struct NavigatorOptions {
   SafetyOptions safety;
@@ -77,5 +77,5 @@ class Navigator {
   int planning_failures_ = 0;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_NAVIGATOR_H_

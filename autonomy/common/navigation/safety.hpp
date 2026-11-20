@@ -6,9 +6,9 @@
 #include <string>
 #include <vector>
 
-#include "opt/navigation/grid_map.h"
+#include "autonomy/common/navigation/grid_map.hpp"
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 struct SafetyOptions {
   double robot_radius = 0.20;
@@ -44,5 +44,5 @@ class GeometrySafety {
   std::vector<double> distances_;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_SAFETY_H_
