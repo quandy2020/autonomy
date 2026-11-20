@@ -2293,6 +2293,19 @@ class Runner:
             action="store_true",
             help="list available scenes, robots, and sensors",
         )
+        parser.add_argument(
+            "--check-config",
+            action="store_true",
+            help=(
+                "validate the composed config and every asset it references, "
+                "then exit without starting Habitat"
+            ),
+        )
+        parser.add_argument(
+            "--print-config",
+            action="store_true",
+            help="print the composed config as YAML and exit",
+        )
         args = parser.parse_args(argv)
         if args.list:
             print(format_catalog())
@@ -2309,6 +2322,23 @@ class Runner:
                 )
         except ValueError as error:
             parser.error(str(error))
+        if args.print_config:
+            import yaml as _yaml
+
+            print(
+                _yaml.safe_dump(
+                    settings.data, sort_keys=False, default_flow_style=False
+                ).rstrip()
+            )
+            return
+        if args.check_config:
+            try:
+                lines = Config.preflight(settings.data)
+            except ValueError as error:
+                parser.error(str(error))
+            print("\n".join(lines))
+            print("ok: config is valid")
+            return
         try:
             with InstanceLock.from_environment(args.config):
                 Runner(settings).run()

@@ -320,10 +320,11 @@ class Config:
 
     @classmethod
     def fill_omitted_sensors(cls, data: MutableMapping[str, Any]) -> None:
-        """Insert disabled stubs for sensor blocks left out of a camera-only config.
+        """Insert a disabled stub for every sensor block a config omits.
 
-        ``bev.yaml`` only lists the surround rig. The runner still indexes
-        lidar / imu / odom, so missing blocks become ``enabled: false``.
+        The runner indexes a fixed set of blocks, and ``--sensors`` may select
+        any of them.  Filling the whole set here keeps both paths uniform: a
+        missing block means "off", never "KeyError".
         """
         habitat = data.get("habitat")
         if not isinstance(habitat, dict):
@@ -390,6 +391,53 @@ class Config:
                 "child_frame": "base_footprint",
                 "noise": 0.0,
             },
+            "stereo": {
+                "enabled": False,
+                "width": 640,
+                "height": 480,
+                "hfov_deg": 60.0,
+                "rate_hz": 15.0,
+                "baseline_m": 0.12,
+            },
+            "range": {
+                "enabled": False,
+                "rate_hz": 10.0,
+                "min_range": 0.02,
+                "max_range": 4.0,
+                "cone_deg": 0.0,
+                "samples": 1,
+                "sensors": {},
+            },
+            "joint_states": {
+                "enabled": False,
+                "channel": "/joint_states",
+            },
+            "topdown": {
+                "enabled": False,
+                "width": 1024,
+                "height": 1024,
+                "rate_hz": 5.0,
+                "channel": "/camera/topdown/image_raw",
+                "info_channel": "/camera/topdown/camera_info",
+            },
+            "chase": {
+                "enabled": False,
+                "width": 640,
+                "height": 480,
+                "distance_m": 3.0,
+                "height_m": 2.0,
+                "rate_hz": 10.0,
+                "channel": "/camera/chase/image_raw",
+                "info_channel": "/camera/chase/camera_info",
+            },
+            # Camera table: an empty table means "no surround rig".
+            "cameras": {},
+            "panorama": {
+                "enabled": False,
+                "channel": "/surround/panorama",
+                "width": 1920,
+                "height": 960,
+            },
         }
         for key, stub in stubs.items():
             if key not in sensors:
@@ -418,7 +466,7 @@ class Config:
             urdf: Path string or empty.
 
         Raises:
-            ValueError: Non-string or missing file.
+            ValueError: Non-string, missing file, or missing mesh asset.
         """
         if urdf is None:
             return
@@ -429,6 +477,15 @@ class Config:
             return
         if not path.is_file():
             raise ValueError(f"habitat.robot.urdf not found: {path}")
+        from autosim.robot.urdf import missing_meshes
+
+        missing = missing_meshes(path)
+        if missing:
+            shown = ", ".join(missing[:6])
+            suffix = "" if len(missing) <= 6 else f" (+{len(missing) - 6} more)"
+            raise ValueError(
+                f"habitat.robot.urdf references missing mesh files: {shown}{suffix}"
+            )
 
     @classmethod
     def require_bool(cls, block: Mapping[str, Any], path: str) -> None:
@@ -443,6 +500,73 @@ class Config:
         """
         if "enabled" not in block or not isinstance(block["enabled"], bool):
             raise ValueError(f"{path}.enabled must be a bool")
+
+    @classmethod
+    def validate_control_timing(cls, robot: Mapping[str, Any]) -> None:
+        """Validate the control loop rate, watchdog, and cmd_vel message type.
+
+        Args:
+            robot: ``habitat.robot`` mapping.
+
+        Raises:
+            ValueError: Non-positive rate, negative watchdog, or unknown type.
+        """
+        import math
+
+        if "control_hz" in robot:
+            try:
+                rate = float(robot["control_hz"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError("habitat.robot.control_hz must be a number") from exc
+            if not math.isfinite(rate) or not 0.0 < rate <= 1000.0:
+                raise ValueError(
+                    "habitat.robot.control_hz must be in (0, 1000]"
+                )
+        if "watchdog_sec" in robot:
+            try:
+                watchdog = float(robot["watchdog_sec"])
+            except (TypeError, ValueError) as exc:
+                raise ValueError(
+                    "habitat.robot.watchdog_sec must be a number"
+                ) from exc
+            if not math.isfinite(watchdog) or watchdog < 0.0:
+                raise ValueError("habitat.robot.watchdog_sec must be >= 0")
+        cmd_vel_type = str(robot.get("cmd_vel_type") or "twist_stamped").strip().lower()
+        if cmd_vel_type not in ("twist", "twist_stamped"):
+            raise ValueError(
+                "habitat.robot.cmd_vel_type must be 'twist' or 'twist_stamped'"
+            )
+
+    @classmethod
+    def validate_sensor_frames(cls, sensors: Mapping[str, Any]) -> None:
+        """Require a frame on every enabled sensor that publishes one.
+
+        Args:
+            sensors: ``habitat.sensors`` mapping.
+
+        Raises:
+            ValueError: Empty or non-string frame on an enabled sensor.
+        """
+        for key in ("lidar_2d", "lidar_3d", "camera", "imu", "odom"):
+            block = sensors.get(key)
+            if not isinstance(block, Mapping) or not block.get("enabled", False):
+                continue
+            # ``follow_urdf`` mounts the camera on the URDF's camera link, so a
+            # frame name is optional there.
+            if key == "camera" and block.get("follow_urdf", False):
+                continue
+            frame = block.get("frame")
+            if not isinstance(frame, str) or not frame.strip():
+                raise ValueError(
+                    f"habitat.sensors.{key}.frame must be a non-empty string"
+                )
+        odom = sensors.get("odom")
+        if isinstance(odom, Mapping) and odom.get("enabled", False):
+            child = odom.get("child_frame")
+            if not isinstance(child, str) or not child.strip():
+                raise ValueError(
+                    "habitat.sensors.odom.child_frame must be a non-empty string"
+                )
 
     @classmethod
     def validate_lidar_2d(cls, block: Mapping[str, Any]) -> None:
@@ -588,6 +712,12 @@ class Config:
         Raises:
             ValueError: Structure, channel, or geometry errors.
         """
+        from autosim.runtime import schema as config_schema
+
+        # Reject unknown keys first: a misspelled field would otherwise fall
+        # back to its default and look like the config was honoured.
+        config_schema.check(data)
+
         habitat = data.get("habitat")
         if not isinstance(habitat, Mapping):
             raise ValueError("habitat must be a mapping")
@@ -638,6 +768,7 @@ class Config:
         cls.require_nonneg(
             robot.get("max_angular_accel", 0.0), "habitat.robot.max_angular_accel"
         )
+        cls.validate_control_timing(robot)
         if "block_motion" in robot and not isinstance(robot.get("block_motion"), bool):
             raise ValueError("habitat.robot.block_motion must be a bool")
 
@@ -650,6 +781,7 @@ class Config:
 
         cls.validate_lidar_2d(sensors["lidar_2d"])
         cls.validate_lidar_3d(sensors["lidar_3d"])
+        cls.validate_sensor_frames(sensors)
         cls.validate_noise_fields(sensors)
         cls.validate_surround(camera_rig(sensors), robot_resolved.get("urdf", ""))
         cls.validate_topdown(sensors.get("topdown"))
@@ -767,8 +899,100 @@ class Config:
             raise ValueError("duplicate channel names")
 
     @classmethod
+    def preflight(cls, data: Mapping[str, Any]) -> list[str]:
+        """Resolve every external asset a run needs and describe the result.
+
+        ``validate`` rejects malformed values; this pass proves the files those
+        values point at exist, so a run fails at startup instead of inside the
+        renderer.  It is what ``autosim --check-config`` prints.
+
+        Args:
+            data: Validated root config mapping.
+
+        Returns:
+            One human-readable ``ok: ...`` line per checked resource.
+
+        Raises:
+            ValueError: A referenced scene, dataset config, or asset is missing.
+        """
+        from autosim.robot.profiles import apply_profile, resolve_path
+
+        habitat = data["habitat"]
+        backend = str(habitat.get("backend", "habitat")).strip().lower()
+        robot = apply_profile(habitat["robot"])
+        lines: list[str] = [f"ok: backend={backend}"]
+
+        profile = str(robot.get("profile") or "").strip()
+        lines.append(f"ok: robot profile={profile or '(none)'}")
+        urdf = str(robot.get("urdf") or "").strip()
+        if urdf:
+            path = UrdfModel.resolve(urdf)
+            lines.append(f"ok: urdf={path}")
+
+        scene = str(habitat.get("path") or "").strip()
+        dataset_config = str(habitat.get("dataset_config") or "").strip()
+        scene_id = str(habitat.get("scene_id") or "").strip()
+        if dataset_config:
+            ds_path = resolve_path(dataset_config)
+            if not ds_path.is_file():
+                raise ValueError(
+                    f"habitat.dataset_config not found: {ds_path}"
+                )
+            lines.append(f"ok: dataset_config={ds_path}")
+            if scene_id:
+                lines.append(f"ok: scene_id={scene_id}")
+        if scene:
+            scene_path = resolve_path(scene)
+            if scene_path.exists():
+                lines.append(f"ok: scene={scene_path}")
+            elif scene_id or dataset_config:
+                # MP3D scene ids resolve through the dataset config, not cwd.
+                lines.append(f"ok: scene={scene} (resolved by dataset_config)")
+            else:
+                raise ValueError(f"habitat.path not found: {scene_path}")
+        else:
+            scenario = habitat.get("scenario") or {}
+            kind = str(scenario.get("type") or "studio")
+            lines.append(f"ok: scene=empty ({kind} stage)")
+
+        humanoids = habitat.get("humanoids") or {}
+        if isinstance(humanoids, Mapping) and humanoids.get("enabled", False):
+            root = resolve_path(str(humanoids.get("root") or "data/humanoids"))
+            if not root.is_dir():
+                raise ValueError(f"habitat.humanoids.root not found: {root}")
+            lines.append(f"ok: humanoids={root}")
+
+        sensors = habitat["sensors"]
+        enabled = [
+            key
+            for key in (
+                "camera",
+                "lidar_2d",
+                "lidar_3d",
+                "stereo",
+                "range",
+                "imu",
+                "odom",
+                "chase",
+                "topdown",
+                "panorama",
+                "joint_states",
+            )
+            if isinstance(sensors.get(key), Mapping)
+            and sensors[key].get("enabled", False)
+        ]
+        if isinstance(sensors.get("cameras"), Mapping):
+            enabled.append("cameras")
+        lines.append("ok: sensors=" + (", ".join(enabled) or "(none)"))
+        return lines
+
+    @classmethod
     def validate_joint_control(cls, robot: Mapping[str, Any], sensors: Mapping[str, Any], backend: str) -> None:
         from autosim.robot.joints import load_joints, complete_positions
+        from autosim.robot.profiles import get_profile
+
+        profile_name = str(robot.get("profile") or "").strip()
+        articulated = bool(profile_name) and get_profile(profile_name).articulated
 
         for name in ("joint_command",):
             block = robot.get(name)
@@ -779,11 +1003,26 @@ class Config:
                 if block.get("enabled", False):
                     if backend != "habitat" or not robot.get("instance", False):
                         raise ValueError("joint_command requires habitat backend and robot.instance=true")
+                    if not articulated:
+                        raise ValueError(
+                            f"habitat.robot.joint_command requires an articulated "
+                            f"robot profile, got {profile_name or '(none)'}"
+                        )
+                    if "timeout_sec" in block:
+                        cls.require_nonneg(
+                            block["timeout_sec"],
+                            "habitat.robot.joint_command.timeout_sec",
+                        )
         state = sensors.get("joint_states")
         if state is not None:
             if not isinstance(state, Mapping):
                 raise ValueError("habitat.sensors.joint_states must be a mapping")
             cls.require_bool(state, "habitat.sensors.joint_states")
+            if state.get("enabled", False) and not articulated and backend == "habitat":
+                raise ValueError(
+                    f"habitat.sensors.joint_states requires an articulated robot "
+                    f"profile, got {profile_name or '(none)'}"
+                )
         for name in ("instance", "fixed_base"):
             if name in robot and not isinstance(robot[name], bool):
                 raise ValueError(f"habitat.robot.{name} must be a bool")

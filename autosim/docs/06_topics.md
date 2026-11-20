@@ -53,6 +53,7 @@
 | `atlas.yaml` | `gt_odom=/gt/odometry`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增）、`semantic`（缺）、`semantic_ids`（缺）、`depth_points`（缺） |
 | `bev.yaml` | `surround_rgb_front=/surround/front/image_raw`（新增）、`surround_info_front=/surround/front/camera_info`（新增）、`surround_rgb_front_left=/surround/front_left/image_raw`（新增）、`surround_info_front_left=/surround/front_left/camera_info`（新增）、`surround_rgb_rear_left=/surround/rear_left/image_raw`（新增）、`surround_info_rear_left=/surround/rear_left/camera_info`（新增）、`surround_rgb_rear=/surround/rear/image_raw`（新增）、`surround_info_rear=/surround/rear/camera_info`（新增）、`surround_rgb_rear_right=/surround/rear_right/image_raw`（新增）、`surround_info_rear_right=/surround/rear_right/camera_info`（新增）、`surround_rgb_front_right=/surround/front_right/image_raw`（新增）、`surround_info_front_right=/surround/front_right/camera_info`（新增）、`surround_panorama=/surround/panorama`（新增）、`footprint`（缺）、`semantic`（缺）、`semantic_ids`（缺）、`depth_points`（缺）、`map_cloud`（缺） |
 | `coverage.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `coverage_rooms.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
 | `default.yaml` | 基线 |
 | `fake.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
 | `fake_nav.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
@@ -71,8 +72,8 @@
 | 档案 | 与 `default.yaml` 的差异 |
 |------|--------------------------|
 | `google_robot.yaml` | `imu=/imu/data`、`stereo_left_rgb=/camera/left/image_raw`（新增）、`stereo_left_info=/camera/left/camera_info`（新增）、`stereo_right_rgb=/camera/right/image_raw`（新增）、`stereo_right_info=/camera/right/camera_info`（新增）、`range_0=/tof/right_1`（新增）、`range_1=/tof/right_2`（新增）、`range_2=/tof/right_back_1`（新增）、`range_3=/tof/right_back_2`（新增）、`range_4=/tof/left_1`（新增）、`range_5=/tof/left_2`（新增）、`range_6=/tof/left_back_1`（新增）、`range_7=/tof/left_back_2`（新增）、`range_8=/cliff/rear_right`（新增）、`range_9=/cliff/rear_left`（新增）、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
-| `husky.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
-| `turtlebot3_burger.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `husky.yaml` | `imu=/imu/data`、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `turtlebot3_burger.yaml` | `imu=/imu/data`、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
 | `unitree_g1.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
 | `unitree_go2.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
 

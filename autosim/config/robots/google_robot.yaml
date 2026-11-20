@@ -14,6 +14,10 @@ habitat:
       joint_finger_left: 0.6
     max_linear: 0.5
     max_angular: 1.0
+    joint_command:
+      enabled: true
+      channel: /joint_commands
+      timeout_sec: 1.0
   sensors:
     lidar_2d:
       # The Google robot carries RGB-D, stereo, IMU, ToF and cliff beams.
@@ -34,6 +38,9 @@ habitat:
       right_frame: camera_right_optical_frame
     imu:
       frame: imu.base
+    joint_states:
+      enabled: true
+      channel: /joint_states
     range:
       enabled: true
       rate_hz: 10.0

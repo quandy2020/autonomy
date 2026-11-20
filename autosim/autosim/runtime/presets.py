@@ -244,33 +244,94 @@ def _set_enabled(sensors: Dict[str, Any], key: str, enabled: bool) -> bool:
     return True
 
 
+def _sensor_support(habitat: Mapping[str, Any]) -> dict[str, Any]:
+    """Build the capability matrix for the robot currently in ``habitat``.
+
+    Args:
+        habitat: ``habitat`` mapping after the robot overlay was merged.
+
+    Returns:
+        ``sensor key -> SensorSupport``; empty when the robot is unusable, so
+        the later validation pass reports the real problem.
+    """
+    from autosim.robot.profiles import apply_profile
+    from autosim.robot.urdf import UrdfModel
+    from autosim.runtime.capabilities import support_matrix
+
+    robot = habitat.get("robot")
+    if not isinstance(robot, Mapping):
+        return {}
+    resolved = apply_profile(robot)
+    model = None
+    urdf = str(resolved.get("urdf") or "").strip()
+    if urdf:
+        try:
+            model = UrdfModel.load(urdf)
+        except (OSError, ValueError):
+            model = None
+    backend = str(habitat.get("backend", "habitat")).strip().lower()
+    return support_matrix(resolved, backend, model)
+
+
 def _apply_sensor_selection(
-    sensors: Dict[str, Any], selected: Set[str], strict: bool
+    sensors: Dict[str, Any],
+    selected: Set[str],
+    strict: bool,
+    support: Mapping[str, Any] | None = None,
+    defined: Set[str] | None = None,
 ) -> None:
-    """Enable exactly the selected sensor blocks."""
+    """Enable exactly the selected sensor blocks.
+
+    Args:
+        sensors: ``habitat.sensors`` mapping, mutated in place.
+        selected: Canonical sensor keys to turn on.
+        strict: When true, an unavailable sensor is an error; ``--sensors all``
+            passes false so a robot simply gets the sensors it can provide.
+        support: Optional capability matrix from
+            :func:`autosim.runtime.capabilities.support_matrix`.
+        defined: Keys the config/robot actually declared, before stubs were
+            filled.  ``--sensors all`` only turns on stub blocks that work
+            without robot-specific calibration.
+
+    Raises:
+        ValueError: A requested sensor is unsupported or undefined.
+    """
     missing: list[str] = []
-    for key in (
-        "camera",
-        "lidar_2d",
-        "lidar_3d",
-        "stereo",
-        "range",
-        "imu",
-        "odom",
-        "chase",
-        "topdown",
-        "joint_states",
-        "panorama",
-    ):
-        if _set_enabled(sensors, key, key in selected):
+    unsupported: list[str] = []
+    declared = set(defined or ())
+    # A stub carries generic defaults; these sensors still work from them.
+    stub_safe = {"camera", "lidar_2d", "lidar_3d", "imu", "odom", "chase", "topdown"}
+    for key in SENSOR_KEYS:
+        if key == "cameras":
             continue
-        if key in selected and strict:
+        wanted = key in selected
+        if wanted and not strict and key not in declared and key not in stub_safe:
+            # ``all`` on a robot that never declared this block: skip it rather
+            # than inventing frames that are not in the URDF.
+            wanted = False
+        if key == "panorama" and wanted and not ({"cameras", "surround"} & declared):
+            wanted = False
+        verdict = (support or {}).get(key)
+        if wanted and verdict is not None and not verdict.supported:
+            if strict:
+                unsupported.append(f"{key} ({verdict.reason})")
+            # ``--sensors all`` keeps the block off instead of failing.
+            wanted = False
+        if _set_enabled(sensors, key, wanted):
+            continue
+        if wanted and strict:
             missing.append(key)
 
     if "cameras" in selected:
         cameras = sensors.get("cameras")
         surround = sensors.get("surround")
-        if isinstance(cameras, Mapping):
+        verdict = (support or {}).get("cameras")
+        if verdict is not None and not verdict.supported:
+            if strict:
+                unsupported.append(f"cameras ({verdict.reason})")
+            sensors.pop("cameras", None)
+            sensors.pop("surround", None)
+        elif isinstance(cameras, Mapping) and cameras:
             # A bare camera table is enabled by presence.  A legacy wrapper
             # may carry an explicit enabled flag.
             if "enabled" in cameras:
@@ -287,6 +348,9 @@ def _apply_sensor_selection(
         sensors.pop("cameras", None)
         sensors.pop("surround", None)
 
+    if unsupported:
+        names = "; ".join(unsupported)
+        raise ValueError(f"sensor(s) not available for this robot: {names}")
     if missing:
         names = ", ".join(missing)
         raise ValueError(
@@ -363,6 +427,17 @@ def compose_config(
         }
         data = Config._deep_merge(data, {"habitat": patch})
 
+    declared: Set[str] = set()
+    habitat_block = data.get("habitat")
+    if isinstance(habitat_block, Mapping):
+        sensor_table = habitat_block.get("sensors")
+        if isinstance(sensor_table, Mapping):
+            declared = {str(key) for key in sensor_table}
+
+    # Stub every sensor block before the selection runs so ``--sensors all``
+    # can turn on a block the base config never mentioned.
+    Config.fill_omitted_sensors(data)
+
     if sensors is not None:
         selected, strict = _normalize_sensors(sensors)
         habitat = data.get("habitat")
@@ -371,8 +446,13 @@ def compose_config(
         sensor_block = habitat.get("sensors")
         if not isinstance(sensor_block, dict):
             raise ValueError("habitat.sensors must be a mapping")
-        _apply_sensor_selection(sensor_block, selected, strict)
+        _apply_sensor_selection(
+            sensor_block,
+            selected,
+            strict,
+            support=_sensor_support(habitat),
+            defined=declared,
+        )
 
-    Config.fill_omitted_sensors(data)
     Config.validate(data)
     return Config(data)

@@ -418,3 +418,69 @@ class UrdfModel:
     def footprint_polygon(self) -> Tuple[Tuple[float, float, float], ...]:
         """Ground-plane footprint polygon derived from the URDF when available."""
         return self.footprint
+
+
+def resolve_mesh_path(urdf_path: Path, filename: str) -> Path:
+    """Resolve one URDF ``<mesh filename>`` against the URDF location.
+
+    Args:
+        urdf_path: Absolute URDF path.
+        filename: Raw ``filename`` attribute.
+
+    Returns:
+        Absolute candidate path (existence is not checked).
+    """
+    raw = str(filename or "").strip()
+    if raw.startswith("file://"):
+        raw = raw[len("file://") :]
+    if raw.startswith("package://"):
+        # ``package://<pkg>/<rest>``: the shipped packages keep meshes under
+        # the autosim project root, so drop the package name.
+        parts = raw[len("package://") :].split("/", 1)
+        rest = parts[1] if len(parts) > 1 else ""
+        return (UrdfModel.package_root() / rest).resolve()
+    path = Path(raw).expanduser()
+    if path.is_absolute():
+        return path
+    return (Path(urdf_path).parent / path).resolve()
+
+
+def mesh_references(urdf_path: Path) -> list[Tuple[str, Path]]:
+    """Return ``(raw filename, resolved path)`` for every URDF mesh.
+
+    Args:
+        urdf_path: Absolute URDF path.
+
+    Returns:
+        One entry per ``<mesh>`` element, in document order.
+
+    Raises:
+        OSError: URDF unreadable.
+        ValueError: Malformed XML.
+    """
+    root = ET.parse(Path(urdf_path)).getroot()
+    found: list[Tuple[str, Path]] = []
+    for mesh in root.iter("mesh"):
+        filename = mesh.get("filename")
+        if not filename:
+            continue
+        found.append((filename, resolve_mesh_path(Path(urdf_path), filename)))
+    return found
+
+
+def missing_meshes(urdf_path: Path) -> list[str]:
+    """Return raw mesh filenames whose files do not exist.
+
+    A missing mesh is the failure mode behind partially rendered robots: the
+    URDF still loads, but the link draws as an empty node.
+
+    Args:
+        urdf_path: Absolute URDF path.
+
+    Returns:
+        Sorted, de-duplicated raw filenames.
+    """
+    missing = {
+        raw for raw, path in mesh_references(urdf_path) if not path.is_file()
+    }
+    return sorted(missing)

@@ -13,6 +13,10 @@ habitat:
       right_elbow_joint: 1.45
     max_linear: 1.2
     max_angular: 1.5
+    joint_command:
+      enabled: true
+      channel: /joint_commands
+      timeout_sec: 1.0
   sensors:
     lidar_2d:
       frame: mid360_link
@@ -26,3 +30,6 @@ habitat:
       axes: body
     imu:
       frame: imu_in_torso
+    joint_states:
+      enabled: true
+      channel: /joint_states

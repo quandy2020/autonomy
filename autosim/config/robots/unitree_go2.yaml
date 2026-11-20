@@ -5,6 +5,10 @@ habitat:
     profile: unitree_go2
     max_linear: 2.0
     max_angular: 2.0
+    joint_command:
+      enabled: true
+      channel: /joint_commands
+      timeout_sec: 1.0
   sensors:
     odom:
       # URDF root (base); odom_child_frame() falls back to it anyway.
@@ -15,3 +19,6 @@ habitat:
       axes: body
     imu:
       frame: imu
+    joint_states:
+      enabled: true
+      channel: /joint_states
