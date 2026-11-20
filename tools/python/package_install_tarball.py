@@ -43,8 +43,21 @@ def bundle_runtime_libraries(build_dir: Path, staged_prefix: Path) -> list[str]:
                         'libgcc_s.so.1', 'libcuda.so.1'}
     destination = staged_prefix / 'lib'
     destination.mkdir(exist_ok=True)
+    if (staged_prefix / 'bin/autoviz').exists():
+        query = subprocess.run(['qmake6', '-query', 'QT_INSTALL_PLUGINS'],
+                               check=True, capture_output=True, text=True)
+        plugin_root = Path(query.stdout.strip())
+        if not (plugin_root / 'platforms/libqxcb.so').is_file():
+            raise ValueError('Qt 6 XCB platform plugin is required for the Autoviz runtime bundle')
+        for category in ('platforms', 'xcbglintegrations', 'egldeviceintegrations', 'imageformats', 'iconengines'):
+            source = plugin_root / category
+            if source.is_dir():
+                target = destination / 'qt6/plugins' / category
+                shutil.copytree(source, target, dirs_exist_ok=True)
+        (staged_prefix / 'bin/qt.conf').write_text('[Paths]\nPrefix=..\nPlugins=lib/qt6/plugins\n')
     copied = set()
-    for installed in sorted((staged_prefix / 'bin').glob('*')):
+    plugins = sorted((destination / 'qt6/plugins').rglob('*.so')) + sorted((destination / 'OGRE').glob('*.so*'))
+    for installed in sorted((staged_prefix / 'bin').glob('*')) + plugins:
         if not installed.is_file():
             continue
         with installed.open('rb') as stream:
@@ -52,9 +65,12 @@ def bundle_runtime_libraries(build_dir: Path, staged_prefix: Path) -> list[str]:
                 continue
         # Build binaries retain the SDK search paths that install-time RPATH stripping removes.
         executable = build_dir / 'bin' / installed.name
-        if not executable.exists():
+        if installed.parent != staged_prefix / 'bin' or not executable.exists():
             executable = installed
-        result = subprocess.run(['ldd', str(executable)], capture_output=True, text=True)
+        env = os.environ.copy()
+        if executable == installed:
+            env['LD_LIBRARY_PATH'] = os.pathsep.join((str(installed.parent), str(destination), env.get('LD_LIBRARY_PATH', '')))
+        result = subprocess.run(['ldd', str(executable)], capture_output=True, text=True, env=env)
         if 'not a dynamic executable' in result.stdout + result.stderr:
             continue
         if result.returncode != 0 or '=> not found' in result.stdout:
@@ -70,6 +86,56 @@ def bundle_runtime_libraries(build_dir: Path, staged_prefix: Path) -> list[str]:
                 shutil.copy2(Path(source).resolve(), destination / name)
                 copied.add(name)
     return sorted(copied)
+
+
+def install_runtime_launchers(staged_prefix: Path) -> None:
+    """Load the bundle's environment for direct bin/* launches, including indirect dependencies."""
+    for executable in sorted((staged_prefix / 'bin').iterdir()):
+        if not executable.is_file():
+            continue
+        with executable.open('rb') as stream:
+            if stream.read(4) != b'\x7fELF':
+                continue
+        real_name = '.' + executable.name + '.elf'
+        executable.rename(executable.with_name(real_name))
+        executable.write_text(
+            '#!/usr/bin/env bash\nset -euo pipefail\n'
+            'prefix="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"\n'
+            'source "$prefix/share/autonomy/environment/library_path.sh"\n'
+            'export AUTONOMY_PATH="${AUTONOMY_PATH:-$prefix}"\n'
+            'export AUTOLINK_DISTRIBUTION_HOME="${AUTOLINK_DISTRIBUTION_HOME:-$prefix}"\n'
+            'export AUTOLINK_PATH="${AUTOLINK_PATH:-$prefix/share/autolink}"\n'
+            f'exec "$prefix/bin/{real_name}" "$@"\n')
+        executable.chmod(0o755)
+
+
+def deduplicate_runtime_libraries(library_dir: Path) -> int:
+    """Hardlink byte-identical ELF libraries while retaining every loader path and SONAME alias."""
+    library_dir = library_dir.resolve(strict=True)
+    seen = {}
+    saved = 0
+    for path in sorted(library_dir.rglob('*.so*')):
+        if path.is_symlink() or not path.is_file():
+            continue
+        with path.open('rb') as stream:
+            if stream.read(4) != b'\x7fELF':
+                continue
+            stream.seek(0)
+            digest = hashlib.sha256()
+            for block in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(block)
+        metadata = path.stat()
+        key = (metadata.st_size, metadata.st_mode, metadata.st_uid, metadata.st_gid, digest.digest())
+        original = seen.setdefault(key, path)
+        if original.stat().st_ino == metadata.st_ino:
+            continue
+        with tempfile.TemporaryDirectory(prefix='.deduplicate-', dir=path.parent) as temporary:
+            replacement = Path(temporary) / path.name
+            os.link(original, replacement)
+            os.replace(replacement, path)
+        if metadata.st_nlink == 1:
+            saved += metadata.st_size
+    return saved
 
 
 def git_describe(root: Path) -> str:
@@ -139,7 +205,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Do not bundle autonomy/*/conf into the tarball",
     )
     parser.add_argument('--bundle-runtime', action='store_true',
-                        help='Bundle linked ELF dependencies, excluding libc/C++ runtime and GPU drivers')
+                        help='Bundle linked libraries, GUI plugins and runtime launchers; exclude libc/C++ runtime and GPU drivers')
     parser.add_argument(
         "-j",
         "--jobs",
@@ -198,6 +264,11 @@ def main(argv: list[str] | None = None) -> int:
             print("[package] bundle autonomy/*/conf -> share/autonomy/config")
             bundle_configuration(root, staged_prefix)
         runtime_libraries = bundle_runtime_libraries(build_dir, staged_prefix) if args.bundle_runtime else []
+        deduplicated_bytes = 0
+        if args.bundle_runtime:
+            deduplicated_bytes = deduplicate_runtime_libraries(staged_prefix / 'lib')
+            install_runtime_launchers(staged_prefix)
+            print(f'[package] deduplicated runtime libraries: {deduplicated_bytes} bytes saved')
 
         manifest_path = staged_prefix / "share" / "autonomy" / "MANIFEST.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -216,6 +287,7 @@ def main(argv: list[str] | None = None) -> int:
             "build_test": cache.get("BUILD_TEST", "unknown"),
             "config_bundled": bundle_config,
             "bundled_runtime_libraries": runtime_libraries,
+            "deduplicated_runtime_bytes": deduplicated_bytes,
             "packaged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

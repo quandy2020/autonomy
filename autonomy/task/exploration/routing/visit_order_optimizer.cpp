@@ -22,7 +22,10 @@ ExplorationRoute VisitOrderOptimizer::Optimize(const Pose2d& start,const std::ve
         if(route.canceled){result.reachable=false;return result;}
         distances[i][j]=route.success?route.length:std::numeric_limits<double>::infinity();
     }
-    auto edge_time=[&](std::size_t a,std::size_t b){return distances[a][b]/speed+
+    auto edge_time=[&](std::size_t a,std::size_t b){
+        const double length=std::isfinite(distances[a][b])?
+            distances[a][b]:autonomy::navigation::Distance(poses[a],poses[b]);
+        return length/speed+
         std::abs(autonomy::navigation::NormalizeAngle(poses[b].yaw-poses[a].yaw))/angular_speed;};
     auto cost=[&](const std::vector<std::size_t>& order){double t=0;auto previous=origin;
         for(auto i:order){t+=edge_time(previous,i)+views[i].observation_time;previous=i;}
@@ -31,13 +34,34 @@ ExplorationRoute VisitOrderOptimizer::Optimize(const Pose2d& start,const std::ve
         }
         return t;
     };
-    std::set<std::size_t> remaining;for(std::size_t i=0;i<n;++i)remaining.insert(i);
+    // A visit list is executed one viewpoint at a time and replanned from the
+    // measured pose. An unavailable edge between two future viewpoints must
+    // not discard a first viewpoint that is reachable from the current pose.
+    // Keep only directly executable views, then use the best available route
+    // distance for ordering and Euclidean distance as an estimate for edges
+    // that will be replanned after the preceding observation.
+    std::set<std::size_t> reachable_now;
+    for(std::size_t i=0;i<n;++i)
+        if(std::isfinite(distances[origin][i]))reachable_now.insert(i);
+    if(reachable_now.empty()){result.reachable=false;return result;}
+    auto estimate=[&](std::size_t a,std::size_t b){
+        if(std::isfinite(distances[a][b]))return distances[a][b];
+        return autonomy::navigation::Distance(poses[a],poses[b]);
+    };
+    std::set<std::size_t> remaining=reachable_now;
     std::vector<std::size_t> order;auto previous=origin;
-    if(keep_first){order.push_back(0);remaining.erase(0);previous=0;}
+    if(keep_first && remaining.count(0)){
+        order.push_back(0);remaining.erase(0);previous=0;
+    }
     while(!remaining.empty()) {
         if(cancel_checker && cancel_checker()){result.reachable=false;return result;}
         auto best=*remaining.begin();double time=std::numeric_limits<double>::infinity();
-        for(auto i:remaining)if(edge_time(previous,i)<time){best=i;time=edge_time(previous,i);}
+        for(auto i:remaining){
+            const double candidate=estimate(previous,i)/speed+
+                std::abs(autonomy::navigation::NormalizeAngle(
+                    poses[i].yaw-poses[previous].yaw))/angular_speed;
+            if(candidate<time){best=i;time=candidate;}
+        }
         if(!std::isfinite(time)){result.reachable=false;return result;}
         order.push_back(best);remaining.erase(best);previous=best;
     }
@@ -50,10 +74,12 @@ ExplorationRoute VisitOrderOptimizer::Optimize(const Pose2d& start,const std::ve
         }
         if(!improved)break;
     }
-    result.total_time=cost(order);result.reachable=std::isfinite(result.total_time);previous=origin;
-    for(auto i:order){result.views.push_back(views[i]);result.distance+=distances[previous][i];previous=i;}
+    result.total_time=cost(order);result.reachable=std::isfinite(result.total_time) &&
+        !order.empty();previous=origin;
+    for(auto i:order){result.views.push_back(views[i]);
+        result.distance+=estimate(previous,i);previous=i;}
     if (return_pose) {
-        result.distance += distances[previous][destination];
+        result.distance += estimate(previous,destination);
     }
     return result;
 }

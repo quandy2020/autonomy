@@ -30,4 +30,5 @@ build_ignore:
   - scripts/deployment_audit.py
   - scripts/controller_env.sh
   - scripts/prepare_release.py
+  - scripts/smoke_runtime.py
   - vars/release*.yml

@@ -330,8 +330,10 @@ public:
         if (services_.request_startup_observation(*startup_observation_,
                 policy.target_yaw, policy.time_allowance)) return true;
         startup_observation_.reset();
-        startup_observation_failed_ = true;
-        snapshot_.startup_observation_reason = "native startup rotation action was rejected";
+        // The native controller/transport can still be initializing on the
+        // first task tick. A rejected request is retryable until the phase
+        // deadline; do not permanently poison the session on that race.
+        snapshot_.startup_observation_reason = "native startup rotation action is not ready";
         snapshot_.reason = snapshot_.startup_observation_reason;
         return false;
     }
@@ -526,10 +528,12 @@ public:
             case ExplorationPhase::kAdapt:
                 if (finishing_ || !snapshot_.selection || !selected_version_ ||
                     selected_version_->map_epoch != map_->map_epoch ||
-                    selected_version_->geometry_revision != map_->geometry_revision ||
                     selected_version_->sensor_epoch != snapshot_.sensors.sensor_epoch ||
                     selected_version_->requirements_revision != coverage_.requirements_revision())
                     return finish(PhaseStatus::kInvalidated, "selected observation intent is no longer current");
+                // The selected intent is a spatial observation requirement, not
+                // a committed path. Adapt it against the latest same-epoch map;
+                // execution is separately revalidated before motion admission.
                 QueuePlanning(now, false, false, phase);
                 break;
             case ExplorationPhase::kObserve:
@@ -875,6 +879,31 @@ public:
 
     void ApplyMap(MapReadView next) {
         if (!next.grid || !next.map_epoch || !std::isfinite(next.source_stamp)) return;
+        if (!next.startup_support && startup_observation_confirmed_ &&
+            map_ && map_->map_epoch == next.map_epoch &&
+            std::isfinite(pose_.x) && std::isfinite(pose_.y)) {
+            const Pose2d center = home_valid_ ? home_ : pose_;
+            if (autonomy::navigation::Distance(pose_, center) <=
+                    options_.startup_observation.support_radius + 1e-9) {
+                // The platform's startup closure is measured independently.
+                // Preserve it in the session snapshot even if the map event
+                // carrying it had the same geometry revision as the last map.
+                next.startup_support = autonomy::navigation::StartupSupportRegion{
+                    center.x, center.y,
+                    options_.startup_observation.support_radius,
+                    0.0, std::max(1.0, options_.frontier_observation_height +
+                        1.0)};
+            }
+        }
+        if (map_ && next.map_epoch == map_->map_epoch &&
+            next.geometry_revision == map_->geometry_revision &&
+            next.startup_support && next.source_stamp < map_->source_stamp) {
+            // Startup support is metadata derived from the already accepted
+            // stationary sweep, not newer geometry. Admit it without renewing
+            // the map acquisition stamp or fabricating a geometric update.
+            map_->startup_support = next.startup_support;
+            return;
+        }
         if (map_ && (next.map_epoch < map_->map_epoch ||
             (next.map_epoch == map_->map_epoch &&
              (next.geometry_revision < map_->geometry_revision ||
@@ -1229,7 +1258,8 @@ public:
         if (!services_.request_startup_observation(version, delta, allowance)) return false;
         observation_rotation_ = version;
         rotation_for_navigation_ = for_navigation;
-        snapshot_.state = ExplorationState::kExploring;
+        snapshot_.state = for_navigation ? ExplorationState::kExploring
+                                         : ExplorationState::kObserving;
         AINFO << "EXPLORATION_YAW_ROTATION submit yaw=" << target_yaw
               << " delta=" << delta << " goal=" << snapshot_.goal->intent.goal_id;
         return true;
@@ -1451,18 +1481,16 @@ public:
             if (!planning_ || !result.version.SameRequest(*planning_)) continue;
             if (!map_ || now > planning_->valid_until ||
                 result.version.map_epoch != map_->map_epoch ||
-                result.version.geometry_revision != map_->geometry_revision ||
                 result.version.sensor_epoch != snapshot_.sensors.sensor_epoch ||
                 (!result.returning && !result.estimate_only &&
                  result.version.requirements_revision != coverage_.requirements_revision())) {
-                AINFO_EVERY(5) << "EXPLORATION_PLAN_INVALID map="
-                               << (map_ ? map_->map_epoch : 0) << "/"
-                               << (map_ ? map_->geometry_revision : 0)
-                               << " result=" << result.version.map_epoch << "/"
-                               << result.version.geometry_revision
+                AINFO_EVERY(5) << "EXPLORATION_PLAN_INVALID map_epoch="
+                               << (map_ ? map_->map_epoch : 0)
+                               << " result_epoch=" << result.version.map_epoch
                                << " sensor=" << result.version.sensor_epoch
                                << " current_sensor=" << snapshot_.sensors.sensor_epoch
-                               << " phase=" << static_cast<int>(result.phase);
+                               << " phase=" << (result.phase ?
+                                   static_cast<int>(*result.phase) : -1);
                 CancelPlanning();
                 FinishPhase(PhaseStatus::kInvalidated, "planning evidence or deadline changed");
                 continue;
@@ -1940,7 +1968,7 @@ public:
                 BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
         }
         if (!BtDriven() && startup_observation_confirmed_ && !planning_ && !navigation_ &&
-            !recovery_operation_ && now >= selection_after_ &&
+            !recovery_operation_ && !observation_rotation_ && now >= selection_after_ &&
             snapshot_.state != ExplorationState::kObserving &&
             snapshot_.state != ExplorationState::kSaving &&
             snapshot_.state != ExplorationState::kFinished)

@@ -145,7 +145,27 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
                    << " map_revision=" << map.geometry_revision
                    << " sampling_revision=" << sampling_map_revision_
                    << " sweep=" << sweep_completed_
-                   << " limited=" << decision.sampling_limited;
+                   << " limited=" << decision.sampling_limited
+                   << " examined=" << sampled.examined
+                   << " evaluated=" << sampled.evaluated
+                   << " page_finished=" << sampled.finished;
+    if (sampled.candidates.empty() && state.PendingCount()) {
+        std::size_t frontiers = 0, surfaces = 0, directions = 0;
+        double minimum_z = 1e30, maximum_z = -1e30;
+        for (const auto& item : state.units()) {
+            if (!item.second.pending) continue;
+            frontiers += item.first.kind == CoverageKind::kFrontier;
+            surfaces += item.first.kind == CoverageKind::kSurface;
+            directions += item.first.kind == CoverageKind::kDirection;
+            minimum_z = std::min(minimum_z, item.second.center.z);
+            maximum_z = std::max(maximum_z, item.second.center.z);
+        }
+        AINFO_EVERY(5) << "EXPLORATION_PENDING frontiers=" << frontiers
+                       << " surfaces=" << surfaces
+                       << " directions=" << directions
+                       << " z=[" << minimum_z << "," << maximum_z << "]"
+                       << " candidates=" << sampled.candidates.size();
+    }
     if(cancel_checker && cancel_checker()){decision.canceled=true;return decision;}
     if(!decision.local_route.views.empty() && decision.local_route.reachable){
         const auto& view=decision.local_route.views.front();ObservationGoal goal;

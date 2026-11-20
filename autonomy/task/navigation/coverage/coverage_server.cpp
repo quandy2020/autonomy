@@ -4,6 +4,7 @@
  * @brief Native complete-coverage coverage server implementation. */
 #include "autonomy/task/navigation/coverage/coverage_server.hpp"
 
+#include "autonomy/task/navigation/coverage/map_connector.hpp"
 #include "autonomy/task/navigation/coverage/region_orderer.hpp"
 #include "autonomy/task/navigation/coverage/region_segmenter.hpp"
 
@@ -117,6 +118,396 @@ F2CSwaths Flatten(const F2CRoute& route) {
   for (const auto& group : route.GetVectorSwaths()) result.Append(group);
   return result;
 }
+
+/** @brief Coverage generated for a single room. */
+struct RoomCoverage {
+  F2CPath path;
+  F2CSwaths swaths;
+  double coverage{0.0};
+  int swath_count{0};
+};
+
+/**
+ * @brief Plan headland, swaths, route and path inside one room.
+ * @param cells Room polygon in the request frame.
+ * @param config Effective planner configuration.
+ * @param goal Original request carrying the swath, route and path modes.
+ * @param headland Whether the room keeps a perimeter headland band.
+ * @return Planned path, ordered swaths and achieved coverage.
+ */
+RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
+                      const proto::CoverageRequest& goal, bool headland) {
+  RoomCoverage output;
+  if (cells.IsEmpty() || cells.Area() < 1e-3) {
+    return output;
+  }
+  HeadlandGenerator headlands(config);
+  F2CCells core = headland
+                      ? headlands.GenerateHeadlands(cells, goal.headland_mode())
+                      : cells.Clone();
+  if (core.IsEmpty() || core.Area() < 1e-3) {
+    return output;
+  }
+  SwathGenerator swath_generator(config);
+  auto grouped = swath_generator.GenerateSwathsByCells(core, goal.swath_mode());
+  if (grouped.SizeTotal() == 0) {
+    return output;
+  }
+  RouteGenerator route_generator(config);
+  F2CRoute route =
+      route_generator.GenerateRoute(core, core, grouped, goal.route_mode(), {});
+  route.SetField(cells);
+  F2CSwaths ordered = Flatten(route);
+  if (ordered.size() != grouped.SizeTotal()) {
+    return output;
+  }
+  PathGenerator path_generator(config);
+  F2CPath path = path_generator.GeneratePath(route, goal.path_mode());
+  if (path.size() < 2) {
+    return output;
+  }
+  // Sweep the wall band as well: the interior swaths stop at the
+  // headland, so a perimeter loop is what reaches the room boundary.
+  F2CPath combined;
+  if (headland) {
+    for (const auto& band : headlands.GenerateHeadlandSwaths(
+             cells, config.operation_width, goal.headland_mode())) {
+      F2CPath loop = path_generator.GeneratePerimeter(
+          band, cells, path.AtStart(), goal.path_mode());
+      if (loop.size() > 1) {
+        combined += loop;
+      }
+    }
+  }
+  const bool perimeter = combined.size() > 1;
+  combined += path;
+  output.path = combined;
+  output.swaths = ordered;
+  output.swath_count = static_cast<int>(ordered.size());
+  const double core_coverage =
+      f2c::obj::FieldCoverage().ComputeCost(core, ordered);
+  const double room_area = cells.Area();
+  const double band_area = std::max(0.0, room_area - core.Area());
+  output.coverage =
+      room_area > 1e-9
+          ? (core_coverage * core.Area() + (perimeter ? band_area : 0.0)) /
+                room_area
+          : core_coverage;
+  return output;
+}
+
+/**
+ * @brief Plan every room of an occupancy map and concatenate one global path.
+ *
+ * Each room is planned independently so that turn connections never have to
+ * cross a wall, then the room paths are joined in nearest-neighbour/2-opt
+ * order. The result carries per-room polygons, paths and coverage plus the
+ * stitched global path consumed by the visualizer.
+ */
+ComputeAction::Result PlanMapRegions(
+    const Configuration& config, const proto::CoverageRequest& goal,
+    const F2CField& master, const F2CCells& field, const std::string& frame,
+    const CancelChecker& cancel,
+    const std::function<void(const std::string&, double)>& stage) {
+  ComputeAction::Result result;
+  const bool headland =
+      Enabled(goal.has_generate_headland(), goal.generate_headland());
+  const double radius =
+      goal.has_robot_radius() ? goal.robot_radius() : config.robot_radius;
+  MapConnector::Options connector_options;
+  if (goal.map().occupied_threshold() > 0) {
+    connector_options.occupied_threshold = goal.map().occupied_threshold();
+  }
+  connector_options.clearance = std::max(0.0, radius);
+  const MapConnector connector(goal.map(), connector_options);
+  if (!connector.Valid()) {
+    throw RequestException("Occupancy map has no traversable free space");
+  }
+  std::vector<F2CCells> rooms = RegionSegmenter::MapSplit(goal.map(), {});
+  if (rooms.empty()) {
+    throw RequestException("Map split found no rooms");
+  }
+
+  // One anchor per room: the traversable cell closest to the room centroid.
+  // Room-to-room costs are navigable distances between anchors, so the tour
+  // never assumes a straight line through a wall.
+  std::vector<std::pair<double, double>> anchors;
+  anchors.reserve(rooms.size());
+  for (const auto& cells : rooms) {
+    double sum_x = 0.0;
+    double sum_y = 0.0;
+    int count = 0;
+    if (!cells.IsEmpty()) {
+      for (const auto& point : cells.GetCellBorder(0)) {
+        sum_x += point.GetX();
+        sum_y += point.GetY();
+        ++count;
+      }
+    }
+    const std::pair<double, double> centroid{
+        count > 0 ? sum_x / count : 0.0, count > 0 ? sum_y / count : 0.0};
+    anchors.push_back(connector.NearestFree(centroid));
+  }
+
+  const bool have_start = goal.has_robot_pose();
+  const std::pair<double, double> start =
+      have_start
+          ? connector.NearestFree(
+                {goal.robot_pose().axis1(), goal.robot_pose().axis2()})
+          : anchors.front();
+  const double kUnreachable = std::numeric_limits<double>::max() / 4.0;
+  std::vector<std::vector<double>> costs(
+      rooms.size(), std::vector<double>(rooms.size(), kUnreachable));
+  std::vector<double> from_start(rooms.size(), kUnreachable);
+  for (std::size_t from = 0; from < rooms.size(); ++from) {
+    CheckCanceled(cancel);
+    for (std::size_t to = 0; to < rooms.size(); ++to) {
+      if (from == to) {
+        costs[from][to] = 0.0;
+      } else {
+        costs[from][to] = connector.Distance(anchors[from], anchors[to]);
+      }
+    }
+    from_start[from] =
+        have_start ? connector.Distance(start, anchors[from]) : (from == 0 ? 0.0
+                                                                        : kUnreachable);
+  }
+
+  // Rooms are grouped by navigable connectivity. Only the group reachable
+  // from the robot takes part in the tour; sealed rooms are still reported
+  // with their own plan so the operator can see what is left behind a wall.
+  std::vector<int> group(rooms.size(), -1);
+  int groups = 0;
+  for (std::size_t seed = 0; seed < rooms.size(); ++seed) {
+    if (group[seed] >= 0) {
+      continue;
+    }
+    std::vector<std::size_t> stack{seed};
+    group[seed] = groups;
+    while (!stack.empty()) {
+      const std::size_t index = stack.back();
+      stack.pop_back();
+      for (std::size_t other = 0; other < rooms.size(); ++other) {
+        if (group[other] < 0 && costs[index][other] < kUnreachable) {
+          group[other] = groups;
+          stack.push_back(other);
+        }
+      }
+    }
+    ++groups;
+  }
+  int active_group = group.front();
+  if (have_start) {
+    double best = kUnreachable;
+    for (std::size_t index = 0; index < rooms.size(); ++index) {
+      if (from_start[index] < best) {
+        best = from_start[index];
+        active_group = group[index];
+      }
+    }
+  }
+
+  std::vector<std::size_t> visit;
+  if (active_group < 0) {
+    for (std::size_t index = 0; index < rooms.size(); ++index) {
+      visit.push_back(index);
+    }
+  } else {
+    std::vector<std::size_t> active;
+    std::vector<std::size_t> sealed;
+    for (std::size_t index = 0; index < rooms.size(); ++index) {
+      (group[index] == active_group ? active : sealed).push_back(index);
+    }
+    std::vector<std::vector<double>> local(
+        active.size(), std::vector<double>(active.size(), 0.0));
+    std::vector<double> local_start(active.size(), 0.0);
+    for (std::size_t from = 0; from < active.size(); ++from) {
+      for (std::size_t to = 0; to < active.size(); ++to) {
+        local[from][to] = costs[active[from]][active[to]];
+      }
+      local_start[from] =
+          have_start ? from_start[active[from]] : (active[from] == 0 ? 0.0
+                                                                   : kUnreachable);
+    }
+    const auto ordered = RegionOrderer::Order(local, local_start);
+    for (const std::size_t index : ordered.order) {
+      visit.push_back(active[index]);
+    }
+    if (!sealed.empty()) {
+      result.add_warnings(std::to_string(sealed.size()) + " of " +
+                          std::to_string(rooms.size()) +
+                          " room(s) are sealed off from the robot; open a door "
+                          "to include them in the tour");
+    }
+    for (const std::size_t index : sealed) {
+      visit.push_back(index);
+    }
+  }
+
+  NavPath* nav = result.mutable_nav_path();
+  nav->mutable_header()->set_frame_id(frame);
+  auto* components = result.mutable_coverage_path();
+  components->set_frame_id(frame);
+  components->set_contains_turns(true);
+  components->set_swaths_ordered(true);
+
+  auto emit_pose = [&](double x, double y, double yaw) {
+    auto* pose = nav->add_poses();
+    pose->mutable_header()->set_frame_id(frame);
+    auto* position = pose->mutable_pose()->mutable_position();
+    position->set_x(x);
+    position->set_y(y);
+    auto* orientation = pose->mutable_pose()->mutable_orientation();
+    orientation->set_z(std::sin(yaw * 0.5));
+    orientation->set_w(std::cos(yaw * 0.5));
+  };
+  auto emit_leg = [&](const std::pair<double, double>& from,
+                      const std::pair<double, double>& to) {
+    const double distance =
+        std::hypot(to.first - from.first, to.second - from.second);
+    if (distance < 1e-6) {
+      return;
+    }
+    const double yaw =
+        std::atan2(to.second - from.second, to.first - from.first);
+    const int steps = std::max(1, static_cast<int>(std::ceil(distance / 0.15)));
+    emit_pose(from.first, from.second, yaw);
+    for (int step = 1; step < steps; ++step) {
+      const double ratio = static_cast<double>(step) / steps;
+      emit_pose(from.first + (to.first - from.first) * ratio,
+                from.second + (to.second - from.second) * ratio, yaw);
+    }
+  };
+
+  double weighted_coverage = 0.0;
+  double total_area = 0.0;
+  double travel = 0.0;
+  double task_time = 0.0;
+  std::pair<double, double> cursor = start;
+  bool have_cursor = have_start;
+  int index = 0;
+  int connected = 0;
+  int planned = 0;
+  for (const std::size_t room_index : visit) {
+    CheckCanceled(cancel);
+    const bool reachable = active_group >= 0 && group[room_index] == active_group;
+    stage("room " + std::to_string(index + 1) + "/" +
+              std::to_string(visit.size()),
+          0.15 + 0.75 * static_cast<double>(index) / visit.size());
+    const F2CCells& cells = rooms[room_index];
+    auto* region = result.add_regions();
+    region->set_id(index);
+    region->set_order(index + 1);
+    region->set_name("Region " + std::to_string(index + 1));
+    region->set_color_index(index % 8);
+    const double area = RegionSegmenter::Area(cells);
+    region->set_area(area);
+    for (const auto& cell : cells) {
+      for (const auto& ring : cell) {
+        const auto points = CleanRing(ring);
+        if (points.size() < 3) {
+          continue;
+        }
+        auto* polygon = region->add_polygons();
+        for (const auto& point : points) {
+          auto* coordinate = polygon->add_coordinates();
+          coordinate->set_axis1(point.first);
+          coordinate->set_axis2(point.second);
+        }
+      }
+    }
+
+    RoomCoverage room;
+    try {
+      room = PlanRoom(cells, config, goal, headland);
+    } catch (const std::exception& error) {
+      result.add_warnings("Region " + std::to_string(index + 1) + ": " +
+                          error.what());
+      // A headland band that cannot host a turn still leaves the room
+      // coverable: retry with a plain boustrophedon sweep.
+      try {
+        room = PlanRoom(cells, config, goal, false);
+      } catch (const std::exception& retry) {
+        // Household rooms are tight: fall back to a turning radius suited to
+        // the robot footprint before reporting the room as unplannable.
+        Configuration tight = config;
+        tight.min_turning_radius =
+            std::max(0.15, std::min(config.min_turning_radius,
+                                    radius > 0.0 ? radius : 0.4));
+        try {
+          room = PlanRoom(cells, tight, goal, false);
+        } catch (const std::exception& last) {
+          result.add_warnings("Region " + std::to_string(index + 1) +
+                              " tight-radius retry failed: " + last.what());
+        }
+        result.add_warnings("Region " + std::to_string(index + 1) +
+                            " retry failed: " + retry.what());
+      }
+    }
+    ComputeAction::Result planned_room;
+    F2CField room_field(cells);
+    room_field.SetRefPoint(F2CPoint(0.0, 0.0));
+    room_field.SetCRS(frame);
+    if (room.swaths.size() > 0) {
+      ExportSwaths(room.swaths, room_field, frame, true, true,
+                   *planned_room.mutable_coverage_path());
+    }
+    if (room.path.size() > 1) {
+      ExportPath(room.path, room_field, frame, true,
+                 config.turn_point_distance, planned_room);
+    }
+    for (const auto& swath : planned_room.coverage_path().swaths()) {
+      *components->add_swaths() = swath;
+    }
+    for (const auto& state : planned_room.coverage_path().states()) {
+      *components->add_states() = state;
+    }
+    *region->mutable_nav_path() = planned_room.nav_path();
+    for (const auto& state : planned_room.coverage_path().states()) {
+      *region->add_states() = state;
+    }
+    region->set_coverage(reachable ? room.coverage : 0.0);
+    region->set_swath_count(reachable ? room.swath_count : 0);
+    if (reachable && planned_room.nav_path().poses_size() > 0) {
+      const auto& entry_pose = planned_room.nav_path().poses(0).pose().position();
+      const std::pair<double, double> entry{entry_pose.x(), entry_pose.y()};
+      if (have_cursor) {
+        const auto link = connector.Connect(cursor, entry);
+        if (!link.points.empty()) {
+          for (std::size_t point = 1; point < link.points.size(); ++point) {
+            emit_leg(link.points[point - 1], link.points[point]);
+          }
+          travel += link.distance;
+          ++connected;
+        }
+      }
+      for (const auto& pose : planned_room.nav_path().poses()) {
+        *nav->add_poses() = pose;
+      }
+      const auto& last = nav->poses(nav->poses_size() - 1).pose().position();
+      cursor = {last.x(), last.y()};
+      have_cursor = true;
+      ++planned;
+    }
+    if (area > 1e-9) {
+      weighted_coverage += (reachable ? room.coverage : 0.0) * area;
+    }
+    total_area += area;
+    task_time += room.path.GetTaskTime();
+    ++index;
+  }
+  result.set_core_coverage(total_area > 0.0 ? weighted_coverage / total_area
+                                            : 0.0);
+  result.set_field_wkt((field + master.GetRefPoint()).ExportToWkt());
+  result.set_core_wkt(result.field_wkt());
+  result.set_travel_distance(travel);
+  result.set_task_time(std::isfinite(task_time) ? task_time : 0.0);
+  result.add_warnings(std::to_string(planned) + " room(s) planned through " +
+                      std::to_string(connected) +
+                      " traversable connection(s)");
+  return result;
+}
+
 }  // namespace
 CoverageServer::CoverageServer(Configuration c) : config_(std::move(c)) {
   RobotParams validate(config_);
@@ -204,6 +595,15 @@ ComputeAction::Result CoverageServer::Compute(
       effective.operation_width = 2.0 * goal.robot_radius();
       RobotParams validate(effective);
     }
+    if (goal.has_swath_spacing()) {
+      if (!std::isfinite(goal.swath_spacing()) ||
+          goal.swath_spacing() <= 0.0) {
+        throw RequestException(
+            "swath_spacing must be a positive metre value");
+      }
+      effective.operation_width = goal.swath_spacing();
+      RobotParams validate(effective);
+    }
     const bool headland =
         Enabled(goal.has_generate_headland(), goal.generate_headland());
     const bool route_enabled =
@@ -260,6 +660,19 @@ ComputeAction::Result CoverageServer::Compute(
     }
     auto field = master.GetField().Clone();
     Validate(field);
+    // A map-driven request plans every room on its own: one global plan over
+    // the bounding rectangle has to cross walls and its turn connections are
+    // frequently infeasible. Per-room plans are stitched afterwards.
+    if (goal.generate_regions() && goal.has_map()) {
+      result = PlanMapRegions(effective, goal, master, field, frame, cancel,
+                              stage);
+      stage("complete", 1.0);
+      result.set_error_code(proto::NONE);
+      result.set_planning_time(
+          std::chrono::duration<double>(std::chrono::steady_clock::now() - began)
+              .count());
+      return result;
+    }
     stage("headland", 0.1);
     HeadlandGenerator hg(effective);
     auto core = headland ? hg.GenerateHeadlands(field, goal.headland_mode())

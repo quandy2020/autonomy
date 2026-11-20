@@ -66,6 +66,7 @@ class ContractTest(unittest.TestCase):
         self.assertNotIn('.vault_pass', names)
         self.assertNotIn('scripts/deployment_audit.py', names)
         self.assertNotIn('scripts/prepare_release.py', names)
+        self.assertNotIn('scripts/smoke_runtime.py', names)
         self.assertNotIn('scripts/controller_env.sh', names)
         self.assertNotIn('vars/release.yml', names)
         self.assertNotIn('vars/release-demo.yml', names)

@@ -93,4 +93,86 @@ RegionOrderer::Result RegionOrderer::Order(
   return result;
 }
 
+
+RegionOrderer::Result RegionOrderer::Order(
+    const std::vector<std::vector<double>>& costs,
+    const std::vector<double>& from_start) {
+  Result result;
+  const std::size_t count = costs.size();
+  if (count == 0) {
+    return result;
+  }
+  if (from_start.size() != count) {
+    return result;
+  }
+  for (const auto& row : costs) {
+    if (row.size() != count) {
+      return result;
+    }
+  }
+  auto total = [&costs, &from_start](const std::vector<std::size_t>& order) {
+    if (order.empty()) {
+      return 0.0;
+    }
+    double sum = from_start[order.front()];
+    for (std::size_t index = 1; index < order.size(); ++index) {
+      sum += costs[order[index - 1]][order[index]];
+    }
+    return sum;
+  };
+
+  std::vector<bool> visited(count, false);
+  std::size_t current = count;
+  double best_start = std::numeric_limits<double>::max();
+  for (std::size_t index = 0; index < count; ++index) {
+    if (from_start[index] < best_start) {
+      best_start = from_start[index];
+      current = index;
+    }
+  }
+  result.order.push_back(current);
+  visited[current] = true;
+  for (std::size_t step = 1; step < count; ++step) {
+    std::size_t best = count;
+    double best_cost = std::numeric_limits<double>::max();
+    for (std::size_t index = 0; index < count; ++index) {
+      if (visited[index]) {
+        continue;
+      }
+      const double cost = costs[current][index];
+      if (cost < best_cost) {
+        best_cost = cost;
+        best = index;
+      }
+    }
+    if (best == count) {
+      break;
+    }
+    visited[best] = true;
+    result.order.push_back(best);
+    current = best;
+  }
+
+  double best_total = total(result.order);
+  bool improved = true;
+  while (improved) {
+    improved = false;
+    for (std::size_t i = 0; i < count; ++i) {
+      for (std::size_t j = i + 1; j < count; ++j) {
+        std::vector<std::size_t> candidate = result.order;
+        std::reverse(candidate.begin() + static_cast<std::ptrdiff_t>(i),
+                     candidate.begin() + static_cast<std::ptrdiff_t>(j + 1));
+        const double candidate_total = total(candidate);
+        if (candidate_total + 1e-9 < best_total) {
+          best_total = candidate_total;
+          result.order = std::move(candidate);
+          improved = true;
+        }
+      }
+    }
+  }
+  result.distance = best_total;
+  return result;
+}
+
 }  // namespace autonomy::task::coverage

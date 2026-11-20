@@ -25,17 +25,69 @@ proto::CoverageRequest Rectangle(bool hole=false) {
   if(hole)add({{16,12},{16,17},{22,17},{22,12},{16,12}});
   return r;
 }
+proto::CoverageRequest TwoRoomMap() {
+  proto::CoverageRequest r;
+  r.set_frame_id("map");
+  r.set_coordinates_in_cartesian_frame(true);
+  r.set_generate_regions(true);
+  r.set_robot_radius(0.25);
+  r.mutable_headland_mode()->set_mode("CONSTANT");
+  r.mutable_headland_mode()->set_width(0.6);
+  auto* ring = r.add_polygons();
+  for (auto [x, y] : {std::pair{0.3, 0.3}, std::pair{7.7, 0.3},
+                      std::pair{7.7, 3.7}, std::pair{0.3, 3.7},
+                      std::pair{0.3, 0.3}}) {
+    auto* p = ring->add_coordinates();
+    p->set_axis1(x);
+    p->set_axis2(y);
+  }
+  auto* map = r.mutable_map();
+  map->set_frame_id("map");
+  map->set_resolution(0.1);
+  map->set_width(80);
+  map->set_height(40);
+  map->set_origin_x(0.0);
+  map->set_origin_y(0.0);
+  map->set_occupied_threshold(65);
+  for (int row = 0; row < 40; ++row) {
+    for (int column = 0; column < 80; ++column) {
+      const bool border =
+          row == 0 || row == 39 || column == 0 || column == 79;
+      // Wall at x = 4 with a 1.0 m door near the bottom of the map.
+      const bool wall =
+          column >= 39 && column <= 41 && !(row >= 2 && row < 12);
+      map->add_data(border || wall ? 100 : 0);
+    }
+  }
+  return r;
+}
+void RequireInsideRooms(const ComputeAction::Result& out) {
+  for (const auto& pose : out.nav_path().poses()) {
+    const double x = pose.pose().position().x();
+    const double y = pose.pose().position().y();
+    Require(x > 0.0 && x < 8.0 && y > 0.0 && y < 4.0,
+            "Global path leaves the map");
+    Require(!(x > 3.6 && x < 4.4 && !(y > 0.2 && y < 1.2)),
+            "Global path crosses the dividing wall");
+  }
+}
+
 void Success(const ComputeAction::Result& result){Require(result.error_code()==proto::NONE,"Planning failed: "+result.error_msg());Require(result.coverage_path().swaths_size()>0,"Missing swaths");}
 int main(int argc,char** argv) {
   std::vector<std::pair<std::string,std::function<void()>>> tests;
   auto add=[&](std::string name,std::function<void()> test){tests.emplace_back(std::move(name),std::move(test));};
   CoverageServer server;
+  add("debug_rooms",[&]{Configuration tight;tight.robot_width=0.3;tight.operation_width=0.5;tight.min_turning_radius=0.3;tight.headland_width=0.6;CoverageServer map_server(tight);auto r=TwoRoomMap();auto out=map_server.Compute(r);std::cout<<"REGIONS "<<out.regions_size()<<std::endl;for(const auto& reg:out.regions()){std::cout<<"REGION "<<reg.name()<<" area="<<reg.area()<<" polys="<<reg.polygons_size()<<std::endl;for(const auto& poly:reg.polygons()){std::cout<<" POLY "<<poly.coordinates_size()<<":";for(const auto& p:poly.coordinates())std::cout<<" ("<<p.axis1()<<","<<p.axis2()<<")";std::cout<<std::endl;}}for(const auto& w:out.warnings())std::cout<<"WARN "<<w<<std::endl;});
   add("complete_rect",[&]{auto result=server.Compute(Rectangle());Success(result);Require(result.core_coverage()>.95,"Coverage below 95%");Require(result.nav_path().poses_size()>0,"Missing nav path");});
   add("complete_hole",[&]{auto result=server.Compute(Rectangle(true));Success(result);Require(result.core_coverage()>.95,"Hole core coverage below 95%");});
   add("robot_radius_drives_swath",[&]{auto r=Rectangle();r.set_robot_radius(0.3);auto out=server.Compute(r);Success(out);Require(out.coverage_path().swaths_size()>1,"Radius did not raise swath count");for(const auto& s:out.coverage_path().swaths())Require(std::abs(s.width()-0.6)<1e-9,"Swath width is not twice the radius");});
   add("invalid_robot_radius",[&]{auto r=Rectangle();r.set_robot_radius(0);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Zero radius accepted");r.set_robot_radius(-1);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Negative radius accepted");r.set_robot_radius(NAN);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"NaN radius accepted");});
   add("region_tsp",[]{std::vector<std::pair<double,double>> points{{0,0},{10,0},{10,10},{0,10}};const auto result=RegionOrderer::Order(points,0,0);Require(result.order.size()==4,"TSP dropped rooms");Require(std::abs(result.distance-30.0)<1e-6,"TSP distance should be 30 m");});
   add("region_split",[&]{auto r=Rectangle();r.set_generate_regions(true);r.set_region_columns(2);r.set_region_rows(2);auto out=server.Compute(r);Require(out.error_code()==proto::NONE,std::string("Region split failed: ")+out.error_msg());Require(out.regions_size()==4,"Expected four regions");double area=0;for(const auto& region:out.regions()){area+=region.area();Require(region.states_size()>0,"Region has no coverage states");Require(region.polygons_size()>0,"Region has no polygon");}Require(std::abs(area-1200.0)<1.0,"Region areas do not sum to the field");});
+  add("region_tsp_matrix",[]{std::vector<std::vector<double>> c{{0,1,9},{1,0,1},{9,1,0}};std::vector<double> s{0,5,5};const auto r=RegionOrderer::Order(c,s);Require(r.order.size()==3,"Matrix TSP dropped rooms");Require(r.order[0]==0&&r.order[1]==1&&r.order[2]==2,"Matrix TSP order wrong");Require(std::abs(r.distance-2.0)<1e-9,"Matrix TSP cost wrong");});
+  add("swath_spacing_override",[&]{auto r=Rectangle();r.set_robot_radius(0.4);r.set_swath_spacing(1.0);auto out=server.Compute(r);Success(out);for(const auto& s:out.coverage_path().swaths())Require(std::abs(s.width()-1.0)<1e-9,"Swath width ignores swath_spacing");auto wide=Rectangle();wide.set_robot_radius(0.4);wide.set_swath_spacing(2.0);auto wide_out=server.Compute(wide);Success(wide_out);Require(out.coverage_path().swaths_size()>wide_out.coverage_path().swaths_size(),"Tighter spacing should produce more swaths");});
+  add("invalid_swath_spacing",[&]{auto r=Rectangle();r.set_swath_spacing(0);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Zero spacing accepted");r.set_swath_spacing(-1);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Negative spacing accepted");});
+  add("map_rooms_connect_through_door",[&]{Configuration tight;tight.robot_width=0.3;tight.operation_width=0.5;tight.min_turning_radius=0.3;tight.headland_width=0.6;CoverageServer map_server(tight);auto r=TwoRoomMap();auto out=map_server.Compute(r);Require(out.error_code()==proto::NONE,std::string("Map plan failed: ")+out.error_msg());Require(out.regions_size()==2,"Expected two rooms");Require(out.nav_path().poses_size()>0,"Missing global path");RequireInsideRooms(out);Require(out.travel_distance()>4.0,"Travel distance ignores the door detour");});
   add("flags_path_requires_route",[&]{auto r=Rectangle();r.set_generate_route(false);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Bad flag combination accepted");});
   add("swaths_only",[&]{auto r=Rectangle();r.set_generate_route(false);r.set_generate_path(false);auto out=server.Compute(r);Success(out);Require(!out.coverage_path().swaths_ordered()&&out.nav_path().poses().empty(),"Wrong stage output");});
   add("route_only",[&]{auto r=Rectangle();r.set_generate_path(false);auto out=server.Compute(r);Success(out);Require(out.coverage_path().swaths_ordered()&&!out.coverage_path().contains_turns(),"Wrong route output");});

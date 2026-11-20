@@ -45,4 +45,21 @@
 
 `demo` 配置使用当前用户安装，跳过系统用户和 systemd 管理；安装入口为 `/home/quandy/workspace/demo`，完整版本在 `demo-releases/`，运行配置在 `demo.config/`。`autonomy_system_install: false` 要求关闭依赖安装，适用于已准备运行依赖的宿主机。
 
-`release-demo.yml` 的 `bundle_runtime: true` 会捆绑可执行文件链接的第三方动态库；目标仍需兼容的 libc/C++ 运行时与 GPU 驱动，动态加载的可选插件需单独验证。普通 release 默认使用目标平台已有的依赖基线。
+`release-demo.yml` 的 `bundle_runtime: true` 会捆绑可执行文件链接的第三方动态库，以及 Autoviz 的 Qt/Ogre 插件依赖；编译机需要 Qt 6 的 `qmake6` 和插件。包内启动入口自动加载运行环境，安装后可直接执行 `./bin/autoviz`。目标仍需兼容的 libc/C++ 运行时与 GPU 驱动，其他可选插件需单独验证。普通 release 默认使用目标平台已有的依赖基线。
+
+运行库打包时会按内容去重：完全相同的动态库用硬链接共享磁盘数据，所有加载路径保留。`.so → .so.0 → .so.0.x` 是版本软链接，只存一份库数据；OpenCV、PCL 等名称相近的模块是不同依赖，不能按名字删除。去重节省的字节数记录在 `MANIFEST.json` 的 `deduplicated_runtime_bytes` 中。
+
+## 安装后测试能否运行
+
+在 `ansible/` 目录执行：
+
+```bash
+python3 scripts/smoke_runtime.py --prefix /home/quandy/workspace/demo --config-dir /home/quandy/workspace/demo.config
+
+# 本机有 X11 桌面时，额外验证 Autoviz 窗口、渲染初始化和自动退出
+python3 scripts/smoke_runtime.py --prefix /home/quandy/workspace/demo --config-dir /home/quandy/workspace/demo.config --gui
+```
+
+自动验证 Autoviz 无额外库路径配置启动、task/localization/bridge 启动、RPC 心跳/身份/状态和退出；任何失败返回非零。日志目录会打印在首行。测试使用独立网络、IPC、共享内存和临时目录，不发送运动指令；需要宿主机允许非特权用户命名空间并安装 `unshare`、`mount`、`ip`。窗口检查使用空通信环境；实时话题显示、传感器输入、实际定位精度和机器人导航需单独验收。
+
+已知限制：Autoviz 与 task/localization 联跑时，自动退出测试曾超时；这项联合运行检查尚未通过。

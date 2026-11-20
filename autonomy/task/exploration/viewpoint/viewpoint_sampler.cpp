@@ -7,6 +7,7 @@
 #include <limits>
 #include <stdexcept>
 #include "autonomy/task/exploration/coverage/coverage_fusion.hpp"
+#include "autonomy/common/logging.hpp"
 
 namespace autonomy::task::exploration {
 ViewpointSamplingResult ViewpointSampler::Sample(
@@ -40,6 +41,13 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         safety.horizontal_margin = 0;
     }
     auto geometry = std::make_shared<autonomy::navigation::GeometrySafety>(map.grid, safety);
+    const auto start_check = geometry->VerifyPose(start);
+    AINFO_EVERY(20) << "EXPLORATION_SAMPLER start=(" << start.x << ","
+                    << start.y << ") safe=" << start_check.safe
+                    << " reason=" << start_check.reason
+                    << " support=" << (map.startup_support ? 1 : 0)
+                    << " grid=" << grid.width() << "x" << grid.height()
+                    << " stride=" << stride << " cursor=" << cursor;
     autonomy::navigation::ReachabilityField reachable(geometry, start, 0, cancel_checker);
     if (reachable.canceled()) {
         result.canceled = true;

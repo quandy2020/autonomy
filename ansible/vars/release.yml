@@ -6,3 +6,4 @@ build_dir: /workspace/autonomy/build/autonomy
 build_args: [--packages-up-to, autonomy, --cmake-args, -DBUILD_GRPC=ON, -DAUTONOMY_BUILD_BRIDGE=ON]
 artifact_path: ../dist/autonomy.tar.gz
 install_prefix: /opt/autonomy
+bundle_runtime: true

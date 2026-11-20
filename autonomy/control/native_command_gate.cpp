@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 namespace autonomy::control {
 namespace {
@@ -31,9 +32,11 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
         feedback.header().frame_id() != map.frame_id || command.header().frame_id() != feedback.child_frame_id() ||
         feedback.child_frame_id().empty()) return deny("missing or mismatched native command/geometry/feedback");
     const auto stamp = Stamp(feedback.header()), candidate_stamp = Stamp(command.header());
-    if (!stamp || !candidate_stamp || now < *stamp || now-*stamp > options.maximum_feedback_age ||
-        now < *candidate_stamp || now-*candidate_stamp > options.maximum_feedback_age ||
-        !std::isfinite(map.source_stamp) || now < map.source_stamp || now-map.source_stamp > options.maximum_map_age)
+    constexpr double kClockEpsilon = 0.05;  // timestamp call ordering / clock skew
+    if (!stamp || !candidate_stamp || now + kClockEpsilon < *stamp || now-*stamp > options.maximum_feedback_age ||
+        now + kClockEpsilon < *candidate_stamp || now-*candidate_stamp > options.maximum_feedback_age ||
+        !std::isfinite(map.source_stamp) || now + kClockEpsilon < map.source_stamp ||
+        now-map.source_stamp > options.maximum_map_age)
         return deny("stale or future native command evidence");
     const auto& twist = command.twist(); const auto& measured = feedback.twist().twist();
     for (double value : {twist.linear().x(),twist.linear().y(),twist.linear().z(),twist.angular().x(),twist.angular().y(),twist.angular().z(),
@@ -73,22 +76,40 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
         autonomy::navigation::Pose2d stop = current;
         stop.x += std::cos(heading) * distance;
         stop.y += std::sin(heading) * distance;
-        if (body_check.safe) return geometry.VerifySegment(current, stop);
+        if (body_check.safe) {
+            const auto segment = geometry.VerifySegment(current, stop);
+            if (!segment.safe) {
+                return {false, segment.clearance,
+                    std::string("stopping segment: ") + segment.reason +
+                    " clearance=" + std::to_string(segment.clearance) +
+                    " distance=" + std::to_string(distance)};
+            }
+            return segment;
+        }
 
         // A robot can be placed or pushed a few centimetres inside the map's
         // inflated/occupied band while the commanded direction still exits
         // that band. Refusing every command traps it permanently. Permit only
         // a bounded escape whose remaining segment is safe at every sample.
         const auto stop_check = geometry.VerifyPose(stop);
-        if (!stop_check.safe && stop_check.clearance <= body_check.clearance)
-            return body_check;
+        if (!stop_check.safe && stop_check.clearance <= body_check.clearance) {
+            return {false, body_check.clearance,
+                std::string("body: ") + body_check.reason +
+                " clearance=" + std::to_string(body_check.clearance) +
+                " stop: " + stop_check.reason +
+                " clearance=" + std::to_string(stop_check.clearance)};
+        }
         constexpr int kEscapeSamples = 8;
         for (int index = 1; index <= kEscapeSamples; ++index) {
             const double fraction = static_cast<double>(index) / kEscapeSamples;
             autonomy::navigation::Pose2d sample = current;
             sample.x += (stop.x - current.x) * fraction;
             sample.y += (stop.y - current.y) * fraction;
-            if (!geometry.VerifyPose(sample).safe) return body_check;
+            if (!geometry.VerifyPose(sample).safe) {
+                return {false, body_check.clearance,
+                    std::string("escape blocked: ") + body_check.reason +
+                    " clearance=" + std::to_string(body_check.clearance)};
+            }
         }
         return stop_check;
     } catch (const std::exception&) { return deny("native geometry checker rejected its input"); }

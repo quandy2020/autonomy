@@ -46,6 +46,8 @@ message CoverageRequest {
   int32 region_columns = 25;
   int32 region_rows = 26;
   optional OccupancyMap map = 27;
+  optional Coordinate robot_pose = 28;
+  optional double swath_spacing = 29;
 }
 message Swath { int32 id = 1; double width = 2; automsgs.msgs.nav_msgs.Path path = 3; }
 message PathState {

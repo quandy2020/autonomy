@@ -193,7 +193,11 @@ class CoveragePanel : public QWidget {
   QCheckBox* auto_replan_{nullptr};
   QLineEdit* frame_{nullptr};
   QDoubleSpinBox* radius_{nullptr};
-  QLabel* swath_hint_{nullptr};
+  QDoubleSpinBox* swath_{nullptr};
+  bool swath_manual_{false};
+  double robot_x_{0.0};
+  double robot_y_{0.0};
+  bool have_robot_pose_{false};
   QDoubleSpinBox* headland_{nullptr};
   QComboBox* route_mode_{nullptr};
   QComboBox* path_mode_{nullptr};

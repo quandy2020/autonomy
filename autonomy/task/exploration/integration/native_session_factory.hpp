@@ -45,6 +45,15 @@ struct NativeExplorationPlatform {
     perception::ObservationIngress::LocalizationLookup localization;  ///< Real healthy poses and source support at acquisition time.
     perception::ObservationIngress::Clock clock;  ///< Same time domain as native sensor, pose and map publication stamps.
     ExplorationPacketProcessor process_sensor_packet;  ///< Actual owner-side mapper operation; bootstrap inputs carry no session fusion cut.
+    /**
+     * @brief Existing host Vista graph shared with selection and pose adaptation.
+     *
+     * When present, exploration routing updates and queries this exact graph
+     * under its own lock instead of issuing read-only service calls whose
+     * graph may advance while a planning snapshot is being evaluated.
+     */
+    std::shared_ptr<planning::planner::vista::VistaRoutePlanner>
+        route_planner;
 };
 
 /** @brief Install one native factory and source configuration on TaskServer's idle task.

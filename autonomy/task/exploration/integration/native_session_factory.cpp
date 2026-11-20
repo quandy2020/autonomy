@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include "autonomy/task/exploration/observation/camera_visibility_model.hpp"
 #include "autonomy/task/exploration/observation/lidar_visibility_model.hpp"
+#include "autonomy/task/exploration/integration/vista_path_provider.hpp"
 
 namespace autonomy::task::exploration {
 namespace {
@@ -104,7 +105,9 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
     bindings.prepare_mapping = platform.prepare_mapping;
     bindings.clock = platform.clock;
     bindings.process_sensor_packet = std::move(platform.process_sensor_packet);
-    bindings.create_session = [node, weak_task, settings, create_mapping = platform.create_mapping_services](
+    bindings.create_session = [node, weak_task, settings,
+        create_mapping = platform.create_mapping_services,
+        route_planner = platform.route_planner](
         const proto::ExplorationGoal& goal, const ExplorationSessionOptions& options) {
         const auto owner = weak_task.lock();
         if (!owner || options.mode != settings->session.mode || options.driver != ExplorationDriver::kBehaviorTree)
@@ -115,6 +118,12 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
             settings->routes.navigation_tree);
         auto services = create_mapping(goal, options);
         ValidateMappingServices(services, options);
+        if (route_planner) {
+            services.update_route_map = [route_planner](
+                const perception::MapReadView& view) {
+                route_planner->Update(view);
+            };
+        }
         // Keep an admitted observation goal alive across unrelated map
         // revisions, but revalidate its exact execution footprint. Coverage
         // updates must not preempt the controller during its first inference,
@@ -140,7 +149,13 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
         services.submit_navigation = std::move(native_navigation.submit_navigation);
         services.poll_navigation = std::move(native_navigation.poll_navigation);
         services.cancel_navigation = std::move(native_navigation.cancel_navigation);
-        auto paths = std::make_shared<NativeVistaPathProvider>(node, settings->routes);
+        std::shared_ptr<PathProvider> paths;
+        if (route_planner) {
+            paths = std::make_shared<VistaPathProvider>(route_planner);
+        } else {
+            paths = std::make_shared<NativeVistaPathProvider>(
+                node, settings->routes);
+        }
         auto evaluator = MakeEvaluator(*settings);
         auto coverage = settings->coverage;
         coverage.sampling.nominal_speed = options.nominal_speed;

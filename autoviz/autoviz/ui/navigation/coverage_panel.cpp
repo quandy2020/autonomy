@@ -206,11 +206,22 @@ void CoveragePanel::BuildUi() {
       tr("Cleaning radius; the swath width is twice this value."));
   form->addRow(MakeSettingsFormLabel(tr("Robot radius"), content), radius_);
 
-  swath_hint_ = new QLabel(content);
-  StyleHintLabel(swath_hint_);
-  swath_hint_->setText(
-      tr("Swath width %1 m").arg(2.0 * radius_->value(), 0, 'f', 2));
-  form->addRow(QString(), swath_hint_);
+  swath_ = new QDoubleSpinBox(content);
+  swath_->setObjectName(QStringLiteral("coverageSwathSpacing"));
+  swath_->setRange(0.05, 10.0);
+  swath_->setDecimals(2);
+  swath_->setSingleStep(0.05);
+  swath_->setValue(2.0 * radius_->value());
+  swath_->setSuffix(tr(" m"));
+  swath_->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  swath_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  StyleCompactSettingsField(swath_);
+  swath_->setToolTip(
+      tr("Centre-to-centre spacing between coverage passes. It follows "
+         "twice the robot radius until edited, so every pass overlaps "
+         "the swept disc of its neighbour."));
+  form->addRow(MakeSettingsFormLabel(tr("Swath spacing"), content),
+               swath_);
 
   headland_ = new QDoubleSpinBox(content);
   headland_->setObjectName(QStringLiteral("coverageHeadland"));
@@ -426,8 +437,14 @@ void CoveragePanel::BuildUi() {
   outer->addWidget(footer);
 
   connect(radius_, &QDoubleSpinBox::valueChanged, this, [this](double value) {
-    swath_hint_->setText(
-        tr("Swath width %1 m").arg(2.0 * value, 0, 'f', 2));
+    if (!swath_manual_ && swath_ != nullptr) {
+      const QSignalBlocker blocker(swath_);
+      swath_->setValue(2.0 * value);
+    }
+  });
+  connect(swath_, &QDoubleSpinBox::valueChanged, this, [this](double value) {
+    swath_manual_ =
+        std::abs(value - 2.0 * radius_->value()) > 1e-6;
   });
   connect(ring_list_, &QListWidget::currentRowChanged, this,
           &CoveragePanel::LoadSelectedRing);
@@ -478,6 +495,38 @@ void CoveragePanel::BuildUi() {
   timer_->setInterval(100);
   connect(timer_, &QTimer::timeout, this, &CoveragePanel::PollActions);
   timer_->start();
+
+  // Deterministic demo/CI hook: once the live map is available, split it into
+  // rooms automatically. The smoke test captures the coverage screenshot
+  // without driving the pointer.
+  if (qEnvironmentVariableIsSet("AUTOVIZ_COVERAGE_AUTOPLAN")) {
+    auto* autoplan = new QTimer(this);
+    autoplan->setInterval(1000);
+    QPointer<CoveragePanel> self(this);
+    connect(autoplan, &QTimer::timeout, this, [self, autoplan] {
+      if (!self) {
+        return;
+      }
+      display::MapDisplay* map_display = nullptr;
+      for (auto* candidate : self->manager_->displays()) {
+        auto* map = dynamic_cast<display::MapDisplay*>(candidate);
+        if (map != nullptr && map->channel() == "/map") {
+          map_display = map;
+          break;
+        }
+      }
+      if (map_display == nullptr || map_display->mapMessage() == nullptr) {
+        return;
+      }
+      autoplan->stop();
+      QTimer::singleShot(300, self.data(), [self] {
+        if (self) {
+          self->SplitRooms(true);
+        }
+      });
+    });
+    autoplan->start();
+  }
 
   draw_shortcut_ =
       new QShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+O")), this);
@@ -530,7 +579,10 @@ void CoveragePanel::EnsureClients() {
     config.name = "Full coverage path";
     config.channel = "/coverage/plan";
     config.enabled = true;
-    config.properties["color"] = "0;220;150";
+    config.properties["color"] = "255;215;70";
+    config.properties["line_width"] = "0.10";
+    config.properties["alpha"] = "0.95";
+    config.properties["offset"] = "0;0;0.10";
     manager_->addDisplay(config);
   }
   bool markers_exist = false;
@@ -556,7 +608,13 @@ void CoveragePanel::EnsureClients() {
           const double x = msg->pose().pose().pose().position().x();
           const double y = msg->pose().pose().pose().position().y();
           QMetaObject::invokeMethod(self, [self, x, y] {
-            if (self) self->UpdateCurrentRegion(x, y);
+            if (!self) {
+              return;
+            }
+            self->robot_x_ = x;
+            self->robot_y_ = y;
+            self->have_robot_pose_ = true;
+            self->UpdateCurrentRegion(x, y);
           }, Qt::QueuedConnection);
         });
   }
@@ -931,6 +989,7 @@ void CoveragePanel::SetBusy(bool busy) {
   enable(start_);
   enable(frame_);
   enable(radius_);
+  enable(swath_);
   enable(headland_);
   enable(route_mode_);
   enable(path_mode_);
@@ -1029,6 +1088,12 @@ autonomy::task::coverage::proto::CoverageRequest CoveragePanel::BuildRequest()
     }
   }
   request.set_robot_radius(radius_->value());
+  request.set_swath_spacing(swath_->value());
+  if (have_robot_pose_) {
+    auto* pose = request.mutable_robot_pose();
+    pose->set_axis1(robot_x_);
+    pose->set_axis2(robot_y_);
+  }
   request.mutable_headland_mode()->set_mode("CONSTANT");
   request.mutable_headland_mode()->set_width(headland_->value());
   request.mutable_route_mode()->set_mode(

@@ -1,6 +1,7 @@
 ---
 profile: production
 exclude_paths:
+  - .venv/
   - .cache/
   - .ansible/
 skip_list:

@@ -104,6 +104,65 @@ class DeploymentTest(unittest.TestCase):
             with self.assertRaises(ValueError):
                 PACKAGE.bundle_runtime_libraries(self.directory / 'build', prefix)
 
+    def test_autoviz_bundle_includes_matching_qt_plugins_and_their_dependencies(self):
+        prefix = self.directory / 'install'
+        (prefix / 'bin').mkdir(parents=True)
+        (prefix / 'bin/autoviz').write_bytes(b'\x7fELFfixture')
+        plugins = self.directory / 'qt/plugins'
+        (plugins / 'platforms').mkdir(parents=True)
+        (plugins / 'platforms/libqxcb.so').write_bytes(b'\x7fELFplugin')
+        dependency = self.directory / 'libxcb-fixture.so.1'
+        dependency.write_bytes(b'linked-dependency')
+
+        def query(command, **kwargs):
+            output = str(plugins) if command[0] == 'qmake6' else f'libxcb-fixture.so.1 => {dependency} (0x1234)\n'
+            return subprocess.CompletedProcess(command, 0, output, '')
+
+        with patch.object(PACKAGE.subprocess, 'run', side_effect=query) as runner:
+            PACKAGE.bundle_runtime_libraries(self.directory / 'build', prefix)
+        plugin = prefix / 'lib/qt6/plugins/platforms/libqxcb.so'
+        self.assertEqual(plugin.read_bytes(), b'\x7fELFplugin')
+        self.assertTrue(any(call.args[0] == ['ldd', str(plugin)] for call in runner.call_args_list))
+        self.assertEqual((prefix / 'lib/libxcb-fixture.so.1').read_bytes(), b'linked-dependency')
+        self.assertIn('Plugins=lib/qt6/plugins', (prefix / 'bin/qt.conf').read_text())
+
+    def test_library_deduplication_preserves_aliases_distinct_versions_and_archive_hardlinks(self):
+        prefix = self.directory / 'autonomy'
+        library = prefix / 'lib'
+        (library / 'OGRE').mkdir(parents=True)
+        payload = b'\x7fELFidentical-library'
+        first = library / 'OGRE/Plugin.so.1'
+        duplicate = library / 'Plugin.so.1'
+        first.write_bytes(payload)
+        duplicate.write_bytes(payload)
+        distinct = library / 'Plugin.so.2'
+        distinct.write_bytes(payload[:-1] + b'X')
+        alias = library / 'Plugin.so'
+        alias.symlink_to('Plugin.so.1')
+        with patch.object(PACKAGE.os, 'link', side_effect=OSError('link failed')):
+            with self.assertRaises(OSError):
+                PACKAGE.deduplicate_runtime_libraries(library)
+        self.assertEqual(duplicate.read_bytes(), payload)
+        self.assertFalse(first.samefile(duplicate))
+        self.assertEqual(PACKAGE.deduplicate_runtime_libraries(library), len(payload))
+        self.assertTrue(first.samefile(duplicate))
+        self.assertTrue(alias.is_symlink())
+        self.assertEqual(alias.readlink(), Path('Plugin.so.1'))
+        self.assertFalse(first.samefile(distinct))
+        self.assertEqual(PACKAGE.deduplicate_runtime_libraries(library), 0)
+        manifest = prefix / 'share/autonomy/MANIFEST.json'
+        manifest.parent.mkdir(parents=True)
+        manifest.write_text(json.dumps({'install_prefix': '/opt/autonomy', 'architecture': 'x86_64'}))
+        archive = self.directory / 'deduplicated.tar.gz'
+        with tarfile.open(archive, 'w:gz') as tar:
+            tar.add(prefix, arcname='autonomy')
+        INSPECT.inspect_artifact(archive, '/opt/autonomy')
+        extracted = self.directory / 'extracted'
+        with tarfile.open(archive) as tar:
+            self.assertTrue(any(member.islnk() for member in tar.getmembers()))
+            tar.extractall(extracted, filter='data')
+        self.assertTrue((extracted / 'autonomy/lib/OGRE/Plugin.so.1').samefile(extracted / 'autonomy/lib/Plugin.so.1'))
+
     def test_package_existing_build_without_reconfiguration(self):
         build = self.directory / 'build'
         project = self.directory / 'project'
@@ -122,6 +181,28 @@ class DeploymentTest(unittest.TestCase):
             self.assertIn('autonomy/share/autonomy/payload', archive.getnames())
             metadata = json.load(archive.extractfile('autonomy/share/autonomy/MANIFEST.json'))
             self.assertEqual(metadata['cmake_build_type'], 'Debug')
+
+    def test_runtime_launcher_loads_environment_and_preserves_arguments_after_relocation(self):
+        prefix = self.directory / 'install with spaces'
+        (prefix / 'bin').mkdir(parents=True)
+        hook = prefix / 'share/autonomy/environment/library_path.sh'
+        hook.parent.mkdir(parents=True)
+        hook.write_text('export LD_LIBRARY_PATH="$prefix/lib"\n')
+        (prefix / 'bin/app').write_bytes(b'\x7fELFfixture')
+        PACKAGE.install_runtime_launchers(prefix)
+        self.assertEqual((prefix / 'bin/.app.elf').read_bytes(), b'\x7fELFfixture')
+        # Replace only the fake ELF so the generated launcher can run without a compiler.
+        real = prefix / 'bin/.app.elf'
+        real.write_text('#!/usr/bin/env python3\nimport json, os, sys\n'
+                        'print(json.dumps([os.environ["LD_LIBRARY_PATH"], os.environ["AUTOLINK_PATH"], sys.argv[1:]]))\n')
+        real.chmod(0o755)
+        moved = prefix.rename(self.directory / 'relocated with spaces')
+        env = {key: value for key, value in os.environ.items()
+               if key not in ('LD_LIBRARY_PATH', 'AUTOLINK_PATH', 'AUTONOMY_PATH', 'AUTOLINK_DISTRIBUTION_HOME')}
+        result = subprocess.run([str(moved / 'bin/app'), 'one argument', '--flag'],
+                                env=env, check=True, capture_output=True, text=True)
+        self.assertEqual(json.loads(result.stdout),
+                         [str(moved / 'lib'), str(moved / 'share/autolink'), ['one argument', '--flag']])
 
     def test_audit_records_only_public_release_context(self):
         output = self.directory / 'audit.json'

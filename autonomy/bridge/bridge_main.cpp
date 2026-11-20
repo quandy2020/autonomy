@@ -37,13 +37,13 @@ namespace {
 
 std::atomic<bool> g_shutdown_requested{false};
 
-void SigintHandler(int /*sig*/) {
+void SigintHandler(int sig) {
     bool expected = false;
     if (!g_shutdown_requested.compare_exchange_strong(
             expected, true, std::memory_order_acq_rel)) {
         return;
     }
-    autolink::AsyncShutdown();
+    autolink::OnShutdown(sig);
 }
 
 int RunServe(const CliOptions& cli) {

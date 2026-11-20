@@ -617,7 +617,14 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
             const auto deadline = std::chrono::steady_clock::now() +
                                   std::chrono::duration<double>(allowance_sec);
             automsgs::msgs::geometry_msgs::PoseStamped start_pose;
-            const bool have_start = self->GetRobotPose(start_pose);
+            bool have_start = false;
+            try {
+                have_start = self->GetRobotPose(start_pose);
+            } catch (...) {
+                // A transient TF loss must not abort the bounded spin; the loop
+                // below uses elapsed-time progress until pose feedback returns.
+                have_start = false;
+            }
             const double start_yaw = have_start ? PoseYaw(start_pose) : 0.0;
             const double sign = target >= 0.0 ? 1.0 : -1.0;
             double previous_yaw = start_yaw;
@@ -635,7 +642,13 @@ bool ControllerServer::AttachAutolinkNode(std::shared_ptr<autolink::Node> node) 
                 }
                 automsgs::msgs::geometry_msgs::PoseStamped pose;
                 double turned = cumulative_turn;
-                if (self->GetRobotPose(pose) && have_start) {
+                bool have_pose = false;
+                try {
+                    have_pose = self->GetRobotPose(pose);
+                } catch (...) {
+                    have_pose = false;
+                }
+                if (have_pose && have_start) {
                     const double current_yaw = PoseYaw(pose);
                     const double delta = std::remainder(
                         current_yaw - previous_yaw, 2.0 * std::acos(-1.0));

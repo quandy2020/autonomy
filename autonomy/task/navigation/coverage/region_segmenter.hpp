@@ -33,9 +33,11 @@ class RegionSegmenter {
 
   /** @brief Occupancy-grid room extraction options. */
   struct MapOptions {
-    int occupied_threshold{65};  /**< Cell value treated as a wall. */
-    double min_area{1.0};        /**< Drop rooms smaller than this in m2. */
-    int max_regions{32};         /**< Keep at most this many rooms. */
+    int occupied_threshold{65};    /**< Cell value treated as a wall. */
+    double min_area{1.0};          /**< Drop rooms smaller than this in m2. */
+    int max_regions{32};           /**< Keep at most this many rooms. */
+    double min_passage_width{1.4}; /**< Doorways narrower than this split
+                                        rooms; wider openings stay joined. */
   };
 
   /**

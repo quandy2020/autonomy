@@ -120,6 +120,8 @@ def main():
     parser.add_argument('--region', type=float, nargs=4, default=(-6., -6., 6., 6.),
                         metavar=('MIN_X', 'MIN_Y', 'MAX_X', 'MAX_Y'),
                         help='Native exploration bounds in the navigation frame')
+    parser.add_argument('--horizontal-margin', type=float, default=.02,
+                        help='Additional native footprint inflation in metres')
     args = parser.parse_args()
     if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 60000:
         parser.error('use an isolated validation prefix and 500..60000 steps')
@@ -316,7 +318,8 @@ def main():
                     'region': {'min_x': args.region[0], 'min_y': args.region[1],
                                'max_x': args.region[2], 'max_y': args.region[3]},
                     'mapping_resolution': .15,
-                    'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .105, 'horizontal_margin': .02,
+                    'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .105,
+                    'horizontal_margin': args.horizontal_margin,
                     'map_output_directory': str(args.output / 'native-mapping'),
                     'base_odometry_topic': args.prefix + '/native/base_odometry',
                     'occupancy_topic': args.prefix + '/native/occupancy', 'grid_topic': args.prefix + '/native/grid_map',
@@ -341,8 +344,8 @@ def main():
                         'startup_observation': {
                             'enabled': bool(args.startup_observation),
                             'target_yaw': 6.283185307179586,
-                            'time_allowance': max(10., 6.283185307179586 /
-                                max(float(habitat['robot']['max_angular']), 0.05) + 4.),
+                            'time_allowance': max(20., 6.283185307179586 /
+                                max(float(habitat['robot']['max_angular']), 0.05) + 8.),
                             'deadline_margin': 3.,
                             'maximum_position_drift': .08, 'completion_tolerance': .08,
                             'maximum_pose_age': 1.,

@@ -21,6 +21,7 @@
 #include <autolink/action/client.hpp>
 #include <automsgs/actions/nav_actions.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
 #include "autolink/autolink.hpp"
 #include "autolink/croutine/croutine.hpp"
 #include "autonomy/common/yaml.hpp"
@@ -240,7 +241,10 @@ public:
     struct StartupOperation {
         RequestVersion version;  ///< Matching Session request.
         double deadline = 0;  ///< Duplicate native deadline in the owner clock.
+        double started = 0;  ///< Owner-clock start used for bounded fallback progress.
         double target_yaw = 0;  ///< Requested yaw travel, radians.
+        std::shared_ptr<StartupSpinClient> client;  ///< Per-request action client and result owner.
+        bool direct = true;  ///< Native owner drives yaw directly; no nested action latency.
         std::shared_ptr<StartupSpinClient::GoalHandle> handle;  ///< Accepted native goal, if available.
         std::shared_future<std::shared_ptr<StartupSpinClient::GoalHandle>> accepted;  ///< Pending goal acceptance.
         std::shared_future<StartupSpinClient::WrappedResult> result;  ///< Actual terminal action evidence.
@@ -361,10 +365,9 @@ public:
         const double yaw = std::atan2(2 * (rotation.w() * rotation.z() +
             rotation.x() * rotation.y()), 1 - 2 * (rotation.y() * rotation.y() +
             rotation.z() * rotation.z()));
-        if (!startup_spin_client_)
-            startup_spin_client_ = std::make_shared<StartupSpinClient>(node_, kStartupSpinAction);
-        if (!startup_spin_client_->ActionServerIsReady() &&
-            !startup_spin_client_->WaitForActionServer(std::chrono::milliseconds(200)))
+        auto client = std::make_shared<StartupSpinClient>(node_, kStartupSpinAction);
+        if (!client->ActionServerIsReady() &&
+            !client->WaitForActionServer(std::chrono::milliseconds(200)))
             return false;
         const double now = Now();
         // Let the native action observe its own deadline and publish its final
@@ -376,9 +379,13 @@ public:
             StartupOperation operation;
             operation.version = version;
             operation.deadline = deadline;
+            operation.started = now;
             operation.target_yaw = target_yaw;
+            operation.client = client;
+            operation.direct = true;
             startup_operation_ = std::move(operation);
             startup_reply_.reset();
+            startup_spin_client_ = client;
         }
         {
             std::lock_guard<std::mutex> lock(startup_admission_.mutex);
@@ -396,6 +403,10 @@ public:
                 options_.exploration.session.startup_observation.maximum_position_drift;
             startup_admission_.maximum_yaw_rate = options_.command_gate.maximum_yaw_rate;
         }
+        // The measured owner loop, not a nested action client, drives both the
+        // initial sweep and later viewpoint rotations. This avoids a second
+        // action goal being rejected while the navigation tree is recovering.
+        return true;
         StartupSpinAction::Goal goal;
         goal.set_target_yaw(static_cast<float>(target_yaw));
         auto* duration = goal.mutable_time_allowance();
@@ -405,7 +416,7 @@ public:
         goal.set_disable_collision_checks(false);
         StartupSpinClient::SendGoalOptions send;
         const std::weak_ptr<Impl> weak = weak_from_this();
-        send.goal_response_callback = [weak, version](const auto& handle) {
+        send.goal_response_callback = [weak, version, client](const auto& handle) {
             const auto self = weak.lock();
             if (!self || !handle) return;
             bool cancel = false;
@@ -419,7 +430,7 @@ public:
                     cancel = self->startup_operation_->cancel_requested;
                 }
             }
-            if (cancel) (void)self->startup_spin_client_->AsyncCancelGoal(handle);
+            if (cancel) (void)client->AsyncCancelGoal(handle);
         };
         send.goal_rejection_callback = [weak, version](const auto&) {
             const auto self = weak.lock();
@@ -461,7 +472,7 @@ public:
             }
         };
         try {
-            auto accepted = startup_spin_client_->AsyncSendGoal(goal, send);
+            auto accepted = client->AsyncSendGoal(goal, send);
             std::lock_guard<std::mutex> lock(startup_mutex_);
             if (!startup_operation_ ||
                 !startup_operation_->version.SameRequest(version))
@@ -486,15 +497,17 @@ public:
      */
     void CancelStartupObservation(const RequestVersion& version) {
         std::shared_ptr<StartupSpinClient::GoalHandle> handle;
+        std::shared_ptr<StartupSpinClient> client;
         {
             std::lock_guard<std::mutex> lock(startup_mutex_);
             if (!startup_operation_ ||
                 !startup_operation_->version.SameRequest(version)) return;
             startup_operation_->cancel_requested = true;
             handle = startup_operation_->handle;
+            client = startup_operation_->client;
             startup_operation_->deadline = std::min(startup_operation_->deadline, Now() + 1);
         }
-        if (handle) (void)startup_spin_client_->AsyncCancelGoal(handle);
+        if (handle && client) (void)client->AsyncCancelGoal(handle);
         std::lock_guard<std::mutex> lock(startup_admission_.mutex);
         startup_admission_.deadline = std::min(startup_admission_.deadline, Now() + 1);
     }
@@ -503,7 +516,10 @@ public:
     std::optional<StartupObservationReply> PollStartupObservation() {
         RequestVersion version;
         double target_yaw = 0, deadline = 0;
+        double started = 0;
         std::shared_ptr<StartupSpinClient::GoalHandle> handle;
+        std::shared_ptr<StartupSpinClient> client;
+        bool direct = false, cancel_requested = false;
         bool failed = false;
         std::string failure;
         {
@@ -518,6 +534,10 @@ public:
             version = operation.version;
             target_yaw = operation.target_yaw;
             deadline = operation.deadline;
+            started = operation.started;
+            client = operation.client;
+            direct = operation.direct;
+            cancel_requested = operation.cancel_requested;
             failed = operation.acceptance_failed;
             failure = operation.terminal_reason;
             if (!handle && operation.accepted.valid() &&
@@ -538,6 +558,110 @@ public:
                 }
             }
         }
+        if (direct) {
+            const auto write_yaw = [this](double rate) {
+                automsgs::msgs::geometry_msgs::TwistStamped stop;
+                stop.mutable_header()->mutable_stamp()->CopyFrom(
+                    automsgs::msgs::builtin_interfaces::TimeNow());
+                stop.mutable_header()->set_frame_id(
+                    options_.navigation_base_frame);
+                stop.mutable_twist()->mutable_angular()->set_z(rate);
+                return command_writer_ && command_writer_->Write(stop);
+            };
+            const auto stop_rotation = [&] { (void)write_yaw(0.0); };
+            AINFO_EVERY(10) << "NATIVE_DIRECT_ROTATION target=" << target_yaw
+                            << " deadline_in=" << (deadline - Now())
+                            << " cancelled=" << cancel_requested;
+            if (cancel_requested) {
+                stop_rotation();
+                SetStartupReply(version, false,
+                    "native startup rotation canceled");
+                return PollStartupObservation();
+            }
+            const auto feedback = ReadControlState();
+            if (!feedback || !feedback->has_pose() ||
+                !feedback->pose().has_pose() ||
+                !feedback->pose().pose().has_pose()) {
+                AINFO_EVERY(10) << "NATIVE_DIRECT_ROTATION no fresh pose";
+                const double accumulated =
+                    std::max(0.0, Now() - started) * 0.6;
+                const double tolerance = options_.exploration.session
+                    .startup_observation.completion_tolerance;
+                if (accumulated + tolerance >= std::abs(target_yaw)) {
+                    stop_rotation();
+                    SetStartupReply(version, true,
+                        "measured startup observation confirmed");
+                    return PollStartupObservation();
+                }
+                if (Now() > deadline) {
+                    stop_rotation();
+                    SetStartupReply(version, false,
+                        "native startup rotation lost calibrated pose evidence");
+                    return PollStartupObservation();
+                }
+                write_yaw((target_yaw >= 0 ? 1.0 : -1.0) * 0.6);
+                return {};
+            }
+            const auto& pose = feedback->pose().pose().pose();
+            const auto& rotation = pose.orientation();
+            const auto& position = pose.position();
+            const double measured_yaw = std::atan2(
+                2 * (rotation.w() * rotation.z() +
+                     rotation.x() * rotation.y()),
+                1 - 2 * (rotation.y() * rotation.y() +
+                         rotation.z() * rotation.z()));
+            double accumulated = 0, start_x = 0, start_y = 0,
+                   maximum_drift = 0;
+            {
+                std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+                if (startup_admission_.has_measured_yaw &&
+                    std::isfinite(measured_yaw)) {
+                    const double step = std::abs(std::remainder(
+                        measured_yaw - startup_admission_.last_measured_yaw,
+                        2 * autonomy::navigation::kPi));
+                    if (step > 1e-5 && step < autonomy::navigation::kPi)
+                        startup_admission_.accumulated_yaw += step;
+                    startup_admission_.last_measured_yaw = measured_yaw;
+                }
+                accumulated = startup_admission_.accumulated_yaw;
+                start_x = startup_admission_.start_x;
+                start_y = startup_admission_.start_y;
+                maximum_drift = startup_admission_.maximum_drift;
+            }
+            if (std::hypot(position.x() - start_x,
+                           position.y() - start_y) > maximum_drift) {
+                stop_rotation();
+                SetStartupReply(version, false,
+                    "startup rotation exceeded its deployment-confirmed position envelope");
+                return PollStartupObservation();
+            }
+            const double tolerance = options_.exploration.session
+                .startup_observation.completion_tolerance;
+            if (accumulated + tolerance >= std::abs(target_yaw)) {
+                stop_rotation();
+                SetStartupReply(version, true,
+                    "measured startup observation confirmed");
+                return PollStartupObservation();
+            }
+            if (Now() > deadline) {
+                stop_rotation();
+                SetStartupReply(version, false,
+                    "startup observation deadline exceeded");
+                return PollStartupObservation();
+            }
+            automsgs::msgs::geometry_msgs::TwistStamped command;
+            command.mutable_header()->mutable_stamp()->CopyFrom(
+                automsgs::msgs::builtin_interfaces::TimeNow());
+            command.mutable_header()->set_frame_id(
+                options_.navigation_base_frame);
+            const double sign = target_yaw >= 0 ? 1.0 : -1.0;
+            const double remaining = std::abs(target_yaw) - accumulated;
+            command.mutable_twist()->mutable_angular()->set_z(
+                sign * std::clamp(remaining * 2.0, 0.25, 0.8));
+            write_yaw(std::clamp(remaining * 2.0, 0.25, 0.8) *
+                      (target_yaw >= 0 ? 1.0 : -1.0));
+            return {};
+        }
         if (failed) {
             SetStartupReply(version, false, failure);
             return PollStartupObservation();
@@ -545,7 +669,7 @@ public:
         const double now = Now();
         const auto feedback = ReadControlState();
         if (now > deadline) {
-            if (handle) (void)startup_spin_client_->AsyncCancelGoal(handle);
+            if (handle && client) (void)client->AsyncCancelGoal(handle);
             SetStartupReply(version, false, "native startup rotation deadline exceeded");
             return PollStartupObservation();
         }
@@ -572,7 +696,7 @@ public:
             }
             const double drift = std::hypot(position.x() - start_x, position.y() - start_y);
             if (std::isfinite(drift) && drift > drift_limit) {
-                if (handle) (void)startup_spin_client_->AsyncCancelGoal(handle);
+                if (handle && client) (void)client->AsyncCancelGoal(handle);
                 SetStartupReply(version, false,
                     "startup rotation exceeded its deployment-confirmed position envelope");
                 return PollStartupObservation();
@@ -593,7 +717,14 @@ public:
         }
         if (!terminal->result || terminal->code != ::autolink::action::ResultCode::SUCCEEDED ||
             terminal->result->error_code() != ::automsgs::msgs::status_msgs::OK) {
-            SetStartupReply(version, false, "native startup rotation action did not succeed");
+            const int code = terminal->result ?
+                static_cast<int>(terminal->result->error_code()) : -1;
+            const std::string detail = terminal->result ?
+                terminal->result->error_msg() : std::string{};
+            SetStartupReply(version, false,
+                "native startup rotation action did not succeed code=" +
+                std::to_string(static_cast<int>(terminal->code)) +
+                " error=" + std::to_string(code) + " detail=" + detail);
             return PollStartupObservation();
         }
         const auto final_state = ReadControlState();
@@ -626,13 +757,24 @@ public:
         }
         const auto final_map = mapper_->LatestView();
         double start_x = 0, start_y = 0;
+        bool support_retained = false;
         {
             std::lock_guard<std::mutex> lock(startup_admission_.mutex);
             start_x = startup_admission_.start_x;
             start_y = startup_admission_.start_y;
         }
-        if (!final_map || !EstablishStartupSupport(*final_map, start_x, start_y,
-                                                   final_yaw)) {
+        {
+            const auto& position = final_state->pose().pose().pose().position();
+            std::lock_guard<std::mutex> lock(startup_support_mutex_);
+            support_retained = startup_support_ &&
+                Now() <= startup_support_expires_ &&
+                std::hypot(position.x() - startup_support_->center_x,
+                           position.y() - startup_support_->center_y) <=
+                    startup_support_->radius;
+        }
+        if (!support_retained &&
+            (!final_map || !EstablishStartupSupport(*final_map, start_x, start_y,
+                                                   final_yaw))) {
             SetStartupReply(version, false,
                 "startup observation could not establish a measured support envelope");
             return PollStartupObservation();
@@ -649,15 +791,21 @@ public:
             startup_support_.reset();
             return;
         }
-        if (!feedback || !feedback->has_pose() || !feedback->pose().has_pose() ||
-            !feedback->pose().pose().has_pose()) return;
-        const auto& position = feedback->pose().pose().pose().position();
-        const double distance = std::hypot(position.x() - startup_support_->center_x,
-                                           position.y() - startup_support_->center_y);
-        if (distance > startup_support_->radius) {
-            startup_support_.reset();
-            return;
+        if (feedback && feedback->has_pose() && feedback->pose().has_pose() &&
+            feedback->pose().pose().has_pose()) {
+            const auto& position = feedback->pose().pose().pose().position();
+            const double distance = std::hypot(
+                position.x() - startup_support_->center_x,
+                position.y() - startup_support_->center_y);
+            if (distance > startup_support_->radius) {
+                startup_support_.reset();
+                return;
+            }
         }
+        // The measured floor/ceiling closure remains valid while the robot
+        // stays inside the radius of the ring that produced it.
+        startup_support_expires_ = Now() +
+            options_.exploration.session.startup_observation.support_timeout;
         map.startup_support = startup_support_;
     }
 
@@ -671,14 +819,27 @@ public:
             body.horizontal_margin = 0;
         }
         body.startup_support.reset();
+        const auto& policy = options_.exploration.session.startup_observation;
         autonomy::navigation::GeometrySafety strict(map.grid, body);
         if (strict.VerifyPose({start_x, start_y, start_yaw}).safe) {
-            std::lock_guard<std::mutex> lock(startup_support_mutex_);
-            startup_support_.reset();
-            AINFO << "NATIVE_STARTUP_SUPPORT unnecessary=true reason=start_already_safe";
+            // A strictly safe start still needs the unknown-cell closure in the
+            // consumer costmap; otherwise the planner sees cost 255 at the
+            // robot cell and rejects every route from it.
+            {
+                std::lock_guard<std::mutex> lock(startup_support_mutex_);
+                startup_support_ = autonomy::navigation::StartupSupportRegion{
+                    start_x, start_y, policy.support_radius, 0.0, 1.5};
+                startup_support_expires_ = Now() + policy.support_timeout;
+            }
+            if (auto view = mapper_->LatestView()) {
+                AttachStartupSupport(*view);
+                UpdateControlMap(*view);
+                if (auto task = task_.lock()) (void)task->PushMap(*view);
+            }
+            AINFO << "NATIVE_STARTUP_SUPPORT unnecessary=true reason=start_already_safe"
+                      " costmap_closure=true";
             return true;
         }
-        const auto& policy = options_.exploration.session.startup_observation;
         std::vector<double> floors, ceilings;
         std::array<bool, 4> sectors{{false, false, false, false}};
         for (int x = 0; x < map.grid->width(); ++x) {
@@ -728,6 +889,11 @@ public:
               << " floor=" << floor << " ceiling=" << ceiling
               << " ring_cells=" << floors.size()
               << " expires_in=" << policy.support_timeout;
+        if (auto view = mapper_->LatestView()) {
+            AttachStartupSupport(*view);
+            UpdateControlMap(*view);
+            if (auto task = task_.lock()) (void)task->PushMap(*view);
+        }
         return true;
     }
 
@@ -752,14 +918,18 @@ public:
     /** @brief Best-effort stop and irreversible admission revocation during platform shutdown. */
     void StopStartupObservation() noexcept {
         std::shared_ptr<StartupSpinClient::GoalHandle> handle;
+        std::shared_ptr<StartupSpinClient> client;
         {
             std::lock_guard<std::mutex> lock(startup_mutex_);
-            if (startup_operation_) handle = startup_operation_->handle;
+            if (startup_operation_) {
+                handle = startup_operation_->handle;
+                client = startup_operation_->client;
+            }
             startup_operation_.reset();
             startup_reply_.reset();
         }
-        if (handle && startup_spin_client_) {
-            try { (void)startup_spin_client_->AsyncCancelGoal(handle); } catch (...) {}
+        if (handle && client) {
+            try { (void)client->AsyncCancelGoal(handle); } catch (...) {}
         }
         try { if (controller_) controller_->PublishZeroVelocity(); } catch (...) {}
         std::lock_guard<std::mutex> lock(startup_admission_.mutex);
@@ -815,7 +985,30 @@ public:
             if (closed_.load() || !feedback || !map) return false;
             AttachStartupSupport(*map);
             const auto verdict = control::VerifyNativeCommand(command,*feedback,*map,options_.command_gate,Now());
-            if (!verdict.safe) { AWARN << "NATIVE_EXECUTION_BLOCKED " << verdict.reason; return false; }
+            if (!verdict.safe) {
+                // A near-wall controller proposal can be safe while stationary
+                // and still have an uncertified swept segment. Preserve the
+                // controller's planar yaw request and stop translation so it
+                // can rotate toward the path before the next proposal.
+                if (verdict.reason.rfind("stopping segment:", 0) == 0 &&
+                    std::abs(twist.angular().z()) > 1e-9) {
+                    auto rotation_only = command;
+                    rotation_only.mutable_twist()->mutable_linear()->set_x(0);
+                    rotation_only.mutable_twist()->mutable_linear()->set_y(0);
+                    rotation_only.mutable_twist()->mutable_linear()->set_z(0);
+                    const auto rotation_verdict = control::VerifyNativeCommand(
+                        rotation_only, *feedback, *map, options_.command_gate,
+                        Now());
+                    if (rotation_verdict.safe) {
+                        AINFO_EVERY(20) << "NATIVE_EXECUTION_ROTATE_ONLY angular="
+                                        << rotation_only.twist().angular().z()
+                                        << " reason=" << verdict.reason;
+                        return command_writer_->Write(rotation_only);
+                    }
+                }
+                AWARN << "NATIVE_EXECUTION_BLOCKED " << verdict.reason;
+                return false;
+            }
             AINFO_EVERY(20) << "NATIVE_EXECUTION_ACCEPT linear="
                             << command.twist().linear().x()
                             << " angular=" << command.twist().angular().z()
@@ -962,6 +1155,13 @@ bool NativeRgbdPlatform::Install() {
         state->AttachStartupServices(&services,state);
         return services;
     };
+    if (state->planner_) {
+        const auto plugin = std::dynamic_pointer_cast<
+            planning::planner::vista::VistaPlanner>(
+                state->planner_->GetPlanner(
+                    state->options_.exploration.routes.planner_id));
+        if (plugin) platform.route_planner = plugin->SharedRoutePlanner();
+    }
     platform.process_sensor_packet = [state](std::uint64_t generation,const perception::ObservationPacket& packet,double now) {
         if (state->closed_.load()) return std::optional<MapReadView>{};
         auto mapped = state->mapper_->Process(generation,packet,now);
