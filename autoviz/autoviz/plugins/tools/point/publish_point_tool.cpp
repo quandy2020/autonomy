@@ -5,6 +5,7 @@
 #include "autoviz/plugins/tools/point/publish_point_tool.hpp"
 
 #include <QColor>
+#include <cmath>
 #include <QMouseEvent>
 
 #include <automsgs/msgs/geometry_msgs/point_stamped.pb.h>
@@ -36,12 +37,24 @@ bool PublishPointTool::pickPoint(int x, int y, QVector3D* hit) const {
   }
   const rendering::PickResult pick =
       rendering::pickAtToolContext(*context(), x, y);
-  if (pick.hit) {
+  // A scene query can report a hit with a degenerate transform and hand back
+  // NaN. Treat that as a miss so the analytic ground ray still runs.
+  if (pick.hit && std::isfinite(pick.position.x()) &&
+      std::isfinite(pick.position.y()) && std::isfinite(pick.position.z())) {
     *hit = pick.position;
     return true;
   }
-  return context()->view_controller->pickGroundPoint(
-      x, y, context()->viewport_width, context()->viewport_height, hit);
+  QVector3D ground;
+  if (!context()->view_controller->pickGroundPoint(
+          x, y, context()->viewport_width, context()->viewport_height, &ground)) {
+    return false;
+  }
+  if (!std::isfinite(ground.x()) || !std::isfinite(ground.y()) ||
+      !std::isfinite(ground.z())) {
+    return false;
+  }
+  *hit = ground;
+  return true;
 }
 
 void PublishPointTool::updateStatusFromPoint(const QVector3D& point,

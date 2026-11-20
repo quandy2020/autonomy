@@ -120,15 +120,22 @@ protected:
             OnGoalDispatched(goal);
             return BT::NodeStatus::RUNNING;
         }
-        return session.Tick(
+        const auto status = session.Tick(
             HaltCancelChecker(),
             [this](const Result& result) {
                 setOutput("error_code_id", static_cast<int>(result.error_code()));
                 setOutput("error_msg", result.error_msg());
             },
             [this](int code, const std::string& msg) {
+                AWARN << ServerLabel() << " result failure code=" << code
+                      << " msg=" << msg;
                 SetErrorPorts(*this, code, msg);
             });
+        if (status == BT::NodeStatus::SUCCESS)
+            AINFO << ServerLabel() << " completed successfully";
+        else if (status == BT::NodeStatus::FAILURE)
+            AWARN << ServerLabel() << " session returned failure";
+        return status;
     }
 
     /** @brief Initiate goal-specific cancellation without fabricating a stop. */

@@ -110,9 +110,19 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
         if (!owner || options.mode != settings->session.mode || options.driver != ExplorationDriver::kBehaviorTree)
             throw std::logic_error("native exploration factory has a different owner or mode");
         // NavigationServices proves this callback runs on the current task factory owner.
-        auto native_navigation = owner->NavigationServices(settings->routes.frame_id, settings->routes.planner_id,settings->controller_id);
+        auto native_navigation = owner->NavigationServices(settings->routes.frame_id,
+            settings->routes.planner_id, settings->controller_id,
+            settings->routes.navigation_tree);
         auto services = create_mapping(goal, options);
         ValidateMappingServices(services, options);
+        // Keep a short, already admitted observation goal alive across map
+        // revisions. The route planner and the native command gate revalidate
+        // every actual motion request; canceling here on every map publication
+        // preempted the controller before its first inference could complete.
+        services.navigation_still_valid = [](const AdaptedObservationGoal&,
+                                              const Pose2d&, const MapReadView&) {
+            return true;
+        };
         services.submit_navigation = std::move(native_navigation.submit_navigation);
         services.poll_navigation = std::move(native_navigation.poll_navigation);
         services.cancel_navigation = std::move(native_navigation.cancel_navigation);

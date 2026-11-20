@@ -17,6 +17,7 @@ struct NativeVistaPathOptions {
     std::string service_name = "/get_plan";  ///< Existing automsgs route service.
     std::string planner_id = "vista_planner";  ///< Exact configured graph owner id.
     std::string frame_id = "map";  ///< Frame shared with localization and mapping.
+    std::string navigation_tree;  ///< Optional exploration navigation BT; empty uses the task default.
     std::chrono::milliseconds timeout{500};  ///< Includes client serialization and reply wait.
     std::chrono::milliseconds retry_interval{100};  ///< Same read-only request/slot; zero disables retransmission.
     std::size_t maximum_poses = 65536;  ///< Bound accepted path memory and validation work.

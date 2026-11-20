@@ -150,6 +150,21 @@ private:
                 CancelRequest();
                 OutputPath(Path{}, false);
             }
+            if (!active_ && !last_good_.poses().empty() &&
+                last_good_epoch_ == Epoch() && last_good_identity_ == identity) {
+                double max_age = 2.0;
+                getInput("max_path_reuse_age", max_age);
+                const double age = std::chrono::duration<double>(
+                    std::chrono::steady_clock::now() - last_good_time_).count();
+                if (std::isfinite(max_age) && max_age >= 0.0 && age <= max_age &&
+                    ::autonomy::task::navigation::SameGoalPose(
+                        last_good_.poses(last_good_.poses_size() - 1), endpoint,
+                        0.10, 0.10)) {
+                    OutputPath(last_good_, false);
+                    ClearErrorPorts(*this);
+                    return BT::NodeStatus::SUCCESS;
+                }
+            }
             if (!active_) {
                 if (!client.ActionServerIsReady()) return BT::NodeStatus::RUNNING;
                 endpoint_ = endpoint;

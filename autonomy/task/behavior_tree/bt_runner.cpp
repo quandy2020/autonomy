@@ -282,6 +282,9 @@ BtRunState BtRunner::RunTree(BT::Tree* tree, BtRunnerHooks* hooks,
                 }
                 if (!paused_.load()) {
                     result = tree->tickOnce();
+                    if (result != BT::NodeStatus::RUNNING)
+                        AINFO << "nav bt tick_result="
+                              << (result == BT::NodeStatus::SUCCESS ? "SUCCESS" : "FAILURE");
                 }
             }
             if (status_logger != nullptr) {

@@ -191,7 +191,8 @@ public:
      */
     exploration::ExplorationServices NavigationServices(
         const std::string& frame_id, const std::string& planner_id = "vista_planner",
-        const std::string& controller_id = "") const;
+        const std::string& controller_id = "",
+        const std::string& navigation_tree = "") const;
 
     /// Queue an owned map snapshot; missing source evidence is not fabricated.
     bool PushMap(exploration::MapReadView map);

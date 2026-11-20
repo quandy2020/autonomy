@@ -288,7 +288,10 @@ public:
     }
 
     void Reset() {
-        observation_buffer_.Clear();
+        // A new path resets planning/controller state, not the latest measured
+        // pose, velocity, image/depth, costmap or other observation modalities.
+        // Clearing them here made the first control tick after every FollowPath
+        // start fail with a missing required modality.
         safety_filter_.Reset();
         infer_watchdog_.Reset();
         runtime_buffers_.inputs.clear();

@@ -302,6 +302,7 @@ def main():
                     'navigation_base_frame': 'native_exploration_base', 'atlas_odometry_topic': args.prefix + '/atlas/odometry',
                     'atlas_status_topic': args.prefix + '/atlas/localization_status', 'route_service': '/get_plan',
                     'planner_id': 'vista_planner', 'controller_id': args.task_controller, 'validated_sensor_mask': 2,
+                    'navigation_tree': '/workspace/autonomy/src/autonomy/autonomy/task/conf/behavior_tree/navigation/navigate_to_pose_exploration.xml',
                     'time_budget': args.exploration_time_budget, 'require_return': True, 'require_save': True,
                     'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': -6., 'min_y': -6., 'max_x': 6., 'max_y': 6.}, 'mapping_resolution': .15,
@@ -326,14 +327,15 @@ def main():
                         'maximum_yaw_rate': habitat['robot']['max_angular'],
                         'actuator_watchdog': habitat['robot']['watchdog_sec'], 'reaction_time': .1,
                         'minimum_braking_deceleration': habitat['robot']['max_linear_decel'],
+                        'maximum_feedback_age': 2.0, 'maximum_map_age': 2.0,
                         'startup_observation': {
                             'enabled': bool(args.startup_observation),
                             'target_yaw': 3.141592653589793,
                             'time_allowance': 10., 'deadline_margin': 3.,
                             'maximum_position_drift': .04, 'completion_tolerance': .08,
                             'maximum_pose_age': 1.,
-                            'support_radius': .45, 'support_ring_radius': .9,
-                            'support_timeout': 30., 'minimum_support_cells': 8,
+                            'support_radius': .8, 'support_ring_radius': 1.2,
+                            'support_timeout': 60., 'minimum_support_cells': 8,
                         },
                     })
                 config_file.write_text(yaml.safe_dump(settings, sort_keys=False))
@@ -400,6 +402,10 @@ def main():
                     lambda message: receive(message, 'measured_coverage'), types['map_grid']))
                 readers.append(runner.node.create_reader(args.prefix + '/native/measured_coverage/metadata',
                     lambda message: receive(message, 'measured_coverage_metadata'), DiagnosticArray))
+                readers.append(runner.node.create_reader(
+                    args.prefix + '/native/policy_diagnostics',
+                    lambda message: receive(message, 'policy_diagnostics'),
+                    DiagnosticArray))
                 readers.append(runner.node.create_reader('/autonomy/task/exploration/feedback',
                     lambda message: receive(message, 'exploration_feedback'), ExplorationFeedback))
                 task_launcher = threading.Thread(target=lambda: launch_task(runner), name='native-task-validation-launcher')
@@ -433,6 +439,9 @@ def main():
             report['tracking_diagnostics_checked'] = not report.get('diagnostic_error') and len(matched_depth) >= 5
             if 'exploration_feedback' in last:
                 report['last_exploration_feedback'] = MessageToDict(last['exploration_feedback'], preserving_proto_field_name=True)
+            if 'policy_diagnostics' in last:
+                report['last_policy_diagnostics'] = MessageToDict(
+                    last['policy_diagnostics'], preserving_proto_field_name=True)
         report['payload_sha256'] = {}
         for name, payload in payloads.items():
             (args.output / (name + '.pb')).write_bytes(payload)

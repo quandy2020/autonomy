@@ -49,9 +49,20 @@ python3 src/autonomy/autonomy/task/navigation/coverage/scripts/demo_runtime.py s
 在 AutoViz 的 **Panels → Navigation → Coverage** 中：
 
 1. 输入外环和孔洞。第一环是作业区域，其余环是排除区域；坐标使用米。
-2. 点击 **Preview full path**，观察区域、地头边界、条带与完整路径。
-3. 选择是否先到覆盖起点，点击 **Start coverage**。页面显示覆盖进度和剩余距离。
+2. 点击 **Preview**，观察区域、地头边界、条带与完整路径。
+3. 选择是否先到覆盖起点，点击 **Start**。页面显示覆盖进度和剩余距离。
 4. **Cancel coverage** 取消本任务并等待控制动作的终态。暂停/恢复暂不开放，避免重复已完成的工具作业。
+5. Run 区固定在面板底部，设置区独立滚动；**Preview**/**Start**/**Cancel** 不会因障碍列表过长而滚出视野。
+6. 画障碍物多边形：按 **Ctrl+Alt+O**（或点 **Draw polygon**），
+   面板会自动切到 Publish Point 工具；在 3D 视图依次点击至少 3 个点，
+   **Enter** 完成，**Esc** 取消。点位实时显示为绿色折线和顶点，
+   完成后转为橙色障碍环并进入请求的孔洞列表。
+7. 动态障碍：勾选 **Capture from /map** 并设置 **Margin**，
+   点 **Refresh** 或等待每秒刷新；占用栅格中的小连通块会转成障碍环，
+   静态长墙会按面积阈值跳过。勾选 **Re-plan when obstacles change**
+   后，障碍栅格变化会自动触发一次全路径预览。
+8. **Robot radius** 控制条带间距，作业宽度等于半径的两倍；
+   需要按附件实际扫幅执行时，可在配置文件显式设置 `operation_width`。
 
 默认编辑区域为 `[-3,3] × [-2,2]`，见 [同一请求的文本协议示例](conf/demo_request.pb.txt)。区域坐标可以直接替换为实际地图中可通行的区域。
 

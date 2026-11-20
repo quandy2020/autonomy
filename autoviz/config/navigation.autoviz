@@ -745,12 +745,13 @@ Window:
   Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAQgAAAEUAAAn/AAAFnwAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
   Height: 1371
   HideLeftDock: true
-  HideRightDock: true
+  HideRightDock: false
   # Single 3D View under the image strip — ViewportDock_2/_3 removed (drag left
   # transparent GLX holes / crash). Re-open extras from Panels if needed.
   MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0OTAsNzg4XSwiY2hpbGRyZW4iOlt7InR5cGUiOiJzcGxpdCIsIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjEyLDE4NzVdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9jayIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYxOSwxMjQ5XSwiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYyMSw2MjFdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dfV19XX0seyJuYW1lIjoiVmlld3BvcnREb2NrIiwidHlwZSI6ImxlYWYifV19fQ==
   Panels:
     - Name: ViewportDock
+    - Name: NavigationDock
     - Collapsed: true
       Name: DisplaysDock
     - Name: RecordDock
@@ -773,6 +774,7 @@ Window:
   PlotSettingsVisible: false
   State: AAAA/wAAAAD9AAAAAwAAAAAAAAFMAAAFBfwCAAAAAfwAAABAAAAFBQAAAAAA////+v////8CAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAAAAAAD/////AAAA3QD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsAAAAAAP////8AAAB6AP///wAAAAEAAAEYAAAFBfwCAAAABfsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAAD/////AAAAyAD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABSQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawAAAABAAAABvgAAAIcA////+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawAAAAIEAAADQQAAAIYA////+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAAAA/////wAAAe4A////AAAAAwAAAAAAAAAA/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAD/////AAAD5AD///8AAAm+AAAFBQAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAAHABBAHUAdABvAHYAaQB6AFQAbwBvAGwAQgBhAHIBAAAAAP////8AAAAAAAAAAA==
   VisiblePanels:
+    - NavigationDock
     - ImageDock
     - ImageDock_2
     - ImageDock_3

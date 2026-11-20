@@ -1218,7 +1218,8 @@ std::shared_future<bool> ExplorationTask::ObservationSourceShutdownCompletion() 
     return impl_->source_completion_;
 }
 e::ExplorationServices ExplorationTask::NavigationServices(
-    const std::string& frame_id, const std::string& planner_id, const std::string& controller_id) const {
+    const std::string& frame_id, const std::string& planner_id, const std::string& controller_id,
+    const std::string& navigation_tree) const {
     GuardedSubmitNavigation submit;
     GetVersionedNavigationResult result;
     CancelNavigationRequest cancel;
@@ -1245,7 +1246,7 @@ e::ExplorationServices ExplorationTask::NavigationServices(
         const auto instance = impl_->instance_;
         impl_->dispatcher_ = std::make_shared<e::NavigationDispatcher>(
             gate, prefix,
-            [submit, frame_id, planner_id, controller_id, instance](
+            [submit, frame_id, planner_id, controller_id, navigation_tree, instance](
                 const e::NavigationDispatchRequest& request,
                 const e::MotionGate::Permit& permit) {
                 NativeCallbackScope scope(instance);
@@ -1256,6 +1257,7 @@ e::ExplorationServices ExplorationTask::NavigationServices(
                 goal.set_mode(proto::NAV_MODE_SINGLE_POSE);
                 goal.mutable_plugins()->set_planner_id(planner_id);
                 if (!controller_id.empty()) goal.mutable_plugins()->set_controller_id(controller_id);
+                if (!navigation_tree.empty()) goal.mutable_plugins()->set_behavior_tree(navigation_tree);
                 auto* target = goal.add_goals();
                 target->mutable_header()->set_frame_id(frame_id);
                 target->mutable_pose()->mutable_position()->set_x(request.pose.x);

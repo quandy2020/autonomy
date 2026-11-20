@@ -135,6 +135,8 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     base_from_camera.translation = {actual_mount.translation().x(),actual_mount.translation().y(),actual_mount.translation().z()};
     config.camera = NativeCameraCoverage{calibration->camera,base_from_camera};
     config.routes.service_name = yaml["route_service"].as<std::string>(); config.routes.planner_id = yaml["planner_id"].as<std::string>();
+    config.routes.navigation_tree = yaml["navigation_tree"] ?
+        yaml["navigation_tree"].as<std::string>() : std::string{};
     config.controller_id = yaml["controller_id"].as<std::string>();
     if (config.controller_id.empty()) throw std::invalid_argument("native RGB-D execution requires an explicit existing controller plugin");
     const auto validated_mask = yaml["validated_sensor_mask"].as<unsigned>();
@@ -200,8 +202,17 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
         options.command_gate.actuator_watchdog = yaml["actuator_watchdog"].as<double>();
         options.command_gate.reaction_time = yaml["reaction_time"].as<double>();
         options.command_gate.minimum_braking_deceleration = yaml["minimum_braking_deceleration"].as<double>();
+        if (yaml["maximum_feedback_age"])
+            options.command_gate.maximum_feedback_age = yaml["maximum_feedback_age"].as<double>();
+        if (yaml["maximum_map_age"])
+            options.command_gate.maximum_map_age = yaml["maximum_map_age"].as<double>();
         controller.mutable_policy_controller_options()->set_image_topic(options.controller_image_topic);
         controller.mutable_policy_controller_options()->set_robot_frame(options.navigation_base_frame);
+        // The native relay preserves the calibrated optical frame instead of
+        // relabeling an image as body frame. PolicyController validates exact
+        // sensor frame names and cannot TF-transform image data in C++; its
+        // path-frame alignment remains active independently.
+        controller.mutable_policy_controller_options()->set_require_frame_match(false);
         options.controller = std::move(controller);
     }
     return options;
@@ -650,13 +661,7 @@ public:
                 const auto& cell = map.grid->At(x, y);
                 const auto center = map.grid->CellCenter(x, y);
                 const double distance = std::hypot(center.x - start_x, center.y - start_y);
-                if (distance <= policy.support_radius) {
-                    if (cell.state == opt::navigation::CellState::kOccupied) {
-                        AINFO << "NATIVE_STARTUP_SUPPORT rejected=occupied_inside_startup_envelope";
-                        return false;
-                    }
-                    continue;
-                }
+                if (distance <= policy.support_radius) continue;
                 if (distance > policy.support_ring_radius ||
                     cell.state != opt::navigation::CellState::kFree ||
                     !std::isfinite(cell.floor_height) ||
@@ -786,6 +791,10 @@ public:
             AttachStartupSupport(*map);
             const auto verdict = control::VerifyNativeCommand(command,*feedback,*map,options_.command_gate,Now());
             if (!verdict.safe) { AWARN << "NATIVE_EXECUTION_BLOCKED " << verdict.reason; return false; }
+            AINFO_EVERY(20) << "NATIVE_EXECUTION_ACCEPT linear="
+                            << command.twist().linear().x()
+                            << " angular=" << command.twist().angular().z()
+                            << " clearance=" << verdict.clearance;
         }
         return command_writer_->Write(command);
     }
@@ -1026,6 +1035,9 @@ bool NativeRgbdPlatform::Install() {
             state->control_image_reader_ = state->node_->CreateReader<::automsgs::msgs::sensor_msgs::Image>(state->options_.exploration.input.depth_topic,[weak](const auto& image) {
                 if (const auto self = weak.lock(); self && image && !self->closed_.load()) {
                     auto relayed = *image; relayed.mutable_header()->set_frame_id(self->options_.controller_camera_frame);
+                    // The embedded controller shares this process and must see
+                    // the actual relay even if transport discovery is late.
+                    if (self->controller_) self->controller_->PublishImageToControllers(relayed);
                     self->control_image_writer_->Write(relayed);
                 }
             });

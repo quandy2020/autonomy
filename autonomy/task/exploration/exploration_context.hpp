@@ -118,8 +118,8 @@ struct StartupObservationOptions {
     double maximum_position_drift = .03;  ///< Maximum measured translation from the startup pose, metres.
     double completion_tolerance = .03;  ///< Maximum missing yaw at successful completion, radians.
     double maximum_pose_age = 1;  ///< Maximum measured feedback age for the stationary startup sweep, seconds.
-    double support_radius = .45;  ///< Self-occluded central disc closed only during initial departure, metres.
-    double support_ring_radius = .9;  ///< Measured free ring used to derive floor and ceiling, metres.
+    double support_radius = .8;  ///< Self-occluded central disc closed only during initial departure, metres.
+    double support_ring_radius = 1.2;  ///< Measured free ring used to derive floor and ceiling, metres.
     double support_timeout = 30;  ///< Maximum lifetime of the start-only support hint, seconds.
     std::size_t minimum_support_cells = 8;  ///< Minimum measured ring cells required before support closure.
 };

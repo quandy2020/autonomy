@@ -62,6 +62,14 @@ class MapDisplay
   std::string typeId() const override { return "Map"; }
 
   /**
+   * @brief Returns the newest full occupancy grid.
+   * @return Cached map, or @c nullptr before the first message.
+   */
+  const automsgs::msgs::map_msgs::OccupancyGrid* mapMessage() const {
+    return has_full_map_ ? &current_message_ : nullptr;
+  }
+
+  /**
    * @brief Property schema (alpha, scheme, update topic, …).
    *
    * @return Specs for the Displays property editor.

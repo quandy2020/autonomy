@@ -127,6 +127,7 @@ protected:
         const auto gate = ResolveMotionGate(*this);
         Goal goal;
         if (!BuildGoal(goal)) {
+            AWARN << "FollowPath: goal rebuild failed";
             if (gate && gate->Suspended()) {
                 remote_started_ = session.is_busy();
                 return BT::NodeStatus::RUNNING;
@@ -206,6 +207,7 @@ protected:
     /** @brief Cancel the matching invocation and release its route references. */
     void OnHalted() override
     {
+        AINFO << "FollowPath: halted by behavior tree";
         AsyncRemoteActionNode::OnHalted();
         sent_reference_.reset();
         pending_reference_.reset();

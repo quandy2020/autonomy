@@ -165,6 +165,10 @@ bool SelectSandPlannerTrajectory(
             !std::all_of(raw.begin(), raw.end(), [](float value) { return std::isfinite(value); })) continue;
         std::vector<Eigen::Vector3d> controls =
             ControlPointsFromFlat(raw, control_points);
+        // Differential-drive execution is planar. The network keeps its
+        // trained 3-axis output layout, but lateral/vertical model channels
+        // cannot authorize a 3D target unsupported by this chassis.
+        for (auto& control : controls) control.z() = 0.0;
         const math::ClampedCubicBSpline<Eigen::Vector3d> curve(controls);
         const std::vector<Eigen::Vector3d> dense =
             curve.Sample(std::max(waypoints, 16));
