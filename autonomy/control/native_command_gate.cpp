@@ -25,7 +25,9 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
     for (double value : {now,options.maximum_linear_speed,options.maximum_yaw_rate,options.maximum_feedback_age,
         options.maximum_map_age,options.actuator_watchdog,options.minimum_braking_deceleration})
         if (!std::isfinite(value) || value <= 0) return deny("invalid native command bounds or current clock");
-    if (!std::isfinite(options.reaction_time) || options.reaction_time < 0) return deny("invalid native reaction allowance");
+    if (!std::isfinite(options.reaction_time) || options.reaction_time < 0 ||
+        !std::isfinite(options.escape_clearance_tolerance) || options.escape_clearance_tolerance < 0)
+        return deny("invalid native reaction allowance or escape tolerance");
     if (!command.has_header() || !command.has_twist() || !feedback.has_header() || !feedback.has_pose() ||
         !feedback.pose().has_pose() || !feedback.pose().pose().has_pose() || !feedback.has_twist() || !feedback.twist().has_twist() ||
         !map.grid || !map.map_epoch || !map.has_height_evidence || map.frame_id.empty() || map.grid->frame_id() != map.frame_id ||
@@ -66,7 +68,16 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
         autonomy::navigation::GeometrySafety geometry(map.grid,body);
         const autonomy::navigation::Pose2d current{pose.position().x(),pose.position().y(),yaw};
         const auto body_check = geometry.VerifyPose(current);
-        if (commanded_speed <= 1e-9) return body_check;
+        const double body_radius = body.robot_radius + body.horizontal_margin;
+        if (commanded_speed <= 1e-9) {
+            if (body_check.safe) return body_check;
+            // Rotation does not change the circular footprint. A robot placed
+            // a few millimetres inside the mapped body envelope may still turn
+            // to face a clearance-increasing direction before translating.
+            if (body_check.clearance + options.escape_clearance_tolerance + 1e-12 >= body_radius)
+                return {true, body_check.clearance, "bounded in-place escape"};
+            return body_check;
+        }
         // The stop distance applies along the commanded translation. Expanding
         // a complete circle by that distance falsely rejects motion parallel
         // to a nearby wall. Validate the exact body at the current pose and the
@@ -90,9 +101,15 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
         // A robot can be placed or pushed a few centimetres inside the map's
         // inflated/occupied band while the commanded direction still exits
         // that band. Refusing every command traps it permanently. Permit only
-        // a bounded escape whose remaining segment is safe at every sample.
+        // a bounded escape whose clearance never worsens and whose endpoint is
+        // either fully safe or reaches the configured bounded deficit.
+        if (body_check.clearance + options.escape_clearance_tolerance + 1e-12 < body_radius)
+            return body_check;
         const auto stop_check = geometry.VerifyPose(stop);
-        if (!stop_check.safe && stop_check.clearance <= body_check.clearance) {
+        const bool stop_progress = stop_check.safe ||
+            (stop_check.clearance + options.escape_clearance_tolerance + 1e-12 >= body_radius &&
+             stop_check.clearance > body_check.clearance + 1e-9);
+        if (!stop_progress) {
             return {false, body_check.clearance,
                 std::string("body: ") + body_check.reason +
                 " clearance=" + std::to_string(body_check.clearance) +
@@ -105,12 +122,17 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
             autonomy::navigation::Pose2d sample = current;
             sample.x += (stop.x - current.x) * fraction;
             sample.y += (stop.y - current.y) * fraction;
-            if (!geometry.VerifyPose(sample).safe) {
+            const auto sample_check = geometry.VerifyPose(sample);
+            if (sample_check.clearance + 1e-9 < body_check.clearance ||
+                (!sample_check.safe &&
+                 sample_check.clearance + options.escape_clearance_tolerance + 1e-12 < body_radius)) {
                 return {false, body_check.clearance,
-                    std::string("escape blocked: ") + body_check.reason +
-                    " clearance=" + std::to_string(body_check.clearance)};
+                    std::string("escape blocked: ") + sample_check.reason +
+                    " clearance=" + std::to_string(sample_check.clearance)};
             }
         }
+        if (!stop_check.safe)
+            return {true, stop_check.clearance, "bounded clearance-increasing escape"};
         return stop_check;
     } catch (const std::exception&) { return deny("native geometry checker rejected its input"); }
 }

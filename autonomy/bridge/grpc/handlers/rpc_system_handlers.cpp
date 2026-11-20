@@ -253,8 +253,12 @@ void RpcSystemApplyConfigPackageHandler::OnRequest(
         return;
     }
     const char* home = std::getenv("HOME");
-    fs::path dest = home && home[0] ? fs::path(home) / ".autonomy/config_drop"
-                                    : fs::path("/tmp/autonomy/config_drop");
+    const char* config_dir = std::getenv("AUTONOMY_CONFIG_DIR");
+    fs::path dest = home && home[0] ? fs::path(home) / ".autonomy/config/incoming"
+                                    : fs::path("/tmp/autonomy/config/incoming");
+    if (config_dir && config_dir[0]) {
+        dest = fs::path(config_dir) / "incoming";
+    }
     std::error_code ec;
     fs::create_directories(dest, ec);
     if (fs::is_directory(src)) {

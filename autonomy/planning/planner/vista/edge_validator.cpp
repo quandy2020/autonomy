@@ -19,6 +19,15 @@ EdgeValidator::EdgeValidator(const perception::MapReadView& map,
     : safety_(map.grid,EffectiveOptions(map,options)), revision_(map.geometry_revision),
       influence_padding_(options.robot_radius+options.horizontal_margin+map.grid->resolution()) {}
 bool EdgeValidator::PoseSafe(const Pose2d& pose) const { return safety_.VerifyPose(pose).safe; }
+bool EdgeValidator::StartEscapable(const Pose2d& pose) const {
+  if (PoseSafe(pose)) return true;
+  const auto& options = safety_.options();
+  const double radius = options.robot_radius + options.horizontal_margin;
+  // This is only a route-start admission. Every graph edge and the goal keep
+  // the strict footprint check; the command gate still bounds the actual
+  // clearance-increasing escape.
+  return safety_.Clearance(pose) + .02 + 1e-12 >= radius;
+}
 VisibilityEdge EdgeValidator::Validate(NodeId a, const Pose2d& from, NodeId b, const Pose2d& to) const {
     auto checked = safety_.VerifySegment(from,to);
     if (checked.safe) {

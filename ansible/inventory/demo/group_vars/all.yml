@@ -5,5 +5,6 @@ autonomy_install_dependencies: false
 autonomy_use_ccache: false
 autonomy_install_prefix: /home/quandy/workspace/demo
 autonomy_artifact_path: "{{ lookup('env', 'HOME') }}/.autonomy/artifacts/autonomy-demo.tar.gz"
-autonomy_config_dir: "{{ autonomy_install_prefix }}.config"
+autonomy_data_dir: "{{ ansible_facts.user_dir }}"
+autonomy_config_dir: "{{ autonomy_data_dir }}/.autonomy/config"
 autonomy_preflight_strict_os: false

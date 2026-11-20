@@ -42,6 +42,33 @@ void ValidateView(const perception::MapReadView& view,
             throw std::invalid_argument("visibility grid lattice changed without a new epoch");
 }
 }  // namespace
+namespace {
+/** @brief Find a nearby strictly safe pose for a bounded route-start escape. */
+std::optional<Pose2d> FindStartAnchor(const perception::MapReadView& map,
+                                      const EdgeValidator& validator,
+                                      const Pose2d& start) {
+  if (!map.grid) return {};
+  const auto center = map.grid->WorldToCell(start);
+  if (!center) return {};
+  const double resolution = map.grid->resolution();
+  const int span = std::max(1, static_cast<int>(std::ceil(.30 / resolution)));
+  std::optional<Pose2d> best;
+  double best_distance = std::numeric_limits<double>::infinity();
+  for (int dy = -span; dy <= span; ++dy) for (int dx = -span; dx <= span; ++dx) {
+    const int x = center->x + dx, y = center->y + dy;
+    if (!map.grid->Contains(x, y) || map.grid->At(x, y).state !=
+        autonomy::navigation::CellState::kFree) continue;
+    auto candidate = map.grid->CellCenter(x, y);
+    candidate.yaw = start.yaw;
+    const double distance = autonomy::navigation::Distance(start, candidate);
+    if (distance <= 1e-9 || distance > .30 + 1e-9 || distance >= best_distance) continue;
+    if (!validator.PoseSafe(candidate)) continue;
+    best = candidate; best_distance = distance;
+  }
+  return best;
+}
+}  // namespace
+
 VistaRoutePlanner::VistaRoutePlanner(autonomy::navigation::SafetyOptions options, std::size_t nodes)
     : options_(options), updater_(nodes) {}
 GraphUpdateStats VistaRoutePlanner::Update(const perception::MapReadView& map) {
@@ -91,6 +118,7 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     auto is_canceled = [&] { return canceled && canceled(); };
     if (is_canceled()) { result.canceled = true; return result; }
     EdgeValidator validator(*map,options_);
+    Pose2d route_start = start;
     if (!validator.PoseSafe(start)) {
         const auto check = validator.safety().VerifyPose(start);
         const auto cell = map->grid->WorldToCell(start);
@@ -111,7 +139,13 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
                             << " floor=" << map->startup_support->floor_height
                             << " ceiling=" << map->startup_support->ceiling_height;
         }
-        return result;
+        if (!validator.StartEscapable(start)) return result;
+        const auto anchor = FindStartAnchor(*map, validator, start);
+        if (!anchor) return result;
+        route_start = *anchor;
+        AINFO_EVERY(20) << "VISTA_ROUTE_START_ESCAPE anchor="
+                        << route_start.x << "," << route_start.y
+                        << " distance=" << autonomy::navigation::Distance(start, route_start);
     }
     if (!validator.PoseSafe(goal)) {
         AINFO_EVERY(20) << "VISTA_ROUTE_GOAL_UNSAFE x=" << goal.x
@@ -120,7 +154,7 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
         return result;
     }
     const NodeId source = 0, target = std::numeric_limits<NodeId>::max();
-    std::map<NodeId,Pose2d> poses{{source,start},{target,goal}};
+    std::map<NodeId,Pose2d> poses{{source,route_start},{target,goal}};
     std::map<NodeId,std::vector<std::pair<NodeId,double>>> adjacency;
     auto connect = [&](NodeId a, NodeId b, double length) {
         adjacency[a].push_back({b,length}); adjacency[b].push_back({a,length});
@@ -153,8 +187,12 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     if (distances.count(target)) {
         NodeId n = target;
         while (n != source) { result.path.poses.push_back(poses.at(n)); n = parent.at(n); }
-        result.path.poses.push_back(start); std::reverse(result.path.poses.begin(),result.path.poses.end());
-        result.length = distances.at(target); result.success = true;
+        result.path.poses.push_back(route_start); std::reverse(result.path.poses.begin(),result.path.poses.end());
+        if (autonomy::navigation::Distance(start, route_start) > 1e-9) {
+            result.path.poses.insert(result.path.poses.begin(), start);
+            result.length += autonomy::navigation::Distance(start, route_start);
+        }
+        result.length += distances.at(target); result.success = true;
     } else {
         result.used_grid_fallback = true;
         // Grid connectivity is a fallback, so graph sparsification cannot declare unreachable.

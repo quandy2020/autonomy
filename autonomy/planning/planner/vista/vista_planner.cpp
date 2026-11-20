@@ -165,7 +165,7 @@ uint32 VistaPlanner::QueryRoute(const automsgs::msgs::geometry_msgs::PoseStamped
             if (!view->grid->WorldToCell(from)) return proto::PLANNER_INVALID_START;
             if (!view->grid->WorldToCell(to)) return proto::PLANNER_INVALID_GOAL;
             EdgeValidator validator(*view, settings.safety);
-            if (!validator.PoseSafe(from)) return proto::PLANNER_BLOCKED_START;
+            if (!validator.StartEscapable(from)) return proto::PLANNER_BLOCKED_START;
             if (!validator.PoseSafe(to)) return proto::PLANNER_BLOCKED_GOAL;
             route = routes->CreateRoute(from, to, canceled);
             if (route.canceled || canceled()) return proto::PLANNER_CANCELED;

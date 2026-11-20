@@ -14,6 +14,8 @@ public:
     EdgeValidator(const perception::MapReadView& map, autonomy::navigation::SafetyOptions options);
     /** @brief Check pose footprint and available height evidence. */
     bool PoseSafe(const Pose2d& pose) const;
+    /** @brief Allow only a bounded near-field deficit for a route start escape. */
+    bool StartEscapable(const Pose2d& pose) const;
     /** @brief Certify both chord directions and record source revision and influence bounds. */
     VisibilityEdge Validate(NodeId a, const Pose2d& from, NodeId b, const Pose2d& to) const;
     /** @brief Expose the same geometry model to independent grid routing. */

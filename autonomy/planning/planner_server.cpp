@@ -544,22 +544,33 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
 
     uint32_t return_code = 0;
     std::string resolved_planner_id = planner_id;
-    if (planners_.find(planner_id) != planners_.end()) {
-        return_code = planners_[planner_id]->CreatePlan(start_pose, goal, path,
-                                                        cancel_checker);
-    } else if (planners_.size() == 1 && planner_id.empty()) {
-        resolved_planner_id = planners_.begin()->first;
-        AWARN << "No planner specified; using " << resolved_planner_id;
-        return_code = planners_[resolved_planner_id]->CreatePlan(
-            start_pose, goal, path, cancel_checker);
-    } else {
-        throw common::InvalidPlanner("Planner id " + planner_id +
-                                     " is invalid. Available: " +
-                                     planner_ids_concat_);
+    try {
+        if (planners_.find(planner_id) != planners_.end()) {
+            return_code = planners_[planner_id]->CreatePlan(start_pose, goal, path,
+                                                            cancel_checker);
+        } else if (planners_.size() == 1 && planner_id.empty()) {
+            resolved_planner_id = planners_.begin()->first;
+            AWARN << "No planner specified; using " << resolved_planner_id;
+            return_code = planners_[resolved_planner_id]->CreatePlan(
+                start_pose, goal, path, cancel_checker);
+        } else {
+            throw common::InvalidPlanner("Planner id " + planner_id +
+                                         " is invalid. Available: " +
+                                         planner_ids_concat_);
+        }
+    } catch (...) {
+        // The route graph is still useful when the requested endpoints are
+        // rejected. Publish its admitted snapshot without manufacturing a route.
+        try { PublishVistaGraph(resolved_planner_id); } catch (...) {}
+        throw;
     }
 
     AINFO << "nav plan result planner=" << resolved_planner_id
           << " code=" << return_code;
+    // A blocked start/goal still leaves a valid, newly admitted graph. Avoid
+    // showing an empty Vista channel merely because this route failed.
+    if (return_code != planner::vista::proto::PLANNER_SUCCESS)
+        PublishVistaGraph(resolved_planner_id);
     ThrowOnPlannerResultCode(return_code, resolved_planner_id);
     PublishVistaGraph(resolved_planner_id);
     return path;

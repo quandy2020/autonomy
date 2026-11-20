@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstdlib>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -44,11 +45,10 @@ inline std::string AutonomyWorkRoot() {
  *
  * Search order:
  *  1. Absolute path / path existing relative to CWD
- *  2. AUTONOMY_CONF_PATH (colon-separated roots; append module/conf/file)
- *  3. $AUTONOMY_PATH/share/autonomy/<module>/conf/<file>
- *  4. $AUTONOMY_PATH/autonomy/<module>/conf/<file> (source-tree layout)
- *  5. kSourceDirectory/autonomy/<module>/conf/<file>
- *  6. kLibraryInstallDir/share/autonomy/<module>/conf/<file>
+ *  2. AUTONOMY_CONFIG_DIR/<module>/<file> (explicit user config root)
+ *  3. AUTONOMY_CONF_PATH (colon-separated roots; append module/conf/file)
+ *  4. ~/.autonomy/config/<module>/<file> (when CONFIG_DIR is unset)
+ *  5. Distribution and source-tree defaults
  */
 inline bool ResolveModuleConfPath(const std::string& module,
                                   const std::string& conf_file,
@@ -70,9 +70,30 @@ inline bool ResolveModuleConfPath(const std::string& module,
     }
   }
 
+  const char* config_dir = std::getenv("AUTONOMY_CONFIG_DIR");
+  const bool explicit_config_dir = config_dir != nullptr && config_dir[0] != '\0';
+  if (explicit_config_dir) {
+    const auto path = std::filesystem::path(config_dir) / module / conf_file;
+    if (std::filesystem::is_regular_file(path)) {
+      *resolved = path.string();
+      return true;
+    }
+  }
+
   if (autolink::common::GetFilePathWithEnv(relative, "AUTONOMY_CONF_PATH",
                                            resolved)) {
     return true;
+  }
+
+  if (!explicit_config_dir) {
+    const char* home = std::getenv("HOME");
+    if (home != nullptr && home[0] != '\0') {
+      const auto path = std::filesystem::path(home) / ".autonomy/config" / module / conf_file;
+      if (std::filesystem::is_regular_file(path)) {
+        *resolved = path.string();
+        return true;
+      }
+    }
   }
 
   const std::vector<std::string> roots = {

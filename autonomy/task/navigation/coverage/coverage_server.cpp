@@ -169,12 +169,13 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   // Keep the interior at least one robot radius away from the walls. The
   // swath lines then end inside the room, so the bounded-curvature turns can
   // be planned without leaving the polygon.
-  const double margin =
-      std::max({config.robot_radius, config.operation_width,
-                std::max(0.05, config.robot_width * 0.5)});
-  proto::HeadlandMode band_mode;
-  band_mode.set_mode("CONSTANT");
-  band_mode.set_width(margin);
+  proto::HeadlandMode band_mode = goal.headland_mode();
+  if (Unknown(band_mode.mode())) {
+    band_mode.set_mode("CONSTANT");
+  }
+  if (!band_mode.has_width()) {
+    band_mode.set_width(config.headland_width);
+  }
   bool band = headland;
   F2CCells core;
   if (band) {
@@ -187,12 +188,8 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     core = cells.Clone();
   }
   if (core.IsEmpty() || core.Area() < 1e-3) {
-    std::fprintf(stderr, "room inset failed area=%.2f\n", cells.Area());
     core = cells.Clone();
     band = false;
-  } else {
-    std::fprintf(stderr, "room inset ok area=%.2f core=%.2f\n",
-                 cells.Area(), core.Area());
   }
   SwathGenerator swath_generator(config);
   auto grouped = swath_generator.GenerateSwathsByCells(core, goal.swath_mode());
@@ -278,8 +275,6 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   }
   const bool perimeter = combined.size() > 1;
   combined += path;
-  std::fprintf(stderr, "room path states=%zu band=%d\n", path.size(),
-               static_cast<int>(band));
   output.path = combined;
   output.swaths = ordered;
   output.swath_count = static_cast<int>(ordered.size());

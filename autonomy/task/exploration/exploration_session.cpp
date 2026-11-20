@@ -777,6 +777,8 @@ public:
         snapshot_.reason = "observation loss requires new measured coverage and full scope confirmation";
         AINFO << "EXPLORATION_LOSS action=replan mask="
               << static_cast<unsigned>(loss.pending_sources);
+        if (StartRecoveryRotation(now))
+            snapshot_.reason = "observation loss recovery rotation started";
     }
 
     /** @brief Starts a bounded, explicitly scoped mapper recovery after a fresh sweep. */
@@ -1240,9 +1242,17 @@ public:
         rotation_for_navigation_ = false;
     }
 
+    /** @brief Cancel only the loss-reacquisition sweep; keep sensor waiting alive. */
+    void CancelRecoveryRotation() {
+        if (recovery_rotation_ && services_.cancel_startup_observation)
+            services_.cancel_startup_observation(*recovery_rotation_);
+        recovery_rotation_.reset();
+    }
+
     /** @brief Rotate in place with one explicit post-rotation purpose. */
     bool StartYawRotation(double target_yaw, double now, bool for_navigation) {
         if (!HasObservationRotation() || !snapshot_.goal) return false;
+        CancelRecoveryRotation();
         CancelObservationRotation();
         const double delta = autonomy::navigation::NormalizeAngle(target_yaw - pose_.yaw);
         if (std::abs(delta) <= options_.yaw_tolerance) {
@@ -1268,6 +1278,24 @@ public:
     /** @brief Rotate to the required camera view after positional arrival. */
     bool StartObservationRotation(double target_yaw, double now) {
         return StartYawRotation(target_yaw, now, false);
+    }
+
+    /** @brief Reacquire measurements after a loss without requiring a coverage goal. */
+    bool StartRecoveryRotation(double now) {
+        if (!HasObservationRotation() || recovery_rotation_) return false;
+        CancelObservationRotation();
+        const double allowance = options_.startup_observation.time_allowance +
+            options_.startup_observation.deadline_margin;
+        auto version = Version(now, std::max(1.0, allowance));
+        if (!services_.request_startup_observation(version, 2 * autonomy::navigation::kPi,
+                                                   allowance))
+            return false;
+        recovery_rotation_ = version;
+        snapshot_.state = ExplorationState::kObserving;
+        AINFO << "EXPLORATION_RECOVERY_ROTATION submit allowance=" << allowance
+              << " mask=" << static_cast<unsigned>(
+                     observations_.LossSnapshot().pending_sources);
+        return true;
     }
 
     /** @brief Consume one measured in-place viewpoint rotation. */
@@ -1301,6 +1329,28 @@ public:
             services_.cancel_startup_observation(*observation_rotation_);
             observation_rotation_.reset();
             Retry(now, "viewpoint rotation deadline exceeded");
+        }
+    }
+
+    /** @brief Consume the bounded loss-reacquisition sweep. */
+    void PollRecoveryRotation(double now) {
+        if (!recovery_rotation_) return;
+        const auto reply = services_.poll_startup_observation();
+        if (reply && reply->version.SameRequest(*recovery_rotation_)) {
+            recovery_rotation_.reset();
+            snapshot_.state = ExplorationState::kExploring;
+            selection_after_ = now + options_.blocked_retry_delay;
+            snapshot_.reason = reply->success
+                ? "observation recovery rotation completed"
+                : "observation recovery rotation failed";
+            return;
+        }
+        if (now > recovery_rotation_->valid_until) {
+            services_.cancel_startup_observation(*recovery_rotation_);
+            recovery_rotation_.reset();
+            snapshot_.state = ExplorationState::kExploring;
+            selection_after_ = now + options_.blocked_retry_delay;
+            snapshot_.reason = "observation recovery rotation deadline exceeded";
         }
     }
 
@@ -1363,6 +1413,7 @@ public:
     }
 
     void BeginFinish(ExplorationOutcome outcome, double now) {
+        CancelRecoveryRotation();
         AINFO << "EXPLORATION_FINISH outcome=" << static_cast<int>(outcome)
               << " elapsed=" << now - started_ - paused_time_
               << " budget=" << options_.time_budget
@@ -1818,6 +1869,7 @@ public:
         }
         PrunePacketPoses();
         snapshot_.sensors = health_.Evaluate(now, localization_, options_.validated_controller_modes);
+        PollRecoveryRotation(now);
         SyncObservationLoss(now);
         snapshot_.pending_units = coverage_.PendingCount();
         if (snapshot_.state == ExplorationState::kSaving) {
@@ -1912,6 +1964,7 @@ public:
         ConsumePlan(now);
         PollLossRecovery(now);
         PollObservationRotation(now);
+        PollRecoveryRotation(now);
         if (navigation_) {
             const auto reply = services_.poll_navigation();
             if (reply && reply->version.SameRequest(*navigation_) && now <= navigation_->valid_until) {
@@ -1968,7 +2021,7 @@ public:
                 BeginFinish(ExplorationOutcome::kIncompleteObservation, now);
         }
         if (!BtDriven() && startup_observation_confirmed_ && !planning_ && !navigation_ &&
-            !recovery_operation_ && !observation_rotation_ && now >= selection_after_ &&
+            !recovery_operation_ && !observation_rotation_ && !recovery_rotation_ && now >= selection_after_ &&
             snapshot_.state != ExplorationState::kObserving &&
             snapshot_.state != ExplorationState::kSaving &&
             snapshot_.state != ExplorationState::kFinished)
@@ -2055,6 +2108,7 @@ public:
     ExplorationSnapshot snapshot_, published_;
     std::optional<RequestVersion> planning_, navigation_, map_operation_;
     std::optional<RequestVersion> observation_rotation_;
+    std::optional<RequestVersion> recovery_rotation_;  ///< Loss-only yaw sweep without a coverage goal.
     std::optional<Pose2d> pending_navigation_pose_;
     bool rotation_for_navigation_ = false;
     std::optional<RequestVersion> startup_observation_;  ///< Bounded native in-place yaw sweep awaiting a measured result.

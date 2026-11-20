@@ -30,7 +30,6 @@
       tags: [runtime_bootstrap, common]
       when:
         - autonomy_play_mode in ['full', 'build']
-        - autonomy_system_install | bool
 
     - role: openbot.autonomy_ops.source
       tags: [build, source]

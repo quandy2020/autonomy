@@ -20,6 +20,7 @@ struct NativeCommandGateOptions {
     double actuator_watchdog = .5;  ///< Actual base maximum stale-command interval, seconds.
     double reaction_time = .1;  ///< Observation/dispatch/brake reaction allowance, seconds.
     double minimum_braking_deceleration = .5;  ///< Actual conservative physical braking lower bound, m/s^2.
+    double escape_clearance_tolerance = .02;  ///< Bounded near-field deficit allowed only for clearance-improving escape.
 };
 
 /** @brief Physical bounds for the explicitly configured startup yaw-only admission. */

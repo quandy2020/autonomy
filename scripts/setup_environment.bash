@@ -13,6 +13,7 @@
 # Optional overrides (export before source):
 #   AUTONOMY_BUILD_DIR          build dir (default $ROOT/build when in source tree)
 #   AUTONOMY_INSTALL_PREFIX     install prefix (auto-detected when sourcing installed copy)
+#   AUTONOMY_CONFIG_DIR         user config root (default ~/.autonomy/config)
 #   AUTONOMY_SETUP_QUIET=1      quiet summary
 #   AUTONOMY_SETUP_ROS=1        try source /opt/ros/*/setup.bash
 #
@@ -178,15 +179,16 @@ if [[ "${AUTONOMY_SETUP_LAYOUT}" == "install" ]]; then
   _AUTONOMY_CONF_JOIN="$(_autonomy_join_existing \
     "${AUTONOMY_INSTALL_PREFIX}/share/autonomy" \
     "${AUTONOMY_INSTALL_PREFIX}/share/autonomy/config")"
-  export AUTONOMY_CONFIG_DIR="${AUTONOMY_INSTALL_PREFIX}/share/autonomy/config"
 else
   _AUTONOMY_CONF_JOIN="$(_autonomy_join_existing \
     "${AUTONOMY_ROOT}/autonomy" \
     ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/share/autonomy"} \
     "${AUTONOMY_ROOT}/config")"
-  export AUTONOMY_CONFIG_DIR="${AUTONOMY_ROOT}/config"
 fi
-export AUTONOMY_CONF_PATH="${_AUTONOMY_CONF_JOIN}"
+export AUTONOMY_CONFIG_DIR="${AUTONOMY_CONFIG_DIR:-${HOME}/.autonomy/config}"
+export AUTONOMY_CONF_PATH="${AUTONOMY_CONF_PATH:-${_AUTONOMY_CONF_JOIN}}"
+mkdir -p -m 700 -- "${HOME}/.autonomy"
+mkdir -p -- "${AUTONOMY_CONFIG_DIR}" "${HOME}/.autonomy/"{maps,models,records,artifacts,cache,runtime}
 
 _AUTONOMY_BT_JOIN="$(_autonomy_join_existing \
   ${AUTONOMY_INSTALL_PREFIX:+"${AUTONOMY_INSTALL_PREFIX}/lib"} \
@@ -301,7 +303,7 @@ export GLOG_alsologtostderr="${GLOG_alsologtostderr:-1}"
 export GLOG_colorlogtostderr="${GLOG_colorlogtostderr:-1}"
 export GLOG_minloglevel="${GLOG_minloglevel:-0}"
 export GLOG_log_dir="${GLOG_log_dir:-${HOME}/.autonomy/log}"
-mkdir -p -- "${GLOG_log_dir}"
+mkdir -p -- "${GLOG_log_dir}/events"
 
 # ---------------------------------------------------------------------------
 # Optional ROS 2 overlay
