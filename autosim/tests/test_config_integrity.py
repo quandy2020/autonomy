@@ -1,4 +1,6 @@
 """Shipped configs must load and agree with the URDF they point at."""
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -16,8 +18,10 @@ def _shipped(folder: Path) -> list[Path]:
     return sorted(path for path in folder.glob("*.yaml") if not path.name.startswith("_"))
 
 
-ALL_CONFIGS = sorted((ROOT / "config").glob("*.yaml")) + sorted(
-    (ROOT / "config" / "robots").glob("*.yaml")
+ALL_CONFIGS = (
+    sorted((ROOT / "config").glob("*.yaml"))
+    + sorted((ROOT / "config" / "robots").glob("*.yaml"))
+    + sorted((ROOT / "config" / "scenes").glob("*.yaml"))
 )
 CONFIGS = _shipped(ROOT / "config") + _shipped(ROOT / "config" / "robots")
 ROBOT_CONFIGS = _shipped(ROOT / "config" / "robots")
@@ -130,3 +134,13 @@ def test_channels_are_unique(path: Path):
         else:
             seen[channel] = key
     assert duplicates == {}
+
+
+def test_topics_doc_matches_channel_maps():
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "gen_topics_doc.py"), "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr

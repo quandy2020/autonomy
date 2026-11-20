@@ -42,6 +42,44 @@
 
 具体以当前 YAML 为准；改通道名后需保证全局唯一（`validate` 会查重）。
 
+<!-- BEGIN generated: config-channels -->
+
+以 `config/default.yaml` 为基线，只列新增、改名或缺失的逻辑键；完整默认表见第 1 节。
+
+### 顶层配置
+
+| 配置 | 与 `default.yaml` 的差异 |
+|------|--------------------------|
+| `atlas.yaml` | `gt_odom=/gt/odometry`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增）、`semantic`（缺）、`semantic_ids`（缺）、`depth_points`（缺） |
+| `bev.yaml` | `surround_rgb_front=/surround/front/image_raw`（新增）、`surround_info_front=/surround/front/camera_info`（新增）、`surround_rgb_front_left=/surround/front_left/image_raw`（新增）、`surround_info_front_left=/surround/front_left/camera_info`（新增）、`surround_rgb_rear_left=/surround/rear_left/image_raw`（新增）、`surround_info_rear_left=/surround/rear_left/camera_info`（新增）、`surround_rgb_rear=/surround/rear/image_raw`（新增）、`surround_info_rear=/surround/rear/camera_info`（新增）、`surround_rgb_rear_right=/surround/rear_right/image_raw`（新增）、`surround_info_rear_right=/surround/rear_right/camera_info`（新增）、`surround_rgb_front_right=/surround/front_right/image_raw`（新增）、`surround_info_front_right=/surround/front_right/camera_info`（新增）、`surround_panorama=/surround/panorama`（新增）、`footprint`（缺）、`semantic`（缺）、`semantic_ids`（缺）、`depth_points`（缺）、`map_cloud`（缺） |
+| `coverage.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `default.yaml` | 基线 |
+| `fake.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `fake_nav.yaml` | `fov_marker=/camera/depth/fov`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `habitat_people.yaml` | `topdown_rgb=/camera/topdown/image_raw`（新增）、`topdown_info=/camera/topdown/camera_info`（新增） |
+| `isaac.yaml` | `joint_states=/joint_states`（新增）、`hunav_agents=/hunav/agents`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `isaac_nav.yaml` | `semantic`（缺）、`semantic_ids`（缺） |
+| `lightning.yaml` | `odom_path=/odom/path`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `lio.yaml` | `odom_path=/odom/path`（新增）、`semantic`（缺）、`semantic_ids`（缺） |
+| `nav.yaml` | `chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `slam.yaml` | 同 `default.yaml` |
+
+### 机器人档案
+
+机器人档案只列新增或改名的键；它们不是完整的导航栈，缺省键由 `_base.yaml` 或运行时补齐。
+
+| 档案 | 与 `default.yaml` 的差异 |
+|------|--------------------------|
+| `google_robot.yaml` | `imu=/imu/data`、`stereo_left_rgb=/camera/left/image_raw`（新增）、`stereo_left_info=/camera/left/camera_info`（新增）、`stereo_right_rgb=/camera/right/image_raw`（新增）、`stereo_right_info=/camera/right/camera_info`（新增）、`range_0=/tof/right_1`（新增）、`range_1=/tof/right_2`（新增）、`range_2=/tof/right_back_1`（新增）、`range_3=/tof/right_back_2`（新增）、`range_4=/tof/left_1`（新增）、`range_5=/tof/left_2`（新增）、`range_6=/tof/left_back_1`（新增）、`range_7=/tof/left_back_2`（新增）、`range_8=/cliff/rear_right`（新增）、`range_9=/cliff/rear_left`（新增）、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `husky.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `turtlebot3_burger.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `unitree_g1.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `unitree_go2.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+
+<!-- END generated: config-channels -->
+
+重新生成：`python3 scripts/gen_topics_doc.py`；`--check` 在测试里校验文档是否过期。
+
 ---
 
 ## 2. 时间与坐标系

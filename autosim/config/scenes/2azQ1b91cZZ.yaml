@@ -1,0 +1,4 @@
+# Outdoor Bistro scene used by lightning.
+# Override the dataset root with AUTOSIM_SCENE_ROOT when it lives elsewhere.
+habitat:
+  path: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/2azQ1b91cZZ/2azQ1b91cZZ.glb

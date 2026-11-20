@@ -16,10 +16,11 @@
 #   mkdir -p data/maps
 #   autolink launch start localization_lightning.launch
 
+extends: scenes/2azQ1b91cZZ.yaml
+
 habitat:
   mode: slam
 
-  path: /workspace/autonomy/src/2azQ1b91cZZ/2azQ1b91cZZ.glb
   # Outdoor Bistro with PNG textures. Planar map_x=Hx, map_y=-Hz.
   spawn: [5.92, -22.86, 0.0]
   gpu: 0
@@ -147,7 +148,7 @@ habitat:
     frame: map
     rate_hz: 1.0
     ply:
-      source: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
+      source: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
       channel: /overall/map
       stride: 1
     grid:

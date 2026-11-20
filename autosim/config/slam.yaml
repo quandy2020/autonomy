@@ -15,10 +15,11 @@
 #   cd src/autonomy && export AUTOLINK_LAUNCH_PATH=$PWD/autonomy/exploration/launch && \
 #     autolink launch start exploration.launch
 
+extends: scenes/17DRP5sb8fy.yaml
+
 habitat:
   mode: slam
 
-  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
   spawn: [-4.0, 0.18, 0.0]
   gpu: 0
 
@@ -126,7 +127,7 @@ habitat:
     frame: map
     rate_hz: 1.0
     ply:
-      source: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
+      source: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/17DRP5sb8fy/17DRP5sb8fy_semantic.ply
       channel: /overall/map
       stride: 1
     grid:

@@ -26,6 +26,7 @@
 | `fake_nav.yaml` | fake 后端的导航联调 |
 | `coverage.yaml` | fake 后端的全覆盖验证场景 |
 | `robots/<profile>.yaml` | 五个机器人档案的展示与遥操作配置，见第 4 节；公共块在 `robots/_base.yaml` |
+| `scenes/<scene>.yaml` | 场景路径片段，供 `extends` 引用；根目录可用 `AUTOSIM_SCENE_ROOT` 覆盖 |
 
 启动：`CONFIG=.../xxx.yaml scripts/run.sh sim`。
 
@@ -49,6 +50,16 @@ habitat:
 ```
 
 路径相对 **autosim 工程根**（含 `config/`、`usd/` 的那一层）。
+
+### 场景路径
+
+`config/scenes/<scene>.yaml` 只保存 `habitat.path`（需要时也保存 `map.ply.source`）。默认场景根目录是 `/workspace/autonomy/src`，可用环境变量覆盖：
+
+```bash
+AUTOSIM_SCENE_ROOT=/data/mp3d CONFIG=config/default.yaml scripts/run.sh sim
+```
+
+`Config.load` 会展开所有字符串里的 `${VAR}` 和 `${VAR:-default}`；变量未设置且没有默认值时抛 `ValueError`。
 
 ---
 

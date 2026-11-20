@@ -10,10 +10,9 @@
 #
 # Autoviz / 任务：见 autosim/README.md 与 autonomy/task。
 
-extends: default.yaml
+extends: [default.yaml, scenes/jtcxE69GiFV.yaml]
 
 habitat:
-  path: /workspace/autonomy/src/jtcxE69GiFV/jtcxE69GiFV.glb
   robot:
     max_linear: 0.8
     max_angular: 2.2

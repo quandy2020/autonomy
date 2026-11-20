@@ -334,3 +334,20 @@ def test_extends_rejects_non_string_entries(tmp_path):
     child.write_text(yaml.safe_dump({"extends": ["base.yaml", 3]}))
     with pytest.raises(ValueError, match="non-empty strings"):
         Config.load(child)
+
+
+def test_config_expands_environment_variables(monkeypatch):
+    monkeypatch.setenv("AUTOSIM_TEST_SCENE_ROOT", "/tmp/scenes")
+    data = minimal_config()
+    data["habitat"]["path"] = "${AUTOSIM_TEST_SCENE_ROOT}/room.glb"
+    assert Config.load(data)["habitat"]["path"] == "/tmp/scenes/room.glb"
+
+
+def test_config_env_default_and_missing_variable(monkeypatch):
+    monkeypatch.delenv("AUTOSIM_TEST_MISSING", raising=False)
+    data = minimal_config()
+    data["habitat"]["path"] = "${AUTOSIM_TEST_MISSING:-/fallback}/room.glb"
+    assert Config.load(data)["habitat"]["path"] == "/fallback/room.glb"
+    data["habitat"]["path"] = "${AUTOSIM_TEST_MISSING}/room.glb"
+    with pytest.raises(ValueError, match="AUTOSIM_TEST_MISSING"):
+        Config.load(data)

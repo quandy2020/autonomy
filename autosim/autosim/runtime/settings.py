@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import copy
+import os
+import re
 from pathlib import Path
 from typing import Any, Dict, Mapping, MutableMapping, Union
 
@@ -196,7 +198,9 @@ class Config:
         if isinstance(source, (str, Path)):
             data = cls._load_yaml(Path(source))
         elif isinstance(source, Mapping):
-            data = cls._merge_extends(dict(source), Path.cwd(), ())
+            data = cls._expand_env(
+                cls._merge_extends(dict(source), Path.cwd(), ())
+            )
         else:
             raise ValueError(f"unsupported config source: {type(source)!r}")
 
@@ -222,7 +226,9 @@ class Config:
             data = {}
         if not isinstance(data, dict):
             raise ValueError(f"config root must be a mapping: {path}")
-        return cls._merge_extends(data, path.parent, (*seen, path))
+        return cls._expand_env(
+            cls._merge_extends(data, path.parent, (*seen, path))
+        )
 
     @classmethod
     def _merge_extends(
@@ -249,6 +255,36 @@ class Config:
                 parent_path = base_dir / parent_path
             merged = cls._deep_merge(merged, cls._load_yaml(parent_path, seen))
         return cls._deep_merge(merged, data)
+
+    _ENV_PATTERN = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)(?::-([^}]*))?\}")
+
+    @classmethod
+    def _expand_env(cls, value: Any, path: str = "") -> Any:
+        """Expand ``${VAR}`` / ``${VAR:-default}`` in every string value."""
+        if isinstance(value, str):
+            def replace(match: re.Match[str]) -> str:
+                name, default = match.group(1), match.group(2)
+                if name in os.environ:
+                    return os.environ[name]
+                if default is not None:
+                    return default
+                where = f" at {path}" if path else ""
+                raise ValueError(
+                    f"config environment variable {name} is not set{where}"
+                )
+
+            return cls._ENV_PATTERN.sub(replace, value)
+        if isinstance(value, Mapping):
+            return {
+                key: cls._expand_env(item, f"{path}.{key}" if path else str(key))
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [
+                cls._expand_env(item, f"{path}[{index}]")
+                for index, item in enumerate(value)
+            ]
+        return value
 
     @classmethod
     def _deep_merge(

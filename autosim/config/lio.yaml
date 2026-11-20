@@ -1,6 +1,5 @@
 # LIO validation: 3D points + IMU, same stack as lightning.yaml.
-extends: lightning.yaml
+extends: [lightning.yaml, scenes/17DRP5sb8fy.yaml]
 
 habitat:
-  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
   spawn: [0.0, 0.0, 0.0]

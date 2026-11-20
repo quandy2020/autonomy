@@ -14,10 +14,11 @@
 # 终端（工作区根）：
 #   CONFIG=src/autonomy/autosim/config/bev.yaml src/autonomy/autosim/scripts/run.sh sim
 
+extends: scenes/17DRP5sb8fy.yaml
+
 habitat:
   mode: nav
 
-  path: /workspace/autonomy/src/17DRP5sb8fy/17DRP5sb8fy.glb
   # MP3D origin (0,0) often yields a flat semantic field; autosim also auto-relocates on start.
   spawn: [0.0, 0.18, 0.0]  # x, y, yaw — valid semantic mesh pose for this scene
   gpu: 0
