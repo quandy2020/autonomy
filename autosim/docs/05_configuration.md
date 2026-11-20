@@ -52,7 +52,7 @@ habitat:
 
 | 字段 | 含义 |
 |------|------|
-| `robot.profile` | `turtlebot3_burger` / `husky`（填 URDF、USD、轮距）；`google_robot` / `unitree_g1` / `unitree_go2` 为 Habitat 关节模型，自动填 URDF、`instance`、`fixed_base` 和 `root_height` |
+| `robot.profile` | `google_robot` / `unitree_g1` / `unitree_go2` / `turtlebot3_burger` / `husky` 均有 `config/robots/<profile>.yaml`，自动填 URDF、`instance`、`fixed_base` 和 `root_height`；轮式两个 profile 另带 `wheel_radius` / `wheel_separation`，轮子随 `/cmd_vel` 滚动 |
 | `robot.control_hz` | 控制与积分频率 |
 | `robot.tf.publish_map_odom` | 可被 `mode` 覆盖 |
 | `robot.truth.enabled` | 同时启用真值 PoseStamped 与可选 Odometry 输出 |

@@ -81,6 +81,7 @@ class Simulator:
         self.session = None
         self.articulated = None
         self.articulation = None
+        self.wheel_mounts_cache = None
         self.urdf = self.load_urdf_model()
         self.traffic = None
         self.humanoid_sync = None
@@ -1304,6 +1305,7 @@ class Simulator:
             from autosim.robot.joints import load_joints
 
             self.articulation = Articulation(robot, load_joints(self.urdf.path))
+            self.wheel_mounts_cache = None
             self.articulation.set_positions(config.get("joint_positions") or {})
             self.urdf_z_up = True
         except Exception as exc:
@@ -1367,6 +1369,63 @@ class Simulator:
         if self.articulation is None:
             return
         self.articulation.set_positions({})
+
+    def wheel_mounts(self) -> list[tuple[str, float]]:
+        """Wheel joints paired with their side sign (+1 left, -1 right).
+
+        A differential-drive URDF names its wheels however the vendor likes,
+        so the side comes from the wheel link's lateral offset in the root
+        frame instead of the joint name. Cached per instanced robot.
+
+        Returns:
+            ``(joint name, side)`` pairs; empty when nothing looks like a wheel.
+        """
+        if self.wheel_mounts_cache is not None:
+            return self.wheel_mounts_cache
+        mounts: list[tuple[str, float]] = []
+        if self.articulation is not None and self.urdf is not None:
+            positions = self.joint_states()
+            for name, joint in self.articulation.joints.items():
+                if joint.mimic or "wheel" not in name.lower():
+                    continue
+                try:
+                    lateral = float(self.urdf.link_transform(joint.child, positions)[1, 3])
+                except ValueError:
+                    continue
+                mounts.append((name, 1.0 if lateral >= 0.0 else -1.0))
+        self.wheel_mounts_cache = mounts
+        return mounts
+
+    def spin_wheels(self, linear: float, angular: float, dt: float) -> None:
+        """Roll wheel joints to match the commanded twist.
+
+        The kinematic base slides over the floor without contact, so a wheeled
+        model would otherwise glide with frozen wheels. Each side integrates
+        ``v / r`` for the differential-drive pair it belongs to; the joint
+        velocity that ``/joint_states`` reports comes from the same finite
+        difference as every other joint. Opt in with ``robot.wheel_radius``.
+
+        Args:
+            linear: Forward speed in m/s.
+            angular: Yaw rate in rad/s.
+            dt: Period length in seconds.
+        """
+        if self.articulation is None or dt <= 0.0:
+            return
+        robot = self.settings.get("habitat", {}).get("robot") or {}
+        radius = float(robot.get("wheel_radius", 0.0) or 0.0)
+        if radius <= 0.0:
+            return
+        mounts = self.wheel_mounts()
+        if not mounts:
+            return
+        separation = float(robot.get("wheel_separation", 0.5) or 0.5)
+        current = self.joint_states()
+        updates = {}
+        for name, side in mounts:
+            speed = float(linear) - side * 0.5 * float(angular) * separation
+            updates[name] = current[name] + speed / radius * float(dt)
+        self.articulation.set_positions(updates, dt=float(dt))
 
     def sync_robot_sensors(self) -> None:
         """Place RGB-D and stereo cameras at their current URDF optical frames."""

@@ -96,7 +96,8 @@ habitat:
       clear_color: [0.3, 0.34, 0.4, 1.0]
       width: 640
       height: 480
-      distance_m: 1.6
-      height_m: 1.0
-      look_at_height_m: 0.25
+      # Burger is only ~0.19 m tall; keep the camera close enough to read it.
+      distance_m: 0.7
+      height_m: 0.45
+      look_at_height_m: 0.12
       rate_hz: 10.0

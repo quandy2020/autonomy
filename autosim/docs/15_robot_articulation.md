@@ -1,6 +1,6 @@
 # Habitat 中的机器人模型与自由度控制
 
-机器人资源位于 `robot/<profile>/`，每个目录包含 URDF、引用的展示 mesh、来源记录 `source.json` 和上游许可证（如有）。Google 使用保留轮子连续关节的 ManiSkill URDF，因此可以控制轮子、机械臂、夹爪和头部。宇树选用 G1 人形机器人（29 自由度）和 Go2 四足机器人（12 自由度），各自独立存放。
+机器人资源位于 `robot/<profile>/`，每个目录包含 URDF、引用的展示 mesh、来源记录 `source.json` 和上游许可证（如有）。Google 使用保留轮子连续关节的 ManiSkill URDF，因此可以控制轮子、机械臂、夹爪和头部。宇树选用 G1 人形机器人（29 自由度）和 Go2 四足机器人（12 自由度）。轮式平台选用 TurtleBot3 Burger（2 个轮子关节）和 Clearpath Husky（4 个轮子关节）。五个模型各自独立存放。
 
 ## 查看与操作
 
@@ -50,9 +50,9 @@ simulator.set_joint_positions({"joint_elbow": 0.6})
 print(simulator.joint_states())
 ```
 
-`habitat.robot.joint_positions` 可以设置初始姿态。`root_height` 设置 URDF 根节点离场景地面的高度；各 profile 提供展示默认值，可针对不同零姿态自行调整。默认固定底座，关节采用运动学位置控制。该功能支持模型展示与关节姿态操作；人形平衡、四足步态、接触动力学和行走策略需要另外接入控制器。三个模型均订阅 `/cmd_vel`（Autolink TwistStamped，读取 `twist.linear.x` 和 `twist.angular.z`）。0.5 秒无新指令后减速停止。支持前进、后退、原地转向和弧线运动；底座位姿、里程计和 TF 同步。
+`habitat.robot.joint_positions` 可以设置初始姿态。`root_height` 设置 URDF 根节点离场景地面的高度；各 profile 提供展示默认值，可针对不同零姿态自行调整。默认固定底座，关节采用运动学位置控制。该功能支持模型展示与关节姿态操作；人形平衡、四足步态、接触动力学和行走策略需要另外接入控制器。五个模型均订阅 `/cmd_vel`（Autolink TwistStamped，读取 `twist.linear.x` 和 `twist.angular.z`）。0.5 秒无新指令后减速停止。支持前进、后退、原地转向和弧线运动；底座位姿、里程计和 TF 同步。TurtleBot3 与 Husky 配置了 `wheel_radius` 和 `wheel_separation`，轮子关节按差速关系随 `/cmd_vel` 滚动，`/joint_states` 中的轮速来自同一位置差分；底座仍由运动学积分推进，轮子不参与位姿解算。
 
-速度上限按机型配置：Google 0.5 m/s、1.0 rad/s，G1 1.2 m/s、1.5 rad/s，Go2 2.0 m/s、2.0 rad/s。
+速度上限按机型配置：Google 0.5 m/s、1.0 rad/s，G1 1.2 m/s、1.5 rad/s，Go2 2.0 m/s、2.0 rad/s，TurtleBot3 0.5 m/s、1.0 rad/s，Husky 1.0 m/s、1.5 rad/s。
 
 `/joint_states` 的 `velocity` 由相邻两次位置写入的差值除以实际间隔得到。Habitat 是运动学后端，不会自己积分关节速度；仿真循环在发布后重新写入当前姿态，因此命令到达的那一帧速度非零，下一帧回到零。
 
@@ -61,6 +61,10 @@ print(simulator.joint_states())
 - Google：`google_robot`，15 个自由度，目录 `robot/google_robot/`。
 - 宇树人形：`unitree_g1`，29 个自由度，目录 `robot/unitree_g1/`。
 - 宇树四足：`unitree_go2`，12 个自由度，目录 `robot/unitree_go2/`。
+- 两轮差速：`turtlebot3_burger`，2 个自由度（左右轮），目录 `robot/turtlebot3_burger/`。
+- 四轮差速：`husky`，4 个自由度（前后左右轮），目录 `robot/husky/`。
+
+TurtleBot3 与 Husky 的 `camera_link` 是普通 URDF 连杆系（x 前、y 左、z 上），`config/robots/*.yaml` 里用 `axes: body` 换算到 Habitat 相机；`base_footprint` 是 URDF 根节点，`root_height: 0` 表示它已经落在场景地面上。
 
 ## Google 外观与传感器
 
@@ -209,4 +213,4 @@ mesh 转换脚本需要 Python 3.10+ 和 trimesh、fast-simplification、pycolla
 
 Smoke 检查每个模型是否真实加载、每个可独立控制的自由度能否移动，以及组合关节变化是否改变渲染图。输出控制前后的 PNG 和 `results.json`。多个模型分别在子进程运行，以便记录原生导入器崩溃。该检查不验证行走与碰撞动力学。
 
-这三个模型只适配 Habitat，提供 URDF 与 mesh 资源；Isaac 后端不在适配范围内，对它们选择 `isaac` 会直接报错。
+这五个模型只适配 Habitat，提供 URDF 与 mesh 资源；Isaac 后端不在适配范围内，对它们选择 `isaac` 会直接报错。

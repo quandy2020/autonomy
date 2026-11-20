@@ -8,7 +8,7 @@ from autosim.bridge.messages import Messages
 from tests.fake_simulator import FakeSimulator
 from tests.test_runner_smoke import FakeLink
 
-PROFILES=('google_robot','unitree_g1','unitree_go2')
+PROFILES=('google_robot','unitree_g1','unitree_go2','turtlebot3_burger','husky')
 
 
 @pytest.mark.parametrize('profile',PROFILES)

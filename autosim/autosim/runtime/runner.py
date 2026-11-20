@@ -709,6 +709,12 @@ class Runner:
                 self.robot.odometry_y = float(y)
                 self.robot.odometry_yaw = float(yaw)
             self.simulator.set_pose(x, y, yaw)
+            spin = getattr(self.simulator, "spin_wheels", None)
+            if callable(spin):
+                # Differential-drive URDF: roll the wheels, or the body slides
+                # across the floor with frozen wheels.
+                v, w = self.robot.velocity()
+                spin(float(v), float(w), dt)
             # Step world before USD sync so pedestrians/obstacles draw at the
             # current pose (IsaacWorld.step → people.sync / HuNavManager).
             self.world.step(dt, robot=(float(x), float(y), float(yaw)))

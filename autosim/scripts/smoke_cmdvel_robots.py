@@ -21,7 +21,7 @@ import cv2
 import numpy as np
 
 p=argparse.ArgumentParser(description=__doc__)
-p.add_argument('--profile',required=True,choices=['google_robot','unitree_g1','unitree_go2'])
+p.add_argument('--profile',required=True,choices=['google_robot','unitree_g1','unitree_go2','turtlebot3_burger','husky'])
 p.add_argument('--output',type=Path,default=Path('/tmp/autosim-cmdvel'))
 a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
 data=Config.load(UrdfModel.package_root()/'config/robots'/f'{a.profile}.yaml').data

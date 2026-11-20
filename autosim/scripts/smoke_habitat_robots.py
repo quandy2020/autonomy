@@ -7,7 +7,7 @@ import sys
 import subprocess
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from autosim.robot.profiles import PROFILES
+from autosim.robot.profiles import PROFILES, shipped_robot_defaults
 from autosim.robot.viewer import viewer_settings, render, frame_robot
 from autosim.backends.habitat.simulator import Simulator
 
@@ -15,7 +15,10 @@ from autosim.backends.habitat.simulator import Simulator
 def main():
     import cv2
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--profiles',nargs='+',default=[n for n,p in PROFILES.items() if p.articulated])
+    parser.add_argument('--profiles',nargs='+',default=[
+        n for n,p in PROFILES.items()
+        if p.articulated or shipped_robot_defaults(n).get('instance')
+    ])
     parser.add_argument('--output',type=Path,default=Path('/tmp/autosim-robot-smoke'))
     args=parser.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)

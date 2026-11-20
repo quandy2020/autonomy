@@ -94,6 +94,9 @@ def test_g1_home_pose_keeps_arms_at_the_sides():
     assert home_hand[2, 3] < zero_hand[2, 3] - 0.15
 
 
-def test_shipped_robot_defaults_ignore_unknown_profiles():
-    assert shipped_robot_defaults("turtlebot3_burger") == {}
+def test_shipped_robot_defaults_cover_shipped_profiles_only():
+    wheeled = shipped_robot_defaults("turtlebot3_burger")
+    assert wheeled["profile"] == "turtlebot3_burger"
+    assert wheeled["cmd_vel"] == "/cmd_vel"
+    assert wheeled["wheel_radius"] > 0.0
     assert shipped_robot_defaults("no_such_robot") == {}

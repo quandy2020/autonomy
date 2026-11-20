@@ -589,3 +589,65 @@ def test_habitat_configuration_auto_upgrades_semantic_glb(tmp_path):
 
     assert Simulator.raycast_hit_distance(Results()) is None
     assert Simulator.raycast_hit_distance(None) is None
+
+
+def wheeled_simulator(**robot) -> Simulator:
+    """Minimal wheeled model with a stub articulation for wheel tests."""
+    from types import SimpleNamespace
+
+    from autosim.robot.joints import Joint
+
+    settings = {
+        "habitat": {
+            "path": "",
+            "spawn": [0.0, 0.0, 0.0],
+            "robot": {
+                "urdf": "robot/turtlebot3_burger/turtlebot3_burger.urdf",
+                **robot,
+            },
+            "sensors": {"camera": {"sensor_height": 0.6}},
+        }
+    }
+    simulator = Simulator(
+        backend="minimal", width=64, height=48, settings=settings, open_session=False
+    )
+    calls: list[tuple[dict, float | None]] = []
+    simulator.articulation = SimpleNamespace(
+        joints={
+            "wheel_left_joint": Joint(
+                "wheel_left_joint", "continuous", "wheel_left_link"
+            ),
+            "wheel_right_joint": Joint(
+                "wheel_right_joint", "continuous", "wheel_right_link"
+            ),
+        },
+        positions=lambda: {"wheel_left_joint": 0.0, "wheel_right_joint": 0.0},
+        set_positions=lambda updates, dt=None: calls.append((dict(updates), dt)),
+    )
+    return simulator, calls
+
+
+def test_spin_wheels_splits_the_twist_between_sides():
+    simulator, calls = wheeled_simulator(wheel_radius=0.033, wheel_separation=0.16)
+    simulator.spin_wheels(0.3, 0.0, 0.5)
+    updates, dt = calls[-1]
+    assert dt == pytest.approx(0.5)
+    # Straight line: both sides roll the same way at v / r.
+    assert updates["wheel_left_joint"] == pytest.approx(0.3 / 0.033 * 0.5)
+    assert updates["wheel_right_joint"] == pytest.approx(0.3 / 0.033 * 0.5)
+
+    simulator.spin_wheels(0.0, 0.6, 0.5)
+    updates, _ = calls[-1]
+    # Turning in place: the left wheel rolls back, the right wheel forward.
+    assert updates["wheel_left_joint"] == pytest.approx(-0.6 * 0.08 / 0.033 * 0.5)
+    assert updates["wheel_right_joint"] == pytest.approx(0.6 * 0.08 / 0.033 * 0.5)
+
+
+def test_spin_wheels_is_opt_in():
+    simulator, calls = wheeled_simulator()
+    assert simulator.wheel_mounts() == [
+        ("wheel_left_joint", 1.0),
+        ("wheel_right_joint", -1.0),
+    ]
+    simulator.spin_wheels(0.3, 0.0, 0.5)
+    assert calls == []
