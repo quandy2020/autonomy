@@ -1,0 +1,4 @@
+# MP3D scene available under AUTOSIM_SCENE_ROOT.
+# Override the dataset root with AUTOSIM_SCENE_ROOT when it lives elsewhere.
+habitat:
+  path: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/mJXqzFtmKg4/mJXqzFtmKg4.glb

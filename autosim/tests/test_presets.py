@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from autosim.runtime import Config
 from autosim.runtime.presets import (
     compose_config,
     format_catalog,
@@ -18,10 +19,17 @@ DEFAULT = ROOT / "config" / "default.yaml"
 
 def test_catalog_lists_shipped_selectors():
     assert "17DRP5sb8fy" in scene_names()
+    assert "29hnd4uzFmX" in scene_names()
     assert "unitree_go2" in robot_names()
     assert "google_robot" in robot_names()
     assert "camera" in sensor_names()
     assert "empty" in format_catalog()
+
+
+def test_every_scene_config_has_a_path():
+    for name in scene_names():
+        data = Config.read(ROOT / "config" / "scenes" / f"{name}.yaml")
+        assert str(data["habitat"]["path"]).strip(), name
 
 
 def test_compose_scene_and_robot():

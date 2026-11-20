@@ -52,6 +52,34 @@ SCENE=empty ROBOT=google_robot \
 显式指定时只打开列出的传感器。`--scene`、`--robot`、`--sensors` 也可以直接跟在
 `scripts/run.sh sim` 后面。`python3 -m autosim --list` 列出可用名称。
 
+### 新增场景
+
+临时查看一个场景，直接传 GLB/USD 路径，不需要 YAML：
+
+```bash
+SCENE=/workspace/autonomy/src/MyScene/MyScene.glb \
+ROBOT=unitree_go2 SENSORS=basic \
+src/autonomy/autosim/scripts/run.sh sim
+```
+
+如果场景会反复使用，增加 `config/scenes/<scene>.yaml`，只写覆盖项：
+
+```yaml
+habitat:
+  path: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/MyScene/MyScene.glb
+  # 可选：新场景出生点，[x, y, yaw]；不写则沿用基础配置并自动吸附 navmesh
+  # spawn: [0.0, 0.0, 0.0]
+```
+
+然后就可以用短名称启动：
+
+```bash
+SCENE=MyScene ROBOT=unitree_go2 SENSORS=basic \
+  src/autonomy/autosim/scripts/run.sh sim
+```
+
+场景 YAML 会自动出现在 `--list` 中。`empty` 不需要 YAML，使用空场景 studio。
+
 ---
 
 ## 2. 根键结构（示意）
@@ -75,7 +103,7 @@ habitat:
 
 ### 场景路径
 
-`config/scenes/<scene>.yaml` 只保存 `habitat.path`（需要时也保存 `map.ply.source`）。默认场景根目录是 `/workspace/autonomy/src`，可用环境变量覆盖：
+`config/scenes/<scene>.yaml` 通常只保存 `habitat.path`；需要时也可覆盖 `habitat.spawn`、`map.ply.source` 等。默认场景根目录是 `/workspace/autonomy/src`，可用环境变量覆盖：
 
 ```bash
 AUTOSIM_SCENE_ROOT=/data/mp3d CONFIG=config/default.yaml scripts/run.sh sim
