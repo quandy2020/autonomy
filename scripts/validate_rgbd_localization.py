@@ -117,11 +117,16 @@ def main():
                         help='Active exploration time budget written into the native task configuration')
     parser.add_argument('--require-return', action='store_true',
                         help='Require a safe return-to-start leg before saving the exploration map')
+    parser.add_argument('--region', type=float, nargs=4, default=(-6., -6., 6., 6.),
+                        metavar=('MIN_X', 'MIN_Y', 'MAX_X', 'MAX_Y'),
+                        help='Native exploration bounds in the navigation frame')
     args = parser.parse_args()
-    if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 10000:
-        parser.error('use an isolated validation prefix and 500..10000 steps')
-    if not 1 <= args.exploration_time_budget <= 600:
-        parser.error('exploration time budget must be within 1..600 seconds')
+    if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 60000:
+        parser.error('use an isolated validation prefix and 500..60000 steps')
+    if not 1 <= args.exploration_time_budget <= 1800:
+        parser.error('exploration time budget must be within 1..1800 seconds')
+    if not (args.region[0] < args.region[2] and args.region[1] < args.region[3]):
+        parser.error('exploration region minimum must be below its maximum')
     if not args.localization.is_file() or not args.vocabulary.is_file():
         parser.error('actual application and vocabulary are required')
     if (args.task and not args.task.is_file()) or (args.task_start and not args.task):
@@ -308,7 +313,9 @@ def main():
                     'time_budget': args.exploration_time_budget,
                     'require_return': bool(args.require_return), 'require_save': True,
                     'map_name': 'native_rgbd_exploration',
-                    'region': {'min_x': -6., 'min_y': -6., 'max_x': 6., 'max_y': 6.}, 'mapping_resolution': .15,
+                    'region': {'min_x': args.region[0], 'min_y': args.region[1],
+                               'max_x': args.region[2], 'max_y': args.region[3]},
+                    'mapping_resolution': .15,
                     'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .105, 'horizontal_margin': .02,
                     'map_output_directory': str(args.output / 'native-mapping'),
                     'base_odometry_topic': args.prefix + '/native/base_odometry',
@@ -334,7 +341,9 @@ def main():
                         'startup_observation': {
                             'enabled': bool(args.startup_observation),
                             'target_yaw': 6.283185307179586,
-                            'time_allowance': 10., 'deadline_margin': 3.,
+                            'time_allowance': max(10., 6.283185307179586 /
+                                max(float(habitat['robot']['max_angular']), 0.05) + 4.),
+                            'deadline_margin': 3.,
                             'maximum_position_drift': .08, 'completion_tolerance': .08,
                             'maximum_pose_age': 1.,
                             'support_radius': .8, 'support_ring_radius': 1.2,

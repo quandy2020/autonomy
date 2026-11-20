@@ -1,5 +1,6 @@
 -c requirements-lock.txt
 # Controller Python 3.12; versions exercised by the deployment test suite.
+pip==26.2.1
 ansible-core==2.19.15
 ansible-lint==25.12.2
 ansible-compat==25.12.1

@@ -65,6 +65,11 @@ namespace planning {
 namespace nav_proto = automsgs::actions;
 namespace nav_srvs = automsgs::srvs;
 namespace err_proto = automsgs::msgs::status_msgs;
+namespace planner {
+namespace vista {
+class VistaGraphVisualizer;
+}  // namespace vista
+}  // namespace planner
 
 /**
  * Global planner server aligned with nav2_planner.
@@ -184,6 +189,9 @@ public:
     void QueryRoute(const GetPlanRequest& request, GetPlanResponse& response);
 
 private:
+    /** @brief Publish the current immutable Vista graph and route to Autoviz. */
+    void PublishVistaGraph(const std::string& planner_id);
+
     void RegisterAutolinkEndpoints();
     void ComputePlan();
     void ComputePlanThroughPoses();
@@ -237,6 +245,8 @@ private:
     std::shared_ptr<autolink::Writer<nav_proto::CorrelatedPlan>> correlated_plan_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         costmap_writer_;
+    std::shared_ptr<planner::vista::VistaGraphVisualizer>
+        vista_graph_visualizer_;
 
     std::shared_ptr<common::Smoother> default_smoother_;
     std::string default_smoother_id_;

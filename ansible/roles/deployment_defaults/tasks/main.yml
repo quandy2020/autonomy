@@ -6,9 +6,13 @@
       - autonomy_deploy_mode in ['build', 'artifact']
       - autonomy_play_mode != 'build' or autonomy_deploy_mode == 'build'
       - autonomy_services | difference(autonomy_service_name_map.keys() | list) | length == 0
+      - autonomy_system_install | bool or not autonomy_install_dependencies | bool
       - not autonomy_require_ci | bool or autonomy_play_mode == 'check' or lookup('env', 'GITHUB_ACTIONS') == 'true'
       - autonomy_profile != 'production' or use_locked_versions | bool
-    fail_msg: "Invalid deployment mode/services, or production requires the approved CI runner and version lock."
+      - autonomy_profile != 'production' or autonomy_system_install | bool
+    fail_msg: >-
+      Invalid deployment mode, services or installation policy. User installation requires dependency
+      installation disabled; production requires system installation, version locks and approved CI.
     quiet: true
 
 - name: Load optional controller vault without logging secrets

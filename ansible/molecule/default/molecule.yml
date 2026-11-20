@@ -2,6 +2,7 @@
 dependency:
   name: galaxy
   options:
+    role-file: requirements.yml
     requirements-file: requirements.yml
 
 driver:

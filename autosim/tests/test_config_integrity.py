@@ -144,3 +144,29 @@ def test_topics_doc_matches_channel_maps():
         text=True,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_google_wheels_declare_radius_for_every_wheel_joint():
+    """One ``wheel_radius`` cannot drive a 64 mm front and 38 mm rear pair."""
+    robot = Config.load(ROOT / "config" / "robots" / "google_robot.yaml")["habitat"][
+        "robot"
+    ]
+    joints = load_joints(resolve_path(robot["urdf"]))
+    wheels = {name for name in joints if "wheel" in name.lower()}
+    assert wheels == set(robot["wheel_radii"])
+    assert wheels == set(robot["wheel_separations"])
+    assert (
+        robot["wheel_radii"]["joint_wheel_left"]
+        > robot["wheel_radii"]["joint_rear_wheel_left"]
+    )
+
+
+def test_cmd_vel_type_selects_the_reader_message():
+    from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
+    from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
+
+    from autosim.runtime.runner import cmd_vel_message_type
+
+    assert cmd_vel_message_type({"cmd_vel_type": "twist"}) is Twist
+    assert cmd_vel_message_type({"cmd_vel_type": "twist_stamped"}) is TwistStamped
+    assert cmd_vel_message_type({}) is TwistStamped

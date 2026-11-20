@@ -1,6 +1,7 @@
 /* Copyright 2026 The Openbot Authors. */
 #include "autonomy/task/exploration/integration/goal_pose_adapter.hpp"
 #include "autonomy/task/exploration/coverage/coverage_fusion.hpp"
+#include "autonomy/common/logging.hpp"
 #include <algorithm>
 #include <stdexcept>
 namespace autonomy::task::exploration {
@@ -23,11 +24,17 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
     if(map.startup_support)options.startup_support=map.startup_support;
     auto safety=std::make_shared<autonomy::navigation::GeometrySafety>(map.grid,options);
     std::optional<AdaptedObservationGoal> best;
+    std::size_t attempts=0,translation_rejected=0,geometry_rejected=0,
+        visibility_rejected=0,gain_rejected=0,route_rejected=0;
     auto evaluate=[&](Pose2d pose){
+        ++attempts;
         if(cancel_checker && cancel_checker())return;
         if(autonomy::navigation::Distance(pose,goal.original_pose)>goal.allowed_translation+1e-9 ||
-           std::abs(autonomy::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw))>goal.allowed_yaw_change+1e-9)return;
-        const auto geometry=safety->VerifyPose(pose);if(!geometry.safe)return;
+           std::abs(autonomy::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw))>goal.allowed_yaw_change+1e-9) {
+            ++translation_rejected;return;
+        }
+        const auto geometry=safety->VerifyPose(pose);
+        if(!geometry.safe){++geometry_rejected;return;}
         auto adapted_intent=goal;
         if(adapted_intent.required_views.empty())adapted_intent.required_views={goal.original_pose.yaw};
         const double shift=autonomy::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw);
@@ -35,16 +42,17 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
         for(auto& yaw:adapted_intent.required_views) {
             yaw=autonomy::navigation::NormalizeAngle(yaw+shift);
             auto view_pose=pose;view_pose.yaw=yaw;
-            if(!safety->VerifyPose(view_pose).safe)return;
+            if(!safety->VerifyPose(view_pose).safe){++geometry_rejected;return;}
             const auto visible=evaluator_->Predict(view_pose,coverage,map,active,{},true);
             const auto union_coverage=CoverageFusion::Fuse(visible);
             for(const auto& id:goal.required_coverage_units)
-                if(!union_coverage.count(id) || union_coverage.at(id)<=0)return;
+                if(!union_coverage.count(id) || union_coverage.at(id)<=0){++visibility_rejected;return;}
             predicted.insert(predicted.end(),visible.begin(),visible.end());
         }
-        const double gain=CoverageFusion::Gain(coverage,predicted);if(gain+1e-12<goal.minimum_gain)return;
+        const double gain=CoverageFusion::Gain(coverage,predicted);
+        if(gain+1e-12<goal.minimum_gain){++gain_rejected;return;}
         auto route=paths_->Route(start,pose,cancel_checker);if(!route.success || route.map_epoch!=map.map_epoch ||
-           route.geometry_revision!=map.geometry_revision)return;
+           route.geometry_revision!=map.geometry_revision){++route_rejected;return;}
         const double score=gain/(route.length+0.1);
         if(!best || score>best->gain/(best->route_length+0.1))
             best=AdaptedObservationGoal{adapted_intent,pose,gain,geometry.clearance,route.length};
@@ -68,6 +76,15 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
             auto pose=candidate.pose;pose.yaw=autonomy::navigation::NormalizeAngle(goal.original_pose.yaw+yaw_delta);evaluate(pose);
         }
     }
+    AINFO_EVERY(5) << "EXPLORATION_ADAPT attempts=" << attempts
+                   << " translation=" << translation_rejected
+                   << " geometry=" << geometry_rejected
+                   << " visibility=" << visibility_rejected
+                   << " gain=" << gain_rejected
+                   << " route=" << route_rejected
+                   << " best=" << (best ? 1 : 0)
+                   << " map_revision=" << map.geometry_revision
+                   << " allowed=" << goal.allowed_translation;
     return best;
 }
 }  // namespace autonomy::task::exploration

@@ -14,6 +14,19 @@ habitat:
       joint_finger_left: 0.6
     max_linear: 0.5
     max_angular: 1.0
+    # Four wheels in two pairs, with different radii: the front pair carries
+    # the drive (64 mm) and the rear pair is a smaller caster set (38 mm).
+    # A single wheel_radius would make one pair skid.
+    wheel_radii:
+      joint_wheel_left: 0.064203
+      joint_wheel_right: 0.064203
+      joint_rear_wheel_left: 0.0381
+      joint_rear_wheel_right: 0.0381
+    wheel_separations:
+      joint_wheel_left: 0.36666
+      joint_wheel_right: 0.36666
+      joint_rear_wheel_left: 0.189978
+      joint_rear_wheel_right: 0.189978
     joint_command:
       enabled: true
       channel: /joint_commands

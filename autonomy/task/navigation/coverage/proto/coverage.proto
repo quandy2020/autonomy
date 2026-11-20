@@ -74,6 +74,7 @@ message CoverageRegion {
   repeated PathState states = 7;
   double coverage = 8;
   int32 swath_count = 9;
+  int32 order = 10;
 }
 
 message ComputeCoveragePathAction {
@@ -85,6 +86,7 @@ message ComputeCoveragePathAction {
     double core_coverage = 7; string field_wkt = 8; string core_wkt = 9;
     repeated string warnings = 10;
     repeated CoverageRegion regions = 11;
+    double travel_distance = 12;
   }
 }
 message NavigateCompleteCoverageAction {

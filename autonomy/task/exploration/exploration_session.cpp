@@ -1321,6 +1321,7 @@ public:
         FinishPhase(PhaseStatus::kRetryable, reason);
         CancelObservationRotation();
         CancelNavigation();
+        if (snapshot_.goal) strategy_->MarkFailed(snapshot_.goal->intent, now);
         snapshot_.goal.reset();
         snapshot_.reason = reason;
         if (++recovery_count_ > options_.maximum_recoveries) {
@@ -1454,6 +1455,14 @@ public:
                 result.version.sensor_epoch != snapshot_.sensors.sensor_epoch ||
                 (!result.returning && !result.estimate_only &&
                  result.version.requirements_revision != coverage_.requirements_revision())) {
+                AINFO_EVERY(5) << "EXPLORATION_PLAN_INVALID map="
+                               << (map_ ? map_->map_epoch : 0) << "/"
+                               << (map_ ? map_->geometry_revision : 0)
+                               << " result=" << result.version.map_epoch << "/"
+                               << result.version.geometry_revision
+                               << " sensor=" << result.version.sensor_epoch
+                               << " current_sensor=" << snapshot_.sensors.sensor_epoch
+                               << " phase=" << static_cast<int>(result.phase);
                 CancelPlanning();
                 FinishPhase(PhaseStatus::kInvalidated, "planning evidence or deadline changed");
                 continue;
@@ -1506,6 +1515,10 @@ public:
                 continue;
             }
             if (result.phase == ExplorationPhase::kSelect && result.decision.goal) {
+                AINFO << "EXPLORATION_PLAN_SELECTED goal=" << result.decision.goal->goal_id
+                      << " units=" << result.decision.goal->required_coverage_units.size()
+                      << " candidates=" << result.decision.local_route.views.size()
+                      << " pending=" << coverage_.PendingCount();
                 snapshot_.selection = std::move(result.decision.goal);
                 selected_version_ = result.version;
                 snapshot_.state = ExplorationState::kExploring;

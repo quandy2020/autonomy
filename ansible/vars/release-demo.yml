@@ -1,0 +1,8 @@
+---
+container: SpaceHero
+workspace: /workspace/autonomy
+build_dir: /workspace/autonomy/build/autonomy
+build_args: [--packages-up-to, autonomy, --cmake-args, -DBUILD_GRPC=ON, -DAUTONOMY_BUILD_BRIDGE=ON]
+artifact_path: ../dist/autonomy-demo.tar.gz
+install_prefix: /home/quandy/workspace/demo
+bundle_runtime: true

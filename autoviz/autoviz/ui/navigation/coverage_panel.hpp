@@ -20,6 +20,7 @@
 #include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
 #include "automsgs/msgs/geometry_msgs/point_stamped.pb.h"
+#include "automsgs/msgs/nav_msgs/odometry.pb.h"
 #include "automsgs/msgs/visualization_msgs/marker_array.pb.h"
 #include "autonomy/task/navigation/coverage/proto/coverage.pb.h"
 
@@ -145,14 +146,17 @@ class CoveragePanel : public QWidget {
   /** @brief Observe native acceptance, progress and terminal results. */
   void PollActions();
 
-  /** @brief Split the current field into colored rooms. */
-  void SplitRooms();
+  /** @brief Split the field into rooms, optionally from live /map. */
+  void SplitRooms(bool from_map);
 
   /** @brief Start full coverage of one room. */
   void StartRegion(std::size_t index);
 
   /** @brief Clean every room in sequence. */
   void StartAllRooms();
+
+  /** @brief Highlight the room containing the robot. */
+  void UpdateCurrentRegion(double x, double y);
 
   /** @brief Start or finish interactive obstacle polygon drawing. */
   void ToggleObstacleDrawing();
@@ -205,7 +209,9 @@ class CoveragePanel : public QWidget {
   QSpinBox* room_columns_{nullptr};
   QSpinBox* room_rows_{nullptr};
   QPushButton* split_rooms_{nullptr};
+  QPushButton* map_rooms_{nullptr};
   QPushButton* clean_rooms_{nullptr};
+  QLabel* current_region_{nullptr};
   std::vector<autonomy::task::coverage::proto::CoverageRegion> regions_;
   bool cleaning_regions_{false};
   std::size_t region_index_{0};
@@ -221,6 +227,8 @@ class CoveragePanel : public QWidget {
       sketch_writer_;
   std::shared_ptr<autolink::Reader<automsgs::msgs::geometry_msgs::PointStamped>>
       click_reader_;
+  std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>
+      odom_reader_;
   bool busy_{false};
   bool cancel_requested_{false};
   bool pending_replan_{false};

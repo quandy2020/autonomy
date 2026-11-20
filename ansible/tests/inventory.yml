@@ -13,4 +13,5 @@
         that:
           - autonomy_deploy_mode == expected_deploy_mode
           - autonomy_install_dependencies | bool == expected_dependencies | bool
-          - autonomy_install_prefix == '/opt/autonomy'
+          - autonomy_install_prefix == (expected_install_prefix | default('/opt/autonomy'))
+          - autonomy_system_install | bool == (expected_system_install | default(true) | bool)

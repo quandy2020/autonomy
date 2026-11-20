@@ -112,6 +112,11 @@ class Config:
         joint_command = robot.get("joint_command") or {}
         if isinstance(joint_command, Mapping) and joint_command.get("enabled", False):
             channels["joint_command"] = joint_command.get("channel", "/joint_commands")
+        status_cfg = robot.get("status") or {}
+        if isinstance(status_cfg, Mapping) and status_cfg.get("enabled", False):
+            channels["status"] = str(
+                status_cfg.get("channel") or "/autosim/status"
+            )
         if isinstance(joint_cfg, Mapping) and joint_cfg.get("enabled", False):
             channels["joint_states"] = str(
                 joint_cfg.get("channel") or "/joint_states"
@@ -839,6 +844,9 @@ class Config:
         joint_command = robot.get("joint_command") or {}
         if joint_command.get("enabled", False):
             names.append(joint_command.get("channel", "/joint_commands"))
+        status_cfg = robot.get("status") or {}
+        if isinstance(status_cfg, Mapping) and status_cfg.get("enabled", False):
+            names.append(str(status_cfg.get("channel") or "/autosim/status"))
         joint_states = sensors.get("joint_states") or {}
         if joint_states.get("enabled", False):
             names.append(joint_states.get("channel", "/joint_states"))

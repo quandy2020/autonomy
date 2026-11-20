@@ -461,6 +461,11 @@ NavigationPanel::NavigationPanel(common::VisualizationManager* manager,
   setStyleSheet(style::sheet(QStringLiteral("navigation/panel_root")));
   buildUi();
   applyUi();
+  // Optional debug hook for screenshots / scripted demos.
+  if (qEnvironmentVariableIsSet("AUTOVIZ_COVERAGE_TAB")) {
+    mode_segment_->SetCurrentIndex(2);
+    onModeSegmentChanged(2);
+  }
   connect(&tools::GoalUpdater, &tools::GoalPoseUpdater::updateGoal, this,
           &NavigationPanel::onNewGoal);
   probe_timer_ = new QTimer(this);

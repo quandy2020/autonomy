@@ -36,8 +36,8 @@
   ansible.builtin.file:
     path: "{{ autonomy_release_dir }}"
     state: directory
-    owner: root
-    group: root
+    owner: "{{ 'root' if autonomy_system_install | bool else omit }}"
+    group: "{{ 'root' if autonomy_system_install | bool else omit }}"
     mode: "0755"
 
 - name: Check whether this release is already installed
@@ -79,8 +79,8 @@
         src: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
         dest: "{{ autonomy_artifact_stage.path }}"
         remote_src: true
-        owner: root
-        group: root
+        owner: "{{ 'root' if autonomy_system_install | bool else omit }}"
+        group: "{{ 'root' if autonomy_system_install | bool else omit }}"
 
     - name: Check required executables before activating release
       ansible.builtin.stat:

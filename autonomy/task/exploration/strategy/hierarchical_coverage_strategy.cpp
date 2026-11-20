@@ -4,6 +4,7 @@
  */
 #include "autonomy/task/exploration/strategy/hierarchical_coverage_strategy.hpp"
 #include "autonomy/task/exploration/coverage/local_coverage_planner.hpp"
+#include "autonomy/common/logging.hpp"
 #include <algorithm>
 #include <stdexcept>
 namespace autonomy::task::exploration {
@@ -29,6 +30,13 @@ void HierarchicalCoverageStrategy::Reset() {
     sweep_completed_at_ = 0;
     sweep_start_map_revision_ = sweep_start_coverage_revision_ = 0;
     sampling_start_cell_.reset();
+    failed_viewpoints_.clear();
+}
+void HierarchicalCoverageStrategy::MarkFailed(const ObservationGoal& goal, double now) {
+    failed_viewpoints_.push_back({goal.original_pose, now + 60.0});
+    if (failed_viewpoints_.size() > 64) {
+        failed_viewpoints_.erase(failed_viewpoints_.begin());
+    }
 }
 StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const Pose2d& home,const MapReadView& map,
     const CoverageState& state,perception::SensorMask active,double now,
@@ -41,7 +49,7 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
     }
     if(epoch_!=map.map_epoch){epoch_=map.map_epoch;queue_.Reset();last_fair_selection_=-1e30;
         sampling_map_revision_=0;region_cursor_=normal_cursor_=sweep_cursor_=0;sweep_completed_=false;
-        sampling_start_cell_.reset();}
+        sampling_start_cell_.reset();failed_viewpoints_.clear();}
     const auto cell = map.grid->WorldToCell(start);
     const auto origin = cell ? std::optional<std::pair<int, int>>{{cell->x, cell->y}} : std::nullopt;
     if(sampling_map_revision_!=map.geometry_revision ||
@@ -92,6 +100,14 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
         sampled=std::move(swept);
     }
     if(sampled.canceled){decision.canceled=true;return decision;}
+    sampled.candidates.erase(std::remove_if(sampled.candidates.begin(), sampled.candidates.end(),
+        [&](const Viewpoint& candidate) {
+            return std::any_of(failed_viewpoints_.begin(), failed_viewpoints_.end(),
+                [&](const FailedViewpoint& failed) {
+                    return now < failed.until &&
+                        autonomy::navigation::Distance(candidate.pose, failed.pose) < 0.75;
+                });
+        }), sampled.candidates.end());
     decision.sampling_limited=sampled.limited;decision.grid_fallback_checked=true;
     decision.sweep_checked=sweep_completed_;
     // Global coarse representative per region; local dense marginal-coverage route.
@@ -120,6 +136,16 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
     if(selected.empty() && mandatory)selected=LocalCoveragePlanner{}.Select(local,state,options_.local_views);
     decision.local_route=VisitOrderOptimizer{}.Optimize(start,selected,*paths_,options_.sampling.nominal_speed,
                                                         options_.sampling.angular_speed,{},mandatory.has_value(),cancel_checker);
+    AINFO_EVERY(5) << "EXPLORATION_SELECT candidates=" << sampled.candidates.size()
+                   << " local=" << selected.size()
+                   << " local_reachable=" << decision.local_route.reachable
+                   << " selected_views=" << decision.local_route.views.size()
+                   << " global_views=" << decision.global_route.views.size()
+                   << " pending=" << state.PendingCount()
+                   << " map_revision=" << map.geometry_revision
+                   << " sampling_revision=" << sampling_map_revision_
+                   << " sweep=" << sweep_completed_
+                   << " limited=" << decision.sampling_limited;
     if(cancel_checker && cancel_checker()){decision.canceled=true;return decision;}
     if(!decision.local_route.views.empty() && decision.local_route.reachable){
         const auto& view=decision.local_route.views.front();ObservationGoal goal;

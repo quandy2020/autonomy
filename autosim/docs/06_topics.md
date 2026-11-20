@@ -71,11 +71,11 @@
 
 | 档案 | 与 `default.yaml` 的差异 |
 |------|--------------------------|
-| `google_robot.yaml` | `imu=/imu/data`、`stereo_left_rgb=/camera/left/image_raw`（新增）、`stereo_left_info=/camera/left/camera_info`（新增）、`stereo_right_rgb=/camera/right/image_raw`（新增）、`stereo_right_info=/camera/right/camera_info`（新增）、`range_0=/tof/right_1`（新增）、`range_1=/tof/right_2`（新增）、`range_2=/tof/right_back_1`（新增）、`range_3=/tof/right_back_2`（新增）、`range_4=/tof/left_1`（新增）、`range_5=/tof/left_2`（新增）、`range_6=/tof/left_back_1`（新增）、`range_7=/tof/left_back_2`（新增）、`range_8=/cliff/rear_right`（新增）、`range_9=/cliff/rear_left`（新增）、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
-| `husky.yaml` | `imu=/imu/data`、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
-| `turtlebot3_burger.yaml` | `imu=/imu/data`、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
-| `unitree_g1.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
-| `unitree_go2.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `google_robot.yaml` | `imu=/imu/data`、`stereo_left_rgb=/camera/left/image_raw`（新增）、`stereo_left_info=/camera/left/camera_info`（新增）、`stereo_right_rgb=/camera/right/image_raw`（新增）、`stereo_right_info=/camera/right/camera_info`（新增）、`range_0=/tof/right_1`（新增）、`range_1=/tof/right_2`（新增）、`range_2=/tof/right_back_1`（新增）、`range_3=/tof/right_back_2`（新增）、`range_4=/tof/left_1`（新增）、`range_5=/tof/left_2`（新增）、`range_6=/tof/left_back_1`（新增）、`range_7=/tof/left_back_2`（新增）、`range_8=/cliff/rear_right`（新增）、`range_9=/cliff/rear_left`（新增）、`joint_command=/joint_commands`（新增）、`status=/autosim/status`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `husky.yaml` | `imu=/imu/data`、`status=/autosim/status`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `turtlebot3_burger.yaml` | `imu=/imu/data`、`status=/autosim/status`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `unitree_g1.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`status=/autosim/status`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
+| `unitree_go2.yaml` | `imu=/imu/data`、`joint_command=/joint_commands`（新增）、`status=/autosim/status`（新增）、`joint_states=/joint_states`（新增）、`chase_rgb=/camera/chase/image_raw`（新增）、`chase_info=/camera/chase/camera_info`（新增） |
 
 <!-- END generated: config-channels -->
 

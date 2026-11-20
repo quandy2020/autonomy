@@ -82,6 +82,9 @@ class Simulator:
         self.articulated = None
         self.articulation = None
         self.wheel_mounts_cache = None
+        # Auto-grounding writes the height that puts the lowest rendered
+        # vertex on the floor; ``None`` keeps the configured ``root_height``.
+        self.root_height_override: float | None = None
         self.urdf = self.load_urdf_model()
         self.traffic = None
         self.humanoid_sync = None
@@ -1403,7 +1406,12 @@ class Simulator:
         model would otherwise glide with frozen wheels. Each side integrates
         ``v / r`` for the differential-drive pair it belongs to; the joint
         velocity that ``/joint_states`` reports comes from the same finite
-        difference as every other joint. Opt in with ``robot.wheel_radius``.
+        difference as every other joint.
+
+        Robots with mixed wheel sizes (the Google robot has 64 mm front and
+        38 mm rear casters) set ``robot.wheel_radii`` and
+        ``robot.wheel_separations`` per joint; ``wheel_radius`` and
+        ``wheel_separation`` stay as the fallback for a symmetric base.
 
         Args:
             linear: Forward speed in m/s.
@@ -1413,18 +1421,28 @@ class Simulator:
         if self.articulation is None or dt <= 0.0:
             return
         robot = self.settings.get("habitat", {}).get("robot") or {}
-        radius = float(robot.get("wheel_radius", 0.0) or 0.0)
-        if radius <= 0.0:
+        default_radius = float(robot.get("wheel_radius", 0.0) or 0.0)
+        radii = robot.get("wheel_radii") or {}
+        separations = robot.get("wheel_separations") or {}
+        default_separation = float(robot.get("wheel_separation", 0.5) or 0.5)
+        if default_radius <= 0.0 and not radii:
             return
         mounts = self.wheel_mounts()
         if not mounts:
             return
-        separation = float(robot.get("wheel_separation", 0.5) or 0.5)
         current = self.joint_states()
         updates = {}
         for name, side in mounts:
+            radius = float(radii.get(name, default_radius) or default_radius)
+            if radius <= 0.0:
+                continue
+            separation = float(
+                separations.get(name, default_separation) or default_separation
+            )
             speed = float(linear) - side * 0.5 * float(angular) * separation
             updates[name] = current[name] + speed / radius * float(dt)
+        if not updates:
+            return
         self.articulation.set_positions(updates, dt=float(dt))
 
     def sync_robot_sensors(self) -> None:
@@ -1832,8 +1850,68 @@ class Simulator:
 
     def root_height(self) -> float:
         """URDF root height above the Habitat floor in metres."""
+        if self.root_height_override is not None:
+            return float(self.root_height_override)
         robot = (self.settings["habitat"] or {}).get("robot") or {}
         return float(robot.get("root_height", 0.0))
+
+    def robot_bounds(self) -> tuple[float, float] | None:
+        """Lowest and highest rendered point of the robot, floor-relative.
+
+        ``root_scene_node`` only covers the root link, so every link's
+        cumulative bounding box is transformed into world space and unioned.
+        The result is measured from the rendered geometry Habitat actually
+        built, which is the only reliable source when a URDF's meshes use a
+        different axis convention than the joints.
+
+        Returns:
+            ``(lowest, highest)`` in metres above ``floor_y``, or ``None``
+            when no articulated robot is instanced.
+        """
+        if self.articulated is None:
+            return None
+        import magnum as mn
+
+        lowest = math.inf
+        highest = -math.inf
+        for link_id in self.articulated.get_link_ids():
+            node = self.articulated.get_link_scene_node(link_id)
+            box = node.compute_cumulative_bb()
+            matrix = node.absolute_transformation_matrix()
+            for x in (box.min.x, box.max.x):
+                for y in (box.min.y, box.max.y):
+                    for z in (box.min.z, box.max.z):
+                        point = matrix.transform_point(mn.Vector3(x, y, z))
+                        # Habitat is y-up: the floor plane is y = floor_y.
+                        lowest = min(lowest, float(point[1]))
+                        highest = max(highest, float(point[1]))
+        if not math.isfinite(lowest):
+            return None
+        return (lowest - float(self.floor_y), highest - float(self.floor_y))
+
+    def ground_robot(self, clearance: float = 0.0) -> float | None:
+        """Shift the root so the lowest rendered vertex clears the floor.
+
+        Joint commands move feet, wheels and arms; a fixed ``root_height``
+        then leaves the robot floating or buried. Re-measuring the bounding
+        box after a pose change keeps the contact point on the floor.
+
+        Args:
+            clearance: Gap to keep between the lowest vertex and the floor.
+
+        Returns:
+            The applied root height, or ``None`` when nothing is instanced.
+        """
+        bounds = self.robot_bounds()
+        if bounds is None:
+            return None
+        lowest, _highest = bounds
+        height = float(self.root_height()) + (float(clearance) - lowest)
+        if not math.isfinite(height):
+            return None
+        self.root_height_override = height
+        self.set_pose(self.x, self.y, self.yaw)
+        return height
 
     def laser_origin(self) -> Tuple[float, float, float]:
         """Habitat world origin for lidar rays (Y-up).

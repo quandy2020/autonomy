@@ -62,6 +62,7 @@ void PlannerServer::QueryRoute(const GetPlanRequest& request, GetPlanResponse& r
         const auto code = vista->QueryRoute(request.start(), request.goal(), route,
                                             request.evidence_only(), canceled);
         if (canceled()) { response.set_status(Query::CANCELED); return; }
+        PublishVistaGraph(id);
         response.set_status(QueryStatus(code));
         if (code != proto::PLANNER_SUCCESS) {
             if (response.status() == Query::NO_ROUTE && route.evidence)

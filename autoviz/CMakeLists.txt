@@ -47,6 +47,7 @@ autocmake_binary(autoviz_app
   DEPENDENCIES autoviz)
 if(AUTONOMY_BUILD_COVERAGE)
   target_compile_definitions(autoviz PRIVATE AUTONOMY_BUILD_COVERAGE=1)
+  target_link_libraries(autoviz_app PRIVATE autonomy_proto)
   target_include_directories(autoviz PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
   target_link_libraries(autoviz PRIVATE autonomy_proto)
 endif()

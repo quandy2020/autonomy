@@ -209,7 +209,7 @@ def test_fake_runner_smoke_without_habitat(monkeypatch):
     monkeypatch.setattr(
         runner_module.SensorWorker,
         "submit",
-        lambda self, fn, *args: fn(*args),
+        lambda self, fn, *args, **kwargs: fn(*args),
     )
 
     from tests.test_runner_smoke import FakeLink

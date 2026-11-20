@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tarfile
 import tempfile
@@ -23,6 +24,8 @@ def load(name, path):
 INSPECT = load('inspect_artifact', ROOT / 'scripts/inspect_artifact.py')
 AUDIT = load('deployment_audit', ROOT / 'scripts/deployment_audit.py')
 PACKAGE = load('package_install_tarball', ROOT.parent / 'tools/python/package_install_tarball.py')
+with patch.dict('sys.modules', {'inspect_artifact': INSPECT}):
+    RELEASE = load('prepare_release', ROOT / 'scripts/prepare_release.py')
 
 
 class DeploymentTest(unittest.TestCase):
@@ -76,6 +79,30 @@ class DeploymentTest(unittest.TestCase):
         prefix = self.directory / 'stage'
         PACKAGE.bundle_configuration(self.directory / 'repo', prefix)
         self.assertEqual((prefix / 'share/autonomy/config/task/navigator.pb.txt').read_text(), 'fixture')
+
+    def test_runtime_bundle_preserves_application_libraries_and_excludes_platform_runtime(self):
+        prefix = self.directory / 'install'
+        (prefix / 'bin').mkdir(parents=True)
+        (prefix / 'bin/app').write_bytes(b'\x7fELFfixture')
+        (prefix / 'lib').mkdir()
+        (prefix / 'lib/libown.so').write_bytes(b'installed-own-library')
+        sdk = self.directory / 'sdk with spaces'
+        sdk.mkdir()
+        (sdk / 'libfixture.so.1').write_bytes(b'third-party-library')
+        output = (f'libfixture.so.1 => {sdk}/libfixture.so.1 (0x1234)\n'
+                  'libown.so => /build/libown.so (0x5678)\n'
+                  'libc.so.6 => /lib/libc.so.6 (0x1111)\n'
+                  'libstdc++.so.6 => /lib/libstdc++.so.6 (0x2222)\n')
+        with patch.object(PACKAGE.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, output, '')):
+            libraries = PACKAGE.bundle_runtime_libraries(self.directory / 'build', prefix)
+        self.assertEqual(libraries, ['libfixture.so.1'])
+        self.assertEqual((prefix / 'lib/libfixture.so.1').read_bytes(), b'third-party-library')
+        self.assertEqual((prefix / 'lib/libown.so').read_bytes(), b'installed-own-library')
+        self.assertFalse((prefix / 'lib/libc.so.6').exists())
+
+        with patch.object(PACKAGE.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, 'libmissing.so => not found', '')):
+            with self.assertRaises(ValueError):
+                PACKAGE.bundle_runtime_libraries(self.directory / 'build', prefix)
 
     def test_package_existing_build_without_reconfiguration(self):
         build = self.directory / 'build'
@@ -143,6 +170,97 @@ class DeploymentTest(unittest.TestCase):
                 self.assertNotIn('--ask-become-pass', arguments)
         self.assertNotEqual(self.dispatch('build', 'unknown').returncode, 0)
         self.assertEqual(self.dispatch('--help').returncode, 0)
+
+    def release_config(self):
+        return {'container': 'fixture-builder', 'workspace': '/workspace with spaces',
+                'build_dir': '/workspace with spaces/build/autonomy',
+                'build_args': ['--packages-up-to', 'autonomy'],
+                'artifact_path': str(self.directory / 'output with spaces/autonomy.tar.gz'),
+                'install_prefix': '/opt/autonomy'}
+
+    def test_release_publishes_validated_artifact_and_returns_its_identity(self):
+        config = self.release_config()
+        config['bundle_runtime'] = True
+        archive = self.archive()
+
+        def execute(arguments, **kwargs):
+            if arguments[1] == 'cp':
+                shutil.copyfile(archive, arguments[-1])
+            return subprocess.CompletedProcess(arguments, 0)
+
+        with patch.object(RELEASE.subprocess, 'run', side_effect=execute) as calls:
+            variables = RELEASE.prepare(config)
+        output = Path(variables['autonomy_artifact_path'])
+        self.assertEqual(output.read_bytes(), archive.read_bytes())
+        self.assertEqual(output.with_name(output.name + '.sha256').read_text(),
+                         variables['autonomy_artifact_sha256'] + '  autonomy.tar.gz\n')
+        commands = [call.args[0] for call in calls.call_args_list]
+        self.assertEqual(commands[0][3], config['workspace'])
+        self.assertEqual(commands[0][5:7], ['colcon', 'build'])
+        self.assertIn('--skip-build', commands[1])
+        self.assertIn('--bundle-runtime', commands[1])
+        self.assertEqual(commands[2][1], 'cp')
+        self.assertEqual(commands[-1][3:6], ['rm', '-rf', '--'])
+
+    def test_failed_release_never_replaces_existing_artifact(self):
+        config = self.release_config()
+        output = Path(config['artifact_path'])
+        output.parent.mkdir()
+        output.write_bytes(b'previous-release')
+        for failing_step in [0, 1]:
+            calls = []
+
+            def execute(arguments, **kwargs):
+                calls.append(arguments)
+                if len(calls) - 1 == failing_step:
+                    raise subprocess.CalledProcessError(1, arguments)
+                return subprocess.CompletedProcess(arguments, 0)
+
+            with self.subTest(step=failing_step), patch.object(RELEASE.subprocess, 'run', side_effect=execute):
+                with self.assertRaises(subprocess.CalledProcessError):
+                    RELEASE.prepare(config)
+            self.assertFalse(any(command[1] == 'cp' for command in calls))
+            self.assertEqual(output.read_bytes(), b'previous-release')
+            self.assertEqual(calls[-1][3], 'rm')
+
+        def corrupt_archive(arguments, **kwargs):
+            if arguments[1] == 'cp':
+                Path(arguments[-1]).write_bytes(b'corrupt')
+            return subprocess.CompletedProcess(arguments, 0)
+
+        with patch.object(RELEASE.subprocess, 'run', side_effect=corrupt_archive):
+            with self.assertRaises(tarfile.ReadError):
+                RELEASE.prepare(config)
+        self.assertEqual(output.read_bytes(), b'previous-release')
+
+    def test_release_rejects_invalid_configuration_before_running_commands(self):
+        for overrides in [{'container': '--privileged'}, {'workspace': '../source'},
+                          {'install_prefix': '/'}, {'build_args': 'shell command'}, {'unknown': True},
+                          {'artifact_path': str(self.directory / 'source.cpp')}, {'bundle_runtime': 'true'}]:
+            with self.subTest(overrides=overrides), patch.object(RELEASE.subprocess, 'run') as execute:
+                with self.assertRaises(ValueError):
+                    RELEASE.prepare({**self.release_config(), **overrides})
+                execute.assert_not_called()
+
+    def test_release_dispatch_preserves_options_and_skips_build_for_inspection(self):
+        result = self.dispatch('release', 'robots', '--release-config', '/missing.yml',
+                               '-l', 'robot01', '--list-hosts')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = json.loads(result.stdout.splitlines()[-1])
+        self.assertIn('autonomy_deploy_mode=artifact', arguments)
+        self.assertIn('autonomy_install_dependencies=false', arguments)
+        self.assertEqual(arguments[-3:], ['-l', 'robot01', '--list-hosts'])
+        self.assertNotIn('--release-config', arguments)
+        self.assertNotEqual(self.dispatch('release', 'production').returncode, 0)
+
+    def test_release_dispatch_stops_before_deployment_on_build_failure(self):
+        docker = self.directory / 'docker'
+        docker.write_text('#!/bin/sh\nexit 23\n')
+        docker.chmod(0o755)
+        result = self.dispatch('release', 'robots', '-l', 'robot01')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertNotIn('==> mode=', result.stdout)
+        self.assertIn('Deployment was not started', result.stderr)
 
 
 if __name__ == '__main__':

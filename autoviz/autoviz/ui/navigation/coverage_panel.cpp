@@ -324,6 +324,10 @@ void CoveragePanel::BuildUi() {
   split_rooms_->setToolTip(
       tr("Split the work area into colored rooms and plan each one."));
   rooms_row->addWidget(split_rooms_, 1);
+  map_rooms_ = MakeCoverageCompactGhost(tr("From map"), content);
+  map_rooms_->setObjectName(QStringLiteral("coverageMapRooms"));
+  map_rooms_->setToolTip(tr("Split live /map free space into rooms."));
+  rooms_row->addWidget(map_rooms_);
   layout->addLayout(rooms_row);
   rooms_ = new QListWidget(content);
   rooms_->setObjectName(QStringLiteral("coverageRooms"));
@@ -331,6 +335,10 @@ void CoveragePanel::BuildUi() {
   rooms_->setMaximumHeight(96);
   StyleFrostedPanelList(rooms_);
   layout->addWidget(rooms_);
+  current_region_ = new QLabel(tr("Current room: —"), content);
+  current_region_->setObjectName(QStringLiteral("coverageCurrentRoom"));
+  StyleHintLabel(current_region_);
+  layout->addWidget(current_region_);
   clean_rooms_ = MakePrimaryActionButton(tr("Clean all rooms"), content);
   clean_rooms_->setObjectName(QStringLiteral("coverageCleanRooms"));
   clean_rooms_->setEnabled(false);
@@ -457,7 +465,9 @@ void CoveragePanel::BuildUi() {
           &CoveragePanel::RefreshLiveObstacles);
 
   connect(split_rooms_, &QPushButton::clicked, this,
-          &CoveragePanel::SplitRooms);
+          [this] { SplitRooms(false); });
+  connect(map_rooms_, &QPushButton::clicked, this,
+          [this] { SplitRooms(true); });
   connect(clean_rooms_, &QPushButton::clicked, this,
           &CoveragePanel::StartAllRooms);
   connect(preview_, &QPushButton::clicked, this,
@@ -537,6 +547,18 @@ void CoveragePanel::EnsureClients() {
     config.enabled = true;
     config.properties["use_custom_color"] = "false";
     manager_->addDisplay(config);
+  }
+  if (!odom_reader_) {
+    QPointer<CoveragePanel> self(this);
+    odom_reader_ = node->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
+        "/odom", [self](const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg) {
+          if (!self || !msg) return;
+          const double x = msg->pose().pose().pose().position().x();
+          const double y = msg->pose().pose().pose().position().y();
+          QMetaObject::invokeMethod(self, [self, x, y] {
+            if (self) self->UpdateCurrentRegion(x, y);
+          }, Qt::QueuedConnection);
+        });
   }
   if (!sketch_writer_) {
     sketch_writer_ = node->CreateWriter<
@@ -925,6 +947,7 @@ void CoveragePanel::SetBusy(bool busy) {
   enable(room_columns_);
   enable(room_rows_);
   enable(split_rooms_);
+  enable(map_rooms_);
   if (clean_rooms_ != nullptr) {
     clean_rooms_->setEnabled(enabled && !regions_.empty());
   }
@@ -1153,7 +1176,8 @@ void CoveragePanel::PollActions() {
               regions_.push_back(region);
               if (rooms_ != nullptr) {
                 auto* item = new QListWidgetItem(
-                    tr("%1 · %2 m² · %3%")
+                    tr("%1. %2 · %3 m² · %4%")
+                        .arg(region.order())
                         .arg(QString::fromStdString(region.name()))
                         .arg(region.area(), 0, 'f', 1)
                         .arg(region.coverage() * 100, 0, 'f', 0),
@@ -1170,9 +1194,10 @@ void CoveragePanel::PollActions() {
               clean_rooms_->setEnabled(!regions_.empty());
             }
             preview_writer_->Write(result.result->nav_path());
-            SetStatus(tr("Rooms ready · %1 room(s) · %2% coverage")
+            SetStatus(tr("Rooms ready · %1 room(s) · %2% · %3 m travel")
                           .arg(result.result->regions_size())
-                          .arg(result.result->core_coverage() * 100, 0, 'f', 1),
+                          .arg(result.result->core_coverage() * 100, 0, 'f', 1)
+                          .arg(result.result->travel_distance(), 0, 'f', 1),
                       QStringLiteral("ok"));
             compute_goal_.reset();
             SetBusy(false);
@@ -1494,7 +1519,7 @@ void CoveragePanel::ActivateTool(const QString& tool_id) {
   }
 }
 
-void CoveragePanel::SplitRooms() {
+void CoveragePanel::SplitRooms(bool from_map) {
   try {
     CommitEditors();
     EnsureClients();
@@ -1506,6 +1531,34 @@ void CoveragePanel::SplitRooms() {
     goal.mutable_request()->set_generate_regions(true);
     goal.mutable_request()->set_region_columns(room_columns_->value());
     goal.mutable_request()->set_region_rows(room_rows_->value());
+    if (from_map) {
+      display::MapDisplay* map_display = nullptr;
+      for (auto* candidate : manager_->displays()) {
+        auto* map = dynamic_cast<display::MapDisplay*>(candidate);
+        if (map != nullptr && map->channel() == "/map") {
+          map_display = map;
+          break;
+        }
+      }
+      const auto* grid =
+          map_display != nullptr ? map_display->mapMessage() : nullptr;
+      if (grid == nullptr) {
+        throw std::runtime_error("No /map occupancy grid available");
+      }
+      auto* map = goal.mutable_request()->mutable_map();
+      map->set_frame_id(grid->header().frame_id());
+      map->set_resolution(grid->info().resolution());
+      map->set_width(grid->info().width());
+      map->set_height(grid->info().height());
+      map->set_origin_x(grid->info().origin().position().x());
+      map->set_origin_y(grid->info().origin().position().y());
+      const auto& q = grid->info().origin().orientation();
+      map->set_origin_yaw(std::atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
+                                    1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z())));
+      for (const int value : grid->data()) {
+        map->add_data(value);
+      }
+    }
     cancel_requested_ = false;
     compute_acceptance_ = compute_client_->AsyncSendGoal(goal);
     SetBusy(true);
@@ -1521,11 +1574,8 @@ void CoveragePanel::StartAllRooms() {
     SetStatus(tr("Split the map into rooms first"));
     return;
   }
-  // The planned route already covers every colored room; executing it once
-  // keeps inter-room travel on the validated global path.
-  cleaning_regions_ = false;
-  StartCoverage();
-  SetStatus(tr("Cleaning all %1 room(s)…").arg(regions_.size()));
+  cleaning_regions_ = true;
+  StartRegion(0);
 }
 
 void CoveragePanel::StartRegion(std::size_t index) {
@@ -1547,6 +1597,7 @@ void CoveragePanel::StartRegion(std::size_t index) {
     auto request = BuildRequest();
     request.clear_polygons();
     request.set_generate_regions(false);
+    request.set_generate_headland(false);
     for (const auto& polygon : region.polygons()) {
       auto* ring = request.add_polygons();
       for (const auto& point : polygon.coordinates()) {
@@ -1573,6 +1624,35 @@ void CoveragePanel::StartRegion(std::size_t index) {
     cleaning_regions_ = false;
     SetStatus(QString::fromUtf8(error.what()), QStringLiteral("error"));
   }
+}
+
+
+void CoveragePanel::UpdateCurrentRegion(double x, double y) {
+  if (current_region_ == nullptr || regions_.empty()) {
+    return;
+  }
+  for (std::size_t index = 0; index < regions_.size(); ++index) {
+    const auto& region = regions_[index];
+    if (region.polygons_size() == 0) continue;
+    const auto& ring = region.polygons(0).coordinates();
+    bool inside = false;
+    for (int i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
+      const double xi = ring.Get(i).axis1();
+      const double yi = ring.Get(i).axis2();
+      const double xj = ring.Get(j).axis1();
+      const double yj = ring.Get(j).axis2();
+      if (((yi > y) != (yj > y)) &&
+          (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+        inside = !inside;
+      }
+    }
+    if (inside) {
+      current_region_->setText(tr("Current room: %1").arg(index + 1));
+      if (rooms_ != nullptr) rooms_->setCurrentRow(static_cast<int>(index));
+      return;
+    }
+  }
+  current_region_->setText(tr("Current room: —"));
 }
 
 }  // namespace autoviz::navigation

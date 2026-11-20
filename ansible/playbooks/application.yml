@@ -11,7 +11,7 @@
   any_errors_fatal: true
   become: >-
     {{
-      false if autonomy_play_mode == 'check'
+      false if autonomy_play_mode == 'check' or not autonomy_system_install | bool
       else (autonomy_play_become | default(true) | bool)
     }}
   roles:
@@ -28,7 +28,9 @@
 
     - role: openbot.autonomy_ops.runtime_bootstrap
       tags: [runtime_bootstrap, common]
-      when: autonomy_play_mode in ['full', 'build']
+      when:
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_system_install | bool
 
     - role: openbot.autonomy_ops.source
       tags: [build, source]
@@ -60,4 +62,6 @@
 
     - role: openbot.autonomy_ops.services
       tags: [services, config, restart]
-      when: autonomy_play_mode in ['full', 'push', 'restart']
+      when:
+        - autonomy_play_mode in ['full', 'push', 'restart']
+        - autonomy_system_install | bool

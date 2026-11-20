@@ -18,6 +18,7 @@
 #include "autonomy/planning/common/smoother_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
 #include "autonomy/planning/planner/vista/native_route_protocol.hpp"
+#include "autonomy/planning/planner/vista/vista_graph_visualizer.hpp"
 
 namespace autonomy {
 namespace planning {
@@ -208,6 +209,14 @@ void PlannerServer::RegisterAutolinkEndpoints()
         AINFO << "PlannerServer: OccupancyGrid on " << kCostmapTopicName;
     } else {
         AWARN << "PlannerServer: failed to create writer " << kCostmapTopicName;
+    }
+
+    vista_graph_visualizer_ =
+        std::make_shared<planner::vista::VistaGraphVisualizer>(
+            node_, "/vista_planner/visibility_graph");
+    if (vista_graph_visualizer_) {
+        AINFO << "PlannerServer: Vista graph markers on "
+              << vista_graph_visualizer_->channel();
     }
 
     AINFO << "PlannerServer autolink action/service endpoints started.";

@@ -16,6 +16,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -33,6 +34,42 @@ def bundle_configuration(root: Path, staged_prefix: Path) -> None:
     destination = staged_prefix / "share" / "autonomy" / "config"
     for source in sorted((root / "autonomy").glob("*/conf")):
         shutil.copytree(source, destination / source.parent.name, dirs_exist_ok=True)
+
+
+def bundle_runtime_libraries(build_dir: Path, staged_prefix: Path) -> list[str]:
+    """Collect linked ELF dependencies; libc, C++ runtime and GPU drivers stay on the target."""
+    target_libraries = {'libc.so.6', 'libm.so.6', 'libpthread.so.0', 'libdl.so.2', 'librt.so.1',
+                        'libresolv.so.2', 'libutil.so.1', 'libanl.so.1', 'libstdc++.so.6',
+                        'libgcc_s.so.1', 'libcuda.so.1'}
+    destination = staged_prefix / 'lib'
+    destination.mkdir(exist_ok=True)
+    copied = set()
+    for installed in sorted((staged_prefix / 'bin').glob('*')):
+        if not installed.is_file():
+            continue
+        with installed.open('rb') as stream:
+            if stream.read(4) != b'\x7fELF':
+                continue
+        # Build binaries retain the SDK search paths that install-time RPATH stripping removes.
+        executable = build_dir / 'bin' / installed.name
+        if not executable.exists():
+            executable = installed
+        result = subprocess.run(['ldd', str(executable)], capture_output=True, text=True)
+        if 'not a dynamic executable' in result.stdout + result.stderr:
+            continue
+        if result.returncode != 0 or '=> not found' in result.stdout:
+            raise ValueError(f'Cannot resolve runtime libraries for {installed.name}')
+        for line in result.stdout.splitlines():
+            match = re.fullmatch(r'\s*(\S+)\s+=>\s+(/.*?)\s+\(0x[0-9a-fA-F]+\)\s*', line)
+            if not match:
+                continue
+            name, source = match.groups()
+            if name in target_libraries or name.startswith(('libnvidia-', 'libGLX_nvidia')):
+                continue
+            if not (destination / name).exists():
+                shutil.copy2(Path(source).resolve(), destination / name)
+                copied.add(name)
+    return sorted(copied)
 
 
 def git_describe(root: Path) -> str:
@@ -101,6 +138,8 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Do not bundle autonomy/*/conf into the tarball",
     )
+    parser.add_argument('--bundle-runtime', action='store_true',
+                        help='Bundle linked ELF dependencies, excluding libc/C++ runtime and GPU drivers')
     parser.add_argument(
         "-j",
         "--jobs",
@@ -158,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
         if bundle_config:
             print("[package] bundle autonomy/*/conf -> share/autonomy/config")
             bundle_configuration(root, staged_prefix)
+        runtime_libraries = bundle_runtime_libraries(build_dir, staged_prefix) if args.bundle_runtime else []
 
         manifest_path = staged_prefix / "share" / "autonomy" / "MANIFEST.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
@@ -175,6 +215,7 @@ def main(argv: list[str] | None = None) -> int:
             "build_grpc": cache.get("BUILD_GRPC", "unknown"),
             "build_test": cache.get("BUILD_TEST", "unknown"),
             "config_bundled": bundle_config,
+            "bundled_runtime_libraries": runtime_libraries,
             "packaged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

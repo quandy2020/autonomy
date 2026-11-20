@@ -86,9 +86,91 @@ def test_runner_joint_command_consumed_on_cycle_thread():
     calls=[]
     runner=object.__new__(Runner)
     runner.bridge=SimpleNamespace(joint_command_reader=Reader())
-    runner.simulator=SimpleNamespace(set_joint_positions=calls.append)
+    runner.simulator=SimpleNamespace(
+        set_joint_positions=calls.append, joint_states=lambda: {'arm':0.0}
+    )
+    runner.robot_cfg={'joint_command':{'enabled':True,'timeout_sec':1.0,'mode':'hold'}}
+    runner.joint_targets={}
+    runner.joint_command_stamp=None
+    runner.clock=SimpleNamespace(now=lambda: 0.0)
     runner.poll_joint_command()
     assert calls==[{'arm':.3}]
+
+
+def test_joint_command_times_out_to_home_pose():
+    """A publisher that stops must not leave the arm frozen mid-motion."""
+    from autosim.runtime.runner import Runner
+
+    class Reader:
+        def __init__(self):
+            self.pending = True
+
+        def has_msg(self):
+            return self.pending
+
+        def get_msg(self):
+            self.pending = False
+            return SimpleNamespace(name=['arm'], position=[1.0])
+
+    calls = []
+    state = {'arm': 0.0}
+    now = [0.0]
+
+    def set_positions(updates):
+        calls.append(dict(updates))
+        state.update(updates)
+
+    runner = object.__new__(Runner)
+    runner.bridge = SimpleNamespace(joint_command_reader=Reader())
+    runner.simulator = SimpleNamespace(
+        set_joint_positions=set_positions, joint_states=lambda: dict(state)
+    )
+    runner.robot_cfg = {
+        'joint_positions': {'arm': 0.2},
+        'joint_command': {'enabled': True, 'timeout_sec': 0.5, 'mode': 'home'},
+    }
+    runner.joint_targets = {}
+    runner.joint_command_stamp = None
+    runner.clock = SimpleNamespace(now=lambda: now[0])
+    runner.poll_joint_command()
+    assert calls == [{'arm': 1.0}]
+    now[0] = 1.0
+    runner.poll_joint_command()
+    assert calls[-1] == {'arm': 0.2}
+    # The release fires once; a second idle cycle must not resend it.
+    runner.poll_joint_command()
+    assert len(calls) == 2
+
+
+def test_joint_command_ramps_with_max_step():
+    """``max_step`` keeps a large target from teleporting the model."""
+    from autosim.runtime.runner import Runner
+
+    class Reader:
+        def __init__(self):
+            self.pending = True
+
+        def has_msg(self):
+            return self.pending
+
+        def get_msg(self):
+            self.pending = False
+            return SimpleNamespace(name=['arm'], position=[1.0])
+
+    calls = []
+    runner = object.__new__(Runner)
+    runner.bridge = SimpleNamespace(joint_command_reader=Reader())
+    runner.simulator = SimpleNamespace(
+        set_joint_positions=calls.append, joint_states=lambda: {'arm': 0.0}
+    )
+    runner.robot_cfg = {
+        'joint_command': {'enabled': True, 'timeout_sec': 0.0, 'max_step': 0.1}
+    }
+    runner.joint_targets = {}
+    runner.joint_command_stamp = None
+    runner.clock = SimpleNamespace(now=lambda: 0.0)
+    runner.poll_joint_command()
+    assert calls[-1] == {'arm': 0.1}
 
 
 def test_initial_pose_and_command_channel_validation():

@@ -3,6 +3,7 @@
  * @brief Map-contract admission and visibility routes without partial graph exposure.
  */
 #include "autonomy/planning/planner/vista/route_planner.hpp"
+#include "autonomy/common/logging.hpp"
 #include <algorithm>
 #include <limits>
 #include <queue>
@@ -90,7 +91,18 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     auto is_canceled = [&] { return canceled && canceled(); };
     if (is_canceled()) { result.canceled = true; return result; }
     EdgeValidator validator(*map,options_);
-    if (!validator.PoseSafe(start) || !validator.PoseSafe(goal)) return result;
+    if (!validator.PoseSafe(start)) {
+        AINFO_EVERY(20) << "VISTA_ROUTE_START_UNSAFE x=" << start.x
+                        << " y=" << start.y << " support="
+                        << (map->startup_support ? 1 : 0);
+        return result;
+    }
+    if (!validator.PoseSafe(goal)) {
+        AINFO_EVERY(20) << "VISTA_ROUTE_GOAL_UNSAFE x=" << goal.x
+                        << " y=" << goal.y << " support="
+                        << (map->startup_support ? 1 : 0);
+        return result;
+    }
     const NodeId source = 0, target = std::numeric_limits<NodeId>::max();
     std::map<NodeId,Pose2d> poses{{source,start},{target,goal}};
     std::map<NodeId,std::vector<std::pair<NodeId,double>>> adjacency;

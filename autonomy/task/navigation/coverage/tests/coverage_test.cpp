@@ -2,6 +2,7 @@
 /** @file coverage_test.cpp
  * @brief Native complete-coverage coverage test implementation. */
 #include "autonomy/task/navigation/coverage/coverage_server.hpp"
+#include "autonomy/task/navigation/coverage/region_orderer.hpp"
 #include "autonomy/task/navigation/coverage/region_segmenter.hpp"
 #include "autonomy/task/navigation/coverage/native_execution.hpp"
 #include "autonomy/task/navigation/coverage/path_segments.hpp"
@@ -33,6 +34,7 @@ int main(int argc,char** argv) {
   add("complete_hole",[&]{auto result=server.Compute(Rectangle(true));Success(result);Require(result.core_coverage()>.95,"Hole core coverage below 95%");});
   add("robot_radius_drives_swath",[&]{auto r=Rectangle();r.set_robot_radius(0.3);auto out=server.Compute(r);Success(out);Require(out.coverage_path().swaths_size()>1,"Radius did not raise swath count");for(const auto& s:out.coverage_path().swaths())Require(std::abs(s.width()-0.6)<1e-9,"Swath width is not twice the radius");});
   add("invalid_robot_radius",[&]{auto r=Rectangle();r.set_robot_radius(0);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Zero radius accepted");r.set_robot_radius(-1);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Negative radius accepted");r.set_robot_radius(NAN);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"NaN radius accepted");});
+  add("region_tsp",[]{std::vector<std::pair<double,double>> points{{0,0},{10,0},{10,10},{0,10}};const auto result=RegionOrderer::Order(points,0,0);Require(result.order.size()==4,"TSP dropped rooms");Require(std::abs(result.distance-30.0)<1e-6,"TSP distance should be 30 m");});
   add("region_split",[&]{auto r=Rectangle();r.set_generate_regions(true);r.set_region_columns(2);r.set_region_rows(2);auto out=server.Compute(r);Require(out.error_code()==proto::NONE,std::string("Region split failed: ")+out.error_msg());Require(out.regions_size()==4,"Expected four regions");double area=0;for(const auto& region:out.regions()){area+=region.area();Require(region.states_size()>0,"Region has no coverage states");Require(region.polygons_size()>0,"Region has no polygon");}Require(std::abs(area-1200.0)<1.0,"Region areas do not sum to the field");});
   add("flags_path_requires_route",[&]{auto r=Rectangle();r.set_generate_route(false);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Bad flag combination accepted");});
   add("swaths_only",[&]{auto r=Rectangle();r.set_generate_route(false);r.set_generate_path(false);auto out=server.Compute(r);Success(out);Require(!out.coverage_path().swaths_ordered()&&out.nav_path().poses().empty(),"Wrong stage output");});

@@ -65,13 +65,19 @@ class ContractTest(unittest.TestCase):
         self.assertFalse(any(name.startswith(('inventory/', 'tests/', 'molecule/')) for name in names))
         self.assertNotIn('.vault_pass', names)
         self.assertNotIn('scripts/deployment_audit.py', names)
+        self.assertNotIn('scripts/prepare_release.py', names)
+        self.assertNotIn('scripts/controller_env.sh', names)
+        self.assertNotIn('vars/release.yml', names)
+        self.assertNotIn('vars/release-demo.yml', names)
 
     @unittest.skipUnless(shutil.which('ansible-playbook'), 'Ansible tooling is required')
-    def test_version_lock_rejects_floating_build_and_unpinned_production_artifact(self):
+    def test_deployment_policy_rejects_invalid_build_and_production_settings(self):
         base = ['ansible-playbook', '-i', 'localhost,', 'tests/version_lock.yml']
         for arguments, expected in [([], 0),
                                     (['-e', 'autonomy_play_mode=build', '-e', 'autonomy_repo_version=main'], 2),
                                     (['-e', 'autonomy_profile=production', '-e', 'autonomy_play_mode=full',
-                                      '-e', 'autonomy_deploy_mode=artifact'], 2)]:
+                                      '-e', 'autonomy_deploy_mode=artifact'], 2),
+                                    (['-e', 'autonomy_profile=production', '-e', 'autonomy_system_install=false'], 2),
+                                    (['-e', 'autonomy_system_install=false', '-e', 'autonomy_install_dependencies=true'], 2)]:
             result = subprocess.run(base + arguments, cwd=ROOT, capture_output=True, text=True)
             self.assertEqual(result.returncode, expected, result.stdout + result.stderr)

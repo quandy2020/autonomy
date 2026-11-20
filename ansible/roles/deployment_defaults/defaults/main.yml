@@ -2,6 +2,8 @@
 # deploy_mode: build（现场编译）| artifact（分发制品）
 autonomy_deploy_mode: build
 autonomy_play_mode: full
+# false: install application files as the current user, without system users/units.
+autonomy_system_install: true
 
 autonomy_user: autonomy
 autonomy_install_prefix: /opt/autonomy

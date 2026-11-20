@@ -314,6 +314,7 @@ _ROBOT = _merge(
         "clock": _block("enabled", "channel"),
         "footprint": _block("enabled", "channel", "frame", "points"),
         "grounding": _block("enabled", "mode", "clearance_m", "update_hz"),
+        "status": _block("enabled", "channel", "rate_hz"),
     },
 )
 

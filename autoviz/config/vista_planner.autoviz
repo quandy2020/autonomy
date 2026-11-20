@@ -1,0 +1,438 @@
+ChannelGraphPanels:
+- AutoRefresh: true
+  ChannelArrange: 1
+  Filter: ''
+  HideDeadEndChannels: false
+  HideLeafChannels: false
+  NeighborhoodMode: true
+  ObjectName: ChannelGraphDock
+  PrefixFilter: ''
+  ProbeEnabled: false
+  QuietMode: false
+  ServiceArrange: 1
+  ShowChannels: true
+  ShowEdgeLabels: false
+  ShowServices: true
+ChannelsBrowser:
+  FilterText: ''
+  ProbeEnabled: true
+  TypeFilter: 0
+CurrentView:
+  Distance: 14.0
+  FarClipDistance: 1e+05
+  FocalShapeFixedSize: true
+  FocalShapeSize: 0.05000000074505806
+  FpsPitch: 0
+  FpsPosition:
+    X: 0
+    Y: 2
+    Z: 8
+  FpsYaw: 3.140000104904175
+  InvertZAxis: false
+  Name: Current
+  NearClipDistance: 0.009999999776482582
+  Pitch: 1.05
+  Target:
+    X: 0.0
+    Y: 0.0
+    Z: 0.0
+  Type: Orbit
+  Yaw: 0.2
+Displays:
+- Channel: /overall/map
+  Enabled: false
+  Name: VistaMapCloudOverall
+  Properties:
+    alpha: 0.92
+    autocompute_intensity_bounds: true
+    autocompute_value_bounds: true
+    axis: Z
+    axis_max: 10
+    axis_min: -10
+    channel_name: intensity
+    color: 255;255;255
+    color_transform: AxisColor
+    decay_time: 0
+    decimate: 1
+    intensity_max: 4096
+    intensity_min: 0
+    invert_rainbow: false
+    max_color: 255;255;255
+    max_points: 200000
+    min_color: 0;0;0
+    point_size: 2
+    point_world_size: 0.01
+    position_transform: XYZ
+    selectable: true
+    style: Points
+    use_fixed_frame: true
+    use_rainbow: true
+  Type: PointCloud2
+- Channel: /camera/depth/points
+  Enabled: true
+  Name: VistaMapCloud
+  Properties:
+    alpha: 0.92
+    autocompute_intensity_bounds: true
+    autocompute_value_bounds: true
+    axis: Z
+    axis_max: 10
+    axis_min: -10
+    channel_name: intensity
+    color: 255;255;255
+    color_transform: AxisColor
+    decay_time: 0
+    decimate: 1
+    intensity_max: 4096
+    intensity_min: 0
+    invert_rainbow: false
+    max_color: 255;255;255
+    max_points: 200000
+    min_color: 0;0;0
+    point_size: 2
+    point_world_size: 0.01
+    position_transform: XYZ
+    selectable: true
+    style: Points
+    use_fixed_frame: true
+    use_rainbow: true
+  Type: PointCloud2
+- Channel: /map
+  Enabled: true
+  Name: VistaOccupancyMap
+  Properties:
+    alpha: 0.55
+    color_scheme: map
+    decimate: 1
+    draw_behind: true
+    use_timestamp: false
+  Type: Map
+- Channel: /global_costmap
+  Enabled: true
+  Name: VistaGlobalCostmap
+  Properties:
+    alpha: 0.55
+    color_scheme: map
+    decimate: 1
+    draw_behind: true
+    use_timestamp: false
+  Type: Map
+- Channel: /vista_planner/visibility_graph
+  Enabled: true
+  Name: VistaVisibilityGraph
+  Properties:
+    color: 0;230;240
+    mesh_style: flat
+    point_size: 3
+    use_custom_color: false
+  Type: MarkerArray
+- Channel: /plan
+  Enabled: true
+  Name: VistaRoute
+  Properties:
+    alpha: 1.0
+    arrive_distance: 0.35
+    buffer_length: 1
+    color: 46;76;255
+    dash_length: 0.28
+    flow_arrow_size: 0.12
+    flow_arrow_spacing: 0.55
+    flow_speed: 0.9
+    gap_length: 0.18
+    hide_when_arrived: true
+    line_style: Billboards
+    line_width: 0.1
+    offset: 0;0;0
+    path_pattern: Solid
+    pose_arrow_head_diameter: 0.3
+    pose_arrow_head_length: 0.2
+    pose_arrow_shaft_diameter: 0.1
+    pose_arrow_shaft_length: 0.1
+    pose_axes_length: 0.3
+    pose_axes_radius: 0.03
+    pose_color: 94;240;176
+    pose_style: None
+    prune_behind_robot: true
+    robot_frame: base_link
+    show_flow_arrows: false
+  Type: Path
+- Channel: /odom
+  Enabled: true
+  Name: VistaRobotPose
+  Properties:
+    alpha: 1.0
+    angle_tolerance: 0.1
+    color: 107;168;255
+    keep: 1
+    position_tolerance: 0.1
+    shape: Arrow
+    show_velocity: true
+  Type: Odometry
+Global:
+  ActiveTool: Interact
+  BackgroundColor: 22;26;36
+  FixedFrame: map
+  FrameRate: 30
+  RenderBackend: Ogre
+  TimeSyncMode: 0
+  TimeSyncSource: ''
+  Transformer: autoviz/AutolinkTf
+  ViewController: Orbit
+ImagePanels:
+- BackgroundColor: '#000000'
+  CalibrationChannel: ''
+  ClickPublishChannel: ''
+  ColorMax: 255
+  ColorMin: 0
+  ColorMode: 0
+  ContentOnlyDisplay: false
+  EnableUndistort: false
+  FlipHorizontal: false
+  FlipVertical: false
+  HoverPublishChannel: ''
+  ImageChannel: /camera/chase/image_raw
+  LabelScale: 1
+  ObjectName: ImageDock
+  Rotation: 0
+  SettingsVisible: false
+  StrictTimeSync: false
+  Title: Chase
+- BackgroundColor: '#000000'
+  CalibrationChannel: ''
+  ClickPublishChannel: ''
+  ColorMax: 255
+  ColorMin: 0
+  ColorMode: 0
+  ContentOnlyDisplay: false
+  EnableUndistort: false
+  FlipHorizontal: false
+  FlipVertical: false
+  HoverPublishChannel: ''
+  ImageChannel: /camera/rgb/image_raw
+  LabelScale: 1
+  ObjectName: ImageDock_2
+  Rotation: 0
+  SettingsVisible: false
+  StrictTimeSync: false
+  Title: RGB
+- BackgroundColor: '#000000'
+  CalibrationChannel: ''
+  ClickPublishChannel: ''
+  ColorMax: 255
+  ColorMin: 0
+  ColorMode: 0
+  ContentOnlyDisplay: false
+  EnableUndistort: false
+  FlipHorizontal: false
+  FlipVertical: false
+  HoverPublishChannel: ''
+  ImageChannel: /camera/semantic/image_raw
+  LabelScale: 1
+  ObjectName: ImageDock_3
+  Rotation: 0
+  SettingsVisible: false
+  StrictTimeSync: false
+  Title: Semantic
+- BackgroundColor: '#000000'
+  CalibrationChannel: ''
+  ClickPublishChannel: ''
+  ColorMax: 255
+  ColorMin: 0
+  ColorMode: 0
+  ContentOnlyDisplay: false
+  EnableUndistort: false
+  FlipHorizontal: false
+  FlipVertical: false
+  HoverPublishChannel: ''
+  ImageChannel: /camera/depth/image_raw
+  LabelScale: 1
+  ObjectName: ImageDock_4
+  Rotation: 0
+  SettingsVisible: false
+  StrictTimeSync: false
+  Title: Depth
+PlotPanels:
+- KeepRatioXy: true
+  LockAxisScales: false
+  MaxPointsPerSeries: 20000
+  MessagePathMode: 1
+  ObjectName: PlotDock
+  ReferenceTrackerSec: 0
+  ReferenceY: 0
+  Series:
+  - BinaryMaxDtSec: 0.10000000149011612
+    BinaryOp: 0
+    Channel: /cmd_vel
+    ChannelPattern: ''
+    Color: '#3dd6f5'
+    CurveStyle: 0
+    CustomTimestampPath: ''
+    Enabled: true
+    FieldPath: twist.linear.x
+    Label: cmd vx
+    LineSize: auto
+    PointSize: 3
+    SecondaryChannel: ''
+    SecondaryFieldPath: ''
+    ShowLine: true
+    ShowPoints: false
+    TimestampMode: 0
+    UseRightY: false
+    XChannel: ''
+    XFieldPath: ''
+    YOffset: 0
+    YScale: 1
+  - BinaryMaxDtSec: 0.10000000149011612
+    BinaryOp: 0
+    Channel: /odom
+    ChannelPattern: ''
+    Color: '#ff5a5a'
+    CurveStyle: 0
+    CustomTimestampPath: ''
+    Enabled: true
+    FieldPath: twist.twist.linear.x
+    Label: odom vx
+    LineSize: auto
+    PointSize: 3
+    SecondaryChannel: ''
+    SecondaryFieldPath: ''
+    ShowLine: true
+    ShowPoints: false
+    TimestampMode: 0
+    UseRightY: false
+    XChannel: ''
+    XFieldPath: ''
+    YOffset: 0
+    YScale: 1
+  SettingsVisible: false
+  SettingsWidth: 280
+  ShowGrid: true
+  ShowLegend: true
+  ShowLegendValues: true
+  ShowReferenceTracker: false
+  ShowReferenceY: false
+  SyncCursor: true
+  SyncGroup: default
+  SyncWithOtherPlots: true
+  SyncYAxis: false
+  Title: Linear X
+  XAxisMode: 0
+  XWindowSec: 12
+  YAutoScale: true
+  YAutoScaleRight: true
+  YMax: 1
+  YMaxRight: 1
+  YMin: 0
+  YMinRight: 0
+RawMessages:
+  Channel: ''
+  DiffHighlight: true
+  Freeze: false
+  MessagePath: ''
+TeleopPanels:
+- Down:
+    Field: 0
+    Value: -0.5
+  Left:
+    Field: 5
+    Value: 0.5
+  MaxAngularSpeed: 0.5
+  MaxLinearSpeed: 0.5
+  ObjectName: TeleopDock
+  PublishRateHz: 20
+  Right:
+    Field: 5
+    Value: -0.5
+  SettingsVisible: false
+  SmartTeleop: false
+  StickMode: 0
+  Stop:
+    Field: 0
+    Value: 0
+  StopOnRelease: true
+  Title: Teleop
+  Topic: /cmd_vel
+  Up:
+    Field: 0
+    Value: 0.5
+TfTreePanels:
+- Filter: ''
+  MaxAgeSec: 1
+  ObjectName: TfTreeDock
+  StaleOnly: false
+  TabIndex: 0
+Toolbar:
+- Interact
+- MoveCamera
+- Select
+- FocusCamera
+- Measure
+- PoseEstimate
+- NavGoal
+- PublishPoint
+Tools:
+- Id: Interact
+  Properties:
+    client_id: autoviz
+    hide_inactive: true
+- Id: Measure
+  Properties:
+    color: 255;0;0
+- Id: PoseEstimate
+  Properties:
+    covariance_x: 0.25
+    covariance_y: 0.25
+    covariance_yaw: 0.0685385
+    topic: /initialpose
+- Id: NavGoal
+  Properties:
+    topic: /goal_pose
+- Id: PublishPoint
+  Properties:
+    single_click: true
+    topic: /clicked_point
+- Id: ScreenshotListener
+  Properties:
+    screenshot_path: /tmp/autoviz_screenshot.png
+Views: null
+Window:
+  Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAQgAAAEUAAAn/AAAFnwAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
+  Height: 1371
+  HideLeftDock: true
+  HideRightDock: false
+  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0OTAsNzg4XSwiY2hpbGRyZW4iOlt7InR5cGUiOiJzcGxpdCIsIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjEyLDE4NzVdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9jayIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYxOSwxMjQ5XSwiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYyMSw2MjFdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dfV19XX0seyJuYW1lIjoiVmlld3BvcnREb2NrIiwidHlwZSI6ImxlYWYifV19fQ==
+  Panels:
+  - Name: ViewportDock
+  - Name: NavigationDock
+  - Collapsed: true
+    Name: DisplaysDock
+  - Name: RecordDock
+  - Name: SelectionDock
+  - Name: ToolPropertiesDock
+  - Name: ViewsDock
+  - Name: TimeDock
+  - Name: ChannelsDock
+  - Name: ChannelBrowserDock
+  - Name: TfTreeDock
+  - Name: ImageDock
+  - Name: PlotDock
+  - Name: TeleopDock
+  - Name: ChannelGraphDock
+  - Name: ImageDock_2
+  - Name: ImageDock_3
+  - Name: ImageDock_4
+  - Collapsed: true
+    Name: PropertiesDock
+  PlotSettingsVisible: false
+  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFMAAAFBfwCAAAAAfwAAABAAAAFBQAAAAAA////+v////8CAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAAAAAAD/////AAAA3QD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsAAAAAAP////8AAAB6AP///wAAAAEAAAEYAAAFBfwCAAAABfsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAAD/////AAAAyAD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABSQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawAAAABAAAABvgAAAIcA////+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawAAAAIEAAADQQAAAIYA////+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAAAA/////wAAAe4A////AAAAAwAAAAAAAAAA/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAD/////AAAD5AD///8AAAm+AAAFBQAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAAHABBAHUAdABvAHYAaQB6AFQAbwBvAGwAQgBhAHIBAAAAAP////8AAAAAAAAAAA==
+  VisiblePanels:
+  - NavigationDock
+  - ImageDock
+  - ImageDock_2
+  - ImageDock_3
+  - ImageDock_4
+  - ViewportDock
+  Width: 2494
+  X: 66
+  Y: 69
+FixedFrame: map

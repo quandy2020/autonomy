@@ -651,3 +651,17 @@ def test_spin_wheels_is_opt_in():
     ]
     simulator.spin_wheels(0.3, 0.0, 0.5)
     assert calls == []
+
+
+def test_spin_wheels_uses_per_joint_radius_and_track():
+    """Mixed wheel sizes (Google: 64 mm front, 38 mm rear) roll correctly."""
+    simulator, calls = wheeled_simulator(
+        wheel_radii={"wheel_left_joint": 0.05, "wheel_right_joint": 0.1},
+        wheel_separations={"wheel_left_joint": 0.4, "wheel_right_joint": 0.2},
+    )
+    simulator.spin_wheels(0.0, 1.0, 1.0)
+    updates, _ = calls[-1]
+    # Left: v - w * track / 2 = -0.2 m/s over a 50 mm wheel.
+    assert updates["wheel_left_joint"] == pytest.approx(-0.2 / 0.05)
+    # Right: v + w * track / 2 = +0.1 m/s over a 100 mm wheel.
+    assert updates["wheel_right_joint"] == pytest.approx(0.1 / 0.1)

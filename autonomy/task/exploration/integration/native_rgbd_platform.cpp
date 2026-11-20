@@ -699,8 +699,8 @@ public:
                 sectors[std::clamp(sector, 0, 3)] = true;
             }
         }
-        if (floors.size() < policy.minimum_support_cells ||
-            !std::all_of(sectors.begin(), sectors.end(), [](bool value) { return value; })) {
+        const auto sector_count = std::count(sectors.begin(), sectors.end(), true);
+        if (floors.size() < policy.minimum_support_cells || sector_count < 3) {
             AINFO << "NATIVE_STARTUP_SUPPORT rejected=insufficient_measured_ring cells="
                   << floors.size() << " sectors=" << sectors[0] << sectors[1]
                   << sectors[2] << sectors[3];

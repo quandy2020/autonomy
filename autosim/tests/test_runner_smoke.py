@@ -88,7 +88,7 @@ def test_runner_publishes_scan_and_points_when_enabled(monkeypatch):
     monkeypatch.setattr(
         runner_module.SensorWorker,
         "submit",
-        lambda self, fn, *args: fn(*args),
+        lambda self, fn, *args, **kwargs: fn(*args),
     )
 
     root = Path(__file__).resolve().parents[1]
@@ -360,7 +360,7 @@ def test_map_grid_published_when_sensor_worker_drops(monkeypatch):
 
     link = FakeLink()
     runner = Runner(settings, max_steps=1, link=link, simulator=FakeSimulator())
-    runner.sensor_worker.submit = lambda fn, *args: None  # drop async cloud work
+    runner.sensor_worker.submit = lambda fn, *args, **kwargs: None  # drop async cloud work
     runner.run()
     assert "/map" in runner.node.writers
     assert len(runner.node.writers["/map"].msgs) >= 1
@@ -478,7 +478,7 @@ def test_chase_link_is_dynamic_child_of_base_link(monkeypatch):
     monkeypatch.setattr(
         runner_module.SensorWorker,
         "submit",
-        lambda self, fn, *args: fn(*args),
+        lambda self, fn, *args, **kwargs: fn(*args),
     )
 
     root = Path(__file__).resolve().parents[1]

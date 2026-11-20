@@ -3,24 +3,24 @@
   ansible.builtin.file:
     path: "{{ autonomy_config_dir }}"
     state: directory
-    owner: root
-    group: "{{ autonomy_user }}"
+    owner: "{{ 'root' if autonomy_system_install | bool else omit }}"
+    group: "{{ autonomy_user if autonomy_system_install | bool else omit }}"
     mode: "0750"
   register: autonomy_config_directory
-  become: true
+  become: "{{ autonomy_system_install | bool }}"
 
 - name: Copy component configuration from control machine
   ansible.builtin.copy:
     src: "{{ autonomy_config_source_dir }}/autonomy/{{ item }}/conf/"
     dest: "{{ autonomy_config_dir }}/{{ item }}/"
-    owner: root
-    group: "{{ autonomy_user }}"
+    owner: "{{ 'root' if autonomy_system_install | bool else omit }}"
+    group: "{{ autonomy_user if autonomy_system_install | bool else omit }}"
     mode: "0640"
     directory_mode: "0750"
   loop: "{{ autonomy_config_components }}"
   register: autonomy_config_push
   when: autonomy_play_mode == 'push'
-  become: true
+  become: "{{ autonomy_system_install | bool }}"
 
 - name: Copy component configuration from build host
   ansible.builtin.copy:
@@ -34,7 +34,7 @@
   when:
     - autonomy_play_mode != 'push'
     - autonomy_deploy_mode == 'build'
-  become: true
+  become: "{{ autonomy_system_install | bool }}"
 
 - name: Install configuration bundled with artifact
   ansible.builtin.copy:
@@ -48,17 +48,17 @@
     - autonomy_play_mode != 'push'
     - autonomy_deploy_mode == 'artifact'
     - autonomy_config_from_artifact | bool
-  become: true
+  become: "{{ autonomy_system_install | bool }}"
 
 - name: Set config ownership
   ansible.builtin.file:
     path: "{{ autonomy_config_dir }}"
     state: directory
-    owner: root
-    group: "{{ autonomy_user }}"
+    owner: "{{ 'root' if autonomy_system_install | bool else omit }}"
+    group: "{{ autonomy_user if autonomy_system_install | bool else omit }}"
     recurse: true
   register: autonomy_config_owner
-  become: true
+  become: "{{ autonomy_system_install | bool }}"
 
 - name: Correct config permissions only when needed
   ansible.builtin.shell: |
@@ -69,7 +69,7 @@
     executable: /bin/bash
   register: autonomy_config_permissions
   changed_when: autonomy_config_permissions.stdout | length > 0
-  become: true
+  become: "{{ autonomy_system_install | bool }}"
 
 - name: Report runtime configuration changes
   ansible.builtin.set_fact:

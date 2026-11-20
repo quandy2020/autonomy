@@ -29,6 +29,8 @@ public:
     /** @brief Selects an intent or reports progress of the finite candidate sweep. */
     StrategyDecision Select(const Pose2d&,const Pose2d&,const MapReadView&,const CoverageState&,
         perception::SensorMask,double now,const std::function<bool()>& cancel_checker={}) override;
+    /** @brief Exclude a failed viewpoint neighbourhood from the next selections. */
+    void MarkFailed(const ObservationGoal&, double now) override;
     /** @brief Returns the strategy-owned fair revisit queue. */
     FrontierQueue& frontier_queue(){return queue_;}
 private:
@@ -52,5 +54,7 @@ private:
     std::uint64_t sweep_start_coverage_revision_ = 0;  ///< Requirements at pass start.
     perception::SensorMask sweep_start_sensors_ = 0;  ///< Source capabilities at pass start.
     std::optional<std::pair<int, int>> sampling_start_cell_;  ///< Reachability origin dependency.
+    struct FailedViewpoint { Pose2d pose; double until = 0; };
+    std::vector<FailedViewpoint> failed_viewpoints_;  ///< Bounded retry cooldown.
 };
 }  // namespace autonomy::task::exploration

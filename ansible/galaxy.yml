@@ -28,3 +28,6 @@ build_ignore:
   - scripts/install_collection.sh
   - scripts/vault-init.sh
   - scripts/deployment_audit.py
+  - scripts/controller_env.sh
+  - scripts/prepare_release.py
+  - vars/release*.yml

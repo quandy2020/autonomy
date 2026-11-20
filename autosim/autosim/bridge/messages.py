@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import math
-from typing import Optional, Sequence, Tuple, Union
+from typing import Any, Mapping, Optional, Sequence, Tuple, Union
 
 import numpy as np
 
@@ -205,6 +205,22 @@ class Messages:
         cls.set_header(message.header, stamp, frame_id)
         message.twist.linear.x = float(linear_x)
         message.twist.angular.z = float(angular_z)
+        return message
+
+    @classmethod
+    def encode_twist(cls, linear_x: float, angular_z: float) -> Twist:
+        """Build a bare planar ``geometry_msgs.Twist`` for ``cmd_vel``.
+
+        Args:
+            linear_x: Forward speed (m/s).
+            angular_z: Yaw rate (rad/s).
+
+        Returns:
+            Populated :class:`Twist` (no header, no timestamp).
+        """
+        message = Twist()
+        message.linear.x = float(linear_x)
+        message.angular.z = float(angular_z)
         return message
 
     @classmethod
@@ -930,3 +946,50 @@ class Messages:
         else:
             twist = getattr(message, "twist", message)
         return float(twist.linear.x), float(twist.angular.z)
+
+    @classmethod
+    def encode_diagnostics(
+        cls,
+        stamp: Tuple[int, int],
+        frame_id: str,
+        rows: Sequence[Mapping[str, Any]],
+    ) -> Any:
+        """Build a ``diagnostic_msgs.DiagnosticArray`` from health rows.
+
+        Args:
+            stamp: Timestamp ``(sec, nanosec)``.
+            frame_id: Header frame.
+            rows: Mappings with ``name``, ``level``, ``message``,
+                ``hardware_id`` and a ``values`` mapping.
+
+        Returns:
+            Populated :class:`DiagnosticArray`.
+
+        Raises:
+            ImportError: automsgs was built without ``diagnostic_msgs``.
+        """
+        from automsgs.msgs.diagnostic_msgs.diagnostic_array_pb2 import DiagnosticArray
+        from automsgs.msgs.diagnostic_msgs.diagnostic_status_pb2 import (
+            DiagnosticStatus,
+        )
+        from automsgs.msgs.diagnostic_msgs.key_value_pb2 import KeyValue
+
+        levels = {
+            "OK": DiagnosticStatus.OK,
+            "WARN": DiagnosticStatus.WARN,
+            "ERROR": DiagnosticStatus.ERROR,
+            "STALE": DiagnosticStatus.STALE,
+        }
+        message = DiagnosticArray()
+        cls.set_header(message.header, stamp, frame_id)
+        for row in rows:
+            status = message.status.add()
+            status.level = levels.get(str(row.get("level") or "OK").upper(), DiagnosticStatus.OK)
+            status.name = str(row.get("name") or "")
+            status.message = str(row.get("message") or "")
+            status.hardware_id = str(row.get("hardware_id") or "")
+            for key, value in (row.get("values") or {}).items():
+                entry = status.values.add()
+                entry.key = str(key)
+                entry.value = str(value)
+        return message

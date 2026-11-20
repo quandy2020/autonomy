@@ -9,12 +9,14 @@
   retries: "{{ autonomy_apt_update_retries }}"
   delay: "{{ autonomy_apt_update_retry_delay }}"
   until: autonomy_apt_cache is succeeded
+  when: autonomy_install_dependencies | bool
 
 - name: Install base packages for deployment
   ansible.builtin.apt:
     name: "{{ autonomy_base_packages }}"
     state: present
   become: true
+  when: autonomy_install_dependencies | bool
 
 - name: Create autonomy group
   ansible.builtin.group:

@@ -4,6 +4,7 @@
  * @brief Native complete-coverage coverage server implementation. */
 #include "autonomy/task/navigation/coverage/coverage_server.hpp"
 
+#include "autonomy/task/navigation/coverage/region_orderer.hpp"
 #include "autonomy/task/navigation/coverage/region_segmenter.hpp"
 
 #include <boost/geometry.hpp>
@@ -401,9 +402,36 @@ ComputeAction::Result CoverageServer::Compute(
       RegionSegmenter::Options options;
       options.columns = goal.region_columns() > 0 ? goal.region_columns() : 2;
       options.rows = goal.region_rows() > 0 ? goal.region_rows() : 2;
-      const std::vector<F2CCells> regions =
+      std::vector<F2CCells> regions =
           map_based ? RegionSegmenter::MapSplit(goal.map(), RegionSegmenter::MapOptions{})
                     : RegionSegmenter::GridSplit(field, options);
+      std::vector<std::pair<double, double>> centroids;
+      for (const auto& cells : regions) {
+        if (cells.IsEmpty()) {
+          centroids.emplace_back(0.0, 0.0);
+          continue;
+        }
+        double sum_x = 0.0;
+        double sum_y = 0.0;
+        int count = 0;
+        for (const auto& point : cells.GetCellBorder(0)) {
+          sum_x += point.GetX() + (map_based ? 0.0 : reference.GetX());
+          sum_y += point.GetY() + (map_based ? 0.0 : reference.GetY());
+          ++count;
+        }
+        centroids.emplace_back(count > 0 ? sum_x / count : 0.0,
+                               count > 0 ? sum_y / count : 0.0);
+      }
+      const double start_x = goal.use_start_pose() ? goal.start_pose().axis1() : 0.0;
+      const double start_y = goal.use_start_pose() ? goal.start_pose().axis2() : 0.0;
+      const auto ordered = RegionOrderer::Order(centroids, start_x, start_y);
+      std::vector<F2CCells> ordered_regions;
+      ordered_regions.reserve(regions.size());
+      for (const std::size_t index : ordered.order) {
+        ordered_regions.push_back(std::move(regions[index]));
+      }
+      regions = std::move(ordered_regions);
+      result.set_travel_distance(ordered.distance);
       const auto shift_cells = [](const F2CCells& cells, double dx,
                                   double dy) {
         F2CCells output;
@@ -440,6 +468,7 @@ ComputeAction::Result CoverageServer::Compute(
         }
         auto* region = result.add_regions();
         region->set_id(region_index);
+        region->set_order(region_index + 1);
         region->set_name("Region " + std::to_string(region_index + 1));
         region->set_color_index(region_index % 8);
         const double area = RegionSegmenter::Area(display);

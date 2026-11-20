@@ -57,6 +57,7 @@ from autosim.robot.policy import PolicyDriver
 from autosim.robot.profiles import apply_profile
 from autosim.robot.urdf import UrdfModel
 from autosim.runtime.instance_lock import InstanceLock, InstanceLockError
+from autosim.runtime.health import HealthMonitor
 from autosim.runtime.paths import project_root
 from autosim.runtime.presets import compose_config, format_catalog
 from autosim.runtime.settings import Config
@@ -66,6 +67,7 @@ from autosim.scene.world import World
 
 from automsgs.msgs.geometry_msgs.pose_stamped_pb2 import PoseStamped
 from automsgs.msgs.geometry_msgs.polygon_stamped_pb2 import PolygonStamped
+from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 from automsgs.msgs.map_msgs.occupancy_grid_pb2 import OccupancyGrid
 from automsgs.msgs.nav_msgs.odometry_pb2 import Odometry
@@ -86,6 +88,24 @@ from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
 # needs the optical chain before the first map→odom publish.
 TF_STATIC_REPUBLISH_SEC = 0.05
 ROBOT_DESCRIPTION_REPUBLISH_SEC = 1.0
+
+
+def cmd_vel_message_type(robot_cfg: Dict[str, Any]) -> Any:
+    """Protobuf type for ``cmd_vel`` selected by ``robot.cmd_vel_type``.
+
+    ``twist`` accepts a bare ``geometry_msgs/Twist`` (ROS 1 style, and what
+    most Nav2-adjacent controllers publish); ``twist_stamped`` is the ROS 2
+    default. The autolink reader is typed, so the choice must match the
+    publisher or every command is dropped.
+
+    Args:
+        robot_cfg: ``habitat.robot`` mapping.
+
+    Returns:
+        :class:`Twist` or :class:`TwistStamped`.
+    """
+    kind = str(robot_cfg.get("cmd_vel_type") or "twist_stamped").strip().lower()
+    return Twist if kind == "twist" else TwistStamped
 
 
 class Runner:
@@ -150,7 +170,19 @@ class Runner:
         self.warmup_map()
         # Worker for protobuf encoding + bridge publish only.
         # All Habitat GL/ray-cast calls remain on the main thread.
-        self.sensor_worker = SensorWorker()
+        self.health = HealthMonitor()
+        self.sensor_worker = SensorWorker(self.health)
+        # ``/autosim/status`` reports the counters above.
+        self.status_elapsed = 0.0
+        # Named joint commands: last target per joint plus the arrival time, so
+        # a dropped publisher can be released instead of holding a pose forever.
+        self.joint_targets: Dict[str, float] = {}
+        self.joint_command_stamp: Optional[float] = None
+        # Auto-grounding re-measures the rendered bounding box after joint
+        # changes; ``None`` means the configured ``root_height`` still applies.
+        self.grounding_cfg = dict(self.robot_cfg.get("grounding") or {})
+        self.grounding_elapsed = 0.0
+        self.ground_height_m: Optional[float] = None
 
     @staticmethod
     def resolve_link(link: Any) -> Any:
@@ -209,6 +241,7 @@ class Runner:
         self.tf_cfg = dict(self.robot_cfg.get("tf") or {"enabled": False})
         self.clock_cfg = self.robot_cfg.get("clock") or {"enabled": False}
         self.footprint = self.robot_cfg.get("footprint") or {"enabled": False}
+        self.status_cfg = dict(self.robot_cfg.get("status") or {})
         self.tf_static_elapsed = TF_STATIC_REPUBLISH_SEC
         # slam: localization owns map→odom and OccupancyGrid ``/map``.
         # nav: autosim also publishes drift-corrected map→odom.
@@ -393,7 +426,7 @@ class Runner:
         Returns:
             Writer/reader type dictionary for :class:`~autosim.bridge.Bridge`.
         """
-        types: Dict[str, Any] = {"cmd_vel": TwistStamped}
+        types: Dict[str, Any] = {"cmd_vel": cmd_vel_message_type(self.robot_cfg)}
         if self.odom.get("enabled", True):
             types["odom"] = Odometry
             if str(self.odom.get("path_channel") or "").strip():
@@ -484,6 +517,17 @@ class Runner:
                 types["hunav_agents"] = agents_pb2.Agents
             except Exception:
                 pass
+        if self.status_cfg.get("enabled", False):
+            try:
+                from automsgs.msgs.diagnostic_msgs.diagnostic_array_pb2 import (
+                    DiagnosticArray,
+                )
+
+                types["status"] = DiagnosticArray
+            except ImportError:
+                logger.warning(
+                    "automsgs has no diagnostic_msgs; /autosim/status disabled"
+                )
         return types
 
     def bind_bridge(self) -> None:
@@ -636,7 +680,12 @@ class Runner:
                     dt = min(elapsed, 0.25)
                 else:
                     dt = period
+                cycle_start = time.perf_counter()
                 self.cycle(dt)
+                self.health.record_cycle(
+                    (time.perf_counter() - cycle_start) * 1000.0,
+                    period * 1000.0,
+                )
                 steps += 1
                 if self.max_steps is not None and steps >= self.max_steps:
                     break
@@ -670,6 +719,7 @@ class Runner:
         """
         self.poll_command(dt)
         self.poll_joint_command()
+        self.update_grounding(dt)
         drive_wheels = getattr(self.simulator, "drive_wheels", None)
         wheeled = callable(drive_wheels) and getattr(self.simulator, "wheeled", None)
         if wheeled:
@@ -775,6 +825,12 @@ class Runner:
         self.emit("topdown", self.submit_topdown, stamp)
         self.emit("chase", self.submit_chase, stamp)
         self.emit("dataset", self.record_dataset_frame, stamp, dt)
+        if self.status_cfg.get("enabled", False):
+            rate = float(self.status_cfg.get("rate_hz", 1.0) or 1.0)
+            self.status_elapsed += dt
+            if self.status_elapsed >= 1.0 / max(rate, 1e-3):
+                self.status_elapsed = 0.0
+                self.emit("status", self.publish_status, stamp)
 
     def record_dataset_frame(self, stamp: Tuple[int, int], dt: float) -> None:
         """Append an imitation-learning frame when ``habitat.dataset`` is enabled."""
@@ -857,7 +913,9 @@ class Runner:
             angular=angular,
             scan_period=scan_period,
         )
-        self.sensor_worker.submit(self.encode_publish_cloud, points, stamp)
+        self.sensor_worker.submit(
+            self.encode_publish_cloud, points, stamp, label="points"
+        )
 
     def encode_publish_cloud(self, points: Any, stamp: Tuple[int, int],
                              rings: Any = None) -> None:
@@ -1003,7 +1061,7 @@ class Runner:
             )
             self.publish_camera_fov_marker(stamp, frame)
 
-        self.sensor_worker.submit(encode_and_publish)
+        self.sensor_worker.submit(encode_and_publish, label="camera")
 
     def publish_camera_fov_marker(
         self, stamp: Tuple[int, int], frame: str | None = None
@@ -1388,10 +1446,31 @@ class Runner:
             action: Callable to invoke.
             *args: Forwarded to ``action``.
         """
+        entry = self.health.stream(name)
+        start = time.perf_counter()
         try:
             action(*args)
         except Exception as exc:
+            entry.record_error(exc)
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
+        else:
+            entry.record((time.perf_counter() - start) * 1000.0)
+
+    def publish_status(self, stamp: Tuple[int, int]) -> None:
+        """Publish ``/autosim/status`` with per-stream health counters.
+
+        Args:
+            stamp: Timestamp ``(sec, nanosec)`` shared with TF.
+        """
+        if "status" not in self.bridge.writers:
+            return
+        rows = self.health.rows(
+            hardware_id=str(self.robot_cfg.get("profile") or ""),
+        )
+        message = Messages.encode_diagnostics(
+            stamp, str(self.robot_cfg.get("map_frame") or "map"), rows
+        )
+        self.bridge.publish("status", message)
 
     def sensor_delay(self, sensor: str | None) -> float:
         """Delivery delay for one frame of ``sensor`` (0 when timing is off).
@@ -1439,18 +1518,127 @@ class Runner:
             self.bridge.publish(key, message)
 
     def poll_joint_command(self) -> None:
-        """Consume named JointState position commands on the simulation thread."""
+        """Consume named JointState position commands on the simulation thread.
+
+        A command is a target, not a one-shot pose: ``max_step`` (largest
+        change per control tick, rad or m) ramps the joints toward it so a
+        large jump does not teleport the model, and
+        ``timeout_sec`` releases the target when the publisher disappears.
+        ``mode`` decides what happens on timeout: ``hold`` keeps the last
+        pose, ``home`` returns to ``robot.joint_positions``, and ``zero``
+        drives every commanded joint to 0.
+
+        """
+        cfg = self.robot_cfg.get("joint_command") or {}
         reader = getattr(self.bridge, "joint_command_reader", None)
-        if reader is None or not reader.has_msg():
+        if reader is None:
             return
-        message = reader.get_msg()
+        now = self.clock.now()
+        if reader.has_msg():
+            message = reader.get_msg()
+            try:
+                names, positions = list(message.name), list(message.position)
+                if (
+                    not names
+                    or len(names) != len(positions)
+                    or len(set(names)) != len(names)
+                ):
+                    raise ValueError(
+                        "joint command requires unique names and matching positions"
+                    )
+                targets = {}
+                for name, position in zip(names, positions):
+                    value = float(position)
+                    if not math.isfinite(value):
+                        raise ValueError(f"joint {name} position must be finite")
+                    targets[name] = value
+                self.joint_targets = targets
+                self.joint_command_stamp = now
+            except (TypeError, ValueError) as exc:
+                logger.warning("joint command rejected: %s", exc)
+                return
+        if not self.joint_targets:
+            return
+        timeout = float(cfg.get("timeout_sec", 0.0) or 0.0)
+        if (
+            timeout > 0.0
+            and self.joint_command_stamp is not None
+            and now - self.joint_command_stamp > timeout
+        ):
+            mode = str(cfg.get("mode") or "hold").strip().lower()
+            if mode == "home":
+                home = self.robot_cfg.get("joint_positions") or {}
+                self.joint_targets = {
+                    name: float(home[name])
+                    for name in self.joint_targets
+                    if name in home
+                }
+            elif mode == "zero":
+                self.joint_targets = {name: 0.0 for name in self.joint_targets}
+            self.joint_command_stamp = None
+            logger.info("joint command timed out after %.2fs; mode=%s", timeout, mode)
+        current = self.simulator.joint_states()
+        if not current:
+            return
+        max_step = float(cfg.get("max_step", 0.0) or 0.0)
+        updates: Dict[str, float] = {}
+        for name, target in self.joint_targets.items():
+            if name not in current:
+                continue
+            value = float(target)
+            if max_step > 0.0:
+                delta = value - float(current[name])
+                value = float(current[name]) + max(-max_step, min(max_step, delta))
+            if abs(value - float(current[name])) < 1e-9:
+                # Already there: skip the write so an idle command does not
+                # keep resetting the finite-difference joint velocity.
+                continue
+            updates[name] = value
+        if not updates:
+            return
         try:
-            names, positions = list(message.name), list(message.position)
-            if not names or len(names) != len(positions) or len(set(names)) != len(names):
-                raise ValueError("joint command requires unique names and matching positions")
-            self.simulator.set_joint_positions(dict(zip(names, positions)))
+            self.simulator.set_joint_positions(updates)
         except (ValueError, RuntimeError) as exc:
             logger.warning("joint command rejected: %s", exc)
+
+    def update_grounding(self, dt: float) -> None:
+        """Keep the lowest rendered vertex on the floor after joint changes.
+
+        ``robot.grounding.enabled`` re-measures the articulated object's
+        bounding box at ``update_hz`` and shifts ``root_height`` so feet,
+        wheels or a lowered arm stay in contact instead of floating or
+        sinking. ``mode: fixed`` keeps the configured height.
+        """
+        cfg = self.grounding_cfg
+        if not cfg.get("enabled", False):
+            return
+        if str(cfg.get("mode") or "auto").strip().lower() == "fixed":
+            return
+        ground = getattr(self.simulator, "ground_robot", None)
+        if not callable(ground):
+            return
+        rate = float(cfg.get("update_hz", 5.0) or 5.0)
+        self.grounding_elapsed += float(dt)
+        if rate > 0.0 and self.grounding_elapsed < 1.0 / rate:
+            return
+        self.grounding_elapsed = 0.0
+        try:
+            height = ground(float(cfg.get("clearance_m", 0.0) or 0.0))
+        except Exception as exc:
+            logger.debug("auto-grounding failed: %s", exc)
+            return
+        if height is not None:
+            self.ground_height_m = float(height)
+
+    def ground_height(self) -> float:
+        """Effective URDF root height (auto-grounding may override config)."""
+        height = getattr(self.simulator, "root_height", None)
+        if callable(height):
+            try:
+                return float(height())
+            except Exception:
+                pass
+        return float(self.robot_cfg.get("root_height", 0.0))
 
     def poll_command(self, dt: float = 0.02) -> None:
         """Apply teleop ``cmd_vel`` and/or an optional ONNX twist policy.
@@ -1645,7 +1833,7 @@ class Runner:
                 pose_variance=variance,
                 twist_variance=variance,
             )
-        message.pose.pose.pose.position.z = float(self.robot_cfg.get("root_height", 0.0))
+        message.pose.pose.pose.position.z = self.ground_height()
         self.bridge.publish("odom", message)
         self.publish_odom_path(ox, oy, oyaw, stamp)
 
@@ -2055,7 +2243,7 @@ class Runner:
         dynamic = [
             Messages.encode_transform(
                 stamp, odom_frame, odom_child,
-                (ox, oy, float(self.robot_cfg.get("root_height", 0.0))), oyaw
+                (ox, oy, self.ground_height()), oyaw
             ),
         ]
         if publish_map_odom:

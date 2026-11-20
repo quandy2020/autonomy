@@ -63,18 +63,34 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
         autonomy::navigation::GeometrySafety geometry(map.grid,body);
         const autonomy::navigation::Pose2d current{pose.position().x(),pose.position().y(),yaw};
         const auto body_check = geometry.VerifyPose(current);
-        if (!body_check.safe) return body_check;
         if (commanded_speed <= 1e-9) return body_check;
         // The stop distance applies along the commanded translation. Expanding
         // a complete circle by that distance falsely rejects motion parallel
-        // to a nearby wall. Keep the exact body footprint at the current pose,
-        // then validate the directional segment ending at a stationary pose.
+        // to a nearby wall. Validate the exact body at the current pose and the
+        // directional segment ending at a stationary pose.
         const double duration = options.actuator_watchdog + options.reaction_time;
         const double heading = yaw + .5 * twist.angular().z() * duration;
         autonomy::navigation::Pose2d stop = current;
         stop.x += std::cos(heading) * distance;
         stop.y += std::sin(heading) * distance;
-        return geometry.VerifySegment(current, stop);
+        if (body_check.safe) return geometry.VerifySegment(current, stop);
+
+        // A robot can be placed or pushed a few centimetres inside the map's
+        // inflated/occupied band while the commanded direction still exits
+        // that band. Refusing every command traps it permanently. Permit only
+        // a bounded escape whose remaining segment is safe at every sample.
+        const auto stop_check = geometry.VerifyPose(stop);
+        if (!stop_check.safe && stop_check.clearance <= body_check.clearance)
+            return body_check;
+        constexpr int kEscapeSamples = 8;
+        for (int index = 1; index <= kEscapeSamples; ++index) {
+            const double fraction = static_cast<double>(index) / kEscapeSamples;
+            autonomy::navigation::Pose2d sample = current;
+            sample.x += (stop.x - current.x) * fraction;
+            sample.y += (stop.y - current.y) * fraction;
+            if (!geometry.VerifyPose(sample).safe) return body_check;
+        }
+        return stop_check;
     } catch (const std::exception&) { return deny("native geometry checker rejected its input"); }
 }
 

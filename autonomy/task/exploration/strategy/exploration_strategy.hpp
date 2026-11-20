@@ -17,5 +17,7 @@ public:
     virtual StrategyDecision Select(const Pose2d& start,const Pose2d& home,const MapReadView& map,
         const CoverageState& coverage,perception::SensorMask active,double now,
         const std::function<bool()>& cancel_checker={})=0;
+    /** @brief Suppress a repeatedly unreachable viewpoint for a bounded cooldown. */
+    virtual void MarkFailed(const ObservationGoal&, double) {}
 };
 }  // namespace autonomy::task::exploration

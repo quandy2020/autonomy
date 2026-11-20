@@ -1,0 +1,21 @@
+extends: fake.yaml
+
+habitat:
+  scenario:
+    type: random_room
+    seed: 510
+    resolution: 0.2
+    x_length: 16
+    y_length: 16
+    room_number: 4
+    max_windows: 2
+  spawn: [-1.8, -0.8, 0.0]
+  robot:
+    max_angular: 2.0
+    truth:
+      enabled: true
+  sensors:
+    camera:
+      width: 160
+      height: 120
+      depth_points_stride: 1

@@ -56,6 +56,7 @@
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 #include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
 #include "autonomy/planning/planner/vista/vista_planner.hpp"
+#include "autonomy/planning/planner/vista/vista_graph_visualizer.hpp"
 #include "autonomy/planning/utils/geometry_utils.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
@@ -379,6 +380,7 @@ PlannerServer::~PlannerServer() {
     map_reader_.reset();
     plan_writer_.reset();
     correlated_plan_writer_.reset();
+    vista_graph_visualizer_.reset();
     if (costmap_wrapper_) {
         costmap_wrapper_->SetMapPublishCallback(nullptr);
     }
@@ -496,6 +498,34 @@ void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path,
     }
 }
 
+void PlannerServer::PublishVistaGraph(const std::string& planner_id) {
+    if (!vista_graph_visualizer_) {
+        return;
+    }
+    const auto instance = GetPlanner(planner_id);
+    const auto vista =
+        std::dynamic_pointer_cast<planner::vista::VistaPlanner>(instance);
+    if (!vista) {
+        return;
+    }
+    const auto routes = vista->SharedRoutePlanner();
+    if (!routes) {
+        return;
+    }
+    std::string frame_id = "map";
+    if (const auto map = vista->LatestMapView();
+        map && !map->frame_id.empty()) {
+        frame_id = map->frame_id;
+    }
+    const auto graph = routes->GraphSnapshot();
+    const auto route = vista->LastRoute();
+    const bool published = vista_graph_visualizer_->Publish(graph, route, frame_id);
+    AINFO_EVERY(5) << "VISTA_GRAPH publish nodes=" << graph.nodes.size()
+                   << " edges=" << graph.edges.size()
+                   << " route=" << (route ? route->path.poses.size() : 0)
+                   << " accepted=" << published;
+}
+
 automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
     const automsgs::msgs::geometry_msgs::PoseStamped& start,
     const automsgs::msgs::geometry_msgs::PoseStamped& goal,
@@ -527,6 +557,7 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
     }
 
     ThrowOnPlannerResultCode(return_code, resolved_planner_id);
+    PublishVistaGraph(resolved_planner_id);
     return path;
 }
 

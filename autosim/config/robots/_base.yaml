@@ -37,7 +37,27 @@ habitat:
       # Only articulated robots (Google, G1, Go2) override this to true.
       enabled: false
       channel: /joint_commands
+      # Release the target when the publisher stops, so a crashed teleop does
+      # not leave the model frozen mid-motion. ``hold`` keeps the last pose;
+      # ``home`` returns to robot.joint_positions; ``zero`` drives to 0.
       timeout_sec: 1.0
+      mode: hold
+      # Largest joint change per control tick (rad or m); 0 disables the ramp.
+      max_step: 0.05
+    grounding:
+      # Re-measure the rendered bounding box and keep the lowest vertex on the
+      # floor. Without this, moving the legs or lowering the arm leaves the
+      # robot floating or buried. ``fixed`` keeps root_height as authored.
+      enabled: true
+      mode: auto
+      clearance_m: 0.0
+      update_hz: 5.0
+    status:
+      # diagnostic_msgs/DiagnosticArray: per-stream rate, dropped frames,
+      # encode latency and control-loop overruns.
+      enabled: true
+      channel: /autosim/status
+      rate_hz: 1.0
     tf:
       enabled: true
       channel: /tf

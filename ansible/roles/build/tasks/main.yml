@@ -4,7 +4,9 @@
     name: ccache
     state: present
     lock_timeout: "{{ autonomy_apt_lock_timeout }}"
-  when: autonomy_use_ccache | bool
+  when:
+    - autonomy_use_ccache | bool
+    - autonomy_system_install | bool
   become: true
 
 - name: Create build and cache directories
@@ -93,4 +95,4 @@
     argv: [cmake, --install, "{{ autonomy_cmake_build_dir }}"]
   register: autonomy_cmake_install
   changed_when: "'-- Installing:' in autonomy_cmake_install.stdout"
-  become: true
+  become: "{{ autonomy_system_install | bool }}"

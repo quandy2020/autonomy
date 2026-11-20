@@ -35,6 +35,7 @@ from autosim.bridge.messages import Messages
 from autosim.runtime.paths import project_root
 from autosim.runtime.presets import compose_config
 
+from automsgs.msgs.geometry_msgs.twist_pb2 import Twist
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 
 
@@ -95,6 +96,7 @@ class Teleop:
         frame_id: str = "base_link",
         linear_step: float = 0.05,
         angular_step: float = 0.1,
+        message_type: str = "twist_stamped",
         link: Any = None,
     ) -> None:
         """Create a teleop publisher.
@@ -107,6 +109,8 @@ class Teleop:
             frame_id: Twist header frame.
             linear_step: Linear increment per ``w``/``x``.
             angular_step: Angular increment per ``a``/``d``.
+            message_type: ``twist_stamped`` (ROS 2 style) or ``twist``; must
+                match ``robot.cmd_vel_type`` or the sim drops the messages.
             link: Injected autolink module; otherwise ``import autolink``.
 
         Raises:
@@ -120,6 +124,9 @@ class Teleop:
         self.frame_id = str(frame_id)
         self.linear_step = float(linear_step)
         self.angular_step = float(angular_step)
+        self.message_type = str(message_type or "twist_stamped").strip().lower()
+        if self.message_type not in ("twist", "twist_stamped"):
+            raise ValueError("message_type must be 'twist' or 'twist_stamped'")
         self.clock = Clock()
         self.target_linear = 0.0
         self.target_angular = 0.0
@@ -153,7 +160,8 @@ class Teleop:
         """Initialize autolink and create the ``cmd_vel`` writer."""
         self.link.init("autosim_teleop")
         self.node = self.link.Node("autosim_teleop")
-        self.writer = self.node.create_writer(self.channel, TwistStamped, qos_depth=10)
+        dtype = Twist if self.message_type == "twist" else TwistStamped
+        self.writer = self.node.create_writer(self.channel, dtype, qos_depth=10)
 
     def print_vels(self) -> None:
         """Print the latched target velocities (same wording as autonomy_teleop)."""
@@ -222,10 +230,14 @@ class Teleop:
         return self.control_linear, self.control_angular
 
     def publish_twist(self) -> None:
-        """Publish the current command as ``TwistStamped``."""
+        """Publish the current command as ``Twist`` or ``TwistStamped``."""
         linear, angular = self.command_speeds()
-        stamp = self.clock.stamp()
-        message = Messages.encode_twist_stamped(linear, angular, stamp, self.frame_id)
+        if self.message_type == "twist":
+            message = Messages.encode_twist(linear, angular)
+        else:
+            message = Messages.encode_twist_stamped(
+                linear, angular, self.clock.stamp(), self.frame_id
+            )
         self.writer.write(message)
 
     def run(self) -> None:
@@ -297,4 +309,5 @@ class Teleop:
             max_angular=float(robot["max_angular"]),
             rate_hz=min(20.0, float(robot["control_hz"])),
             frame_id="base_link",
+            message_type=str(robot.get("cmd_vel_type") or "twist_stamped"),
         ).run()

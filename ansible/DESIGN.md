@@ -48,7 +48,7 @@ PR 检查使用 GitHub 托管 runner。原生发布构建只由手动 workflow_d
 
 ## 检查与限制
 
-本地 CI 应验证入口模式和环境优先级、5 套 inventory、最小真实 CMake build/install、打包路径、归档越界/特殊文件/前缀/架构，以及 playbook 语法。隔离容器测试部署真实 artifact role，覆盖首次安装、重复无变更、升级不残留、previous、错误 checksum 和缺少 binary 时保持当前版本。Molecule 在 systemd 容器里额外检查 unit 启动和幂等性。
+本地 CI 应验证入口模式和环境优先级、6 套 inventory、最小真实 CMake build/install、打包路径、归档越界/特殊文件/前缀/架构，以及 playbook 语法。隔离容器测试部署真实 artifact role，覆盖首次安装、重复无变更、升级不残留、previous、错误 checksum 和缺少 binary 时保持当前版本。Molecule 在 systemd 容器里额外检查 unit 启动和幂等性。
 
 目前 active 检查不包含健康持续时间、传感器时效、定位状态、导航任务或硬件动作；生产验收应使用目标平台已有指标。release workflow 需要实际 runner、环境审批和 SSH 配置后才能运行，提交 YAML 不代表这些外部条件已就绪。
 
@@ -65,3 +65,17 @@ PR 检查使用 GitHub 托管 runner。原生发布构建只由手动 workflow_d
 - 所有 lint 例外均有原因，目前只保留既有 autonomy_* 参数命名兼容，不跳过 package-latest、changed reporting 或真实模块校验。
 
 有意保留 `inventory/` 目录与现有变量 API；动态 CMDB inventory、AWX、全量 ABI/包锁定与业务健康指标，需要实际资产和平台数据后接入。此处不创建空插件，也不把这些条件描述成已经完成。
+
+## 本次宿主机验证
+
+在 Linux x86_64 宿主机、Python 3.12 控制环境执行本地门禁，并使用真实 systemd 隔离容器验证 Ubuntu 22.04 / 24.04 的 services、build 两类场景。每类覆盖 converge、二次执行 `changed=0` 和结果验证；编译场景执行小型 CMake/CTest 夹具，服务场景验证真实进程重启及未选服务保持停止。关闭依赖安装时，bootstrap 不更新 APT 或安装工具。
+
+另外执行真实 artifact/config 角色测试，验证重复安装、升级清理、previous、配置 push，以及坏 checksum / 缺少二进制时保持当前版本；本地 lint、语法、15 项测试、inventory 覆盖与工作流静态检查通过。可选 Docker 测试在默认单测套件跳过，已单独执行通过。
+
+本机使用已有 Ubuntu 构建镜像派生测试镜像，移除无关第三方 APT 源；24.04 镜像恢复发行版 Python 3.12。CI 仍使用声明的 systemd 镜像。以上验证不包含 ARM64、完整第三方重编译、真实机器人或 GitHub 发布环境；正式发布仍需配置 runner、审批和 SSH，并验收平台 ABI 与业务状态。
+
+## 一键本地发布入口
+
+`deploy.sh release <environment>` 先按 `vars/release.yml` 在指定 Docker 容器执行 colcon build，调用现有打包脚本，复制并校验归档后再进入原有 artifact playbook。控制机准备、制品准备、目标部署各自独立；失败不继续发布，目标服务与地址仍由 inventory 管理。此入口用于开发/实验环境，不用于 production 推广；生产继续使用已通过 staging 的同一制品和受审批工作流。
+
+用户目录安装通过 `autonomy_system_install: false` 关闭系统基线和 systemd 管理，并以当前用户安装制品及配置；demo inventory 将其与关闭依赖安装一起固定。系统部署默认行为保持不变。

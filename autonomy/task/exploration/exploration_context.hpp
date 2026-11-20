@@ -145,11 +145,11 @@ struct ExplorationSessionOptions {
     double yaw_tolerance=.1;  ///< Required view orientation tolerance in radians.
     double map_max_age=1;  ///< Maximum consumer map publication age in seconds.
     double pose_max_age=.5;  ///< Maximum localization pose age in seconds.
-    unsigned maximum_recoveries=3;  ///< Retry cap, applied separately to ordinary and compatible loss recovery.
+    unsigned maximum_recoveries=100;  ///< Retry cap; the global budget still bounds work.
     perception::SensorHealthOptions health;  ///< Finite quality, freshness and hysteresis thresholds.
     unsigned completion_rounds=3;  ///< Required stable completion rounds with valid observation evidence.
     ObservationRecoveryPolicy observation_recovery_policy = ObservationRecoveryPolicy::kReobserveScope;  ///< Fixed loss recovery/retention requirement.
-    double maximum_sensor_wait=10;  ///< Bounded sensing/localization outage wait in seconds.
+    double maximum_sensor_wait=30;  ///< Bounded sensing/localization outage wait in seconds.
     double planning_timeout=10;  ///< Deadline duration for a worker planning job, in seconds.
     double map_operation_timeout=10;  ///< Deadline duration for refresh, recovery or save, in seconds.
     double nominal_speed=.4;  ///< Translational speed used only for budget estimates, in meters per second.

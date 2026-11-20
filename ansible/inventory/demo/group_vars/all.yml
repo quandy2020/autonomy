@@ -1,0 +1,9 @@
+---
+autonomy_system_install: false
+autonomy_deploy_mode: artifact
+autonomy_install_dependencies: false
+autonomy_use_ccache: false
+autonomy_install_prefix: /home/quandy/workspace/demo
+autonomy_artifact_path: "{{ autonomy_controller_root }}/../dist/autonomy-demo.tar.gz"
+autonomy_config_dir: "{{ autonomy_install_prefix }}.config"
+autonomy_preflight_strict_os: false
