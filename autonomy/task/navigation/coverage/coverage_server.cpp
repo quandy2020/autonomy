@@ -10,6 +10,7 @@
 
 #include <boost/geometry.hpp>
 #include <cmath>
+#include <cstdio>
 #include <limits>
 
 #include "autonomy/planning/planner/fields2cover/path_planning/constrained_connection.hpp"
@@ -138,52 +139,6 @@ struct RoomCoverage {
 namespace {
 
 /** @brief Straight connector between two planned pieces inside one room. */
-F2CPath Connect(const F2CPoint& from, double from_angle, const F2CPoint& to,
-                double to_angle, const Configuration& config) {
-  F2CPath link;
-  const double length = from.Distance(to);
-  if (length < 1e-6) {
-    return link;
-  }
-  const double heading = std::atan2(to.GetY() - from.GetY(),
-                                    to.GetX() - from.GetX());
-  link.AddState(from, heading, length, f2c::types::PathDirection::FORWARD,
-                f2c::types::PathSectionType::TURN, config.turn_speed);
-  link.AddState(to, heading, 0.0, f2c::types::PathDirection::FORWARD,
-                f2c::types::PathSectionType::TURN, config.turn_speed);
-  (void)from_angle;
-  (void)to_angle;
-  return link;
-}
-
-}  // namespace
-
-namespace {
-
-/** @brief Straight connector between two planned pieces inside one room. */
-F2CPath Connect(const F2CPoint& from, double from_angle, const F2CPoint& to,
-                double to_angle, const Configuration& config) {
-  F2CPath link;
-  const double length = from.Distance(to);
-  if (length < 1e-6) {
-    return link;
-  }
-  const double heading = std::atan2(to.GetY() - from.GetY(),
-                                    to.GetX() - from.GetX());
-  link.AddState(from, heading, length, f2c::types::PathDirection::FORWARD,
-                f2c::types::PathSectionType::TURN, config.turn_speed);
-  link.AddState(to, heading, 0.0, f2c::types::PathDirection::FORWARD,
-                f2c::types::PathSectionType::TURN, config.turn_speed);
-  (void)from_angle;
-  (void)to_angle;
-  return link;
-}
-
-}  // namespace
-
-namespace {
-
-/** @brief Straight connector between two planned pieces inside one room. */
 F2CPath RoomLink(const F2CPoint& from, double from_angle, const F2CPoint& to,
                 double to_angle, const Configuration& config) {
   F2CPath link;
@@ -211,8 +166,9 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     return output;
   }
   HeadlandGenerator headlands(config);
-  // Keep the interior one robot radius away from the walls so the swath ends
-  // leave room for the bounded-curvature turns.
+  // Keep the interior at least one robot radius away from the walls. The
+  // swath lines then end inside the room, so the bounded-curvature turns can
+  // be planned without leaving the polygon.
   const double margin =
       std::max({config.robot_radius, config.operation_width,
                 std::max(0.05, config.robot_width * 0.5)});
@@ -231,154 +187,109 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     core = cells.Clone();
   }
   if (core.IsEmpty() || core.Area() < 1e-3) {
+    std::fprintf(stderr, "room inset failed area=%.2f\n", cells.Area());
     core = cells.Clone();
     band = false;
+  } else {
+    std::fprintf(stderr, "room inset ok area=%.2f core=%.2f\n",
+                 cells.Area(), core.Area());
   }
-
-  // Door frames and wall jogs make a room concave, and one bounded-curvature
-  // connection across the notch fails. Splitting into convex trapezoids keeps
-  // every turn inside a simple cell, which is what makes the turns smooth.
-  proto::DecompMode decomp_mode;
-  decomp_mode.set_mode("TRAPEZOIDAL");
-  F2CCells pieces;
-  try {
-    pieces = DecompGenerator(config).Decompose(core, decomp_mode);
-  } catch (const std::exception&) {
-    pieces = core.Clone();
-  }
-  std::vector<F2CCells> work;
-  for (std::size_t index = 0; index < pieces.size(); ++index) {
-    F2CCells piece(pieces.GetGeometry(index));
-    if (!piece.IsEmpty() && piece.Area() > 1e-3) {
-      work.push_back(std::move(piece));
-    }
-  }
-  if (work.empty()) {
-    work.push_back(core.Clone());
-  }
-
   SwathGenerator swath_generator(config);
+  auto grouped = swath_generator.GenerateSwathsByCells(core, goal.swath_mode());
+  if (grouped.SizeTotal() == 0) {
+    return output;
+  }
   RouteGenerator route_generator(config);
-  PathGenerator path_generator(config);
-  RobotParams robot(config);
-  f2c::pp::detail::FreeSpace free(cells);
+  F2CRoute route =
+      route_generator.GenerateRoute(core, core, grouped, goal.route_mode(), {});
+  route.SetField(cells);
+  F2CSwaths ordered = Flatten(route);
+  if (ordered.size() != grouped.SizeTotal()) {
+    return output;
+  }
 
-  F2CSwaths ordered_swaths;
-  F2CPath combined;
-  double covered_area = 0.0;
-  F2CPoint cursor;
-  double cursor_angle = 0.0;
-  bool have_cursor = false;
-  for (const auto& piece : work) {
-    auto grouped = swath_generator.GenerateSwathsByCells(piece, goal.swath_mode());
-    if (grouped.SizeTotal() == 0) {
-      continue;
-    }
-    F2CRoute route;
-    try {
-      route = route_generator.GenerateRoute(piece, piece, grouped,
-                                            goal.route_mode(), {});
-      route.SetField(piece);
-    } catch (const std::exception&) {
-      continue;
-    }
-    F2CSwaths swaths = Flatten(route);
-    if (swaths.size() != grouped.SizeTotal()) {
-      continue;
-    }
-    F2CPath path;
-    try {
-      path = path_generator.GeneratePath(route, goal.path_mode());
-    } catch (const std::exception&) {
+  PathGenerator path_generator(config);
+  F2CPath path;
+  try {
+    path = path_generator.GeneratePath(route, goal.path_mode());
+  } catch (const std::exception&) {
+    path = F2CPath();
+  }
+  // Turns planned for one swath can still swing outside the room; reject such
+  // a path and fall back to in-place turns so no pose leaves the room.
+  if (path.size() >= 2) {
+    RobotParams robot(config);
+    f2c::pp::detail::FreeSpace free(cells);
+    if (!f2c::pp::detail::ValidPath(path, robot.GetRobot(), &free)) {
       path = F2CPath();
     }
-    if (path.size() < 2 ||
-        !f2c::pp::detail::ValidPath(path, robot.GetRobot(), &free)) {
-      // The piece itself is still coverable with in-place turns.
-      F2CPath fallback;
-      F2CPoint last_point;
-      double last_angle = 0.0;
-      for (const auto& swath : swaths) {
-        const auto& line = swath.GetPath();
-        if (line.size() < 2 || line.Length() < 1e-6) {
-          continue;
-        }
-        const auto start = line.StartPoint();
-        const auto end = line.EndPoint();
-        const double heading = std::atan2(end.GetY() - start.GetY(),
-                                          end.GetX() - start.GetX());
-        fallback.AddState(start, heading, line.Length(),
-                          f2c::types::PathDirection::FORWARD,
-                          f2c::types::PathSectionType::SWATH,
-                          config.cruise_speed);
-        last_point = end;
-        last_angle = heading;
-      }
-      if (fallback.size() < 2) {
+  }
+  if (path.size() < 2) {
+    F2CPath fallback;
+    F2CPoint last_point;
+    double last_angle = 0.0;
+    bool have_last = false;
+    for (const auto& swath : ordered) {
+      const auto& line = swath.GetPath();
+      if (line.size() < 2 || line.Length() < 1e-6) {
         continue;
       }
+      const auto start = line.StartPoint();
+      const auto end = line.EndPoint();
+      const double heading = std::atan2(end.GetY() - start.GetY(),
+                                        end.GetX() - start.GetX());
+      fallback.AddState(start, heading, line.Length(),
+                        f2c::types::PathDirection::FORWARD,
+                        f2c::types::PathSectionType::SWATH,
+                        config.cruise_speed);
+      last_point = end;
+      last_angle = heading;
+      have_last = true;
+    }
+    if (have_last) {
       fallback.AddState(last_point, last_angle, 0.0,
                         f2c::types::PathDirection::FORWARD,
                         f2c::types::PathSectionType::SWATH,
                         config.cruise_speed);
-      path = fallback;
     }
-    if (have_cursor) {
-      combined += RoomLink(cursor, cursor_angle, path.AtStart(), path[0].angle,
-                          config);
+    if (fallback.size() < 2) {
+      return output;
     }
-    combined += path;
-    cursor = path.AtEnd();
-    cursor_angle = path.back().angle;
-    have_cursor = true;
-    for (const auto& swath : swaths) {
-      ordered_swaths.emplace_back(swath.GetPath().Clone(), swath.GetWidth(),
-                                  swath.GetId());
-    }
-    covered_area += f2c::obj::FieldCoverage().ComputeCost(piece, swaths) *
-                    piece.Area();
-  }
-  if (combined.size() < 2) {
-    return output;
+    path = fallback;
   }
 
-  // Sweep the wall band with concentric passes so the room is covered up to
-  // the walls while the interior keeps its smooth turns.
-  F2CPath band_path;
+  // Cover the wall band with concentric passes spaced by the swath width, so
+  // the room is swept right up to the walls while the interior keeps smooth
+  // turns.
+  F2CPath combined;
   if (band) {
     try {
       for (const auto& band_cells : headlands.GenerateHeadlandSwaths(
                cells, config.operation_width, band_mode)) {
         F2CPath loop = path_generator.GeneratePerimeter(
-            band_cells, cells, combined.AtStart(), goal.path_mode());
+            band_cells, cells, path.AtStart(), goal.path_mode());
         if (loop.size() > 1) {
-          band_path += loop;
+          combined += loop;
         }
       }
     } catch (const std::exception&) {
-      band_path = F2CPath();
+      combined = F2CPath();
     }
   }
-  const bool perimeter = band_path.size() > 1;
-  F2CPath total;
-  if (perimeter) {
-    total += band_path;
-    total += RoomLink(total.AtEnd(), total.back().angle, combined.AtStart(),
-                     combined[0].angle, config);
-  }
-  total += combined;
-  output.path = total;
-  output.swaths = ordered_swaths;
-  output.swath_count = static_cast<int>(ordered_swaths.size());
-
+  const bool perimeter = combined.size() > 1;
+  combined += path;
+  std::fprintf(stderr, "room path states=%zu band=%d\n", path.size(),
+               static_cast<int>(band));
+  output.path = combined;
+  output.swaths = ordered;
+  output.swath_count = static_cast<int>(ordered.size());
+  const double core_coverage =
+      f2c::obj::FieldCoverage().ComputeCost(core, ordered);
   const double room_area = cells.Area();
-  const double core_area = std::max(1e-9, core.Area());
-  const double core_coverage = covered_area / core_area;
-  const double band_area = std::max(0.0, room_area - core_area);
+  const double band_area = std::max(0.0, room_area - core.Area());
   output.coverage =
       room_area > 1e-9
-          ? (std::min(1.0, core_coverage) * core_area +
-             (perimeter ? band_area : 0.0)) /
+          ? (core_coverage * core.Area() + (perimeter ? band_area : 0.0)) /
                 room_area
           : core_coverage;
   return output;

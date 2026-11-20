@@ -114,7 +114,11 @@ std::chrono::milliseconds NavigationTask::NavigationReadyTimeout() const
 
 std::chrono::milliseconds NavigationTask::NavigationCancelTimeout() const
 {
-    return std::chrono::seconds(3);
+    // Local MPPI/learned controllers can spend multiple seconds in one
+    // ComputeVelocityCommands call.  The cancel path must allow that bounded
+    // computation to observe the cancellation and publish its terminal stop
+    // before declaring an unconfirmed movement drain.
+    return std::chrono::seconds(15);
 }
 
 void NavigationTask::CancelRemoteNavigation()
