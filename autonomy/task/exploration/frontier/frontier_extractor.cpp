@@ -7,10 +7,10 @@ std::vector<CoverageUnit> FrontierExtractor::Extract(const MapReadView& view,dou
     std::vector<CoverageUnit> result;if(!view.grid || !std::isfinite(height))return result;
     const auto& map=*view.grid;std::set<std::pair<int,int>> cells;
     for(int y=0;y<map.height();++y)for(int x=0;x<map.width();++x) {
-        if(map.At(x,y).state!=opt::navigation::CellState::kFree)continue;
+        if(map.At(x,y).state!=autonomy::navigation::CellState::kFree)continue;
         for(auto offset:{std::make_pair(1,0),std::make_pair(-1,0),std::make_pair(0,1),std::make_pair(0,-1)}) {
             int nx=x+offset.first,ny=y+offset.second;
-            if(!map.Contains(nx,ny) || map.At(nx,ny).state==opt::navigation::CellState::kUnknown)
+            if(!map.Contains(nx,ny) || map.At(nx,ny).state==autonomy::navigation::CellState::kUnknown)
                 cells.insert({nx,ny});
         }
     }

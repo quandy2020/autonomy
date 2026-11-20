@@ -11,7 +11,7 @@
 namespace e = autonomy::task::exploration;
 namespace p = autonomy::perception;
 namespace v = autonomy::planning::planner::vista;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 namespace {
 using namespace exploration_test;
 

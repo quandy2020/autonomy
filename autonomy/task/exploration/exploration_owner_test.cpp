@@ -25,7 +25,7 @@ namespace p = autonomy::perception;
 namespace t = autonomy::task;
 namespace proto = autonomy::task::proto;
 namespace v = autonomy::planning::planner::vista;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 using exploration_test::Require;
 using namespace std::chrono_literals;
 

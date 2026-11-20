@@ -39,6 +39,10 @@ namespace autoviz::common {
 class VisualizationManager;
 }
 
+namespace autoviz::widget {
+class InfoBar;
+}
+
 namespace autoviz::navigation {
 
 /**
@@ -165,7 +169,7 @@ class CoveragePanel : public QWidget {
   QListWidget* ring_list_{nullptr};
   QPlainTextEdit* points_{nullptr};
   QPlainTextEdit* polygons_{nullptr};
-  QToolButton* advanced_{nullptr};
+  QPushButton* advanced_{nullptr};
   QLabel* rings_summary_{nullptr};
   QPushButton* add_obstacle_{nullptr};
   QPushButton* draw_obstacle_{nullptr};
@@ -187,7 +191,9 @@ class CoveragePanel : public QWidget {
   QPushButton* start_{nullptr};
   QPushButton* cancel_{nullptr};
   QProgressBar* progress_{nullptr};
-  QLabel* status_{nullptr};
+  widget::InfoBar* note_bar_{nullptr};
+  QLabel* progress_value_{nullptr};
+  QLabel* remaining_value_{nullptr};
   QTimer* timer_{nullptr};
   QTimer* points_timer_{nullptr};
   QTimer* live_timer_{nullptr};

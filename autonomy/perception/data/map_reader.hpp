@@ -10,11 +10,11 @@
 #include <optional>
 #include <utility>
 #include <vector>
-#include "opt/navigation/grid_map.h"
+#include "autonomy/common/navigation/grid_map.hpp"
 #include "autonomy/perception/data/sensor_observation.hpp"
 
 namespace autonomy::perception {
-using Pose2d = opt::navigation::Pose2d;
+using Pose2d = autonomy::navigation::Pose2d;
 /** @brief Whether an unknown cell is absent rolling-window evidence or an authoritative invalidation. */
 enum class UnknownCellPolicy { kRetainHistory, kReplace };
 /** @brief Closed world-coordinate region used for incremental invalidation. */
@@ -40,13 +40,13 @@ struct MapReadView {
     std::uint64_t observation_watermark = 0;  ///< Diagnostic producer watermark, not fusion proof.
     double source_stamp = 0;  ///< Original acquisition time in the configured clock.
     std::string frame_id;  ///< World frame of every grid cell.
-    std::shared_ptr<const opt::navigation::GridMap> grid;  ///< Owned immutable route-model copy.
+    std::shared_ptr<const autonomy::navigation::GridMap> grid;  ///< Owned immutable route-model copy.
     std::vector<Bounds2d> dirty_regions;  ///< Changed world regions before safety halo expansion.
     bool footprint_inflated = false;  ///< Robot inflation already applied by the source map.
     perception::ObservationCut observation_cut{};  ///< Actual upstream source fusion prefix.
     bool mapping_synchronized = false;  ///< Set only by an independently verified fusion barrier.
     bool has_height_evidence = true;  ///< False for planar Costmap projection; raw 3D execution checks remain separate.
-    std::optional<opt::navigation::StartupSupportRegion> startup_support;  ///< Start-only measured support hint; never map state.
+    std::optional<autonomy::navigation::StartupSupportRegion> startup_support;  ///< Start-only measured support hint; never map state.
     ObservationCut observation_baseline{};  ///< Excluded historical prefix for an explicitly recovered suffix.
     std::uint64_t observation_recovery_generation = 0;  ///< Actual upstream replacement-baseline identity.
 };
@@ -60,7 +60,7 @@ public:
      * @param observation_watermark Diagnostic input watermark, not a fusion receipt.
      * @param footprint_inflated Prevents applying the robot footprint margin twice.
      */
-    MapReadView Read(const opt::navigation::GridMap& snapshot, double source_stamp,
+    MapReadView Read(const autonomy::navigation::GridMap& snapshot, double source_stamp,
                      std::uint64_t alignment_id, std::uint64_t observation_watermark,
                      bool footprint_inflated = false,
                      UnknownCellPolicy unknowns = UnknownCellPolicy::kRetainHistory);
@@ -68,7 +68,7 @@ public:
     const std::optional<MapReadView>& latest() const { return latest_; }
 private:
     std::size_t maximum_cells_;  ///< Copy/comparison memory bound.
-    std::map<std::pair<int, int>, opt::navigation::GridCell> history_;  ///< Prior cells by stable world-grid key.
+    std::map<std::pair<int, int>, autonomy::navigation::GridCell> history_;  ///< Prior cells by stable world-grid key.
     std::optional<MapReadView> latest_;  ///< Latest published owned view.
     std::uint64_t alignment_id_ = 0;  ///< Last external localization alignment identity.
     std::uint64_t epoch_ = 0;  ///< Consumer coordinate generation.

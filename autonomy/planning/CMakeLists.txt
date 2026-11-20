@@ -48,7 +48,6 @@ autocmake_library(autonomy_planning
     ${CMAKE_CURRENT_SOURCE_DIR}/planner/fields2cover
   DEPENDENCIES
     autonomy_common
-    autonomy_navigation_support
     autonomy_proto
     autonomy_transform
     autonomy_map

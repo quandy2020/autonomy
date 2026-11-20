@@ -52,9 +52,9 @@ void NativeSnapshotOwnership() {
             "a native read must not manufacture fresh observations, fusion or 3D clearance");
     map.setCost(4,4,m::LETHAL_OBSTACLE);
     auto b=reader.Read(map,"map");
-    Require(a.grid->At(4,4).state==opt::navigation::CellState::kFree,
+    Require(a.grid->At(4,4).state==autonomy::navigation::CellState::kFree,
             "the old native snapshot must own immutable content");
-    Require(b.grid->At(4,4).state==opt::navigation::CellState::kOccupied &&
+    Require(b.grid->At(4,4).state==autonomy::navigation::CellState::kOccupied &&
             b.geometry_revision>a.geometry_revision,"content changes advance geometry");
     const auto c=reader.Read(map,"map");
     Require(c.geometry_revision==b.geometry_revision && c.dirty_regions.empty(),

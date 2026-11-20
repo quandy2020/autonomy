@@ -15,7 +15,7 @@ struct HierarchicalCoverageOptions {
     double sweep_max_age = 30;  ///< Maximum reuse age of a completed proof, in seconds.
     std::size_t local_views = 5;  ///< Maximum viewpoints in a local coverage route.
     perception::SensorMode mode = perception::SensorMode::kRgbdOnly;  ///< Required input mode.
-    opt::navigation::SafetyOptions safety;  ///< Footprint and geometric clearance policy.
+    autonomy::navigation::SafetyOptions safety;  ///< Footprint and geometric clearance policy.
     ViewpointSamplingOptions sampling;  ///< Enumeration and prediction work budgets.
 };
 /** @brief Keeps sweep evidence separate from monotonic measured-quality changes. */

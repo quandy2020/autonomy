@@ -68,6 +68,20 @@ list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "_test\\.cpp$")
 list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "lua_parameter_dictionary\\.cpp$")
 list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "configuration_file_resolver\\.cpp$")
 
+# Shared map/observation support is needed even with perception disabled.
+list(APPEND AUTONOMY_COMMON_SRCS
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/data/map_reader.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/data/sensor_observation.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/data/observation_buffer.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/lidar_observation_adapter.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/rgbd_observation_adapter.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/sensor_message_decoder.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/observation_ingress.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/native_sensor_messages.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/native_atlas_localization.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/native_observation_source.cpp"
+  "${PROJECT_SOURCE_DIR}/autonomy/perception/observation/reader_retirement.cpp")
+
 if(NOT BUILD_GRPC)
   list(FILTER AUTONOMY_COMMON_SRCS EXCLUDE REGEX "/async_grpc/")
 endif()

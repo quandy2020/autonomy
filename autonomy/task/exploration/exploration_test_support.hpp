@@ -15,7 +15,7 @@ namespace exploration_test {
 namespace e = autonomy::task::exploration;
 namespace p = autonomy::perception;
 namespace v = autonomy::planning::planner::vista;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 inline void Require(bool ok, const char* message) {
     if (!ok) throw std::runtime_error(message);
 }
@@ -225,6 +225,8 @@ struct Fixture {
                                    target ? 1.0 : .2, true, 1, stamp});
         Require(session->PushObservation(std::move(observation), stamp), "valid observation queued");
     }
+    /** @brief Advance the producer ordinal without admitting the skipped frame. */
+    void SkipObservation() { ++sequence; }
     void Arrive(double stamp) {
         Pose(stamp, submissions.back().first.yaw);
         reply = e::NavigationReply{submissions.back().second, true};

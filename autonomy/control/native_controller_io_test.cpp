@@ -92,8 +92,8 @@ void NativeRegistrations() {
 /** @brief Command admission checks the enlarged full stopping footprint and original evidence identity. */
 void MeasuredCommandGate() {
     auto state = State();
-    auto grid = std::make_shared<opt::navigation::GridMap>(80,80,.1,0,0,"native_io_world");
-    grid->Fill({opt::navigation::CellState::kFree,0,1});
+    auto grid = std::make_shared<autonomy::navigation::GridMap>(80,80,.1,0,0,"native_io_world");
+    grid->Fill({autonomy::navigation::CellState::kFree,0,1});
     autonomy::perception::MapReadView map;
     map.grid = grid; map.map_epoch = 1; map.frame_id = "native_io_world";
     const double now = state.header().stamp().sec()+state.header().stamp().nanosec()*1e-9;
@@ -103,8 +103,8 @@ void MeasuredCommandGate() {
     Twist command; *command.mutable_header() = state.header(); command.mutable_header()->set_frame_id("base_link");
     command.mutable_twist()->mutable_linear()->set_x(.2);
     Require(c::VerifyNativeCommand(command,state,map,options,now).safe,"actual same-frame command fits known full-body and stopping volume");
-    auto blocked = std::make_shared<opt::navigation::GridMap>(*grid);
-    blocked->Set(22,30,{opt::navigation::CellState::kOccupied,0,1}); map.grid = blocked;
+    auto blocked = std::make_shared<autonomy::navigation::GridMap>(*grid);
+    blocked->Set(22,30,{autonomy::navigation::CellState::kOccupied,0,1}); map.grid = blocked;
     Require(!c::VerifyNativeCommand(command,state,map,options,now).safe,"obstacle in stopping envelope denies the actual proposal");
     map.grid = grid; command.mutable_twist()->mutable_linear()->set_y(.1);
     Require(!c::VerifyNativeCommand(command,state,map,options,now).safe,"nonplanar proposal cannot enter the differential-drive transport");
@@ -145,24 +145,24 @@ void StartupRotationGate() {
 }
 /** @brief Start support closes only an unknown self-occluded disc and never obstacles. */
 void StartupSupportSafety() {
-    auto grid = std::make_shared<opt::navigation::GridMap>(40, 30, .2);
-    grid->Fill({opt::navigation::CellState::kFree, 0, 1});
+    auto grid = std::make_shared<autonomy::navigation::GridMap>(40, 30, .2);
+    grid->Fill({autonomy::navigation::CellState::kFree, 0, 1});
     for (int y = 14; y <= 16; ++y)
         for (int x = 19; x <= 21; ++x)
-            grid->Set(x, y, {opt::navigation::CellState::kUnknown, 0, 1});
-    opt::navigation::SafetyOptions body;
+            grid->Set(x, y, {autonomy::navigation::CellState::kUnknown, 0, 1});
+    autonomy::navigation::SafetyOptions body;
     body.robot_radius = .1; body.horizontal_margin = .01;
     body.robot_height = .2; body.vertical_margin = .02;
-    Require(!opt::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
+    Require(!autonomy::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
         "unconfirmed startup hole remains blocked");
-    body.startup_support = opt::navigation::StartupSupportRegion{4.1, 3.1, .45, 0, 1};
-    Require(opt::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
+    body.startup_support = autonomy::navigation::StartupSupportRegion{4.1, 3.1, .45, 0, 1};
+    Require(autonomy::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
         "bounded startup support admits only the measured self-occluded hole");
-    grid->Set(25, 15, {opt::navigation::CellState::kUnknown, 0, 1});
-    Require(!opt::navigation::GeometrySafety(grid, body).VerifyPose({5.1, 3.1, 0}).safe,
+    grid->Set(25, 15, {autonomy::navigation::CellState::kUnknown, 0, 1});
+    Require(!autonomy::navigation::GeometrySafety(grid, body).VerifyPose({5.1, 3.1, 0}).safe,
         "startup support does not clear unknown space outside its envelope");
-    grid->Set(20, 15, {opt::navigation::CellState::kOccupied, 0, 1});
-    Require(!opt::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
+    grid->Set(20, 15, {autonomy::navigation::CellState::kOccupied, 0, 1});
+    Require(!autonomy::navigation::GeometrySafety(grid, body).VerifyPose({4.1, 3.1, 0}).safe,
         "startup support never overrides an observed obstacle");
 }
 /** @brief Actual MPPI configuration recognizes the shared polygon mode selected by its original map proto. */

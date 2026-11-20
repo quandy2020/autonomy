@@ -110,7 +110,7 @@ GraphUpdateStats GraphUpdater::Update(const perception::MapReadView& view,
         if (id == other.first) continue;
         const auto key = EdgeKey(id,other.first);
         if (graph.edges.count(key)) continue;
-        if (opt::navigation::Distance(graph.nodes.at(id).pose,other.second.pose) > maximum_edge_length_)
+        if (autonomy::navigation::Distance(graph.nodes.at(id).pose,other.second.pose) > maximum_edge_length_)
             continue;
         auto edge = validator.Validate(id,graph.nodes.at(id).pose,other.first,other.second.pose);
         index_.Insert(edge); graph.edges[key] = edge; ++stats.revalidated_edges;

@@ -24,7 +24,7 @@ bool RayVisible(const perception::Vec3& origin,const CoverageUnit& unit,const Ma
         const int x=static_cast<int>(std::floor((unit.center.x-map.origin_x())/map.resolution()));
         const int y=static_cast<int>(std::floor((unit.center.y-map.origin_y())/map.resolution()));
         if(x>=-1 && x<=map.width() && y>=-1 && y<=map.height())
-            b=opt::navigation::CellIndex{x,y};
+            b=autonomy::navigation::CellIndex{x,y};
     }
     if(!b)return false;
     const double dx=unit.center.x-origin.x,dy=unit.center.y-origin.y;
@@ -38,15 +38,15 @@ bool RayVisible(const perception::Vec3& origin,const CoverageUnit& unit,const Ma
         if(!map.Contains(x,y))return x==b->x && y==b->y && unit.id.kind==CoverageKind::kFrontier;
         const auto state=map.At(x,y).state;
         if(x==b->x && y==b->y)
-            return state==opt::navigation::CellState::kFree ||
-                   (state==opt::navigation::CellState::kUnknown && unit.id.kind==CoverageKind::kFrontier) ||
-                   (state==opt::navigation::CellState::kOccupied && unit.id.kind!=CoverageKind::kFrontier);
-        if(state!=opt::navigation::CellState::kFree)return false;
+            return state==autonomy::navigation::CellState::kFree ||
+                   (state==autonomy::navigation::CellState::kUnknown && unit.id.kind==CoverageKind::kFrontier) ||
+                   (state==autonomy::navigation::CellState::kOccupied && unit.id.kind!=CoverageKind::kFrontier);
+        if(state!=autonomy::navigation::CellState::kFree)return false;
         if(std::abs(nx-ny)<1e-12) {
             // Conservative supercover at a grid corner; do not see through thin diagonal walls.
             for(auto neighbor:{std::make_pair(x+sx,y),std::make_pair(x,y+sy)})
                 if(!map.Contains(neighbor.first,neighbor.second) ||
-                   map.At(neighbor.first,neighbor.second).state!=opt::navigation::CellState::kFree)return false;
+                   map.At(neighbor.first,neighbor.second).state!=autonomy::navigation::CellState::kFree)return false;
             x+=sx;y+=sy;nx+=tx;ny+=ty;
         } else if(nx<ny) {x+=sx;nx+=tx;} else {y+=sy;ny+=ty;}
     }

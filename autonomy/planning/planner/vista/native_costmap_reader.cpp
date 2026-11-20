@@ -44,17 +44,17 @@ perception::MapReadView NativeCostmapReader::Read(
         costs.assign(costmap.getCharMap(), costmap.getCharMap()+count);
     }
 
-    opt::navigation::GridMap snapshot(static_cast<int>(width), static_cast<int>(height),
+    autonomy::navigation::GridMap snapshot(static_cast<int>(width), static_cast<int>(height),
                                      resolution, origin_x, origin_y, frame_id);
     for (std::size_t i = 0; i < costs.size(); ++i) {
-        opt::navigation::GridCell cell;
+        autonomy::navigation::GridCell cell;
         const unsigned char blocked = footprint_inflated
             ? map::costmap_2d::INSCRIBED_INFLATED_OBSTACLE
             : map::costmap_2d::LETHAL_OBSTACLE;
         if (costs[i] == map::costmap_2d::NO_INFORMATION)
-            cell.state = opt::navigation::CellState::kUnknown;
+            cell.state = autonomy::navigation::CellState::kUnknown;
         else cell.state = costs[i] >= blocked
-            ? opt::navigation::CellState::kOccupied : opt::navigation::CellState::kFree;
+            ? autonomy::navigation::CellState::kOccupied : autonomy::navigation::CellState::kFree;
         const auto index = snapshot.FromIndex(i);
         snapshot.Set(index.x, index.y, cell);
     }

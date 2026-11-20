@@ -8,7 +8,7 @@
 
 #include "autonomy/task/exploration/region/region_manager.hpp"
 #include "autonomy/task/exploration/viewpoint/viewpoint_evaluator.hpp"
-#include "opt/navigation/reachability.h"
+#include "autonomy/common/navigation/reachability.hpp"
 
 namespace autonomy::task::exploration {
 /** @brief Work limits and physical cost estimates for one sampling page. */
@@ -58,7 +58,7 @@ public:
     ViewpointSamplingResult Sample(
         const Pose2d& start, const MapReadView& map, const CoverageState& coverage,
         const ViewpointEvaluator& evaluator, const RegionManager& regions,
-        perception::SensorMask active, opt::navigation::SafetyOptions safety,
+        perception::SensorMask active, autonomy::navigation::SafetyOptions safety,
         ViewpointSamplingOptions options = {}, bool sweep = false,
         std::size_t cursor = 0,
         const std::function<bool()>& cancel_checker = {}) const;

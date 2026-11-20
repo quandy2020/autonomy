@@ -11,7 +11,7 @@
 #include "autonomy/perception/data/map_reader.hpp"
 
 namespace autonomy::planning::planner::vista {
-using Pose2d = opt::navigation::Pose2d;
+using Pose2d = autonomy::navigation::Pose2d;
 using Bounds2d = perception::Bounds2d;
 using NodeId = std::uint64_t;
 using EdgeId = std::pair<NodeId, NodeId>;

@@ -10,7 +10,7 @@ ViewpointEvaluator::ViewpointEvaluator(std::vector<std::shared_ptr<const SensorV
 std::vector<CoverageContribution> ViewpointEvaluator::Predict(const Pose2d& pose,const CoverageState& coverage,
     const MapReadView& map,perception::SensorMask active,const ObservationQuality& quality,bool include_completed) const {
     std::vector<CoverageContribution> result;
-    if(!opt::navigation::IsFinite(pose) || coverage.epoch()!=map.map_epoch)return result;
+    if(!autonomy::navigation::IsFinite(pose) || coverage.epoch()!=map.map_epoch)return result;
     for(const auto& unit:coverage.units()) {
         if(!unit.second.pending && !include_completed)continue;
         for(const auto& model:models_)if(active&perception::Mask(model->sensor())) {

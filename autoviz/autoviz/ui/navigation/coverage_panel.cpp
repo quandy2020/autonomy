@@ -11,9 +11,11 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QAbstractSpinBox>
 #include <QFontDatabase>
 #include <QFormLayout>
 #include <QFrame>
+#include <QGridLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
 #include <QJsonArray>
@@ -50,6 +52,9 @@
 #include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/plugins/displays/map/map_display.hpp"
 #include "autoviz/ui/navigation/coverage_obstacles.hpp"
+#include "autoviz/common/widget/feedback/info_bar.hpp"
+#include "autoviz/ui/theme/panel.hpp"
+#include "autoviz/ui/theme/style.hpp"
 #include "automsgs/msgs/geometry_msgs/point_stamped.pb.h"
 #include "automsgs/msgs/visualization_msgs/marker_array.pb.h"
 
@@ -117,6 +122,48 @@ std::vector<std::pair<double, double>> ParsePoints(const QString& text,
 }
 
 /** @brief Short one-line description of a ring for the list widget. */
+/**
+ * @brief Metric chip matching the Navigation tab status card.
+ * @param caption Chip caption.
+ * @param[out] value_out Receives the value label.
+ * @param parent Parent widget.
+ * @return New metric chip frame.
+ */
+QFrame* MakeCoverageMetricChip(const QString& caption, QLabel** value_out,
+                               QWidget* parent) {
+  auto* chip = new QFrame(parent);
+  chip->setObjectName(QStringLiteral("NavigationMetricChip"));
+  chip->setAttribute(Qt::WA_StyledBackground, true);
+  chip->setStyleSheet(style::sheet(QStringLiteral("navigation/metric_chip")));
+  auto* layout = new QVBoxLayout(chip);
+  layout->setContentsMargins(8, 6, 8, 6);
+  layout->setSpacing(0);
+  auto* caption_label = new QLabel(caption, chip);
+  caption_label->setObjectName(QStringLiteral("NavigationMetricCaption"));
+  caption_label->setStyleSheet(
+      style::sheet(QStringLiteral("navigation/metric_caption")));
+  auto* value = new QLabel(QStringLiteral("\u2014"), chip);
+  value->setObjectName(QStringLiteral("NavigationMetricValue"));
+  value->setStyleSheet(style::sheet(QStringLiteral("navigation/metric_value")));
+  layout->addWidget(caption_label);
+  layout->addWidget(value);
+  chip->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  *value_out = value;
+  return chip;
+}
+
+/**
+ * @brief Compact ghost button matching the Navigation tab actions.
+ * @param text Button label.
+ * @param parent Parent widget.
+ * @return New flat button sized like NavigationPanel compact actions.
+ */
+QPushButton* MakeCoverageCompactGhost(const QString& text, QWidget* parent) {
+  QPushButton* button = MakeFlatActionButton(text, parent);
+  button->setMinimumHeight(28);
+  return button;
+}
+
 QString RingLabel(const QString& name, std::size_t points) {
   return QObject::tr("%1 · %2 pts").arg(name).arg(points);
 }
@@ -135,136 +182,179 @@ CoveragePanel::CoveragePanel(common::VisualizationManager* manager,
 CoveragePanel::~CoveragePanel() { CancelCoverage(); }
 
 void CoveragePanel::BuildUi() {
+  setObjectName(QStringLiteral("CoveragePanel"));
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(0, 0, 0, 0);
-  auto* scroll = new QScrollArea(this);
-  scroll->setWidgetResizable(true);
-  scroll->setFrameShape(QFrame::NoFrame);
-  scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-  outer->addWidget(scroll);
+  outer->setContentsMargins(0, 2, 0, 0);
+  outer->setSpacing(8);
 
-  auto* content = new QWidget(scroll);
-  scroll->setWidget(content);
-  auto* layout = new QVBoxLayout(content);
-  layout->setContentsMargins(0, 2, 6, 4);
-  layout->setSpacing(8);
+  // Status card mirrors the AB/Waypoints tab: metric chips above an info bar.
+  auto* status_card = new QFrame(this);
+  status_card->setObjectName(QStringLiteral("NavigationStatusCard"));
+  status_card->setAttribute(Qt::WA_StyledBackground, true);
+  status_card->setStyleSheet(
+      style::sheet(QStringLiteral("navigation.status_card")));
+  auto* status_layout = new QVBoxLayout(status_card);
+  status_layout->setContentsMargins(8, 8, 8, 8);
+  status_layout->setSpacing(6);
+  auto* metrics = new QGridLayout();
+  metrics->setHorizontalSpacing(6);
+  metrics->setVerticalSpacing(6);
+  metrics->addWidget(
+      MakeCoverageMetricChip(tr("Progress"), &progress_value_, status_card), 0,
+      0);
+  metrics->addWidget(
+      MakeCoverageMetricChip(tr("Remaining"), &remaining_value_, status_card), 0,
+      1);
+  status_layout->addLayout(metrics);
+  note_bar_ = new widget::InfoBar(status_card);
+  note_bar_->setObjectName(QStringLiteral("coverageStatus"));
+  note_bar_->SetClosable(false);
+  note_bar_->SetTone(style::Tone::Shell);
+  note_bar_->SetTitle(tr("Coverage"));
+  note_bar_->SetMessage(tr("Waiting for the coverage server"));
+  status_layout->addWidget(note_bar_);
+  outer->addWidget(status_card);
 
   auto* hint = new QLabel(
       tr("Cover the work area and route around obstacles. Each pass cleans "
          "twice the robot radius."),
-      content);
+      this);
+  StyleHintLabel(hint);
   hint->setWordWrap(true);
-  hint->setStyleSheet(QStringLiteral("color:#4a5568;"));
-  layout->addWidget(hint);
+  outer->addWidget(hint);
 
-  status_ = new QLabel(tr("Waiting for the coverage server"), content);
-  status_->setObjectName(QStringLiteral("coverageStatus"));
-  status_->setWordWrap(true);
-  status_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-  layout->addWidget(status_);
+  auto* scroll = new QScrollArea(this);
+  scroll->setObjectName(QStringLiteral("AutovizSettingsScroll"));
+  scroll->setWidgetResizable(true);
+  scroll->setFrameShape(QFrame::NoFrame);
+  scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+  outer->addWidget(scroll, 1);
+  auto* content = new QWidget(scroll);
+  scroll->setWidget(content);
+  auto* layout = new QVBoxLayout(content);
+  layout->setContentsMargins(0, 0, 0, 0);
+  layout->setSpacing(8);
 
-  auto* settings = new QGroupBox(tr("Coverage settings"), content);
-  auto* form = new QFormLayout(settings);
-  form->setContentsMargins(8, 8, 8, 8);
-  form->setSpacing(6);
-  form->setRowWrapPolicy(QFormLayout::WrapLongRows);
-  form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+  auto* settings_title = new QLabel(tr("Coverage settings"), content);
+  StyleSectionTitle(settings_title);
+  layout->addWidget(settings_title);
 
-  frame_ = new QLineEdit(QStringLiteral("map"), settings);
+  auto* form = new QFormLayout();
+  ApplyCompactForm(form);
+  frame_ = new QLineEdit(QStringLiteral("map"), content);
   frame_->setObjectName(QStringLiteral("coverageFrame"));
-  frame_->setClearButtonEnabled(true);
-  form->addRow(tr("Frame"), frame_);
+  StyleCompactSettingsField(frame_);
+  form->addRow(MakeSettingsFormLabel(tr("Frame"), content), frame_);
 
-  radius_ = MakeLengthSpin(0.05, 5.0, 0.4, settings);
+  radius_ = new QDoubleSpinBox(content);
   radius_->setObjectName(QStringLiteral("coverageRobotRadius"));
+  radius_->setRange(0.05, 5.0);
+  radius_->setDecimals(2);
+  radius_->setSingleStep(0.05);
+  radius_->setValue(0.4);
+  radius_->setSuffix(tr(" m"));
+  radius_->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  radius_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  StyleCompactSettingsField(radius_);
   radius_->setToolTip(
       tr("Cleaning radius; the swath width is twice this value."));
-  form->addRow(tr("Robot radius"), radius_);
+  form->addRow(MakeSettingsFormLabel(tr("Robot radius"), content), radius_);
 
-  swath_hint_ = new QLabel(
-      tr("Swath width %1 m").arg(2.0 * radius_->value(), 0, 'f', 2), settings);
-  swath_hint_->setStyleSheet(QStringLiteral("color:#5a6a7a;"));
+  swath_hint_ = new QLabel(content);
+  StyleHintLabel(swath_hint_);
+  swath_hint_->setText(
+      tr("Swath width %1 m").arg(2.0 * radius_->value(), 0, 'f', 2));
   form->addRow(QString(), swath_hint_);
 
-  headland_ = MakeLengthSpin(0.1, 20.0, 1.2, settings);
+  headland_ = new QDoubleSpinBox(content);
   headland_->setObjectName(QStringLiteral("coverageHeadland"));
-  form->addRow(tr("Headland"), headland_);
+  headland_->setRange(0.1, 20.0);
+  headland_->setDecimals(2);
+  headland_->setSingleStep(0.05);
+  headland_->setValue(1.2);
+  headland_->setSuffix(tr(" m"));
+  headland_->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  headland_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  StyleCompactSettingsField(headland_);
+  form->addRow(MakeSettingsFormLabel(tr("Headland"), content), headland_);
 
-  route_mode_ = new QComboBox(settings);
+  route_mode_ = new QComboBox(content);
   route_mode_->setObjectName(QStringLiteral("coverageRoute"));
   route_mode_->addItem(tr("Boustrophedon"), QStringLiteral("BOUSTROPHEDON"));
   route_mode_->addItem(tr("Snake"), QStringLiteral("SNAKE"));
   route_mode_->addItem(tr("Spiral"), QStringLiteral("SPIRAL"));
   route_mode_->addItem(tr("TSP"), QStringLiteral("TSP"));
-  form->addRow(tr("Route"), route_mode_);
+  StyleCompactSettingsField(route_mode_);
+  form->addRow(MakeSettingsFormLabel(tr("Route"), content), route_mode_);
 
-  path_mode_ = new QComboBox(settings);
+  path_mode_ = new QComboBox(content);
   path_mode_->setObjectName(QStringLiteral("coverageTurns"));
   path_mode_->addItem(tr("Dubins"), QStringLiteral("DUBIN"));
   path_mode_->addItem(tr("Reeds-Shepp"), QStringLiteral("REEDS_SHEPP"));
-  form->addRow(tr("Turns"), path_mode_);
-  layout->addWidget(settings);
+  StyleCompactSettingsField(path_mode_);
+  form->addRow(MakeSettingsFormLabel(tr("Turns"), content), path_mode_);
+  layout->addLayout(form);
 
-  auto* field_box = new QGroupBox(tr("Field and obstacles"), content);
-  auto* field_layout = new QVBoxLayout(field_box);
-  field_layout->setContentsMargins(8, 8, 8, 8);
-  field_layout->setSpacing(6);
-  ring_list_ = new QListWidget(field_box);
+  auto* field_title = new QLabel(tr("Field and obstacles"), content);
+  StyleSectionTitle(field_title);
+  layout->addWidget(field_title);
+  ring_list_ = new QListWidget(content);
   ring_list_->setObjectName(QStringLiteral("coverageRings"));
   ring_list_->setSelectionMode(QAbstractItemView::SingleSelection);
   ring_list_->setAlternatingRowColors(true);
-  ring_list_->setMinimumHeight(84);
-  ring_list_->setMaximumHeight(118);
-  field_layout->addWidget(ring_list_);
-  rings_summary_ = new QLabel(field_box);
-  rings_summary_->setStyleSheet(QStringLiteral("color:#5a6a7a;"));
-  field_layout->addWidget(rings_summary_);
+  ring_list_->setMinimumHeight(88);
+  ring_list_->setMaximumHeight(132);
+  StyleFrostedPanelList(ring_list_);
+  layout->addWidget(ring_list_);
+  rings_summary_ = new QLabel(content);
+  StyleHintLabel(rings_summary_);
+  layout->addWidget(rings_summary_);
 
   auto* draw_row = new QHBoxLayout();
-  draw_row->setSpacing(4);
-  draw_obstacle_ = new QPushButton(tr("Draw polygon (Ctrl+Alt+O)"), field_box);
+  draw_row->setSpacing(6);
+  draw_obstacle_ = MakeCoverageCompactGhost(tr("Draw polygon"), content);
   draw_obstacle_->setObjectName(QStringLiteral("coverageDrawObstacle"));
   draw_obstacle_->setToolTip(
       tr("Press Ctrl+Alt+O, then click at least three points in the 3D view. "
          "Enter finishes the obstacle, Esc cancels."));
-  add_obstacle_ = new QPushButton(tr("Add square"), field_box);
+  add_obstacle_ = MakeCoverageCompactGhost(tr("Add square"), content);
   add_obstacle_->setObjectName(QStringLiteral("coverageAddObstacle"));
   add_obstacle_->setToolTip(
       tr("Append a square obstacle at the field centre."));
-  draw_row->addWidget(draw_obstacle_, 3);
-  draw_row->addWidget(add_obstacle_, 2);
-  field_layout->addLayout(draw_row);
+  draw_row->addWidget(draw_obstacle_, 2);
+  draw_row->addWidget(add_obstacle_, 1);
+  layout->addLayout(draw_row);
 
   auto* ring_buttons = new QHBoxLayout();
-  ring_buttons->setSpacing(4);
-  remove_ring_ = new QPushButton(tr("Remove"), field_box);
+  ring_buttons->setSpacing(6);
+  remove_ring_ = MakeDestructiveFlatActionButton(tr("Remove"), content);
   remove_ring_->setObjectName(QStringLiteral("coverageRemoveObstacle"));
-  clear_obstacles_ = new QPushButton(tr("Clear"), field_box);
+  clear_obstacles_ = MakeCoverageCompactGhost(tr("Clear"), content);
   clear_obstacles_->setObjectName(QStringLiteral("coverageClearObstacles"));
   clear_obstacles_->setToolTip(tr("Remove every manual and live obstacle."));
-  ring_buttons->addWidget(remove_ring_, 1);
-  ring_buttons->addWidget(clear_obstacles_, 1);
-  field_layout->addLayout(ring_buttons);
+  ring_buttons->addWidget(remove_ring_);
+  ring_buttons->addWidget(clear_obstacles_);
+  ring_buttons->addStretch(1);
+  layout->addLayout(ring_buttons);
 
-  auto* points_label = new QLabel(tr("Ring points (x, y per line)"), field_box);
-  points_label->setStyleSheet(QStringLiteral("color:#5a6a7a;"));
-  field_layout->addWidget(points_label);
-  points_ = new QPlainTextEdit(field_box);
+  auto* points_label = new QLabel(tr("Ring points (x, y per line)"), content);
+  StyleHintLabel(points_label);
+  layout->addWidget(points_label);
+  points_ = new QPlainTextEdit(content);
   points_->setObjectName(QStringLiteral("coverageRingPoints"));
   points_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   points_->setMinimumHeight(64);
   points_->setMaximumHeight(96);
   points_->setPlaceholderText(QStringLiteral("-3, -2\n3, -2\n3, 2\n-3, 2"));
-  field_layout->addWidget(points_);
+  layout->addWidget(points_);
 
-  advanced_ = new QToolButton(field_box);
+  advanced_ = new QPushButton(tr("Advanced JSON"), content);
   advanced_->setObjectName(QStringLiteral("coverageAdvanced"));
-  advanced_->setText(tr("Advanced JSON"));
   advanced_->setCheckable(true);
-  advanced_->setArrowType(Qt::RightArrow);
-  advanced_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
-  field_layout->addWidget(advanced_);
-  polygons_ = new QPlainTextEdit(field_box);
+  advanced_->setCursor(Qt::PointingHandCursor);
+  StylePanelButton(advanced_, QStringLiteral("ghost"));
+  layout->addWidget(advanced_, 0, Qt::AlignLeft);
+  polygons_ = new QPlainTextEdit(content);
   polygons_->setObjectName(QStringLiteral("coveragePolygons"));
   polygons_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
   polygons_->setMinimumHeight(80);
@@ -272,77 +362,84 @@ void CoveragePanel::BuildUi() {
   polygons_->setPlaceholderText(
       QStringLiteral("[[[x,y], ...], [obstacle x,y, ...]]"));
   polygons_->setVisible(false);
-  field_layout->addWidget(polygons_);
-  layout->addWidget(field_box);
+  layout->addWidget(polygons_);
 
-  auto* live_box = new QGroupBox(tr("Live obstacles"), content);
-  auto* live_layout = new QVBoxLayout(live_box);
-  live_layout->setContentsMargins(8, 8, 8, 8);
-  live_layout->setSpacing(6);
-  live_obstacles_ = new QCheckBox(tr("Capture from /map"), live_box);
+  auto* live_title = new QLabel(tr("Live obstacles"), content);
+  StyleSectionTitle(live_title);
+  layout->addWidget(live_title);
+  live_obstacles_ = new QCheckBox(tr("Capture from /map"), content);
   live_obstacles_->setObjectName(QStringLiteral("coverageLiveObstacles"));
   live_obstacles_->setToolTip(
       tr("Read occupied cells from the newest /map message. Static walls "
          "larger than the size limit are skipped; small blobs become "
          "exclusion rings."));
-  live_layout->addWidget(live_obstacles_);
+  layout->addWidget(live_obstacles_);
   auto* live_row = new QHBoxLayout();
-  live_row->setSpacing(4);
-  auto* margin_label = new QLabel(tr("Margin"), live_box);
-  obstacle_margin_ = MakeLengthSpin(0.0, 2.0, 0.2, live_box);
+  live_row->setSpacing(6);
+  live_row->addWidget(MakeSettingsFormLabel(tr("Margin"), content));
+  obstacle_margin_ = new QDoubleSpinBox(content);
   obstacle_margin_->setObjectName(QStringLiteral("coverageObstacleMargin"));
+  obstacle_margin_->setRange(0.0, 2.0);
+  obstacle_margin_->setDecimals(2);
+  obstacle_margin_->setSingleStep(0.05);
+  obstacle_margin_->setValue(0.2);
+  obstacle_margin_->setSuffix(tr(" m"));
+  obstacle_margin_->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  obstacle_margin_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  StyleCompactSettingsField(obstacle_margin_);
   obstacle_margin_->setToolTip(tr("Clearance added around every live blob."));
-  refresh_obstacles_ = new QPushButton(tr("Refresh"), live_box);
-  refresh_obstacles_->setObjectName(QStringLiteral("coverageRefreshObstacles"));
-  live_row->addWidget(margin_label);
+  refresh_obstacles_ = MakeCoverageCompactGhost(tr("Refresh"), content);
+  refresh_obstacles_->setObjectName(
+      QStringLiteral("coverageRefreshObstacles"));
   live_row->addWidget(obstacle_margin_, 1);
   live_row->addWidget(refresh_obstacles_);
-  live_layout->addLayout(live_row);
-  obstacle_status_ = new QLabel(tr("Live capture is off"), live_box);
+  layout->addLayout(live_row);
+  obstacle_status_ = new QLabel(tr("Live capture is off"), content);
   obstacle_status_->setObjectName(QStringLiteral("coverageObstacleStatus"));
   obstacle_status_->setWordWrap(true);
-  obstacle_status_->setStyleSheet(QStringLiteral("color:#5a6a7a;"));
-  live_layout->addWidget(obstacle_status_);
-  auto_replan_ = new QCheckBox(tr("Re-plan when obstacles change"), live_box);
+  StyleHintLabel(obstacle_status_);
+  layout->addWidget(obstacle_status_);
+  auto_replan_ = new QCheckBox(tr("Re-plan when obstacles change"), content);
   auto_replan_->setObjectName(QStringLiteral("coverageAutoReplan"));
   auto_replan_->setEnabled(false);
-  live_layout->addWidget(auto_replan_);
-  layout->addWidget(live_box);
+  layout->addWidget(auto_replan_);
+  layout->addStretch(1);
 
-  auto* run_box = new QGroupBox(tr("Run"), content);
-  auto* run_layout = new QVBoxLayout(run_box);
-  run_layout->setContentsMargins(8, 8, 8, 8);
-  run_layout->setSpacing(6);
-  auto* buttons = new QHBoxLayout();
-  buttons->setSpacing(6);
-  preview_ = new QPushButton(tr("Preview"), run_box);
-  preview_->setObjectName(QStringLiteral("coveragePreview"));
-  preview_->setMinimumHeight(30);
-  preview_->setToolTip(tr("Compute and publish the full coverage path."));
-  start_ = new QPushButton(tr("Start"), run_box);
-  start_->setObjectName(QStringLiteral("coverageStart"));
-  start_->setMinimumHeight(30);
-  start_->setToolTip(tr("Compute and execute the complete coverage task."));
-  buttons->addWidget(preview_);
-  buttons->addWidget(start_);
-  run_layout->addLayout(buttons);
-  approach_ = new QCheckBox(tr("Navigate to the coverage start"), run_box);
-  approach_->setChecked(true);
-  run_layout->addWidget(approach_);
-  cancel_ = new QPushButton(tr("Cancel coverage"), run_box);
-  cancel_->setObjectName(QStringLiteral("coverageCancel"));
-  cancel_->setEnabled(false);
-  run_layout->addWidget(cancel_);
-  progress_ = new QProgressBar(run_box);
+  // Fixed footer mirrors the AB/Waypoints action strip.
+  auto* footer = new QFrame(this);
+  footer->setObjectName(QStringLiteral("NavigationFooter"));
+  footer->setAttribute(Qt::WA_StyledBackground, true);
+  footer->setStyleSheet(style::sheet(QStringLiteral("navigation/footer")));
+  auto* footer_layout = new QVBoxLayout(footer);
+  footer_layout->setContentsMargins(10, 8, 10, 10);
+  footer_layout->setSpacing(6);
+  progress_ = new QProgressBar(footer);
   progress_->setObjectName(QStringLiteral("coverageProgress"));
   progress_->setRange(0, 100);
   progress_->setValue(0);
-  progress_->setTextVisible(true);
-  progress_->setMaximumHeight(16);
+  progress_->setTextVisible(false);
+  progress_->setMaximumHeight(6);
   progress_->setVisible(false);
-  run_layout->addWidget(progress_);
-  outer->addWidget(run_box);
-  layout->addStretch(1);
+  footer_layout->addWidget(progress_);
+  auto* footer_buttons = new QHBoxLayout();
+  footer_buttons->setSpacing(8);
+  preview_ = MakeCoverageCompactGhost(tr("Preview"), footer);
+  preview_->setObjectName(QStringLiteral("coveragePreview"));
+  preview_->setMinimumHeight(32);
+  preview_->setToolTip(tr("Compute and publish the full coverage path."));
+  cancel_ = MakeDestructiveFlatActionButton(tr("Cancel"), footer);
+  cancel_->setObjectName(QStringLiteral("coverageCancel"));
+  cancel_->setMinimumHeight(32);
+  cancel_->setEnabled(false);
+  start_ = MakePrimaryActionButton(tr("Start coverage"), footer);
+  start_->setObjectName(QStringLiteral("coverageStart"));
+  start_->setMinimumHeight(32);
+  start_->setToolTip(tr("Compute and execute the complete coverage task."));
+  footer_buttons->addWidget(preview_);
+  footer_buttons->addWidget(cancel_);
+  footer_buttons->addWidget(start_, 1);
+  footer_layout->addLayout(footer_buttons);
+  outer->addWidget(footer);
 
   connect(radius_, &QDoubleSpinBox::valueChanged, this, [this](double value) {
     swath_hint_->setText(
@@ -368,7 +465,7 @@ void CoveragePanel::BuildUi() {
           &CoveragePanel::RemoveSelectedRing);
   connect(clear_obstacles_, &QPushButton::clicked, this,
           &CoveragePanel::ClearObstacleRings);
-  connect(advanced_, &QToolButton::toggled, this,
+  connect(advanced_, &QPushButton::toggled, this,
           &CoveragePanel::OnAdvancedToggled);
   connect(live_obstacles_, &QCheckBox::toggled, this, [this](bool enabled) {
     auto_replan_->setEnabled(enabled);
@@ -402,7 +499,8 @@ void CoveragePanel::BuildUi() {
   connect(timer_, &QTimer::timeout, this, &CoveragePanel::PollActions);
   timer_->start();
 
-  draw_shortcut_ = new QShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+O")), this);
+  draw_shortcut_ =
+      new QShortcut(QKeySequence(QStringLiteral("Ctrl+Alt+O")), this);
   draw_shortcut_->setContext(Qt::WindowShortcut);
   connect(draw_shortcut_, &QShortcut::activated, this,
           &CoveragePanel::ToggleObstacleDrawing);
@@ -420,8 +518,8 @@ void CoveragePanel::BuildUi() {
           &CoveragePanel::CancelObstacleDraft);
 
   RebuildRingList(0);
-
 }
+
 
 void CoveragePanel::EnsureClients() {
   if (manager_ == nullptr || manager_->autolinkNode() == nullptr) {
@@ -526,7 +624,8 @@ void CoveragePanel::RebuildRingList(int selected) {
       }
     }
     rings_summary_->setText(
-        tr("%1 obstacle ring(s)").arg(obstacles));
+        obstacles == 0 ? tr("No obstacle rings · optional")
+                       : tr("%1 obstacle ring(s)").arg(obstacles));
     if (ring_list_->count() > 0) {
       ring_list_->setCurrentRow(
           std::clamp(selected, 0, ring_list_->count() - 1));
@@ -712,7 +811,7 @@ void CoveragePanel::RefreshLiveObstacles() {
 }
 
 void CoveragePanel::OnAdvancedToggled(bool expanded) {
-  advanced_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
+  advanced_->setText(expanded ? tr("Hide JSON") : tr("Advanced JSON"));
   if (expanded) {
     polygons_->setPlainText(SerializeRings());
     polygons_->setVisible(true);
@@ -801,30 +900,47 @@ void CoveragePanel::CommitEditors() {
 }
 
 void CoveragePanel::SetStatus(const QString& text, const QString& state) {
-  status_->setText(text);
+  if (note_bar_ == nullptr) {
+    return;
+  }
+  note_bar_->SetMessage(text);
   if (state == QLatin1String("error")) {
-    status_->setStyleSheet(QStringLiteral("color:#c0392b;"));
+    note_bar_->SetLevel(widget::FeedbackLevel::kError);
   } else if (state == QLatin1String("ok")) {
-    status_->setStyleSheet(QStringLiteral("color:#1e8449;"));
+    note_bar_->SetLevel(widget::FeedbackLevel::kSuccess);
   } else {
-    status_->setStyleSheet(QString());
+    note_bar_->SetLevel(widget::FeedbackLevel::kInformation);
   }
 }
 
 void CoveragePanel::SetProgress(bool running, int value) {
+  if (progress_ == nullptr) {
+    return;
+  }
   progress_->setVisible(running);
   if (!running) {
     progress_->setRange(0, 100);
     progress_->setValue(0);
+    if (progress_value_ != nullptr) {
+      progress_value_->setText(QStringLiteral("\u2014"));
+    }
+    if (remaining_value_ != nullptr) {
+      remaining_value_->setText(QStringLiteral("\u2014"));
+    }
     return;
   }
   if (value < 0) {
     progress_->setRange(0, 0);
-    progress_->setFormat(tr("Planning…"));
-  } else {
-    progress_->setRange(0, 100);
-    progress_->setValue(std::clamp(value, 0, 100));
-    progress_->setFormat(QStringLiteral("%p%"));
+    if (progress_value_ != nullptr) {
+      progress_value_->setText(tr("Planning"));
+    }
+    return;
+  }
+  const int percent = std::clamp(value, 0, 100);
+  progress_->setRange(0, 100);
+  progress_->setValue(percent);
+  if (progress_value_ != nullptr) {
+    progress_value_->setText(QStringLiteral("%1%").arg(percent));
   }
 }
 
@@ -988,6 +1104,10 @@ void CoveragePanel::StartCoverage() {
             }
             self->SetProgress(true,
                               static_cast<int>(std::lround(progress * 100.0)));
+            if (self->remaining_value_ != nullptr) {
+              self->remaining_value_->setText(
+                  QStringLiteral("%1 m").arg(distance, 0, 'f', 1));
+            }
             self->SetStatus(tr("Covering %1% · %2 m remaining")
                                 .arg(progress * 100, 0, 'f', 1)
                                 .arg(distance, 0, 'f', 1));
@@ -1055,6 +1175,11 @@ void CoveragePanel::PollActions() {
         const auto result = future.get();
         if (result.result && result.result->error_code() == 0) {
           preview_writer_->Write(result.result->nav_path());
+          if (progress_value_ != nullptr) {
+            progress_value_->setText(
+                QStringLiteral("%1%").arg(result.result->core_coverage() * 100,
+                                          0, 'f', 1));
+          }
           SetStatus(tr("Plan ready · %1 swaths · %2% core coverage")
                         .arg(result.result->coverage_path().swaths_size())
                         .arg(result.result->core_coverage() * 100, 0, 'f', 2),
@@ -1077,6 +1202,12 @@ void CoveragePanel::PollActions() {
         const auto result = future.get();
         if (result.result && result.result->error_code() == 0) {
           SetProgress(false);
+          if (progress_value_ != nullptr) {
+            progress_value_->setText(QStringLiteral("100%"));
+          }
+          if (remaining_value_ != nullptr) {
+            remaining_value_->setText(QStringLiteral("0 m"));
+          }
           SetStatus(tr("Complete coverage succeeded · %1 segment(s)")
                         .arg(result.result->completed_segments()),
                     QStringLiteral("ok"));

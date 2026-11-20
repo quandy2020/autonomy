@@ -45,8 +45,8 @@ std::optional<Pose2d> PlanarPose(const automsgs::msgs::geometry_msgs::PoseStampe
 
 /** @brief A route certificate must preserve both endpoint positions and observation yaw. */
 bool SamePose(const Pose2d& a, const Pose2d& b) {
-    return opt::navigation::Distance(a, b) <= 1e-6 &&
-        std::abs(opt::navigation::NormalizeAngle(a.yaw - b.yaw)) <= 1e-6;
+    return autonomy::navigation::Distance(a, b) <= 1e-6 &&
+        std::abs(autonomy::navigation::NormalizeAngle(a.yaw - b.yaw)) <= 1e-6;
 }
 }  // namespace
 
@@ -146,7 +146,7 @@ public:
     v::VistaRoute Route(const Pose2d& start, const Pose2d& goal,
                         const std::function<bool()>& canceled) const {
         v::VistaRoute route;
-        if (!opt::navigation::IsFinite(start) || !opt::navigation::IsFinite(goal))
+        if (!autonomy::navigation::IsFinite(start) || !autonomy::navigation::IsFinite(goal))
             throw std::invalid_argument("nonfinite native Vista route endpoints");
         auto reply = Send(false, start, goal, canceled);
         if (reply.canceled) { route.canceled = true; return route; }
@@ -173,7 +173,7 @@ public:
         for (const auto& native : path.poses()) {
             const auto pose = PlanarPose(native, options_.frame_id);
             if (!pose) throw std::runtime_error("native Vista reply contains a malformed pose");
-            if (!route.path.poses.empty()) route.length += opt::navigation::Distance(route.path.poses.back(), *pose);
+            if (!route.path.poses.empty()) route.length += autonomy::navigation::Distance(route.path.poses.back(), *pose);
             route.path.poses.push_back(*pose);
         }
         if (!std::isfinite(route.length) || !SamePose(route.path.poses.front(), start) ||

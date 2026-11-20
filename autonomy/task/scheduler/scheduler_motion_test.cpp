@@ -30,7 +30,7 @@ namespace t = autonomy::task;
 namespace e = autonomy::task::exploration;
 namespace p = autonomy::perception;
 namespace v = autonomy::planning::planner::vista;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 namespace proto = autonomy::task::proto;
 using Type = t::TaskScheduler::RobotTaskType;
 using namespace std::chrono_literals;

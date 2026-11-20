@@ -7,12 +7,12 @@
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include "autonomy/perception/data/map_reader.hpp"
-#include "opt/navigation/safety.h"
+#include "autonomy/common/navigation/safety.hpp"
 
 namespace autonomy::control {
 /** @brief Explicit platform envelope, feedback and actual actuator reaction bounds. */
 struct NativeCommandGateOptions {
-    opt::navigation::SafetyOptions body;  ///< Existing full-footprint/height/ground-step policy.
+    autonomy::navigation::SafetyOptions body;  ///< Existing full-footprint/height/ground-step policy.
     double maximum_linear_speed = .4;  ///< Actual command envelope, m/s.
     double maximum_yaw_rate = .8;  ///< Actual yaw command envelope, rad/s.
     double maximum_feedback_age = .25;  ///< Original calibrated feedback age, seconds.
@@ -37,7 +37,7 @@ struct NativeStartupRotationOptions {
  * a proof that unseen/dynamic/subcell obstacles do not exist. Caller serializes
  * source selection and publishes only a command for which this returns safe.
  */
-opt::navigation::SafetyResult VerifyNativeCommand(
+autonomy::navigation::SafetyResult VerifyNativeCommand(
     const automsgs::msgs::geometry_msgs::TwistStamped& command,
     const automsgs::msgs::nav_msgs::Odometry& actual_feedback,
     const perception::MapReadView& map, const NativeCommandGateOptions& options,
@@ -55,7 +55,7 @@ opt::navigation::SafetyResult VerifyNativeCommand(
  * @param now Current owner clock in the feedback stamp domain.
  * @return Safe only for a fresh, pure yaw command with zero linear translation.
  */
-opt::navigation::SafetyResult VerifyNativeStartupRotation(
+autonomy::navigation::SafetyResult VerifyNativeStartupRotation(
     const automsgs::msgs::geometry_msgs::TwistStamped& command,
     const automsgs::msgs::nav_msgs::Odometry& feedback, double start_x,
     double start_y, double deadline,

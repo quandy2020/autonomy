@@ -42,7 +42,6 @@ autocmake_library(autonomy_control
     ${PROJECT_BINARY_DIR}
   DEPENDENCIES
     autonomy_common
-    autonomy_navigation_support
     autonomy_proto
     autonomy_transform
     autonomy_map
@@ -93,7 +92,7 @@ if(BUILD_TEST OR AUTONOMY_BUILD_EXPLORATION_TESTS)
     add_executable(control.policy_${suite}_test
       controller/policy_controller/sand_planner/${suite}_test.cpp)
     target_link_libraries(control.policy_${suite}_test PRIVATE
-      autonomy_control autonomy_navigation_support)
+      autonomy_control autonomy_common)
     add_test(NAME control.policy_${suite}_test COMMAND control.policy_${suite}_test)
     set_tests_properties(control.policy_${suite}_test PROPERTIES TIMEOUT 30)
   endforeach()

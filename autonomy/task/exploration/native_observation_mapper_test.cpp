@@ -16,7 +16,7 @@
 namespace {
 namespace e = autonomy::task::exploration;
 namespace p = autonomy::perception;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 
 /** @brief Fail with the actual fusion/persistence invariant. */
 void Require(bool value, const char* reason) { if (!value) throw std::runtime_error(reason); }

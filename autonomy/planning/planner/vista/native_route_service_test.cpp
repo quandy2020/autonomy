@@ -28,7 +28,7 @@ namespace {
 namespace v = autonomy::planning::planner::vista;
 namespace e = autonomy::task::exploration;
 namespace p = autonomy::perception;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 using Query = automsgs::srvs::GetPlan;
 using namespace std::chrono_literals;
 const n::Pose2d kStart{1, 1, -.2}, kGoal{5, 1, .7};  ///< Exact native query endpoints.

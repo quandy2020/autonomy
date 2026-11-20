@@ -17,7 +17,7 @@
 namespace {
 namespace e = autonomy::task::exploration;
 namespace p = autonomy::perception;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 namespace v = autonomy::planning::planner::vista;
 
 /** @brief Fails a regression without disabling checks in release builds. */

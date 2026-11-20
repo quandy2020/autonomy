@@ -23,7 +23,7 @@ ExplorationRoute VisitOrderOptimizer::Optimize(const Pose2d& start,const std::ve
         distances[i][j]=route.success?route.length:std::numeric_limits<double>::infinity();
     }
     auto edge_time=[&](std::size_t a,std::size_t b){return distances[a][b]/speed+
-        std::abs(opt::navigation::NormalizeAngle(poses[b].yaw-poses[a].yaw))/angular_speed;};
+        std::abs(autonomy::navigation::NormalizeAngle(poses[b].yaw-poses[a].yaw))/angular_speed;};
     auto cost=[&](const std::vector<std::size_t>& order){double t=0;auto previous=origin;
         for(auto i:order){t+=edge_time(previous,i)+views[i].observation_time;previous=i;}
         if (return_pose) {

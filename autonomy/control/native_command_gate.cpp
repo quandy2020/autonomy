@@ -16,11 +16,11 @@ std::optional<double> Stamp(const automsgs::msgs::std_msgs::Header& header) {
 }
 }  // namespace
 
-opt::navigation::SafetyResult VerifyNativeCommand(
+autonomy::navigation::SafetyResult VerifyNativeCommand(
     const automsgs::msgs::geometry_msgs::TwistStamped& command,
     const automsgs::msgs::nav_msgs::Odometry& feedback,
     const perception::MapReadView& map,const NativeCommandGateOptions& options,double now) {
-    const auto deny = [](const char* reason) { return opt::navigation::SafetyResult{false,0,reason}; };
+    const auto deny = [](const char* reason) { return autonomy::navigation::SafetyResult{false,0,reason}; };
     for (double value : {now,options.maximum_linear_speed,options.maximum_yaw_rate,options.maximum_feedback_age,
         options.maximum_map_age,options.actuator_watchdog,options.minimum_braking_deceleration})
         if (!std::isfinite(value) || value <= 0) return deny("invalid native command bounds or current clock");
@@ -59,18 +59,18 @@ opt::navigation::SafetyResult VerifyNativeCommand(
     if (map.startup_support) body.startup_support = map.startup_support;
     const double yaw = std::atan2(2*(q.w()*q.z()+q.x()*q.y()),1-2*(q.y()*q.y()+q.z()*q.z()));
     try {
-        opt::navigation::GeometrySafety geometry(map.grid,body);
+        autonomy::navigation::GeometrySafety geometry(map.grid,body);
         return geometry.VerifyPose({pose.position().x(),pose.position().y(),yaw},distance);
     } catch (const std::exception&) { return deny("native geometry checker rejected its input"); }
 }
 
-opt::navigation::SafetyResult VerifyNativeStartupRotation(
+autonomy::navigation::SafetyResult VerifyNativeStartupRotation(
     const automsgs::msgs::geometry_msgs::TwistStamped& command,
     const automsgs::msgs::nav_msgs::Odometry& feedback, double start_x,
     double start_y, double deadline,
     const NativeStartupRotationOptions& options, double now) {
     const auto deny = [](const char* reason) {
-        return opt::navigation::SafetyResult{false, 0, reason};
+        return autonomy::navigation::SafetyResult{false, 0, reason};
     };
     for (double value : {start_x, start_y, deadline, now,
                          options.maximum_position_drift, options.maximum_yaw_rate,

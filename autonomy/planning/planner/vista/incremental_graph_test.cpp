@@ -14,7 +14,7 @@
 
 namespace v = autonomy::planning::planner::vista;
 namespace p = autonomy::perception;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 namespace {
 /** @brief Keep assertions active in release builds. */
 void Require(bool condition, const char* message) {

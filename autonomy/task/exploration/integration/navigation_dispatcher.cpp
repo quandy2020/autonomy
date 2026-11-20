@@ -222,7 +222,7 @@ NavigationDispatcher::~NavigationDispatcher() { Shutdown(); }
 
 bool NavigationDispatcher::Enqueue(const Pose2d& pose,
                                     const RequestVersion& version) {
-    if (!opt::navigation::IsFinite(pose) || !version.session_id ||
+    if (!autonomy::navigation::IsFinite(pose) || !version.session_id ||
         !version.request_id) return false;
     std::lock_guard<std::mutex> lock(impl_->mutex_);
     if (impl_->stopping_ || impl_->failed_ || !impl_->gate_->Enabled()) return false;

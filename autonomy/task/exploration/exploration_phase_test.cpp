@@ -93,7 +93,7 @@ void SelectedIntentInvalidatedByMapChange() {
     Fixture fixture({0}, .05, {}, false, true, 10, 32, e::ExplorationDriver::kBehaviorTree);
     auto selected = Request(fixture, e::ExplorationPhase::kSelect, 1.02);
     Require(Await(fixture, selected, 1.02).status == e::PhaseStatus::kSucceeded, "intent selected");
-    fixture.grid.Set(17, 17, {opt::navigation::CellState::kOccupied, 0});
+    fixture.grid.Set(17, 17, {autonomy::navigation::CellState::kOccupied, 0});
     fixture.session->PushMap(fixture.reader.Read(fixture.grid, 1.03, 0, 1));
     fixture.session->Tick(1.03);
     auto adapted = Request(fixture, e::ExplorationPhase::kAdapt, 1.04);
@@ -103,7 +103,7 @@ void SelectedIntentInvalidatedByMapChange() {
 void PreparedPoseCanSurviveUnrelatedMapChange() {
     Fixture fixture({0}, .05, {}, false, true, 10, 32, e::ExplorationDriver::kBehaviorTree);
     Prepare(fixture);
-    fixture.grid.Set(17, 17, {opt::navigation::CellState::kOccupied, 0});
+    fixture.grid.Set(17, 17, {autonomy::navigation::CellState::kOccupied, 0});
     fixture.session->PushMap(fixture.reader.Read(fixture.grid, 1.035, 0, 1));
     fixture.session->Tick(1.035);
     auto observed = Request(fixture, e::ExplorationPhase::kObserve, 1.04);
@@ -113,6 +113,21 @@ void PreparedPoseCanSurviveUnrelatedMapChange() {
     fixture.session->CancelPhase(observed); fixture.session->Tick(1.05);
     Require(fixture.session->PhaseState(observed).status == e::PhaseStatus::kCanceled &&
             fixture.cancellation_count == 1, "only the current phase cancels its motion");
+}
+void ObservationLossPreservesSafeActiveGoal() {
+    Fixture fixture({0}, .05, {}, false, true, 10, 32,
+                    e::ExplorationDriver::kBehaviorTree);
+    Prepare(fixture);
+    const auto observed = Request(fixture, e::ExplorationPhase::kObserve, 1.04);
+    Require(fixture.submissions.size() == 1,
+            "observation phase submitted one navigation goal");
+    fixture.SkipObservation();
+    fixture.Observe(1.06, false);
+    fixture.session->Tick(1.06);
+    Require(fixture.session->Snapshot().observation_losses.pending_sources &&
+                fixture.session->PhaseState(observed).status == e::PhaseStatus::kPending &&
+                fixture.submissions.size() == 1 && fixture.cancellation_count == 0,
+            "recoverable observation loss retains safe active motion");
 }
 void PausePreservesPhaseButNotDwell() {
     Fixture fixture({0}, .1, {}, false, true, 10, 32, e::ExplorationDriver::kBehaviorTree);
@@ -199,6 +214,7 @@ int main() {
         ExplicitReturnSaveAndOldCancellation(); std::cout << "PASS explicit_return_save_old_halt\n";
         SelectedIntentInvalidatedByMapChange(); std::cout << "PASS selected_map_invalidation\n";
         PreparedPoseCanSurviveUnrelatedMapChange(); std::cout << "PASS prepared_pose_revalidation\n";
+        ObservationLossPreservesSafeActiveGoal(); std::cout << "PASS observation_loss_retains_goal\n";
         PausePreservesPhaseButNotDwell(); std::cout << "PASS phase_pause_dwell\n";
         AutomaticDriverRejectsPhaseRequests(); std::cout << "PASS mutually_exclusive_drivers\n";
         StartupObservationGatesNormalSelection(); std::cout << "PASS startup_observation_gate\n";

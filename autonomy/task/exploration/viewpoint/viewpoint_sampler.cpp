@@ -12,7 +12,7 @@ namespace autonomy::task::exploration {
 ViewpointSamplingResult ViewpointSampler::Sample(
     const Pose2d& start, const MapReadView& map, const CoverageState& state,
     const ViewpointEvaluator& evaluator, const RegionManager& regions,
-    perception::SensorMask active, opt::navigation::SafetyOptions safety,
+    perception::SensorMask active, autonomy::navigation::SafetyOptions safety,
     ViewpointSamplingOptions options, bool sweep, std::size_t cursor,
     const std::function<bool()>& cancel_checker) const {
     if (!map.grid || !options.yaw_samples || options.yaw_samples > 360 ||
@@ -39,8 +39,8 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         safety.robot_radius = 1e-9;
         safety.horizontal_margin = 0;
     }
-    auto geometry = std::make_shared<opt::navigation::GeometrySafety>(map.grid, safety);
-    opt::navigation::ReachabilityField reachable(geometry, start, 0, cancel_checker);
+    auto geometry = std::make_shared<autonomy::navigation::GeometrySafety>(map.grid, safety);
+    autonomy::navigation::ReachabilityField reachable(geometry, start, 0, cancel_checker);
     if (reachable.canceled()) {
         result.canceled = true;
         return result;
@@ -63,11 +63,11 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         result.next_cursor = cursor + 1;
         const auto cell = grid.FromIndex(cursor / options.yaw_samples);
         if (cell.x % stride || cell.y % stride ||
-            grid.At(cell.x, cell.y).state != opt::navigation::CellState::kFree) continue;
+            grid.At(cell.x, cell.y).state != autonomy::navigation::CellState::kFree) continue;
         auto pose = grid.CellCenter(cell.x, cell.y);
         const double distance = reachable.DistanceTo(pose);
         if (!std::isfinite(distance)) continue;
-        pose.yaw = 2 * opt::navigation::kPi * (cursor % options.yaw_samples) /
+        pose.yaw = 2 * autonomy::navigation::kPi * (cursor % options.yaw_samples) /
                    options.yaw_samples;
         auto contribution = evaluator.Predict(pose, state, map, active);
         const double gain = CoverageFusion::Gain(state, contribution);
@@ -80,7 +80,7 @@ ViewpointSamplingResult ViewpointSampler::Sample(
             view.contributions = std::move(contribution);
             view.predicted_gain = gain;
             view.travel_time = distance / options.nominal_speed;
-            view.turn_time = std::abs(opt::navigation::NormalizeAngle(pose.yaw - start.yaw)) /
+            view.turn_time = std::abs(autonomy::navigation::NormalizeAngle(pose.yaw - start.yaw)) /
                              options.angular_speed;
             view.observation_time = options.observation_time;
             result.candidates.push_back(std::move(view));

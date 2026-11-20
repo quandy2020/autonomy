@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-namespace opt::navigation {
+namespace autonomy::navigation {
 
 constexpr double kPi = 3.14159265358979323846;
 
@@ -204,5 +204,5 @@ struct NavigationUpdate {
   AdaptationTrigger trigger = AdaptationTrigger::kNone;
 };
 
-}  // namespace opt::navigation
+}  // namespace autonomy::navigation
 #endif  // OPT_NAVIGATION_TYPES_H_

@@ -13,8 +13,8 @@ namespace p = autonomy::perception;
 void Require(bool value,const char* reason) { if (!value) throw std::runtime_error(reason); }
 /** @brief Geometry is independently known; it must never manufacture measured coverage. */
 p::MapReadView Map() {
-    auto grid = std::make_shared<opt::navigation::GridMap>(4,4,1,0,0,"map");
-    grid->Fill({opt::navigation::CellState::kFree,0,1});
+    auto grid = std::make_shared<autonomy::navigation::GridMap>(4,4,1,0,0,"map");
+    grid->Fill({autonomy::navigation::CellState::kFree,0,1});
     p::MapReadView view; view.grid = grid; view.map_epoch = 4; view.frame_id = "map";
     return view;
 }

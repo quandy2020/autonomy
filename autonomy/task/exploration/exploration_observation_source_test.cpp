@@ -309,7 +309,7 @@ void NativeProcessorOwnership() {
         *affinity = generation == 0 && packet.Valid(now) && std::this_thread::get_id() != caller &&
             autolink::croutine::CRoutine::GetCurrentRoutine() == nullptr;
         t::exploration::MapReadView map;
-        map.grid = std::make_shared<opt::navigation::GridMap>(8,8,1,-2,-2,"map");
+        map.grid = std::make_shared<autonomy::navigation::GridMap>(8,8,1,-2,-2,"map");
         map.map_epoch = packet.localization.map_epoch; map.geometry_revision = 1;
         map.frame_id = packet.localization.world_frame; map.source_stamp = packet.observation.stamp;
         ++*calls; return map;

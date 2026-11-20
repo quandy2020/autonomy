@@ -115,12 +115,26 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
             settings->routes.navigation_tree);
         auto services = create_mapping(goal, options);
         ValidateMappingServices(services, options);
-        // Keep a short, already admitted observation goal alive across map
-        // revisions. The route planner and the native command gate revalidate
-        // every actual motion request; canceling here on every map publication
-        // preempted the controller before its first inference could complete.
-        services.navigation_still_valid = [](const AdaptedObservationGoal&,
-                                              const Pose2d&, const MapReadView&) {
+        // Keep an admitted observation goal alive across unrelated map
+        // revisions, but revalidate its exact execution footprint. Coverage
+        // updates must not preempt the controller during its first inference,
+        // while newly occupied destinations still revoke navigation.
+        services.navigation_still_valid = [coverage = settings->coverage](
+            const AdaptedObservationGoal& goal, const Pose2d&, const MapReadView& map) {
+            if (!map.grid || goal.intent.map_epoch != map.map_epoch) return false;
+            auto safety = coverage.safety;
+            if (map.footprint_inflated) {
+                safety.robot_radius = 1e-9;
+                safety.horizontal_margin = 0;
+            }
+            if (map.startup_support) safety.startup_support = map.startup_support;
+            const autonomy::navigation::GeometrySafety validator(map.grid, safety);
+            if (!validator.VerifyPose(goal.execution_pose).safe) return false;
+            for (double yaw : goal.intent.required_views) {
+                auto view = goal.execution_pose;
+                view.yaw = yaw;
+                if (!validator.VerifyPose(view).safe) return false;
+            }
             return true;
         };
         services.submit_navigation = std::move(native_navigation.submit_navigation);

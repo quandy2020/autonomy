@@ -41,7 +41,7 @@ void ValidateView(const perception::MapReadView& view,
             throw std::invalid_argument("visibility grid lattice changed without a new epoch");
 }
 }  // namespace
-VistaRoutePlanner::VistaRoutePlanner(opt::navigation::SafetyOptions options, std::size_t nodes)
+VistaRoutePlanner::VistaRoutePlanner(autonomy::navigation::SafetyOptions options, std::size_t nodes)
     : options_(options), updater_(nodes) {}
 GraphUpdateStats VistaRoutePlanner::Update(const perception::MapReadView& map) {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -83,7 +83,7 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
         if (ready_) { map = map_; graph = graph_; }
     }
     VistaRoute result;
-    if (!map || !opt::navigation::IsFinite(start) || !opt::navigation::IsFinite(goal)) return result;
+    if (!map || !autonomy::navigation::IsFinite(start) || !autonomy::navigation::IsFinite(goal)) return result;
     result.map_epoch = map->map_epoch; result.geometry_revision = map->geometry_revision;
     result.path.frame_id = map->frame_id;
     result.evidence = CopyEvidence(graph, map->frame_id);
@@ -102,9 +102,9 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     for (const auto& n : poses) {
         if (is_canceled()) { result.canceled = true; return result; }
         if (n.first != source && validator.Validate(source,start,n.first,n.second).valid)
-            connect(source,n.first,opt::navigation::Distance(start,n.second));
+            connect(source,n.first,autonomy::navigation::Distance(start,n.second));
         if (n.first != target && n.first != source && validator.Validate(target,goal,n.first,n.second).valid)
-            connect(target,n.first,opt::navigation::Distance(goal,n.second));
+            connect(target,n.first,autonomy::navigation::Distance(goal,n.second));
     }
     using QueueEntry = std::pair<double,NodeId>;
     std::priority_queue<QueueEntry,std::vector<QueueEntry>,std::greater<QueueEntry>> queue;
@@ -130,14 +130,14 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     } else {
         result.used_grid_fallback = true;
         // Grid connectivity is a fallback, so graph sparsification cannot declare unreachable.
-        opt::navigation::ReachabilityField field(
-            std::make_shared<opt::navigation::GeometrySafety>(validator.safety()),start,0,canceled);
+        autonomy::navigation::ReachabilityField field(
+            std::make_shared<autonomy::navigation::GeometrySafety>(validator.safety()),start,0,canceled);
         auto route = field.PathTo(goal);
         if (field.canceled() || is_canceled()) { result.canceled = true; return result; }
         if (!route.poses.empty()) {
             result.path = route; result.success = true;
             for (std::size_t i = 1; i < route.poses.size(); ++i)
-                result.length += opt::navigation::Distance(route.poses[i-1],route.poses[i]);
+                result.length += autonomy::navigation::Distance(route.poses[i-1],route.poses[i]);
         }
     }
     // A 2D route is geometrically checked, but 3D/dynamic Safety still owns execution permission.

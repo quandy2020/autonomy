@@ -19,7 +19,7 @@ namespace autonomy::planning::planner::vista {
 
 /** @brief Geometry and capacity settings for one native Vista instance. */
 struct VistaPlannerSettings {
-    opt::navigation::SafetyOptions safety;  ///< Platform clearance and floor limits, in metres.
+    autonomy::navigation::SafetyOptions safety;  ///< Platform clearance and floor limits, in metres.
     std::size_t maximum_nodes = 4096;       ///< Maximum persistent visibility nodes.
     std::size_t maximum_cells = 2000000;    ///< Maximum cells in accumulated read history.
     bool costmap_footprint_inflated = false; ///< Input already accounts for the robot footprint.

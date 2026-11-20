@@ -26,7 +26,7 @@ namespace t = autonomy::task;
 namespace p = autonomy::perception;
 namespace v = autonomy::planning::planner::vista;
 namespace m = automsgs::msgs::sensor_msgs;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 using namespace std::chrono_literals;
 std::atomic<bool> cleanup_failed{false};  ///< A failed native Reader drain must affect the final test result.
 

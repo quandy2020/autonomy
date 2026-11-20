@@ -53,35 +53,35 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   # Actual scheduler and parent/child native task admission, not a model scheduler.
   add_executable(autonomy_scheduler_motion_test
     autonomy/task/scheduler/scheduler_motion_test.cpp)
-  target_link_libraries(autonomy_scheduler_motion_test PRIVATE autonomy_task autonomy_planning autonomy_navigation_support)
+  target_link_libraries(autonomy_scheduler_motion_test PRIVATE autonomy_task autonomy_planning autonomy_common)
   add_test(NAME autonomy.task.scheduler_motion COMMAND autonomy_scheduler_motion_test)
   set_tests_properties(autonomy.task.scheduler_motion PROPERTIES TIMEOUT 45)
   # The exact retirement helper is also verified with the actual support target.
   add_executable(autonomy_reader_retirement_test
     autonomy/perception/observation/reader_retirement_test.cpp)
-  target_link_libraries(autonomy_reader_retirement_test PRIVATE autonomy_navigation_support)
+  target_link_libraries(autonomy_reader_retirement_test PRIVATE autonomy_common)
   add_test(NAME autonomy.exploration.reader_retirement COMMAND autonomy_reader_retirement_test)
   set_tests_properties(autonomy.exploration.reader_retirement PROPERTIES TIMEOUT 15)
 
   # Actual Node/Reader/Writer, generated messages and scheduler lifecycle.
-  # Production sources belong to navigation_support, including when optional
+  # Production sources belong to autonomy_common, including when optional
   # perception applications are disabled. Every consumer links that same implementation.
   add_executable(autonomy_native_observation_source_test
     autonomy/perception/observation/native_observation_source_test.cpp)
   target_link_libraries(autonomy_native_observation_source_test PRIVATE
-    autonomy_navigation_support autolink automsgs)
+    autonomy_common autolink automsgs)
   add_test(NAME autonomy.exploration.native_observation_source COMMAND autonomy_native_observation_source_test)
   set_tests_properties(autonomy.exploration.native_observation_source PROPERTIES TIMEOUT 60)
 
   add_executable(autonomy_native_atlas_localization_test
     autonomy/perception/observation/native_atlas_localization_test.cpp)
-  target_link_libraries(autonomy_native_atlas_localization_test PRIVATE autonomy_navigation_support)
+  target_link_libraries(autonomy_native_atlas_localization_test PRIVATE autonomy_common)
   add_test(NAME autonomy.exploration.native_atlas_localization COMMAND autonomy_native_atlas_localization_test)
   set_tests_properties(autonomy.exploration.native_atlas_localization PROPERTIES TIMEOUT 30)
 
   add_executable(autonomy_observation_ingress_test
     autonomy/perception/observation/observation_ingress_test.cpp)
-  target_link_libraries(autonomy_observation_ingress_test PRIVATE autonomy_task autonomy_navigation_support)
+  target_link_libraries(autonomy_observation_ingress_test PRIVATE autonomy_task autonomy_common)
   add_test(NAME autonomy.exploration.observation_ingress COMMAND autonomy_observation_ingress_test)
   set_tests_properties(autonomy.exploration.observation_ingress PROPERTIES TIMEOUT 30)
   if(NOT TARGET autonomy_planning OR NOT TARGET autonomy_task)
@@ -99,20 +99,20 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   add_executable(autonomy_native_sensor_messages_test
     autonomy/perception/observation/native_sensor_messages_test.cpp)
   target_link_libraries(autonomy_native_sensor_messages_test PRIVATE
-    autonomy_navigation_support automsgs)
+    autonomy_common automsgs)
   add_test(NAME autonomy.exploration.native_sensor_messages COMMAND autonomy_native_sensor_messages_test)
   set_tests_properties(autonomy.exploration.native_sensor_messages PROPERTIES TIMEOUT 30)
   add_executable(autonomy_native_vista_test
     autonomy/planning/planner/vista/native_vista_test.cpp)
   target_link_libraries(autonomy_native_vista_test PRIVATE
-    autonomy_planning autonomy_task autonomy_navigation_support)
+    autonomy_planning autonomy_task autonomy_common)
   add_test(NAME autonomy.native.vista COMMAND autonomy_native_vista_test)
   set_tests_properties(autonomy.native.vista PROPERTIES TIMEOUT 30)
 
   add_executable(autonomy_vista_server_test
     autonomy/planning/planner/vista/vista_server_test.cpp)
   target_link_libraries(autonomy_vista_server_test PRIVATE
-    autonomy_planning autonomy_task autonomy_navigation_support)
+    autonomy_planning autonomy_task autonomy_common)
   add_test(NAME autonomy.planning.vista_server COMMAND autonomy_vista_server_test)
   set_tests_properties(autonomy.planning.vista_server PROPERTIES TIMEOUT 30)
 
@@ -120,7 +120,7 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   add_executable(autonomy_native_route_service_test
     autonomy/planning/planner/vista/native_route_service_test.cpp)
   target_link_libraries(autonomy_native_route_service_test PRIVATE
-    autonomy_planning autonomy_task autonomy_navigation_support)
+    autonomy_planning autonomy_task autonomy_common)
   add_test(NAME autonomy.planning.native_route_service COMMAND autonomy_native_route_service_test)
   set_tests_properties(autonomy.planning.native_route_service PROPERTIES TIMEOUT 60)
 
@@ -128,7 +128,7 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   add_executable(autonomy_vista_incremental_graph_test
     autonomy/planning/planner/vista/incremental_graph_test.cpp)
   target_link_libraries(autonomy_vista_incremental_graph_test PRIVATE
-    autonomy_planning autonomy_task autonomy_navigation_support)
+    autonomy_planning autonomy_task autonomy_common)
   add_test(NAME autonomy.planning.vista_incremental_graph COMMAND autonomy_vista_incremental_graph_test)
   set_tests_properties(autonomy.planning.vista_incremental_graph PROPERTIES TIMEOUT 30)
 
@@ -190,7 +190,7 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
     add_executable(autonomy_${suite}_test
       autonomy/task/exploration/${suite}_test.cpp)
     target_link_libraries(autonomy_${suite}_test PRIVATE
-      autonomy_task autonomy_planning autonomy_navigation_support)
+      autonomy_task autonomy_planning autonomy_common)
     add_test(NAME autonomy.exploration.${suite} COMMAND autonomy_${suite}_test)
     set_tests_properties(autonomy.exploration.${suite} PROPERTIES TIMEOUT 30)
   endforeach()

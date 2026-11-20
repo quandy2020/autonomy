@@ -592,7 +592,7 @@ public:
             std::lock_guard<std::mutex> lock(startup_admission_.mutex);
             start_yaw = startup_admission_.start_yaw;
         }
-        const double turned = std::abs(std::remainder(final_yaw - start_yaw, 2 * opt::navigation::kPi));
+        const double turned = std::abs(std::remainder(final_yaw - start_yaw, 2 * autonomy::navigation::kPi));
         if (turned + options_.exploration.session.startup_observation.completion_tolerance < target_yaw) {
             AWARN << "NATIVE_STARTUP_OBSERVATION measured_yaw=" << turned
                   << " target_yaw=" << target_yaw;
@@ -640,13 +640,13 @@ public:
     bool EstablishStartupSupport(const MapReadView& map, double start_x,
                                  double start_y, double start_yaw) {
         if (!map.grid || !map.has_height_evidence) return false;
-        opt::navigation::SafetyOptions body = options_.exploration.coverage.safety;
+        autonomy::navigation::SafetyOptions body = options_.exploration.coverage.safety;
         if (map.footprint_inflated) {
             body.robot_radius = 1e-9;
             body.horizontal_margin = 0;
         }
         body.startup_support.reset();
-        opt::navigation::GeometrySafety strict(map.grid, body);
+        autonomy::navigation::GeometrySafety strict(map.grid, body);
         if (strict.VerifyPose({start_x, start_y, start_yaw}).safe) {
             std::lock_guard<std::mutex> lock(startup_support_mutex_);
             startup_support_.reset();
@@ -663,14 +663,14 @@ public:
                 const double distance = std::hypot(center.x - start_x, center.y - start_y);
                 if (distance <= policy.support_radius) continue;
                 if (distance > policy.support_ring_radius ||
-                    cell.state != opt::navigation::CellState::kFree ||
+                    cell.state != autonomy::navigation::CellState::kFree ||
                     !std::isfinite(cell.floor_height) ||
                     !std::isfinite(cell.ceiling_height)) continue;
                 floors.push_back(cell.floor_height);
                 ceilings.push_back(cell.ceiling_height);
                 const double angle = std::atan2(center.y - start_y, center.x - start_x);
-                const int sector = static_cast<int>(std::floor((angle + opt::navigation::kPi) /
-                    (opt::navigation::kPi * 0.5))) % 4;
+                const int sector = static_cast<int>(std::floor((angle + autonomy::navigation::kPi) /
+                    (autonomy::navigation::kPi * 0.5))) % 4;
                 sectors[std::clamp(sector, 0, 3)] = true;
             }
         }
@@ -695,7 +695,7 @@ public:
         }
         {
             std::lock_guard<std::mutex> lock(startup_support_mutex_);
-            startup_support_ = opt::navigation::StartupSupportRegion{
+            startup_support_ = autonomy::navigation::StartupSupportRegion{
                 start_x, start_y, policy.support_radius, floor, ceiling};
             startup_support_expires_ = Now() + policy.support_timeout;
         }
@@ -808,11 +808,11 @@ public:
         for (int x = 0; x < view.grid->width(); ++x) for (int y = 0; y < view.grid->height(); ++y) {
             const auto state = view.grid->At(x,y).state;
             const auto center = view.grid->CellCenter(x,y);
-            const bool startup_free = state == opt::navigation::CellState::kUnknown &&
+            const bool startup_free = state == autonomy::navigation::CellState::kUnknown &&
                 view.startup_support && view.startup_support->Contains(center.x,center.y);
-            map->setCost(x,y,state == opt::navigation::CellState::kFree || startup_free ?
+            map->setCost(x,y,state == autonomy::navigation::CellState::kFree || startup_free ?
                 ::autonomy::map::costmap_2d::FREE_SPACE :
-                state == opt::navigation::CellState::kOccupied ? ::autonomy::map::costmap_2d::LETHAL_OBSTACLE : ::autonomy::map::costmap_2d::NO_INFORMATION);
+                state == autonomy::navigation::CellState::kOccupied ? ::autonomy::map::costmap_2d::LETHAL_OBSTACLE : ::autonomy::map::costmap_2d::NO_INFORMATION);
         }
     }
     /** @brief Derive a navigation-frame origin from actual healthy tracking and actual installation, without GT. */
@@ -895,7 +895,7 @@ public:
     std::optional<StartupObservationReply> startup_reply_;  ///< Validated terminal evidence awaiting Session poll.
     StartupAdmission startup_admission_;  ///< Yaw-only command admission with a finite measured envelope.
     std::mutex startup_support_mutex_;  ///< Protects the start-only support closure shared by map consumers.
-    std::optional<opt::navigation::StartupSupportRegion> startup_support_;  ///< Measured closure never written to the map.
+    std::optional<autonomy::navigation::StartupSupportRegion> startup_support_;  ///< Measured closure never written to the map.
     double startup_support_expires_ = 0;  ///< Absolute expiry of the start-only closure, seconds.
     std::optional<::automsgs::msgs::nav_msgs::Odometry> control_state_;  ///< Original calibrated feedback retained under pose_mutex_, never a previous command.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::geometry_msgs::TwistStamped>> command_writer_;  ///< Actual isolated actuator transport after independent map checks.
@@ -977,16 +977,16 @@ bool NativeRgbdPlatform::Install() {
                 std::size_t free = 0, occupied = 0;
                 for (int x = 0; x < mapped->grid->width(); ++x) for (int y = 0; y < mapped->grid->height(); ++y) {
                     const auto cell = mapped->grid->At(x,y).state;
-                    free += cell == opt::navigation::CellState::kFree;
-                    occupied += cell == opt::navigation::CellState::kOccupied;
+                    free += cell == autonomy::navigation::CellState::kFree;
+                    occupied += cell == autonomy::navigation::CellState::kOccupied;
                 }
-                const opt::navigation::Pose2d pose{packet.localization.world_from_base.translation.x,
+                const autonomy::navigation::Pose2d pose{packet.localization.world_from_base.translation.x,
                     packet.localization.world_from_base.translation.y,0};
                 const auto current = mapped->grid->WorldToCell(pose);
-                const auto clearance = opt::navigation::GeometrySafety(mapped->grid,state->options_.exploration.coverage.safety).VerifyPose(pose);
+                const auto clearance = autonomy::navigation::GeometrySafety(mapped->grid,state->options_.exploration.coverage.safety).VerifyPose(pose);
                 AINFO << "NATIVE_EXPLORATION_DOMAIN free=" << free << " occupied=" << occupied
                       << " unknown=" << mapped->grid->size()-free-occupied << " start_free="
-                      << (current && mapped->grid->At(current->x,current->y).state == opt::navigation::CellState::kFree)
+                      << (current && mapped->grid->At(current->x,current->y).state == autonomy::navigation::CellState::kFree)
                       << " start_safe=" << clearance.safe << " reason=" << clearance.reason;
             }
             if (snapshot && snapshot->observation_losses.pending_sources &&
@@ -1030,6 +1030,11 @@ bool NativeRgbdPlatform::Install() {
             control::NativeControllerIO io;
             io.read_odometry = [weak] { const auto self = weak.lock(); return self ? self->ReadControlState() : std::nullopt; };
             io.publish_command = [weak](const auto& command) { const auto self = weak.lock(); return self && self->PublishControlCommand(command); };
+            // Policy inference can delay the next feedback sample while the
+            // command gate still requires fresh acquisition evidence. Accept
+            // at most the configured feedback window (ControllerServer caps it
+            // at one second); missing samples never replay a prior velocity.
+            io.maximum_state_age = std::min(1.0, state->options_.command_gate.maximum_feedback_age);
             state->controller_ = std::make_unique<control::ControllerServer>(*state->options_.controller,state->planner_->GetCostmapWrapper(),std::move(io));
             state->controller_->Start();
             state->control_image_reader_ = state->node_->CreateReader<::automsgs::msgs::sensor_msgs::Image>(state->options_.exploration.input.depth_topic,[weak](const auto& image) {

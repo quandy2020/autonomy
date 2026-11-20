@@ -6,7 +6,7 @@
 #include <functional>
 #include <mutex>
 #include "autonomy/planning/planner/vista/graph_updater.hpp"
-#include "opt/navigation/reachability.h"
+#include "autonomy/common/navigation/reachability.hpp"
 
 namespace autonomy::planning::planner::vista {
 /** @brief Small immutable certificate copied from the graph owner under its lock.
@@ -24,7 +24,7 @@ struct VistaMapEvidence {
 };
 /** @brief Route result and its source geometry; execution safety is a separate authority. */
 struct VistaRoute {
-    opt::navigation::Path path;  ///< Complete world-frame route.
+    autonomy::navigation::Path path;  ///< Complete world-frame route.
     double length = 0;  ///< Sum of route chord lengths, meters.
     std::uint64_t map_epoch = 0;  ///< Coordinate generation used by this result.
     std::uint64_t geometry_revision = 0;  ///< Consumed map geometry revision.
@@ -38,7 +38,7 @@ struct VistaRoute {
 class VistaRoutePlanner {
 public:
     /** @brief Configure footprint checks and the contour vertex budget. */
-    explicit VistaRoutePlanner(opt::navigation::SafetyOptions options = {},
+    explicit VistaRoutePlanner(autonomy::navigation::SafetyOptions options = {},
                                 std::size_t maximum_nodes = 4096);
     /** @brief Apply consecutive deltas, or fully refresh after a missing revision.
      * @throws std::invalid_argument The view violates geometry or epoch contracts.
@@ -57,7 +57,7 @@ public:
     std::optional<VistaMapEvidence> Evidence() const;
 private:
     mutable std::mutex mutex_;  ///< Protect accepted map, graph and updater state.
-    opt::navigation::SafetyOptions options_;  ///< Configured robot geometry.
+    autonomy::navigation::SafetyOptions options_;  ///< Configured robot geometry.
     GraphUpdater updater_;  ///< Persistent contour and edge spatial update owner.
     VisibilityGraph graph_;  ///< Current graph, inaccessible for routing during mutations.
     std::optional<perception::MapReadView> map_;  ///< Last accepted view and epoch contract.

@@ -5,7 +5,7 @@
 #include <stdexcept>
 namespace autonomy::task::exploration {
 GoalPoseAdapter::GoalPoseAdapter(std::shared_ptr<const PathProvider> paths,
-    std::shared_ptr<const ViewpointEvaluator> evaluator,opt::navigation::SafetyOptions safety)
+    std::shared_ptr<const ViewpointEvaluator> evaluator,autonomy::navigation::SafetyOptions safety)
     :paths_(std::move(paths)),evaluator_(std::move(evaluator)),safety_(safety){
     if(!paths_ || !evaluator_)throw std::invalid_argument("observation adapter requires route and visibility providers");
 }
@@ -13,7 +13,7 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
     const MapReadView& map,const CoverageState& coverage,perception::SensorMask active,
     const std::function<bool()>& cancel_checker) const {
     if(!map.grid || goal.map_epoch!=map.map_epoch || coverage.epoch()!=map.map_epoch ||
-       !opt::navigation::IsFinite(goal.original_pose) || !std::isfinite(goal.allowed_translation) ||
+       !autonomy::navigation::IsFinite(goal.original_pose) || !std::isfinite(goal.allowed_translation) ||
        goal.allowed_translation<0 || !std::isfinite(goal.allowed_yaw_change) || goal.allowed_yaw_change<0 ||
        !std::isfinite(goal.minimum_gain) || goal.minimum_gain<0 || !active)return {};
     if(goal.required_coverage_units.empty())return {};
@@ -21,19 +21,19 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
     for(double yaw:goal.required_views)if(!std::isfinite(yaw))return {};
     auto options=safety_;if(map.footprint_inflated){options.robot_radius=1e-9;options.horizontal_margin=0;}
     if(map.startup_support)options.startup_support=map.startup_support;
-    auto safety=std::make_shared<opt::navigation::GeometrySafety>(map.grid,options);
+    auto safety=std::make_shared<autonomy::navigation::GeometrySafety>(map.grid,options);
     std::optional<AdaptedObservationGoal> best;
     auto evaluate=[&](Pose2d pose){
         if(cancel_checker && cancel_checker())return;
-        if(opt::navigation::Distance(pose,goal.original_pose)>goal.allowed_translation+1e-9 ||
-           std::abs(opt::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw))>goal.allowed_yaw_change+1e-9)return;
+        if(autonomy::navigation::Distance(pose,goal.original_pose)>goal.allowed_translation+1e-9 ||
+           std::abs(autonomy::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw))>goal.allowed_yaw_change+1e-9)return;
         const auto geometry=safety->VerifyPose(pose);if(!geometry.safe)return;
         auto adapted_intent=goal;
         if(adapted_intent.required_views.empty())adapted_intent.required_views={goal.original_pose.yaw};
-        const double shift=opt::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw);
+        const double shift=autonomy::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw);
         std::vector<CoverageContribution> predicted;
         for(auto& yaw:adapted_intent.required_views) {
-            yaw=opt::navigation::NormalizeAngle(yaw+shift);
+            yaw=autonomy::navigation::NormalizeAngle(yaw+shift);
             auto view_pose=pose;view_pose.yaw=yaw;
             if(!safety->VerifyPose(view_pose).safe)return;
             const auto visible=evaluator_->Predict(view_pose,coverage,map,active,{},true);
@@ -51,21 +51,21 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
     };
     evaluate(goal.original_pose);
     for(double shift:{-goal.allowed_yaw_change,goal.allowed_yaw_change}) {
-        auto pose=goal.original_pose;pose.yaw=opt::navigation::NormalizeAngle(pose.yaw+shift);evaluate(pose);
+        auto pose=goal.original_pose;pose.yaw=autonomy::navigation::NormalizeAngle(pose.yaw+shift);evaluate(pose);
     }
     if(goal.allowed_translation<=0)return best;
-    opt::navigation::AdaptationOptions tuning;
+    autonomy::navigation::AdaptationOptions tuning;
     tuning.fallback_radius=goal.allowed_translation;tuning.ring_max_radius=goal.allowed_translation;
     tuning.ring_min_radius=0;tuning.region_sample_spacing=std::min(map.grid->resolution(),.1);
     tuning.max_reachability_expansions=0;
-    opt::navigation::AdaptationInput input;input.map=map.grid;input.safety=safety;input.robot_pose=start;
+    autonomy::navigation::AdaptationInput input;input.map=map.grid;input.safety=safety;input.robot_pose=start;
     input.goal.original=goal.original_pose;input.goal.frame_id=map.frame_id;input.region_only=true;
     input.cancel_checker=cancel_checker;
-    input.goal.region=opt::navigation::GoalRegion{"observation_intent",goal.original_pose,goal.allowed_translation};
-    const auto selected=opt::navigation::GoalAdapter(options,tuning).Adapt(input);
+    input.goal.region=autonomy::navigation::GoalRegion{"observation_intent",goal.original_pose,goal.allowed_translation};
+    const auto selected=autonomy::navigation::GoalAdapter(options,tuning).Adapt(input);
     for(const auto& candidate:selected.candidates)if(candidate.accepted){
         for(double yaw_delta:{0.0,-goal.allowed_yaw_change,goal.allowed_yaw_change}) {
-            auto pose=candidate.pose;pose.yaw=opt::navigation::NormalizeAngle(goal.original_pose.yaw+yaw_delta);evaluate(pose);
+            auto pose=candidate.pose;pose.yaw=autonomy::navigation::NormalizeAngle(goal.original_pose.yaw+yaw_delta);evaluate(pose);
         }
     }
     return best;

@@ -113,7 +113,7 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
     if(now-last_fair_selection_>=options_.fairness_interval)mandatory=queue_.OldestDue(now);
     std::vector<Viewpoint> local;
     const auto target_region=decision.global_route.views.empty()?regions_.RegionFor(start):decision.global_route.views.front().region_id;
-    for(const auto& candidate:sampled.candidates)if(opt::navigation::Distance(candidate.pose,start)<=options_.local_radius ||
+    for(const auto& candidate:sampled.candidates)if(autonomy::navigation::Distance(candidate.pose,start)<=options_.local_radius ||
         candidate.region_id==target_region || (mandatory && std::any_of(candidate.contributions.begin(),candidate.contributions.end(),
         [&](const auto& c){return c.id==*mandatory;})))local.push_back(candidate);
     auto selected=LocalCoveragePlanner{}.Select(local,state,options_.local_views,mandatory);

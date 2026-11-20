@@ -54,7 +54,6 @@ autocmake_library(autonomy_task
     ${PROJECT_BINARY_DIR}
   DEPENDENCIES
     autonomy_common
-    autonomy_navigation_support
     autonomy_proto
     autonomy_transform
     autonomy_map

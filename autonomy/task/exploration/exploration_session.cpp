@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <thread>
 #include <variant>
+#include "autonomy/common/logging.hpp"
 #include "autonomy/perception/data/observation_buffer.hpp"
 #include "autonomy/task/exploration/coverage/coverage_evaluator.hpp"
 #include "autonomy/task/exploration/coverage/measured_coverage_map.hpp"
@@ -145,7 +146,7 @@ public:
                 !std::isfinite(startup.support_timeout) || startup.support_timeout <= 0 ||
                 !startup.minimum_support_cells)
                 throw std::invalid_argument("invalid startup support-closure policy");
-            if (startup.target_yaw > opt::navigation::kPi + 1e-9)
+            if (startup.target_yaw > autonomy::navigation::kPi + 1e-9)
                 throw std::invalid_argument("startup observation target exceeds the native spin envelope");
         }
         if (!std::isfinite(options.return_margin) || options.return_margin < 0 ||
@@ -206,7 +207,7 @@ public:
     }
 
     void Start(const Pose2d& home, std::uint64_t epoch, double now) {
-        if (!opt::navigation::IsFinite(home) || !epoch || !std::isfinite(now))
+        if (!autonomy::navigation::IsFinite(home) || !epoch || !std::isfinite(now))
             throw std::invalid_argument("invalid exploration start");
         if (snapshot_.state != ExplorationState::kIdle &&
             snapshot_.state != ExplorationState::kFinished)
@@ -389,8 +390,28 @@ public:
 
     bool BtDriven() const { return options_.driver == ExplorationDriver::kBehaviorTree; }
 
+    /** @brief Whether a live observation phase still owns a safe current target.
+     * Coverage loss can add work while the robot is moving toward an already
+     * admitted viewpoint. Geometry changes are authoritative only when the
+     * platform revalidator rejects that target; a new requirement revision by
+     * itself must not stop safe motion that can recover the missing evidence.
+     */
+    bool ActiveObservationTargetValid() const {
+        if (!active_phase_ || active_phase_->phase != ExplorationPhase::kObserve ||
+            !snapshot_.goal || !prepared_version_ || !map_ || finishing_ ||
+            prepared_version_->map_epoch != map_->map_epoch ||
+            prepared_version_->sensor_epoch != snapshot_.sensors.sensor_epoch)
+            return false;
+        return prepared_version_->geometry_revision == map_->geometry_revision ||
+               (services_.navigation_still_valid &&
+                services_.navigation_still_valid(*snapshot_.goal, pose_, *map_));
+    }
+
     void FinishPhase(PhaseStatus status, const std::string& reason) {
         if (!active_phase_) return;
+        AINFO << "EXPLORATION_PHASE result=" << static_cast<int>(status)
+              << " phase=" << static_cast<int>(active_phase_->phase)
+              << " reason=" << reason;
         for (auto& result : phase_history_) {
             if (result.ticket.SameRequest(*active_phase_)) {
                 result.status = status;
@@ -716,12 +737,7 @@ public:
         RevokeCompletion();
         if (finishing_) return;  // Partial/canceled results retain loss but do not restart exploration.
         CancelRecoveryOperation();
-        CancelActivePhase(PhaseStatus::kInvalidated, "observation loss reopened task requirements");
-        CancelPlanning(); CancelNavigation();
         coverage_.InvalidateSources(loss.pending_sources);
-        snapshot_.goal.reset(); snapshot_.selection.reset();
-        selected_version_.reset(); prepared_version_.reset();
-        view_evidence_.clear(); view_started_.clear(); current_view_ = 0;
         recovery_loss_ = loss;
         recovery_geometry_ = geometry;
         recovery_requirements_ = coverage_.requirements_revision();
@@ -729,8 +745,28 @@ public:
         loss_recovery_attempts_ = 0; loss_recovery_after_ = now;
         worker_reset_requested_.store(true);
         snapshot_.completion_confirmed = false;
+        if (ActiveObservationTargetValid()) {
+            // The admitted route remains safe and can acquire the replacement
+            // views. Preserve its phase, navigation request and dwell evidence;
+            // only refresh the work-domain version used by completion checks.
+            prepared_version_->geometry_revision = map_->geometry_revision;
+            prepared_version_->coverage_revision = coverage_.revision();
+            prepared_version_->requirements_revision = coverage_.requirements_revision();
+            snapshot_.reason = "observation loss reopened coverage; safe observation motion retained";
+            AINFO << "EXPLORATION_LOSS action=retain_observation_goal mask="
+                  << static_cast<unsigned>(loss.pending_sources)
+                  << " goal=" << snapshot_.goal->intent.goal_id;
+            return;
+        }
+        CancelActivePhase(PhaseStatus::kInvalidated, "observation loss reopened task requirements");
+        CancelPlanning(); CancelNavigation();
+        snapshot_.goal.reset(); snapshot_.selection.reset();
+        selected_version_.reset(); prepared_version_.reset();
+        view_evidence_.clear(); view_started_.clear(); current_view_ = 0;
         snapshot_.state = ExplorationState::kExploring;
         snapshot_.reason = "observation loss requires new measured coverage and full scope confirmation";
+        AINFO << "EXPLORATION_LOSS action=replan mask="
+              << static_cast<unsigned>(loss.pending_sources);
     }
 
     /** @brief Starts a bounded, explicitly scoped mapper recovery after a fresh sweep. */
@@ -864,7 +900,7 @@ public:
             completion_.Reset();
             if (services_.reproject_pose) {
                 auto transformed = services_.reproject_pose(home_, home_epoch_, next.map_epoch);
-                home_valid_ = transformed && opt::navigation::IsFinite(*transformed);
+                home_valid_ = transformed && autonomy::navigation::IsFinite(*transformed);
                 if (home_valid_) home_ = *transformed;
             } else home_valid_ = false;
             home_epoch_ = next.map_epoch;
@@ -901,11 +937,11 @@ public:
     }
 
     void ApplyPose(const PoseEvent& event) {
-        if (!opt::navigation::IsFinite(event.pose) || !std::isfinite(event.stamp) ||
+        if (!autonomy::navigation::IsFinite(event.pose) || !std::isfinite(event.stamp) ||
             event.epoch < pose_epoch_ || (map_ && event.epoch < map_->map_epoch) ||
             event.stamp < pose_stamp_) return;
         if (event.epoch == pose_epoch_ && event.stamp > pose_stamp_)
-            snapshot_.traveled_distance += opt::navigation::Distance(pose_, event.pose);
+            snapshot_.traveled_distance += autonomy::navigation::Distance(pose_, event.pose);
         if (event.epoch != pose_epoch_) pose_history_.clear();
         pose_ = event.pose;
         pose_epoch_ = event.epoch;
@@ -1045,8 +1081,8 @@ public:
             const double fraction=(stamp-result.stamp)/(upper->stamp-result.stamp);
             result.pose.x+=fraction*(upper->pose.x-result.pose.x);
             result.pose.y+=fraction*(upper->pose.y-result.pose.y);
-            result.pose.yaw=opt::navigation::NormalizeAngle(result.pose.yaw+fraction*
-                opt::navigation::NormalizeAngle(upper->pose.yaw-result.pose.yaw));
+            result.pose.yaw=autonomy::navigation::NormalizeAngle(result.pose.yaw+fraction*
+                autonomy::navigation::NormalizeAngle(upper->pose.yaw-result.pose.yaw));
             result.localization &= upper->localization;
         }
         result.stamp=stamp;return result;
@@ -1100,9 +1136,9 @@ public:
                 if(ray.stamp<arrived_at_)continue;
                 const auto acquisition=ObservationPoseAt(observation, ray.stamp);
                 if(!acquisition || !(acquisition->localization&perception::Mask(observation.sensor)) ||
-                    opt::navigation::Distance(acquisition->pose,snapshot_.goal->execution_pose)>
+                    autonomy::navigation::Distance(acquisition->pose,snapshot_.goal->execution_pose)>
                         options_.position_tolerance ||
-                    std::abs(opt::navigation::NormalizeAngle(acquisition->pose.yaw-
+                    std::abs(autonomy::navigation::NormalizeAngle(acquisition->pose.yaw-
                         snapshot_.goal->intent.required_views[index]))>options_.yaw_tolerance)continue;
                 filtered.rays.push_back(ray);
                 if(!view_started_[index])view_started_[index]=ray.stamp;
@@ -1143,12 +1179,15 @@ public:
     }
 
     bool At(const Pose2d& goal) const {
-        return opt::navigation::Distance(pose_, goal) <= options_.position_tolerance &&
-               std::abs(opt::navigation::NormalizeAngle(pose_.yaw - goal.yaw)) <= options_.yaw_tolerance;
+        return autonomy::navigation::Distance(pose_, goal) <= options_.position_tolerance &&
+               std::abs(autonomy::navigation::NormalizeAngle(pose_.yaw - goal.yaw)) <= options_.yaw_tolerance;
     }
 
     void SubmitNavigation(const Pose2d& pose, double now) {
         navigation_ = Version(now, options_.navigation_timeout);
+        AINFO << "EXPLORATION_NAVIGATION submit x=" << pose.x << " y=" << pose.y
+              << " yaw=" << pose.yaw << " goal="
+              << (snapshot_.goal ? snapshot_.goal->intent.goal_id : 0);
         if (!services_.submit_navigation(pose, *navigation_)) {
             navigation_.reset();
             if (finishing_) {
@@ -1334,19 +1373,19 @@ public:
                 continue;
             }
             if (result.adapted) {
-                if(opt::navigation::Distance(result.origin,pose_)>options_.position_tolerance) {
+                if(autonomy::navigation::Distance(result.origin,pose_)>options_.position_tolerance) {
                     FinishPhase(PhaseStatus::kInvalidated, "robot moved during adaptation");
                     continue;
                 }
                 if(options_.require_return && !result.return_route_valid) {
                     BeginFinish(ExplorationOutcome::kIncompleteObservation,now);continue;
                 }
-                double turn=std::abs(opt::navigation::NormalizeAngle(
+                double turn=std::abs(autonomy::navigation::NormalizeAngle(
                     result.adapted->intent.required_views.front()-pose_.yaw));
                 const auto& views=result.adapted->intent.required_views;
                 const auto view_count = views.size();
                 for(std::size_t i=1;i<views.size();++i)
-                    turn+=std::abs(opt::navigation::NormalizeAngle(views[i]-views[i-1]));
+                    turn+=std::abs(autonomy::navigation::NormalizeAngle(views[i]-views[i-1]));
                 const double next_distance=result.adapted->route_length;
                 const double return_distance=options_.require_return?result.return_from_goal:0;
                 const double estimated_time=(next_distance+return_distance)/options_.nominal_speed+
@@ -1422,7 +1461,7 @@ public:
             // newly known all-occupied/unknown map from erasing the last work
             // item and vacuously satisfying the frontier-free predicate.
             const auto current_cell = map_->grid ? map_->grid->WorldToCell(pose_) : std::nullopt;
-            if (!current_cell || map_->grid->At(current_cell->x,current_cell->y).state != opt::navigation::CellState::kFree)
+            if (!current_cell || map_->grid->At(current_cell->x,current_cell->y).state != autonomy::navigation::CellState::kFree)
                 evidence.unresolved_regions = std::max<std::size_t>(evidence.unresolved_regions,1);
             evidence.grid_fallback_checked = result.decision.grid_fallback_checked;
             evidence.sweep_checked = result.decision.sweep_checked;

@@ -43,8 +43,8 @@ VistaPlannerSettings ReadVistaPlannerSettings(const proto::VistaPlannerOptions& 
     if (options.has_max_floor_step()) settings.safety.max_floor_step = options.max_floor_step();
     if (options.has_costmap_footprint_inflated())
         settings.costmap_footprint_inflated = options.costmap_footprint_inflated();
-    auto validation_map = std::make_shared<opt::navigation::GridMap>(1, 1, 1.0);
-    opt::navigation::GeometrySafety validation(validation_map, settings.safety);
+    auto validation_map = std::make_shared<autonomy::navigation::GridMap>(1, 1, 1.0);
+    autonomy::navigation::GeometrySafety validation(validation_map, settings.safety);
     return settings;
 }
 
@@ -69,8 +69,8 @@ VistaPlanner::VistaPlanner(const proto::PlannerOptions& options, const std::stri
 void VistaPlanner::Initialize(VistaPlannerSettings settings) {
     if (route_planner_) throw std::logic_error("VistaPlanner already configured");
     // Validate the actual safety values, independently from a preinflated map.
-    auto validation_map = std::make_shared<opt::navigation::GridMap>(1,1,1.0);
-    opt::navigation::GeometrySafety check(validation_map,settings.safety);
+    auto validation_map = std::make_shared<autonomy::navigation::GridMap>(1,1,1.0);
+    autonomy::navigation::GeometrySafety check(validation_map,settings.safety);
     auto routes = std::make_shared<VistaRoutePlanner>(settings.safety,settings.maximum_nodes);
     auto reader = std::make_shared<NativeCostmapReader>(settings.maximum_cells);
     settings_ = settings; route_planner_ = std::move(routes); costmap_reader_ = std::move(reader);

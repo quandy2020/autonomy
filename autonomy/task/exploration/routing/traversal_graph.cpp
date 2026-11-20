@@ -2,9 +2,9 @@
 #include "autonomy/task/exploration/routing/traversal_graph.hpp"
 namespace autonomy::task::exploration {
 bool TraversalGraph::Record(const Pose2d& pose,double stamp,const MapReadView& map,const PathProvider& paths){
-    if(!opt::navigation::IsFinite(pose) || !std::isfinite(stamp))return false;
+    if(!autonomy::navigation::IsFinite(pose) || !std::isfinite(stamp))return false;
     if(epoch_!=map.map_epoch)Reset(map.map_epoch);
-    if(!vertices_.empty() && (stamp<vertices_.back().stamp || opt::navigation::Distance(pose,vertices_.back().pose)<.3))return false;
+    if(!vertices_.empty() && (stamp<vertices_.back().stamp || autonomy::navigation::Distance(pose,vertices_.back().pose)<.3))return false;
     TraversalVertex v{++next_id_,pose,stamp};
     if(!vertices_.empty()) {
         auto route=paths.Route(vertices_.back().pose,pose);

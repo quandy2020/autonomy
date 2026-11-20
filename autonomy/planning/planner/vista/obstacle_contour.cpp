@@ -49,14 +49,14 @@ std::vector<Pose2d> ObstacleContour::Extract(const perception::MapReadView& view
     const int halo = std::max(1,static_cast<int>(requested_halo));
     for (const auto& cell : cells) {
         int x = cell.first, y = cell.second;
-        if (map.At(x,y).state != opt::navigation::CellState::kFree) continue;
+        if (map.At(x,y).state != autonomy::navigation::CellState::kFree) continue;
         bool quadrants[4]{false,false,false,false};
         for (std::int64_t dy = -halo; dy <= halo; ++dy)
             for (std::int64_t dx = -halo; dx <= halo; ++dx) {
             if (dx == 0 && dy == 0) continue;
             const auto nx = x+dx, ny = y+dy;
             if (nx < 0 || ny < 0 || nx >= map.width() || ny >= map.height() ||
-                map.At(static_cast<int>(nx),static_cast<int>(ny)).state != opt::navigation::CellState::kFree)
+                map.At(static_cast<int>(nx),static_cast<int>(ny)).state != autonomy::navigation::CellState::kFree)
                 quadrants[(dx >= 0 ? 1 : 0)+(dy >= 0 ? 2 : 0)] = true;
         }
         const int count = static_cast<int>(quadrants[0])+quadrants[1]+quadrants[2]+quadrants[3];

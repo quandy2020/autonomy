@@ -1303,7 +1303,7 @@ bool ExplorationTask::PushMap(e::MapReadView map) {
 }
 bool ExplorationTask::PushPose(e::Pose2d pose, double stamp, std::uint64_t epoch,
                               perception::SensorMask support) {
-    if (!opt::navigation::IsFinite(pose) || !std::isfinite(stamp) || !epoch || !support) return false;
+    if (!autonomy::navigation::IsFinite(pose) || !std::isfinite(stamp) || !epoch || !support) return false;
     return impl_->Push(Impl::PoseInput{pose, stamp, epoch, support});
 }
 bool ExplorationTask::PushObservation(perception::SensorObservation observation, double now) {

@@ -27,7 +27,7 @@
 namespace autonomy::task::exploration {
 namespace {
 namespace a = ::autonomy::localization::atlas::map;
-namespace n = ::opt::navigation;
+namespace n = ::autonomy::navigation;
 /** @brief Native metadata clock encoding; source ordinal, rather than this double, identifies fusion input. */
 void Stamp(double time, ::automsgs::msgs::builtin_interfaces::Time* stamp) {
     const auto seconds = static_cast<std::int64_t>(std::floor(time));

@@ -10,7 +10,7 @@ namespace {
 bool EqualHeight(double first, double second) {
     return first == second || (std::isnan(first) && std::isnan(second));
 }
-bool Equal(const opt::navigation::GridCell& a, const opt::navigation::GridCell& b) {
+bool Equal(const autonomy::navigation::GridCell& a, const autonomy::navigation::GridCell& b) {
     return a.state == b.state && EqualHeight(a.floor_height,b.floor_height) &&
            EqualHeight(a.ceiling_height,b.ceiling_height);
 }
@@ -20,20 +20,20 @@ bool OnLattice(double n) { return std::isfinite(n) && std::abs(n-std::round(n)) 
 MapReader::MapReader(std::size_t maximum_cells) : maximum_cells_(maximum_cells) {
     if (!maximum_cells) throw std::invalid_argument("map history capacity is zero");
 }
-MapReadView MapReader::Read(const opt::navigation::GridMap& map, double stamp,
+MapReadView MapReader::Read(const autonomy::navigation::GridMap& map, double stamp,
     std::uint64_t alignment, std::uint64_t watermark, bool inflated, UnknownCellPolicy unknowns) {
     if (!std::isfinite(stamp) || map.size() > maximum_cells_ || map.frame_id().empty())
         throw std::invalid_argument("invalid map snapshot");
     for (std::size_t i = 0; i < map.size(); ++i) {
         auto index = map.FromIndex(i); const auto& cell = map.At(index.x, index.y);
-        if (cell.state != opt::navigation::CellState::kUnknown && cell.state != opt::navigation::CellState::kFree &&
-            cell.state != opt::navigation::CellState::kOccupied)
+        if (cell.state != autonomy::navigation::CellState::kUnknown && cell.state != autonomy::navigation::CellState::kFree &&
+            cell.state != autonomy::navigation::CellState::kOccupied)
             throw std::invalid_argument("invalid map cell state");
         if ((!std::isfinite(cell.floor_height) && !std::isnan(cell.floor_height)) ||
             (cell.ceiling_height == -std::numeric_limits<double>::infinity()) ||
             (std::isfinite(cell.floor_height) && !std::isnan(cell.ceiling_height) && cell.ceiling_height < cell.floor_height))
             throw std::invalid_argument("invalid map height evidence");
-        if (cell.state == opt::navigation::CellState::kFree &&
+        if (cell.state == autonomy::navigation::CellState::kFree &&
             (!std::isfinite(cell.floor_height) || std::isnan(cell.ceiling_height) || cell.ceiling_height < cell.floor_height))
             throw std::invalid_argument("invalid map height evidence");
     }
@@ -58,7 +58,7 @@ MapReadView MapReader::Read(const opt::navigation::GridMap& map, double stamp,
         const auto& cell = map.At(x, y);
         auto old = staged.find(key);
         // Unknown in a newly rolled-in window is absence of evidence, not deletion.
-        if (unknowns == UnknownCellPolicy::kRetainHistory && cell.state == opt::navigation::CellState::kUnknown &&
+        if (unknowns == UnknownCellPolicy::kRetainHistory && cell.state == autonomy::navigation::CellState::kUnknown &&
             old != staged.end()) continue;
         if (old == staged.end() || !Equal(old->second, cell)) {
             staged[key] = cell;
@@ -76,10 +76,10 @@ MapReadView MapReader::Read(const opt::navigation::GridMap& map, double stamp,
     if (width > maximum_cells_ || height > maximum_cells_ || width*height > maximum_cells_)
         throw std::length_error("map history extent exceeds configured capacity");
     const bool changed = reset || !dirty.empty();
-    std::shared_ptr<const opt::navigation::GridMap> merged;
+    std::shared_ptr<const autonomy::navigation::GridMap> merged;
     if (!changed) merged = latest_->grid;
     else {
-        auto grid = std::make_shared<opt::navigation::GridMap>(
+        auto grid = std::make_shared<autonomy::navigation::GridMap>(
             static_cast<int>(width), static_cast<int>(height), map.resolution(),
             ax+min_x*map.resolution(), ay+min_y*map.resolution(), map.frame_id());
         for (const auto& entry : staged)

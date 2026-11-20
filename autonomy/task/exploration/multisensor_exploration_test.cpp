@@ -14,7 +14,7 @@
 namespace p = autonomy::perception;
 namespace e = autonomy::task::exploration;
 namespace v = autonomy::planning::planner::vista;
-namespace n = opt::navigation;
+namespace n = autonomy::navigation;
 namespace {
 void Require(bool ok, const std::string& why) { if (!ok) throw std::runtime_error(why); }
 void Near(double a,double b,const char* why) { Require(std::abs(a-b)<1e-7,why); }

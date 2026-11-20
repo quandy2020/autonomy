@@ -738,6 +738,22 @@ void ControllerServer::ComputeAndPublishVelocity() {
 
     automsgs::msgs::geometry_msgs::PoseStamped pose;
     if (!GetRobotPose(pose)) {
+        // A slow policy inference may briefly outlive one feedback sample.
+        // Stop commanding during the gap, but keep the action alive long
+        // enough for the next acquisition instead of turning a transient
+        // delay into a navigation failure. Never replay the previous twist.
+        if (publish_zero_velocity_) {
+            PublishZeroVelocity();
+        }
+        const double gap = TimeDiffSeconds(NowTime(), last_valid_cmd_time_);
+        const double tolerance = native_io_
+            ? std::max(1.0, 2.0 * native_io_->maximum_state_age)
+            : 0.0;
+        if (gap <= tolerance) {
+            AWARN_EVERY(20) << "nav follow waiting for fresh native pose gap="
+                            << gap;
+            return;
+        }
         throw common::ControllerTFError("Failed to obtain robot pose");
     }
 
