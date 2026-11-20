@@ -171,7 +171,7 @@ Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` �
 
 ## 预览场景与渲染
 
-`habitat.path` 为空时，`habitat.scenario` 会生成程序化场景。三个机器人配置都用 `type: floor`：只生成 24 m × 24 m 的地面三角形，不放置障碍物，机器人站在实地上而不是悬空，相机也不会一眼看到地面边缘。查看器在未指定 `--scene` 时使用同样的地面，并读取 `config/robots/<profile>.yaml` 的 `habitat.robot`，预览的初始姿态和速度上限与正式配置一致。
+`habitat.path` 为空时，`habitat.scenario` 会生成程序化场景。五个机器人档案共用 `config/robots/_base.yaml` 的 `type: floor`：只生成 24 m × 24 m 的地面三角形，不放置障碍物，机器人站在实地上而不是悬空，相机也不会一眼看到地面边缘。查看器在未指定 `--scene` 时使用同样的地面，并读取 `config/robots/<profile>.yaml` 的 `habitat.robot`，预览的初始姿态和速度上限与正式配置一致。
 
 地面 OBJ 旁边会写出同名 `.mtl`，包含中性灰的 `floor` 和浅灰的 `obstacle` 两种材质。没有材质文件时 Habitat 会用默认材质把地面渲染成棕色，看起来像泥土。
 

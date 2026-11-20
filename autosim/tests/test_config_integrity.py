@@ -11,10 +11,16 @@ from autosim.robot.urdf import UrdfModel
 from autosim.runtime import Config
 
 ROOT = UrdfModel.package_root()
-CONFIGS = sorted((ROOT / "config").glob("*.yaml")) + sorted(
+def _shipped(folder: Path) -> list[Path]:
+    """Standalone configs; ``_base.yaml`` is a partial merged by its children."""
+    return sorted(path for path in folder.glob("*.yaml") if not path.name.startswith("_"))
+
+
+ALL_CONFIGS = sorted((ROOT / "config").glob("*.yaml")) + sorted(
     (ROOT / "config" / "robots").glob("*.yaml")
 )
-ROBOT_CONFIGS = sorted((ROOT / "config" / "robots").glob("*.yaml"))
+CONFIGS = _shipped(ROOT / "config") + _shipped(ROOT / "config" / "robots")
+ROBOT_CONFIGS = _shipped(ROOT / "config" / "robots")
 
 
 def _ids(path: Path) -> str:
@@ -57,14 +63,18 @@ def test_shipped_config_loads(path: Path):
     Config.load(path)
 
 
-@pytest.mark.parametrize("path", CONFIGS, ids=_ids)
+@pytest.mark.parametrize("path", ALL_CONFIGS, ids=_ids)
 def test_config_has_no_duplicate_keys(path: Path):
     assert _duplicate_keys(yaml.compose(path.read_text())) == []
 
 
 @pytest.mark.parametrize("path", CONFIGS, ids=_ids)
 def test_sensor_frames_exist_in_urdf(path: Path):
-    habitat = (yaml.safe_load(path.read_text()) or {}).get("habitat") or {}
+    data = Config._load_yaml(path)
+    reason = _skip_reason(data)
+    if reason:
+        pytest.skip(reason)
+    habitat = data["habitat"]
     robot = apply_profile(habitat.get("robot") or {})
     urdf = str(robot.get("urdf") or "").strip()
     if not urdf:
@@ -98,7 +108,7 @@ def test_sensor_frames_exist_in_urdf(path: Path):
 
 @pytest.mark.parametrize("path", ROBOT_CONFIGS, ids=_ids)
 def test_wheel_radius_matches_urdf(path: Path):
-    habitat = (yaml.safe_load(path.read_text()) or {}).get("habitat") or {}
+    habitat = Config._load_yaml(path)["habitat"]
     robot = apply_profile(habitat.get("robot") or {})
     if float(robot.get("wheel_radius") or 0.0) <= 0.0:
         return

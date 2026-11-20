@@ -15,6 +15,7 @@
 from pathlib import Path
 
 import pytest
+import yaml
 
 from autosim.runtime import Config
 
@@ -261,3 +262,75 @@ def test_reject_negative_imu_noise():
     bad["habitat"]["sensors"]["imu"]["noise"] = {"gyro": -1.0, "accel": 0.0}
     with pytest.raises(ValueError, match="gyro"):
         Config.load(bad)
+
+
+def test_extends_deep_merges_and_keeps_child_keys(tmp_path):
+    base = minimal_config()
+    base_path = tmp_path / "base.yaml"
+    base_path.write_text(yaml.safe_dump(base))
+    child_path = tmp_path / "child.yaml"
+    child_path.write_text(
+        yaml.safe_dump(
+            {
+                "extends": "base.yaml",
+                "habitat": {
+                    "robot": {"max_linear": 1.5},
+                    "sensors": {"camera": {"frame": "front_camera"}},
+                },
+            }
+        )
+    )
+    settings = Config.load(child_path)
+    assert settings["habitat"]["robot"]["max_linear"] == 1.5
+    assert settings["habitat"]["robot"]["max_angular"] == 1.0
+    assert settings["habitat"]["sensors"]["camera"]["frame"] == "front_camera"
+    assert settings["habitat"]["sensors"]["camera"]["width"] == 640
+    assert "extends" not in settings.data
+
+
+def test_extends_resolves_relative_to_the_declaring_file(tmp_path):
+    nested = tmp_path / "nested"
+    nested.mkdir()
+    (nested / "base.yaml").write_text(yaml.safe_dump(minimal_config()))
+    child = nested / "child.yaml"
+    child.write_text(
+        yaml.safe_dump({"extends": "base.yaml", "habitat": {"gpu": 2}})
+    )
+    assert Config.load(child)["habitat"]["gpu"] == 2
+
+
+def test_extends_chain_and_list_order(tmp_path):
+    (tmp_path / "one.yaml").write_text(
+        yaml.safe_dump({"habitat": {"robot": {"max_linear": 0.3}}})
+    )
+    (tmp_path / "two.yaml").write_text(
+        yaml.safe_dump({"extends": "one.yaml", "habitat": {"robot": {"max_linear": 0.4}}})
+    )
+    (tmp_path / "base.yaml").write_text(yaml.safe_dump(minimal_config()))
+    child = tmp_path / "child.yaml"
+    child.write_text(
+        yaml.safe_dump(
+            {
+                "extends": ["base.yaml", "two.yaml"],
+                "habitat": {"robot": {"max_angular": 2.0}},
+            }
+        )
+    )
+    settings = Config.load(child)
+    assert settings["habitat"]["robot"]["max_linear"] == 0.4
+    assert settings["habitat"]["robot"]["max_angular"] == 2.0
+
+
+def test_extends_rejects_cycles(tmp_path):
+    (tmp_path / "a.yaml").write_text(yaml.safe_dump({"extends": "b.yaml"}))
+    (tmp_path / "b.yaml").write_text(yaml.safe_dump({"extends": "a.yaml"}))
+    with pytest.raises(ValueError, match="extends cycle"):
+        Config.load(tmp_path / "a.yaml")
+
+
+def test_extends_rejects_non_string_entries(tmp_path):
+    (tmp_path / "base.yaml").write_text(yaml.safe_dump(minimal_config()))
+    child = tmp_path / "child.yaml"
+    child.write_text(yaml.safe_dump({"extends": ["base.yaml", 3]}))
+    with pytest.raises(ValueError, match="non-empty strings"):
+        Config.load(child)

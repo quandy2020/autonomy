@@ -1,28 +1,8 @@
-# Habitat URDF model: /cmd_vel differential drive with the stock sensor rig.
+# Husky: /cmd_vel differential drive with the stock sensor rig.
+extends: _base.yaml
 habitat:
-  backend: habitat
-  mode: nav
-  path: ""  # Optional scene GLB; empty opens the robot in an empty scene.
-  gpu: 0
-  spawn: [0.0, 0.0, 0.0]
-  # Studio floor for the empty-scene preview (ignored when path is set).
-  scenario:
-    enabled: true
-    type: floor
-    x_length: 24.0
-    y_length: 24.0
-    z_length: 0.2
-    resolution: 0.1
-    spawn_radius: 1.0
-    spawn_height: 1.5
-  render:
-    enable_hbao: true
-    # Neutral backdrop: an empty studio otherwise renders the sky as black.
-    clear_color: [0.55, 0.57, 0.60, 1.0]
   robot:
     profile: husky
-    instance: true
-    fixed_base: true
     # base_footprint is the URDF root and already sits on the floor.
     root_height: 0.0
     base_link_height: 0.1651
@@ -30,73 +10,15 @@ habitat:
     wheel_radius: 0.1651
     max_linear: 1.0
     max_angular: 1.5
-    max_linear_accel: 0.8
-    max_linear_decel: 1.2
-    max_angular_accel: 2.0
-    block_motion: true
-    map_frame: map
-    control_hz: 50.0
-    watchdog_sec: 0.5
-    cmd_vel: /cmd_vel
-    joint_command:
-      enabled: true
-      channel: /joint_commands
-    tf:
-      enabled: true
-      channel: /tf
-      static_channel: /tf_static
-      publish_map_odom: true
-    clock:
-      enabled: true
-      channel: /clock
   sensors:
-    lidar_2d:
-      enabled: true
-      channel: /scan
-      frame: laser_link
-      num_beams: 360
-      angle_min: -3.14159
-      angle_max: 3.14159
-      range_min: 0.1
-      range_max: 30.0
-      noise: 0.0
-      rate_hz: 10.0
-    odom:
-      enabled: true
-      channel: /odom
-      frame: odom
-      child_frame: base_footprint
-      noise: 0.0
     camera:
-      enabled: true
-      width: 640
-      height: 480
       hfov_deg: 90.0
-      rgb_channel: /camera/rgb/image_raw
-      depth_channel: /camera/depth/image_raw
-      info_channel: /camera/camera_info
       frame: camera_link
-      follow_urdf: true
       # URDF link axes: x forward, y left, z up (not a ROS optical frame).
       axes: body
-      rate_hz: 10.0
     imu:
-      enabled: true
-      channel: /imu/data
       frame: imu_link
-      rate_hz: 50.0
-      noise:
-        gyro: 0.0
-        accel: 0.0
-    joint_states:
-      enabled: true
-      channel: /joint_states
     chase:
-      enabled: true
-      clear_color: [0.3, 0.34, 0.4, 1.0]
-      width: 640
-      height: 480
       distance_m: 2.6
       height_m: 1.6
       look_at_height_m: 0.5
-      rate_hz: 10.0

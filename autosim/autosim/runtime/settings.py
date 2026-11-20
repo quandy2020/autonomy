@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import copy
 from pathlib import Path
 from typing import Any, Dict, Mapping, MutableMapping, Union
 
@@ -177,6 +178,11 @@ class Config:
     def load(cls, source: Union[str, Path, Mapping[str, Any]]) -> "Config":
         """Load YAML path or in-memory mapping, then validate.
 
+        A file may start with ``extends: base.yaml`` (or a list of paths).
+        Parents are resolved relative to the file that names them, merged
+        left to right, and this file's keys win. Mappings merge recursively;
+        lists and scalars replace the inherited value.
+
         Args:
             source: File path or mapping.
 
@@ -188,11 +194,9 @@ class Config:
             OSError: File unreadable.
         """
         if isinstance(source, (str, Path)):
-            path = Path(source)
-            with path.open("r", encoding="utf-8") as handle:
-                data = yaml.safe_load(handle)
+            data = cls._load_yaml(Path(source))
         elif isinstance(source, Mapping):
-            data = dict(source)
+            data = cls._merge_extends(dict(source), Path.cwd(), ())
         else:
             raise ValueError(f"unsupported config source: {type(source)!r}")
 
@@ -201,6 +205,64 @@ class Config:
         cls.fill_omitted_sensors(data)
         cls.validate(data)
         return cls(data)
+
+    @classmethod
+    def _load_yaml(cls, path: Path, seen: tuple[Path, ...] = ()) -> Dict[str, Any]:
+        """Read one YAML file and resolve its ``extends`` chain."""
+        path = Path(path).expanduser()
+        if not path.is_absolute():
+            path = Path.cwd() / path
+        path = path.resolve()
+        if path in seen:
+            chain = " -> ".join(str(item) for item in (*seen, path))
+            raise ValueError(f"config extends cycle: {chain}")
+        with path.open("r", encoding="utf-8") as handle:
+            data = yaml.safe_load(handle)
+        if data is None:
+            data = {}
+        if not isinstance(data, dict):
+            raise ValueError(f"config root must be a mapping: {path}")
+        return cls._merge_extends(data, path.parent, (*seen, path))
+
+    @classmethod
+    def _merge_extends(
+        cls,
+        data: MutableMapping[str, Any],
+        base_dir: Path,
+        seen: tuple[Path, ...],
+    ) -> Dict[str, Any]:
+        """Merge ``extends`` parents (left to right) under this file's keys."""
+        extends = data.pop("extends", None)
+        if extends is None:
+            return copy.deepcopy(dict(data))
+        parents = [extends] if isinstance(extends, str) else extends
+        if not isinstance(parents, (list, tuple)) or not parents:
+            raise ValueError(
+                "config extends must be a path or a non-empty list of paths"
+            )
+        merged: Dict[str, Any] = {}
+        for parent in parents:
+            if not isinstance(parent, str) or not parent.strip():
+                raise ValueError("config extends entries must be non-empty strings")
+            parent_path = Path(parent).expanduser()
+            if not parent_path.is_absolute():
+                parent_path = base_dir / parent_path
+            merged = cls._deep_merge(merged, cls._load_yaml(parent_path, seen))
+        return cls._deep_merge(merged, data)
+
+    @classmethod
+    def _deep_merge(
+        cls, base: Mapping[str, Any], override: Mapping[str, Any]
+    ) -> Dict[str, Any]:
+        """Recursively merge mappings; lists and scalars replace the parent."""
+        result: Dict[str, Any] = copy.deepcopy(dict(base))
+        for key, value in override.items():
+            current = result.get(key)
+            if isinstance(value, Mapping) and isinstance(current, Mapping):
+                result[key] = cls._deep_merge(current, value)
+            else:
+                result[key] = copy.deepcopy(value)
+        return result
 
     @classmethod
     def fill_omitted_sensors(cls, data: MutableMapping[str, Any]) -> None:
@@ -279,7 +341,6 @@ class Config:
             if key not in sensors:
                 sensors[key] = stub
 
-    @classmethod
     @classmethod
     def validate_isaac_usd(cls, habitat: Mapping[str, Any]) -> None:
         """Require a resolvable USD world path for the Isaac backend."""

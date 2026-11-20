@@ -25,7 +25,7 @@
 | `nav.yaml` | Habitat 导航联调（与 `default.yaml` 同栈，显式 nav + GT 地图） |
 | `fake_nav.yaml` | fake 后端的导航联调 |
 | `coverage.yaml` | fake 后端的全覆盖验证场景 |
-| `robots/<profile>.yaml` | 五个机器人档案的展示与遥操作配置，见第 4 节 |
+| `robots/<profile>.yaml` | 五个机器人档案的展示与遥操作配置，见第 4 节；公共块在 `robots/_base.yaml` |
 
 启动：`CONFIG=.../xxx.yaml scripts/run.sh sim`。
 
@@ -99,6 +99,21 @@ YAML 显式字段优先于档案默认值。
 | `husky` | 4 | `base_footprint` | 四轮差速；`wheel_radius: 0.1651` |
 
 `sensors.odom.child_frame` 应写成该模型的 URDF 根节点。运行时的 `odom_child_frame()` 会回退到根节点，写错不会报错，但 `/odom` 的 `child_frame_id` 会和 TF 对不上。
+
+### 继承：`extends`
+
+`Config.load` 支持根级 `extends`，机器人档案用它把公共块收进 `config/robots/_base.yaml`：
+
+```yaml
+extends: _base.yaml
+habitat:
+  robot:
+    profile: unitree_go2
+```
+
+- 相对路径按声明它的 YAML 所在目录解析；也可写列表，按从左到右深合并。
+- 映射递归合并，列表和标量整体替换；子文件字段优先。
+- `_base.yaml` 是片段，文件名以 `_` 开头的 YAML 不当作可直接启动的配置。
 
 ---
 
