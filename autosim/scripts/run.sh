@@ -80,6 +80,7 @@ if [[ "${MODE}" == "stop" ]]; then
   stop_autosim
   exit 0
 fi
+shift || true
 
 export AUTONOMY_ROOT="${AUTONOMY_ROOT:-${ROOT}}"
 if [[ -d "${ROOT}/build/autonomy" ]]; then
@@ -99,6 +100,18 @@ if [[ "${CONFIG}" != /* ]]; then
     CONFIG="${AUTOSIM}/${CONFIG}"
   fi
 fi
+
+# Optional selectors are forwarded to ``python -m autosim``.  They keep the
+# common case short while leaving --config available for full YAML control.
+EXTRA_ARGS=()
+[[ -n "${SCENE:-}" ]] && EXTRA_ARGS+=(--scene "${SCENE}")
+[[ -n "${ROBOT:-}" ]] && EXTRA_ARGS+=(--robot "${ROBOT}")
+[[ -n "${SENSORS:-}" ]] && EXTRA_ARGS+=(--sensors "${SENSORS}")
+SIM_ARGS=(--config "${CONFIG}")
+if ((${#EXTRA_ARGS[@]})); then
+  SIM_ARGS+=("${EXTRA_ARGS[@]}")
+fi
+SIM_ARGS+=("$@")
 
 BACKEND="habitat"
 if [[ -f "${CONFIG}" ]]; then
@@ -236,21 +249,23 @@ cd "${WORKSPACE}"
 
 case "$MODE" in
   sim|bridge)
-    exec "${PY}" -m autosim --config "$CONFIG"
+    exec "${PY}" -m autosim "${SIM_ARGS[@]}"
     ;;
   telop|teleop)
-    exec "${PY}" -c "from autosim.bridge.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
+    exec "${PY}" -c "import sys; from autosim.bridge.teleop import Teleop; Teleop.main(sys.argv[1:])" "${SIM_ARGS[@]}"
     ;;
   both)
-    "${PY}" -m autosim --config "$CONFIG" &
+    "${PY}" -m autosim "${SIM_ARGS[@]}" &
     SIM_PID=$!
     trap 'kill "$SIM_PID" 2>/dev/null || true' EXIT INT TERM
     sleep 0.5
-    exec "${PY}" -c "from autosim.bridge.teleop import Teleop; Teleop.main(['--config', '$CONFIG'])"
+    exec "${PY}" -c "import sys; from autosim.bridge.teleop import Teleop; Teleop.main(sys.argv[1:])" "${SIM_ARGS[@]}"
     ;;
   *)
     echo "usage: $0 [sim|telop|teleop|both|stop]" >&2
     echo "  CONFIG=config/default.yaml $0 sim" >&2
+    echo "  SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic $0 sim" >&2
+    echo "  $0 sim --scene 17DRP5sb8fy --robot unitree_go2 --sensors basic" >&2
     echo "  CONFIG=config/isaac.yaml ISAACLAB_PATH=/workspace/isaaclab $0 sim" >&2
     echo "  $0 stop" >&2
     exit 1

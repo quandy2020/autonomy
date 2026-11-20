@@ -195,20 +195,38 @@ class Config:
             ValueError: Bad source or validation failure.
             OSError: File unreadable.
         """
-        if isinstance(source, (str, Path)):
-            data = cls._load_yaml(Path(source))
-        elif isinstance(source, Mapping):
-            data = cls._expand_env(
-                cls._merge_extends(dict(source), Path.cwd(), ())
-            )
-        else:
-            raise ValueError(f"unsupported config source: {type(source)!r}")
-
+        data = cls.read(source)
         if not isinstance(data, dict):
             raise ValueError("config root must be a mapping")
         cls.fill_omitted_sensors(data)
         cls.validate(data)
         return cls(data)
+
+    @classmethod
+    def read(cls, source: Union[str, Path, Mapping[str, Any]]) -> Dict[str, Any]:
+        """Read a YAML path or mapping and resolve its ``extends`` chain.
+
+        This is the unvalidated counterpart to :meth:`load`.  It is useful for
+        composing a base config with scene/robot fragments before the final
+        validation pass.
+
+        Args:
+            source: YAML path or in-memory mapping.
+
+        Returns:
+            Merged configuration mapping.
+
+        Raises:
+            ValueError: Unsupported source or invalid ``extends`` chain.
+            OSError: File unreadable.
+        """
+        if isinstance(source, (str, Path)):
+            return cls._load_yaml(Path(source))
+        if isinstance(source, Mapping):
+            return cls._expand_env(
+                cls._merge_extends(dict(source), Path.cwd(), ())
+            )
+        raise ValueError(f"unsupported config source: {type(source)!r}")
 
     @classmethod
     def _load_yaml(cls, path: Path, seen: tuple[Path, ...] = ()) -> Dict[str, Any]:

@@ -14,11 +14,20 @@
 
 """Module entry: ``python -m autosim``."""
 
-from autosim.runtime import Runner
+import sys
 
 
 def run() -> None:
     """Start the sensor–actuator bridge with the default config."""
+    # Keep --list usable without importing the heavier runtime/autolink stack.
+    if "--list" in sys.argv[1:]:
+        from autosim.runtime.presets import format_catalog
+
+        print(format_catalog())
+        return
+
+    from autosim.runtime import Runner
+
     Runner.main()
 
 

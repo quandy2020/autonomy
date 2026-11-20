@@ -68,6 +68,7 @@ include = ["autosim*"]
 ]
 
 "share/autosim/config/robots" = ["config/robots/*.yaml"]
+"share/autosim/config/scenes" = ["config/scenes/*.yaml"]
 
 "share/autosim/robot/google_robot" = [
   "robot/google_robot/*.json",

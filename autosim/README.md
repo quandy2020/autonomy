@@ -55,6 +55,17 @@
 ```bash
 cd /workspace/autonomy
 
+# 选择场景、机器人和传感器（推荐）
+SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic \
+  src/autonomy/autosim/scripts/run.sh sim
+
+# 空场景查看 Google Robot；SENSORS 省略时使用机器人档案默认传感器
+SCENE=empty ROBOT=google_robot \
+  src/autonomy/autosim/scripts/run.sh sim
+
+# 查看可选名称
+(cd src/autonomy/autosim && python3 -m autosim --list)
+
 # Fake
 CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
 

@@ -36,8 +36,10 @@ python -m autosim.robot.viewer --profile google_robot \
 为每个模型提供 `config/robots/<profile>.yaml`。启动仿真和键盘控制（w/x 前后，a/d 转向，空格/s 停止）：
 
 ```bash
-CONFIG=config/robots/unitree_go2.yaml scripts/run.sh both
+SCENE=empty ROBOT=unitree_go2 SENSORS=basic scripts/run.sh both
 ```
+
+也可以只启动仿真：`scripts/run.sh sim --scene empty --robot unitree_go2 --sensors basic`。
 
 控制频道 `/joint_commands` 接收 **Autolink 的 automsgs.sensor_msgs.JointState protobuf**，不是 ROS middleware。填写同等长度的 `name` 和 `position` 数组，可只更新部分关节。旋转关节单位为弧度，移动关节单位为米。只消费 position；velocity/effort 不是当前运动学位置控制的输入。未知名称、重复名称、非有限数值和超限位置会拒绝整条命令，原姿态保留。
 

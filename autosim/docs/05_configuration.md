@@ -30,6 +30,28 @@
 
 启动：`CONFIG=.../xxx.yaml scripts/run.sh sim`。
 
+### 简洁启动
+
+日常运行不需要改 YAML，直接选择场景、机器人和传感器：
+
+```bash
+SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic \
+  src/autonomy/autosim/scripts/run.sh sim
+
+SCENE=empty ROBOT=google_robot \
+  src/autonomy/autosim/scripts/run.sh sim
+```
+
+| 选择器 | 取值 |
+|--------|------|
+| `SCENE` / `--scene` | `config/scenes/` 名称、场景 YAML、GLB/USD 路径、`empty` |
+| `ROBOT` / `--robot` | `config/robots/` 名称或机器人 YAML 路径 |
+| `SENSORS` / `--sensors` | 逗号分隔的传感器名；`basic`、`rgbd`、`lidar`、`all`、`none` |
+
+`basic` 为 `camera,lidar_2d,imu,odom`。省略 `SENSORS` 时使用所选机器人档案的默认传感器；
+显式指定时只打开列出的传感器。`--scene`、`--robot`、`--sensors` 也可以直接跟在
+`scripts/run.sh sim` 后面。`python3 -m autosim --list` 列出可用名称。
+
 ---
 
 ## 2. 根键结构（示意）

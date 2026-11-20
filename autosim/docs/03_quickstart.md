@@ -49,12 +49,29 @@ src/autonomy/autosim/scripts/run.sh teleop
 ## 3. Habitat
 
 ```bash
-# 编辑 config/default.yaml：habitat.path → 本地 GLB
-CONFIG=src/autonomy/autosim/config/default.yaml \
+# 选择场景、机器人和传感器
+SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic \
   src/autonomy/autosim/scripts/run.sh sim
+
+# 空场景查看 Google Robot
+SCENE=empty ROBOT=google_robot \
+  src/autonomy/autosim/scripts/run.sh sim
+
+# 列出可用名称
+(cd src/autonomy/autosim && python3 -m autosim --list)
 ```
 
-无网格时可开 `habitat.scenario.enabled` 生成过程场景（见包 README）。
+`SCENE` 可写 `config/scenes/` 中的名称、场景 YAML、GLB/USD 路径或 `empty`；
+`ROBOT` 可写 `config/robots/` 中的名称；`SENSORS` 可写逗号分隔的传感器名或
+`basic` / `rgbd` / `lidar` / `all` / `none`。也可以直接传 CLI 参数：
+
+```bash
+src/autonomy/autosim/scripts/run.sh sim \
+  --scene 17DRP5sb8fy --robot unitree_go2 --sensors camera,lidar_2d,imu,odom
+```
+
+完整 YAML 仍可用 `CONFIG=... scripts/run.sh sim`。无网格时可开
+`habitat.scenario.enabled` 生成过程场景（见包 README）。
 
 Atlas RGB-D + IMU 验证（含 `/overall/map`、chase）：
 

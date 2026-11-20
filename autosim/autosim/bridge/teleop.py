@@ -33,6 +33,7 @@ from autosim.runtime import Config
 from autosim.bridge.clock import Clock
 from autosim.bridge.messages import Messages
 from autosim.runtime.paths import project_root
+from autosim.runtime.presets import compose_config
 
 from automsgs.msgs.geometry_msgs.twist_stamped_pb2 import TwistStamped
 
@@ -273,8 +274,22 @@ class Teleop:
             type=Path,
             default=project_root() / "config" / "default.yaml",
         )
+        parser.add_argument("--scene")
+        parser.add_argument("--robot")
+        parser.add_argument("--sensors", nargs="+", metavar="SENSOR")
         args = parser.parse_args(argv)
-        settings = Config.load(args.config)
+        try:
+            if args.scene is None and args.robot is None and args.sensors is None:
+                settings = Config.load(args.config)
+            else:
+                settings = compose_config(
+                    args.config,
+                    scene=args.scene,
+                    robot=args.robot,
+                    sensors=args.sensors,
+                )
+        except ValueError as error:
+            parser.error(str(error))
         robot = settings["habitat"]["robot"]
         Teleop(
             channel=robot["cmd_vel"],

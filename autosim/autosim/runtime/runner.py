@@ -58,6 +58,7 @@ from autosim.robot.profiles import apply_profile
 from autosim.robot.urdf import UrdfModel
 from autosim.runtime.instance_lock import InstanceLock, InstanceLockError
 from autosim.runtime.paths import project_root
+from autosim.runtime.presets import compose_config, format_catalog
 from autosim.runtime.settings import Config
 from autosim.runtime.worker import SensorWorker
 from autosim.scene import Map
@@ -2247,19 +2248,67 @@ class Runner:
 
     @staticmethod
     def main(argv: Optional[list[str]] = None) -> None:
-        """CLI entry: load ``--config`` and start the runner.
+        """CLI entry: select a scene/robot/sensors and start the runner.
 
         Args:
             argv: Argument vector; defaults to ``sys.argv``.
         """
-        parser = argparse.ArgumentParser(prog="autosim")
+        parser = argparse.ArgumentParser(
+            prog="autosim",
+            description="Run the autosim sensor-actuator bridge.",
+            epilog=(
+                "examples:\n"
+                "  autosim --scene 17DRP5sb8fy --robot unitree_go2 "
+                "--sensors basic\n"
+                "  autosim --scene empty --robot google_robot\n"
+                "  autosim --config config/atlas.yaml"
+            ),
+            formatter_class=argparse.RawDescriptionHelpFormatter,
+        )
         parser.add_argument(
             "--config",
             type=FilePath,
             default=project_root() / "config" / "default.yaml",
+            help="base YAML (default: config/default.yaml)",
+        )
+        parser.add_argument(
+            "--scene",
+            help="scene name from --list, scene YAML, GLB/USD path, or empty",
+        )
+        parser.add_argument(
+            "--robot",
+            help="robot name from --list or a robot YAML path",
+        )
+        parser.add_argument(
+            "--sensors",
+            nargs="+",
+            metavar="SENSOR",
+            help=(
+                "sensor names or presets (basic, rgbd, lidar, all, none); "
+                "comma-separated values are accepted"
+            ),
+        )
+        parser.add_argument(
+            "--list",
+            action="store_true",
+            help="list available scenes, robots, and sensors",
         )
         args = parser.parse_args(argv)
-        settings = Config.load(args.config)
+        if args.list:
+            print(format_catalog())
+            return
+        try:
+            if args.scene is None and args.robot is None and args.sensors is None:
+                settings = Config.load(args.config)
+            else:
+                settings = compose_config(
+                    args.config,
+                    scene=args.scene,
+                    robot=args.robot,
+                    sensors=args.sensors,
+                )
+        except ValueError as error:
+            parser.error(str(error))
         try:
             with InstanceLock.from_environment(args.config):
                 Runner(settings).run()
