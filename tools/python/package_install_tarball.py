@@ -88,25 +88,26 @@ def bundle_runtime_libraries(build_dir: Path, staged_prefix: Path) -> list[str]:
     return sorted(copied)
 
 
-def install_runtime_launchers(staged_prefix: Path) -> None:
-    """Load the bundle's environment for direct bin/* launches, including indirect dependencies."""
-    for executable in sorted((staged_prefix / 'bin').iterdir()):
-        if not executable.is_file():
-            continue
-        with executable.open('rb') as stream:
-            if stream.read(4) != b'\x7fELF':
+def configure_runtime_rpaths(staged_prefix: Path) -> None:
+    """Keep real executables; each ELF resolves its own dependencies relative to lib/."""
+    if not shutil.which('patchelf'):
+        raise ValueError('Runtime bundling requires patchelf on the build machine')
+    library_dir = staged_prefix / 'lib'
+    for directory in (staged_prefix / 'bin', library_dir):
+        for executable in sorted(directory.rglob('*')):
+            if executable.is_symlink() or not executable.is_file():
                 continue
-        real_name = '.' + executable.name + '.elf'
-        executable.rename(executable.with_name(real_name))
-        executable.write_text(
-            '#!/usr/bin/env bash\nset -euo pipefail\n'
-            'prefix="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"\n'
-            'source "$prefix/share/autonomy/environment/library_path.sh"\n'
-            'export AUTONOMY_PATH="${AUTONOMY_PATH:-$prefix}"\n'
-            'export AUTOLINK_DISTRIBUTION_HOME="${AUTOLINK_DISTRIBUTION_HOME:-$prefix}"\n'
-            'export AUTOLINK_PATH="${AUTOLINK_PATH:-$prefix/share/autolink}"\n'
-            f'exec "$prefix/bin/{real_name}" "$@"\n')
-        executable.chmod(0o755)
+            with executable.open('rb') as stream:
+                if stream.read(4) != b'\x7fELF':
+                    continue
+            result = subprocess.run(['patchelf', '--print-rpath', str(executable)],
+                                    capture_output=True, text=True)
+            if result.returncode and 'statically linked' in result.stderr:
+                continue
+            result.check_returncode()
+            relative = os.path.relpath(library_dir, executable.parent)
+            rpath = '$ORIGIN' if relative == '.' else '$ORIGIN:$ORIGIN/' + relative
+            subprocess.run(['patchelf', '--set-rpath', rpath, str(executable)], check=True)
 
 
 def deduplicate_runtime_libraries(library_dir: Path) -> int:
@@ -192,7 +193,7 @@ def main(argv: list[str] | None = None) -> int:
         "--output",
         default=os.environ.get(
             "OUTPUT",
-            str(root / "dist" / f"autonomy-{git_describe(root)}.tar.gz"),
+            str(Path.home() / ".autonomy/artifacts" / f"autonomy-{git_describe(root)}.tar.gz"),
         ),
     )
     parser.add_argument(
@@ -205,7 +206,7 @@ def main(argv: list[str] | None = None) -> int:
         help="Do not bundle autonomy/*/conf into the tarball",
     )
     parser.add_argument('--bundle-runtime', action='store_true',
-                        help='Bundle linked libraries, GUI plugins and runtime launchers; exclude libc/C++ runtime and GPU drivers')
+                        help='Bundle linked libraries and GUI plugins with relative ELF search paths; exclude libc/C++ runtime and GPU drivers')
     parser.add_argument(
         "-j",
         "--jobs",
@@ -215,7 +216,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     build_dir = Path(args.build_dir)
-    output = Path(args.output)
+    output = Path(args.output).expanduser()
     install_prefix = Path(args.prefix)
     if not install_prefix.is_absolute() or install_prefix == Path("/") or ".." in install_prefix.parts:
         parser.error("--prefix must be an absolute non-root install path")
@@ -266,8 +267,8 @@ def main(argv: list[str] | None = None) -> int:
         runtime_libraries = bundle_runtime_libraries(build_dir, staged_prefix) if args.bundle_runtime else []
         deduplicated_bytes = 0
         if args.bundle_runtime:
+            configure_runtime_rpaths(staged_prefix)
             deduplicated_bytes = deduplicate_runtime_libraries(staged_prefix / 'lib')
-            install_runtime_launchers(staged_prefix)
             print(f'[package] deduplicated runtime libraries: {deduplicated_bytes} bytes saved')
 
         manifest_path = staged_prefix / "share" / "autonomy" / "MANIFEST.json"

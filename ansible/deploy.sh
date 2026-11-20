@@ -12,7 +12,7 @@
 #
 # Examples:
 #   ./deploy.sh build
-#   ./deploy.sh deploy robots -e autonomy_artifact_path=$PWD/../dist/autonomy.tar.gz
+#   ./deploy.sh deploy robots -e autonomy_artifact_path=$HOME/.autonomy/artifacts/autonomy.tar.gz
 #   ./deploy.sh push robots -l robot02
 set -euo pipefail
 
@@ -51,7 +51,7 @@ Release options:
 
 Examples:
   ./deploy.sh build
-  ./deploy.sh deploy robots -e autonomy_artifact_path=$PWD/../dist/autonomy.tar.gz
+  ./deploy.sh deploy robots -e autonomy_artifact_path=$HOME/.autonomy/artifacts/autonomy.tar.gz
   ./deploy.sh push robots -l robot01
   ./deploy.sh check robots
   ./deploy.sh release robots -l robot01 -K

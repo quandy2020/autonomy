@@ -26,6 +26,9 @@ std::string DefaultLogRoot() {
         env != nullptr && env[0] != '\0') {
         return env;
     }
+    if (!FLAGS_log_dir.empty()) {
+        return FLAGS_log_dir;
+    }
     if (const char* home = std::getenv("HOME");
         home != nullptr && home[0] != '\0') {
         return std::string(home) + "/.autonomy/log";
@@ -131,11 +134,10 @@ std::string EventBundler::MaybeBundle(
         conf << "window_before_s=" << options_.window_before_s << "\n";
     }
 
-    // Best-effort: copy recent log files from GLOG_log_dir if set.
-    if (const char* glog = std::getenv("GLOG_log_dir");
-        glog != nullptr && glog[0] != '\0') {
+    // Use the effective directory, including the runtime's home-directory default.
+    if (!FLAGS_log_dir.empty()) {
         try {
-            for (const auto& ent : fs::directory_iterator(glog)) {
+            for (const auto& ent : fs::directory_iterator(FLAGS_log_dir)) {
                 if (!ent.is_regular_file()) {
                     continue;
                 }

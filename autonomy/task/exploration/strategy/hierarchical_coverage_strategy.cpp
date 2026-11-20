@@ -60,7 +60,9 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
         sweep_completed_=false;
         sampling_map_revision_=map.geometry_revision;
         sampling_coverage_revision_=state.requirements_revision();sampling_sensors_=active;
-        if (sampling_start_cell_ != origin) sweep_cursor_ = 0;
+        // The sweep cursor is a pagination offset over map cells, not over the
+        // current seed.  Resetting it when the robot crosses a cell boundary
+        // can restart every page before a sparse free region is reached.
         sampling_start_cell_ = origin;
     }
     queue_.ReopenForMapChange(map.geometry_revision);

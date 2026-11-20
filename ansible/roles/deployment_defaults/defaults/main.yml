@@ -9,7 +9,7 @@ autonomy_user: autonomy
 autonomy_install_prefix: /opt/autonomy
 autonomy_config_dir: /etc/autonomy
 autonomy_data_dir: /var/lib/autonomy
-autonomy_log_dir: /var/log/autonomy
+autonomy_log_dir: "{{ autonomy_data_dir }}/.autonomy/log"
 autonomy_build_dir: "{{ autonomy_data_dir }}/src"
 
 autonomy_repo_url: https://github.com/quandy2020/autonomy.git

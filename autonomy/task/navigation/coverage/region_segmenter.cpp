@@ -149,7 +149,6 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
       }
     }
     ++next_label;
-    frontier.push_back(static_cast<int>(index));
   }
   // Narrow maps without a surviving core keep a single connected room.
   if (next_label == 0) {
@@ -163,8 +162,14 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
   }
   // Grow every core back into the free space, but never further than the
   // erosion radius, otherwise a label runs through the doorway and drags a
-  // tongue of one room into its neighbour.
+  // tongue of one room into its neighbour. The frontier starts on the whole
+  // core, not on a single seed cell, so the room regains its full extent.
   std::vector<int> steps(count, 0);
+  for (std::size_t index = 0; index < count; ++index) {
+    if (label[index] >= 0) {
+      frontier.push_back(static_cast<int>(index));
+    }
+  }
   while (!frontier.empty()) {
     const int index = frontier.front();
     frontier.pop_front();
@@ -243,6 +248,36 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
     label.swap(smoothed);
   }
 
+  // A cell pair touching only at a corner makes the boundary walk ambiguous
+  // and produces diagonal jumps. Fill one of the two free corners of every
+  // such 2x2 pattern so each region stays 4-connected.
+  for (int pass = 0; pass < 3; ++pass) {
+    bool fixed = false;
+    for (int row = 0; row + 1 < height; ++row) {
+      for (int column = 0; column + 1 < width; ++column) {
+        const std::size_t a =
+            static_cast<std::size_t>(row * width + column);
+        const std::size_t b = a + 1;
+        const std::size_t d = a + static_cast<std::size_t>(width);
+        const std::size_t e = d + 1;
+        if (label[a] < 0 || label[a] != label[e] || label[b] == label[a] ||
+            label[d] == label[a]) {
+          continue;
+        }
+        if (free[b] != 0) {
+          label[b] = label[a];
+          fixed = true;
+        } else if (free[d] != 0) {
+          label[d] = label[a];
+          fixed = true;
+        }
+      }
+    }
+    if (!fixed) {
+      break;
+    }
+  }
+
   const double resolution = static_cast<double>(map.resolution());
   const double c = std::cos(map.origin_yaw());
   const double s = std::sin(map.origin_yaw());
@@ -290,16 +325,44 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
       std::vector<std::pair<int, int>> loop;
       const auto start_point = edges.begin()->first;
       auto current = start_point;
+      std::pair<int, int> heading{0, 0};
       while (true) {
         auto it = edges.find(current);
         if (it == edges.end() || it->second.empty()) {
           break;
         }
-        const auto next = it->second.back();
-        it->second.pop_back();
+        // Prefer the sharpest right turn so the walk keeps the room on its
+        // right side when a corner has more than one outgoing edge.
+        std::size_t chosen = 0;
+        int chosen_rank = 5;
+        for (std::size_t candidate = 0; candidate < it->second.size();
+             ++candidate) {
+          const int dx = it->second[candidate].first - current.first;
+          const int dy = it->second[candidate].second - current.second;
+          int rank = 0;
+          if (heading.first == 0 && heading.second == 0) {
+            rank = 0;
+          } else if (dx == heading.second && dy == -heading.first) {
+            rank = 0;  // right turn
+          } else if (dx == heading.first && dy == heading.second) {
+            rank = 1;  // straight
+          } else if (dx == -heading.second && dy == heading.first) {
+            rank = 2;  // left turn
+          } else {
+            rank = 3;  // reverse
+          }
+          if (rank < chosen_rank) {
+            chosen_rank = rank;
+            chosen = candidate;
+          }
+        }
+        const auto next = it->second[chosen];
+        it->second.erase(it->second.begin() +
+                         static_cast<std::ptrdiff_t>(chosen));
         if (it->second.empty()) {
           edges.erase(it);
         }
+        heading = {next.first - current.first, next.second - current.second};
         loop.push_back(current);
         current = next;
         if (current == start_point) {
@@ -333,49 +396,67 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
       continue;
     }
 
-    // Collapse stair-steps shorter than the turning radius. Dropping both
-    // corners of a step keeps the outline rectilinear, whereas a
-    // Douglas-Peucker pass introduces diagonal edges the bounded-curvature
-    // connector cannot follow.
-    std::vector<std::pair<int, int>> step_loop = loops[best];
-    const long long step_limit = std::max<long long>(
-        2, static_cast<long long>(std::llround(0.6 / resolution)));
-    bool collapsed = true;
-    while (collapsed && step_loop.size() > 4) {
-      collapsed = false;
-      const std::size_t loop_size = step_loop.size();
-      for (std::size_t i = 0; i < loop_size; ++i) {
-        const auto& a = step_loop[(i + loop_size - 1) % loop_size];
-        const auto& b = step_loop[i];
-        const auto& d = step_loop[(i + 1) % loop_size];
-        const auto& e = step_loop[(i + 2) % loop_size];
-        const long long abx = b.first - a.first;
-        const long long aby = b.second - a.second;
-        const long long bdx = d.first - b.first;
-        const long long bdy = d.second - b.second;
-        const long long dex = e.first - d.first;
-        const long long dey = e.second - d.second;
-        if (abx * bdx + aby * bdy != 0 || bdx * dex + bdy * dey != 0 ||
-            abx * dey - aby * dex != 0) {
+    // A room that fills most of its bounding box is a plain rectangle;
+    // returning the rectangle avoids the raster staircase entirely and
+    // keeps every edge long enough for the turn planner.
+    int min_column = width;
+    int max_column = -1;
+    int min_row = height;
+    int max_row = -1;
+    long long inside_count = 0;
+    for (int row = 0; row < height; ++row) {
+      for (int column = 0; column < width; ++column) {
+        if (!inside(column, row)) {
           continue;
         }
-        const long long length =
-            std::max(bdx < 0 ? -bdx : bdx, bdy < 0 ? -bdy : bdy);
-        if (length > step_limit) {
-          continue;
-        }
-        std::vector<std::pair<int, int>> next;
-        next.reserve(loop_size - 2);
-        for (std::size_t k = 0; k < loop_size; ++k) {
-          if (k == i || k == (i + 1) % loop_size) {
-            continue;
-          }
-          next.push_back(step_loop[k]);
-        }
-        step_loop.swap(next);
-        collapsed = true;
-        break;
+        ++inside_count;
+        min_column = std::min(min_column, column);
+        max_column = std::max(max_column, column);
+        min_row = std::min(min_row, row);
+        max_row = std::max(max_row, row);
       }
+    }
+    const long long box_area =
+        static_cast<long long>(max_column - min_column + 1) *
+        static_cast<long long>(max_row - min_row + 1);
+    if (box_area > 0 && inside_count * 100 >= box_area * 85) {
+      const auto to_world = [&](int column, int row) {
+        const double x = static_cast<double>(column) * resolution;
+        const double y = static_cast<double>(row) * resolution;
+        return std::pair<double, double>(map.origin_x() + c * x - s * y,
+                                         map.origin_y() + s * x + c * y);
+      };
+      std::vector<std::pair<double, double>> box;
+      box.push_back(to_world(min_column, min_row));
+      box.push_back(to_world(max_column + 1, min_row));
+      box.push_back(to_world(max_column + 1, max_row + 1));
+      box.push_back(to_world(min_column, max_row + 1));
+      rooms.push_back(Room{area, std::move(box)});
+      continue;
+    }
+    // Snap the traced outline onto a lattice the turn planner can follow.
+    // Each axis is rounded on its own, so the outline stays rectilinear
+    // while wall jogs shorter than the lattice disappear.
+    const long long lattice = std::max<long long>(
+        2, static_cast<long long>(std::llround(0.4 / resolution)));
+    const auto snap = [lattice](int value) {
+      return static_cast<int>(
+          std::llround(static_cast<double>(value) /
+                       static_cast<double>(lattice)) *
+          static_cast<double>(lattice));
+    };
+    std::vector<std::pair<int, int>> step_loop;
+    step_loop.reserve(loops[best].size());
+    for (const auto& point : loops[best]) {
+      const std::pair<int, int> snapped{snap(point.first),
+                                        snap(point.second)};
+      if (!step_loop.empty() && step_loop.back() == snapped) {
+        continue;
+      }
+      step_loop.push_back(snapped);
+    }
+    while (step_loop.size() > 1 && step_loop.front() == step_loop.back()) {
+      step_loop.pop_back();
     }
     if (step_loop.size() < 4) {
       continue;
@@ -403,9 +484,6 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
     if (ring.size() < 4) {
       continue;
     }
-    LOG(INFO) << "map split room " << label_index << " area " << area
-              << " ring " << ring.size() << " first " << ring.front().first
-              << "," << ring.front().second;
     rooms.push_back(Room{area, std::move(ring)});
   }
 

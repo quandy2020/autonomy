@@ -87,16 +87,52 @@ build/autonomy/bin/task.coverage_client observe \
 
 ## 地图分区
 
-Coverage 支持把工作区按 `columns × rows` 网格切分成多个房间，并在 AutoViz
-用不同颜色显示：
+Coverage 支持两种分区来源，并在 AutoViz 用不同颜色块显示：
 
-- 面板 **Rooms** 区设置网格（1..4 × 1..4），点 **Split map**。
-- 后端 `RegionSegmenter` 在工作区包围盒上生成网格矩形区域，
-  输出互不重叠的区域，并按参考点平移回地图坐标系；环会做去重、去尖刺和逆时针归一化。
-- 计算返回 `regions[]`：颜色序号、面积、多边形、覆盖率与属于该区的路径状态；
-  AutoViz 订阅 `/coverage/regions` 以彩色边界和名称标签显示。
-- **Clean all rooms** 使用同一条已经验证过的全局 Fields2Cover 路径执行，
-  房间之间不会出现跨区的直线跳转；每个房间的覆盖率和面积独立显示。
+- **From map**：直接读取订阅的 `/map` 占位栅格。
+  `RegionSegmenter::MapSplit` 先清理 1 格宽的墙边碎片，按
+  `min_passage_width`（默认 1.4 m）做腐蚀得到房间核心，再按 4 连通回填，
+  最后沿栅格角点追踪出**轴对齐**轮廓。门洞窄于该值时两个房间会被分开，
+  宽于该值时仍视为同一房间。
+- **Split map**：按 `columns × rows` 网格切分工作区包围盒，适合没有地图时调试。
+
+分区之后，每个房间**单独规划**（headland → swaths → route → path），
+再按调度顺序拼接成一条全局路径。这样跨房间的转弯不会去穿越墙体。
+
+### 房间调度（TSP）
+
+`MapConnector` 把栅格转成"按机器人半径膨胀后的自由空间图"，
+用 Dijkstra 求任意两点间的**可通行距离**。房间之间用这个距离矩阵做
+最近邻 + 2-opt，得到访问顺序与总行程：
+
+- 相邻房间的连接路径沿自由空间穿过门洞，不再画穿墙直线。
+- 距离机器人当前位置不可达的房间会被标记为 sealed，只输出多边形与状态，
+  并在 `warnings` 中说明，不会假装已覆盖。
+- 结果字段：`regions[]`（含 polygon、覆盖率、swath 数、顺序）与
+  `travel_distance`。
+
+请求里的 `swath_spacing` 直接决定相邻清扫带的中心间距，单位米。
+面板 **Swath spacing** 默认为 **0.15 m**，范围 0.05–5.0 m，步进 0.01 m；
+服务端收到后覆盖 `operation_width`，即生成端真正使用的带宽。
+
+0.15 m 在 16×16 m 的房间里对应约 0.15 m 的实际行距（实测 16 个间隔全部为
+0.150 m），覆盖率从 0.8 m 间距时的 96.3% 提升到 99.2%，代价是行程变长。
+
+### 房间内不可行时的降级
+
+小房间放不下 headland 带或有界曲率转弯时，按顺序降级：
+
+1. headland 把整个房间吃掉 → 放弃 headland，扫全房间；
+2. 生成的转弯弧线越出房间（`ValidPath` 校验失败）→ 改成每段一个状态、
+   段间原地转向的回退路径，保证所有位姿都落在房间内。
+
+所有这些降级都会写进 `warnings`，不会静默改变行为。
+
+### 执行
+
+**Clean all rooms** 逐个房间下发 `navigate_complete_coverage`：每个请求只带该房间的多边形，
+`generate_regions=false`、`generate_headland=false`，一个房间完成后自动进入下一个，
+面板显示当前房间与整体进度。
 
 ## 模式与适配范围
 

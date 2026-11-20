@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "autolink/common/file.hpp"
+#include "autolink/common/environment.hpp"
 #include "autonomy/common/config.hpp"
 #include "autonomy/common/logging.hpp"
 #include "google/protobuf/message.h"
@@ -28,13 +29,14 @@
 namespace autonomy {
 namespace common {
 
-/** Install / source distribution root (AUTONOMY_PATH, else install prefix). */
+/** Distribution root: explicit override, executable's install tree, configured prefix. */
 inline std::string AutonomyWorkRoot() {
   const char* env = std::getenv("AUTONOMY_PATH");
   if (env != nullptr && env[0] != '\0') {
     return std::string(env);
   }
-  return std::string(kLibraryInstallDir);
+  const auto installed = autolink::common::InstalledPrefix();
+  return installed.empty() ? std::string(kLibraryInstallDir) : installed;
 }
 
 /**

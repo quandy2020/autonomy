@@ -194,7 +194,6 @@ class CoveragePanel : public QWidget {
   QLineEdit* frame_{nullptr};
   QDoubleSpinBox* radius_{nullptr};
   QDoubleSpinBox* swath_{nullptr};
-  bool swath_manual_{false};
   double robot_x_{0.0};
   double robot_y_{0.0};
   bool have_robot_pose_{false};

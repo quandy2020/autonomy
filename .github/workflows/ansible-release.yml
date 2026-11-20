@@ -85,14 +85,14 @@ jobs:
       - name: Package the tested build without rebuilding
         run: |
           python3 tools/python/package_install_tarball.py --skip-build \
-            --build-dir "$RUNNER_TEMP/autonomy-release-build" --output dist/autonomy.tar.gz
-          python3 ansible/scripts/inspect_artifact.py dist/autonomy.tar.gz --prefix /opt/autonomy
+            --build-dir "$RUNNER_TEMP/autonomy-release-build" --output "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz"
+          python3 ansible/scripts/inspect_artifact.py "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz" --prefix /opt/autonomy
       - uses: actions/upload-artifact@v4
         with:
           name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
           path: |
-            dist/autonomy.tar.gz
-            dist/autonomy.tar.gz.sha256
+            ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz
+            ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -116,7 +116,7 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
-          path: dist
+          path: ${{ runner.temp }}/autonomy-artifacts
           run-id: ${{ inputs.artifact_run_id || github.run_id }}
           github-token: ${{ github.token }}
       - name: Download staging acceptance evidence for production
@@ -124,7 +124,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: deployment-audit-staging-${{ inputs.revision }}
-          path: staging-evidence
+          path: ${{ runner.temp }}/autonomy-staging-evidence
           run-id: ${{ inputs.artifact_run_id }}
           github-token: ${{ github.token }}
       - name: Require successful staging of these exact artifact bytes
@@ -138,8 +138,8 @@ jobs:
           python3 - <<'PY'
           import json, os
           from pathlib import Path
-          evidence = json.loads(Path('staging-evidence/deployment-audit.json').read_text())
-          expected_sha = Path('dist/autonomy.tar.gz.sha256').read_text().split()[0]
+          evidence = json.loads((Path(os.environ['RUNNER_TEMP']) / 'autonomy-staging-evidence/deployment-audit.json').read_text())
+          expected_sha = (Path(os.environ['RUNNER_TEMP']) / 'autonomy-artifacts/autonomy.tar.gz.sha256').read_text().split()[0]
           assert evidence['environment'] == 'staging'
           assert evidence['revision'] == os.environ['RELEASE_REVISION']
           assert evidence['artifact_sha256'] == expected_sha
@@ -158,7 +158,7 @@ jobs:
         run: |
           python3 ansible/scripts/deployment_audit.py \
             --environment "$DEPLOY_ENVIRONMENT" --revision "$RELEASE_REVISION" --limit "$TARGET_LIMIT" \
-            --artifact-sha256 "$(cut -d ' ' -f 1 dist/autonomy.tar.gz.sha256)" \
+            --artifact-sha256 "$(cut -d ' ' -f 1 "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz.sha256")" \
             --output "$RUNNER_TEMP/deployment-audit.json"
       - name: Deploy approved artifact over verified SSH
         env:
@@ -178,12 +178,12 @@ jobs:
           printf '%s\n' "$AUTONOMY_SSH_PRIVATE_KEY" > "$key_file"
           printf '%s\n' "$AUTONOMY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           unset AUTONOMY_SSH_PRIVATE_KEY AUTONOMY_SSH_KNOWN_HOSTS
-          cd dist
+          cd "$RUNNER_TEMP/autonomy-artifacts"
           sha256sum --check autonomy.tar.gz.sha256
           artifact_sha="$(cut -d ' ' -f 1 autonomy.tar.gz.sha256)"
-          cd ../ansible
+          cd "$GITHUB_WORKSPACE/ansible"
           ./deploy.sh deploy "$DEPLOY_ENVIRONMENT" --limit "$TARGET_LIMIT" --private-key "$key_file" \
-            -e "autonomy_artifact_path=$GITHUB_WORKSPACE/dist/autonomy.tar.gz" \
+            -e "autonomy_artifact_path=$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz" \
             -e "autonomy_artifact_sha256=$artifact_sha" \
             -e "autonomy_expected_git_sha=$RELEASE_REVISION"
       - name: Preserve accepted staging bytes for later production promotion
@@ -192,8 +192,8 @@ jobs:
         with:
           name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
           path: |
-            dist/autonomy.tar.gz
-            dist/autonomy.tar.gz.sha256
+            ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz
+            ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz.sha256
           if-no-files-found: error
           retention-days: 30
       - name: Keep the deployment audit even when rollout fails

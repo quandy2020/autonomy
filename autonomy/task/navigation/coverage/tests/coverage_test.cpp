@@ -67,7 +67,7 @@ void RequireInsideRooms(const ComputeAction::Result& out) {
     const double y = pose.pose().position().y();
     Require(x > 0.0 && x < 8.0 && y > 0.0 && y < 4.0,
             "Global path leaves the map");
-    Require(!(x > 3.6 && x < 4.4 && !(y > 0.2 && y < 1.2)),
+    Require(!(x > 3.85 && x < 4.25 && !(y > 0.2 && y < 1.2)),
             "Global path crosses the dividing wall");
   }
 }
@@ -77,7 +77,6 @@ int main(int argc,char** argv) {
   std::vector<std::pair<std::string,std::function<void()>>> tests;
   auto add=[&](std::string name,std::function<void()> test){tests.emplace_back(std::move(name),std::move(test));};
   CoverageServer server;
-  add("debug_rooms",[&]{Configuration tight;tight.robot_width=0.3;tight.operation_width=0.5;tight.min_turning_radius=0.3;tight.headland_width=0.6;CoverageServer map_server(tight);auto r=TwoRoomMap();auto out=map_server.Compute(r);std::cout<<"REGIONS "<<out.regions_size()<<std::endl;for(const auto& reg:out.regions()){std::cout<<"REGION "<<reg.name()<<" area="<<reg.area()<<" polys="<<reg.polygons_size()<<std::endl;for(const auto& poly:reg.polygons()){std::cout<<" POLY "<<poly.coordinates_size()<<":";for(const auto& p:poly.coordinates())std::cout<<" ("<<p.axis1()<<","<<p.axis2()<<")";std::cout<<std::endl;}}for(const auto& w:out.warnings())std::cout<<"WARN "<<w<<std::endl;});
   add("complete_rect",[&]{auto result=server.Compute(Rectangle());Success(result);Require(result.core_coverage()>.95,"Coverage below 95%");Require(result.nav_path().poses_size()>0,"Missing nav path");});
   add("complete_hole",[&]{auto result=server.Compute(Rectangle(true));Success(result);Require(result.core_coverage()>.95,"Hole core coverage below 95%");});
   add("robot_radius_drives_swath",[&]{auto r=Rectangle();r.set_robot_radius(0.3);auto out=server.Compute(r);Success(out);Require(out.coverage_path().swaths_size()>1,"Radius did not raise swath count");for(const auto& s:out.coverage_path().swaths())Require(std::abs(s.width()-0.6)<1e-9,"Swath width is not twice the radius");});

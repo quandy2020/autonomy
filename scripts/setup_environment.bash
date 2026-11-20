@@ -296,12 +296,12 @@ _autonomy_path_prepend_if_dir "${AUTONOMY_INSTALL_PREFIX}/python" PYTHONPATH
 # ---------------------------------------------------------------------------
 # glog
 # ---------------------------------------------------------------------------
-export GLOG_logtostderr="${GLOG_logtostderr:-1}"
-export GLOG_alsologtostderr="${GLOG_alsologtostderr:-0}"
+export GLOG_logtostderr="${GLOG_logtostderr:-0}"
+export GLOG_alsologtostderr="${GLOG_alsologtostderr:-1}"
 export GLOG_colorlogtostderr="${GLOG_colorlogtostderr:-1}"
 export GLOG_minloglevel="${GLOG_minloglevel:-0}"
 export GLOG_log_dir="${GLOG_log_dir:-${HOME}/.autonomy/log}"
-mkdir -p "${GLOG_log_dir}" 2>/dev/null || true
+mkdir -p -- "${GLOG_log_dir}"
 
 # ---------------------------------------------------------------------------
 # Optional ROS 2 overlay

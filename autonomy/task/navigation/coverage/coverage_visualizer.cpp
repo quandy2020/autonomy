@@ -219,7 +219,7 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
     const auto& color =
         kPalette[static_cast<std::size_t>(std::max(0, region.color_index())) %
                  kPalette.size()];
-    Fill(regions, rings, frame, 1000 + label_id, color, 0.28f, 0.012f);
+    Fill(regions, rings, frame, 1000 + label_id, color, 0.20f, 0.012f);
     for (const auto& ring : rings) {
       auto* line = Line(regions, frame, "region", outline_id++, color, 1.0f,
                         0.07f, 0.08f);
@@ -254,8 +254,8 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
     label->mutable_pose()->mutable_orientation()->set_w(1.0);
     label->mutable_pose()->mutable_position()->set_x(center_x);
     label->mutable_pose()->mutable_position()->set_y(center_y);
-    label->mutable_pose()->mutable_position()->set_z(0.55);
-    label->mutable_scale()->set_z(0.5);
+    label->mutable_pose()->mutable_position()->set_z(0.35);
+    label->mutable_scale()->set_z(0.22);
     label->mutable_color()->set_r(1.0f);
     label->mutable_color()->set_g(1.0f);
     label->mutable_color()->set_b(1.0f);
@@ -274,15 +274,12 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
     const double y0 = poses.Get(0).pose().position().y();
     for (std::size_t index = 0; index < room_rings.size(); ++index) {
       if (Contains(room_rings[index], x0, y0)) {
-        const auto& room = kPalette[index % kPalette.size()];
-        for (std::size_t channel = 0; channel < 3; ++channel) {
-          color[channel] = 0.25f * room[channel] + 0.75f;
-        }
+        color = kPalette[index % kPalette.size()];
         break;
       }
     }
-    auto* line = Line(swaths, frame, "swaths", swath_id++, color, 0.95f, 0.09f,
-                      0.09f);
+    auto* line = Line(swaths, frame, "swaths", swath_id++, color, 0.95f, 0.05f,
+                      0.07f);
     for (const auto& pose : poses) {
       auto* out = line->add_points();
       out->set_x(pose.pose().position().x());

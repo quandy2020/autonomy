@@ -241,10 +241,9 @@ export AUTOLINK_PATH="${AUTOLINK_PATH:-${AUTONOMY}/autolink}"
 export GLOG_minloglevel="${GLOG_minloglevel:-1}"
 export GLOG_stderrthreshold="${GLOG_stderrthreshold:-2}"
 
-# Run from the workspace root so glog/autolink INFO files land here, not under
-# src/autonomy/autosim.
 WORKSPACE="${AUTONOMY_ROOT:-${ROOT}}"
-export GLOG_log_dir="${GLOG_log_dir:-${WORKSPACE}}"
+export GLOG_log_dir="${GLOG_log_dir:-${HOME}/.autonomy/log}"
+mkdir -p -- "${GLOG_log_dir}"
 cd "${WORKSPACE}"
 
 case "$MODE" in

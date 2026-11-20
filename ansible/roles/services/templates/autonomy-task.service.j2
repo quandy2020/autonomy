@@ -8,6 +8,7 @@ Wants=network-online.target{{ ' autonomy-localization.service' if 'localization'
 Type=simple
 User={{ autonomy_user }}
 Group={{ autonomy_user }}
+Environment=GLOG_log_dir={{ autonomy_log_dir }}
 Environment=AUTONOMY_PATH={{ autonomy_install_prefix }}
 Environment=AUTOLINK_DISTRIBUTION_HOME={{ autonomy_install_prefix }}
 Environment=AUTOLINK_PATH={{ autonomy_install_prefix }}/share/autolink

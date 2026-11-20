@@ -92,9 +92,25 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     if (is_canceled()) { result.canceled = true; return result; }
     EdgeValidator validator(*map,options_);
     if (!validator.PoseSafe(start)) {
+        const auto check = validator.safety().VerifyPose(start);
+        const auto cell = map->grid->WorldToCell(start);
         AINFO_EVERY(20) << "VISTA_ROUTE_START_UNSAFE x=" << start.x
                         << " y=" << start.y << " support="
-                        << (map->startup_support ? 1 : 0);
+                        << (map->startup_support ? 1 : 0)
+                        << " reason=" << check.reason
+                        << " clearance=" << check.clearance
+                        << " cell=" << (cell ? static_cast<int>(map->grid->At(cell->x,cell->y).state) : -1)
+                        << " footprint_inflated=" << (map->footprint_inflated ? 1 : 0)
+                        << " map=" << map->grid->width() << "x" << map->grid->height()
+                        << " origin=" << map->grid->origin_x() << "," << map->grid->origin_y();
+        if (map->startup_support) {
+            AINFO_EVERY(20) << "VISTA_ROUTE_SUPPORT center="
+                            << map->startup_support->center_x << ","
+                            << map->startup_support->center_y
+                            << " radius=" << map->startup_support->radius
+                            << " floor=" << map->startup_support->floor_height
+                            << " ceiling=" << map->startup_support->ceiling_height;
+        }
         return result;
     }
     if (!validator.PoseSafe(goal)) {

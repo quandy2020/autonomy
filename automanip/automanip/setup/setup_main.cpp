@@ -14,6 +14,8 @@
 #include <CLI/CLI.hpp>
 #include <glog/logging.h>
 
+#include "autolink/init.hpp"
+
 #include "autonomy/common/cli_options.hpp"
 #include "autonomy/common/logging.hpp"
 #include "automanip/setup/setup_assistant_lite.hpp"
@@ -46,7 +48,7 @@ int main(int argc, char** argv) {
       ->capture_default_str();
   autonomy::common::ParseOrExit(app, argc, argv);
 
-  google::InitGoogleLogging(argv[0]);
+  autolink::InitLogging(argv[0]);
   FLAGS_alsologtostderr = true;
 
   automanip::setup::SetupRequest req;

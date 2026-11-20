@@ -41,6 +41,17 @@
             that:
               - autonomy_task_service.status.ActiveState == 'active'
 
+        - name: Check task can write logs as the service user
+          ansible.builtin.stat:
+            path: "{{ autonomy_log_dir }}/autonomy.task.log"
+          register: autonomy_task_log
+
+        - name: Require runtime logs in the configured directory
+          ansible.builtin.assert:
+            that:
+              - autonomy_task_log.stat.isreg | default(false)
+              - autonomy_task_log.stat.pw_name | default('') == autonomy_user
+
         - name: Check active install is a release link
           ansible.builtin.stat:
             path: "{{ autonomy_install_prefix }}"

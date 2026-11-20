@@ -172,9 +172,13 @@ class DeploymentTest(unittest.TestCase):
             'cmake_minimum_required(VERSION 3.20)\nproject(fixture NONE)\n'
             'install(FILES payload DESTINATION share/autonomy)\n')
         subprocess.run(['cmake', '-S', str(project), '-B', str(build), '-DCMAKE_BUILD_TYPE=Debug'], check=True, capture_output=True)
-        output = self.directory / 'autonomy.tar.gz'
-        with patch.object(PACKAGE, 'bundle_configuration'):
-            self.assertEqual(PACKAGE.main(['--skip-build', '--build-dir', str(build), '--output', str(output)]), 0)
+        output = self.directory / '.autonomy/artifacts/autonomy-fixture.tar.gz'
+        environment = {key: value for key, value in os.environ.items() if key != 'OUTPUT'}
+        environment['HOME'] = str(self.directory)
+        with patch.object(PACKAGE, 'bundle_configuration'), \
+                patch.object(PACKAGE, 'git_describe', return_value='fixture'), \
+                patch.dict(os.environ, environment, clear=True):
+            self.assertEqual(PACKAGE.main(['--skip-build', '--build-dir', str(build)]), 0)
         self.assertEqual(INSPECT.inspect_artifact(output, '/opt/autonomy')['sha256'],
                          output.with_name(output.name + '.sha256').read_text().split()[0])
         with tarfile.open(output) as archive:
@@ -182,27 +186,54 @@ class DeploymentTest(unittest.TestCase):
             metadata = json.load(archive.extractfile('autonomy/share/autonomy/MANIFEST.json'))
             self.assertEqual(metadata['cmake_build_type'], 'Debug')
 
-    def test_runtime_launcher_loads_environment_and_preserves_arguments_after_relocation(self):
+    @unittest.skipUnless(shutil.which('patchelf') and shutil.which('cc') and shutil.which('c++'),
+                         'ELF relocation regression requires patchelf and C/C++ compilers')
+    def test_real_elf_resolves_indirect_libraries_and_resources_after_relocation(self):
         prefix = self.directory / 'install with spaces'
-        (prefix / 'bin').mkdir(parents=True)
-        hook = prefix / 'share/autonomy/environment/library_path.sh'
-        hook.parent.mkdir(parents=True)
-        hook.write_text('export LD_LIBRARY_PATH="$prefix/lib"\n')
-        (prefix / 'bin/app').write_bytes(b'\x7fELFfixture')
-        PACKAGE.install_runtime_launchers(prefix)
-        self.assertEqual((prefix / 'bin/.app.elf').read_bytes(), b'\x7fELFfixture')
-        # Replace only the fake ELF so the generated launcher can run without a compiler.
-        real = prefix / 'bin/.app.elf'
-        real.write_text('#!/usr/bin/env python3\nimport json, os, sys\n'
-                        'print(json.dumps([os.environ["LD_LIBRARY_PATH"], os.environ["AUTOLINK_PATH"], sys.argv[1:]]))\n')
-        real.chmod(0o755)
+        for directory in ('bin', 'lib', 'share/autolink/conf'):
+            (prefix / directory).mkdir(parents=True)
+        (prefix / 'share/autolink/conf/autolink.pb.conf').touch()
+        include = self.directory / 'include/autolink/conf'
+        include.mkdir(parents=True)
+        (include / 'conf.hpp').write_text(
+            'namespace autolink { namespace conf {\n'
+            'constexpr auto kDefaultDistributionHome = "/unusable-build-tree";\n'
+            'constexpr auto kDefaultConfDir = "/unusable-build-tree/conf";\n'
+            'constexpr auto kDefaultPluginIndexDir = "/unusable-build-tree/plugins";\n'
+            '}}\n')
+        leaf = self.directory / 'leaf.c'
+        middle = self.directory / 'middle.c'
+        app = self.directory / 'app.cpp'
+        leaf.write_text('int leaf(void) { return 42; }\n')
+        middle.write_text('int leaf(void); int middle(void) { return leaf(); }\n')
+        app.write_text('#include <iostream>\n#include "autolink/common/environment.hpp"\n'
+                       'extern "C" int middle(void);\n'
+                       'int main(int argc, char** argv) {\n'
+                       'if (argc != 2 || middle() != 42) return 1;\n'
+                       'std::cout << autolink::common::DistributionHome() << "|"\n'
+                       '<< autolink::common::WorkRoot() << "|" << argv[1]; }\n')
+        for command in (
+            ['cc', '-shared', '-fPIC', str(leaf), '-o', str(prefix / 'lib/libleaf.so')],
+            ['cc', '-shared', '-fPIC', str(middle), '-L' + str(prefix / 'lib'), '-lleaf',
+             '-o', str(prefix / 'lib/libmiddle.so')],
+            ['c++', '-std=c++17', str(app), '-I' + str(ROOT.parent / 'autolink'),
+             '-I' + str(self.directory / 'include'), '-L' + str(prefix / 'lib'), '-lmiddle',
+             '-Wl,-rpath-link,' + str(prefix / 'lib'), '-o', str(prefix / 'bin/app')],
+        ):
+            subprocess.run(command, check=True, capture_output=True)
+        PACKAGE.configure_runtime_rpaths(prefix)
         moved = prefix.rename(self.directory / 'relocated with spaces')
+        self.assertEqual((moved / 'bin/app').read_bytes()[:4], b'\x7fELF')
+        self.assertFalse(list((moved / 'bin').glob('.*.elf')))
         env = {key: value for key, value in os.environ.items()
                if key not in ('LD_LIBRARY_PATH', 'AUTOLINK_PATH', 'AUTONOMY_PATH', 'AUTOLINK_DISTRIBUTION_HOME')}
-        result = subprocess.run([str(moved / 'bin/app'), 'one argument', '--flag'],
+        result = subprocess.run([str(moved / 'bin/app'), 'one argument'], cwd=self.directory,
                                 env=env, check=True, capture_output=True, text=True)
-        self.assertEqual(json.loads(result.stdout),
-                         [str(moved / 'lib'), str(moved / 'share/autolink'), ['one argument', '--flag']])
+        self.assertEqual(result.stdout, f'{moved}|{moved}/share/autolink|one argument')
+        (moved / 'share/autolink/conf/autolink.pb.conf').unlink()
+        result = subprocess.run([str(moved / 'bin/app'), 'one argument'], cwd=self.directory,
+                                env=env, check=True, capture_output=True, text=True)
+        self.assertEqual(result.stdout, '/unusable-build-tree|/unusable-build-tree|one argument')
 
     def test_audit_records_only_public_release_context(self):
         output = self.directory / 'audit.json'
@@ -261,6 +292,8 @@ class DeploymentTest(unittest.TestCase):
 
     def test_release_publishes_validated_artifact_and_returns_its_identity(self):
         config = self.release_config()
+        expected_output = Path(config['artifact_path'])
+        config['artifact_path'] = '~/output with spaces/autonomy.tar.gz'
         config['bundle_runtime'] = True
         archive = self.archive()
 
@@ -269,9 +302,11 @@ class DeploymentTest(unittest.TestCase):
                 shutil.copyfile(archive, arguments[-1])
             return subprocess.CompletedProcess(arguments, 0)
 
-        with patch.object(RELEASE.subprocess, 'run', side_effect=execute) as calls:
+        with patch.object(RELEASE.subprocess, 'run', side_effect=execute) as calls, \
+                patch.dict(os.environ, {'HOME': str(self.directory)}):
             variables = RELEASE.prepare(config)
         output = Path(variables['autonomy_artifact_path'])
+        self.assertEqual(output, expected_output)
         self.assertEqual(output.read_bytes(), archive.read_bytes())
         self.assertEqual(output.with_name(output.name + '.sha256').read_text(),
                          variables['autonomy_artifact_sha256'] + '  autonomy.tar.gz\n')

@@ -25,14 +25,15 @@
 
 ## 回滚到旧版本
 
-1. 在宿主机 `src/autonomy/dist/` 放入已验收旧版本的 `autonomy.tar.gz` 和对应 `.sha256`，先保留当前制品原件。
+1. 在宿主机 `~/.autonomy/artifacts/` 放入已验收旧版本的 `autonomy.tar.gz` 和对应 `.sha256`，先保留当前制品原件。
 2. 使用旧制品直接部署，不使用会重新编译的 release：
 
 ```bash
-(cd ../dist && sha256sum --check autonomy.tar.gz.sha256)
-artifact_sha=$(cut -d ' ' -f 1 ../dist/autonomy.tar.gz.sha256)
+artifact_dir="$HOME/.autonomy/artifacts"
+(cd "$artifact_dir" && sha256sum --check autonomy.tar.gz.sha256)
+artifact_sha=$(cut -d ' ' -f 1 "$artifact_dir/autonomy.tar.gz.sha256")
 ./deploy.sh deploy robots -l robot01 -K \
-  -e "autonomy_artifact_path=$PWD/../dist/autonomy.tar.gz" \
+  -e "autonomy_artifact_path=$artifact_dir/autonomy.tar.gz" \
   -e "autonomy_artifact_sha256=$artifact_sha"
 ```
 
@@ -51,5 +52,24 @@ journalctl -u autonomy-task -n 100 --no-pager
 ```
 
 当前版本位于 `/opt/autonomy-releases/`，配置在 `/etc/autonomy`，运行数据在 `/var/lib/autonomy`。历史版本不会自动清理，不要删除当前或 previous 引用的目录。
+
+程序日志默认写入运行账号的 `~/.autonomy/log`，目录自动创建；本机 `quandy` 用户对应 `/home/quandy/.autonomy/log`，默认 systemd 服务账号对应 `/var/lib/autonomy/.autonomy/log`。临时改目录可使用 `GLOG_log_dir=/path/to/log /opt/autonomy/bin/autolink node list`；部署服务通过 `autonomy_log_dir` 配置。控制台输出仍可通过终端或 `journalctl` 查看，已有日志不会自动迁移。
+
+## 使用 Autolink 命令
+
+默认发布配置启用 `BUILD_TOOLS=ON`，同时安装 Autolink 运行库和命令行工具。在目标机执行：
+
+```bash
+/opt/autonomy/bin/autolink --help
+```
+
+需要直接输入 `autolink` 时，先在当前 Bash 终端加载环境：
+
+```bash
+source /opt/autonomy/share/autonomy/environment/library_path.sh
+autolink node list
+```
+
+用户目录安装时，将 `/opt/autonomy` 替换为实际安装目录。
 
 服务选择变化后需完整部署，push/restart 不修改所选服务集合。生产发布与回滚走 [CI/CD](ci-cd.md)。

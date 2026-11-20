@@ -31,6 +31,7 @@
         mode: "0755"
         content: |
           #!/bin/sh
+          printf 'runtime log fixture\n' > "${GLOG_log_dir:?Missing service log directory}/$(basename "$0").log"
           trap 'exit 0' TERM INT
           while true; do sleep 1; done
       loop: [autonomy.task, autonomy.localization, autonomy.bridge]

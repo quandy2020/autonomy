@@ -7,5 +7,5 @@ autonomy_run_verify: true
 autonomy_preflight_strict_os: false
 
 # 制品路径由控制机传入，例如:
-# ./deploy.sh deploy robots -e autonomy_artifact_path=$PWD/../dist/autonomy.tar.gz
+# ./deploy.sh deploy robots -e autonomy_artifact_path=$HOME/.autonomy/artifacts/autonomy.tar.gz
 autonomy_artifact_path: ""

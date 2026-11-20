@@ -40,7 +40,7 @@ PR 检查使用 GitHub 托管 runner。原生发布构建只由手动 workflow_d
 - `/opt/autonomy-releases/<sha256>`：完整安装树，发布后不再通过 build 模式写入。
 - `/opt/autonomy`：当前版本链接；`/opt/autonomy.previous`：上一版本链接。
 - `/etc/autonomy`：可更新的运行配置。完整部署读取制品 bundle，push 读取控制机组件 conf；同名文件会覆盖，不删除机器人专有文件。
-- `/var/lib/autonomy`、`/var/log/autonomy`：运行数据和日志，不进入版本替换流程。
+- `/var/lib/autonomy`：服务账号 home 和运行数据；日志默认位于其 `.autonomy/log/`，不进入版本替换流程。
 
 首次迁移真实安装目录不是零中断切换，需维护窗口。后续链接替换不覆盖正在运行的文件，服务在配置同步后重启。失败停止后续目标；已切换目标需要按 README 重新部署旧制品恢复。通过历史 Actions 制品做人工批准的回滚；不自动回滚、删除历史版本或重置运行数据，避免把进程 active 误当作机器人业务恢复成功。
 

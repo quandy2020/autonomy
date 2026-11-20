@@ -42,7 +42,7 @@
 | `AUTONOMY_SAFETY_LATCH_PATH` | 急停闩锁文件 |
 | `PACKAGE_DIR` / `RECORD_FILE` | 回灌数据包或 `.record` |
 | `REPLAY_PROFILE` | `sensor_in` \| `mid_stack` \| `open_loop` |
-| `GLOG_log_dir` | 日志目录（建议 `$HOME/.autonomy/log/runs/<run_id>`） |
+| `GLOG_log_dir` | 覆盖日志目录（默认 `$HOME/.autonomy/log`，自动创建） |
 | `XDG_RUNTIME_DIR` | Bridge `RestartModule` 请求文件目录（`$XDG_RUNTIME_DIR/autonomy/`） |
 
 ## OTA 包

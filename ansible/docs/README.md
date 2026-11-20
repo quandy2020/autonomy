@@ -39,13 +39,13 @@
 ./deploy.sh restart robots -l robot01 -K
 ```
 
-`release.yml` 中的 `artifact_path` 相对 `ansible/` 解析；构建参数是 YAML 字符串列表。`--release-config` 只影响控制机编译，目标配置仍由所选 inventory 管理。临时覆盖目标参数使用 `-e`，长期设置写入 inventory。
+制品默认保存在控制机的 `~/.autonomy/artifacts/`，验证日志在 `~/.autonomy/log/`，不在源码目录生成 `dist`。`release.yml` 的 `artifact_path` 支持 `~` 和绝对路径；相对路径以 `ansible/` 为基准。构建参数是 YAML 字符串列表。`--release-config` 只影响控制机编译，目标配置仍由所选 inventory 管理。临时覆盖目标参数使用 `-e`，长期设置写入 inventory。
 
 `failed=0`、`unreachable=0` 表示部署完成，服务 active 仍需结合机器人实际功能验收。`release` 不代替生产审批，production 使用 [CI/CD](ci-cd.md)。出错看 [排障](troubleshooting.md)，日常维护看 [部署后的操作](deployment.md)。
 
 `demo` 配置使用当前用户安装，跳过系统用户和 systemd 管理；安装入口为 `/home/quandy/workspace/demo`，完整版本在 `demo-releases/`，运行配置在 `demo.config/`。`autonomy_system_install: false` 要求关闭依赖安装，适用于已准备运行依赖的宿主机。
 
-`release-demo.yml` 的 `bundle_runtime: true` 会捆绑可执行文件链接的第三方动态库，以及 Autoviz 的 Qt/Ogre 插件依赖；编译机需要 Qt 6 的 `qmake6` 和插件。包内启动入口自动加载运行环境，安装后可直接执行 `./bin/autoviz`。目标仍需兼容的 libc/C++ 运行时与 GPU 驱动，其他可选插件需单独验证。普通 release 默认使用目标平台已有的依赖基线。
+`bundle_runtime: true` 会捆绑可执行文件链接的第三方动态库，以及 Autoviz 的 Qt/Ogre 插件依赖；编译机需要 `patchelf`、Qt 6 的 `qmake6` 和插件。`bin/` 中直接安装真实程序，通过 ELF 的 `$ORIGIN` 相对路径加载依赖，程序从自身安装位置查找资源，不生成隐藏 `.elf` 或启动包装脚本。安装后可直接执行 `./bin/autoviz`，无需先设置 `LD_LIBRARY_PATH`。目标仍需兼容的 libc/C++ 运行时与 GPU 驱动，其他可选插件需单独验证。
 
 运行库打包时会按内容去重：完全相同的动态库用硬链接共享磁盘数据，所有加载路径保留。`.so → .so.0 → .so.0.x` 是版本软链接，只存一份库数据；OpenCV、PCL 等名称相近的模块是不同依赖，不能按名字删除。去重节省的字节数记录在 `MANIFEST.json` 的 `deduplicated_runtime_bytes` 中。
 

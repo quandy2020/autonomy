@@ -37,7 +37,9 @@ def main():
     # Fail before starting nodes if isolation setup is unavailable.
     subprocess.run(["mount", "-t", "tmpfs", "-o", "mode=1777", "tmpfs", "/dev/shm"], check=True)
     subprocess.run(["ip", "link", "set", "lo", "up"], check=True)
-    logs = Path(tempfile.mkdtemp(prefix="autonomy-runtime-smoke-", dir=prefix.parent))
+    log_root = Path(os.environ.get("GLOG_log_dir") or Path.home() / ".autonomy/log")
+    log_root.mkdir(parents=True, exist_ok=True)
+    logs = Path(tempfile.mkdtemp(prefix="runtime-smoke-", dir=log_root))
     private_tmp = logs / "tmp"
     private_tmp.mkdir()
     if args.gui:
@@ -97,10 +99,17 @@ def main():
                              'grpc { host: "127.0.0.1" port: 5005 '
                              'num_grpc_threads: 2 num_event_threads: 2 }\n')
     try:
+        assert not list((prefix / "bin").glob(".*.elf")), "Hidden ELF launch targets remain"
+        for name in ("autoviz", "autolink", "autonomy.task", "autonomy.localization", "autonomy.bridge"):
+            executable = prefix / "bin" / name
+            if executable.exists():
+                with executable.open("rb") as stream:
+                    assert stream.read(4) == b"\x7fELF", f"{name} is not a real ELF executable"
+        print("PASS real ELF executables without hidden launch targets", flush=True)
         autoviz = prefix / "bin/autoviz"
         if autoviz.exists():
             run("autoviz-help", [str(autoviz), "--help"], {"QT_QPA_PLATFORM": "offscreen"})
-            print("PASS autoviz launcher and Qt platform plugin without LD_LIBRARY_PATH", flush=True)
+            print("PASS autoviz executable and Qt platform plugin without LD_LIBRARY_PATH", flush=True)
         if args.gui:
             # shortcut: use an idle bus here; live topic rendering needs a separate data acceptance test.
             # Autoviz ignores ordinary close events during its first five seconds.
@@ -108,6 +117,17 @@ def main():
                 {"QT_QPA_PLATFORM": "xcb", "AUTOVIZ_SMOKE_QUIT_MS": "6000"})
             assert "Autoviz RenderSystem ready" in (logs / "autoviz-gui.log").read_text()
             print("PASS autoviz window, Ogre rendering initialization and clean exit", flush=True)
+        env.pop("GLOG_log_dir", None)
+        log_home = logs / "log-home"
+        run("default-log-directory", [bridge, "--conf", str(bridge_config), "--dry-run"],
+            {"HOME": str(log_home), "GLOG_logtostderr": "0"})
+        assert list((log_home / ".autonomy/log").glob("*.log.*")), "Default home log directory is empty"
+        explicit_logs = logs / "explicit-logs"
+        run("explicit-log-directory", [bridge, "--conf", str(bridge_config), "--dry-run"],
+            {"HOME": str(log_home), "GLOG_log_dir": str(explicit_logs), "GLOG_logtostderr": "0"})
+        assert list(explicit_logs.glob("*.log.*")), "Explicit log directory was ignored"
+        assert not list(logs.glob("*.log.INFO.*")), "Runtime logs leaked into the working directory"
+        print("PASS default home log directory, explicit override and no working-directory log files", flush=True)
         for mode in ("dry-run", "self-test"):
             run(mode, [bridge, "--conf", str(bridge_config), f"--{mode}"])
             print(f"PASS bridge {mode}", flush=True)

@@ -40,7 +40,7 @@ def prepare(config):
     if not isinstance(config['build_args'], list) or not all(isinstance(arg, str) for arg in config['build_args']):
         raise ValueError('build_args must be a list of strings')
 
-    artifact = (ROOT / config['artifact_path']).resolve()
+    artifact = (ROOT / Path(config['artifact_path']).expanduser()).resolve()
     if not artifact.name.endswith('.tar.gz') or artifact.is_dir():
         raise ValueError('artifact_path must name a .tar.gz file')
     artifact.parent.mkdir(parents=True, exist_ok=True)

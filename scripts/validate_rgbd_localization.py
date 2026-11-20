@@ -289,7 +289,10 @@ def main():
     def launch_task(runner):
         """Install actual camera/static-TF files and start only this owned native task process."""
         try:
-            deadline = time.monotonic() + 30
+            # Topic discovery after Atlas map creation can exceed 30 s on a
+            # loaded GPU host; keep the same readiness predicate with a wider
+            # bounded window.
+            deadline = time.monotonic() + 90
             while not stopping.is_set() and time.monotonic() < deadline:
                 with data_lock:
                     ready = all(name in first for name in ('camera_info', 'tf_static', 'atlas_odometry', 'atlas_localization_status'))

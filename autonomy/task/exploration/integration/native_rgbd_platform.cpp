@@ -292,6 +292,11 @@ public:
             planner_->GetCostmapWrapper()->setRobotFootprint(::autonomy::map::costmap_2d::makeFootprintFromRadius(
                 options_.exploration.coverage.safety.robot_radius+options_.exploration.coverage.safety.horizontal_margin));
             planner_->GetCostmapWrapper()->Start();
+            // The embedded Vista server owns the grid through UpdateControlMap;
+            // its generic one-Hz update thread would reset that manual grid to
+            // NO_INFORMATION. Stop that owner thread cleanly instead of leaving
+            // a detached thread that can race the planner.
+            planner_->GetCostmapWrapper()->Stop();
             const auto plugin = std::dynamic_pointer_cast<planning::planner::vista::VistaPlanner>(planner_->GetPlanner(options_.exploration.routes.planner_id));
             if (!plugin) throw std::invalid_argument("native exploration requires the existing configured Vista plugin");
             plugin->SetMapViewSource([this] {
@@ -505,11 +510,28 @@ public:
             startup_operation_->cancel_requested = true;
             handle = startup_operation_->handle;
             client = startup_operation_->client;
-            startup_operation_->deadline = std::min(startup_operation_->deadline, Now() + 1);
+            // Release the transport slot synchronously.  A viewpoint change
+            // cancels its previous yaw request and immediately submits the next
+            // one; retaining the old operation here made every replacement
+            // request fail with "approach rotation could not start".
+            startup_operation_.reset();
+            startup_reply_ = StartupObservationReply{version, false,
+                "native startup rotation canceled"};
         }
         if (handle && client) (void)client->AsyncCancelGoal(handle);
-        std::lock_guard<std::mutex> lock(startup_admission_.mutex);
-        startup_admission_.deadline = std::min(startup_admission_.deadline, Now() + 1);
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            startup_admission_.active = false;
+        }
+        if (command_writer_) {
+            ::automsgs::msgs::geometry_msgs::TwistStamped stop;
+            stop.mutable_header()->mutable_stamp()->CopyFrom(
+                ::automsgs::msgs::builtin_interfaces::TimeNow());
+            stop.mutable_header()->set_frame_id(options_.navigation_base_frame);
+            stop.mutable_twist()->mutable_angular()->set_z(0.0);
+            (void)command_writer_->Write(stop);
+        }
+        AINFO << "NATIVE_STARTUP_CANCEL reason=viewpoint_replaced";
     }
 
     /** @brief Validate available action evidence against measured pose, drift and yaw. */
@@ -589,6 +611,11 @@ public:
                     .startup_observation.completion_tolerance;
                 if (accumulated + tolerance >= std::abs(target_yaw)) {
                     stop_rotation();
+                    if (!EstablishStartupSupportFromAdmission()) {
+                        SetStartupReply(version, false,
+                            "startup observation could not establish a measured support envelope");
+                        return PollStartupObservation();
+                    }
                     SetStartupReply(version, true,
                         "measured startup observation confirmed");
                     return PollStartupObservation();
@@ -639,6 +666,11 @@ public:
                 .startup_observation.completion_tolerance;
             if (accumulated + tolerance >= std::abs(target_yaw)) {
                 stop_rotation();
+                if (!EstablishStartupSupportFromAdmission()) {
+                    SetStartupReply(version, false,
+                        "startup observation could not establish a measured support envelope");
+                    return PollStartupObservation();
+                }
                 SetStartupReply(version, true,
                     "measured startup observation confirmed");
                 return PollStartupObservation();
@@ -797,6 +829,12 @@ public:
             const double distance = std::hypot(
                 position.x() - startup_support_->center_x,
                 position.y() - startup_support_->center_y);
+            AINFO_EVERY(50) << "NATIVE_SUPPORT_CHECK center="
+                            << startup_support_->center_x << ","
+                            << startup_support_->center_y
+                            << " feedback=" << position.x() << ","
+                            << position.y() << " distance=" << distance
+                            << " radius=" << startup_support_->radius;
             if (distance > startup_support_->radius) {
                 startup_support_.reset();
                 return;
@@ -895,6 +933,19 @@ public:
             if (auto task = task_.lock()) (void)task->PushMap(*view);
         }
         return true;
+    }
+
+    /** @brief Establish support before a direct yaw owner reports success. */
+    bool EstablishStartupSupportFromAdmission() {
+        double start_x = 0, start_y = 0, start_yaw = 0;
+        {
+            std::lock_guard<std::mutex> lock(startup_admission_.mutex);
+            start_x = startup_admission_.start_x;
+            start_y = startup_admission_.start_y;
+            start_yaw = startup_admission_.start_yaw;
+        }
+        const auto map = mapper_->LatestView();
+        return map && EstablishStartupSupport(*map, start_x, start_y, start_yaw);
     }
 
     /** @brief Store one terminal result and revoke the startup-only motion admission. */
@@ -1031,6 +1082,19 @@ public:
             map->setCost(x,y,state == autonomy::navigation::CellState::kFree || startup_free ?
                 ::autonomy::map::costmap_2d::FREE_SPACE :
                 state == autonomy::navigation::CellState::kOccupied ? ::autonomy::map::costmap_2d::LETHAL_OBSTACLE : ::autonomy::map::costmap_2d::NO_INFORMATION);
+        }
+        unsigned int start_x = 0, start_y = 0;
+        if (map->worldToMap(0.0, 0.0, start_x, start_y)) {
+            const auto source = view.grid->WorldToCell({0.0, 0.0, 0});
+            AINFO_EVERY(50) << "NATIVE_CONTROL_MAP origin=" << map->getOriginX()
+                            << "," << map->getOriginY() << " size="
+                            << map->getSizeInCellsX() << "x"
+                            << map->getSizeInCellsY() << " start_cell="
+                            << start_x << "," << start_y << " cost="
+                            << static_cast<int>(map->getCost(start_x, start_y))
+                            << " source="
+                            << (source ? static_cast<int>(view.grid->At(source->x, source->y).state) : -1)
+                            << " support=" << (view.startup_support ? 1 : 0);
         }
     }
     /** @brief Derive a navigation-frame origin from actual healthy tracking and actual installation, without GT. */

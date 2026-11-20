@@ -208,20 +208,20 @@ void CoveragePanel::BuildUi() {
 
   swath_ = new QDoubleSpinBox(content);
   swath_->setObjectName(QStringLiteral("coverageSwathSpacing"));
-  swath_->setRange(0.05, 10.0);
+  swath_->setRange(0.05, 5.0);
   swath_->setDecimals(2);
-  swath_->setSingleStep(0.05);
-  swath_->setValue(2.0 * radius_->value());
+  swath_->setSingleStep(0.01);
+  swath_->setValue(0.15);
   swath_->setSuffix(tr(" m"));
   swath_->setButtonSymbols(QAbstractSpinBox::NoButtons);
   swath_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   StyleCompactSettingsField(swath_);
   swath_->setToolTip(
-      tr("Centre-to-centre spacing between coverage passes. It follows "
-         "twice the robot radius until edited, so every pass overlaps "
-         "the swept disc of its neighbour."));
+      tr("Centre-to-centre distance between neighbouring coverage passes. "
+         "0.15 m keeps the lines dense; raise it towards twice the robot radius for a wider sweep."));
   form->addRow(MakeSettingsFormLabel(tr("Swath spacing"), content),
                swath_);
+
 
   headland_ = new QDoubleSpinBox(content);
   headland_->setObjectName(QStringLiteral("coverageHeadland"));
@@ -436,16 +436,6 @@ void CoveragePanel::BuildUi() {
   footer_layout->addLayout(footer_buttons);
   outer->addWidget(footer);
 
-  connect(radius_, &QDoubleSpinBox::valueChanged, this, [this](double value) {
-    if (!swath_manual_ && swath_ != nullptr) {
-      const QSignalBlocker blocker(swath_);
-      swath_->setValue(2.0 * value);
-    }
-  });
-  connect(swath_, &QDoubleSpinBox::valueChanged, this, [this](double value) {
-    swath_manual_ =
-        std::abs(value - 2.0 * radius_->value()) > 1e-6;
-  });
   connect(ring_list_, &QListWidget::currentRowChanged, this,
           &CoveragePanel::LoadSelectedRing);
   connect(add_obstacle_, &QPushButton::clicked, this,
@@ -548,7 +538,6 @@ void CoveragePanel::BuildUi() {
 
   RebuildRingList(0);
 }
-
 
 void CoveragePanel::EnsureClients() {
   if (manager_ == nullptr || manager_->autolinkNode() == nullptr) {
@@ -1341,7 +1330,6 @@ void CoveragePanel::PollActions() {
   }
 }
 
-
 void CoveragePanel::ToggleObstacleDrawing() {
   if (busy_ || !isVisible()) {
     return;
@@ -1564,7 +1552,6 @@ void CoveragePanel::PublishSketch() {
   sketch_writer_->Write(markers);
 }
 
-
 void CoveragePanel::ActivateTool(const QString& tool_id) {
   // The viewport dispatches mouse events to its dock-local tool, which
   // only the toolbar action updates. Trigger that action so the panel and
@@ -1690,7 +1677,6 @@ void CoveragePanel::StartRegion(std::size_t index) {
     SetStatus(QString::fromUtf8(error.what()), QStringLiteral("error"));
   }
 }
-
 
 void CoveragePanel::UpdateCurrentRegion(double x, double y) {
   if (current_region_ == nullptr || regions_.empty()) {

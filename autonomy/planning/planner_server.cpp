@@ -538,7 +538,9 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
                                      start_pose.pose().position().y()}
                     << " to="
                     << ::autonomy::common::NavXY{goal.pose().position().x(),
-                                     goal.pose().position().y()};
+                                     goal.pose().position().y()}
+                    << " frames=" << start_pose.header().frame_id() << ","
+                    << goal.header().frame_id();
 
     uint32_t return_code = 0;
     std::string resolved_planner_id = planner_id;
@@ -556,6 +558,8 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
                                      planner_ids_concat_);
     }
 
+    AINFO << "nav plan result planner=" << resolved_planner_id
+          << " code=" << return_code;
     ThrowOnPlannerResultCode(return_code, resolved_planner_id);
     PublishVistaGraph(resolved_planner_id);
     return path;
