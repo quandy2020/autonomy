@@ -4,7 +4,8 @@
   "urdf": "robots/go2_description/urdf/go2_description.urdf",
   "changes": [
     "mesh paths made relative to this robot folder",
-    "Go2 DAE converted to GLB at full resolution; all material primitives and faces preserved"
+    "Go2 DAE converted to GLB at full resolution; all material primitives and faces preserved",
+    "added laser_link on Head_upper for the 2D lidar frame"
   ],
   "files": {
     "meshes/dae/base.dae.glb": {
@@ -76,5 +77,5 @@
     }
   },
   "upstream_urdf_sha256": "7d19fe48e2e689ee1a032ab99f2a4a8b671d87e73de48d3e65811682a5b48b9e",
-  "normalized_urdf_sha256": "f76f188b676d6f36f21a86eb4993da2a5c50e72950a5c8942b315cc8a48076af"
+  "normalized_urdf_sha256": "7225f51309f793aa09ca1d956eda3d115db1ab01b24fe916ea4b9bf70be20a3d"
 }

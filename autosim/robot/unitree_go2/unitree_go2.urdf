@@ -53,6 +53,20 @@
     <child link="Head_upper" />
     <axis xyz="0 0 0" />
   </joint>
+  <!-- L1 lidar sits on top of the head; gives /scan a real TF frame. -->
+  <link name="laser_link">
+    <inertial>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <mass value="0" />
+      <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0" />
+    </inertial>
+  </link>
+  <joint name="laser_joint" type="fixed">
+    <origin xyz="0 0 0.055" rpy="0 0 0" />
+    <parent link="Head_upper" />
+    <child link="laser_link" />
+    <axis xyz="0 0 0" />
+  </joint>
   <link name="Head_lower">
     <inertial>
       <origin xyz="0 0 0" rpy="0 0 0" />

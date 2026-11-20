@@ -49,7 +49,6 @@ habitat:
       enabled: true
       channel: /scan
       frame: laser_link
-      height: 0.1
       num_beams: 360
       angle_min: -3.14159
       angle_max: 3.14159

@@ -51,11 +51,7 @@ def test_unitree_sensor_configs_resolve(profile, camera_frame, imu_frame, lidar_
 
     assert camera_frame in urdf.parents
     assert imu_frame in urdf.parents
-    if lidar_frame == "laser_link":
-        assert lidar_frame not in urdf.parents
-        assert sensors["lidar_2d"]["height"] == pytest.approx(0.1)
-    else:
-        assert lidar_frame in urdf.parents
+    assert lidar_frame in urdf.parents
 
 
 def test_g1_uses_the_urdf_mid360_mount():

@@ -75,16 +75,28 @@ def test_lidar_follows_the_waist_joint():
     assert origin1[2] == pytest.approx(origin0[2])
 
 
-def test_lidar_pose_falls_back_to_the_configured_height():
-    simulator = unitree_simulator("unitree_go2", "laser_link", height=0.1, root_height=0.45)
+def test_lidar_pose_uses_the_go2_urdf_mount():
+    simulator = unitree_simulator("unitree_go2", "laser_link", root_height=0.45)
     simulator.floor_y = 0.0
     simulator.x, simulator.y, simulator.yaw = 1.0, 2.0, 0.5
     origin, rotation = simulator.laser_pose()
-    assert origin == pytest.approx([1.0, 2.0, 0.55])
+    # Head_upper sits 0.285 m ahead and 0.01 m above base; laser_link adds
+    # another 0.055 m of height.
+    assert origin == pytest.approx(
+        [1.0 + 0.285 * math.cos(0.5), 2.0 + 0.285 * math.sin(0.5), 0.515]
+    )
     assert rotation[0, 0] == pytest.approx(math.cos(0.5))
     assert rotation[1, 0] == pytest.approx(math.sin(0.5))
     # The planar helper still reports the same height for map / topdown code.
-    assert simulator.laser_origin()[1] == pytest.approx(0.55)
+    assert simulator.laser_origin()[1] == pytest.approx(0.515)
+
+
+def test_lidar_pose_falls_back_to_the_configured_height():
+    simulator = unitree_simulator("unitree_go2", "lidar_link", height=0.1, root_height=0.45)
+    simulator.floor_y = 0.0
+    simulator.x, simulator.y, simulator.yaw = 1.0, 2.0, 0.5
+    origin, _ = simulator.laser_pose()
+    assert origin == pytest.approx([1.0, 2.0, 0.55])
 
 
 def test_laser_scan_reports_sweep_timing():

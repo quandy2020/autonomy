@@ -28,7 +28,6 @@ habitat:
     enabled: true
     pedestrian:
       enabled: true
-      social: true
       agents: config/scenarios/agents_habitat.yaml
       count: 6
       radius: 0.22
