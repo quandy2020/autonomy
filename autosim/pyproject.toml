@@ -21,7 +21,11 @@ viewer = ["opencv-python-headless>=4.8"]
 # The extra documents the intended install; omni.* packages are not on PyPI.
 isaac = []
 dataset = ["pyarrow>=14.0", "opencv-python-headless>=4.8"]
-dev = ["pytest>=7.0", "pyarrow>=14.0"]
+dev = [
+  "pytest>=7.0",
+  "pyarrow>=14.0",
+  "tomli>=2.0; python_version < '3.11'",
+]
 
 [project.scripts]
 autosim = "autosim.__main__:run"
@@ -36,7 +40,8 @@ include = ["autosim*"]
 "autosim.robot" = ["viewer.html"]
 
 [tool.setuptools.data-files]
-"share/autosim/config" = ["config/*.yaml"]
+"share/autosim/config" = ["config/*.yaml", "config/*.json"]
+"share/autosim/scripts" = ["scripts/*.py", "scripts/*.sh"]
 "share/autosim/robot" = ["robot/README.md"]
 "share/autosim/robot/turtlebot3_burger" = [
   "robot/turtlebot3_burger/*.urdf",
@@ -69,6 +74,8 @@ include = ["autosim*"]
 
 "share/autosim/config/robots" = ["config/robots/*.yaml"]
 "share/autosim/config/scenes" = ["config/scenes/*.yaml"]
+"share/autosim/config/scenarios" = ["config/scenarios/*.yaml"]
+"share/autosim/config/scenarios/hunav" = ["config/scenarios/hunav/*.yaml"]
 
 "share/autosim/robot/google_robot" = [
   "robot/google_robot/*.json",
@@ -88,6 +95,12 @@ include = ["autosim*"]
   "robot/google_robot/meshes/coarse_meshes/*.mtl",
   "robot/google_robot/meshes/coarse_meshes/*.obj",
   "robot/google_robot/meshes/coarse_meshes/*.png",
+]
+
+# Habitat-only, unlit GLB visuals: these carry the white shell, gold fingers,
+# and dark tyres that make the Google robot look like the reference photos.
+"share/autosim/robot/google_robot/meshes/habitat" = [
+  "robot/google_robot/meshes/habitat/*.glb",
 ]
 
 "share/autosim/robot/unitree_g1" = [
