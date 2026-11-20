@@ -5,9 +5,10 @@
   "changes": [
     "mesh paths made relative to this robot folder",
     "Google visual meshes converted to opaque GLB with the reference palette; torso gold area recoloured grey-white; original vents/logos, gold fingers and arm rings retained; head emissive texture embedded",
-    "every visual material flagged KHR_materials_unlit so Habitat-Sim 0.3.3 renders the authored colours without the default light rig tint",
-    "head sensor panel modelled from the reference photo set (black face plate, five lenses, two LEDs) and added as a second visual on link_head_tilt",
-    "head camera, IMU, ToF and cliff frames kept from upstream; ROS optical frames added for the centre and stereo cameras"
+    "shell and trim materials flagged KHR_materials_unlit; the geometry 040 decals stay lit so they follow the base shading",
+    "head sensor panel modelled from the reference photo set (black face plate, five lenses, green LED ring, two LEDs) and added as a second visual on link_head_tilt",
+    "head camera, IMU, ToF and cliff frames kept from upstream; ROS optical frames added for the centre and stereo cameras",
+    "base trim adds a thin dark lower skirt, front green status light and geometry-based 040 side decals (Habitat 0.3.3 ignores glTF alpha)"
   ],
   "files": {
     "meshes/3obj/link_base.glb": {
@@ -388,15 +389,21 @@
     },
     "appearance.json": {
       "source": "reference colour preparation",
-      "sha256": "5be7e77ced25b8163d05090266dee546fc2eb2214539d5da654108666bd8f43a"
+      "sha256": "ee6fd506b20262e290303a469c1d12dfde11be57589f06a10fdb41002a3c7f3c"
     },
     "meshes/habitat/head_sensor_panel.glb": {
       "source": "modelled from the Everyday Robots reference photo set",
-      "sha256": "0cc8b9efc00a8c1a5110cc68c2be3c4415fea101663987b2181a987e91dd46c2",
-      "display_faces": 1728,
-      "conversion": "opaque GLB; 4x2 colour atlas; KHR_materials_unlit"
+      "sha256": "5eddd936d729dd958a99b055cf7247c162e03823352100997ccd3f8db52ac26f",
+      "display_faces": 1920,
+      "conversion": "opaque GLB; 4x2 colour atlas; KHR_materials_unlit; green LED ring"
+    },
+    "meshes/habitat/base_trim.glb": {
+      "source": "modelled from the Everyday Robots reference photo set",
+      "sha256": "5f4eefe5929384caabd6161efdd5a657c401ec6dee5a626e793b8b0afbd47769",
+      "display_faces": 456,
+      "conversion": "opaque GLB; thin lower skirt, front status LED and geometry 040 decals; KHR_materials_unlit for trim, lit decals"
     }
   },
   "upstream_urdf_sha256": "e80eac082e870627344e05c61263b18f8a980c24b19b8c6c9fba795b68f965e0",
-  "normalized_urdf_sha256": "757ae1566485b035cdf76021f6d2853dfc12674a9e809089c0f2ee01f4240605"
+  "normalized_urdf_sha256": "368b89b2d49521b502d77b0242c5283234c1d10205cdd241e1c66058c1af259e"
 }

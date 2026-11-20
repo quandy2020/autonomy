@@ -31,6 +31,16 @@
 
 启动：`CONFIG=.../xxx.yaml scripts/run.sh sim`。
 
+启动前可以先做静态检查，或打印选择器合并后的完整配置：
+
+```bash
+scripts/run.sh sim --check-config
+scripts/run.sh sim --print-config
+```
+
+`--check-config` 会校验 YAML、机器人/传感器组合，并解析场景、URDF 等资源路径；
+`--print-config` 输出最终合并结果。两者都不会启动 Habitat。
+
 ### 简洁启动
 
 日常运行不需要改 YAML，直接选择场景、机器人和传感器：
@@ -118,7 +128,10 @@ AUTOSIM_SCENE_ROOT=/data/mp3d CONFIG=config/default.yaml scripts/run.sh sim
 
 | 字段 | 含义 |
 |------|------|
-| `robot.profile` | `google_robot` / `unitree_g1` / `unitree_go2` / `turtlebot3_burger` / `husky` 均有 `config/robots/<profile>.yaml`，自动填 URDF、`instance`、`fixed_base` 和 `root_height`；轮式两个 profile 另带 `wheel_radius` / `wheel_separation`，轮子随 `/cmd_vel` 滚动 |
+| `robot.profile` | `google_robot` / `unitree_g1` / `unitree_go2` / `turtlebot3_burger` / `husky` 均有 `config/robots/<profile>.yaml`，自动填 URDF、`instance`、`fixed_base` 和 `root_height`；轮式 profile 另带轮径/轮距，轮子随 `/cmd_vel` 滚动 |
+| `robot.cmd_vel_type` | `/cmd_vel` 消息类型：默认 `twist_stamped`（Autolink `TwistStamped`），可设为 `twist` 接收裸 `Twist` |
+| `robot.watchdog_sec` | 无新 `/cmd_vel` 后减速停止的等待时间，默认 0.5 秒 |
+| `robot.wheel_radii` / `wheel_separations` | 按轮子关节名分别配置半径和轮距；Google 前后轮半径不同时必须使用这两个映射 |
 | `robot.control_hz` | 控制与积分频率 |
 | `robot.tf.publish_map_odom` | 可被 `mode` 覆盖 |
 | `robot.truth.enabled` | 同时启用真值 PoseStamped 与可选 Odometry 输出 |
@@ -126,6 +139,7 @@ AUTOSIM_SCENE_ROOT=/data/mp3d CONFIG=config/default.yaml scripts/run.sh sim
 | `robot.truth.odometry_channel` | 可选真值里程计通道；非空时发布 `map -> base_link` Odometry，Atlas 使用 `/gt/odometry` |
 | `sensors.*.rate_hz` | 发布频率门控 |
 | `sensors.*.noise` | 高斯 σ；odom 为积分噪声 |
+| `sensors.joint_states` | 关节状态输出；仅 Google、G1、Go2 等 articulated profile 可用，轮式底盘开启会校验失败 |
 | `map.enabled` | 是否构建真值地图 |
 | `map.publish` | 是否发布；`slam` 下仍可发 `/overall/map`，但 OccupancyGrid `/map` 与 `map→odom` 关闭 |
 | `map.grid.resolution` | OccupancyGrid 分辨率 |
@@ -142,6 +156,57 @@ AUTOSIM_SCENE_ROOT=/data/mp3d CONFIG=config/default.yaml scripts/run.sh sim
 | `dataset.episode_frames` | `>0` 时按帧数切 episode；`0` 则退出时 flush |
 | `scenario.pedestrian` | CPU 行人（agents YAML / SFM）；激光融合始终可用 |
 | `humanoids.*` | Habitat SMPL-X 视觉（TrackVLA 布局）；见 [14](14_habitat_humanoids.md) |
+
+### 传感器能力
+
+`autosim/runtime/capabilities.py` 会在选择器合并配置后检查机器人能力。通用传感器
+`camera`、`lidar_2d`、`lidar_3d`、`imu`、`odom` 可用；`stereo`、`range` 需要 URDF；
+`joint_states` 只适用于 articulated 机器人。`SENSORS=all` 会跳过当前机器人不支持的块，
+显式选择不支持的传感器则会报错。
+
+| profile | 默认传感器 | 额外能力 |
+|---------|------------|----------|
+| `google_robot` | camera、stereo、range、imu、odom、joint_states、chase | 中心 RGB-D、双目、8 路 ToF、2 路悬崖 |
+| `unitree_g1` | camera、lidar_2d、imu、odom、joint_states、chase | 29 自由度关节控制 |
+| `unitree_go2` | camera、lidar_2d、imu、odom、joint_states、chase | 12 自由度关节控制 |
+| `turtlebot3_burger` | camera、lidar_2d、imu、odom、chase | 两轮差速；无 `joint_states` |
+| `husky` | camera、lidar_2d、imu、odom、chase | 四轮差速；无 `joint_states` |
+
+### 控制、贴地与状态
+
+```yaml
+habitat:
+  robot:
+    cmd_vel_type: twist_stamped  # twist_stamped | twist
+    watchdog_sec: 0.5
+    wheel_radii:                 # 每个轮子关节可单独覆盖
+      joint_wheel_left: 0.064203
+      joint_rear_wheel_left: 0.0381
+    wheel_separations:
+      joint_wheel_left: 0.36666
+      joint_rear_wheel_left: 0.189978
+    joint_command:
+      enabled: true              # 仅 articulated 机器人
+      channel: /joint_commands
+      timeout_sec: 1.0
+      mode: hold                 # hold | home | zero
+      max_step: 0.05
+    grounding:
+      enabled: true
+      mode: auto                 # auto | fixed
+      clearance_m: 0.0
+      update_hz: 5.0
+    status:
+      enabled: true
+      channel: /autosim/status
+      rate_hz: 1.0
+```
+
+`joint_command.mode` 决定发布者超时后的目标：`hold` 保持最后位置，`home` 回到
+`joint_positions`，`zero` 回到零位。`max_step` 限制每个控制周期的最大变化量，
+`0` 表示不限制。`grounding.mode: auto` 会按渲染包围盒重新测量最低点并贴地；
+`fixed` 使用配置里的 `root_height`。`status` 发布 `DiagnosticArray`，包含各数据流的
+发布频率、丢帧、编码延迟和控制循环超时计数。
 
 ---
 

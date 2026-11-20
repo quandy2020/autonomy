@@ -72,6 +72,18 @@ src/autonomy/autosim/scripts/run.sh stop
 src/autonomy/autosim/scripts/run.sh sim --help
 ```
 
+启动前检查配置和资源，或打印合并后的 YAML：
+
+```bash
+SCENE=empty ROBOT=google_robot \
+  src/autonomy/autosim/scripts/run.sh sim --check-config
+
+SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic \
+  src/autonomy/autosim/scripts/run.sh sim --print-config
+```
+
+这两个选项只做校验/打印，不会启动 Habitat。
+
 ---
 
 ## 3. 三种配置入口
@@ -172,13 +184,13 @@ SCENE=empty ROBOT=google_robot SENSORS=basic \
 
 ## 5. 机器人
 
-| profile | 自由度 | 默认传感器 | 速度上限 |
-|---------|--------|------------|----------|
-| `google_robot` | 15 | camera、stereo、range、imu、odom、joint_states、chase | 0.5 m/s / 1.0 rad/s |
-| `unitree_g1` | 29 | camera、lidar_2d、imu、odom、joint_states、chase | 1.2 / 1.5 |
-| `unitree_go2` | 12 | camera、lidar_2d、imu、odom、joint_states、chase | 2.0 / 2.0 |
-| `turtlebot3_burger` | 2 | camera、lidar_2d、imu、odom、joint_states、chase | 0.5 / 1.0 |
-| `husky` | 4 | camera、lidar_2d、imu、odom、joint_states、chase | 1.0 / 1.5 |
+| profile | 自由度 | 默认传感器 | 关节状态 | 速度上限 |
+|---------|--------|------------|----------|----------|
+| `google_robot` | 15 | camera、stereo、range、imu、odom、chase | 支持 | 0.5 m/s / 1.0 rad/s |
+| `unitree_g1` | 29 | camera、lidar_2d、imu、odom、chase | 支持 | 1.2 / 1.5 |
+| `unitree_go2` | 12 | camera、lidar_2d、imu、odom、chase | 支持 | 2.0 / 2.0 |
+| `turtlebot3_burger` | 2 | camera、lidar_2d、imu、odom、chase | 不支持 | 0.5 / 1.0 |
+| `husky` | 4 | camera、lidar_2d、imu、odom、chase | 不支持 | 1.0 / 1.5 |
 
 选择机器人：
 
@@ -189,7 +201,7 @@ SCENE=empty ROBOT=unitree_g1 SENSORS=basic \
 
 `ROBOT` 也可以写机器人 YAML 路径。省略 `SENSORS` 时使用该档案默认传感器；Google 默认不含 2D 激光，而包含双目、ToF 和悬崖测距。
 
-五个模型都订阅 `/cmd_vel`，也都支持 `/joint_commands`。机器人资源、URDF、mesh 和关节列表见 [15](15_robot_articulation.md)。这五个档案面向 Habitat；Isaac 使用自己的 USD 配置。
+五个模型都订阅 `/cmd_vel`。`/joint_commands` 和 `/joint_states` 只适用于 Google、G1、Go2；TurtleBot3 与 Husky 是轮式底盘，开启 `joint_states` 会被能力校验拒绝。机器人资源、URDF、mesh 和关节列表见 [15](15_robot_articulation.md)。这五个档案面向 Habitat；Isaac 使用自己的 USD 配置。
 
 ---
 
@@ -250,6 +262,10 @@ SENSORS=none \
 - 显式写一个当前配置没有的传感器：启动时报 `sensor(s) not defined`。
 - 对 Google 使用 `SENSORS=basic` 会把传感器切换为 `camera,lidar_2d,imu,odom`，并关闭 `stereo` / `range`；想保留 Google 原装组合时省略 `SENSORS`。
 
+能力约束：`camera`、`lidar_2d`、`lidar_3d`、`imu`、`odom` 对五个 profile 都可用；
+`stereo`、`range` 需要 URDF；`joint_states` 只适用于 articulated 机器人。
+`SENSORS=all` 会自动跳过不支持的块，显式选择不支持的传感器则会报错。
+
 别名：`scan`/`laser` → `lidar_2d`，`lidar3d`/`points` → `lidar_3d`，`rgb`/`depth` → `camera`，`tof` → `range`，`joints` → `joint_states`，`surround` → `cameras`，`pano` → `panorama`。
 
 ---
@@ -258,11 +274,22 @@ SENSORS=none \
 
 ### 7.1 `/cmd_vel`
 
-所有机器人订阅 Autolink `TwistStamped`：
+五个机器人默认订阅 Autolink `TwistStamped`：
 
 - `twist.linear.x`：前进/后退，m/s
 - `twist.angular.z`：原地转向/弧线，rad/s
 - 0.5 秒没有新指令会减速停止
+
+如果上游发布的是裸 `geometry_msgs/Twist`，在机器人 YAML 中改一行：
+
+```yaml
+habitat:
+  robot:
+    cmd_vel_type: twist   # 默认 twist_stamped
+```
+
+`watchdog_sec` 可以调整超时时间。Google 的四个轮子按前后轮半径分别滚动，
+配置见 `robot/google_robot.yaml` 的 `wheel_radii` / `wheel_separations`。
 
 键盘遥控：
 
@@ -282,7 +309,7 @@ SCENE=empty ROBOT=unitree_go2 SENSORS=basic \
 - 未知名称、重复名称、非有限值、超限位置会拒绝整条命令
 - Mimic 关节跟随源关节，控制源关节即可
 
-状态从 `/joint_states` 发布；活动关节走 `/tf`，固定关节走 `/tf_static`，`/robot_description` 发布 URDF。浏览器查看器和滑块：
+articulated 机器人的状态从 `/joint_states` 发布；活动关节走 `/tf`，固定关节走 `/tf_static`，`/robot_description` 发布 URDF。浏览器查看器和滑块：
 
 ```bash
 docker exec -it -w /workspace/autonomy/src/autonomy/autosim \
@@ -291,6 +318,25 @@ docker exec -it -w /workspace/autonomy/src/autonomy/autosim \
 ```
 
 浏览器打开 `http://<主机IP>:8765`；只想列出关节名和范围时加 `--list`。
+
+### 7.3 贴地与状态
+
+机器人档案默认开启动态贴地：
+
+```yaml
+habitat:
+  robot:
+    grounding:
+      enabled: true
+      mode: auto        # auto | fixed
+      clearance_m: 0.0
+      update_hz: 5.0
+```
+
+`auto` 按当前姿态的渲染包围盒重新测量最低点，适合抬腿、弯臂和切换机器人；
+`fixed` 使用 `root_height`。`/autosim/status` 默认以 1 Hz 发布 `DiagnosticArray`，
+包含各数据流的发布频率、丢帧、编码延迟和控制循环超时计数。若当前 Autolink
+没有 `diagnostic_msgs`，状态发布会被跳过并打印警告，不影响仿真。
 
 ---
 
@@ -363,7 +409,7 @@ autoviz --config src/autonomy/autoviz/config/atlas.autoviz
 | 出 | `/odom`、`/scan`、`/points`、`/imu/data` |
 | 出 | `/camera/rgb/image_raw`、`/camera/depth/image_raw`、`/camera/camera_info` |
 | 出 | `/camera/chase/image_raw`、`/camera/topdown/image_raw` |
-| 出 | `/joint_states`、`/tf`、`/tf_static`、`/clock` |
+| 出 | `/joint_states`、`/tf`、`/tf_static`、`/clock`、`/autosim/status` |
 | 出 | `/map`、`/overall/map`、`/robot_description` |
 
 完整通道表见 [06](06_topics.md)。Autoviz：
@@ -410,6 +456,8 @@ src/autonomy/autosim/scripts/run.sh stop
 | 目的 | 命令 |
 |------|------|
 | 列出场景/机器人/传感器 | `scripts/run.sh sim --list` |
+| 检查配置和资源 | `scripts/run.sh sim --check-config` |
+| 打印合并配置 | `scripts/run.sh sim --print-config` |
 | 选择器启动 | `SCENE=... ROBOT=... SENSORS=... scripts/run.sh sim` |
 | 完整 YAML | `CONFIG=... scripts/run.sh sim` |
 | 仿真 + 键盘遥控 | `... scripts/run.sh both` |

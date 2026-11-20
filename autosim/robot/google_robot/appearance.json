@@ -56,6 +56,23 @@
         248,
         250,
         255
+      ],
+      "led_ring": [
+        42,
+        232,
+        92
+      ]
+    },
+    "base_trim": {
+      "bumper": [
+        28,
+        28,
+        30
+      ],
+      "decal_ink": [
+        76,
+        76,
+        79
       ]
     }
   },
@@ -66,7 +83,7 @@
   },
   "head_panel": {
     "file": "meshes/habitat/head_sensor_panel.glb",
-    "description": "black face plate, dark bezel, five lenses with silver rims (chrome ring on the centre lens), two status LEDs",
+    "description": "black face plate, dark bezel, five lenses with silver rims (chrome ring on the centre lens), green LED ring and two status LEDs",
     "lens_centres_m": [
       -0.062,
       -0.031,
@@ -91,6 +108,11 @@
     "link_finger_nail.3obj.obj.glb": 90,
     "link_wheel.3obj.obj.glb": 316,
     "link_rear_wheel.glb.glb": 80,
-    "head_sensor_panel.glb": 1728
+    "head_sensor_panel.glb": 1920,
+    "base_trim.glb": 456
+  },
+  "base_trim": {
+    "file": "meshes/habitat/base_trim.glb",
+    "description": "thin dark lower skirt, front green status light and 040 side decals built as geometry (Habitat 0.3.3 ignores glTF alpha)"
   }
 }

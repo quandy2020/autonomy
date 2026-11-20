@@ -3,16 +3,21 @@
 
 Produces opaque GLBs with the reference palette (grey-white shells, gold finger
 hardware, dark tyres) plus a modelled head sensor panel carrying the five
-camera lenses and two status LEDs seen in the Everyday Robots photo set.
+camera lenses, green LED ring and two status LEDs seen in the Everyday Robots
+photo set.  A small base trim adds the dark lower bumper, front status light
+and ``040`` side decals from the same reference.
 
 Habitat-Sim 0.3.3 samples glTF base-colour textures without an sRGB decode, so
 the palette is baked straight into the atlas and every material is flagged
 KHR_materials_unlit; that keeps the shells neutral instead of picking up the
 yellow cast of the default four-light rig.
 
-The generator needs trimesh and Pillow and runs outside Habitat:
+The generator needs trimesh and Pillow and runs outside Habitat.  ``--source``
+is optional: omit it to regenerate only the modelled head panel and base trim
+while keeping the already converted upstream GLBs:
 
     python scripts/prepare_google_visuals.py --source /path/to/ManiSkill-GoogleRobot
+    python scripts/prepare_google_visuals.py
 
 --source points at an upstream checkout containing meshes/3obj and
 meshes/coarse_meshes.  Outputs land in robot/google_robot/meshes/habitat and
@@ -33,6 +38,9 @@ from PIL import Image
 SHELL = (236, 236, 236)
 GOLD = (219, 176, 61)
 TYRE = (26, 26, 28)
+BUMPER = (28, 28, 30)
+DECAL_INK = (76, 76, 79)
+LED_RING = (42, 232, 92)
 
 
 def recolour(image: Image.Image, *, gold: bool = False, tyre: bool = False) -> Image.Image:
@@ -77,12 +85,15 @@ def material_for(name: str, image: Image.Image, *, gold: bool, tyre: bool,
     )
 
 
-def mark_unlit(path: Path) -> None:
+def mark_unlit(path: Path, skip: set[str] | None = None) -> None:
     """Flag every material unlit so Habitat renders the baked palette exactly."""
+    skip = skip or set()
     data = path.read_bytes()
     length = struct.unpack_from('<I', data, 12)[0]
     document = json.loads(data[20:20 + length])
     for material in document.get('materials', []):
+        if material.get('name') in skip:
+            continue
         material.setdefault('extensions', {})['KHR_materials_unlit'] = {}
     document['extensionsUsed'] = list(dict.fromkeys(
         document.get('extensionsUsed', []) + ['KHR_materials_unlit']))
@@ -175,6 +186,7 @@ def head_panel() -> trimesh.Scene:
         'lens_glass': (26, 30, 38),
         'lens_iris': (10, 12, 18),
         'led': (248, 250, 255),
+        'led_ring': LED_RING,
     }
     names = list(palette)
     cell, columns = 64, 4
@@ -193,6 +205,8 @@ def head_panel() -> trimesh.Scene:
 
     add('panel', disc(0.088, 0.031, front + 0.0006))
     add('bezel', annulus((0.088, 0.031), (0.0915, 0.0338), front + 0.0009))
+    add('led_ring', annulus((0.0915, 0.0338), (0.0945, 0.0358),
+                            front + 0.0014, segments=96))
 
     lenses = [(-0.062, 0.0112), (-0.031, 0.0104), (0.0, 0.0118), (0.031, 0.0104), (0.062, 0.0112)]
     for index, (y, radius) in enumerate(lenses):
@@ -228,9 +242,109 @@ def head_panel() -> trimesh.Scene:
     return scene
 
 
+def solid_mesh(mesh: trimesh.Trimesh, name: str, colour: tuple[int, int, int]) -> trimesh.Trimesh:
+    """Attach a one-colour texture so Habitat's glTF path renders it reliably."""
+    image = Image.new('RGB', (4, 4), colour)
+    material = trimesh.visual.material.PBRMaterial(
+        name=name,
+        baseColorTexture=image,
+        baseColorFactor=[1.0, 1.0, 1.0, 1.0],
+        metallicFactor=0.0,
+        roughnessFactor=0.8,
+        alphaMode='OPAQUE',
+        doubleSided=True,
+    )
+    mesh.visual = trimesh.visual.TextureVisuals(
+        uv=np.zeros((len(mesh.vertices), 2)), material=material
+    )
+    return mesh
+
+
+def box(extents: tuple[float, float, float], centre: tuple[float, float, float],
+        name: str, colour: tuple[int, int, int]) -> trimesh.Trimesh:
+    mesh = trimesh.creation.box(extents=extents)
+    mesh.apply_translation(centre)
+    return solid_mesh(mesh, name, colour)
+
+
+def digit_ring(cx: float, cz: float, rx: float, rz: float,
+               inner: float = 0.56, segments: int = 48) -> tuple[list, list]:
+    """A flat elliptical ring used for the ``0`` glyphs."""
+    t = np.linspace(0.0, 2.0 * math.pi, segments, endpoint=False)
+    outer = np.column_stack([cx + rx * np.cos(t), cz + rz * np.sin(t)])
+    inner_ring = np.column_stack([cx + rx * inner * np.cos(t),
+                                  cz + rz * inner * np.sin(t)])
+    points = np.vstack([outer, inner_ring]).tolist()
+    faces = []
+    for index in range(segments):
+        nxt = (index + 1) % segments
+        faces.append([index, nxt, segments + nxt])
+        faces.append([index, segments + nxt, segments + index])
+    return points, faces
+
+
+def digit_quad(x0: float, z0: float, x1: float, z1: float,
+               x2: float, z2: float, x3: float, z3: float) -> tuple[list, list]:
+    """A flat quad used for the strokes of the ``4`` glyph."""
+    return [[x0, z0], [x1, z1], [x2, z2], [x3, z3]], [[0, 1, 2], [0, 2, 3]]
+
+
+def decal(side: float, name: str) -> trimesh.Trimesh:
+    """Build ``040`` as thin geometry so Habitat needs no alpha test.
+
+    Habitat-Sim 0.3.3 ignores glTF alpha modes on this asset path, so a
+    textured plane would render its transparent pixels as a black rectangle.
+    The glyph strokes follow the base's side slope and are only 0.5 mm proud.
+    """
+    parts: list[tuple[list, list]] = []
+    for cx in (-0.280, -0.220):
+        parts.append(digit_ring(cx, 0.050, 0.016, 0.022))
+    for points, faces in (
+        digit_quad(0.006, 0.028, 0.012, 0.028, 0.012, 0.072, 0.006, 0.072),
+        digit_quad(0.006, 0.072, 0.000, 0.072, -0.014, 0.046, -0.008, 0.046),
+        digit_quad(-0.018, 0.046, 0.012, 0.046, 0.012, 0.052, -0.018, 0.052),
+    ):
+        parts.append(([[x - 0.247, z] for x, z in points], faces))
+
+    vertices, faces, offset = [], [], 0
+    for points, part_faces in parts:
+        vertices.extend(points)
+        faces.extend([[a + offset, b + offset, c + offset] for a, b, c in part_faces])
+        offset += len(points)
+    points = np.asarray(vertices, dtype=np.float64)
+    z = points[:, 1]
+    y = side * (0.186936 - 0.08359 * (z - 0.03) + 0.0005)
+    mesh = trimesh.Trimesh(vertices=np.column_stack([points[:, 0], y, z]),
+                           faces=np.asarray(faces, dtype=np.int64), process=False)
+    return solid_mesh(mesh, name, DECAL_INK)
+
+
+def base_trim() -> trimesh.Scene:
+    """Thin dark lower skirt, front status light and ``040`` side decals."""
+    scene = trimesh.Scene()
+    parts = {
+        'bumper_front': box((0.004, 0.330, 0.014), (0.1365, 0.0, -0.029),
+                            'bumper_front', BUMPER),
+        'bumper_rear': box((0.004, 0.330, 0.014), (-0.4005, 0.0, -0.029),
+                           'bumper_rear', BUMPER),
+        'bumper_left': box((0.535, 0.004, 0.014), (-0.132, 0.1870, -0.029),
+                           'bumper_left', BUMPER),
+        'bumper_right': box((0.535, 0.004, 0.014), (-0.132, -0.1870, -0.029),
+                            'bumper_right', BUMPER),
+        'front_status_led': box((0.002, 0.018, 0.008), (0.1382, -0.100, -0.010),
+                                'front_status_led', LED_RING),
+        'number_left': decal(1.0, 'number_left'),
+        'number_right': decal(-1.0, 'number_right'),
+    }
+    for name, mesh in parts.items():
+        scene.add_geometry(mesh, geom_name=name, node_name=name)
+    return scene
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--source', required=True, type=Path)
+    parser.add_argument('--source', type=Path,
+                        help='upstream ManiSkill-GoogleRobot checkout; omit to keep existing GLBs')
     root = Path(__file__).resolve().parents[1]
     parser.add_argument('--destination', type=Path,
                         default=root / 'robot/google_robot/meshes/habitat')
@@ -258,12 +372,17 @@ def main() -> None:
         'meshes/coarse_meshes/link_rear_wheel.glb': dict(gold=False, tyre=True),
     }
     report = {}
-    for relative, options in visuals.items():
-        emissive = source / options['emissive'] if options.get('emissive') else None
-        faces = convert(source, relative, destination, gold=options['gold'],
-                        tyre=options['tyre'], emissive=emissive)
-        report[Path(relative).name + '.glb'] = faces
-        print(f'{Path(relative).name}.glb  {faces} triangles')
+    if source is not None:
+        if not source.is_dir():
+            parser.error(f'--source is not a directory: {source}')
+        for relative, options in visuals.items():
+            emissive = source / options['emissive'] if options.get('emissive') else None
+            faces = convert(source, relative, destination, gold=options['gold'],
+                            tyre=options['tyre'], emissive=emissive)
+            report[Path(relative).name + '.glb'] = faces
+            print(f'{Path(relative).name}.glb  {faces} triangles')
+    else:
+        print('source omitted: keeping existing upstream GLBs')
 
     panel = head_panel()
     panel_path = destination / 'head_sensor_panel.glb'
@@ -271,8 +390,23 @@ def main() -> None:
     mark_unlit(panel_path)
     report['head_sensor_panel.glb'] = int(sum(len(g.faces) for g in panel.geometry.values()))
     print(f'head_sensor_panel.glb  {report["head_sensor_panel.glb"]} triangles')
+    trim = base_trim()
+    trim_path = destination / 'base_trim.glb'
+    trim_path.write_bytes(trim.export(file_type='glb'))
+    mark_unlit(trim_path, skip={'number_left', 'number_right'})
+    report['base_trim.glb'] = int(sum(len(g.faces) for g in trim.geometry.values()))
+    print(f'base_trim.glb  {report["base_trim.glb"]} triangles')
     args.appearance.parent.mkdir(parents=True, exist_ok=True)
-    args.appearance.write_text(json.dumps({
+    existing = {}
+    if args.appearance.exists():
+        try:
+            existing = json.loads(args.appearance.read_text())
+        except (OSError, json.JSONDecodeError):
+            existing = {}
+    triangles = dict(existing.get('triangles', {}))
+    triangles.update(report)
+    appearance = {
+        **existing,
         'reference': 'Everyday Robots photo set (CNET kitchen tour)',
         'palette_srgb': {
             'shell': list(SHELL), 'finger_gold': list(GOLD), 'tyre': list(TYRE),
@@ -281,7 +415,9 @@ def main() -> None:
                 'lens_bezel': [74, 74, 77], 'lens_rim': [150, 150, 152],
                 'lens_chrome': [206, 206, 209], 'lens_glass': [26, 30, 38],
                 'lens_iris': [10, 12, 18], 'led': [248, 250, 255],
+                'led_ring': list(LED_RING),
             },
+            'base_trim': {'bumper': list(BUMPER), 'decal_ink': list(DECAL_INK)},
         },
         'materials': {
             'extension': 'KHR_materials_unlit',
@@ -292,11 +428,17 @@ def main() -> None:
         'head_panel': {
             'file': 'meshes/habitat/head_sensor_panel.glb',
             'description': 'black face plate, dark bezel, five lenses with silver rims '
-                           '(chrome ring on the centre lens), two status LEDs',
+                           '(chrome ring on the centre lens), green LED ring and two status LEDs',
             'lens_centres_m': [-0.062, -0.031, 0.0, 0.031, 0.062],
         },
-        'triangles': report,
-    }, indent=2) + '\n')
+        'base_trim': {
+            'file': 'meshes/habitat/base_trim.glb',
+            'description': 'thin dark lower skirt, front green status light and 040 side '
+                           'decals built as geometry (Habitat 0.3.3 ignores glTF alpha)',
+        },
+        'triangles': triangles,
+    }
+    args.appearance.write_text(json.dumps(appearance, indent=2) + '\n')
 
 
 if __name__ == '__main__':

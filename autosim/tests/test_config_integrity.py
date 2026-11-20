@@ -148,9 +148,9 @@ def test_topics_doc_matches_channel_maps():
 
 def test_google_wheels_declare_radius_for_every_wheel_joint():
     """One ``wheel_radius`` cannot drive a 64 mm front and 38 mm rear pair."""
-    robot = Config.load(ROOT / "config" / "robots" / "google_robot.yaml")["habitat"][
-        "robot"
-    ]
+    robot = apply_profile(
+        Config.load(ROOT / "config" / "robots" / "google_robot.yaml")["habitat"]["robot"]
+    )
     joints = load_joints(resolve_path(robot["urdf"]))
     wheels = {name for name in joints if "wheel" in name.lower()}
     assert wheels == set(robot["wheel_radii"])

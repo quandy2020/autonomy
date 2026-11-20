@@ -13,7 +13,7 @@
 
 | 方向 | 逻辑键 | 默认通道 | 类型（概念） |
 |------|--------|----------|--------------|
-| 入 | `cmd_vel` | `/cmd_vel` | TwistStamped |
+| 入 | `cmd_vel` | `/cmd_vel` | TwistStamped（可配置为 Twist） |
 | 出 | `odom` | `/odom` | Odometry |
 | 出 | `scan` | `/scan` | LaserScan |
 | 出 | `points` | `/points` | PointCloud2（3D lidar） |
@@ -31,6 +31,7 @@
 | 出 | `range_0` … `range_n` | `/tof/*`、`/cliff/*` | Range（顺序同 `sensors.range.sensors`） |
 | 出 | `joint_states` | `/joint_states` | JointState（可选） |
 | 入 | `joint_command` | `/joint_commands` | JointState（可选） |
+| 出 | `status` | `/autosim/status` | DiagnosticArray（可选） |
 | 出 | `tf` / `tf_static` | `/tf` `/tf_static` | TFMessage |
 | 出 | `clock` | `/clock` | Time |
 | 出 | `footprint` | `/footprint` | PolygonStamped |
@@ -41,6 +42,9 @@
 | 出 | `gt_odom` | `/gt/odometry` | Odometry（可选，与 `gt_pose` 同时间戳，`map -> base_link`） |
 
 具体以当前 YAML 为准；改通道名后需保证全局唯一（`validate` 会查重）。
+
+`robot.cmd_vel_type` 默认 `twist_stamped`；设为 `twist` 时读取裸
+`geometry_msgs/Twist`。五个机器人档案都使用同一个 `/cmd_vel` 通道。
 
 <!-- BEGIN generated: config-channels -->
 
@@ -113,3 +117,7 @@
 `sensors.range.enabled` 按 `sensors.range.sensors` 的书写顺序建 `range_0` … `range_n`，每个键对应一条 `sensor_msgs/Range`。Habitat-Sim 没有测距传感器，后端沿该坐标系 URDF `+x` 轴投射单条射线并跳过机器人自身碰撞体；无回波按 ROS 惯例报 `inf`。所有光束共用同一时间戳，按最慢的 `rate_hz` 节流。
 
 `robot.joint_command.enabled` 建 `joint_command` 读端，`sensors.joint_states.enabled` 建 `joint_states` 写端。活动关节走 `/tf`，固定关节走 `/tf_static`，`/robot_description` 发布带相对 mesh 路径的 URDF XML。
+
+`robot.status.enabled` 建 `status` 写端，默认发布 `/autosim/status`。消息包含每个数据流的
+发布频率、丢帧、编码延迟和控制循环超时计数；当前 Autolink 缺少 `diagnostic_msgs` 时
+会跳过该通道并打印警告。

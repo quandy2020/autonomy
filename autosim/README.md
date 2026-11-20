@@ -68,6 +68,12 @@ SCENE=empty ROBOT=google_robot \
 # 查看可选名称
 (cd src/autonomy/autosim && python3 -m autosim --list)
 
+# 启动前检查配置/资源，或打印合并后的 YAML
+SCENE=empty ROBOT=google_robot \
+  src/autonomy/autosim/scripts/run.sh sim --check-config
+SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic \
+  src/autonomy/autosim/scripts/run.sh sim --print-config
+
 # Fake
 CONFIG=src/autonomy/autosim/config/fake.yaml src/autonomy/autosim/scripts/run.sh sim
 
@@ -91,6 +97,10 @@ src/autonomy/autosim/scripts/run.sh teleop
 # 停止当前实例（读 /tmp/autosim.lock，不需要 Python）
 src/autonomy/autosim/scripts/run.sh stop
 ```
+
+五个机器人档案都订阅 `/cmd_vel`。默认消息类型是 Autolink `TwistStamped`；上游使用
+裸 `geometry_msgs/Twist` 时，在机器人 YAML 中设置 `robot.cmd_vel_type: twist`。
+机器人档案默认开启 `/autosim/status`，用于查看各数据流的发布频率、丢帧和编码延迟。
 
 Habitat 行人：平面运动走 `scenario.pedestrian`（agents YAML / SFM），外观为本地
 SMPL-X（`avatar` / `skin` 可配）。详见 [14](docs/14_habitat_humanoids.md)。

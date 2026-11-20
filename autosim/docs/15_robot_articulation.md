@@ -46,9 +46,9 @@ SCENE=empty ROBOT=unitree_go2 SENSORS=basic scripts/run.sh both
 
 也可以只启动仿真：`scripts/run.sh sim --scene empty --robot unitree_go2 --sensors basic`。
 
-控制频道 `/joint_commands` 接收 **Autolink 的 automsgs.sensor_msgs.JointState protobuf**，不是 ROS middleware。填写同等长度的 `name` 和 `position` 数组，可只更新部分关节。旋转关节单位为弧度，移动关节单位为米。只消费 position；velocity/effort 不是当前运动学位置控制的输入。未知名称、重复名称、非有限数值和超限位置会拒绝整条命令，原姿态保留。
+Google、G1、Go2 的控制频道 `/joint_commands` 接收 **Autolink 的 automsgs.sensor_msgs.JointState protobuf**，不是 ROS middleware。填写同等长度的 `name` 和 `position` 数组，可只更新部分关节。旋转关节单位为弧度，移动关节单位为米。只消费 position；velocity/effort 不是当前运动学位置控制的输入。未知名称、重复名称、非有限数值和超限位置会拒绝整条命令，原姿态保留。TurtleBot3 与 Husky 是轮式底盘，没有可独立控制的 articulated joints，启用 `joint_command` 或 `joint_states` 会被配置校验拒绝。
 
-状态通过 `/joint_states` 发布；关节位姿通过 `/tf` 动态发布，固定关节使用 `/tf_static`。命令在仿真主线程执行，网络线程和 Autolink 回调不会访问 Habitat 的 GL 上下文。Mimic 关节自动跟随源关节，用户应控制源关节。
+articulated 机器人的状态通过 `/joint_states` 发布；关节位姿通过 `/tf` 动态发布，固定关节使用 `/tf_static`。命令在仿真主线程执行，网络线程和 Autolink 回调不会访问 Habitat 的 GL 上下文。Mimic 关节自动跟随源关节，用户应控制源关节。
 
 直接调用后端也可控制：
 
@@ -57,11 +57,15 @@ simulator.set_joint_positions({"joint_elbow": 0.6})
 print(simulator.joint_states())
 ```
 
-`habitat.robot.joint_positions` 可以设置初始姿态。`root_height` 设置 URDF 根节点离场景地面的高度；各 profile 提供展示默认值，可针对不同零姿态自行调整。默认固定底座，关节采用运动学位置控制。该功能支持模型展示与关节姿态操作；人形平衡、四足步态、接触动力学和行走策略需要另外接入控制器。五个模型均订阅 `/cmd_vel`（Autolink TwistStamped，读取 `twist.linear.x` 和 `twist.angular.z`）。0.5 秒无新指令后减速停止。支持前进、后退、原地转向和弧线运动；底座位姿、里程计和 TF 同步。TurtleBot3 与 Husky 配置了 `wheel_radius` 和 `wheel_separation`，轮子关节按差速关系随 `/cmd_vel` 滚动，`/joint_states` 中的轮速来自同一位置差分；底座仍由运动学积分推进，轮子不参与位姿解算。
+`habitat.robot.joint_positions` 可以设置初始姿态。`root_height` 设置 URDF 根节点离场景地面的高度；各 profile 提供展示默认值，可针对不同零姿态自行调整。`grounding.enabled: true` 时运行时会按当前渲染包围盒自动贴地，`grounding.mode: fixed` 则保留 `root_height`。默认固定底座，关节采用运动学位置控制。该功能支持模型展示与关节姿态操作；人形平衡、四足步态、接触动力学和行走策略需要另外接入控制器。五个模型均订阅 `/cmd_vel`，默认读取 Autolink `TwistStamped` 的 `twist.linear.x` 和 `twist.angular.z`；把 `robot.cmd_vel_type` 设为 `twist` 可接收裸 `Twist`。0.5 秒无新指令后减速停止，可用 `watchdog_sec` 调整。支持前进、后退、原地转向和弧线运动；底座位姿、里程计和 TF 同步。TurtleBot3 与 Husky 配置了 `wheel_radius` 和 `wheel_separation`，Google 使用逐轮 `wheel_radii` / `wheel_separations`，轮子关节按差速关系随 `/cmd_vel` 滚动；底座仍由运动学积分推进，轮子不参与位姿解算。
 
 速度上限按机型配置：Google 0.5 m/s、1.0 rad/s，G1 1.2 m/s、1.5 rad/s，Go2 2.0 m/s、2.0 rad/s，TurtleBot3 0.5 m/s、1.0 rad/s，Husky 1.0 m/s、1.5 rad/s。
 
-`/joint_states` 的 `velocity` 由相邻两次位置写入的差值除以实际间隔得到。Habitat 是运动学后端，不会自己积分关节速度；仿真循环在发布后重新写入当前姿态，因此命令到达的那一帧速度非零，下一帧回到零。
+机器人档案默认开启 `/autosim/status`（`DiagnosticArray`，1 Hz），报告每个数据流的
+发布频率、丢帧、编码延迟和控制循环超时计数。当前 Autolink 没有 `diagnostic_msgs`
+时会跳过该通道并打印警告，仿真和 `/cmd_vel` 控制不受影响。
+
+articulated 机器人的 `/joint_states` 中，`velocity` 由相邻两次位置写入的差值除以实际间隔得到。Habitat 是运动学后端，不会自己积分关节速度；仿真循环在发布后重新写入当前姿态，因此命令到达的那一帧速度非零，下一帧回到零。
 
 ## 支持模型
 
@@ -75,14 +79,20 @@ TurtleBot3 与 Husky 的 `camera_link` 是普通 URDF 连杆系（x 前、y 左�
 
 ## Google 外观与传感器
 
-`robot/google_robot/meshes/habitat/` 是按参考照片重制的 Habitat 展示资源：偏白外壳 (236, 236, 236)、金色夹爪指 (219, 176, 61)、深色轮胎 (26, 26, 28)。原有通风口、字母和臂环细节保留，躯干上的金色服务面板改为与外壳一致的白色。所有材质都带 `KHR_materials_unlit`：Habitat-Sim 0.3.3 读取 glTF 底色纹理时不做 sRGB 解码，默认四灯组也会把受光外壳染成偏黄，unlit 材质才能让渲染颜色等于设定的调色板。
+`robot/google_robot/meshes/habitat/` 是按参考照片重制的 Habitat 展示资源：偏白外壳 (236, 236, 236)、金色夹爪指 (219, 176, 61)、深色轮胎 (26, 26, 28)。原有通风口、字母和臂环细节保留，躯干上的金色服务面板改为与外壳一致的白色。外壳和装饰件使用 `KHR_materials_unlit`：Habitat-Sim 0.3.3 读取 glTF 底色纹理时不做 sRGB 解码，默认四灯组也会把受光外壳染成偏黄，unlit 材质才能让渲染颜色等于设定的调色板。底座 `040` 字形保持受光，随底座明暗变化。
 
-`head_sensor_panel.glb` 是叠加在头部外壳上的建模件：黑色面板、五个带银色镜圈的镜头（中间镜头为镀铬环）和两颗状态 LED。它作为 `link_head_tilt` 的第二个 `<visual>`，随头部旋转和俯仰一起运动。
+`head_sensor_panel.glb` 是叠加在头部外壳上的建模件：黑色面板、五个带银色镜圈的镜头（中间镜头为镀铬环）、绿色 LED 环和两颗状态 LED。它作为 `link_head_tilt` 的第二个 `<visual>`，随头部旋转和俯仰一起运动。`base_trim.glb` 提供薄黑色下裙边、前方绿色状态灯和两侧几何 `040` 标识；Habitat-Sim 0.3.3 在该资源路径上忽略 glTF alpha，因此 `040` 不再使用透明纹理。
 
 重新生成外观需要 trimesh 和 Pillow，在 Habitat 之外运行：
 
 ```bash
 python scripts/prepare_google_visuals.py --source /path/to/ManiSkill-GoogleRobot
+```
+
+已有上游 GLB 时也可以省略 `--source`，只重建头部面板和底座装饰件：
+
+```bash
+python scripts/prepare_google_visuals.py
 ```
 
 `robot/google_robot/appearance.json` 记录调色板、unlit 决定和每个文件的面数。
@@ -195,7 +205,7 @@ Habitat-Sim 没有测距传感器，`range` 块让每个坐标系沿 URDF `+x` �
 
 `clear_color` 只作用于彩色传感器。空场景里 Habitat 默认把天空画成纯黑，地面边缘和背景糊在一起；设成中性灰后，RGB、立体和环视相机看到的是干净的摄影棚背景。真实 GLB 场景通常自带天空几何，可按需覆盖或去掉这一项。
 
-`lights` 需要 `override_scene_light_defaults`，Habitat 才会接受 `set_light_setup`。未显式设置 `override_lights` 时，自定义灯组只作用于程序化场景；加载真实 GLB 时保留场景自带灯光。
+`lights` 需要 `override_scene_light_defaults`，Habitat 才会接受 `set_light_setup`。未显式设置 `override_lights` 时，自定义灯组只作用于程序化场景；加载真实 GLB 时保留场景自带灯光。机器人查看器的空场景预览使用 `override_lights: true` 和四盏中性方向光，避免白色外壳侧面发黑；地面仍保留接触阴影。
 
 Google 的 URDF 零位把手臂竖直举过头顶，不适合作为展示姿态。`config/robots/google_robot.yaml` 用 `joint_positions` 把肩部转到 3.0 rad、肘部 -0.9 rad，bicep 和 wrist 归零，手臂向前下方自然下垂且夹爪不穿地，夹爪指张开 0.6 rad。
 

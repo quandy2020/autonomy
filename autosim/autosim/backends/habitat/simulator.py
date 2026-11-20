@@ -1339,8 +1339,12 @@ class Simulator:
         model = UrdfModel.load(config["urdf"])
         old_config = self.settings["habitat"]["robot"]
         old_model, old_robot, old_control = self.urdf, self.articulated, self.articulation
+        old_root_height_override = self.root_height_override
         self.settings["habitat"]["robot"] = config
         self.urdf, self.articulated, self.articulation = model, None, None
+        # A grounded height belongs to the old mesh. Recompute it after the
+        # replacement instead of reusing a value from the previous robot.
+        self.root_height_override = None
         try:
             self.attach_urdf(habitat_sim)
             if self.articulated is None:
@@ -1348,6 +1352,7 @@ class Simulator:
         except Exception:
             self.settings["habitat"]["robot"] = old_config
             self.urdf, self.articulated, self.articulation = old_model, old_robot, old_control
+            self.root_height_override = old_root_height_override
             raise
         if old_robot is not None:
             self.session.get_articulated_object_manager().remove_object_by_id(old_robot.object_id)
@@ -1705,7 +1710,9 @@ class Simulator:
         # URDF uses z-up; Habitat is y-up → rotate −90° about X.
         z_up_to_y_up = mn.Quaternion.rotation(mn.Rad(-math.pi / 2.0), mn.Vector3(1, 0, 0))
         # map_y = -Habitat_Z  →  Habitat_Z = -map_y
-        height = float(self.settings["habitat"]["robot"].get("root_height", 0.0))
+        # ``ground_robot`` stores the measured height as an override; use the
+        # same accessor here or dynamic grounding never reaches the AO.
+        height = self.root_height()
         self.articulated.translation = mn.Vector3(self.x, self.floor_y + height, -self.y)
         self.articulated.rotation = yaw * z_up_to_y_up
 

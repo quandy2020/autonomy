@@ -5,6 +5,7 @@ import threading
 import pytest
 
 from autosim.runtime.health import HealthMonitor
+from autosim.runtime.runner import Runner
 from autosim.runtime.worker import SensorWorker
 
 
@@ -75,3 +76,13 @@ def test_worker_records_completion_and_error():
     assert monitor.stream("scan").completed == 1
     assert monitor.stream("rgb").errors == 1
     assert "boom" in monitor.stream("rgb").last_error
+
+
+def test_emit_leaves_async_completion_to_the_worker():
+    """Queued streams must not be counted once by emit and again by the worker."""
+    runner = object.__new__(Runner)
+    runner.health = HealthMonitor()
+    runner.emit("points", lambda: None)
+    assert runner.health.stream("points").completed == 0
+    runner.emit("odom", lambda: None)
+    assert runner.health.stream("odom").completed == 1

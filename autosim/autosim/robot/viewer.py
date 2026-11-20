@@ -44,6 +44,15 @@ def viewer_settings(profile: str, scene: str = '', width: int = 960, height: int
         habitat['render'] = {
             'enable_hbao': True,
             'clear_color': [0.55, 0.57, 0.60, 1.0],
+            # Habitat's stock rig leaves the preview side panels almost black.
+            # Four neutral directions give the white shells readable shading.
+            'override_lights': True,
+            'lights': [
+                {'vector': [0.0, -0.5, -0.5, 0.0], 'color': [0.8, 0.8, 0.8]},
+                {'vector': [0.0, -0.5, 0.5, 0.0], 'color': [0.8, 0.8, 0.8]},
+                {'vector': [-0.5, -0.5, 0.0, 0.0], 'color': [0.8, 0.8, 0.8]},
+                {'vector': [0.5, -0.5, 0.0, 0.0], 'color': [0.8, 0.8, 0.8]},
+            ],
         }
     return Config.load({'habitat': habitat}).data
 

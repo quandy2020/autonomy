@@ -207,6 +207,14 @@ def test_preflight_reports_resolved_assets():
     assert any("unitree_go2" in line for line in lines)
 
 
+def test_preflight_does_not_report_an_empty_camera_stub():
+    settings = compose_config(
+        ROOT / "config" / "default.yaml", scene="empty", robot="unitree_go2"
+    )
+    lines = Config.preflight(settings.data)
+    assert not any("cameras" in line for line in lines)
+
+
 def test_preflight_rejects_a_missing_scene(tmp_path):
     data = copy.deepcopy(_base_mapping())
     data["habitat"]["path"] = str(tmp_path / "nowhere.glb")

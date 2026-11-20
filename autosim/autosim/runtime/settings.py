@@ -989,7 +989,9 @@ class Config:
             if isinstance(sensors.get(key), Mapping)
             and sensors[key].get("enabled", False)
         ]
-        if isinstance(sensors.get("cameras"), Mapping):
+        # ``fill_omitted_sensors`` inserts an empty ``cameras`` stub; only a
+        # non-empty rig (or legacy surround block) is an enabled stream.
+        if camera_rig(sensors):
             enabled.append("cameras")
         lines.append("ok: sensors=" + (", ".join(enabled) or "(none)"))
         return lines
@@ -1284,6 +1286,8 @@ class Config:
         for key in ("x_length", "y_length", "z_length"):
             if key in block:
                 cls.require_positive(block[key], f"habitat.scenario.{key}")
+        if "door_width" in block:
+            cls.require_nonneg(block["door_width"], "habitat.scenario.door_width")
         return True
 
     @classmethod

@@ -58,8 +58,8 @@ def test_go2_display_keeps_all_upstream_triangles():
                 triangles+=gltf['accessors'][primitive['indices']]['count']//3
         assert triangles==record['original_faces']
 
-def test_google_visuals_are_unlit():
-    """Habitat 0.3.3 skips sRGB decoding, so the shells rely on unlit materials."""
+def test_google_visuals_use_unlit_shells_and_lit_decals():
+    """Habitat 0.3.3 skips sRGB decoding; only the 040 decals stay lit."""
     import struct
     folder=UrdfModel.resolve(PROFILES['google_robot'].urdf).parent/'meshes/habitat'
     files=sorted(folder.glob('*.glb'))
@@ -71,7 +71,11 @@ def test_google_visuals_are_unlit():
         gltf=json.loads(data[20:20+size])
         assert 'KHR_materials_unlit' in gltf.get('extensionsUsed',[]),path.name
         for material in gltf['materials']:
-            assert 'KHR_materials_unlit' in material.get('extensions',{}),path.name
+            unlit='KHR_materials_unlit' in material.get('extensions',{})
+            if path.name=='base_trim.glb' and material.get('name') in {'number_left','number_right'}:
+                assert not unlit,path.name
+            else:
+                assert unlit,path.name
 
 
 def test_google_head_panel_is_modelled_and_attached():

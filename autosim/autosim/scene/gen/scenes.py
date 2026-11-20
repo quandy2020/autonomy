@@ -215,6 +215,11 @@ class Scenes:
             width = min(float(rng.uniform(low, high)), max(length - center_x, 0.0))
             hole_h = min(float(rng.uniform(low, high)), max(height - center_z, 0.0))
             holes.append((center_x - 0.5 * width, center_z - 0.5 * hole_h, width, hole_h))
+        door = float(self.settings.get("door_width", 0.0))
+        if door > 0.0:
+            # Floor-level doorway so a ground robot can pass between rooms.
+            left = float(rng.uniform(0.4, max(0.4, length - 0.4 - door)))
+            holes.append((left, 0.0, door, min(2.0, height)))
         return holes
 
     @staticmethod

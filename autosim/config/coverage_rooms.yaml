@@ -9,6 +9,7 @@ habitat:
     y_length: 16
     room_number: 4
     max_windows: 2
+    door_width: 1.2
   spawn: [-1.8, -0.8, 0.0]
   robot:
     max_angular: 2.0

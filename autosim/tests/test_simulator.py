@@ -182,6 +182,72 @@ def test_simulator_has_no_mock_backend():
     assert Simulator.finite_xyz((float("nan"), 0.0, 0.0)) is None
 
 
+def test_switch_robot_clears_old_grounding_height(monkeypatch):
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    simulator.root_height_override = 0.7
+    monkeypatch.setattr(
+        "autosim.backends.habitat.simulator.UrdfModel.load",
+        classmethod(lambda cls, path: object()),
+    )
+
+    def attach(self, habitat_sim):
+        del habitat_sim
+        self.articulated = object()
+        self.articulation = None
+
+    monkeypatch.setattr(Simulator, "attach_urdf", attach)
+    simulator.switch_robot("unitree_go2")
+    assert simulator.root_height_override is None
+
+
+def test_switch_robot_restores_grounding_height_on_failure(monkeypatch):
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    simulator.root_height_override = 0.7
+    monkeypatch.setattr(
+        "autosim.backends.habitat.simulator.UrdfModel.load",
+        classmethod(lambda cls, path: object()),
+    )
+
+    def attach(self, habitat_sim):
+        del self, habitat_sim
+        raise RuntimeError("URDF load failed")
+
+    monkeypatch.setattr(Simulator, "attach_urdf", attach)
+    with pytest.raises(RuntimeError, match="URDF load failed"):
+        simulator.switch_robot("unitree_go2")
+    assert simulator.root_height_override == pytest.approx(0.7)
+
+
+def test_sync_articulated_uses_the_grounding_override():
+    import magnum as mn
+
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+    simulator.articulated = type("Articulated", (), {})()
+    simulator.x, simulator.y, simulator.yaw = 1.0, 2.0, 0.3
+    simulator.floor_y = 0.1
+    simulator.root_height_override = 0.7
+    simulator.sync_articulated(mn)
+    assert tuple(simulator.articulated.translation) == pytest.approx((1.0, 0.8, -2.0))
+
+
 def test_refine_floor_y_from_mesh_pulls_down_to_glb():
     """Navmesh bias above the GLB floor must lower floor_y for lidar/TF."""
     simulator = Simulator(
@@ -665,3 +731,56 @@ def test_spin_wheels_uses_per_joint_radius_and_track():
     assert updates["wheel_left_joint"] == pytest.approx(-0.2 / 0.05)
     # Right: v + w * track / 2 = +0.1 m/s over a 100 mm wheel.
     assert updates["wheel_right_joint"] == pytest.approx(0.1 / 0.1)
+
+
+def test_spin_wheels_drives_all_four_husky_wheels():
+    """Husky's four wheel links must split the twist by their real side."""
+    from types import SimpleNamespace
+
+    from autosim.robot.joints import Joint
+
+    settings = {
+        "habitat": {
+            "path": "",
+            "spawn": [0.0, 0.0, 0.0],
+            "robot": {
+                "urdf": "robot/husky/husky.urdf",
+                "wheel_radius": 0.1651,
+                "wheel_separation": 0.512,
+            },
+            "sensors": {"camera": {"sensor_height": 0.6}},
+        }
+    }
+    simulator = Simulator(
+        backend="minimal", width=64, height=48, settings=settings, open_session=False
+    )
+    names = {
+        "front_left_wheel_joint": "front_left_wheel_link",
+        "front_right_wheel_joint": "front_right_wheel_link",
+        "rear_left_wheel_joint": "rear_left_wheel_link",
+        "rear_right_wheel_joint": "rear_right_wheel_link",
+    }
+    calls: list[tuple[dict, float | None]] = []
+    simulator.articulation = SimpleNamespace(
+        joints={name: Joint(name, "continuous", child) for name, child in names.items()},
+        positions=lambda: {name: 0.0 for name in names},
+        set_positions=lambda updates, dt=None: calls.append((dict(updates), dt)),
+    )
+
+    assert simulator.wheel_mounts() == [
+        ("front_left_wheel_joint", 1.0),
+        ("front_right_wheel_joint", -1.0),
+        ("rear_left_wheel_joint", 1.0),
+        ("rear_right_wheel_joint", -1.0),
+    ]
+    simulator.spin_wheels(0.0, 0.6, 0.5)
+    updates, _ = calls[-1]
+    assert set(updates) == set(names)
+    assert updates["front_left_wheel_joint"] == pytest.approx(
+        updates["rear_left_wheel_joint"]
+    )
+    assert updates["front_right_wheel_joint"] == pytest.approx(
+        updates["rear_right_wheel_joint"]
+    )
+    assert updates["front_left_wheel_joint"] < 0.0
+    assert updates["front_right_wheel_joint"] > 0.0

@@ -88,6 +88,9 @@ from automsgs.msgs.visualization_msgs.marker_pb2 import Marker
 # needs the optical chain before the first map→odom publish.
 TF_STATIC_REPUBLISH_SEC = 0.05
 ROBOT_DESCRIPTION_REPUBLISH_SEC = 1.0
+# These publishers hand work to ``SensorWorker``; the worker records the
+# completion and latency after the encode/publish actually finishes.
+ASYNC_STREAMS = frozenset({"points", "depth_points"})
 
 
 def cmd_vel_message_type(robot_cfg: Dict[str, Any]) -> Any:
@@ -1061,7 +1064,7 @@ class Runner:
             )
             self.publish_camera_fov_marker(stamp, frame)
 
-        self.sensor_worker.submit(encode_and_publish, label="camera")
+        self.sensor_worker.submit(encode_and_publish, label="depth_points")
 
     def publish_camera_fov_marker(
         self, stamp: Tuple[int, int], frame: str | None = None
@@ -1454,7 +1457,11 @@ class Runner:
             entry.record_error(exc)
             warnings.warn(f"autosim {name} publish failed: {exc!r}", stacklevel=2)
         else:
-            entry.record((time.perf_counter() - start) * 1000.0)
+            # ``points`` and ``depth_points`` are queued to SensorWorker. The
+            # worker owns their completion/latency counters; recording here
+            # would count one submitted frame twice and inflate the rate.
+            if name not in ASYNC_STREAMS:
+                entry.record((time.perf_counter() - start) * 1000.0)
 
     def publish_status(self, stamp: Tuple[int, int]) -> None:
         """Publish ``/autosim/status`` with per-stream health counters.
