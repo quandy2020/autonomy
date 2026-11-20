@@ -1,48 +1,86 @@
 name: Ansible
 
 on:
+  workflow_call:
+    inputs:
+      revision:
+        required: false
+        type: string
   push:
     paths:
       - "ansible/**"
-      - "tools/package_install_tarball.py"
-      - ".github/workflows/ansible.yml"
+      - "tools/python/package_install_tarball.py"
+      - ".github/workflows/ansible*.yml"
   pull_request:
     paths:
       - "ansible/**"
-      - "tools/package_install_tarball.py"
-      - ".github/workflows/ansible.yml"
+      - "tools/python/package_install_tarball.py"
+      - ".github/workflows/ansible*.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ansible-${{ github.workflow }}-${{ inputs.revision != '' && github.run_id || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   lint:
     runs-on: ubuntu-22.04
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ansible
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ansible/requirements-ci.txt
       - name: Install Ansible tooling
         run: |
-          python3 -m pip install --upgrade pip
-          pip install "ansible>=8,<10" "ansible-lint>=24,<26"
+          python3 -m pip install -r requirements-ci.txt
           ansible-galaxy collection install -r requirements.yml
-
-      - name: Lint and syntax-check
+      - name: Lint, syntax and deployment behavior
         run: ./scripts/ci.sh
 
   molecule:
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["22.04", "24.04"]
+        role: [services, build]
     runs-on: ubuntu-22.04
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: ansible
     steps:
       - uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.revision || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ansible/requirements*.txt
       - name: Install Molecule tooling
         run: |
-          python3 -m pip install --upgrade pip
-          pip install "ansible>=8,<10" -r requirements-dev.txt
+          python3 -m pip install -r requirements-dev.txt
           ansible-galaxy collection install -r requirements.yml
-
-      - name: Molecule smoke test
+      - name: Molecule deployment and idempotence
+        env:
+          MOLECULE_IMAGE: jrei/systemd-ubuntu:${{ matrix.os }}
+          MOLECULE_ROLE: ${{ matrix.role }}
         run: ./scripts/molecule.sh
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: molecule-${{ matrix.os }}-${{ matrix.role }}-diagnostics
+          path: ~/.cache/molecule/**/ansible*.log
+          if-no-files-found: ignore

@@ -1,0 +1,250 @@
+{
+  "passed": true,
+  "recording": "/tmp/autonomy-exploration-v2.124-final",
+  "frame_alignment": {
+    "derived_from_first_pose_pair": true,
+    "translation": [
+      -3.999999999579915,
+      0.999999999624458,
+      3.2513569591326186e-10
+    ],
+    "child_frame": "native_exploration_map",
+    "parent_frame": "map"
+  },
+  "geometry": {
+    "coverage_comparison_performed": true,
+    "exploration_accepted": false,
+    "scope": "Offline map metrics only; independent run and map provenance are still required.",
+    "frame_id": "map",
+    "resolution": 0.05000000074505806,
+    "truth_grid_dimensions": [
+      327,
+      165
+    ],
+    "alignment": {
+      "offset_cells": [
+        0,
+        0
+      ],
+      "overlap_cells": 53955
+    },
+    "start_cell": [
+      151,
+      77
+    ],
+    "robot_radius_m": 0.105,
+    "thresholds": {
+      "free_max": 20,
+      "occupied_min": 65
+    },
+    "domain": "Start-connected static 2D truth free cells after circular footprint erosion.",
+    "reachable_truth_cells": 15803,
+    "reachable_truth_area_m2": 39.50750117741526,
+    "reachable_unknown_cells": 8952,
+    "reachable_uncertain_cells": 0,
+    "known_coverage_fraction": 0.43352528001012464,
+    "correct_free_coverage_fraction": 0.4302347655508448,
+    "reachable_false_occupied_fraction": 0.0032905144592798837,
+    "global_confusion_cells": {
+      "free": {
+        "free": 8560,
+        "occupied": 144,
+        "unknown_or_uncertain": 12937
+      },
+      "occupied": {
+        "free": 2532,
+        "occupied": 4170,
+        "unknown_or_uncertain": 25612
+      }
+    },
+    "residual_unknown_regions": {
+      "count": 8,
+      "largest": [
+        {
+          "cells": 2998,
+          "representative_cell": [
+            74,
+            5
+          ]
+        },
+        {
+          "cells": 1879,
+          "representative_cell": [
+            262,
+            65
+          ]
+        },
+        {
+          "cells": 1760,
+          "representative_cell": [
+            220,
+            19
+          ]
+        },
+        {
+          "cells": 1492,
+          "representative_cell": [
+            29,
+            81
+          ]
+        },
+        {
+          "cells": 755,
+          "representative_cell": [
+            285,
+            20
+          ]
+        },
+        {
+          "cells": 51,
+          "representative_cell": [
+            242,
+            119
+          ]
+        },
+        {
+          "cells": 16,
+          "representative_cell": [
+            243,
+            110
+          ]
+        },
+        {
+          "cells": 1,
+          "representative_cell": [
+            229,
+            154
+          ]
+        }
+      ],
+      "connectivity": 4
+    },
+    "residual_not_confirmed_free_regions": {
+      "count": 10,
+      "largest": [
+        {
+          "cells": 2998,
+          "representative_cell": [
+            74,
+            5
+          ]
+        },
+        {
+          "cells": 1879,
+          "representative_cell": [
+            262,
+            65
+          ]
+        },
+        {
+          "cells": 1760,
+          "representative_cell": [
+            220,
+            19
+          ]
+        },
+        {
+          "cells": 1496,
+          "representative_cell": [
+            29,
+            81
+          ]
+        },
+        {
+          "cells": 755,
+          "representative_cell": [
+            285,
+            20
+          ]
+        },
+        {
+          "cells": 51,
+          "representative_cell": [
+            242,
+            119
+          ]
+        },
+        {
+          "cells": 43,
+          "representative_cell": [
+            142,
+            122
+          ]
+        },
+        {
+          "cells": 16,
+          "representative_cell": [
+            243,
+            110
+          ]
+        },
+        {
+          "cells": 5,
+          "representative_cell": [
+            213,
+            74
+          ]
+        },
+        {
+          "cells": 1,
+          "representative_cell": [
+            229,
+            154
+          ]
+        }
+      ],
+      "connectivity": 4
+    },
+    "independent_map_provenance_verified": false
+  },
+  "coverage": {
+    "reachable_truth_cells": 15803,
+    "confirmed_cells": 5086,
+    "pending_cells": 176,
+    "no_requirement_or_unknown_cells": 10541,
+    "confirmed_fraction": 0.3218376257672594,
+    "confirmed_fraction_of_requirements": 0.9665526415811478,
+    "scope": "Conservative minimum projection; coverage ledger semantics, not occupancy."
+  },
+  "occupancy_projection": {
+    "projected": false,
+    "method": "All source cells in the inverse target-cell bounding box; unknown veto, maximum value.",
+    "aggregation": "maximum",
+    "target_values_used_for_classification": false,
+    "transform_fitted_from_maps": false,
+    "source_frame": "native_exploration_map",
+    "target_frame": "map",
+    "source_resolution": 0.15000000596046448,
+    "target_resolution": 0.05000000074505806,
+    "parallel_plane_height_offset_m": 1.4939709771442157e-10,
+    "parallel_plane_projection_explicitly_enabled": false,
+    "source_cell_visits": 70840,
+    "source_known_cells": 1799,
+    "projected_known_cells": 15406,
+    "projected_unknown_cells": 38549,
+    "coordinate_epoch_verified": false,
+    "exploration_accepted": false,
+    "scope": "Offline 2D lattice projection; not ground, fusion, coverage completion or controller evidence."
+  },
+  "coverage_projection": {
+    "projected": false,
+    "method": "All source cells in the inverse target-cell bounding box; unknown veto, minimum value.",
+    "aggregation": "minimum",
+    "target_values_used_for_classification": false,
+    "transform_fitted_from_maps": false,
+    "source_frame": "native_exploration_map",
+    "target_frame": "map",
+    "source_resolution": 0.15000000596046448,
+    "target_resolution": 0.05000000074505806,
+    "parallel_plane_height_offset_m": 1.4939709771442157e-10,
+    "parallel_plane_projection_explicitly_enabled": false,
+    "source_cell_visits": 70840,
+    "source_known_cells": 1223,
+    "projected_known_cells": 9492,
+    "projected_unknown_cells": 44463,
+    "coordinate_epoch_verified": false,
+    "exploration_accepted": false,
+    "scope": "Offline 2D lattice projection; not ground, fusion, coverage completion or controller evidence."
+  },
+  "robot_radius_m": 0.105
+}

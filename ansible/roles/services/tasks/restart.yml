@@ -6,11 +6,17 @@
   register: autonomy_restart_units
   become: true
 
-- name: Restart enabled autonomy services
-  ansible.builtin.systemd:
+- name: Require enabled service units
+  ansible.builtin.assert:
+    that:
+      - item.stat.exists
+    fail_msg: "Missing {{ item.item }}.service; run full deployment first."
+  loop: "{{ autonomy_restart_units.results }}"
+
+- name: Restart selected autonomy services
+  ansible.builtin.systemd_service:
     name: "{{ item.item }}"
     state: restarted
     daemon_reload: true
   loop: "{{ autonomy_restart_units.results }}"
-  when: item.stat.exists
   become: true

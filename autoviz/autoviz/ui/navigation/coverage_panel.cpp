@@ -11,6 +11,8 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <array>
+#include <QColor>
 #include <QAbstractSpinBox>
 #include <QFontDatabase>
 #include <QFormLayout>
@@ -64,62 +66,6 @@ namespace {
 constexpr const char* kFieldKind = "field";
 constexpr const char* kObstacleKind = "obstacle";
 constexpr const char* kLiveKind = "live";
-
-/** @brief Create a compact metre spin box that commits on editing finish. */
-QDoubleSpinBox* MakeLengthSpin(double minimum, double maximum, double value,
-                               QWidget* parent) {
-  auto* spin = new QDoubleSpinBox(parent);
-  spin->setRange(minimum, maximum);
-  spin->setDecimals(2);
-  spin->setSingleStep(0.05);
-  spin->setValue(value);
-  spin->setSuffix(QStringLiteral(" m"));
-  spin->setKeyboardTracking(false);
-  spin->setMinimumWidth(96);
-  return spin;
-}
-
-/** @brief Render ring points one "x, y" pair per line. */
-QString FormatPoints(const std::vector<std::pair<double, double>>& points) {
-  QStringList lines;
-  lines.reserve(static_cast<int>(points.size()));
-  for (const auto& point : points) {
-    lines << QStringLiteral("%1, %2")
-                 .arg(point.first, 0, 'f', 3)
-                 .arg(point.second, 0, 'f', 3);
-  }
-  return lines.join(QChar('\n'));
-}
-
-/** @brief Parse "x, y" or "x y" lines; reports the failing coordinate. */
-std::vector<std::pair<double, double>> ParsePoints(const QString& text,
-                                                   QString* error) {
-  std::vector<std::pair<double, double>> points;
-  const auto lines = text.split(QChar('\n'));
-  for (int index = 0; index < lines.size(); ++index) {
-    QString line = lines[index].trimmed();
-    if (line.isEmpty() || line.startsWith(QChar('#'))) {
-      continue;
-    }
-    line.replace(QChar(','), QChar(' '));
-    line.replace(QChar(';'), QChar(' '));
-    const auto parts = line.split(QRegularExpression(QStringLiteral("\\s+")),
-                                  Qt::SkipEmptyParts);
-    bool ok_x = false;
-    bool ok_y = false;
-    const double x = parts.size() == 2 ? parts[0].toDouble(&ok_x) : 0.0;
-    const double y = parts.size() == 2 ? parts[1].toDouble(&ok_y) : 0.0;
-    if (parts.size() != 2 || !ok_x || !ok_y || !std::isfinite(x) ||
-        !std::isfinite(y)) {
-      if (error != nullptr) {
-        *error = QObject::tr("Line %1 must be 'x, y' numbers").arg(index + 1);
-      }
-      return {};
-    }
-    points.emplace_back(x, y);
-  }
-  return points;
-}
 
 /** @brief Short one-line description of a ring for the list widget. */
 /**
@@ -216,8 +162,8 @@ void CoveragePanel::BuildUi() {
   outer->addWidget(status_card);
 
   auto* hint = new QLabel(
-      tr("Cover the work area and route around obstacles. Each pass cleans "
-         "twice the robot radius."),
+      tr("Click Draw obstacle, then click 3+ points in the 3D view. "
+         "Click the first point again or press Enter to finish."),
       this);
   StyleHintLabel(hint);
   hint->setWordWrap(true);
@@ -312,7 +258,7 @@ void CoveragePanel::BuildUi() {
 
   auto* draw_row = new QHBoxLayout();
   draw_row->setSpacing(6);
-  draw_obstacle_ = MakeCoverageCompactGhost(tr("Draw polygon"), content);
+  draw_obstacle_ = MakeCoverageCompactGhost(tr("Draw obstacle"), content);
   draw_obstacle_->setObjectName(QStringLiteral("coverageDrawObstacle"));
   draw_obstacle_->setToolTip(
       tr("Press Ctrl+Alt+O, then click at least three points in the 3D view. "
@@ -337,17 +283,6 @@ void CoveragePanel::BuildUi() {
   ring_buttons->addStretch(1);
   layout->addLayout(ring_buttons);
 
-  auto* points_label = new QLabel(tr("Ring points (x, y per line)"), content);
-  StyleHintLabel(points_label);
-  layout->addWidget(points_label);
-  points_ = new QPlainTextEdit(content);
-  points_->setObjectName(QStringLiteral("coverageRingPoints"));
-  points_->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-  points_->setMinimumHeight(64);
-  points_->setMaximumHeight(96);
-  points_->setPlaceholderText(QStringLiteral("-3, -2\n3, -2\n3, 2\n-3, 2"));
-  layout->addWidget(points_);
-
   advanced_ = new QPushButton(tr("Advanced JSON"), content);
   advanced_->setObjectName(QStringLiteral("coverageAdvanced"));
   advanced_->setCheckable(true);
@@ -363,6 +298,43 @@ void CoveragePanel::BuildUi() {
       QStringLiteral("[[[x,y], ...], [obstacle x,y, ...]]"));
   polygons_->setVisible(false);
   layout->addWidget(polygons_);
+
+  auto* rooms_title = new QLabel(tr("Rooms"), content);
+  StyleSectionTitle(rooms_title);
+  layout->addWidget(rooms_title);
+  auto* rooms_row = new QHBoxLayout();
+  rooms_row->setSpacing(6);
+  room_columns_ = new QSpinBox(content);
+  room_columns_->setRange(1, 4);
+  room_columns_->setValue(2);
+  StyleCompactSettingsField(room_columns_);
+  room_columns_->setMaximumWidth(56);
+  room_rows_ = new QSpinBox(content);
+  room_rows_->setRange(1, 4);
+  room_rows_->setValue(2);
+  StyleCompactSettingsField(room_rows_);
+  room_rows_->setMaximumWidth(56);
+  auto* grid_label = MakeSettingsFormLabel(tr("Grid"), content);
+  rooms_row->addWidget(grid_label);
+  rooms_row->addWidget(room_columns_);
+  rooms_row->addWidget(new QLabel(QStringLiteral("×"), content));
+  rooms_row->addWidget(room_rows_);
+  split_rooms_ = MakeCoverageCompactGhost(tr("Split map"), content);
+  split_rooms_->setObjectName(QStringLiteral("coverageSplitRooms"));
+  split_rooms_->setToolTip(
+      tr("Split the work area into colored rooms and plan each one."));
+  rooms_row->addWidget(split_rooms_, 1);
+  layout->addLayout(rooms_row);
+  rooms_ = new QListWidget(content);
+  rooms_->setObjectName(QStringLiteral("coverageRooms"));
+  rooms_->setMinimumHeight(64);
+  rooms_->setMaximumHeight(96);
+  StyleFrostedPanelList(rooms_);
+  layout->addWidget(rooms_);
+  clean_rooms_ = MakePrimaryActionButton(tr("Clean all rooms"), content);
+  clean_rooms_->setObjectName(QStringLiteral("coverageCleanRooms"));
+  clean_rooms_->setEnabled(false);
+  layout->addWidget(clean_rooms_);
 
   auto* live_title = new QLabel(tr("Live obstacles"), content);
   StyleSectionTitle(live_title);
@@ -421,6 +393,10 @@ void CoveragePanel::BuildUi() {
   progress_->setMaximumHeight(6);
   progress_->setVisible(false);
   footer_layout->addWidget(progress_);
+  approach_ = new QCheckBox(tr("Navigate to the coverage start"), footer);
+  approach_->setObjectName(QStringLiteral("coverageApproach"));
+  approach_->setChecked(true);
+  footer_layout->addWidget(approach_);
   auto* footer_buttons = new QHBoxLayout();
   footer_buttons->setSpacing(8);
   preview_ = MakeCoverageCompactGhost(tr("Preview"), footer);
@@ -447,16 +423,6 @@ void CoveragePanel::BuildUi() {
   });
   connect(ring_list_, &QListWidget::currentRowChanged, this,
           &CoveragePanel::LoadSelectedRing);
-  points_timer_ = new QTimer(this);
-  points_timer_->setSingleShot(true);
-  points_timer_->setInterval(350);
-  connect(points_timer_, &QTimer::timeout, this,
-          &CoveragePanel::ApplyPointsEditor);
-  connect(points_, &QPlainTextEdit::textChanged, this, [this] {
-    if (!loading_ring_) {
-      points_timer_->start();
-    }
-  });
   connect(add_obstacle_, &QPushButton::clicked, this,
           &CoveragePanel::AddObstacleRing);
   connect(draw_obstacle_, &QPushButton::clicked, this,
@@ -490,6 +456,10 @@ void CoveragePanel::BuildUi() {
   connect(live_timer_, &QTimer::timeout, this,
           &CoveragePanel::RefreshLiveObstacles);
 
+  connect(split_rooms_, &QPushButton::clicked, this,
+          &CoveragePanel::SplitRooms);
+  connect(clean_rooms_, &QPushButton::clicked, this,
+          &CoveragePanel::StartAllRooms);
   connect(preview_, &QPushButton::clicked, this,
           &CoveragePanel::PreviewCoverage);
   connect(start_, &QPushButton::clicked, this, &CoveragePanel::StartCoverage);
@@ -572,6 +542,21 @@ void CoveragePanel::EnsureClients() {
     sketch_writer_ = node->CreateWriter<
         automsgs::msgs::visualization_msgs::MarkerArray>("/coverage/sketch");
   }
+  bool rooms_exist = false;
+  for (const auto* display : manager_->displays()) {
+    if (display != nullptr && display->channel() == "/coverage/regions") {
+      rooms_exist = true;
+    }
+  }
+  if (!rooms_exist) {
+    common::DisplayConfig config;
+    config.type = "MarkerArray";
+    config.name = "Coverage rooms";
+    config.channel = "/coverage/regions";
+    config.enabled = true;
+    config.properties["use_custom_color"] = "false";
+    manager_->addDisplay(config);
+  }
   bool sketch_exists = false;
   for (const auto* display : manager_->displays()) {
     if (display != nullptr && display->channel() == "/coverage/sketch") {
@@ -624,7 +609,7 @@ void CoveragePanel::RebuildRingList(int selected) {
       }
     }
     rings_summary_->setText(
-        obstacles == 0 ? tr("No obstacle rings · optional")
+        obstacles == 0 ? tr("No obstacles · click Draw obstacle to add")
                        : tr("%1 obstacle ring(s)").arg(obstacles));
     if (ring_list_->count() > 0) {
       ring_list_->setCurrentRow(
@@ -638,33 +623,6 @@ void CoveragePanel::LoadSelectedRing(int row) {
   const bool valid = row >= 0 && row < static_cast<int>(rings_.size());
   remove_ring_->setEnabled(valid && !busy_ &&
                            rings_[row].kind != QLatin1String(kFieldKind));
-  loading_ring_ = true;
-  points_->setPlainText(valid ? FormatPoints(rings_[row].points) : QString());
-  loading_ring_ = false;
-  points_->setEnabled(valid && !busy_);
-  points_->setStyleSheet(QString());
-}
-
-void CoveragePanel::ApplyPointsEditor() {
-  const int row = ring_list_->currentRow();
-  if (row < 0 || row >= static_cast<int>(rings_.size())) {
-    return;
-  }
-  QString error;
-  auto points = ParsePoints(points_->toPlainText(), &error);
-  if (points.size() < 3) {
-    points_->setStyleSheet(QStringLiteral("border:1px solid #c0392b;"));
-    SetStatus(error.isEmpty() ? tr("A ring needs at least three points") : error,
-              QStringLiteral("error"));
-    return;
-  }
-  points_->setStyleSheet(QString());
-  rings_[row].points = std::move(points);
-  if (auto* item = ring_list_->item(row)) {
-    const QSignalBlocker blocker(ring_list_);
-    item->setText(RingLabel(rings_[row].name, rings_[row].points.size()));
-  }
-  PublishSketch();
 }
 
 void CoveragePanel::AddObstacleRing() {
@@ -698,8 +656,6 @@ void CoveragePanel::AddObstacleRing() {
   rings_.push_back(std::move(ring));
   RebuildRingList(static_cast<int>(rings_.size()) - 1);
   PublishSketch();
-  points_->setFocus();
-  points_->selectAll();
   SetStatus(tr("Obstacle added at the field centre; edit its points"),
             QStringLiteral("ok"));
 }
@@ -894,9 +850,6 @@ void CoveragePanel::CommitEditors() {
   radius_->interpretText();
   headland_->interpretText();
   obstacle_margin_->interpretText();
-  if (points_->hasFocus()) {
-    ApplyPointsEditor();
-  }
 }
 
 void CoveragePanel::SetStatus(const QString& text, const QString& state) {
@@ -946,29 +899,46 @@ void CoveragePanel::SetProgress(bool running, int value) {
 
 void CoveragePanel::SetBusy(bool busy) {
   busy_ = busy;
-  preview_->setEnabled(!busy);
-  start_->setEnabled(!busy);
-  cancel_->setEnabled(busy);
-  frame_->setEnabled(!busy);
-  radius_->setEnabled(!busy);
-  headland_->setEnabled(!busy);
-  route_mode_->setEnabled(!busy);
-  path_mode_->setEnabled(!busy);
-  approach_->setEnabled(!busy);
-  ring_list_->setEnabled(!busy);
-  add_obstacle_->setEnabled(!busy);
-  draw_obstacle_->setEnabled(!busy);
-  clear_obstacles_->setEnabled(!busy);
-  live_obstacles_->setEnabled(!busy);
-  obstacle_margin_->setEnabled(!busy);
-  refresh_obstacles_->setEnabled(!busy);
-  advanced_->setEnabled(!busy);
-  polygons_->setEnabled(!busy);
-  auto_replan_->setEnabled(!busy && live_obstacles_->isChecked());
+  const bool enabled = !busy;
+  const auto enable = [enabled](QWidget* widget) {
+    if (widget != nullptr) {
+      widget->setEnabled(enabled);
+    }
+  };
+  enable(preview_);
+  enable(start_);
+  enable(frame_);
+  enable(radius_);
+  enable(headland_);
+  enable(route_mode_);
+  enable(path_mode_);
+  enable(approach_);
+  enable(ring_list_);
+  enable(add_obstacle_);
+  enable(draw_obstacle_);
+  enable(clear_obstacles_);
+  enable(live_obstacles_);
+  enable(obstacle_margin_);
+  enable(refresh_obstacles_);
+  enable(advanced_);
+  enable(rooms_);
+  enable(room_columns_);
+  enable(room_rows_);
+  enable(split_rooms_);
+  if (clean_rooms_ != nullptr) {
+    clean_rooms_->setEnabled(enabled && !regions_.empty());
+  }
+  enable(polygons_);
+  if (cancel_ != nullptr) {
+    cancel_->setEnabled(busy);
+  }
+  if (auto_replan_ != nullptr) {
+    auto_replan_->setEnabled(enabled && live_obstacles_ != nullptr &&
+                             live_obstacles_->isChecked());
+  }
   if (!busy) {
-    LoadSelectedRing(ring_list_->currentRow());
-  } else {
-    points_->setEnabled(false);
+    LoadSelectedRing(ring_list_ != nullptr ? ring_list_->currentRow() : -1);
+  } else if (remove_ring_ != nullptr) {
     remove_ring_->setEnabled(false);
   }
 }
@@ -1174,6 +1144,41 @@ void CoveragePanel::PollActions() {
           std::future_status::ready) {
         const auto result = future.get();
         if (result.result && result.result->error_code() == 0) {
+          if (result.result->regions_size() > 0) {
+            regions_.clear();
+            if (rooms_ != nullptr) {
+              rooms_->clear();
+            }
+            for (const auto& region : result.result->regions()) {
+              regions_.push_back(region);
+              if (rooms_ != nullptr) {
+                auto* item = new QListWidgetItem(
+                    tr("%1 · %2 m² · %3%")
+                        .arg(QString::fromStdString(region.name()))
+                        .arg(region.area(), 0, 'f', 1)
+                        .arg(region.coverage() * 100, 0, 'f', 0),
+                    rooms_);
+                static const std::array<const char*, 8> kColors{
+                    "#3388f2", "#40bf72", "#f2a633", "#bf73f2",
+                    "#26cccc", "#f273a6", "#99805a", "#b3d940"};
+                item->setForeground(QColor(
+                    kColors[static_cast<std::size_t>(region.color_index()) %
+                            kColors.size()]));
+              }
+            }
+            if (clean_rooms_ != nullptr) {
+              clean_rooms_->setEnabled(!regions_.empty());
+            }
+            preview_writer_->Write(result.result->nav_path());
+            SetStatus(tr("Rooms ready · %1 room(s) · %2% coverage")
+                          .arg(result.result->regions_size())
+                          .arg(result.result->core_coverage() * 100, 0, 'f', 1),
+                      QStringLiteral("ok"));
+            compute_goal_.reset();
+            SetBusy(false);
+            SetProgress(false);
+            return;
+          }
           preview_writer_->Write(result.result->nav_path());
           if (progress_value_ != nullptr) {
             progress_value_->setText(
@@ -1201,6 +1206,15 @@ void CoveragePanel::PollActions() {
           std::future_status::ready) {
         const auto result = future.get();
         if (result.result && result.result->error_code() == 0) {
+          if (cleaning_regions_ && region_index_ + 1 < regions_.size()) {
+            navigate_goal_.reset();
+            SetProgress(false);
+            StartRegion(region_index_ + 1);
+            return;
+          }
+          const bool finished_all =
+              cleaning_regions_ && !regions_.empty();
+          cleaning_regions_ = false;
           SetProgress(false);
           if (progress_value_ != nullptr) {
             progress_value_->setText(QStringLiteral("100%"));
@@ -1208,8 +1222,10 @@ void CoveragePanel::PollActions() {
           if (remaining_value_ != nullptr) {
             remaining_value_->setText(QStringLiteral("0 m"));
           }
-          SetStatus(tr("Complete coverage succeeded · %1 segment(s)")
-                        .arg(result.result->completed_segments()),
+          SetStatus(finished_all
+                        ? tr("All %1 room(s) cleaned").arg(regions_.size())
+                        : tr("Complete coverage succeeded · %1 segment(s)")
+                              .arg(result.result->completed_segments()),
                     QStringLiteral("ok"));
         } else {
           SetStatus(result.result
@@ -1304,6 +1320,14 @@ void CoveragePanel::HandleClickedPoint(double x, double y,
   if (!std::isfinite(x) || !std::isfinite(y)) {
     return;
   }
+  if (draft_.size() >= 3) {
+    const double dx = x - draft_.front().first;
+    const double dy = y - draft_.front().second;
+    if (std::hypot(dx, dy) < 0.25) {
+      FinishObstacleDraft();
+      return;
+    }
+  }
   draft_.emplace_back(x, y);
   PublishSketch();
   draw_obstacle_->setText(tr("Finish (%1)").arg(draft_.size()));
@@ -1337,7 +1361,7 @@ void CoveragePanel::FinishObstacleDraft() {
   drawing_ = false;
   finish_shortcut_->setEnabled(false);
   cancel_shortcut_->setEnabled(false);
-  draw_obstacle_->setText(tr("Draw polygon (Ctrl+Alt+O)"));
+  draw_obstacle_->setText(tr("Draw obstacle (Ctrl+Alt+O)"));
   if (manager_ != nullptr) {
     if (auto* tool = manager_->tools().toolById("PublishPoint")) {
       tool->setPropertyValue("single_click", "true");
@@ -1351,6 +1375,9 @@ void CoveragePanel::FinishObstacleDraft() {
                 .arg(ordinal)
                 .arg(static_cast<int>(count)),
             QStringLiteral("ok"));
+  if (!busy_) {
+    PreviewCoverage();
+  }
 }
 
 void CoveragePanel::CancelObstacleDraft() {
@@ -1361,7 +1388,7 @@ void CoveragePanel::CancelObstacleDraft() {
   draft_.clear();
   finish_shortcut_->setEnabled(false);
   cancel_shortcut_->setEnabled(false);
-  draw_obstacle_->setText(tr("Draw polygon (Ctrl+Alt+O)"));
+  draw_obstacle_->setText(tr("Draw obstacle (Ctrl+Alt+O)"));
   if (manager_ != nullptr) {
     if (auto* tool = manager_->tools().toolById("PublishPoint")) {
       tool->setPropertyValue("single_click", "true");
@@ -1415,7 +1442,9 @@ void CoveragePanel::PublishSketch() {
     }
   };
   for (const auto& ring : rings_) {
-    if (ring.kind == QLatin1String(kObstacleKind)) {
+    if (ring.kind == QLatin1String(kFieldKind)) {
+      add_ring(ring.points, 0.15f, 0.45f, 0.95f, 0.04f);
+    } else if (ring.kind == QLatin1String(kObstacleKind)) {
       add_ring(ring.points, 0.90f, 0.45f, 0.10f, 0.05f);
     }
   }
@@ -1464,5 +1493,87 @@ void CoveragePanel::ActivateTool(const QString& tool_id) {
     }
   }
 }
+
+void CoveragePanel::SplitRooms() {
+  try {
+    CommitEditors();
+    EnsureClients();
+    if (compute_client_ == nullptr || !compute_client_->ActionServerIsReady()) {
+      throw std::runtime_error("Coverage planner is not ready");
+    }
+    Compute::Goal goal;
+    *goal.mutable_request() = BuildRequest();
+    goal.mutable_request()->set_generate_regions(true);
+    goal.mutable_request()->set_region_columns(room_columns_->value());
+    goal.mutable_request()->set_region_rows(room_rows_->value());
+    cancel_requested_ = false;
+    compute_acceptance_ = compute_client_->AsyncSendGoal(goal);
+    SetBusy(true);
+    SetProgress(true);
+    SetStatus(tr("Splitting the map into rooms…"));
+  } catch (const std::exception& error) {
+    SetStatus(QString::fromUtf8(error.what()), QStringLiteral("error"));
+  }
+}
+
+void CoveragePanel::StartAllRooms() {
+  if (regions_.empty()) {
+    SetStatus(tr("Split the map into rooms first"));
+    return;
+  }
+  // The planned route already covers every colored room; executing it once
+  // keeps inter-room travel on the validated global path.
+  cleaning_regions_ = false;
+  StartCoverage();
+  SetStatus(tr("Cleaning all %1 room(s)…").arg(regions_.size()));
+}
+
+void CoveragePanel::StartRegion(std::size_t index) {
+  if (index >= regions_.size()) {
+    cleaning_regions_ = false;
+    SetBusy(false);
+    SetProgress(false);
+    SetStatus(tr("All %1 room(s) cleaned").arg(regions_.size()),
+              QStringLiteral("ok"));
+    return;
+  }
+  try {
+    EnsureClients();
+    if (navigate_client_ == nullptr || !navigate_client_->ActionServerIsReady()) {
+      throw std::runtime_error("Coverage navigator is not ready");
+    }
+    const auto& region = regions_[index];
+    Navigate::Goal goal;
+    auto request = BuildRequest();
+    request.clear_polygons();
+    request.set_generate_regions(false);
+    for (const auto& polygon : region.polygons()) {
+      auto* ring = request.add_polygons();
+      for (const auto& point : polygon.coordinates()) {
+        auto* coordinate = ring->add_coordinates();
+        coordinate->set_axis1(point.axis1());
+        coordinate->set_axis2(point.axis2());
+      }
+    }
+    *goal.mutable_request() = request;
+    goal.set_task_id(
+        QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString());
+    goal.set_client_id("autoviz-coverage-rooms");
+    goal.set_navigate_to_start(true);
+    region_index_ = index;
+    navigate_acceptance_ = navigate_client_->AsyncSendGoal(goal);
+    SetBusy(true);
+    SetProgress(true, static_cast<int>(100.0 * index /
+                                      static_cast<double>(regions_.size())));
+    SetStatus(tr("Cleaning room %1 of %2 · %3")
+                  .arg(index + 1)
+                  .arg(regions_.size())
+                  .arg(QString::fromStdString(region.name())));
+  } catch (const std::exception& error) {
+    cleaning_regions_ = false;
+    SetStatus(QString::fromUtf8(error.what()), QStringLiteral("error"));
+  }
+}
+
 }  // namespace autoviz::navigation
 #endif

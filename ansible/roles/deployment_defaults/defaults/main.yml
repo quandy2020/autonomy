@@ -1,0 +1,105 @@
+---
+# deploy_mode: build（现场编译）| artifact（分发制品）
+autonomy_deploy_mode: build
+autonomy_play_mode: full
+
+autonomy_user: autonomy
+autonomy_install_prefix: /opt/autonomy
+autonomy_config_dir: /etc/autonomy
+autonomy_data_dir: /var/lib/autonomy
+autonomy_log_dir: /var/log/autonomy
+autonomy_build_dir: "{{ autonomy_data_dir }}/src"
+
+autonomy_repo_url: https://github.com/quandy2020/autonomy.git
+autonomy_repo_version: main
+
+autonomy_cmake_build_type: Release
+autonomy_build_grpc: true
+autonomy_build_test: false
+autonomy_cmake_jobs: "{{ ansible_facts.processor_vcpus | default(4) }}"
+
+# build 模式启用 ccache（缓存目录见 autonomy_ccache_dir）
+autonomy_use_ccache: true
+autonomy_ccache_dir: /var/cache/autonomy/ccache
+
+# 是否安装制品自带的组件配置
+autonomy_config_from_artifact: true
+
+# 现场编译时安装 APT + docker/install 第三方依赖
+autonomy_install_dependencies: true
+autonomy_dependency_skip_installed: true
+
+# artifact 模式：控制机本地 tar 路径（playbook 运行在控制机时填绝对路径）
+autonomy_artifact_path: ""
+
+autonomy_supplementary_groups:
+  - dialout
+  - plugdev
+
+# 启用的 systemd 单元（见 roles/services）
+autonomy_services:
+  - localization
+  - task
+  - bridge
+
+autonomy_localization_configuration_directory: "{{ autonomy_config_dir }}/localization/cartographer"
+autonomy_localization_configuration_basename: backpack_2d_with_grid.lua
+
+autonomy_task_config_directory: "{{ autonomy_config_dir }}/task"
+autonomy_bridge_config_file: "{{ autonomy_config_dir }}/bridge/bridge.pb.txt"
+
+autonomy_occupancy_grid_args: >-
+  --resolution=0.05
+  --publish_period_sec=1.0
+  --include_frozen_submaps=true
+  --include_unfrozen_submaps=true
+
+# preflight
+autonomy_supported_ubuntu_versions:
+  - "22.04"
+  - "24.04"
+autonomy_supported_architectures:
+  - x86_64
+  - aarch64
+autonomy_min_free_disk_mb: "{{ 10240 if autonomy_deploy_mode == 'build' else 2048 }}"
+
+# artifact 部署保留 previous 链接；历史版本不自动删除
+autonomy_artifact_backup: true
+
+# systemd
+autonomy_service_timeout_stop_sec: 30
+
+# apt（runtime_bootstrap 更新软件源时的锁等待与重试）
+autonomy_apt_cache_valid_time: 3600
+autonomy_apt_lock_timeout: 120
+autonomy_apt_update_retries: 5
+autonomy_apt_update_retry_delay: 15
+
+# 部署结束后检查 systemctl active 状态
+autonomy_run_verify: true
+
+# config 变更后自动重启服务（--tags config 单独执行也生效）
+autonomy_restart_on_config_change: true
+
+# 默认逐台更新，单机失败立即停止；可在 staging 覆盖。
+autonomy_deploy_serial: 1
+autonomy_preflight_strict_os: false
+autonomy_use_local_source: false
+autonomy_config_source_dir: "{{ autonomy_controller_root }}/.."
+autonomy_config_components: [localization, task, bridge]
+autonomy_release_dir: "{{ autonomy_install_prefix }}-releases"
+autonomy_artifact_sha256: ""
+autonomy_cmake_extra_args: ["-DBUILD_AUTOVIZ=OFF", "-DBUILD_DOCS=OFF"]
+autonomy_service_verify_retries: 20
+autonomy_service_verify_delay: 5
+
+# Collection controller paths and explicit production policy.
+autonomy_controller_root: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | default(playbook_dir ~ '/..', true) }}"
+autonomy_profile: development
+use_locked_versions: false
+autonomy_expected_git_sha: ""
+autonomy_require_ci: false
+autonomy_source_dir: >-
+  {{ autonomy_local_source_dir if autonomy_use_local_source | bool
+     else autonomy_build_dir ~ '/autonomy' }}
+autonomy_cmake_build_dir: "{{ autonomy_source_dir }}/build"

@@ -4,6 +4,8 @@
  * @brief Native complete-coverage coverage server implementation. */
 #include "autonomy/task/navigation/coverage/coverage_server.hpp"
 
+#include "autonomy/task/navigation/coverage/region_segmenter.hpp"
+
 #include <boost/geometry.hpp>
 #include <cmath>
 #include <limits>
@@ -54,6 +56,61 @@ void Pose(NavPath& path, const F2CPoint& point, double angle,
   q->set_z(std::sin(angle / 2));
   q->set_w(std::cos(angle / 2));
 }
+using CleanPoint = std::pair<double, double>;
+
+bool NearlyEqual(const CleanPoint& a, const CleanPoint& b) {
+  return std::hypot(a.first - b.first, a.second - b.second) < 1e-8;
+}
+
+bool IsSpike(const CleanPoint& previous, const CleanPoint& current,
+             const CleanPoint& next) {
+  const double ax = previous.first - current.first;
+  const double ay = previous.second - current.second;
+  const double bx = next.first - current.first;
+  const double by = next.second - current.second;
+  const double cross = ax * by - ay * bx;
+  const double dot = ax * bx + ay * by;
+  return std::abs(cross) < 1e-9 && dot < 0.0;
+}
+
+std::vector<CleanPoint> CleanRing(const F2CLinearRing& ring) {
+  std::vector<CleanPoint> points;
+  for (const auto& point : ring) {
+    const CleanPoint value{point.GetX(), point.GetY()};
+    if (points.empty() || !NearlyEqual(points.back(), value)) {
+      points.push_back(value);
+    }
+  }
+  if (points.size() > 1 && NearlyEqual(points.front(), points.back())) {
+    points.pop_back();
+  }
+  bool changed = true;
+  while (changed && points.size() > 3) {
+    changed = false;
+    for (std::size_t index = 0; index < points.size(); ++index) {
+      const auto& previous =
+          points[(index + points.size() - 1) % points.size()];
+      const auto& current = points[index];
+      const auto& next = points[(index + 1) % points.size()];
+      if (IsSpike(previous, current, next)) {
+        points.erase(points.begin() + static_cast<std::ptrdiff_t>(index));
+        changed = true;
+        break;
+      }
+    }
+  }
+  double signed_area = 0.0;
+  for (std::size_t index = 0; index < points.size(); ++index) {
+    const auto& current = points[index];
+    const auto& next = points[(index + 1) % points.size()];
+    signed_area += current.first * next.second - next.first * current.second;
+  }
+  if (signed_area < 0.0) {
+    std::reverse(points.begin(), points.end());
+  }
+  return points;
+}
+
 F2CSwaths Flatten(const F2CRoute& route) {
   F2CSwaths result;
   for (const auto& group : route.GetVectorSwaths()) result.Append(group);
@@ -338,6 +395,86 @@ ComputeAction::Result CoverageServer::Compute(
       result.add_warnings(
           "GPS output poses use geographic units; execution requires a "
           "Cartesian request");
+    if (goal.generate_regions()) {
+      const F2CPoint reference = master.GetRefPoint();
+      const bool map_based = goal.has_map();
+      RegionSegmenter::Options options;
+      options.columns = goal.region_columns() > 0 ? goal.region_columns() : 2;
+      options.rows = goal.region_rows() > 0 ? goal.region_rows() : 2;
+      const std::vector<F2CCells> regions =
+          map_based ? RegionSegmenter::MapSplit(goal.map(), RegionSegmenter::MapOptions{})
+                    : RegionSegmenter::GridSplit(field, options);
+      const auto shift_cells = [](const F2CCells& cells, double dx,
+                                  double dy) {
+        F2CCells output;
+        for (const auto& cell : cells) {
+          F2CCell shifted;
+          for (const auto& ring : cell) {
+            const auto points = CleanRing(ring);
+            if (points.size() < 3) {
+              continue;
+            }
+            F2CLinearRing result_ring;
+            for (const auto& point : points) {
+              result_ring.AddPoint(point.first + dx, point.second + dy);
+            }
+            result_ring.CloseRing();
+            shifted.AddRing(result_ring);
+          }
+          if (shifted.Area() > 1e-6) {
+            output.AddGeometry(shifted);
+          }
+        }
+        return output;
+      };
+      int region_index = 0;
+      for (const auto& cells : regions) {
+        const F2CCells local =
+            shift_cells(cells, map_based ? -reference.GetX() : 0.0,
+                        map_based ? -reference.GetY() : 0.0);
+        const F2CCells display =
+            shift_cells(cells, map_based ? 0.0 : reference.GetX(),
+                        map_based ? 0.0 : reference.GetY());
+        if (local.IsEmpty() || display.IsEmpty()) {
+          continue;
+        }
+        auto* region = result.add_regions();
+        region->set_id(region_index);
+        region->set_name("Region " + std::to_string(region_index + 1));
+        region->set_color_index(region_index % 8);
+        const double area = RegionSegmenter::Area(display);
+        region->set_area(area);
+        for (const auto& region_cell : display) {
+          for (const auto& ring : region_cell) {
+            const auto points = CleanRing(ring);
+            if (points.size() < 3) {
+              continue;
+            }
+            auto* polygon = region->add_polygons();
+            for (const auto& point : points) {
+              auto* coordinate = polygon->add_coordinates();
+              coordinate->set_axis1(point.first);
+              coordinate->set_axis2(point.second);
+            }
+          }
+        }
+        region->set_coverage(
+            f2c::obj::FieldCoverage().ComputeCost(local, swaths));
+        int swath_count = 0;
+        for (const auto& swath : swaths) {
+          if (local.IsPointIn(swath.GetPath().StartPoint())) {
+            ++swath_count;
+          }
+        }
+        region->set_swath_count(swath_count);
+        for (const auto& state : result.coverage_path().states()) {
+          if (local.IsPointIn(F2CPoint(state.x(), state.y()))) {
+            *region->add_states() = state;
+          }
+        }
+        ++region_index;
+      }
+    }
     stage("complete", 1.0);
     result.set_error_code(proto::NONE);
   } catch (const CanceledException& e) {

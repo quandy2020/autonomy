@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: autonomy-ansible
+        name: Autonomy deployment quality gate
+        language: system
+        entry: bash ansible/scripts/ci.sh
+        pass_filenames: false
+        files: ^(ansible/|tools/python/package_install_tarball.py|\.github/workflows/ansible)

@@ -30,6 +30,8 @@ autoviz/autoviz*.log*
 devel/
 logs/
 build/
+!ansible/roles/build/
+!ansible/molecule/roles/build/
 bin/
 lib/
 msg_gen/
@@ -84,6 +86,8 @@ CATKIN_IGNORE
 3rdparty/
 
 # Ansible
+ansible/.ansible/
+ansible/.venv/
 ansible/.vault_pass
 ansible/*.retry
 dist/

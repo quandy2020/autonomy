@@ -1,0 +1,5 @@
+---
+- name: Apply staging profile
+  ansible.builtin.import_playbook: site.yml
+  vars:
+    autonomy_profile: staging

@@ -38,6 +38,12 @@ TEST(PathEncoderTest, RelativeRobotFrame) {
     EXPECT_NEAR(out[1], 0.0f, 1e-5);
     EXPECT_NEAR(out[2], 1.0f, 1e-5);
     EXPECT_NEAR(out[3], 0.0f, 1e-5);
+
+    ASSERT_TRUE(EncodePath(snapshot, input, 3, &out, &error)) << error;
+    ASSERT_EQ(out.size(), 6u);
+    EXPECT_NEAR(out[0], 0.0f, 1e-5);
+    EXPECT_NEAR(out[2], 0.5f, 1e-5);
+    EXPECT_NEAR(out[4], 1.0f, 1e-5);
 }
 
 }  // namespace policy_controller

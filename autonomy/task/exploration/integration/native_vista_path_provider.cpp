@@ -86,8 +86,16 @@ public:
         if (stop()) return {{}, true, {}};
         try {
             if (pending_.valid()) {
-                if (pending_.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
-                    return {{}, false, "previous native Vista request is still outstanding"};
+                // Read-only route queries share one native client. A prior
+                // query can finish just after a new request arrives; wait for
+                // that bounded operation instead of turning ordinary serialized
+                // client ownership into an exploration failure.
+                while (pending_.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+                    if (stop()) return {{}, true, {}};
+                    if (Clock::now() >= deadline)
+                        return {{}, false, "previous native Vista request exceeded this query budget"};
+                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                }
                 try { (void)pending_.get(); } catch (...) { /* Retire a completed broken promise. */ }
                 pending_ = {};
             }

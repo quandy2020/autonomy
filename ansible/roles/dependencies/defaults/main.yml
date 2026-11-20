@@ -3,10 +3,10 @@
 autonomy_dependency_package_marker: scripts/install_deps/app.py
 autonomy_dependency_docker_install_relpath: docker/install
 
-# skip_installed 时默认只跑第三方（APT 由 common 角色负责）
+# 保留共享安装器的 APT 步骤；common 只安装部署所需的基础工具。
 autonomy_dependency_install_args: >-
   {{
-    ['--skip-installed', '--thirdparty-only']
+    ['--skip-installed']
     if autonomy_dependency_skip_installed | bool
     else []
   }}

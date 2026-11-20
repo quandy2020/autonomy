@@ -1,0 +1,7 @@
+---
+- name: Apply or check the selected version lock
+  hosts: autonomy
+  become: true
+  roles:
+    - role: openbot.autonomy_ops.version_lock
+      tags: [version_lock]

@@ -40,7 +40,7 @@
   become: true
 
 - name: Sync install_deps package for artifact-only hosts
-  ansible.builtin.synchronize:
+  ansible.posix.synchronize:
     src: "{{ playbook_dir }}/../../scripts/install_deps/"
     dest: "{{ autonomy_build_dir }}/scripts/install_deps/"
     delete: false
@@ -48,10 +48,10 @@
       - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
   when: autonomy_deploy_mode == 'artifact'
   delegate_to: localhost
-  become: false
+  become: true
 
 - name: Sync third-party install scripts for artifact-only hosts
-  ansible.builtin.synchronize:
+  ansible.posix.synchronize:
     src: "{{ playbook_dir }}/../../{{ autonomy_dependency_docker_install_relpath }}/"
     dest: "{{ autonomy_build_dir }}/{{ autonomy_dependency_docker_install_relpath }}/"
     delete: false
@@ -59,7 +59,7 @@
       - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
   when: autonomy_deploy_mode == 'artifact'
   delegate_to: localhost
-  become: false
+  become: true
 
 - name: Resolve dependency repo root (artifact mode)
   ansible.builtin.set_fact:

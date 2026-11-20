@@ -1,0 +1,19 @@
+---
+- name: Exercise services with explicit prerequisites
+  hosts: all
+  become: true
+  vars:
+    autonomy_artifact_path: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/autonomy-smoke.tar.gz"
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
+    - role: openbot.autonomy_ops.preflight
+      tags: [preflight]
+    - role: openbot.autonomy_ops.runtime_bootstrap
+      tags: [runtime_bootstrap]
+    - role: openbot.autonomy_ops.artifact
+      tags: [artifact]
+    - role: openbot.autonomy_ops.config
+      tags: [config]
+    - role: openbot.autonomy_ops.services
+      tags: [services]

@@ -1,0 +1,96 @@
+---
+- name: Install ccache when enabled
+  ansible.builtin.apt:
+    name: ccache
+    state: present
+    lock_timeout: "{{ autonomy_apt_lock_timeout }}"
+  when: autonomy_use_ccache | bool
+  become: true
+
+- name: Create build and cache directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ [autonomy_cmake_build_dir] + ([autonomy_ccache_dir] if autonomy_use_ccache | bool else []) }}"
+
+- name: Resolve configure arguments
+  ansible.builtin.set_fact:
+    autonomy_configure_argv: >-
+      {{ ['cmake', '-S', autonomy_source_dir, '-B', autonomy_cmake_build_dir,
+          '-DCMAKE_BUILD_TYPE=' ~ autonomy_cmake_build_type,
+          '-DCMAKE_INSTALL_PREFIX=' ~ autonomy_install_prefix,
+          '-DBUILD_GRPC=' ~ (autonomy_build_grpc | bool | ternary('ON', 'OFF')),
+          '-DBUILD_TEST=' ~ (autonomy_build_test | bool | ternary('ON', 'OFF')),
+          '-DCMAKE_C_COMPILER_LAUNCHER=' ~ (autonomy_use_ccache | bool | ternary('ccache', '')),
+          '-DCMAKE_CXX_COMPILER_LAUNCHER=' ~ (autonomy_use_ccache | bool | ternary('ccache', ''))]
+         + autonomy_cmake_extra_args }}
+
+- name: Check existing CMake cache
+  ansible.builtin.stat:
+    path: "{{ autonomy_cmake_build_dir }}/CMakeCache.txt"
+  register: autonomy_build_cache
+
+- name: Check recorded configure arguments
+  ansible.builtin.stat:
+    path: "{{ autonomy_cmake_build_dir }}/.ansible-configure-args.json"
+  register: autonomy_configure_stamp
+
+- name: Read previous configure arguments
+  ansible.builtin.slurp:
+    src: "{{ autonomy_cmake_build_dir }}/.ansible-configure-args.json"
+  register: autonomy_previous_configure
+  when: autonomy_configure_stamp.stat.exists
+
+- name: Configure autonomy when cache or requested options changed
+  ansible.builtin.command:
+    argv: "{{ autonomy_configure_argv }}"
+  environment:
+    CCACHE_DIR: "{{ autonomy_ccache_dir }}"
+  changed_when: true
+  register: autonomy_cmake_configure
+  when: >-
+    not autonomy_build_cache.stat.exists or not autonomy_configure_stamp.stat.exists
+    or (autonomy_previous_configure.content | default('') | b64decode)
+       != (autonomy_configure_argv | to_json)
+
+- name: Record successful configure arguments
+  ansible.builtin.copy:
+    content: "{{ autonomy_configure_argv | to_json }}"
+    dest: "{{ autonomy_cmake_build_dir }}/.ansible-configure-args.json"
+    mode: "0644"
+
+- name: Build autonomy
+  ansible.builtin.command:
+    argv: [cmake, --build, "{{ autonomy_cmake_build_dir }}", --parallel, "{{ autonomy_cmake_jobs | string }}"]
+  environment:
+    CCACHE_DIR: "{{ autonomy_ccache_dir }}"
+  register: autonomy_cmake_build
+  changed_when: >-
+    'Building ' in autonomy_cmake_build.stdout or 'Linking ' in autonomy_cmake_build.stdout
+    or 'Generating ' in autonomy_cmake_build.stdout
+
+- name: Run build tests when requested
+  ansible.builtin.command:
+    argv: [ctest, --test-dir, "{{ autonomy_cmake_build_dir }}", --output-on-failure, --no-tests=error]
+  when: autonomy_build_test | bool
+  changed_when: false
+
+- name: Check install prefix before writing a local build
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}"
+    follow: false
+  register: autonomy_build_prefix
+
+- name: Protect immutable artifact releases from build installs
+  ansible.builtin.assert:
+    that:
+      - not (autonomy_build_prefix.stat.islnk | default(false))
+    fail_msg: "Build install prefix points to an artifact release. Use a separate build install prefix."
+
+- name: Install autonomy build
+  ansible.builtin.command:
+    argv: [cmake, --install, "{{ autonomy_cmake_build_dir }}"]
+  register: autonomy_cmake_install
+  changed_when: "'-- Installing:' in autonomy_cmake_install.stdout"
+  become: true

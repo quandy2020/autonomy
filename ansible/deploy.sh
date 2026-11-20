@@ -18,11 +18,6 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${ROOT}"
 
-if ! command -v ansible-playbook >/dev/null 2>&1; then
-  echo "ansible-playbook not found. Install: pip install ansible ansible-lint" >&2
-  exit 1
-fi
-
 MODE="full"
 PLAYBOOK="playbooks/site.yml"
 INVENTORY="inventory/hosts.yml"
@@ -59,6 +54,11 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   exit 0
 fi
 
+if ! command -v ansible-playbook >/dev/null 2>&1; then
+  echo "ansible-playbook not found. Install: pip install -r requirements-ci.txt" >&2
+  exit 1
+fi
+
 case "${1:-}" in
   full|build|deploy|push|check|restart)
     MODE="$1"
@@ -67,9 +67,9 @@ case "${1:-}" in
 esac
 
 case "${MODE}" in
-  full) ;;
-  build) EXTRA_ARGS+=(-e "autonomy_play_mode=build") ;;
-  deploy) ;;
+  full) EXTRA_ARGS+=(-e "autonomy_play_mode=full") ;;
+  build) EXTRA_ARGS+=(-e "autonomy_play_mode=build" -e "autonomy_deploy_mode=build") ;;
+  deploy) EXTRA_ARGS+=(-e "autonomy_play_mode=full" -e "autonomy_deploy_mode=artifact") ;;
   push) EXTRA_ARGS+=(-e "autonomy_play_mode=push") ;;
   check) EXTRA_ARGS+=(-e "autonomy_play_mode=check") ;;
   restart) EXTRA_ARGS+=(-e "autonomy_play_mode=restart") ;;
@@ -80,16 +80,19 @@ case "${MODE}" in
   ;;
 esac
 
-if [[ -n "${AUTONOMY_DEPLOY_ENV:-}" ]]; then
-  if [[ -f "inventory/${AUTONOMY_DEPLOY_ENV}/hosts.yml" ]]; then
-    INVENTORY="inventory/${AUTONOMY_DEPLOY_ENV}/hosts.yml"
-  else
+if [[ $# -gt 0 && "${1}" != -* ]]; then
+  if [[ ! -f "inventory/${1}/hosts.yml" ]]; then
+    echo "Unknown inventory: ${1}" >&2
+    exit 1
+  fi
+  INVENTORY="inventory/${1}/hosts.yml"
+  shift
+elif [[ -n "${AUTONOMY_DEPLOY_ENV:-}" ]]; then
+  INVENTORY="inventory/${AUTONOMY_DEPLOY_ENV}/hosts.yml"
+  if [[ ! -f "${INVENTORY}" ]]; then
     echo "Unknown AUTONOMY_DEPLOY_ENV=${AUTONOMY_DEPLOY_ENV}" >&2
     exit 1
   fi
-elif [[ $# -gt 0 && "${1}" != -* && -f "inventory/${1}/hosts.yml" ]]; then
-  INVENTORY="inventory/${1}/hosts.yml"
-  shift
 fi
 
 if [[ "${MODE}" == "deploy" && "${INVENTORY}" == "inventory/hosts.yml" ]]; then
@@ -100,10 +103,10 @@ if [[ -f "${ROOT}/.vault_pass" ]]; then
   EXTRA_ARGS+=(--vault-password-file "${ROOT}/.vault_pass")
 fi
 
-if [[ "${INVENTORY}" == "inventory/hosts.yml" ]]; then
+if [[ "${INVENTORY}" == "inventory/hosts.yml" && "${MODE}" != "check" && -t 0 ]]; then
   ask_become=false
   for arg in "$@"; do
-    if [[ "${arg}" == "-K" || "${arg}" == "--ask-become-pass" ]]; then
+    if [[ "${arg}" == "-K" || "${arg}" == "--ask-become-pass" || "${arg}" == "--syntax-check" || "${arg}" == --list-* ]]; then
       ask_become=true
       break
     fi
@@ -112,6 +115,16 @@ if [[ "${INVENTORY}" == "inventory/hosts.yml" ]]; then
     EXTRA_ARGS+=(--ask-become-pass)
   fi
 fi
+
+if [[ "${INVENTORY}" == "inventory/production/hosts.yml" ]]; then
+  PLAYBOOK="playbooks/production.yml"
+elif [[ "${INVENTORY}" == "inventory/staging/hosts.yml" ]]; then
+  PLAYBOOK="playbooks/staging.yml"
+elif [[ "${INVENTORY}" == "inventory/sim/hosts.yml" ]]; then
+  PLAYBOOK="playbooks/sim.yml"
+fi
+
+"${ROOT}/scripts/install_collection.sh"
 
 echo "==> mode=${MODE} inventory=${INVENTORY} playbook=${PLAYBOOK}"
 exec ansible-playbook -i "${INVENTORY}" "${PLAYBOOK}" "${EXTRA_ARGS[@]}" "$@"

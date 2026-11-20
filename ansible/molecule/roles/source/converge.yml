@@ -1,0 +1,28 @@
+---
+- name: Exercise source with explicit prerequisites
+  hosts: all
+  become: true
+  vars:
+    autonomy_play_mode: build
+    autonomy_deploy_mode: build
+    autonomy_use_ccache: false
+    autonomy_install_prefix: /opt/autonomy-build-fixture
+    autonomy_repo_url: file:///tmp/autonomy-build-source
+    autonomy_repo_version: "{{ autonomy_fixture_git.stdout }}"
+    autonomy_install_dependencies: true
+    autonomy_build_test: true
+    use_locked_versions: true
+    autonomy_version_lock_file: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/lock.yml"
+  pre_tasks:
+    - name: Read immutable fixture revision
+      ansible.builtin.command:
+        argv: [git, -C, /tmp/autonomy-build-source, rev-parse, HEAD]
+      register: autonomy_fixture_git
+      changed_when: false
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
+    - role: openbot.autonomy_ops.runtime_bootstrap
+      tags: [runtime_bootstrap]
+    - role: openbot.autonomy_ops.source
+      tags: [source]

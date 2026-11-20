@@ -12,8 +12,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import platform
 import shutil
 import subprocess
 import sys
@@ -23,13 +25,20 @@ from pathlib import Path
 
 
 def repository_root() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return Path(__file__).resolve().parents[2]
+
+
+def bundle_configuration(root: Path, staged_prefix: Path) -> None:
+    """Keep the deployment layout aligned with the component-owned conf trees."""
+    destination = staged_prefix / "share" / "autonomy" / "config"
+    for source in sorted((root / "autonomy").glob("*/conf")):
+        shutil.copytree(source, destination / source.parent.name, dirs_exist_ok=True)
 
 
 def git_describe(root: Path) -> str:
     try:
         out = subprocess.run(
-            ["git", "-C", str(root), "describe", "--tags", "--always"],
+            ["git", "-C", str(root), "describe", "--tags", "--always", "--dirty"],
             check=True,
             capture_output=True,
             text=True,
@@ -68,6 +77,11 @@ def main(argv: list[str] | None = None) -> int:
     root = repository_root()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
+        "--skip-build",
+        action="store_true",
+        help="Package an already configured and built CMake tree without rebuilding",
+    )
+    parser.add_argument(
         "--build-dir",
         default=os.environ.get("BUILD_DIR", str(root / "build")),
     )
@@ -85,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--no-config",
         action="store_true",
-        help="Do not bundle config/ into the tarball",
+        help="Do not bundle autonomy/*/conf into the tarball",
     )
     parser.add_argument(
         "-j",
@@ -98,6 +112,10 @@ def main(argv: list[str] | None = None) -> int:
     build_dir = Path(args.build_dir)
     output = Path(args.output)
     install_prefix = Path(args.prefix)
+    if not install_prefix.is_absolute() or install_prefix == Path("/") or ".." in install_prefix.parts:
+        parser.error("--prefix must be an absolute non-root install path")
+    if args.jobs < 1:
+        parser.error("--jobs must be positive")
     cmake_build_type = os.environ.get("CMAKE_BUILD_TYPE", "Release")
     build_grpc = os.environ.get("BUILD_GRPC", "ON")
     build_test = os.environ.get("BUILD_TEST", "OFF")
@@ -112,59 +130,50 @@ def main(argv: list[str] | None = None) -> int:
 
     stage = Path(tempfile.mkdtemp(prefix="autonomy-pkg-"))
     try:
-        print(f"[package] configure: {build_dir}")
-        run(
-            [
-                "cmake",
-                "-G",
-                "Ninja",
-                "-S",
-                str(root),
-                "-B",
-                str(build_dir),
-                f"-DCMAKE_BUILD_TYPE={cmake_build_type}",
-                f"-DCMAKE_INSTALL_PREFIX={install_prefix}",
-                f"-DBUILD_GRPC={build_grpc}",
-                f"-DBUILD_TEST={build_test}",
-            ]
-        )
+        if not args.skip_build:
+            print(f"[package] configure: {build_dir}")
+            run(
+                [
+                    "cmake",
+                    "-G",
+                    "Ninja",
+                    "-S",
+                    str(root),
+                    "-B",
+                    str(build_dir),
+                    f"-DCMAKE_BUILD_TYPE={cmake_build_type}",
+                    f"-DCMAKE_INSTALL_PREFIX={install_prefix}",
+                    f"-DBUILD_GRPC={build_grpc}",
+                    f"-DBUILD_TEST={build_test}",
+                ]
+            )
+            run(["cmake", "--build", str(build_dir), "--parallel", str(args.jobs)])
 
         print(f"[package] build + stage install under {stage}")
         env = os.environ.copy()
         env["DESTDIR"] = str(stage)
-        run(["ninja", "-C", str(build_dir), f"-j{args.jobs}", "install"], env=env)
+        run(["cmake", "--install", str(build_dir), "--prefix", str(install_prefix)], env=env)
 
         staged_prefix = stage / install_prefix.relative_to("/")
         if bundle_config:
-            config_dest = staged_prefix / "share" / "autonomy" / "config"
-            print("[package] bundle config/ -> share/autonomy/config")
-            config_dest.mkdir(parents=True, exist_ok=True)
-            # Prefer rsync when available; fall back to copytree.
-            src_config = root / "config"
-            if shutil.which("rsync"):
-                run(
-                    [
-                        "rsync",
-                        "-a",
-                        "--delete",
-                        f"{src_config}/",
-                        f"{config_dest}/",
-                    ]
-                )
-            else:
-                if config_dest.exists():
-                    shutil.rmtree(config_dest)
-                shutil.copytree(src_config, config_dest)
+            print("[package] bundle autonomy/*/conf -> share/autonomy/config")
+            bundle_configuration(root, staged_prefix)
 
         manifest_path = staged_prefix / "share" / "autonomy" / "MANIFEST.json"
         manifest_path.parent.mkdir(parents=True, exist_ok=True)
+        cache = {}
+        for line in (build_dir / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
+            if not line.startswith(("#", "//")) and "=" in line and ":" in line.split("=", 1)[0]:
+                key, value = line.split("=", 1)
+                cache[key.split(":", 1)[0]] = value
         manifest = {
             "git_sha": git_sha(root),
             "git_describe": git_describe(root),
             "install_prefix": str(install_prefix),
-            "cmake_build_type": cmake_build_type,
-            "build_grpc": build_grpc,
-            "build_test": build_test,
+            "architecture": platform.machine(),
+            "cmake_build_type": cache.get("CMAKE_BUILD_TYPE", "unknown"),
+            "build_grpc": cache.get("BUILD_GRPC", "unknown"),
+            "build_test": cache.get("BUILD_TEST", "unknown"),
             "config_bundled": bundle_config,
             "packaged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
@@ -181,6 +190,13 @@ def main(argv: list[str] | None = None) -> int:
                 str(output),
                 tar_name,
             ]
+        )
+        digest = hashlib.sha256()
+        with output.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        output.with_name(output.name + ".sha256").write_text(
+            f"{digest.hexdigest()}  {output.name}\n", encoding="utf-8"
         )
         print(f"[package] wrote {output}")
     finally:

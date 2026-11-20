@@ -1,0 +1,63 @@
+---
+# 统一部署入口。模式由 deploy.sh 设置 autonomy_play_mode：
+#   full    编译或制品 + 配置 + 服务（默认）
+#   build   仅编译安装
+#   push    仅同步配置并重启
+#   check   预检
+#   restart 重启服务
+- name: Deploy autonomy stack
+  hosts: autonomy
+  serial: "{{ autonomy_deploy_serial | default(1) }}"
+  any_errors_fatal: true
+  become: >-
+    {{
+      false if autonomy_play_mode == 'check'
+      else (autonomy_play_become | default(true) | bool)
+    }}
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults, always]
+
+    - role: openbot.autonomy_ops.version_lock
+      tags: [version_lock, always]
+      when: use_locked_versions | bool
+
+    - role: openbot.autonomy_ops.preflight
+      tags: [preflight, check]
+      when: autonomy_play_mode in ['full', 'build', 'check']
+
+    - role: openbot.autonomy_ops.runtime_bootstrap
+      tags: [runtime_bootstrap, common]
+      when: autonomy_play_mode in ['full', 'build']
+
+    - role: openbot.autonomy_ops.source
+      tags: [build, source]
+      when:
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_deploy_mode == 'build'
+
+    - role: openbot.autonomy_ops.dependencies
+      tags: [dependencies, deps]
+      when:
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_install_dependencies | bool
+
+    - role: openbot.autonomy_ops.build
+      tags: [build, ccache]
+      when:
+        - autonomy_play_mode in ['full', 'build']
+        - autonomy_deploy_mode == 'build'
+
+    - role: openbot.autonomy_ops.artifact
+      tags: [artifact]
+      when:
+        - autonomy_play_mode == 'full'
+        - autonomy_deploy_mode == 'artifact'
+
+    - role: openbot.autonomy_ops.config
+      tags: [config]
+      when: autonomy_play_mode in ['full', 'push']
+
+    - role: openbot.autonomy_ops.services
+      tags: [services, config, restart]
+      when: autonomy_play_mode in ['full', 'push', 'restart']

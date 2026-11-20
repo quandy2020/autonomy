@@ -1,43 +1,134 @@
 ---
-- name: Prepare smoke-test container
+- name: Prepare smoke-test artifact
   hosts: all
   become: true
-  vars_files:
-    - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/inventory/group_vars/all.yml"
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
   tasks:
-    - name: Install base packages for smoke test
+    - name: Install smoke-test runtime packages
       ansible.builtin.apt:
-        name:
-          - python3
-          - rsync
-          - acl
+        name: [python3, rsync, acl, git, cmake]
         state: present
         update_cache: true
 
-    - name: Ensure install prefix bin directory exists
+    - name: Create temporary artifact staging directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: autonomy-fixture-
+      register: autonomy_fixture
+
+    - name: Create fixture layout
       ansible.builtin.file:
-        path: "{{ autonomy_install_prefix }}/bin"
+        path: "{{ autonomy_fixture.path }}/autonomy/{{ item }}"
         state: directory
         mode: "0755"
+      loop: [bin, share/autonomy/config]
 
-    - name: Create fake autonomy binaries for systemd smoke test
+    - name: Create fake service binaries
       ansible.builtin.copy:
-        dest: "{{ autonomy_install_prefix }}/bin/{{ item }}"
+        dest: "{{ autonomy_fixture.path }}/autonomy/bin/{{ item }}"
         mode: "0755"
         content: |
           #!/bin/sh
           trap 'exit 0' TERM INT
-          while true; do sleep 3600; done
-      loop:
-        - task
-        - localization
-        - cartographer_occupancy_grid_node
-        - autonomy.bridge
-      loop_control:
-        label: "{{ item }}"
+          while true; do sleep 1; done
+      loop: [autonomy.task, autonomy.localization, autonomy.bridge]
 
-    - name: Bundle config inside install prefix
+    - name: Bundle current component configuration
       ansible.builtin.copy:
-        src: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/../config/"
-        dest: "{{ autonomy_install_prefix }}/share/autonomy/config/"
-        mode: preserve
+        src: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/../autonomy/{{ item }}/conf/"
+        dest: "{{ autonomy_fixture.path }}/autonomy/share/autonomy/config/{{ item }}/"
+        mode: "0640"
+        directory_mode: "0750"
+      loop: "{{ autonomy_config_components }}"
+
+    - name: Write fixture release manifest
+      ansible.builtin.copy:
+        dest: "{{ autonomy_fixture.path }}/autonomy/share/autonomy/MANIFEST.json"
+        mode: "0644"
+        content: >-
+          {{ {'install_prefix': autonomy_install_prefix, 'architecture': ansible_architecture,
+              'git_sha': '0000000000000000000000000000000000000000'} | to_nice_json }}
+
+    - name: Package fixture
+      ansible.builtin.command:
+        argv: [tar, -C, "{{ autonomy_fixture.path }}", -czf, /tmp/autonomy-smoke.tar.gz, autonomy]
+      changed_when: true
+
+    - name: Fetch fixture onto control machine
+      ansible.builtin.fetch:
+        src: /tmp/autonomy-smoke.tar.gz
+        dest: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/autonomy-smoke.tar.gz"
+        flat: true
+
+    - name: Remove fixture staging directory
+      ansible.builtin.file:
+        path: "{{ autonomy_fixture.path }}"
+        state: absent
+
+    - name: Create native build fixture source
+      ansible.builtin.file:
+        path: /tmp/autonomy-build-source/scripts/install_deps
+        state: directory
+        mode: "0755"
+
+    - name: Write minimal CMake build and CTest fixture
+      ansible.builtin.copy:
+        dest: /tmp/autonomy-build-source/CMakeLists.txt
+        mode: "0644"
+        content: |
+          cmake_minimum_required(VERSION 3.20)
+          project(autonomy_ops_fixture NONE)
+          enable_testing()
+          add_test(NAME fixture COMMAND "${CMAKE_COMMAND}" -E true)
+          install(FILES CMakeLists.txt DESTINATION share/autonomy)
+
+    - name: Write the dependency installer contract fixture
+      ansible.builtin.copy:
+        dest: /tmp/autonomy-build-source/scripts/install_deps/__main__.py
+        mode: "0644"
+        content: |
+          import json
+          import sys
+          from pathlib import Path
+          marker = Path('/var/lib/autonomy/dependency-fixture.json')
+          if marker.exists():
+              print('[SKIP] dependency fixture')
+          else:
+              marker.write_text(json.dumps(sys.argv[1:]))
+              print('[RUN] dependency fixture')
+
+    - name: Add shared-installer package marker
+      ansible.builtin.copy:
+        dest: /tmp/autonomy-build-source/scripts/install_deps/app.py
+        mode: "0644"
+        content: "# Fixture entry marker; production installer remains in the source repository.\n"
+
+    - name: Initialize a local immutable Git fixture
+      ansible.builtin.shell: |
+        set -euo pipefail
+        git init
+        git add .
+        git -c user.name='Autonomy CI' -c user.email='ci@example.invalid' commit -m fixture
+      args:
+        chdir: /tmp/autonomy-build-source
+        executable: /bin/bash
+        creates: /tmp/autonomy-build-source/.git
+
+    - name: Read the installed Python package version for the APT pin fixture
+      ansible.builtin.command:
+        argv: [dpkg-query, --show, '--showformat=${Version}', python3]
+      register: autonomy_fixture_python_version
+      changed_when: false
+
+    - name: Write an exact platform lock fixture on the controller
+      ansible.builtin.copy:
+        dest: "{{ lookup('env', 'MOLECULE_EPHEMERAL_DIRECTORY') }}/lock.yml"
+        mode: "0600"
+        content: >-
+          {{ {'autonomy_version_lock': {'schema': 1, 'ubuntu_versions': ['22.04', '24.04'],
+              'architectures': ['x86_64', 'aarch64'],
+              'apt_packages': {'python3': autonomy_fixture_python_version.stdout}}} | to_nice_yaml }}
+      delegate_to: localhost
+      become: false

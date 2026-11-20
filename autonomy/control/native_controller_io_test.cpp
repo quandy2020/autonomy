@@ -103,6 +103,11 @@ void MeasuredCommandGate() {
     Twist command; *command.mutable_header() = state.header(); command.mutable_header()->set_frame_id("base_link");
     command.mutable_twist()->mutable_linear()->set_x(.2);
     Require(c::VerifyNativeCommand(command,state,map,options,now).safe,"actual same-frame command fits known full-body and stopping volume");
+    auto side = std::make_shared<autonomy::navigation::GridMap>(*grid);
+    side->Set(20,27,{autonomy::navigation::CellState::kOccupied,0,1}); map.grid = side;
+    Require(c::VerifyNativeCommand(command,state,map,options,now).safe,
+        "directional stopping volume permits travel parallel to a nearby side wall");
+    map.grid = grid;
     auto blocked = std::make_shared<autonomy::navigation::GridMap>(*grid);
     blocked->Set(22,30,{autonomy::navigation::CellState::kOccupied,0,1}); map.grid = blocked;
     Require(!c::VerifyNativeCommand(command,state,map,options,now).safe,"obstacle in stopping envelope denies the actual proposal");

@@ -1,0 +1,30 @@
+---
+namespace: openbot
+name: autonomy_ops
+version: 0.1.0
+readme: README.md
+authors: [The Openbot Authors]
+description: Native build, verified artifacts and rolling deployment for Autonomy.
+license: [Apache-2.0]
+repository: https://github.com/quandy2020/autonomy
+tags: [robotics, deployment, infrastructure]
+dependencies:
+  ansible.posix: "2.1.0"
+  community.docker: "4.8.9"
+  community.library_inventory_filtering_v1: "1.1.5"
+build_ignore:
+  - .ansible
+  - .venv
+  - .cache
+  - inventory
+  - molecule
+  - tests
+  - '*.tar.gz'
+  - .vault_pass
+  - ansible.cfg
+  - deploy.sh
+  - scripts/ci.sh
+  - scripts/molecule.sh
+  - scripts/install_collection.sh
+  - scripts/vault-init.sh
+  - scripts/deployment_audit.py

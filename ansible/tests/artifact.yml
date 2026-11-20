@@ -1,0 +1,12 @@
+---
+- name: Exercise production artifact role in an isolated container
+  hosts: all
+  gather_facts: true
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
+    - role: openbot.autonomy_ops.artifact
+      tags: [artifact]
+      when: autonomy_play_mode == 'full'
+    - role: openbot.autonomy_ops.config
+      tags: [config]

@@ -1,0 +1,16 @@
+---
+- name: Verify inventory overrides shared role defaults
+  hosts: autonomy
+  gather_facts: false
+  vars:
+    autonomy_play_mode: check
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
+  tasks:
+    - name: Require the selected environment mode and dependency policy
+      ansible.builtin.assert:
+        that:
+          - autonomy_deploy_mode == expected_deploy_mode
+          - autonomy_install_dependencies | bool == expected_dependencies | bool
+          - autonomy_install_prefix == '/opt/autonomy'

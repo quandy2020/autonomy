@@ -1,0 +1,16 @@
+---
+- name: Exercise the committed release policy without changing the host
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    use_locked_versions: true
+    autonomy_play_mode: check
+    autonomy_install_dependencies: false
+    ansible_facts:
+      distribution: Ubuntu
+      distribution_version: "22.04"
+      architecture: x86_64
+  roles:
+    - role: openbot.autonomy_ops.version_lock
+      tags: [version_lock]

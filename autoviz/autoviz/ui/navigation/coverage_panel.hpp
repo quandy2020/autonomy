@@ -7,6 +7,7 @@
 #include <QString>
 #include <QWidget>
 
+#include <cstddef>
 #include <cstdint>
 #include <future>
 #include <memory>
@@ -29,6 +30,7 @@ class QLabel;
 class QLineEdit;
 class QListWidget;
 class QPlainTextEdit;
+class QSpinBox;
 class QProgressBar;
 class QPushButton;
 class QShortcut;
@@ -98,11 +100,8 @@ class CoveragePanel : public QWidget {
   /** @brief Replace the ring list, keeping a sensible selection. */
   void RebuildRingList(int selected);
 
-  /** @brief Load the selected ring into the points editor. */
+  /** @brief Update Remove availability for the selected ring. */
   void LoadSelectedRing(int row);
-
-  /** @brief Validate the points editor and store it in the selected ring. */
-  void ApplyPointsEditor();
 
   /** @brief Append an editable square obstacle at the field centre. */
   void AddObstacleRing();
@@ -146,6 +145,15 @@ class CoveragePanel : public QWidget {
   /** @brief Observe native acceptance, progress and terminal results. */
   void PollActions();
 
+  /** @brief Split the current field into colored rooms. */
+  void SplitRooms();
+
+  /** @brief Start full coverage of one room. */
+  void StartRegion(std::size_t index);
+
+  /** @brief Clean every room in sequence. */
+  void StartAllRooms();
+
   /** @brief Start or finish interactive obstacle polygon drawing. */
   void ToggleObstacleDrawing();
 
@@ -167,7 +175,6 @@ class CoveragePanel : public QWidget {
   common::VisualizationManager* manager_{nullptr};
   std::vector<Ring> rings_;
   QListWidget* ring_list_{nullptr};
-  QPlainTextEdit* points_{nullptr};
   QPlainTextEdit* polygons_{nullptr};
   QPushButton* advanced_{nullptr};
   QLabel* rings_summary_{nullptr};
@@ -194,8 +201,15 @@ class CoveragePanel : public QWidget {
   widget::InfoBar* note_bar_{nullptr};
   QLabel* progress_value_{nullptr};
   QLabel* remaining_value_{nullptr};
+  QListWidget* rooms_{nullptr};
+  QSpinBox* room_columns_{nullptr};
+  QSpinBox* room_rows_{nullptr};
+  QPushButton* split_rooms_{nullptr};
+  QPushButton* clean_rooms_{nullptr};
+  std::vector<autonomy::task::coverage::proto::CoverageRegion> regions_;
+  bool cleaning_regions_{false};
+  std::size_t region_index_{0};
   QTimer* timer_{nullptr};
-  QTimer* points_timer_{nullptr};
   QTimer* live_timer_{nullptr};
   QShortcut* draw_shortcut_{nullptr};
   QShortcut* finish_shortcut_{nullptr};
@@ -209,7 +223,6 @@ class CoveragePanel : public QWidget {
       click_reader_;
   bool busy_{false};
   bool cancel_requested_{false};
-  bool loading_ring_{false};
   bool pending_replan_{false};
   std::uint64_t obstacle_signature_{0};
   std::shared_ptr<ComputeClient> compute_client_;

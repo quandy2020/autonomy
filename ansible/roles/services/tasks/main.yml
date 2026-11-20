@@ -1,55 +1,15 @@
 ---
-- name: Install systemd units
-  ansible.builtin.template:
-    src: "{{ item }}.service.j2"
-    dest: /etc/systemd/system/{{ item }}.service
-    mode: "0644"
-  loop:
-    - autonomy-localization
-    - autonomy-occupancy-grid
-    - autonomy-task
-    - autonomy-bridge
-  notify: Reload systemd
-  become: true
+- name: Configure and start selected services
+  ansible.builtin.import_tasks: configure.yml
+  when: autonomy_play_mode == 'full'
 
-- name: Flush handlers
-  ansible.builtin.meta: flush_handlers
+- name: Restart on explicit request or changed pushed configuration
+  ansible.builtin.import_tasks: restart.yml
+  when: >-
+    autonomy_play_mode == 'restart'
+    or (autonomy_play_mode == 'push' and autonomy_restart_on_config_change | bool
+        and autonomy_config_changed | default(false))
 
-- name: Remove stale autolink SysV SHM before starting services
-  ansible.builtin.command:
-    argv:
-      - ipcrm
-      - -M
-      - "{{ autonomy_autolink_notifier_shm_key }}"
-  become: true
-  changed_when: false
-  failed_when: false
-
-- name: Enable and start selected autonomy services
-  ansible.builtin.systemd:
-    name: "{{ item }}"
-    enabled: true
-    state: started
-    daemon_reload: true
-  loop: "{{ autonomy_enabled_units }}"
-  become: true
-
-- name: Check systemd units to disable
-  ansible.builtin.stat:
-    path: /etc/systemd/system/{{ item }}.service
-  loop: "{{ autonomy_all_units | difference(autonomy_enabled_units) }}"
-  register: autonomy_units_to_disable
-  become: true
-
-- name: Disable services not in autonomy_services
-  ansible.builtin.systemd:
-    name: "{{ item.item }}"
-    enabled: false
-    state: stopped
-  loop: "{{ autonomy_units_to_disable.results }}"
-  when: item.stat.exists
-  become: true
-
-- name: Verify enabled services are active
-  ansible.builtin.include_tasks: verify.yml
+- name: Verify selected services
+  ansible.builtin.import_tasks: verify.yml
   when: autonomy_run_verify | bool

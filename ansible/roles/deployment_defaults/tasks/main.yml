@@ -1,0 +1,18 @@
+---
+- name: Validate deployment contract
+  ansible.builtin.assert:
+    that:
+      - autonomy_play_mode in ['full', 'build', 'push', 'check', 'restart']
+      - autonomy_deploy_mode in ['build', 'artifact']
+      - autonomy_play_mode != 'build' or autonomy_deploy_mode == 'build'
+      - autonomy_services | difference(autonomy_service_name_map.keys() | list) | length == 0
+      - not autonomy_require_ci | bool or autonomy_play_mode == 'check' or lookup('env', 'GITHUB_ACTIONS') == 'true'
+      - autonomy_profile != 'production' or use_locked_versions | bool
+    fail_msg: "Invalid deployment mode/services, or production requires the approved CI runner and version lock."
+    quiet: true
+
+- name: Load optional controller vault without logging secrets
+  ansible.builtin.include_vars:
+    file: "{{ autonomy_controller_root }}/inventory/group_vars/vault.yml"
+  when: (autonomy_controller_root ~ '/inventory/group_vars/vault.yml') is file
+  no_log: true

@@ -18,6 +18,18 @@ message PathMode { string mode = 1; string continuity_mode = 2; optional double 
 message DecompMode { string mode = 1; optional double split_angle = 2; }
 message RowSwathMode { string mode = 1; repeated int32 skip_ids = 2; double offset = 3; }
 message Row { int32 id = 1; repeated Coordinate coordinates = 2; }
+message OccupancyMap {
+  string frame_id = 1;
+  float resolution = 2;
+  uint32 width = 3;
+  uint32 height = 4;
+  double origin_x = 5;
+  double origin_y = 6;
+  double origin_yaw = 7;
+  repeated int32 data = 8;
+  int32 occupied_threshold = 9;
+}
+
 message CoverageRequest {
   optional bool generate_headland = 1; optional bool generate_route = 2; optional bool generate_path = 3;
   bool generate_decomp = 4; DecompMode decomp_mode = 5;
@@ -30,6 +42,10 @@ message CoverageRequest {
   repeated Row rows = 20; RowSwathMode row_swath_mode = 21;
   optional bool coordinates_in_cartesian_frame = 22;
   optional double robot_radius = 23;
+  bool generate_regions = 24;
+  int32 region_columns = 25;
+  int32 region_rows = 26;
+  optional OccupancyMap map = 27;
 }
 message Swath { int32 id = 1; double width = 2; automsgs.msgs.nav_msgs.Path path = 3; }
 message PathState {
@@ -48,6 +64,18 @@ enum ErrorCode {
   INVALID_REQUEST = 803; TIMEOUT = 804; CANCELED = 805;
   MOTION_BUSY = 806; CONTROLLER_UNSUPPORTED = 807; TOOL_FAILURE = 808;
 }
+message CoverageRegion {
+  int32 id = 1;
+  string name = 2;
+  int32 color_index = 3;
+  double area = 4;
+  repeated Coordinates polygons = 5;
+  automsgs.msgs.nav_msgs.Path nav_path = 6;
+  repeated PathState states = 7;
+  double coverage = 8;
+  int32 swath_count = 9;
+}
+
 message ComputeCoveragePathAction {
   message Goal { CoverageRequest request = 1; }
   message Feedback { string stage = 1; double progress = 2; }
@@ -56,6 +84,7 @@ message ComputeCoveragePathAction {
     double planning_time = 3; double task_time = 4; ErrorCode error_code = 5; string error_msg = 6;
     double core_coverage = 7; string field_wkt = 8; string core_wkt = 9;
     repeated string warnings = 10;
+    repeated CoverageRegion regions = 11;
   }
 }
 message NavigateCompleteCoverageAction {

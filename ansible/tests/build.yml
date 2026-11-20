@@ -1,0 +1,65 @@
+---
+- name: Exercise build role with a minimal real CMake project
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ansible_become: false
+    autonomy_play_mode: build
+    autonomy_use_ccache: false
+    autonomy_cmake_extra_args: []
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
+  tasks:
+    - name: Create build fixture
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: autonomy-build-test-
+      register: autonomy_build_fixture
+
+    - name: Exercise native CMake build and installation
+      block:
+        - name: Write fixture project
+          ansible.builtin.copy:
+            dest: "{{ autonomy_build_fixture.path }}/CMakeLists.txt"
+            mode: "0644"
+            content: |
+              cmake_minimum_required(VERSION 3.20)
+              project(autonomy_build_fixture NONE)
+              install(FILES CMakeLists.txt DESTINATION share/autonomy)
+
+        - name: Configure fixture paths
+          ansible.builtin.set_fact:
+            autonomy_source_dir: "{{ autonomy_build_fixture.path }}"
+            autonomy_cmake_build_dir: "{{ autonomy_build_fixture.path }}/build"
+            autonomy_install_prefix: "{{ autonomy_build_fixture.path }}/install"
+
+        - name: Run production build role
+          ansible.builtin.include_role:
+            name: openbot.autonomy_ops.build
+
+        - name: Run the same production role again
+          ansible.builtin.include_role:
+            name: openbot.autonomy_ops.build
+
+        - name: Require the second build to be idempotent
+          ansible.builtin.assert:
+            that:
+              - autonomy_cmake_configure.skipped | default(false)
+              - not autonomy_cmake_build.changed
+              - not autonomy_cmake_install.changed
+
+        - name: Check installed result
+          ansible.builtin.stat:
+            path: "{{ autonomy_install_prefix }}/share/autonomy/CMakeLists.txt"
+          register: autonomy_build_result
+
+        - name: Require a real installed result
+          ansible.builtin.assert:
+            that: autonomy_build_result.stat.exists
+      always:
+        - name: Remove build fixture
+          ansible.builtin.file:
+            path: "{{ autonomy_build_fixture.path }}"
+            state: absent

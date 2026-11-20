@@ -146,7 +146,7 @@ public:
                 !std::isfinite(startup.support_timeout) || startup.support_timeout <= 0 ||
                 !startup.minimum_support_cells)
                 throw std::invalid_argument("invalid startup support-closure policy");
-            if (startup.target_yaw > autonomy::navigation::kPi + 1e-9)
+            if (std::abs(startup.target_yaw) > 2 * autonomy::navigation::kPi + 1e-9)
                 throw std::invalid_argument("startup observation target exceeds the native spin envelope");
         }
         if (!std::isfinite(options.return_margin) || options.return_margin < 0 ||
@@ -270,6 +270,7 @@ public:
         confirmation_round_ = 0;
         worker_reset_requested_.store(true);
         active_phase_.reset();
+        observation_rotation_.reset();
         phase_history_.clear();
         selected_version_.reset();
         prepared_version_.reset();
@@ -427,6 +428,7 @@ public:
     void CancelActivePhase(PhaseStatus status, const std::string& reason) {
         if (!active_phase_) return;
         const auto phase = active_phase_->phase;
+        CancelObservationRotation();
         CancelPlanning();
         CancelNavigation();
         if (phase == ExplorationPhase::kStartupObservation) CancelStartupObservation();
@@ -539,6 +541,7 @@ public:
                      (!services_.navigation_still_valid ||
                       !services_.navigation_still_valid(*snapshot_.goal, pose_, *map_))))
                     return finish(PhaseStatus::kInvalidated, "adapted observation pose is no longer valid");
+                CancelObservationRotation();
                 view_evidence_.assign(snapshot_.goal->intent.required_views.size(), {});
                 view_started_.assign(view_evidence_.size(), {});
                 current_view_ = 0; snapshot_.observed_view_count = 0;
@@ -647,7 +650,10 @@ public:
                         result.return_from_goal=route.length;
                     }
                 }
-                result.graph_evidence=paths_->Evidence();
+                // Estimate-only work must never contend with or invalidate an
+                // active observation phase merely to refresh graph evidence.
+                // The next route-bearing planning job performs that proof.
+                if (!job->estimate_only) result.graph_evidence=paths_->Evidence();
             } catch (const std::exception& error) {
                 result.error = error.what();
             } catch (...) {
@@ -1183,22 +1189,137 @@ public:
                std::abs(autonomy::navigation::NormalizeAngle(pose_.yaw - goal.yaw)) <= options_.yaw_tolerance;
     }
 
+    /** @brief Position-only arrival used when viewpoint orientation is applied separately. */
+    bool AtPosition(const Pose2d& goal) const {
+        return autonomy::navigation::Distance(pose_, goal) <= options_.position_tolerance;
+    }
+
+    /** @brief Whether the existing native `/spin` service can rotate at a viewpoint. */
+    bool HasObservationRotation() const {
+        return options_.startup_observation.enabled &&
+               services_.request_startup_observation &&
+               services_.poll_startup_observation &&
+               services_.cancel_startup_observation;
+    }
+
+    /** @brief Cancel only the viewpoint rotation, preserving the observation phase. */
+    void CancelObservationRotation() {
+        if (observation_rotation_ && services_.cancel_startup_observation)
+            services_.cancel_startup_observation(*observation_rotation_);
+        observation_rotation_.reset();
+        pending_navigation_pose_.reset();
+        rotation_for_navigation_ = false;
+    }
+
+    /** @brief Rotate in place with one explicit post-rotation purpose. */
+    bool StartYawRotation(double target_yaw, double now, bool for_navigation) {
+        if (!HasObservationRotation() || !snapshot_.goal) return false;
+        CancelObservationRotation();
+        const double delta = autonomy::navigation::NormalizeAngle(target_yaw - pose_.yaw);
+        if (std::abs(delta) <= options_.yaw_tolerance) {
+            if (!for_navigation) {
+                arrived_at_ = now;
+                snapshot_.state = ExplorationState::kObserving;
+            }
+            return true;
+        }
+        const double allowance = options_.startup_observation.time_allowance +
+            options_.startup_observation.deadline_margin;
+        auto version = Version(now, std::max(1.0, allowance));
+        if (!services_.request_startup_observation(version, delta, allowance)) return false;
+        observation_rotation_ = version;
+        rotation_for_navigation_ = for_navigation;
+        snapshot_.state = ExplorationState::kExploring;
+        AINFO << "EXPLORATION_YAW_ROTATION submit yaw=" << target_yaw
+              << " delta=" << delta << " goal=" << snapshot_.goal->intent.goal_id;
+        return true;
+    }
+
+    /** @brief Rotate to the required camera view after positional arrival. */
+    bool StartObservationRotation(double target_yaw, double now) {
+        return StartYawRotation(target_yaw, now, false);
+    }
+
+    /** @brief Consume one measured in-place viewpoint rotation. */
+    void PollObservationRotation(double now) {
+        if (!observation_rotation_) return;
+        const auto reply = services_.poll_startup_observation();
+        if (reply && reply->version.SameRequest(*observation_rotation_)) {
+            observation_rotation_.reset();
+            if (!reply->success) {
+                Retry(now, reply->reason.empty() ? "viewpoint rotation failed" : reply->reason);
+                return;
+            }
+            if (rotation_for_navigation_) {
+                rotation_for_navigation_ = false;
+                if (!pending_navigation_pose_) {
+                    Retry(now, "navigation rotation has no pending target");
+                    return;
+                }
+                const auto pose = *pending_navigation_pose_;
+                pending_navigation_pose_.reset();
+                Pose2d navigation_pose = pose;
+                navigation_pose.yaw = std::atan2(pose.y - pose_.y, pose.x - pose_.x);
+                DispatchNavigation(navigation_pose, now);
+                return;
+            }
+            arrived_at_ = now;
+            snapshot_.state = ExplorationState::kObserving;
+            return;
+        }
+        if (now > observation_rotation_->valid_until) {
+            services_.cancel_startup_observation(*observation_rotation_);
+            observation_rotation_.reset();
+            Retry(now, "viewpoint rotation deadline exceeded");
+        }
+    }
+
     void SubmitNavigation(const Pose2d& pose, double now) {
+        CancelObservationRotation();
+        Pose2d navigation_pose = pose;
+        if (snapshot_.goal && HasObservationRotation()) {
+            const double dx = pose.x - pose_.x;
+            const double dy = pose.y - pose_.y;
+            if (std::hypot(dx, dy) > options_.position_tolerance) {
+                navigation_pose.yaw = std::atan2(dy, dx);
+                const double heading_error = autonomy::navigation::NormalizeAngle(
+                    navigation_pose.yaw - pose_.yaw);
+                if (std::abs(heading_error) > options_.yaw_tolerance) {
+                    if (!StartYawRotation(navigation_pose.yaw, now, true))
+                        Retry(now, "approach rotation could not start");
+                    else
+                        pending_navigation_pose_ = pose;
+                    return;
+                }
+            }
+        }
+        DispatchNavigation(navigation_pose, now);
+    }
+
+    /** @brief Dispatch one already oriented navigation target. */
+    void DispatchNavigation(const Pose2d& navigation_pose, double now) {
         navigation_ = Version(now, options_.navigation_timeout);
-        AINFO << "EXPLORATION_NAVIGATION submit x=" << pose.x << " y=" << pose.y
-              << " yaw=" << pose.yaw << " goal="
+        AINFO << "EXPLORATION_NAVIGATION submit x=" << navigation_pose.x
+              << " y=" << navigation_pose.y
+              << " yaw=" << navigation_pose.yaw << " goal="
               << (snapshot_.goal ? snapshot_.goal->intent.goal_id : 0);
-        if (!services_.submit_navigation(pose, *navigation_)) {
+        if (!services_.submit_navigation(navigation_pose, *navigation_)) {
             navigation_.reset();
             if (finishing_) {
                 snapshot_.result.returned = ReturnOutcome::kReturnFailed;
                 AfterReturn(now);
             } else Retry(now, "navigation submission rejected");
+        } else {
+            // A fresh admitted route starts a new recovery episode. The global
+            // time/distance budgets, not failures of superseded viewpoints,
+            // bound exploration across changing maps.
+            recovery_count_ = 0;
         }
     }
 
     void Retry(double now, const std::string& reason) {
         FinishPhase(PhaseStatus::kRetryable, reason);
+        CancelObservationRotation();
         CancelNavigation();
         snapshot_.goal.reset();
         snapshot_.reason = reason;
@@ -1211,6 +1332,10 @@ public:
     }
 
     void BeginFinish(ExplorationOutcome outcome, double now) {
+        AINFO << "EXPLORATION_FINISH outcome=" << static_cast<int>(outcome)
+              << " elapsed=" << now - started_ - paused_time_
+              << " budget=" << options_.time_budget
+              << " traveled=" << snapshot_.traveled_distance;
         CancelRecoveryOperation();
         CancelActivePhase(PhaseStatus::kRetryable, "exploration reached a finish outcome");
         CancelPlanning();
@@ -1343,6 +1468,14 @@ public:
                 continue;
             }
             if (!result.error.empty()) {
+                if (result.estimate_only) {
+                    // A return-cost estimate is advisory while an admitted
+                    // observation goal is executing. Missing this background
+                    // estimate cannot cancel the safe command in flight.
+                    return_cache_.reset();
+                    snapshot_.reason = "return estimate unavailable: " + result.error;
+                    continue;
+                }
                 if(result.returning || finishing_) {
                     snapshot_.result.returned=ReturnOutcome::kReturnFailed;AfterReturn(now);
                 } else Retry(now, result.error);
@@ -1362,7 +1495,14 @@ public:
                 continue;
             }
             if(result.estimate_only) {
-                if(!result.return_route_valid)BeginFinish(ExplorationOutcome::kIncompleteObservation,now);
+                // A return-route estimate is advisory until the finish policy
+                // actually requests the return phase. A map revision can make
+                // this snapshot stale while the current safe observation goal
+                // is still executing; retry the estimate without revoking it.
+                if(!result.return_route_valid) {
+                    return_cache_.reset();
+                    snapshot_.reason = "return route estimate awaits current map evidence";
+                }
                 continue;
             }
             if (result.phase == ExplorationPhase::kSelect && result.decision.goal) {
@@ -1378,7 +1518,12 @@ public:
                     continue;
                 }
                 if(options_.require_return && !result.return_route_valid) {
-                    BeginFinish(ExplorationOutcome::kIncompleteObservation,now);continue;
+                    // A return route can be temporarily unavailable while the
+                    // observation viewpoint is still safe and useful. Keep
+                    // exploring; the explicit return phase re-plans against
+                    // the final map and reports failure if it remains blocked.
+                    return_cache_.reset();
+                    snapshot_.reason = "return route awaits updated map evidence";
                 }
                 double turn=std::abs(autonomy::navigation::NormalizeAngle(
                     result.adapted->intent.required_views.front()-pose_.yaw));
@@ -1656,6 +1801,7 @@ public:
             CancelActivePhase(PhaseStatus::kRetryable, "sensor or localization unavailable");
             CancelPlanning();
             CancelNavigation();
+            CancelObservationRotation();
             CancelStartupObservation();
             CancelRecoveryOperation();
             snapshot_.state = ExplorationState::kWaitingForSensor;
@@ -1724,6 +1870,7 @@ public:
         }
         ConsumePlan(now);
         PollLossRecovery(now);
+        PollObservationRotation(now);
         if (navigation_) {
             const auto reply = services_.poll_navigation();
             if (reply && reply->version.SameRequest(*navigation_) && now <= navigation_->valid_until) {
@@ -1732,9 +1879,16 @@ public:
                     snapshot_.result.returned = reply->success && At(home_) ?
                         ReturnOutcome::kReturned : ReturnOutcome::kReturnFailed;
                     AfterReturn(now);
-                } else if (reply->success && snapshot_.goal && At(snapshot_.goal->execution_pose)) {
-                    if(current_view_==0)arrived_at_ = now;
-                    snapshot_.state = ExplorationState::kObserving;
+                } else if (reply->success && snapshot_.goal && AtPosition(snapshot_.goal->execution_pose)) {
+                    if (HasObservationRotation()) {
+                        const auto& views = snapshot_.goal->intent.required_views;
+                        if (current_view_ >= views.size() ||
+                            !StartObservationRotation(views[current_view_], now))
+                            Retry(now, "viewpoint rotation could not start");
+                    } else if (At(snapshot_.goal->execution_pose)) {
+                        arrived_at_ = now;
+                        snapshot_.state = ExplorationState::kObserving;
+                    } else Retry(now, "arrival pose not confirmed");
                 } else Retry(now, "navigation failed or arrival pose not confirmed");
             } else if (now > navigation_->valid_until) {
                 if (finishing_) {
@@ -1752,6 +1906,7 @@ public:
                 snapshot_.goal.reset();
                 snapshot_.selection.reset();
                 prepared_version_.reset();
+                CancelObservationRotation();
                 FinishPhase(PhaseStatus::kSucceeded, "required views and actual observations confirmed");
                 recovery_count_ = 0;
                 snapshot_.state = ExplorationState::kExploring;
@@ -1759,7 +1914,10 @@ public:
                 ++current_view_;snapshot_.observed_view_count=current_view_;
                 snapshot_.goal->execution_pose.yaw=snapshot_.goal->intent.required_views[current_view_];
                 snapshot_.state=ExplorationState::kExploring;
-                SubmitNavigation(snapshot_.goal->execution_pose,now);
+                if (HasObservationRotation()) {
+                    if (!StartObservationRotation(snapshot_.goal->execution_pose.yaw, now))
+                        Retry(now, "next viewpoint rotation could not start");
+                } else SubmitNavigation(snapshot_.goal->execution_pose,now);
             } else if (now - arrived_at_ > options_.observation_timeout)
                 Retry(now, "arrival did not realize required observation");
         }
@@ -1855,6 +2013,9 @@ public:
     std::optional<std::thread::id> owner_;
     ExplorationSnapshot snapshot_, published_;
     std::optional<RequestVersion> planning_, navigation_, map_operation_;
+    std::optional<RequestVersion> observation_rotation_;
+    std::optional<Pose2d> pending_navigation_pose_;
+    bool rotation_for_navigation_ = false;
     std::optional<RequestVersion> startup_observation_;  ///< Bounded native in-place yaw sweep awaiting a measured result.
     bool startup_observation_confirmed_ = true;  ///< Default remains true when the deployment policy is disabled.
     bool startup_observation_failed_ = false;  ///< Native rejection or validation failure remains fail-closed.

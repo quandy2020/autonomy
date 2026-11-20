@@ -20,7 +20,7 @@
 
 `autonomy/common/navigation` 创建 `autonomy_navigation_support`：包含共享 Opt 几何核心和轻量的 observation/map-reader 实现，依赖标准库与 Threads。公开观测头仍位于 `perception/data`；perception 的递归源文件收集排除已进入此支撑库的实现，防止重复定义。
 
-planning 和 task 链接同一支撑库；task 额外链接 planning。支撑库不链接 task、DeFM 或控制策略，因此在 `AUTONOMY_BUILD_PERCEPTION=OFF` 的原生配置中仍可构建路线和任务接口。Opt 的 `opt::navigation` 暂作为内部几何实现保留，公共头随 include 目录导出；不是一套新的地图服务。
+planning 和 task 链接同一支撑库；task 额外链接 planning。支撑库不链接 task、DeFM 或控制策略，因此在 `AUTONOMY_BUILD_PERCEPTION=OFF` 的原生配置中仍可构建路线和任务接口。Opt 的 `autonomy::navigation` 暂作为内部几何实现保留，公共头随 include 目录导出；不是一套新的地图服务。
 
 原生 CMake 在 `integration/native/` 中保存对真实工作树基线的合并版本。它用于同步原生工程；Opt 的独立顶层 CMake 和 autonomy/CMakeLists.txt 不覆盖远端入口。同步前逐文件核验原始 SHA256，已有文件备份；不删除未列入清单的文件。
 

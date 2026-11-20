@@ -1204,3 +1204,35 @@ CMake 构建和原生检查通过，真实链接库与模型/源码前后摘要�
 仍需完整接入。全套固定服务测试需要与其他正在运行的实例隔离。
 全量专家下载继续由本次已确认的有限小块传输进程处理，部分块和
 模型试验不替代完整训练、安全起始观测或探索终态验证。
+
+## v2.124：AutoSim RGB-D 自主探索验证
+
+本轮在 `SpaceHeroValidation` 中重新构建 `autonomy_control`、
+`autonomy_planning`、`autonomy_task` 与 `autonomy.task`，构建返回 0。
+相关 7 项原生回归全部通过；完整 CTest 为 43/43，通过项包括
+`autonomy.control.native_controller_io`、`autonomy.exploration.exploration_phase`、
+`autonomy.exploration.native_session_factory` 和 `autonomy.native.vista`。
+DeFM encoder 专项使用宿主机已有的冻结模型及 `parity.json`，复制到隔离
+容器后校验摘要为 `334320ee...99c4` 和 `b8b5d4ea...50bf`，测试通过。
+
+AutoSim 使用 Habitat `17DRP5sb8fy`、Atlas RGB-D SLAM、实际
+`autonomy.task`、Vista、SanD 和 MPPI。启动观测先完成一次累计 2π 的
+原地旋转，回到原航向；每个观测目标先按行进方向到达位置，再通过既有
+`/spin` action 原地旋转到相机要求的观察航向。验证记录包含 1800 帧 RGB、
+1800 帧深度、1799 组健康定位关联、458 条非零实际命令，定位异常为 0。
+
+机器人使用 140 s 探索预算，按部分预算结束并完成地图保存。GT 记录了
+`2.105 m` 的净位移；算法已知占据格从 `453` 增至 `1799`。覆盖账本从
+`131` 个要求格增至 `1223` 个，其中 `1162` 个质量确认，投影后确认率为
+`96.66%`。离线把 0.15 m 原生地图通过首帧 GT/原生位姿对推导的变换投影
+到 0.05 m GT 栅格，起点可连通自由域内已知覆盖率 `43.35%`，错误占用率
+`0.33%`。这些数值说明实际移动、建图、覆盖账本和安全执行链路已经工作，
+但本轮不是完整房间探索：最后任务状态为未完成，按预算终止后保存地图。
+
+证据目录为
+`docs/validation/2026-11-20-v2.124-native-exploration/`，包含原始
+`report.json`、`task.log`、起止位姿、原生占据/覆盖、GT 地图、显式
+变换、投影地图、`map-comparison.json` 和带阈值的
+`validation-summary.json` 和 `ctest-43.log`。`validation-summary.json` 的 `passed=true`
+只表示本轮可行性阈值全部满足；`complete_scene_exploration_verified`
+仍为 `false`。

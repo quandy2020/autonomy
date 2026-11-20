@@ -1,0 +1,56 @@
+---
+- name: Check selected service executables
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}/bin/{{ autonomy_service_binaries[item] }}"
+  loop: "{{ autonomy_services }}"
+  register: autonomy_service_executables
+
+- name: Require selected service executables
+  ansible.builtin.assert:
+    that:
+      - item.stat.isreg | default(false)
+      - item.stat.executable | default(false)
+    fail_msg: "Missing executable for {{ item.item }}; check build options and artifact contents."
+  loop: "{{ autonomy_service_executables.results }}"
+
+- name: Install systemd units
+  ansible.builtin.template:
+    src: "{{ item }}.service.j2"
+    dest: /etc/systemd/system/{{ item }}.service
+    mode: "0644"
+  loop:
+    - autonomy-localization
+    - autonomy-occupancy-grid
+    - autonomy-task
+    - autonomy-bridge
+  register: autonomy_unit_files
+  become: true
+
+- name: Enable and start selected autonomy services
+  ansible.builtin.systemd_service:
+    name: "{{ item }}"
+    enabled: true
+    state: >-
+      {{ 'restarted' if (autonomy_artifact_activation.changed | default(false)
+                         or autonomy_cmake_install.changed | default(false)
+                         or autonomy_config_changed | default(false)
+                         or autonomy_unit_files.changed) else 'started' }}
+    daemon_reload: "{{ autonomy_unit_files.changed }}"
+  loop: "{{ autonomy_enabled_units }}"
+  become: true
+
+- name: Check systemd units to disable
+  ansible.builtin.stat:
+    path: /etc/systemd/system/{{ item }}.service
+  loop: "{{ autonomy_all_units | difference(autonomy_enabled_units) }}"
+  register: autonomy_units_to_disable
+  become: true
+
+- name: Disable services not in autonomy_services
+  ansible.builtin.systemd_service:
+    name: "{{ item.item }}"
+    enabled: false
+    state: stopped
+  loop: "{{ autonomy_units_to_disable.results }}"
+  when: item.stat.exists
+  become: true

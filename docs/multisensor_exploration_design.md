@@ -819,7 +819,7 @@ raw observation 适配与缓存放在 perception；探索中的 observation 只�
 
 几何和数据契约须形成无环依赖。当前原生接入在 common/navigation 构建 autonomy_navigation_support，编译 Opt 几何、观测适配与轻量 MapReader，导出 perception/data 公共头，只链接 Threads，不依赖 task、DeFM 或 map 实现。真实 NativeCostmapReader 留在 planning 内，由原生 planning 的既有依赖获得 Costmap。planning 链接支撑库；当前 task 的同进程路径适配链接 planning 与同一支撑库。最终独立进程路径适配通过 Autolink 调用规划入口；control 按需链接数据与推理。链接库不意味着可以跨进程使用其对象实例。
 
-当前 Opt 核心仍依赖 opt::navigation 的几何与导航公共头。正式同步前必须把相应源文件、include 路径和链接依赖一起接入原生内部支撑库，或完成等价的原生类型迁移；只复制 autonomy/ 子目录不算完成集成。独立 Opt 的 autonomy/CMakeLists.txt 不能当作远端原生入口覆盖过去。
+当前 Opt 核心仍依赖 autonomy::navigation 的几何与导航公共头。正式同步前必须把相应源文件、include 路径和链接依赖一起接入原生内部支撑库，或完成等价的原生类型迁移；只复制 autonomy/ 子目录不算完成集成。独立 Opt 的 autonomy/CMakeLists.txt 不能当作远端原生入口覆盖过去。
 
 原生 domain 的递归源文件收集需要显式排除已经进入独立支撑 target 的实现，避免重复链接；perception 原有 inference 排除规则需要为 DeFM 单独接入。探索 BT 实现进入原生 task target 并链接真实 BehaviorTree 基类，独立算法构建排除这些插件源。各 domain 的既有选项、接口及用户修改保留，仅合并必要依赖。
 

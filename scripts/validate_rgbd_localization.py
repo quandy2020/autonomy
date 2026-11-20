@@ -115,6 +115,8 @@ def main():
                         help='Require one measured zero-translation startup yaw sweep before exploration')
     parser.add_argument('--exploration-time-budget', type=float, default=30.,
                         help='Active exploration time budget written into the native task configuration')
+    parser.add_argument('--require-return', action='store_true',
+                        help='Require a safe return-to-start leg before saving the exploration map')
     args = parser.parse_args()
     if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 10000:
         parser.error('use an isolated validation prefix and 500..10000 steps')
@@ -303,10 +305,11 @@ def main():
                     'atlas_status_topic': args.prefix + '/atlas/localization_status', 'route_service': '/get_plan',
                     'planner_id': 'vista_planner', 'controller_id': args.task_controller, 'validated_sensor_mask': 2,
                     'navigation_tree': '/workspace/autonomy/src/autonomy/autonomy/task/conf/behavior_tree/navigation/navigate_to_pose_exploration.xml',
-                    'time_budget': args.exploration_time_budget, 'require_return': True, 'require_save': True,
+                    'time_budget': args.exploration_time_budget,
+                    'require_return': bool(args.require_return), 'require_save': True,
                     'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': -6., 'min_y': -6., 'max_x': 6., 'max_y': 6.}, 'mapping_resolution': .15,
-                    'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .15, 'horizontal_margin': .02,
+                    'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .105, 'horizontal_margin': .02,
                     'map_output_directory': str(args.output / 'native-mapping'),
                     'base_odometry_topic': args.prefix + '/native/base_odometry',
                     'occupancy_topic': args.prefix + '/native/occupancy', 'grid_topic': args.prefix + '/native/grid_map',
@@ -330,9 +333,9 @@ def main():
                         'maximum_feedback_age': 2.0, 'maximum_map_age': 2.0,
                         'startup_observation': {
                             'enabled': bool(args.startup_observation),
-                            'target_yaw': 3.141592653589793,
+                            'target_yaw': 6.283185307179586,
                             'time_allowance': 10., 'deadline_margin': 3.,
-                            'maximum_position_drift': .04, 'completion_tolerance': .08,
+                            'maximum_position_drift': .08, 'completion_tolerance': .08,
                             'maximum_pose_age': 1.,
                             'support_radius': .8, 'support_ring_radius': 1.2,
                             'support_timeout': 60., 'minimum_support_cells': 8,

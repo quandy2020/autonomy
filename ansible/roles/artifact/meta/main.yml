@@ -1,0 +1,3 @@
+---
+dependencies:
+  - role: openbot.autonomy_ops.deployment_defaults

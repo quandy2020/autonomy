@@ -2,33 +2,183 @@
 - name: Verify autonomy smoke deployment
   hosts: all
   become: true
+  roles:
+    - role: openbot.autonomy_ops.deployment_defaults
+      tags: [deployment_defaults]
+  vars:
+    autonomy_test_role: "{{ lookup('env', 'MOLECULE_ROLE') | default('services', true) }}"
   tasks:
-    - name: Check install prefix binaries exist
+    - name: Verify the deployed runtime contract
+      when: autonomy_test_role == 'services'
+      block:
+        - name: Check install prefix binaries exist
+          ansible.builtin.stat:
+            path: "{{ autonomy_install_prefix }}/bin/autonomy.task"
+          register: autonomy_task_bin
+
+        - name: Assert task binary exists
+          ansible.builtin.assert:
+            that:
+              - autonomy_task_bin.stat.exists
+
+        - name: Check runtime configuration was installed
+          ansible.builtin.stat:
+            path: "{{ autonomy_config_dir }}/task/navigator.pb.txt"
+          register: autonomy_task_config
+
+        - name: Assert task config exists
+          ansible.builtin.assert:
+            that:
+              - autonomy_task_config.stat.exists
+
+        - name: Check systemd unit is active
+          ansible.builtin.systemd_service:
+            name: autonomy-task
+          register: autonomy_task_service
+
+        - name: Assert autonomy-task is active
+          ansible.builtin.assert:
+            that:
+              - autonomy_task_service.status.ActiveState == 'active'
+
+        - name: Check active install is a release link
+          ansible.builtin.stat:
+            path: "{{ autonomy_install_prefix }}"
+            follow: false
+          register: autonomy_active_release
+
+        - name: Require a content-addressed active release
+          ansible.builtin.assert:
+            that:
+              - autonomy_active_release.stat.islnk
+              - autonomy_active_release.stat.lnk_source is match(autonomy_release_dir ~ '/[0-9a-f]{64}$')
+
+    - name: Verify actual service restart decisions
+      when: autonomy_test_role == 'services'
+      block:
+        - name: Read initial task process identity
+          ansible.builtin.command:
+            argv: [systemctl, show, --property=MainPID, --value, autonomy-task]
+          register: autonomy_pid_before_push
+          changed_when: false
+
+        - name: Apply a changed configuration event
+          ansible.builtin.include_role:
+            name: openbot.autonomy_ops.services
+          vars:
+            autonomy_play_mode: push
+            autonomy_config_changed: true
+            autonomy_restart_on_config_change: true
+
+        - name: Read process identity after the changed event
+          ansible.builtin.command:
+            argv: [systemctl, show, --property=MainPID, --value, autonomy-task]
+          register: autonomy_pid_after_push
+          changed_when: false
+
+        - name: Apply an unchanged configuration event
+          ansible.builtin.include_role:
+            name: openbot.autonomy_ops.services
+          vars:
+            autonomy_play_mode: push
+            autonomy_config_changed: false
+            autonomy_restart_on_config_change: true
+
+        - name: Read process identity after the unchanged event
+          ansible.builtin.command:
+            argv: [systemctl, show, --property=MainPID, --value, autonomy-task]
+          register: autonomy_pid_unchanged
+          changed_when: false
+
+        - name: Require one restart for changes and none for unchanged configuration
+          ansible.builtin.assert:
+            that:
+              - autonomy_pid_before_push.stdout | int > 0
+              - autonomy_pid_after_push.stdout | int > 0
+              - autonomy_pid_before_push.stdout != autonomy_pid_after_push.stdout
+              - autonomy_pid_unchanged.stdout == autonomy_pid_after_push.stdout
+
+    - name: Check unselected services remain stopped after restart
+      ansible.builtin.command:
+        argv: [systemctl, is-active, "{{ item }}"]
+      loop: "{{ autonomy_all_units | difference(autonomy_enabled_units) }}"
+      register: autonomy_unselected_service
+      changed_when: false
+      failed_when: autonomy_unselected_service.stdout != 'inactive'
+      when: autonomy_test_role == 'services'
+
+    - name: Inspect the native build result
       ansible.builtin.stat:
-        path: "{{ autonomy_install_prefix }}/bin/task"
-      register: autonomy_task_bin
+        path: /opt/autonomy-build-fixture/share/autonomy/CMakeLists.txt
+      register: autonomy_build_fixture_result
+      when: autonomy_test_role == 'build'
 
-    - name: Assert task binary exists
+    - name: Require the build/install contract result
       ansible.builtin.assert:
-        that:
-          - autonomy_task_bin.stat.exists
+        that: autonomy_build_fixture_result.stat.exists
+      when: autonomy_test_role == 'build'
 
-    - name: Check runtime configuration was installed
+    - name: Check dependency installer received the public skip flag
+      ansible.builtin.slurp:
+        src: /var/lib/autonomy/dependency-fixture.json
+      register: autonomy_dependency_fixture_result
+      when: autonomy_test_role in ['build', 'dependencies']
+
+    - name: Verify dependency installer arguments
+      ansible.builtin.assert:
+        that: "'--skip-installed' in (autonomy_dependency_fixture_result.content | b64decode | from_json)"
+      when: autonomy_test_role in ['build', 'dependencies']
+
+    - name: Check the selected release contract
       ansible.builtin.stat:
-        path: "{{ autonomy_config_dir }}/task/task_options.lua"
-      register: autonomy_task_config
+        path: /opt/autonomy
+        follow: false
+      register: autonomy_role_release
+      when: autonomy_test_role in ['artifact', 'config']
 
-    - name: Assert task config exists
+    - name: Require release activation for artifact consumers
+      ansible.builtin.assert:
+        that: autonomy_role_release.stat.islnk
+      when: autonomy_test_role in ['artifact', 'config']
+
+    - name: Check component configuration contract
+      ansible.builtin.stat:
+        path: /etc/autonomy/task/navigator.pb.txt
+      register: autonomy_role_config
+      when: autonomy_test_role == 'config'
+
+    - name: Require configuration installed by its independent role
+      ansible.builtin.assert:
+        that: autonomy_role_config.stat.exists
+      when: autonomy_test_role == 'config'
+
+    - name: Check source clone identity
+      ansible.builtin.command:
+        argv: [git, -C, /var/lib/autonomy/src/autonomy, rev-parse, HEAD]
+      register: autonomy_role_source
+      changed_when: false
+      when: autonomy_test_role in ['source', 'dependencies', 'build']
+
+    - name: Require immutable source identity
+      ansible.builtin.assert:
+        that: autonomy_role_source.stdout is match('^[0-9a-f]{40}$')
+      when: autonomy_test_role in ['source', 'dependencies', 'build']
+
+    - name: Check exact APT preferences contract
+      ansible.builtin.stat:
+        path: /etc/apt/preferences.d/autonomy-lock
+      register: autonomy_role_lock
+      when: autonomy_test_role in ['version_lock', 'build']
+
+    - name: Require the explicit version lock to be installed
+      ansible.builtin.assert:
+        that: autonomy_role_lock.stat.exists
+      when: autonomy_test_role in ['version_lock', 'build']
+
+    - name: Verify baseline facts and shared defaults
       ansible.builtin.assert:
         that:
-          - autonomy_task_config.stat.exists
-
-    - name: Check systemd unit is active
-      ansible.builtin.systemd:
-        name: autonomy-task
-      register: autonomy_task_service
-
-    - name: Assert autonomy-task is active
-      ansible.builtin.assert:
-        that:
-          - autonomy_task_service.status.ActiveState == 'active'
+          - ansible_facts.distribution == 'Ubuntu'
+          - autonomy_user == 'autonomy'
+          - autonomy_enabled_units is sequence
+      when: autonomy_test_role in ['deployment_defaults', 'preflight', 'runtime_bootstrap']

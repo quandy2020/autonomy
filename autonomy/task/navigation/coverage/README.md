@@ -85,6 +85,19 @@ build/autonomy/bin/task.coverage_client observe \
 
 客户端记录终态协议、真实 `/gt/pose` 位姿和工具命令时间序列。`navigate` 示例要求工具确认；该客户端提供的确认仅表示仿真工具协议验证，不是实体工具反馈。
 
+## 地图分区
+
+Coverage 支持把工作区按 `columns × rows` 网格切分成多个房间，并在 AutoViz
+用不同颜色显示：
+
+- 面板 **Rooms** 区设置网格（1..4 × 1..4），点 **Split map**。
+- 后端 `RegionSegmenter` 在工作区包围盒上生成网格矩形区域，
+  输出互不重叠的区域，并按参考点平移回地图坐标系；环会做去重、去尖刺和逆时针归一化。
+- 计算返回 `regions[]`：颜色序号、面积、多边形、覆盖率与属于该区的路径状态；
+  AutoViz 订阅 `/coverage/regions` 以彩色边界和名称标签显示。
+- **Clean all rooms** 使用同一条已经验证过的全局 Fields2Cover 路径执行，
+  房间之间不会出现跨区的直线跳转；每个房间的覆盖率和面积独立显示。
+
 ## 模式与适配范围
 
 - 地头：`CONSTANT`；可关闭地头生成，可选择单圈、同心多圈，以及先/后覆盖地头。

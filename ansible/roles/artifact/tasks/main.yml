@@ -1,68 +1,162 @@
 ---
-- name: Require artifact path in artifact mode
-  ansible.builtin.assert:
-    that:
-      - autonomy_artifact_path | length > 0
-      - autonomy_artifact_path is file
-    fail_msg: >-
-      Set autonomy_artifact_path to a local .tar.gz produced by
-      tools/python/package_install_tarball.py on the control machine.
-  run_once: true
-  delegate_to: localhost
-  become: false
-
-- name: Stat existing install prefix
-  ansible.builtin.stat:
-    path: "{{ autonomy_install_prefix }}"
-  register: autonomy_install_prefix_stat
-
-- name: Backup existing install prefix before artifact deploy
+- name: Validate artifact on the control machine
   ansible.builtin.command:
     argv:
-      - cp
-      - -a
+      - "{{ ansible_playbook_python }}"
+      - "{{ role_path }}/../../scripts/inspect_artifact.py"
+      - "{{ autonomy_artifact_path }}"
+      - --prefix
       - "{{ autonomy_install_prefix }}"
-      - "{{ autonomy_install_prefix }}.bak"
-  become: true
+  register: autonomy_artifact_inspection
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  check_mode: false
+
+- name: Resolve artifact metadata
+  ansible.builtin.set_fact:
+    autonomy_artifact_metadata: "{{ autonomy_artifact_inspection.stdout | from_json }}"
+
+- name: Check artifact architecture and expected checksum
+  ansible.builtin.assert:
+    that:
+      - autonomy_artifact_metadata.architecture == ansible_architecture
+      - autonomy_expected_git_sha | length == 0 or autonomy_artifact_metadata.git_sha == autonomy_expected_git_sha
+      - autonomy_artifact_sha256 | length == 0 or autonomy_artifact_metadata.sha256 == autonomy_artifact_sha256
+      - autonomy_install_prefix != '/'
+      - autonomy_release_dir != autonomy_install_prefix
+      - not autonomy_release_dir.startswith(autonomy_install_prefix ~ '/')
+    fail_msg: "Artifact architecture, checksum or install prefix does not match this target."
+
+- name: Resolve content-addressed release directory
+  ansible.builtin.set_fact:
+    autonomy_artifact_release: "{{ autonomy_release_dir }}/{{ autonomy_artifact_metadata.sha256 }}"
+
+- name: Ensure release storage exists
+  ansible.builtin.file:
+    path: "{{ autonomy_release_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Check whether this release is already installed
+  ansible.builtin.stat:
+    path: "{{ autonomy_artifact_release }}"
+  register: autonomy_release_stat
+
+- name: Stage new release without modifying the current install
   when:
-    - autonomy_artifact_backup | bool
-    - autonomy_install_prefix_stat.stat.isdir | default(false)
+    - not autonomy_release_stat.stat.exists
+    - not ansible_check_mode
+  block:
+    - name: Create isolated staging directory on the release filesystem
+      ansible.builtin.tempfile:
+        state: directory
+        path: "{{ autonomy_release_dir }}"
+        prefix: .stage-
+      register: autonomy_artifact_stage
+
+    - name: Copy artifact into isolated staging directory
+      ansible.builtin.copy:
+        src: "{{ autonomy_artifact_path }}"
+        dest: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
+        mode: "0600"
+
+    - name: Check copied artifact checksum
+      ansible.builtin.stat:
+        path: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
+        checksum_algorithm: sha256
+      register: autonomy_copied_artifact
+
+    - name: Require byte-identical artifact after transfer
+      ansible.builtin.assert:
+        that:
+          - autonomy_copied_artifact.stat.checksum == autonomy_artifact_metadata.sha256
+
+    - name: Extract artifact into isolated staging directory
+      ansible.builtin.unarchive:
+        src: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
+        dest: "{{ autonomy_artifact_stage.path }}"
+        remote_src: true
+        owner: root
+        group: root
+
+    - name: Check required executables before activating release
+      ansible.builtin.stat:
+        path: "{{ autonomy_artifact_stage.path }}/{{ autonomy_install_prefix | basename }}/bin/{{ autonomy_service_binaries[item] }}"
+      loop: "{{ autonomy_services }}"
+      register: autonomy_staged_binaries
+
+    - name: Require selected service binaries in release
+      ansible.builtin.assert:
+        that:
+          - item.stat.isreg | default(false)
+          - item.stat.executable | default(false)
+        fail_msg: "Artifact is missing the executable for {{ item.item }}."
+      loop: "{{ autonomy_staged_binaries.results }}"
+
+    - name: Publish complete release directory
+      ansible.builtin.command:
+        argv:
+          - mv
+          - "{{ autonomy_artifact_stage.path }}/{{ autonomy_install_prefix | basename }}"
+          - "{{ autonomy_artifact_release }}"
+        creates: "{{ autonomy_artifact_release }}"
+      changed_when: true
+  always:
+    - name: Remove temporary staging directory
+      ansible.builtin.file:
+        path: "{{ autonomy_artifact_stage.path }}"
+        state: absent
+      when: autonomy_artifact_stage.path is defined
+
+- name: Inspect current install without following its link
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}"
+    follow: false
+  register: autonomy_current_install
+
+- name: Refuse to overwrite an unrelated install-prefix file
+  ansible.builtin.assert:
+    that:
+      - >-
+        not autonomy_current_install.stat.exists
+        or autonomy_current_install.stat.isdir | default(false)
+        or autonomy_current_install.stat.islnk | default(false)
+    fail_msg: "Install prefix must be absent, a directory or a release symlink."
+
+- name: Preserve existing directory installation during first migration
+  ansible.builtin.command:
+    argv:
+      - mv
+      - "{{ autonomy_install_prefix }}"
+      - "{{ autonomy_release_dir }}/legacy-{{ ansible_date_time.epoch }}"
+    creates: "{{ autonomy_release_dir }}/legacy-{{ ansible_date_time.epoch }}"
+  when: autonomy_current_install.stat.isdir | default(false)
   changed_when: true
 
-- name: Copy install artifact to target
-  ansible.builtin.copy:
-    src: "{{ autonomy_artifact_path }}"
-    dest: /tmp/{{ autonomy_artifact_path | basename }}
-    mode: "0644"
-  become: true
-
-- name: Extract artifact into install prefix parent
-  ansible.builtin.unarchive:
-    src: /tmp/{{ autonomy_artifact_path | basename }}
-    dest: "{{ autonomy_install_prefix | dirname }}"
-    remote_src: true
-    extra_opts:
-      - --strip-components=0
-  become: true
-
-- name: Remove temporary artifact on target
+- name: Preserve the preceding release link
   ansible.builtin.file:
-    path: /tmp/{{ autonomy_artifact_path | basename }}
-    state: absent
-  become: true
+    path: "{{ autonomy_install_prefix }}.previous"
+    src: >-
+      {{ autonomy_current_install.stat.lnk_source
+         if autonomy_current_install.stat.islnk | default(false)
+         else autonomy_release_dir ~ '/legacy-' ~ ansible_date_time.epoch }}
+    state: link
+    force: true
+    follow: false
+  when:
+    - autonomy_artifact_backup | bool
+    - autonomy_current_install.stat.exists
+    - autonomy_current_install.stat.lnk_source | default('') != autonomy_artifact_release
 
-- name: Read packaged manifest when present
-  ansible.builtin.slurp:
-    src: "{{ autonomy_install_prefix }}/share/autonomy/MANIFEST.json"
-  register: autonomy_artifact_manifest
-  failed_when: false
-
-- name: Show deployed artifact version
-  ansible.builtin.debug:
-    msg: >-
-      Deployed artifact:
-      {{ (autonomy_artifact_manifest.content | b64decode | from_json).git_describe
-         | default('unknown') }}
-      ({{ (autonomy_artifact_manifest.content | b64decode | from_json).git_sha
-         | default('') }})
-  when: autonomy_artifact_manifest.content is defined
+- name: Activate release through the stable install prefix
+  ansible.builtin.file:
+    path: "{{ autonomy_install_prefix }}"
+    src: "{{ autonomy_artifact_release }}"
+    state: link
+    force: true
+    follow: false
+  register: autonomy_artifact_activation
+  when: not ansible_check_mode

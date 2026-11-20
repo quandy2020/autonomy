@@ -8,33 +8,37 @@ driver:
   name: docker
 
 platforms:
-  - name: ubuntu2204
-    image: jrei/systemd-ubuntu:22.04
+  - name: autonomy-ops-test
+    image: "${MOLECULE_IMAGE:-jrei/systemd-ubuntu:22.04}"
     privileged: true
-    cgroupns_mode: host
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+    cgroupns_mode: private
+    tmpfs:
+      - /run
+      - /run/lock
     command: /sbin/init
     pre_build_image: true
 
 provisioner:
   name: ansible
+  playbooks:
+    converge: "${MOLECULE_CONVERGE_PLAYBOOK:-converge.yml}"
   config_options:
     defaults:
       host_key_checking: false
   inventory:
     group_vars:
       all:
+        autonomy_min_free_disk_mb: 64
         autonomy_preflight_strict_os: false
         autonomy_install_dependencies: false
-        autonomy_run_verify: false
+        autonomy_run_verify: true
         autonomy_deploy_mode: artifact
         autonomy_config_from_artifact: true
         autonomy_restart_on_config_change: false
         autonomy_services:
           - task
     host_vars:
-      ubuntu2204:
+      autonomy-ops-test:
         ansible_python_interpreter: /usr/bin/python3
 
 scenario:
@@ -44,6 +48,7 @@ scenario:
     - create
     - prepare
     - converge
+    - idempotence
     - verify
     - destroy
 

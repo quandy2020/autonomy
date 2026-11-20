@@ -1,0 +1,248 @@
+{
+  "passed": true,
+  "scope": "Actual RGB-D SLAM and native platform/task startup integration; navigation, measured coverage comparison and complete exploration remain unverified.",
+  "exploration_task_started": true,
+  "coverage_comparison_performed": false,
+  "config_sha256": "b27204e74b51749a85c5e9647d076a98dcd5f26e8f7170dd4fb30590124a1f10",
+  "application_sha256": "47f24a62eb30601ff4ee01f6a7b343e93dc91b8414250ccbcfe7a0e45d7d506a",
+  "vocabulary_sha256": "310cdf3581b5dd5becfabd75823606e315b1f049f70e51fa23be05021dc4b107",
+  "channels": {
+    "cmd_vel": "/validation/exploration/v2_124_final/cmd_vel",
+    "scan": "/validation/exploration/v2_124_final/scan",
+    "points": "/validation/exploration/v2_124_final/points",
+    "rgb": "/validation/exploration/v2_124_final/camera/rgb/image_raw",
+    "depth": "/validation/exploration/v2_124_final/camera/depth/image_raw",
+    "camera_info": "/validation/exploration/v2_124_final/camera/camera_info",
+    "imu": "/validation/exploration/v2_124_final/imu",
+    "odom": "/validation/exploration/v2_124_final/odom",
+    "gt_pose": "/validation/exploration/v2_124_final/ground_truth/pose",
+    "map_grid": "/validation/exploration/v2_124_final/ground_truth/map",
+    "tf": "/validation/exploration/v2_124_final/tf",
+    "tf_static": "/validation/exploration/v2_124_final/tf_static",
+    "clock": "/validation/exploration/v2_124_final/clock",
+    "footprint": "/validation/exploration/v2_124_final/footprint",
+    "depth_points": "/validation/exploration/v2_124_final/camera/depth/points",
+    "map_cloud": "/validation/exploration/v2_124_final/overall/map",
+    "robot_description": "/validation/exploration/v2_124_final/robot_description"
+  },
+  "maximum_steps": 9000,
+  "rendered_camera_offset_habitat": [
+    -0.0,
+    0.21000000000000002,
+    -0.03
+  ],
+  "rendered_camera_matches_static_tf": true,
+  "command": [
+    "/workspace/autonomy/build/autonomy/bin/autonomy.localization",
+    "--localization_mode",
+    "atlas",
+    "--atlas_sensor",
+    "rgbd",
+    "--atlas_config",
+    "/tmp/autonomy-exploration-v2.124-final/atlas-camera.yaml",
+    "--atlas_vocabulary",
+    "/workspace/autonomy/install/autonomy/share/autonomy/localization/conf/atlas/orb_vocab.fbow",
+    "--atlas_image_topic",
+    "/validation/exploration/v2_124_final/camera/rgb/image_raw",
+    "--atlas_depth_image_topic",
+    "/validation/exploration/v2_124_final/camera/depth/image_raw",
+    "--atlas_imu_topic",
+    "/validation/exploration/v2_124_final/disabled/imu",
+    "--atlas_right_image_topic",
+    "/validation/exploration/v2_124_final/disabled/right",
+    "--atlas_tf_topic",
+    "/validation/exploration/v2_124_final/tf",
+    "--atlas_tf_static_topic",
+    "/validation/exploration/v2_124_final/tf_static",
+    "--atlas_map_frame",
+    "atlas_optical_map",
+    "--atlas_camera_frame",
+    "camera_optical_frame",
+    "--atlas_publish_tf",
+    "false",
+    "--atlas_ground_truth_odometry_topic",
+    "",
+    "--atlas_ground_truth_trajectory_topic",
+    "",
+    "--atlas_localization_status_topic",
+    "/validation/exploration/v2_124_final/atlas/localization_status",
+    "--atlas_odometry_topic",
+    "/validation/exploration/v2_124_final/atlas/odometry",
+    "--atlas_trajectory_topic",
+    "/validation/exploration/v2_124_final/atlas/trajectory",
+    "--atlas_optimized_trajectory_topic",
+    "/validation/exploration/v2_124_final/atlas/optimized_trajectory",
+    "--atlas_map_points_topic",
+    "/validation/exploration/v2_124_final/atlas/map_points",
+    "--atlas_dense_map_points_topic",
+    "/validation/exploration/v2_124_final/atlas/dense_map_points",
+    "--atlas_occupancy_grid_topic",
+    "/validation/exploration/v2_124_final/atlas/occupancy_grid",
+    "--atlas_tracking_image_topic",
+    "/validation/exploration/v2_124_final/atlas/tracking_image",
+    "--atlas_feature_matches_topic",
+    "/validation/exploration/v2_124_final/atlas/feature_matches",
+    "--atlas_loop_closures_topic",
+    "/validation/exploration/v2_124_final/atlas/loop_closures"
+  ],
+  "camera_height_from_static_tf": 0.21000000000000002,
+  "camera_settings_sha256": "b4dd5b1073553b0661b05f8bf1c9911c7e74a5588f4ab7a26c726e73f3c33691",
+  "ground_truth_input_disabled": true,
+  "controller_options_sha256": "20a8d1b4dedfd5c935eb5ddf1261d15b49d16d04ed0cb3cdab54a7a7fa33d84d",
+  "actual_execution_requested": true,
+  "task_command": [
+    "/workspace/autonomy/build/autonomy/bin/autonomy.task",
+    "--native_rgbd_config",
+    "/tmp/autonomy-exploration-v2.124-final/native-rgbd-platform.yaml"
+  ],
+  "task_configuration_sha256": "154975c4e7319fa2f0685f16a3f5339ec50324f165c9e5b711c4128c49ba2633",
+  "exploration_goal_submitted": true,
+  "exploration_goal_identity": "validation/v2_124_final",
+  "application_returncode": 0,
+  "task_returncode": 0,
+  "message_counts": {
+    "gt_pose": 9000,
+    "tf_static": 3002,
+    "clock": 9000,
+    "map_grid": 181,
+    "camera_info": 1800,
+    "depth": 1800,
+    "rgb": 1800,
+    "atlas_localization_status": 1799,
+    "atlas_odometry": 1799,
+    "atlas_trajectory": 899,
+    "atlas_occupancy_grid": 180,
+    "native_base_odometry": 1307,
+    "native_occupancy": 1403,
+    "native_grid": 1403,
+    "exploration_feedback": 3,
+    "measured_coverage": 1398,
+    "measured_coverage_metadata": 1398,
+    "actual_command": 497,
+    "policy_diagnostics": 250
+  },
+  "algorithm_known_cells": 13472,
+  "healthy_localization_pairs": 1799,
+  "healthy_depth_localization_triples": 1799,
+  "nonzero_actual_commands": 458,
+  "unhealthy_localization_diagnostics": 0,
+  "localization_status_instances": [
+    "37523:1367717890559547"
+  ],
+  "localization_status_map_identities": [
+    [
+      "0",
+      "0",
+      "0"
+    ]
+  ],
+  "tracking_diagnostics_checked": true,
+  "last_exploration_feedback": {
+    "status": "EXPLORATION_STATUS_FAILED",
+    "progress": {
+      "detail": "navigation failed or arrival pose not confirmed"
+    },
+    "map_name": "native_rgbd_exploration"
+  },
+  "last_policy_diagnostics": {
+    "status": [
+      {
+        "name": "policy_controller",
+        "message": "ok",
+        "hardware_id": "policy_controller",
+        "values": [
+          {
+            "key": "infer_ms",
+            "value": "726.906725"
+          },
+          {
+            "key": "encode_ms",
+            "value": "0.405116"
+          },
+          {
+            "key": "status",
+            "value": "0"
+          },
+          {
+            "key": "consecutive_failures",
+            "value": "0"
+          },
+          {
+            "key": "tick_count",
+            "value": "31"
+          },
+          {
+            "key": "success_count",
+            "value": "31"
+          },
+          {
+            "key": "failure_count",
+            "value": "0"
+          },
+          {
+            "key": "near_goal_scaled",
+            "value": "0"
+          },
+          {
+            "key": "clamp_or_rate_limit",
+            "value": "0"
+          },
+          {
+            "key": "collision_blocked",
+            "value": "0"
+          },
+          {
+            "key": "infer_timeout",
+            "value": "0"
+          },
+          {
+            "key": "missing_modality"
+          }
+        ]
+      }
+    ]
+  },
+  "payload_sha256": {
+    "gt_pose_first": "1a610a3c1d9a4fb5d8637289f7e8cbb334c5cc26c892d25265e0a91eeb78ada7",
+    "tf_static_first": "93c8059487528756ab8d087cbbfa57ce865d77ce69dbce191f8c985a8011f107",
+    "clock_first": "7fabdf50396428b640c5e81531c2e033d90c3eceeae9de72d83824d6529520dc",
+    "map_grid_first": "2c34cb98af49bf54b1e3869567e52ae8e173cdc8c20657a1f2aaed3b7384e822",
+    "camera_info_first": "310385b2b9dd36a35ef81d0bebbb96a93cffdec9f63a977c7a7d3c2d956894d8",
+    "depth_first": "97a17fbd120375bac7a682a2df17db4d903af5c57e48786575e09ebf1d01b768",
+    "rgb_first": "abeb2c14d2eaaeb36eb9289e71719cae2b7530f81895fd2e4c2eed87db9fd480",
+    "atlas_localization_status_first": "c5d2ef967e32014598ece25cecf2b2cd06ce56e7c51aebac109fff716ffe004f",
+    "atlas_odometry_first": "d23f5b6c20cb4aa165f16f6b2f3bb7e6bdc163f08b3e6350b2ccac951d276123",
+    "atlas_trajectory_first": "35a3b0a96af02186944d861df0ac27de081ac5fc7756a4926a5014bc46cca6f9",
+    "atlas_occupancy_grid_first": "a500042d832b906d8eedb4ebffb07d1d084c23d321d98d0950b76c1d82a5cfe9",
+    "native_base_odometry_first": "6bb8feae9a078b4d573a6a85a871e37c03b930e6c1194319d197bd3ff213b79c",
+    "native_occupancy_first": "5a8fafb3f2a305126c1af2a8ee6e38fefcde1aa540098cbcd98d351529883d0c",
+    "native_grid_first": "9626774494d27308ae042de0fe9dc2a2561a19e1e570e6a1cb79c6b093daaee8",
+    "exploration_feedback_first": "4e289b0c57fdf7a282da04b4b8b5b8fbdbd264936feeb6786a544506ccfa6bac",
+    "measured_coverage_first": "c79bf2cfc351c052b98a9467bd92eff3e4df737777c26fd0642cd7514ef6411f",
+    "measured_coverage_metadata_first": "211f9b19a2fbd5c32ab5c3f4c72ef898eed3f6bd6e8ad7684242b77bc8667420",
+    "actual_command_first": "81c7d648928792b0a7fbc296ec73e9416d5dc87bbe46da5dd56b8b8c47c77f70",
+    "policy_diagnostics_first": "4bcb4bf2a2ef5ef7bce373912ec8951fc7ed20e39e6b5880f0026e08ecb664fa",
+    "gt_pose_last": "2f81d32a6a5b99eb3bf6c97855d09ba3e9459175909f7cb0240558488ae478cc",
+    "tf_static_last": "93c8059487528756ab8d087cbbfa57ce865d77ce69dbce191f8c985a8011f107",
+    "clock_last": "585aed26f06ecf9c2329127eb77c73fbaa2114b0c3beeb45f67b9372314c52a0",
+    "map_grid_last": "b6d9877970ca6fa67c1168d41c2d6ca539e0791401bc90bfc5e0f352fdae851b",
+    "camera_info_last": "da8304d77262f07796ceffe2ee4d6790de40dd7f44534223ee4200ea1bbbb31e",
+    "depth_last": "04f23763db77d0343ffe060f0ea878ddd6e57c54f20404cb96bca2f32838ecb4",
+    "rgb_last": "9054c07e3979cbe5f45707cbed8a4385d47422cdf0c2d44de4949e8e569f195a",
+    "atlas_localization_status_last": "58788f86c28f35de28dd9a692cd189dc3c1cff97581da4ea43052d3303a7cab4",
+    "atlas_odometry_last": "c397523b22ab6f18977e705d7bc71b49e9f0181139a6837aee2d442028dc0ecf",
+    "atlas_trajectory_last": "fe20ee67edfb74b23b397a484f88b951e0670c46847750b774a686287268deb6",
+    "atlas_occupancy_grid_last": "bf40f42e8b9eba34236bae3581497d1c2779bb3e04c47808f8c69c4bb14861f8",
+    "native_base_odometry_last": "017b8d58741d5b0fb03cc37f54c54ea3c987fd017ee16bd808b943f884cd9ef1",
+    "native_occupancy_last": "499b533bd25a993a01dc8c65d372f8ae7875ec5edf5170823be3bf49177992ae",
+    "native_grid_last": "e59902acf4fd95269bb2c6abc119ad899902eebd942dbf78cf1f5506ee53859b",
+    "exploration_feedback_last": "f03b9be46740c644f349e838c8ad42242b8edd14cba6f1537da7b238148d17a8",
+    "measured_coverage_last": "d7680a093a1a5a10b596eb9807241f23b7e3a6182b276c533942e8e6e9c498cb",
+    "measured_coverage_metadata_last": "3c85d356c191ca954291942ceb49013e82f79764816d5262f7ad9b63c3b71c21",
+    "actual_command_last": "0e2aebe723cf43adb2c0030ca4da4705ee0f759f22ce571585b34963b53ebac8",
+    "policy_diagnostics_last": "149cb9d953fd95a33de93b313647b37bc88158d82bdf6c52a897618e32a2e56b"
+  },
+  "application_log_sha256": "e3e5990912ffce47c9cc6ddaeb4e316caf44ef14601c4ac17959755752fa509d",
+  "elapsed_seconds": 194.09098116587847,
+  "native_platform_verified": true
+}

@@ -1,0 +1,9 @@
+---
+autonomy_profile: sim
+autonomy_play_mode: build
+autonomy_deploy_mode: build
+autonomy_use_local_source: true
+autonomy_local_source_dir: "{{ autonomy_controller_root }}/.."
+autonomy_play_become: false
+autonomy_preflight_strict_os: false
+autonomy_services: []

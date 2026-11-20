@@ -6,69 +6,77 @@
     owner: root
     group: "{{ autonomy_user }}"
     mode: "0750"
+  register: autonomy_config_directory
   become: true
 
-- name: Copy runtime configuration (build mode)
+- name: Copy component configuration from control machine
   ansible.builtin.copy:
-    src: "{{ autonomy_source_dir }}/config/"
-    dest: "{{ autonomy_config_dir }}/"
-    remote_src: true
-    mode: preserve
-  when: autonomy_deploy_mode == 'build'
+    src: "{{ autonomy_config_source_dir }}/autonomy/{{ item }}/conf/"
+    dest: "{{ autonomy_config_dir }}/{{ item }}/"
+    owner: root
+    group: "{{ autonomy_user }}"
+    mode: "0640"
+    directory_mode: "0750"
+  loop: "{{ autonomy_config_components }}"
+  register: autonomy_config_push
+  when: autonomy_play_mode == 'push'
   become: true
+
+- name: Copy component configuration from build host
+  ansible.builtin.copy:
+    src: "{{ autonomy_source_dir }}/autonomy/{{ item }}/conf/"
+    dest: "{{ autonomy_config_dir }}/{{ item }}/"
+    remote_src: true
+    mode: "0750"
+    directory_mode: "0750"
+  loop: "{{ autonomy_config_components }}"
   register: autonomy_config_build
-  notify: Restart enabled autonomy services
+  when:
+    - autonomy_play_mode != 'push'
+    - autonomy_deploy_mode == 'build'
+  become: true
 
-- name: Stat config bundled inside install prefix (artifact mode)
-  ansible.builtin.stat:
-    path: "{{ autonomy_install_prefix }}/share/autonomy/config"
-  register: autonomy_bundled_config
-  when: autonomy_deploy_mode == 'artifact'
-
-- name: Install configuration from artifact bundle
+- name: Install configuration bundled with artifact
   ansible.builtin.copy:
     src: "{{ autonomy_install_prefix }}/share/autonomy/config/"
     dest: "{{ autonomy_config_dir }}/"
     remote_src: true
-    mode: preserve
+    mode: "0750"
+    directory_mode: "0750"
+  register: autonomy_config_bundle
   when:
+    - autonomy_play_mode != 'push'
     - autonomy_deploy_mode == 'artifact'
     - autonomy_config_from_artifact | bool
-    - autonomy_bundled_config.stat.isdir | default(false)
   become: true
-  register: autonomy_config_from_bundle
-  notify: Restart enabled autonomy services
 
-- name: Sync runtime configuration from control machine (artifact fallback)
-  ansible.builtin.synchronize:
-    src: "{{ playbook_dir }}/../../config/"
-    dest: "{{ autonomy_config_dir }}/"
-    delete: true
-    rsync_opts:
-      - --chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r
-  when:
-    - autonomy_deploy_mode == 'artifact'
-    - not (autonomy_config_from_artifact | bool and (autonomy_bundled_config.stat.isdir | default(false)))
-  delegate_to: localhost
-  become: false
-  register: autonomy_config_artifact
-  notify: Restart enabled autonomy services
-
-- name: Set config directory ownership
+- name: Set config ownership
   ansible.builtin.file:
     path: "{{ autonomy_config_dir }}"
     state: directory
     owner: root
     group: "{{ autonomy_user }}"
-    mode: "0750"
     recurse: true
+  register: autonomy_config_owner
   become: true
 
-- name: Set config file and directory modes
+- name: Correct config permissions only when needed
   ansible.builtin.shell: |
     set -euo pipefail
-    find {{ autonomy_config_dir | quote }} -type d -exec chmod 750 {} +
-    find {{ autonomy_config_dir | quote }} -type f -exec chmod 640 {} +
+    find {{ autonomy_config_dir | quote }} -type d ! -perm 0750 -print -exec chmod 0750 {} +
+    find {{ autonomy_config_dir | quote }} -type f ! -perm 0640 -print -exec chmod 0640 {} +
   args:
     executable: /bin/bash
+  register: autonomy_config_permissions
+  changed_when: autonomy_config_permissions.stdout | length > 0
   become: true
+
+- name: Report runtime configuration changes
+  ansible.builtin.set_fact:
+    autonomy_config_changed: >-
+      {{ autonomy_config_push.changed | default(false)
+         or autonomy_config_build.changed | default(false)
+         or autonomy_config_bundle.changed | default(false)
+         or autonomy_config_permissions.changed
+         or autonomy_config_owner.changed
+         or autonomy_config_directory.changed }}

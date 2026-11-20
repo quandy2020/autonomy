@@ -1,3 +1,13 @@
+# dependencies 能力契约
+
+输入：autonomy_install_dependencies、autonomy_dependency_skip_installed、autonomy_source_dir。
+
+输出：调用现有 install_deps；保留 APT 依赖步骤，以安装器 [RUN] 输出报告变更。
+
+依赖：deployment_defaults；源码和基础部署工具须已准备。
+
+元数据中的 Role 依赖为运行前自动加载的依赖；系统前提由场景入口按顺序提供。
+
 # dependencies 角色
 
 部署时安装系统与第三方依赖。**不重复** `install_deps` 的逻辑，只做调用封装。
@@ -23,8 +33,8 @@ roles/dependencies/             # Ansible：何时跑、传什么参数
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `autonomy_install_dependencies` | `true` (all.yml) | 为 `false` 时整个角色被 playbook 跳过 |
-| `autonomy_dependency_skip_installed` | `true` | 为 `true` 时传 `--skip-installed --thirdparty-only` |
+| `autonomy_install_dependencies` | `true` (deployment_defaults) | 为 `false` 时整个角色被 playbook 跳过 |
+| `autonomy_dependency_skip_installed` | `true` | 为 `true` 时传 `--skip-installed`（保留编译所需 APT 依赖） |
 | `autonomy_dependency_package_marker` | `scripts/install_deps/app.py` | 检测包是否存在 |
 
 ## 行为

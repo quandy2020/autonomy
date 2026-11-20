@@ -8,10 +8,12 @@ Wants=network-online.target
 Type=simple
 User={{ autonomy_user }}
 Group={{ autonomy_user }}
+Environment=AUTONOMY_PATH={{ autonomy_install_prefix }}
+Environment=AUTOLINK_DISTRIBUTION_HOME={{ autonomy_install_prefix }}
 Environment=AUTOLINK_PATH={{ autonomy_install_prefix }}/share/autolink
 Environment=LD_LIBRARY_PATH={{ autonomy_install_prefix }}/lib:/usr/local/lib
 WorkingDirectory={{ autonomy_data_dir }}
-ExecStart={{ autonomy_install_prefix }}/bin/localization \
+ExecStart={{ autonomy_install_prefix }}/bin/autonomy.localization \
   --configuration_directory={{ autonomy_localization_configuration_directory }} \
   --configuration_basename={{ autonomy_localization_configuration_basename }}
 Restart=on-failure

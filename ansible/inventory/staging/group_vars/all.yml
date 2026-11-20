@@ -1,5 +1,5 @@
 ---
-# Staging overrides (shared defaults: inventory/group_vars/all.yml)
+# Staging overrides (shared defaults: roles/deployment_defaults/defaults/main.yml)
 autonomy_deploy_mode: build
 autonomy_repo_version: main
 autonomy_use_ccache: true

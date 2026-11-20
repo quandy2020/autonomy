@@ -1,0 +1,61 @@
+---
+- name: Load committed version lock only when explicitly enabled
+  ansible.builtin.include_vars:
+    file: "{{ autonomy_version_lock_file | default(role_path ~ '/../../vars/lock.yml') }}"
+  when: use_locked_versions | bool
+
+- name: Enforce locked deployment baseline
+  ansible.builtin.assert:
+    that:
+      - autonomy_version_lock.schema == 1
+      - ansible_facts.distribution == 'Ubuntu'
+      - ansible_facts.distribution_version in autonomy_version_lock.ubuntu_versions
+      - ansible_facts.architecture in autonomy_version_lock.architectures
+      - not autonomy_install_dependencies | bool or autonomy_version_lock.apt_packages | length > 0
+      - >-
+        autonomy_play_mode not in ['full', 'build'] or autonomy_deploy_mode != 'build'
+        or autonomy_repo_version is match('^[0-9a-f]{40}$')
+      - >-
+        autonomy_profile != 'production' or autonomy_play_mode != 'full'
+        or (autonomy_deploy_mode == 'artifact'
+            and autonomy_artifact_sha256 is match('^[0-9a-f]{64}$')
+            and autonomy_expected_git_sha is match('^[0-9a-f]{40}$'))
+    fail_msg: >-
+      Locked deployments require the approved OS/architecture and exact source or artifact identity.
+      Dependency installation also requires explicit apt_packages pins in the committed lock file.
+  when: use_locked_versions | bool
+
+- name: Validate exact APT package pins
+  ansible.builtin.assert:
+    that:
+      - item.key is match('^[a-z0-9][a-z0-9+.-]*$')
+      - item.value | length > 0
+      - "'\\n' not in item.value"
+      - "'*' not in item.value"
+    fail_msg: "APT lock entries must contain a package name and one exact version."
+  loop: "{{ autonomy_version_lock.apt_packages | default({}) | dict2items }}"
+  when: use_locked_versions | bool
+
+- name: Install locked APT preferences
+  ansible.builtin.template:
+    src: autonomy-lock.pref.j2
+    dest: /etc/apt/preferences.d/autonomy-lock
+    mode: "0644"
+  when:
+    - use_locked_versions | bool
+    - autonomy_install_dependencies | bool
+    - autonomy_play_mode in ['full', 'build']
+  become: true
+
+- name: Install exact locked package versions
+  ansible.builtin.apt:
+    name: "{{ item.key }}={{ item.value }}"
+    state: present
+    allow_downgrade: true
+    lock_timeout: "{{ autonomy_apt_lock_timeout }}"
+  loop: "{{ autonomy_version_lock.apt_packages | default({}) | dict2items }}"
+  when:
+    - use_locked_versions | bool
+    - autonomy_install_dependencies | bool
+    - autonomy_play_mode in ['full', 'build']
+  become: true

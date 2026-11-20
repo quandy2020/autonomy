@@ -20,5 +20,6 @@ class CoverageVisualizer {
   std::shared_ptr<autolink::Writer<Markers>> headlands_;
   std::shared_ptr<autolink::Writer<Markers>> swaths_;
   std::shared_ptr<autolink::Writer<Markers>> combined_;
+  std::shared_ptr<autolink::Writer<Markers>> regions_;
 };
 }

@@ -1,0 +1,206 @@
+name: Autonomy release
+
+on:
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: "Exact 40-character Git commit SHA"
+        required: true
+        type: string
+      architecture:
+        description: "Native builder architecture"
+        type: choice
+        options: [x86_64, aarch64]
+        required: true
+      limit:
+        description: "Inventory host/group selector (use architecture groups for mixed fleets)"
+        type: string
+        required: true
+        default: autonomy
+      artifact_run_id:
+        description: "Reuse a prior release run's artifact for promotion/rollback; empty builds anew"
+        type: string
+        required: false
+        default: ""
+      deploy_environment:
+        description: "Optional deployment after build/test/package"
+        type: choice
+        options: [none, staging, production]
+        default: none
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: autonomy-release-${{ inputs.deploy_environment }}-${{ inputs.architecture }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Require immutable inputs and validated staging promotion for production
+        env:
+          REVISION: ${{ inputs.revision }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
+          TARGET_LIMIT: ${{ inputs.limit }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+        run: |
+          [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]]
+          if [[ "$DEPLOY_ENVIRONMENT" == production ]]; then
+            [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]]
+          fi
+
+  quality:
+    needs: validate
+    uses: ./.github/workflows/ansible.yml
+    with:
+      revision: ${{ inputs.revision }}
+
+  build:
+    if: inputs.artifact_run_id == ''
+    needs: quality
+    runs-on: [self-hosted, linux, "autonomy-build-${{ inputs.architecture }}"]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.revision }}
+          submodules: recursive
+          persist-credentials: false
+      - name: Build and test in the prepared native builder
+        env:
+          EXPECTED_ARCH: ${{ inputs.architecture }}
+          CCACHE_DIR: ${{ runner.tool_cache }}/autonomy-ccache/${{ inputs.architecture }}
+        run: |
+          test "$(uname -m)" = "$EXPECTED_ARCH"
+          cmake -S . -B "$RUNNER_TEMP/autonomy-release-build" -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/autonomy \
+            -DBUILD_AUTOVIZ=OFF -DBUILD_TEST=ON -DBUILD_GRPC=ON \
+            -DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+          cmake --build "$RUNNER_TEMP/autonomy-release-build" --parallel "$(nproc)"
+          ctest --test-dir "$RUNNER_TEMP/autonomy-release-build" --output-on-failure --no-tests=error
+      - name: Package the tested build without rebuilding
+        run: |
+          python3 tools/python/package_install_tarball.py --skip-build \
+            --build-dir "$RUNNER_TEMP/autonomy-release-build" --output dist/autonomy.tar.gz
+          python3 ansible/scripts/inspect_artifact.py dist/autonomy.tar.gz --prefix /opt/autonomy
+      - uses: actions/upload-artifact@v4
+        with:
+          name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
+          path: |
+            dist/autonomy.tar.gz
+            dist/autonomy.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    if: >-
+      always() && !cancelled() && inputs.deploy_environment != 'none'
+      && needs.quality.result == 'success'
+      && (needs.build.result == 'success' || needs.build.result == 'skipped')
+    needs: [quality, build]
+    environment: ${{ inputs.deploy_environment }}
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.revision }}
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
+          path: dist
+          run-id: ${{ inputs.artifact_run_id || github.run_id }}
+          github-token: ${{ github.token }}
+      - name: Download staging acceptance evidence for production
+        if: inputs.deploy_environment == 'production'
+        uses: actions/download-artifact@v4
+        with:
+          name: deployment-audit-staging-${{ inputs.revision }}
+          path: staging-evidence
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ github.token }}
+      - name: Require successful staging of these exact artifact bytes
+        if: inputs.deploy_environment == 'production'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
+          RELEASE_REVISION: ${{ inputs.revision }}
+        run: |
+          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID" --jq '.conclusion')" = success
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          evidence = json.loads(Path('staging-evidence/deployment-audit.json').read_text())
+          expected_sha = Path('dist/autonomy.tar.gz.sha256').read_text().split()[0]
+          assert evidence['environment'] == 'staging'
+          assert evidence['revision'] == os.environ['RELEASE_REVISION']
+          assert evidence['artifact_sha256'] == expected_sha
+          PY
+      - name: Install deploy tooling
+        run: |
+          python3 -m pip install -r ansible/requirements-ci.txt
+          ansible-galaxy collection install -r ansible/requirements.yml
+          ansible/scripts/install_collection.sh
+      - name: Record revision, inventory, public variables and target host list
+        env:
+          AUTONOMY_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || github.run_id }}
+          RELEASE_REVISION: ${{ inputs.revision }}
+          DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
+          TARGET_LIMIT: ${{ inputs.limit }}
+        run: |
+          python3 ansible/scripts/deployment_audit.py \
+            --environment "$DEPLOY_ENVIRONMENT" --revision "$RELEASE_REVISION" --limit "$TARGET_LIMIT" \
+            --artifact-sha256 "$(cut -d ' ' -f 1 dist/autonomy.tar.gz.sha256)" \
+            --output "$RUNNER_TEMP/deployment-audit.json"
+      - name: Deploy approved artifact over verified SSH
+        env:
+          DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
+          TARGET_LIMIT: ${{ inputs.limit }}
+          RELEASE_REVISION: ${{ inputs.revision }}
+          AUTONOMY_SSH_PRIVATE_KEY: ${{ secrets.AUTONOMY_SSH_PRIVATE_KEY }}
+          AUTONOMY_SSH_KNOWN_HOSTS: ${{ secrets.AUTONOMY_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          umask 077
+          test -n "$AUTONOMY_SSH_PRIVATE_KEY"
+          test -n "$AUTONOMY_SSH_KNOWN_HOSTS"
+          install -d -m 700 ~/.ssh
+          key_file="$RUNNER_TEMP/autonomy-deploy-key"
+          trap 'rm -f "$key_file"' EXIT
+          printf '%s\n' "$AUTONOMY_SSH_PRIVATE_KEY" > "$key_file"
+          printf '%s\n' "$AUTONOMY_SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          unset AUTONOMY_SSH_PRIVATE_KEY AUTONOMY_SSH_KNOWN_HOSTS
+          cd dist
+          sha256sum --check autonomy.tar.gz.sha256
+          artifact_sha="$(cut -d ' ' -f 1 autonomy.tar.gz.sha256)"
+          cd ../ansible
+          ./deploy.sh deploy "$DEPLOY_ENVIRONMENT" --limit "$TARGET_LIMIT" --private-key "$key_file" \
+            -e "autonomy_artifact_path=$GITHUB_WORKSPACE/dist/autonomy.tar.gz" \
+            -e "autonomy_artifact_sha256=$artifact_sha" \
+            -e "autonomy_expected_git_sha=$RELEASE_REVISION"
+      - name: Preserve accepted staging bytes for later production promotion
+        if: inputs.deploy_environment == 'staging' && inputs.artifact_run_id != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
+          path: |
+            dist/autonomy.tar.gz
+            dist/autonomy.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Keep the deployment audit even when rollout fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-audit-${{ inputs.deploy_environment }}-${{ inputs.revision }}
+          path: ${{ runner.temp }}/deployment-audit.json
+          if-no-files-found: ignore
+          retention-days: 90

@@ -1,0 +1,8 @@
+---
+# Release policy is committed with the code. Native builder images supply third-party ABI.
+# Populate apt_packages from the approved target baseline before enabling dependency installs.
+autonomy_version_lock:
+  schema: 1
+  ubuntu_versions: ["22.04"]
+  architectures: [x86_64, aarch64]
+  apt_packages: {}

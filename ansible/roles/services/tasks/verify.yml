@@ -1,54 +1,33 @@
 ---
-- name: Wait for enabled autonomy services to become active
-  ansible.builtin.command:
-    argv:
-      - systemctl
-      - is-active
-      - "{{ item }}"
-  register: autonomy_service_wait
-  until: autonomy_service_wait.rc == 0
-  retries: 20
-  delay: 5
-  loop: "{{ autonomy_enabled_units }}"
-  become: true
-  changed_when: false
+- name: Verify selected service startup
+  block:
+    - name: Wait for enabled autonomy services to become active
+      ansible.builtin.command:
+        argv: [systemctl, is-active, "{{ item }}"]
+      register: autonomy_service_wait
+      until: autonomy_service_wait.rc == 0
+      retries: "{{ autonomy_service_verify_retries }}"
+      delay: "{{ autonomy_service_verify_delay }}"
+      loop: "{{ autonomy_enabled_units }}"
+      become: true
+      changed_when: false
+  rescue:
+    - name: Collect service journals without exposing runtime secrets
+      ansible.builtin.command:
+        argv: [journalctl, -u, "{{ item }}", -n, "30", --no-pager]
+      loop: "{{ autonomy_enabled_units }}"
+      become: true
+      changed_when: false
+      failed_when: false
+      no_log: true
 
-- name: Collect journal for services that failed to become active
-  ansible.builtin.command:
-    argv:
-      - journalctl
-      - -u
-      - "{{ item.item }}"
-      - -n
-      - "30"
-      - --no-pager
-  loop: "{{ autonomy_service_wait.results | selectattr('rc', 'ne', 0) | list }}"
-  register: autonomy_failed_journals
-  become: true
-  changed_when: false
-  failed_when: false
-
-- name: Display service failure logs
-  ansible.builtin.debug:
-    msg: "{{ item.item }}:\n{{ item.stdout }}"
-  loop: "{{ autonomy_failed_journals.results | default([]) }}"
-  when:
-    - item.stdout is defined
-    - item.stdout | length > 0
+    - name: Fail deployment after service startup failure
+      ansible.builtin.fail:
+        msg: >-
+          Service startup failed on {{ inventory_hostname }}.
+          Inspect systemctl status and journalctl locally on the target;
+          runtime journal contents are not printed into CI logs.
 
 - name: Summarize service verification
   ansible.builtin.debug:
     msg: "All services active: {{ autonomy_enabled_units | join(', ') }}"
-  when: autonomy_service_wait.results | selectattr('rc', 'ne', 0) | list | length == 0
-
-- name: Fail verify when any service is not active
-  ansible.builtin.fail:
-    msg: >-
-      Services not active: {{
-        autonomy_service_wait.results
-        | selectattr('rc', 'ne', 0)
-        | map(attribute='item')
-        | list
-        | join(', ')
-      }}. See journal output above.
-  when: autonomy_service_wait.results | selectattr('rc', 'ne', 0) | list | length > 0

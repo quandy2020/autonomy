@@ -6,6 +6,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
+#include <vector>
 
 namespace autonomy {
 namespace control {
@@ -52,15 +54,42 @@ bool EncodePath(const ObservationSnapshot& snapshot,
     const double cosine = std::cos(-yaw);
     const double sine = std::sin(-yaw);
     const int total = snapshot.path->poses_size();
+    std::vector<double> cumulative(static_cast<std::size_t>(total), 0.0);
+    for (int i = 0; i < total; ++i) {
+        const auto& position = snapshot.path->poses(i).pose().position();
+        if (!std::isfinite(position.x()) || !std::isfinite(position.y())) {
+            if (error != nullptr) *error = "Path contains a nonfinite position";
+            return false;
+        }
+        if (i > 0) {
+            const auto& previous = snapshot.path->poses(i - 1).pose().position();
+            cumulative[static_cast<std::size_t>(i)] = cumulative[static_cast<std::size_t>(i - 1)] +
+                std::hypot(position.x() - previous.x(), position.y() - previous.y());
+        }
+    }
+    const double length = cumulative.back();
+    std::size_t segment = total > 1 ? 1U : 0U;
     for (int i = 0; i < count; ++i) {
-        const int source =
-            total == 1 ? 0
-                       : static_cast<int>(std::llround(
-                             static_cast<double>(i) * (total - 1) /
-                             static_cast<double>(count - 1)));
-        const auto& waypoint = snapshot.path->poses(source).pose().position();
-        const double delta_x = waypoint.x() - origin_x;
-        const double delta_y = waypoint.y() - origin_y;
+        double x = 0.0;
+        double y = 0.0;
+        if (total == 1 || length <= std::numeric_limits<double>::epsilon()) {
+            x = snapshot.path->poses(0).pose().position().x();
+            y = snapshot.path->poses(0).pose().position().y();
+        } else {
+            const double distance = length * static_cast<double>(i) /
+                static_cast<double>(std::max(1, count - 1));
+            while (segment + 1 < cumulative.size() && cumulative[segment] < distance)
+                ++segment;
+            const double begin = cumulative[segment - 1];
+            const double span = cumulative[segment] - begin;
+            const double fraction = span > 0.0 ? (distance - begin) / span : 0.0;
+            const auto& from = snapshot.path->poses(static_cast<int>(segment - 1)).pose().position();
+            const auto& to = snapshot.path->poses(static_cast<int>(segment)).pose().position();
+            x = from.x() + fraction * (to.x() - from.x());
+            y = from.y() + fraction * (to.y() - from.y());
+        }
+        const double delta_x = x - origin_x;
+        const double delta_y = y - origin_y;
         (*output)[static_cast<std::size_t>(i * 2)] =
             static_cast<float>(cosine * delta_x - sine * delta_y);
         (*output)[static_cast<std::size_t>(i * 2 + 1)] =

@@ -50,7 +50,8 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
         if (!std::isfinite(value)) return deny("nonfinite actual native pose");
     if (std::abs(q.w()*q.w()+q.x()*q.x()+q.y()*q.y()+q.z()*q.z()-1)>1e-3)
         return deny("invalid actual native pose rotation");
-    const double speed = std::max(std::abs(twist.linear().x()),std::hypot(measured.linear().x(),measured.linear().y()));
+    const double commanded_speed = std::abs(twist.linear().x());
+    const double speed = std::max(commanded_speed,std::hypot(measured.linear().x(),measured.linear().y()));
     const double distance = speed*(options.actuator_watchdog+options.reaction_time)+
         speed*speed/(2*options.minimum_braking_deceleration);
     if (!std::isfinite(distance)) return deny("native stopping envelope overflow");
@@ -60,7 +61,20 @@ autonomy::navigation::SafetyResult VerifyNativeCommand(
     const double yaw = std::atan2(2*(q.w()*q.z()+q.x()*q.y()),1-2*(q.y()*q.y()+q.z()*q.z()));
     try {
         autonomy::navigation::GeometrySafety geometry(map.grid,body);
-        return geometry.VerifyPose({pose.position().x(),pose.position().y(),yaw},distance);
+        const autonomy::navigation::Pose2d current{pose.position().x(),pose.position().y(),yaw};
+        const auto body_check = geometry.VerifyPose(current);
+        if (!body_check.safe) return body_check;
+        if (commanded_speed <= 1e-9) return body_check;
+        // The stop distance applies along the commanded translation. Expanding
+        // a complete circle by that distance falsely rejects motion parallel
+        // to a nearby wall. Keep the exact body footprint at the current pose,
+        // then validate the directional segment ending at a stationary pose.
+        const double duration = options.actuator_watchdog + options.reaction_time;
+        const double heading = yaw + .5 * twist.angular().z() * duration;
+        autonomy::navigation::Pose2d stop = current;
+        stop.x += std::cos(heading) * distance;
+        stop.y += std::sin(heading) * distance;
+        return geometry.VerifySegment(current, stop);
     } catch (const std::exception&) { return deny("native geometry checker rejected its input"); }
 }
 

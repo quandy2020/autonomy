@@ -1,0 +1,7 @@
+# Managed by openbot.autonomy_ops.version_lock.
+{% for package, version in autonomy_version_lock.apt_packages | dictsort %}
+Package: {{ package }}
+Pin: version {{ version }}
+Pin-Priority: 1001
+
+{% endfor %}

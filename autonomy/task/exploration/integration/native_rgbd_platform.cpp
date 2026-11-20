@@ -232,6 +232,9 @@ public:
         double target_yaw = 0;  ///< Requested nonzero sweep angle, radians.
         double maximum_drift = 0;  ///< Deployment-confirmed position envelope, metres.
         double maximum_yaw_rate = 0;  ///< Existing controller yaw-command bound, rad/s.
+        bool has_measured_yaw = false;  ///< A measured yaw baseline is available.
+        double last_measured_yaw = 0;  ///< Previous measured yaw for sweep accumulation, radians.
+        double accumulated_yaw = 0;  ///< Accumulated absolute measured sweep, radians.
     };
     /** @brief Transport-only state for one accepted action; completion is measured separately. */
     struct StartupOperation {
@@ -331,7 +334,8 @@ public:
     bool RequestStartupObservation(const RequestVersion& version, double target_yaw,
                                    double allowance) {
         if (closed_.load() || !controller_ || !std::isfinite(target_yaw) ||
-            !std::isfinite(allowance) || target_yaw <= 0 || allowance <= 0)
+            !std::isfinite(allowance) || std::abs(target_yaw) < 1e-9 ||
+            std::abs(target_yaw) > 2 * autonomy::navigation::kPi + 1e-9 || allowance <= 0)
             return false;
         const auto feedback = ReadControlState();
         if (!feedback || !feedback->has_pose() || !feedback->pose().has_pose() ||
@@ -385,6 +389,9 @@ public:
             startup_admission_.start_yaw = yaw;
             startup_admission_.deadline = deadline;
             startup_admission_.target_yaw = target_yaw;
+            startup_admission_.has_measured_yaw = true;
+            startup_admission_.last_measured_yaw = yaw;
+            startup_admission_.accumulated_yaw = 0;
             startup_admission_.maximum_drift =
                 options_.exploration.session.startup_observation.maximum_position_drift;
             startup_admission_.maximum_yaw_rate = options_.command_gate.maximum_yaw_rate;
@@ -545,11 +552,23 @@ public:
         if (feedback && feedback->has_pose() && feedback->pose().has_pose() &&
             feedback->pose().pose().has_pose()) {
             const auto& position = feedback->pose().pose().pose().position();
+            const auto& rotation = feedback->pose().pose().pose().orientation();
             double start_x = 0, start_y = 0, drift_limit = 0;
             {
                 std::lock_guard<std::mutex> lock(startup_admission_.mutex);
                 start_x = startup_admission_.start_x; start_y = startup_admission_.start_y;
                 drift_limit = startup_admission_.maximum_drift;
+                const double measured_yaw = std::atan2(
+                    2 * (rotation.w() * rotation.z() + rotation.x() * rotation.y()),
+                    1 - 2 * (rotation.y() * rotation.y() + rotation.z() * rotation.z()));
+                if (startup_admission_.has_measured_yaw && std::isfinite(measured_yaw)) {
+                    const double step = std::abs(std::remainder(
+                        measured_yaw - startup_admission_.last_measured_yaw,
+                        2 * autonomy::navigation::kPi));
+                    if (step > 1e-5 && step < autonomy::navigation::kPi)
+                        startup_admission_.accumulated_yaw += step;
+                    startup_admission_.last_measured_yaw = measured_yaw;
+                }
             }
             const double drift = std::hypot(position.x() - start_x, position.y() - start_y);
             if (std::isfinite(drift) && drift > drift_limit) {
@@ -587,14 +606,20 @@ public:
         const double final_yaw = std::atan2(2 * (rotation.w() * rotation.z() +
             rotation.x() * rotation.y()), 1 - 2 * (rotation.y() * rotation.y() +
             rotation.z() * rotation.z()));
-        double start_yaw = 0;
+        double start_yaw = 0, accumulated_yaw = 0;
         {
             std::lock_guard<std::mutex> lock(startup_admission_.mutex);
             start_yaw = startup_admission_.start_yaw;
+            accumulated_yaw = startup_admission_.accumulated_yaw;
         }
-        const double turned = std::abs(std::remainder(final_yaw - start_yaw, 2 * autonomy::navigation::kPi));
-        if (turned + options_.exploration.session.startup_observation.completion_tolerance < target_yaw) {
-            AWARN << "NATIVE_STARTUP_OBSERVATION measured_yaw=" << turned
+        const double expected_yaw = std::remainder(
+            start_yaw + target_yaw, 2 * autonomy::navigation::kPi);
+        const double final_error = std::abs(std::remainder(
+            final_yaw - expected_yaw, 2 * autonomy::navigation::kPi));
+        if (accumulated_yaw + options_.exploration.session.startup_observation.completion_tolerance < std::abs(target_yaw) ||
+            final_error > options_.exploration.session.startup_observation.completion_tolerance) {
+            AWARN << "NATIVE_STARTUP_OBSERVATION measured_yaw=" << accumulated_yaw
+                  << " final_error=" << final_error
                   << " target_yaw=" << target_yaw;
             SetStartupReply(version, false, "native startup rotation ended before the required yaw");
             return PollStartupObservation();

@@ -114,11 +114,11 @@ host_vista_server: true
 region: {min_x: -6.0, min_y: -6.0, max_x: 6.0, max_y: 6.0}
 mapping_resolution: 0.15
 robot_height: 0.25
-robot_radius: 0.15
+robot_radius: 0.105  # AutoSim Turtlebot3 Burger circumscribed collision radius
 vertical_margin: 0.03
 horizontal_margin: 0.02
 time_budget: 30.0
-require_return: true
+require_return: false  # enable only when the deployment requires a return leg
 require_save: true
 map_name: native_rgbd_exploration
 map_output_directory: native-mapping
@@ -143,3 +143,47 @@ ControllerServer、SanD、已有 NMPC/MPPI 的实际输入与
 和反馈，并在运行时生成上述真实标定配置。即便启动和融合地图输出
 通过，仍需要实际运动、覆盖账本、GT 比较及任务完成证据。
 完整验收状态和原始记录集中在本目录的 native exploration 验证文档。
+
+## 连续观测与航向执行
+
+观测输入或覆盖账本的短暂丢失不会无条件取消已经准入的观测目标。当前
+目标仍处于同一地图/传感世代，且原生平台用最新地图重新验证目标足迹后，
+Session 保留观测阶段、导航请求和已经采集的 dwell 证据，只刷新完成判定
+使用的版本号。目标真的落入障碍或已知不可通行区时才撤销导航并重选。
+
+native Vista 的只读证据请求与路径请求共用一个客户端。前序请求尚未完成时，
+新请求在自身超时预算内等待并回收旧 future，不再立即把并发查询当成探索
+失败。仅用于返程时间估计的后台任务失败也不会撤销正在执行的安全观测目标。
+
+启动观测支持累计 2π 原地旋转，发送给 `/spin` 的目标仍是相对转角，完成
+校验使用轮询过程中累计的实测绝对转角以及最终航向误差。完成整周旋转后
+机器人回到启动航向。探索视点分成两步：先用目标点方向作为路径终点航向，
+使 SanD/MPPI 不必在路径起点完成不可跟踪的大角度掉头；到达位置后，再用
+同一原生 `/spin` action 原地转向 `required_views` 指定的观察航向。位置到达
+只校验平移容差，相机朝向由独立旋转结果确认。
+
+路径编码器对任意数量的原生路径点按弧长均匀采样到模型要求的固定点数。
+此前两点路径会被复制成前后两簇，而不是连续路径；现在模型输入、远端
+MPPI 参考和公共 B 样条求值使用一致的几何顺序。
+
+AutoSim 的 Turtlebot3 验证配置使用：
+
+```yaml
+startup_observation:
+  enabled: true
+  target_yaw: 6.283185307179586
+  time_allowance: 10.0
+  deadline_margin: 3.0
+  maximum_position_drift: 0.08
+  completion_tolerance: 0.08
+  maximum_pose_age: 1.0
+  support_radius: 0.8
+  support_ring_radius: 1.2
+  support_timeout: 60.0
+  minimum_support_cells: 8
+```
+
+`target_yaw` 是该次 `/spin` 的相对转角。原生平台同时累计每次轮询的实测
+航向增量，要求累计转角达到目标且最终航向回到期望角；仅检查首尾差值
+无法证明整周扫描真的发生。真实部署应继续使用实测触发间隔、轮速上限
+和底盘定位漂移配置，不能把 AutoSim 的数值直接当作硬件证明。

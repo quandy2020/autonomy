@@ -15,5 +15,13 @@ if ! command -v molecule >/dev/null 2>&1; then
   exit 1
 fi
 
+"${ROOT}/scripts/install_collection.sh"
+export ANSIBLE_COLLECTIONS_PATH="${ROOT}/.ansible/collections:${HOME}/.ansible/collections"
+MOLECULE_ROLE="${MOLECULE_ROLE:-services}"
+if [[ ! "${MOLECULE_ROLE}" =~ ^[a-z][a-z0-9_]*$ || ! -f "${ROOT}/molecule/roles/${MOLECULE_ROLE}/converge.yml" ]]; then
+  echo "Unknown Molecule role case" >&2
+  exit 1
+fi
+export MOLECULE_CONVERGE_PLAYBOOK="${ROOT}/molecule/roles/${MOLECULE_ROLE}/converge.yml"
 export MOLECULE_PROJECT_DIRECTORY="${ROOT}"
 exec molecule test -s default
