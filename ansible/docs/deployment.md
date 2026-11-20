@@ -23,6 +23,18 @@
 
 执行 `./deploy.sh release robots -l robot01 -K`，重新编译、打包并部署。完整部署会重新安装制品中的配置，可能覆盖之前 push 的同名文件。
 
+### 增量分发
+
+给 `deploy`、`release` 或 `cross-release` 加 `--incremental`。已有制品用 `deploy`，需要增量交叉编译并部署时用下面的命令。
+
+```bash
+./deploy.sh cross-release robots -l robot01 -K --incremental
+```
+
+目标会复用当前版本中内容相同的文件，只接收变动文件及归档元数据。首次安装、找不到当前受管版本或差分包不比分发完整包更小时，自动传完整包。增量打包时，如果安装内容和制品元数据相同，归档摘要也相同，已安装的版本可直接复用。
+
+目标仍会生成完整的新版本目录，切换版本时照常重启并检查服务，保留旧版供回滚。可在 inventory 用 `autonomy_artifact_incremental: true` 启用增量传输。仅需编译、打包时使用 `./deploy.sh cross-build --incremental`。现场 `build` 和原生 `release` 已复用各自的构建目录。
+
 ## 回滚到旧版本
 
 1. 在宿主机 `~/.autonomy/artifacts/` 放入已验收旧版本的 `autonomy.tar.gz` 和对应 `.sha256`，先保留当前制品原件。

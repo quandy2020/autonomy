@@ -1,0 +1,101 @@
+---
+- name: Check that the incremental basis is still available
+  ansible.builtin.stat:
+    path: "{{ autonomy_incremental_basis }}"
+    follow: false
+  register: autonomy_incremental_basis_stat
+
+- name: Prepare and transfer a file delta
+  when: autonomy_incremental_basis_stat.stat.isdir | default(false)
+  vars:
+    autonomy_delta_script: "{{ role_path }}/../../scripts/artifact_delta.py"
+    autonomy_delta_python: "{{ ansible_facts.python.executable | default('/usr/bin/python3') }}"
+  block:
+    - name: Hash the active release files on the target
+      ansible.builtin.script:
+        cmd: "{{ autonomy_delta_script | quote }} inventory {{ autonomy_incremental_basis | quote }}"
+        executable: "{{ autonomy_delta_python }}"
+      register: autonomy_delta_inventory
+      changed_when: false
+
+    - name: Allocate private delta files on the controller
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: autonomy-delta-
+      delegate_to: localhost
+      become: false
+      register: autonomy_delta_work
+
+    - name: Save the target file inventory on the controller
+      ansible.builtin.copy:
+        content: "{{ autonomy_delta_inventory.stdout | trim }}"
+        dest: "{{ autonomy_delta_work.path }}/basis.json"
+        mode: "0600"
+      delegate_to: localhost
+      become: false
+
+    - name: Compare the verified artifact with the active release
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - "{{ autonomy_delta_script }}"
+          - prepare
+          - "{{ autonomy_artifact_path }}"
+          - "{{ autonomy_install_prefix }}"
+          - "{{ autonomy_artifact_metadata.sha256 }}"
+          - "{{ autonomy_delta_work.path }}/basis.json"
+          - "{{ autonomy_delta_work.path }}"
+      delegate_to: localhost
+      become: false
+      register: autonomy_delta_preparation
+      changed_when: false
+
+    - name: Read the transfer plan
+      ansible.builtin.set_fact:
+        autonomy_delta_plan: "{{ autonomy_delta_preparation.stdout | from_json }}"
+
+    - name: Stage the delta if it is smaller than the complete archive
+      when: autonomy_delta_plan.use_delta
+      block:
+        - name: Copy the reuse plan into staging
+          ansible.builtin.copy:
+            src: "{{ autonomy_delta_work.path }}/reuse.json"
+            dest: "{{ autonomy_artifact_stage.path }}/reuse.json"
+            mode: "0600"
+
+        - name: Reuse verified files in the independent staging directory
+          ansible.builtin.script:
+            cmd: >-
+              {{ autonomy_delta_script | quote }} restore
+              {{ autonomy_incremental_basis | quote }}
+              {{ (autonomy_artifact_stage.path ~ '/tree') | quote }}
+              {{ (autonomy_artifact_stage.path ~ '/reuse.json') | quote }}
+              {{ autonomy_delta_plan.reuse_sha256 | quote }}
+            executable: "{{ autonomy_delta_python }}"
+          changed_when: true
+
+        - name: Transfer the delta archive
+          ansible.builtin.copy:
+            src: "{{ autonomy_delta_work.path }}/delta.tar.gz"
+            dest: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
+            mode: "0600"
+
+        - name: Select the delta archive checksum for validation
+          ansible.builtin.set_fact:
+            autonomy_artifact_delta_used: true
+            autonomy_artifact_wire_sha256: "{{ autonomy_delta_plan.payload_sha256 }}"
+
+        - name: Report the incremental transfer size
+          ansible.builtin.debug:
+            msg: >-
+              Reused {{ autonomy_delta_plan.reused }} files.
+              Transferred {{ autonomy_delta_plan.wire_bytes }} bytes
+              instead of {{ autonomy_delta_plan.full_bytes }} bytes.
+  always:
+    - name: Remove controller delta files
+      ansible.builtin.file:
+        path: "{{ autonomy_delta_work.path }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: autonomy_delta_work.path is defined

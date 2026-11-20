@@ -1,0 +1,38 @@
+# Optional include only. No repository CI is enabled by adding this file.
+# Runner prerequisites: Python 3.9+, Docker daemon/CLI, GNU Make, and the shared
+# autonomy.platform.x86_64 image (or a compatible IMAGE) provisioned on the host.
+# Provision target sysroots in CROSS_SYSROOT_CACHE/<profile>. Do not cache credentials.
+# This example must be adapted and verified on the actual runner before use.
+cross:metadata:
+  stage: test
+  image: python:3.11-slim
+  script:
+    - cd tools/cross-build
+    - python3 scripts/cross_build.py check
+    - python3 -m unittest discover -s tests -v
+
+cross:build:
+  stage: build
+  tags: [cross-build]
+  rules:
+    - when: manual
+  parallel:
+    matrix:
+      - PROFILE:
+          - rockchip-rk3588-ubuntu2204
+          - rockchip-rk3506-debian12
+          - nvidia-agx-orin-jetpack6
+          - nvidia-orin-nx-jetpack6
+          - nvidia-orin-nano-jetpack6
+  script:
+    - cd tools/cross-build
+    - test -n "$CROSS_SYSROOT_CACHE"
+    - mkdir -p work/sysroots
+    # Copy rather than link: Docker daemon needs an accessible bind-mount path.
+    - cp -a "$CROSS_SYSROOT_CACHE/$PROFILE" "work/sysroots/$PROFILE"
+    - make verify
+    - make install SOURCE="$PWD/tests/smoke"
+  artifacts:
+    paths:
+      - tools/cross-build/work/install/
+    expire_in: 7 days

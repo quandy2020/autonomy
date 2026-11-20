@@ -33,6 +33,7 @@ autonomy_dependency_skip_installed: true
 
 # artifact 模式：控制机本地 tar 路径（playbook 运行在控制机时填绝对路径）
 autonomy_artifact_path: ""
+autonomy_artifact_incremental: false
 
 autonomy_supplementary_groups:
   - dialout

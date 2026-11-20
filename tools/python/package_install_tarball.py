@@ -12,6 +12,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gzip
 import hashlib
 import json
 import os
@@ -20,6 +21,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tarfile
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
@@ -177,6 +179,29 @@ def run(cmd: list[str], *, env: dict[str, str] | None = None) -> None:
     subprocess.run(cmd, check=True, env=env)
 
 
+def write_archive(staged_prefix: Path, output: Path, manifest: dict, *, reproducible: bool = False) -> str:
+    """Package a staged install without running any of its executables."""
+    manifest_path = staged_prefix / "share/autonomy/MANIFEST.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+    if reproducible:
+        def normalize(member):
+            member.mtime = member.uid = member.gid = 0
+            member.uname = member.gname = ''
+            return member
+
+        with output.open('wb') as stream, gzip.GzipFile(filename='', mode='wb', fileobj=stream, mtime=0) as compressed:
+            with tarfile.open(fileobj=compressed, mode='w') as archive:
+                archive.add(staged_prefix, arcname=staged_prefix.name, filter=normalize)
+    else:
+        run(["tar", "-C", str(staged_prefix.parent), "-czf", str(output), staged_prefix.name])
+    digest = hashlib.sha256()
+    with output.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def main(argv: list[str] | None = None) -> int:
     root = repository_root()
     parser = argparse.ArgumentParser(description=__doc__)
@@ -207,6 +232,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument('--bundle-runtime', action='store_true',
                         help='Bundle linked libraries and GUI plugins with relative ELF search paths; exclude libc/C++ runtime and GPU drivers')
+    parser.add_argument('--reproducible', action='store_true',
+                        help='Keep archive identity stable for identical staged files and source metadata')
     parser.add_argument(
         "-j",
         "--jobs",
@@ -271,8 +298,6 @@ def main(argv: list[str] | None = None) -> int:
             deduplicated_bytes = deduplicate_runtime_libraries(staged_prefix / 'lib')
             print(f'[package] deduplicated runtime libraries: {deduplicated_bytes} bytes saved')
 
-        manifest_path = staged_prefix / "share" / "autonomy" / "MANIFEST.json"
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
         cache = {}
         for line in (build_dir / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
             if not line.startswith(("#", "//")) and "=" in line and ":" in line.split("=", 1)[0]:
@@ -289,28 +314,12 @@ def main(argv: list[str] | None = None) -> int:
             "config_bundled": bundle_config,
             "bundled_runtime_libraries": runtime_libraries,
             "deduplicated_runtime_bytes": deduplicated_bytes,
-            "packaged_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
-        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-
-        tar_name = install_prefix.name
-        tar_parent = stage / install_prefix.parent.relative_to("/")
-        run(
-            [
-                "tar",
-                "-C",
-                str(tar_parent),
-                "-czf",
-                str(output),
-                tar_name,
-            ]
-        )
-        digest = hashlib.sha256()
-        with output.open("rb") as stream:
-            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-                digest.update(chunk)
+        if not args.reproducible:
+            manifest["packaged_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        digest = write_archive(staged_prefix, output, manifest, reproducible=args.reproducible)
         output.with_name(output.name + ".sha256").write_text(
-            f"{digest.hexdigest()}  {output.name}\n", encoding="utf-8"
+            f"{digest}  {output.name}\n", encoding="utf-8"
         )
         print(f"[package] wrote {output}")
     finally:

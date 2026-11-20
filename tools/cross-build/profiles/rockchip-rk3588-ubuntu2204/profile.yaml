@@ -1,0 +1,13 @@
+{
+  "platform": "rockchip-rk3588-ubuntu2204",
+  "vendor": "rockchip",
+  "model": "rk3588",
+  "stack": "ubuntu",
+  "version": "2204",
+  "arch": "aarch64",
+  "family": "rk3588",
+  "triple": "aarch64-linux-gnu",
+  "distro": "ubuntu",
+  "distro_version": "22.04",
+  "gcc_major": "11"
+}

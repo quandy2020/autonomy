@@ -44,6 +44,10 @@ include("${CMAKE_CURRENT_SOURCE_DIR}/../cmake/msgs_generate.cmake")
 
 set(AM_GEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/gen")
 set(AM_MSGS_GEN_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/../tools/automsgs_msgs_generate.py")
+set(_automsgs_protoc protobuf::protoc)
+if(CMAKE_CROSSCOMPILING AND AUTONOMY_HOST_PROTOC)
+  set(_automsgs_protoc "${AUTONOMY_HOST_PROTOC}")
+endif()
 
 # One list of protos per directory. The package name is that path with dots.
 set(_proto_dirs "")
@@ -67,7 +71,7 @@ foreach(_rel ${_proto_dirs})
   automsgs_msgs_generate_messages_impl(
     PYTHON_INTERPRETER Python3::Interpreter
     MSGS_GEN_SCRIPT "${AM_MSGS_GEN_SCRIPT}"
-    PROTOC_EXEC protobuf::protoc
+    PROTOC_EXEC "${_automsgs_protoc}"
     PROTOC_PLUGIN ""
     PROTO_PACKAGE "${_pkg}"
     PROTO_PATH "${AM_PROTO_INCLUDE_DIR}"

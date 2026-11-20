@@ -61,6 +61,7 @@ class ContractTest(unittest.TestCase):
             self.skipTest('install the local collection first')
         names = {entry['name'] for entry in json.loads(manifest.read_text())['files']}
         self.assertIn('scripts/inspect_artifact.py', names)
+        self.assertIn('scripts/artifact_delta.py', names)
         self.assertIn('vars/lock.yml', names)
         self.assertFalse(any(name.startswith(('inventory/', 'tests/', 'molecule/')) for name in names))
         self.assertNotIn('.vault_pass', names)

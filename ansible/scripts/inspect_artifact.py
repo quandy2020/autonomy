@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import posixpath
+import re
 import tarfile
 from pathlib import Path, PurePosixPath
 
@@ -13,7 +14,7 @@ def inspect_artifact(path: Path, prefix: str) -> dict:
     if (not prefix.startswith('/') or prefix == '/' or not root
             or posixpath.normpath(prefix) != prefix or any(char.isspace() for char in prefix)):
         raise ValueError('install prefix must be an absolute non-root path')
-    with tarfile.open(path, 'r:gz') as archive:
+    with path.open('rb') as stream, tarfile.open(fileobj=stream, mode='r:gz') as archive:
         members = archive.getmembers()
         links = set()
         names = set()
@@ -45,15 +46,25 @@ def inspect_artifact(path: Path, prefix: str) -> dict:
         manifest = json.load(archive.extractfile(member))
         if manifest.get('install_prefix') != prefix:
             raise ValueError('artifact install prefix does not match the deployment prefix')
-        if manifest.get('architecture') not in ('x86_64', 'aarch64'):
+        architecture = manifest.get('architecture')
+        target = {}
+        if 'cross_profile' in manifest:
+            target = {key: manifest.get(key) for key in
+                      ('cross_profile', 'target_dpkg_arch', 'target_os', 'target_version')}
+            if (not isinstance(target['cross_profile'], str)
+                    or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)+', target['cross_profile'])
+                    or (architecture, target['target_dpkg_arch'], target['target_os'], target['target_version'])
+                    not in (('aarch64', 'arm64', 'ubuntu', '22.04'), ('armv7l', 'armhf', 'debian', '12'))):
+                raise ValueError('invalid cross target in artifact manifest')
+        elif architecture not in ('x86_64', 'aarch64'):
             raise ValueError('artifact needs an x86_64 or aarch64 architecture manifest')
-    digest = hashlib.sha256()
-    with path.open('rb') as stream:
+        digest = hashlib.sha256()
+        stream.seek(0)
         for chunk in iter(lambda: stream.read(1024 * 1024), b''):
             digest.update(chunk)
     checksum = digest.hexdigest()
-    return {'sha256': checksum, 'architecture': manifest['architecture'],
-            'git_sha': manifest.get('git_sha', 'unknown'), 'install_prefix': prefix}
+    return {'sha256': checksum, 'architecture': architecture,
+            'git_sha': manifest.get('git_sha', 'unknown'), 'install_prefix': prefix, **target}
 
 
 def main():

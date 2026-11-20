@@ -14,6 +14,32 @@ if(AUTONOMY_PROTOBUF319_CONFIGURED)
 endif()
 set(AUTONOMY_PROTOBUF319_CONFIGURED TRUE)
 
+# @brief Ensure the build and its subprojects share the same Protobuf choices.
+function(autonomy_require_protobuf)
+  if(NOT AUTONOMY_PROTOBUF319_CONFIGURED)
+    include(EnsureProtobuf319)
+  endif()
+endfunction()
+
+if(CMAKE_CROSSCOMPILING AND CMAKE_SYSROOT)
+  # Code generation runs in the builder; FindProtobuf resolves libraries in the sysroot.
+  find_program(AUTONOMY_HOST_PROTOC NAMES protoc NO_CMAKE_FIND_ROOT_PATH REQUIRED)
+  set(Protobuf_PROTOC_EXECUTABLE "${AUTONOMY_HOST_PROTOC}" CACHE FILEPATH "Host protoc" FORCE)
+  find_package(Protobuf REQUIRED MODULE)
+  execute_process(COMMAND "${Protobuf_PROTOC_EXECUTABLE}" --version
+    RESULT_VARIABLE _protoc_status OUTPUT_VARIABLE _protoc_version
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+  if(NOT _protoc_status STREQUAL "0" OR NOT _protoc_version STREQUAL "libprotoc ${Protobuf_VERSION}")
+    message(FATAL_ERROR
+      "Host protoc (${_protoc_version}) must match target Protobuf ${Protobuf_VERSION}. "
+      "Set AUTONOMY_HOST_PROTOC to the matching executable inside the builder.")
+  endif()
+  set(PROTOBUF_INCLUDE_DIR "${Protobuf_INCLUDE_DIR}")
+  set(Protobuf_LIBRARIES protobuf::libprotobuf)
+  set(PROTOBUF_LIBRARY protobuf::libprotobuf)
+  return()
+endif()
+
 # Docker NVIDIA images export CMAKE_PREFIX_PATH=<venv>/site-packages/torch, which
 # makes FindProtobuf pick torch/include while protoc stays at /usr/local/bin.
 # @brief Strip torch/site-packages entries from CMAKE_PREFIX_PATH and related vars.
@@ -257,11 +283,3 @@ if(NOT Protobuf_LIBRARIES AND NOT TARGET protobuf::libprotobuf)
     "On macOS: brew install protobuf\n"
     "On Linux Docker: bash src/autonomy/docker/install/install_protobuf.sh")
 endif()
-
-# @brief Subproject entry: include this module once so find results are not
-#        overwritten by torch.
-function(autonomy_require_protobuf)
-  if(NOT AUTONOMY_PROTOBUF319_CONFIGURED)
-    include(EnsureProtobuf319)
-  endif()
-endfunction()

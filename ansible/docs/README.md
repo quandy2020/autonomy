@@ -8,6 +8,8 @@
 
 自动完成：准备控制机工具 → SpaceHero 编译 → 打包与校验 → SSH 部署 → 更新配置 → 重启并检查服务。任何一步失败都会停止。`-K` 提示输入目标机 sudo 密码；已有免密 sudo 时可省略。
 
+向 ARM 板卡发布请使用 [一键交叉编译与分发](cross-release.md)。
+
 ## 首次使用只改配置
 
 1. [inventory/robots/hosts.yml](../inventory/robots/hosts.yml)：填写 `robot01` 的真实 IP 和 SSH 用户。

@@ -1,0 +1,22 @@
+---
+# One validated cross-build Profile per release.
+cross_profile: rockchip-rk3588-ubuntu2204
+# Omit sysroot to reuse tools/cross-build/work/sysroots/<profile>.
+# sysroot:
+#   host: 192.168.1.100
+#   user: robot
+#   extra_dirs: [/opt/vendor-sdk]
+# image: autonomy.platform.x86_64
+# docker_platform: linux/amd64
+artifact_dir: ~/.autonomy/artifacts
+install_prefix: /opt/autonomy
+build_args:
+  - -DBUILD_AUTOVIZ=OFF
+  - -DBUILD_DOCS=OFF
+  - -DBUILD_TEST=OFF
+  - -DBUILD_GRPC=ON
+  - -DAUTONOMY_BUILD_BRIDGE=ON
+  - -DBUILD_TOOLS=ON
+  - -DAUTOMSGS_BUILD_PYTHON=OFF
+  - -DAUTOLINK_BUILD_PYTHON=OFF
+  - '-DCMAKE_INSTALL_RPATH=$ORIGIN;$ORIGIN/../lib'

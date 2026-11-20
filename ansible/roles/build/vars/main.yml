@@ -1,0 +1,12 @@
+---
+autonomy_cmake_configure_argv:
+  - cmake
+  - -G
+  - Ninja
+  - -DCMAKE_BUILD_TYPE={{ autonomy_cmake_build_type }}
+  - -DCMAKE_INSTALL_PREFIX={{ autonomy_install_prefix }}
+  - -DBUILD_TEST={{ 'ON' if autonomy_build_test else 'OFF' }}
+  - -DBUILD_GRPC={{ 'ON' if autonomy_build_grpc else 'OFF' }}
+  - "{{ autonomy_source_dir }}"
+
+autonomy_cmake_build_environment: "{{ {'CCACHE_DIR': autonomy_ccache_dir} if autonomy_use_ccache | bool else {} }}"

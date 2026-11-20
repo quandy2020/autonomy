@@ -15,6 +15,17 @@
       installation disabled; production requires system installation, version locks and approved CI.
     quiet: true
 
+- name: Require one cross profile across the selected release hosts
+  ansible.builtin.assert:
+    that:
+      - (hostvars[item].autonomy_cross_profile | default('')) == autonomy_cross_release_profile
+    fail_msg: "{{ item }} must declare autonomy_cross_profile={{ autonomy_cross_release_profile }} in inventory."
+    quiet: true
+  loop: "{{ ansible_play_hosts_all }}"
+  when:
+    - autonomy_cross_release_profile is defined
+    - inventory_hostname == ansible_play_hosts_all[0]
+
 - name: Load optional controller vault without logging secrets
   ansible.builtin.include_vars:
     file: "{{ autonomy_controller_root }}/inventory/group_vars/vault.yml"

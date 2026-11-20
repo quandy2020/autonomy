@@ -79,3 +79,13 @@ PR 检查使用 GitHub 托管 runner。原生发布构建只由手动 workflow_d
 `deploy.sh release <environment>` 先按 `vars/release.yml` 在指定 Docker 容器执行 colcon build，调用现有打包脚本，复制并校验归档后再进入原有 artifact playbook。控制机准备、制品准备、目标部署各自独立；失败不继续发布，目标服务与地址仍由 inventory 管理。此入口用于开发/实验环境，不用于 production 推广；生产继续使用已通过 staging 的同一制品和受审批工作流。
 
 用户目录安装通过 `autonomy_system_install: false` 关闭系统基线和 systemd 管理，并以当前用户安装制品及配置；demo inventory 将其与关闭依赖安装一起固定。系统部署默认行为保持不变。
+
+交叉发布复用同一制品部署入口。`cross-build` 通过共享镜像为单个 Profile 构建，在控制机生成按 SHA-256 命名的归档。`cross-release` 确认主机选择后构建一次，再将同一制品逐台分发。制品记录 Profile、目标 OS 和包架构，目标在接收前校验这些信息。安装每次使用独立暂存目录。需要刷新 sysroot 时，采集与构建使用同一 Profile 锁。生产继续使用现有制品晋级策略。入口见 [交叉编译发布](docs/cross-release.md)。
+
+## 增量构建
+
+`--incremental` 以源码绝对路径、Profile、sysroot 内容、实际镜像 ID、CMake 参数和工具链为缓存键，使用同一 Profile 锁串行访问缓存。交叉打包仍从空安装目录开始。增量构建用提交时间作为 CMake 的时间基准。增量打包固定归档元数据的时间与属主字段，使内容和制品元数据相同的归档保留相同的摘要。
+
+## 增量分发
+
+相同制品仍按归档摘要直接复用。启用增量后，目标对当前受管 release 的普通文件计算 SHA-256。控制机从已校验的完整归档生成差分和复用清单，目标验证清单、复用文件和差分摘要。暂存目录只包含新制品的内容，未变文件在目标上独立复制，旧 release 不参与写入。缺少基线、归档包含稀疏文件或差分缺少尺寸优势时使用完整归档。校验失败时清理暂存并停止。最终 release ID 仍使用原归档摘要。

@@ -21,24 +21,31 @@
     quiet: true
   when: autonomy_preflight_strict_os | bool
 
-- name: Require supported Ubuntu LTS (local / relaxed)
+- name: Require a supported target OS in relaxed environments
   ansible.builtin.assert:
     that:
-      - ansible_distribution == 'Ubuntu'
-      - ansible_distribution_version in autonomy_supported_ubuntu_versions
+      - >-
+        (ansible_distribution == 'Ubuntu' and ansible_distribution_version in autonomy_supported_ubuntu_versions)
+        or (autonomy_deploy_mode == 'artifact' and
+            (autonomy_cross_profile | default('')) == 'rockchip-rk3506-debian12' and
+            ansible_distribution == 'Debian' and ansible_distribution_major_version == '12')
     fail_msg: >-
-      Ubuntu {{ ansible_distribution_version | default('') }} is not in the supported list:
-      {{ autonomy_supported_ubuntu_versions | join(', ') }}.
+      Target {{ ansible_distribution | default('unknown') }}
+      {{ ansible_distribution_version | default('') }} must match the configured deployment platform.
     quiet: true
   when: not (autonomy_preflight_strict_os | bool)
 
 - name: Check supported CPU architecture
   ansible.builtin.assert:
     that:
-      - ansible_architecture in autonomy_supported_architectures
+      - >-
+        ansible_architecture in autonomy_supported_architectures
+        or (autonomy_deploy_mode == 'artifact' and
+            (autonomy_cross_profile | default('')) == 'rockchip-rk3506-debian12' and
+            ansible_architecture == 'armv7l')
     fail_msg: >-
       Unsupported architecture {{ ansible_architecture }}.
-      Supported: {{ autonomy_supported_architectures | join(', ') }}.
+      Supported: {{ autonomy_supported_architectures | join(', ') }}, plus armv7l for RK3506 Debian artifacts.
     quiet: true
 
 - name: Check free disk space on root filesystem

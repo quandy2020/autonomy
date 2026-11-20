@@ -1,0 +1,13 @@
+{
+  "platform": "rockchip-rk3506-debian12",
+  "vendor": "rockchip",
+  "model": "rk3506",
+  "stack": "debian",
+  "version": "12",
+  "arch": "armhf",
+  "family": "rk3506",
+  "triple": "arm-linux-gnueabihf",
+  "distro": "debian",
+  "distro_version": "12",
+  "gcc_major": "12"
+}

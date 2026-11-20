@@ -1,0 +1,13 @@
+{
+  "platform": "nvidia-agx-orin-jetpack6",
+  "vendor": "nvidia",
+  "model": "agx-orin",
+  "stack": "jetpack",
+  "version": "6",
+  "arch": "aarch64",
+  "family": "orin",
+  "triple": "aarch64-linux-gnu",
+  "distro": "ubuntu",
+  "distro_version": "22.04",
+  "gcc_major": "11"
+}

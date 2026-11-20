@@ -66,6 +66,10 @@ function(_autonomy_embed_config name)
   file(WRITE "${_dir}/${name}Config.cmake" "set(${name}_FOUND TRUE)\n")
   file(WRITE "${_dir}/${name}-config.cmake" "set(${name}_FOUND TRUE)\n")
   set(CMAKE_PREFIX_PATH "${_dir};${CMAKE_PREFIX_PATH}" PARENT_SCOPE)
+  if(CMAKE_CROSSCOMPILING)
+    # These config stubs describe targets from this build, outside the sysroot.
+    set(${name}_DIR "${_dir}" PARENT_SCOPE)
+  endif()
 endfunction()
 
 # Always embed required in-tree siblings (automsgs, autolink).

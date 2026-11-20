@@ -28,6 +28,27 @@
       - not autonomy_release_dir.startswith(autonomy_install_prefix ~ '/')
     fail_msg: "Artifact architecture, checksum or install prefix does not match this target."
 
+- name: Verify the target profile and ABI before transferring a cross artifact
+  when: autonomy_artifact_metadata.cross_profile is defined
+  block:
+    - name: Read the target package architecture
+      ansible.builtin.command:
+        argv: [dpkg, --print-architecture]
+      register: autonomy_target_dpkg_arch
+      changed_when: false
+      check_mode: false
+
+    - name: Match cross artifact metadata against the inventory and target
+      ansible.builtin.assert:
+        that:
+          - (autonomy_cross_profile | default('')) == autonomy_artifact_metadata.cross_profile
+          - (ansible_distribution | lower) == autonomy_artifact_metadata.target_os
+          - >-
+            (ansible_distribution_major_version if ansible_distribution == 'Debian' else ansible_distribution_version)
+            == autonomy_artifact_metadata.target_version
+          - autonomy_target_dpkg_arch.stdout == autonomy_artifact_metadata.target_dpkg_arch
+        fail_msg: "Cross artifact Profile, OS or package ABI does not match {{ inventory_hostname }}."
+
 - name: Resolve content-addressed release directory
   ansible.builtin.set_fact:
     autonomy_artifact_release: "{{ autonomy_release_dir }}/{{ autonomy_artifact_metadata.sha256 }}"
@@ -57,11 +78,40 @@
         prefix: .stage-
       register: autonomy_artifact_stage
 
+    - name: Create a clean tree for the new release
+      ansible.builtin.file:
+        path: "{{ autonomy_artifact_stage.path }}/tree"
+        state: directory
+        mode: "0700"
+
+    - name: Start with the full artifact as the transfer plan
+      ansible.builtin.set_fact:
+        autonomy_artifact_wire_sha256: "{{ autonomy_artifact_metadata.sha256 }}"
+        autonomy_artifact_delta_used: false
+
+    - name: Inspect the active release link for incremental staging
+      ansible.builtin.stat:
+        path: "{{ autonomy_install_prefix }}"
+        follow: false
+      register: autonomy_delta_active
+      when: autonomy_artifact_incremental | bool
+
+    - name: Stage a smaller delta from the active managed release
+      ansible.builtin.include_tasks: stage_delta.yml
+      vars:
+        autonomy_incremental_basis: "{{ autonomy_delta_active.stat.lnk_source | default('') }}"
+      when:
+        - autonomy_artifact_incremental | bool
+        - autonomy_delta_active.stat.islnk | default(false)
+        - (autonomy_incremental_basis | dirname) == autonomy_release_dir
+        - (autonomy_incremental_basis | basename) is match('^[0-9a-f]{64}$')
+
     - name: Copy artifact into isolated staging directory
       ansible.builtin.copy:
         src: "{{ autonomy_artifact_path }}"
         dest: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
         mode: "0600"
+      when: not autonomy_artifact_delta_used
 
     - name: Check copied artifact checksum
       ansible.builtin.stat:
@@ -69,22 +119,22 @@
         checksum_algorithm: sha256
       register: autonomy_copied_artifact
 
-    - name: Require byte-identical artifact after transfer
+    - name: Require the expected archive after transfer
       ansible.builtin.assert:
         that:
-          - autonomy_copied_artifact.stat.checksum == autonomy_artifact_metadata.sha256
+          - autonomy_copied_artifact.stat.checksum == autonomy_artifact_wire_sha256
 
     - name: Extract artifact into isolated staging directory
       ansible.builtin.unarchive:
         src: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
-        dest: "{{ autonomy_artifact_stage.path }}"
+        dest: "{{ autonomy_artifact_stage.path }}/tree"
         remote_src: true
         owner: "{{ 'root' if autonomy_system_install | bool else omit }}"
         group: "{{ 'root' if autonomy_system_install | bool else omit }}"
 
     - name: Check required executables before activating release
       ansible.builtin.stat:
-        path: "{{ autonomy_artifact_stage.path }}/{{ autonomy_install_prefix | basename }}/bin/{{ autonomy_service_binaries[item] }}"
+        path: "{{ autonomy_artifact_stage.path }}/tree/{{ autonomy_install_prefix | basename }}/bin/{{ autonomy_service_binaries[item] }}"
       loop: "{{ autonomy_services }}"
       register: autonomy_staged_binaries
 
@@ -100,7 +150,8 @@
       ansible.builtin.command:
         argv:
           - mv
-          - "{{ autonomy_artifact_stage.path }}/{{ autonomy_install_prefix | basename }}"
+          - -T
+          - "{{ autonomy_artifact_stage.path }}/tree/{{ autonomy_install_prefix | basename }}"
           - "{{ autonomy_artifact_release }}"
         creates: "{{ autonomy_artifact_release }}"
       changed_when: true

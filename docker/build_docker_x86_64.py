@@ -57,7 +57,7 @@ class DockerBuilder:
 
     def build_image(self):
         """Build the Docker image."""
-        extra_args = ["--squash"]
+        extra_args = []
         if not self.use_cache:
             extra_args.append("--no-cache=true")
             print_info("Docker use --no-cache flag build")
@@ -68,7 +68,7 @@ class DockerBuilder:
         print_info(f"  Context: {self.script_dir}")
 
         cmd = [
-            "docker", "build", "--network=host", *extra_args,
+            "docker", "build", "--platform=linux/amd64", "--network=host", *extra_args,
             "-t", self.tag, "-f", self.dockerfile, str(self.script_dir)
         ]
 

@@ -22,6 +22,7 @@ def load(name, path):
 
 
 INSPECT = load('inspect_artifact', ROOT / 'scripts/inspect_artifact.py')
+DELTA = load('artifact_delta', ROOT / 'scripts/artifact_delta.py')
 AUDIT = load('deployment_audit', ROOT / 'scripts/deployment_audit.py')
 PACKAGE = load('package_install_tarball', ROOT.parent / 'tools/python/package_install_tarball.py')
 with patch.dict('sys.modules', {'inspect_artifact': INSPECT}):
@@ -45,6 +46,52 @@ class DeploymentTest(unittest.TestCase):
             if extra is not None:
                 tar.addfile(extra)
         return path
+
+    def test_delta_reuses_only_verified_files_and_keeps_removed_paths_out(self):
+        import hashlib
+
+        base = self.directory / 'old' / 'autonomy'
+        base.mkdir(parents=True)
+        unchanged = os.urandom(32 * 1024)
+        (base / 'same').write_bytes(unchanged)
+        (base / 'removed').write_text('old')
+        (base / 'updated').write_bytes(b'old')
+        archive = self.directory / 'new.tar.gz'
+        with tarfile.open(archive, 'w:gz') as output:
+            for name, data in {
+                'same': unchanged,
+                'updated': b'new',
+                'share/autonomy/MANIFEST.json': json.dumps(
+                    {'architecture': 'x86_64', 'install_prefix': '/opt/autonomy'}).encode(),
+            }.items():
+                entry = tarfile.TarInfo('autonomy/' + name)
+                entry.size = len(data)
+                output.addfile(entry, io.BytesIO(data))
+
+        directory = self.directory / 'delta'
+        directory.mkdir()
+        digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+        with self.assertRaisesRegex(ValueError, 'artifact changed'):
+            DELTA.prepare(archive, '/opt/autonomy', '0' * 64, DELTA.inventory(base), directory)
+        plan = DELTA.prepare(archive, '/opt/autonomy', digest, DELTA.inventory(base), directory)
+        self.assertTrue(plan['use_delta'])
+        self.assertEqual(plan['reused'], 1)
+        stage = self.directory / 'stage'
+        stage.mkdir()
+        DELTA.restore(base, stage, directory / 'reuse.json', plan['reuse_sha256'])
+        with tarfile.open(directory / 'delta.tar.gz') as payload:
+            self.assertNotIn('autonomy/same', payload.getnames())
+            payload.extractall(stage, filter='data')
+        self.assertEqual((stage / 'autonomy/same').read_bytes(), unchanged)
+        self.assertEqual((stage / 'autonomy/updated').read_bytes(), b'new')
+        self.assertFalse((stage / 'autonomy/removed').exists())
+        self.assertFalse((stage / 'autonomy/same').samefile(base / 'same'))
+
+        (base / 'same').write_bytes(b'changed after inventory')
+        stale = self.directory / 'stale'
+        stale.mkdir()
+        with self.assertRaisesRegex(ValueError, 'basis file changed'):
+            DELTA.restore(base, stale, directory / 'reuse.json', plan['reuse_sha256'])
 
     def test_valid_artifact(self):
         result = INSPECT.inspect_artifact(self.archive(), '/opt/autonomy')
@@ -282,6 +329,9 @@ class DeploymentTest(unittest.TestCase):
                 self.assertNotIn('--ask-become-pass', arguments)
         self.assertNotEqual(self.dispatch('build', 'unknown').returncode, 0)
         self.assertEqual(self.dispatch('--help').returncode, 0)
+        result = self.dispatch('deploy', 'robots', '--incremental', '--list-hosts')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('autonomy_artifact_incremental=true', json.loads(result.stdout.splitlines()[-1]))
 
     def release_config(self):
         return {'container': 'fixture-builder', 'workspace': '/workspace with spaces',
@@ -377,6 +427,62 @@ class DeploymentTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('==> mode=', result.stdout)
         self.assertIn('Deployment was not started', result.stderr)
+
+    def test_cross_release_stages_and_labels_real_target_artifact(self):
+        config = {'cross_profile': 'rockchip-rk3506-debian12',
+                  'artifact_dir': str(self.directory / 'artifacts')}
+
+        def install(*command, machine=40):
+            directory = Path(command[command.index('--output-dir') + 1])
+            executable = directory / 'install/opt/autonomy/bin/autonomy.task'
+            executable.parent.mkdir(parents=True)
+            elf = bytearray(52)
+            elf[:6] = b'\x7fELF\x01\x01'
+            elf[16:18] = b'\x02\x00'
+            elf[18:20] = machine.to_bytes(2, 'little')
+            elf[36:40] = b'\x00\x04\x00\x05'
+            executable.write_bytes(elf)
+            executable.chmod(0o755)
+
+        with patch.object(RELEASE, 'run', side_effect=lambda *args: install(*args, machine=62)):
+            with self.assertRaisesRegex(ValueError, 'wrong ELF machine'):
+                RELEASE.prepare_cross(config)
+        self.assertEqual(list((self.directory / 'artifacts').iterdir()), [])
+
+        with patch.object(RELEASE, 'run', side_effect=install) as build:
+            variables = RELEASE.prepare_cross(config, incremental=True)
+        self.assertIn('--incremental', build.call_args.args)
+        archive = Path(variables['autonomy_artifact_path'])
+        metadata = INSPECT.inspect_artifact(archive, '/opt/autonomy')
+        self.assertEqual(metadata['architecture'], 'armv7l')
+        self.assertEqual(metadata['cross_profile'], config['cross_profile'])
+        self.assertEqual(metadata['target_dpkg_arch'], 'armhf')
+        self.assertEqual(variables['autonomy_artifact_sha256'], metadata['sha256'])
+        self.assertIn(metadata['sha256'], archive.name)
+        self.assertEqual(list(archive.parent.glob('.autonomy-cross-*')), [])
+
+    def test_repacked_unchanged_cross_install_keeps_the_same_release_identity(self):
+        manifest = {'architecture': 'aarch64', 'install_prefix': '/opt/autonomy'}
+        first = self.directory / 'first.tar.gz'
+        second = self.directory / 'second.tar.gz'
+        for index, archive in enumerate((first, second)):
+            staged = self.directory / str(index) / 'autonomy'
+            staged.mkdir(parents=True)
+            executable = staged / 'payload'
+            executable.write_text('identical files')
+            os.utime(executable, (index, index))
+            PACKAGE.write_archive(staged, archive, manifest, reproducible=True)
+        self.assertEqual(first.read_bytes(), second.read_bytes())
+
+    def test_cross_release_refuses_production_and_skips_build_for_host_listing(self):
+        result = self.dispatch('cross-release', 'robots', '--release-config', '/missing.yml',
+                               '-l', 'robot01', '--list-hosts')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = json.loads(result.stdout.splitlines()[-1])
+        self.assertIn('autonomy_deploy_mode=artifact', arguments)
+        self.assertEqual(arguments[-3:], ['-l', 'robot01', '--list-hosts'])
+        self.assertNotEqual(self.dispatch('cross-release', 'production').returncode, 0)
+        self.assertNotEqual(self.dispatch('cross-release', 'robots').returncode, 0)
 
 
 if __name__ == '__main__':

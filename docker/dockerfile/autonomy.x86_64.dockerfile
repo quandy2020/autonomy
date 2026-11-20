@@ -24,6 +24,10 @@ RUN apt-get update && apt-get install -y sudo \
     autoconf \
     automake \
     cmake \
+    gcc-11-aarch64-linux-gnu \
+    g++-11-aarch64-linux-gnu \
+    gcc-12-arm-linux-gnueabihf \
+    g++-12-arm-linux-gnueabihf \
     curl \
     git \
     unzip \
@@ -59,6 +63,10 @@ RUN apt-get update && apt-get install -y sudo \
     liburdfdom-dev \
     clang-format \
     stow && \
+    ln -s /usr/bin/aarch64-linux-gnu-gcc-11 /usr/local/bin/aarch64-linux-gnu-gcc && \
+    ln -s /usr/bin/aarch64-linux-gnu-g++-11 /usr/local/bin/aarch64-linux-gnu-g++ && \
+    ln -s /usr/bin/arm-linux-gnueabihf-gcc-12 /usr/local/bin/arm-linux-gnueabihf-gcc && \
+    ln -s /usr/bin/arm-linux-gnueabihf-g++-12 /usr/local/bin/arm-linux-gnueabihf-g++ && \
     rm -rf /var/lib/apt/lists/*
 
 
@@ -67,10 +75,8 @@ RUN apt-get update && apt-get install -y sudo \
 # RUN chmod +x /usr/local/bin/scripts/workspace-entrypoint.sh
 # ENTRYPOINT [ "/usr/local/bin/scripts/workspace-entrypoint.sh" ]
 
-RUN current_dir="dirname $(dirname "$(realpath "$0")")"
-
 # Install autonomy dependencies
-COPY $current_dir/install /tmp/install
+COPY install /tmp/install
 
 # Setup GLOG environment variables in user home directory .bashrc
 RUN touch /root/.bashrc && \

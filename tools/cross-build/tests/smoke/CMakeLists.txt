@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.20)
+project(cross_smoke LANGUAGES C CXX)
+add_executable(smoke_c main.c)
+add_executable(smoke_cxx main.cpp)
+target_compile_features(smoke_cxx PRIVATE cxx_std_17)
+install(TARGETS smoke_c smoke_cxx RUNTIME DESTINATION bin)

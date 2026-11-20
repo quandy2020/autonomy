@@ -28,6 +28,7 @@ class ArtifactLifecycleTest(unittest.TestCase):
             base = {'autonomy_install_prefix': prefix, 'autonomy_services': ['task'],
                     'autonomy_deploy_mode': 'artifact', 'autonomy_user': 'root',
                     'autonomy_config_dir': prefix + '-config', 'autonomy_config_components': ['task']}
+            unchanged = os.urandom(64 * 1024)
 
             def docker(*arguments):
                 return subprocess.check_output(['docker', 'exec', CONTAINER, *arguments], text=True).strip()
@@ -36,7 +37,8 @@ class ArtifactLifecycleTest(unittest.TestCase):
                 path = directory / f'{version}.tar.gz'
                 manifest = {'install_prefix': prefix, 'architecture': platform.machine(), 'git_sha': version}
                 entries = {'share/autonomy/MANIFEST.json': json.dumps(manifest),
-                           'share/autonomy/config/task/navigator.pb.txt': version}
+                           'share/autonomy/config/task/navigator.pb.txt': version,
+                           'share/autonomy/unchanged.bin': unchanged}
                 if binary:
                     entries['bin/autonomy.task'] = '#!/bin/sh\nexit 0\n'
                 if version == 'first':
@@ -44,7 +46,7 @@ class ArtifactLifecycleTest(unittest.TestCase):
                 with tarfile.open(path, 'w:gz') as output:
                     for name, content in entries.items():
                         info = tarfile.TarInfo(Path(prefix).name + '/' + name)
-                        data = content.encode()
+                        data = content if isinstance(content, bytes) else content.encode()
                         info.size = len(data)
                         info.mode = 0o755 if name.startswith('bin/') else (0o640 if '/config/' in name else 0o644)
                         output.addfile(info, io.BytesIO(data))
@@ -63,8 +65,9 @@ class ArtifactLifecycleTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn('changed=0', result.stdout)
             second = archive('second')
-            result = deploy(second)
+            result = deploy(second, autonomy_artifact_incremental=True)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('Reused ', result.stdout)
             active = docker('readlink', '-f', prefix)
             self.assertTrue(active.endswith(hashlib.sha256(second.read_bytes()).hexdigest()))
             self.assertEqual(docker('readlink', '-f', prefix + '.previous'), previous)
