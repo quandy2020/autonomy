@@ -22,6 +22,10 @@
 | `slam.yaml` | `mode: slam`，默认不发 GT OccupancyGrid |
 | `lio.yaml` / `lightning.yaml` | 开 3D 点云 + IMU，LIO 验证 |
 | `bev.yaml` | BEV 相关实验配置 |
+| `nav.yaml` | Habitat 导航联调（与 `default.yaml` 同栈，显式 nav + GT 地图） |
+| `fake_nav.yaml` | fake 后端的导航联调 |
+| `coverage.yaml` | fake 后端的全覆盖验证场景 |
+| `robots/<profile>.yaml` | 五个机器人档案的展示与遥操作配置，见第 4 节 |
 
 启动：`CONFIG=.../xxx.yaml scripts/run.sh sim`。
 
@@ -83,6 +87,18 @@ habitat:
 
 `autosim/robot/profiles.py`：`profile` 非空时合并默认 `urdf`、`usd_robot`、`wheel_separation`、`base_link_height`。  
 YAML 显式字段优先于档案默认值。
+
+`config/robots/<profile>.yaml` 是每个模型的展示/遥操作入口，`shipped_robot_defaults()` 也读这份文件，因此查看器、`Runner` 和 smoke 脚本共用同一套初始姿态与速度上限。
+
+| profile | 自由度 | URDF 根 | 说明 |
+|---------|--------|---------|------|
+| `google_robot` | 15 | `link_base` | 轮式底盘 + 单臂 + 夹爪 + 头；双目、8 路 ToF、2 路悬崖 |
+| `unitree_g1` | 29 | `pelvis` | 人形；RGB-D + 2D 激光 + IMU |
+| `unitree_go2` | 12 | `base` | 四足；RGB-D + 2D 激光 + IMU |
+| `turtlebot3_burger` | 2 | `base_footprint` | 两轮差速；`wheel_radius: 0.033` |
+| `husky` | 4 | `base_footprint` | 四轮差速；`wheel_radius: 0.1651` |
+
+`sensors.odom.child_frame` 应写成该模型的 URDF 根节点。运行时的 `odom_child_frame()` 会回退到根节点，写错不会报错，但 `/odom` 的 `child_frame_id` 会和 TF 对不上。
 
 ---
 

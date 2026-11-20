@@ -81,6 +81,8 @@ habitat:
       range_max: 30.0
       noise: 0.015
       motion_compensate: true
+
+    camera:
       enabled: true
       width: 640
       height: 480

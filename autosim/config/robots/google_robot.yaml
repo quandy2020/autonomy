@@ -58,7 +58,8 @@ habitat:
       enabled: true
       channel: /odom
       frame: odom
-      child_frame: base_link
+      # URDF root (link_base); odom_child_frame() falls back to it anyway.
+      child_frame: link_base
       noise: 0.0
     camera:
       enabled: true
