@@ -5,6 +5,7 @@
 | 相关 | 链接 |
 |------|------|
 | 配置 | [05](05_configuration.md) |
+| 详细使用 | [16](16_usage.md) |
 | Isaac | [07](07_isaac.md) |
 | 排错 | [10](10_troubleshooting.md) |
 
@@ -72,6 +73,8 @@ src/autonomy/autosim/scripts/run.sh sim \
 
 完整 YAML 仍可用 `CONFIG=... scripts/run.sh sim`。无网格时可开
 `habitat.scenario.enabled` 生成过程场景（见包 README）。
+
+完整场景、机器人、传感器组合和遥控说明见 [16](16_usage.md)。
 
 Atlas RGB-D + IMU 验证（含 `/overall/map`、chase）：
 

@@ -2,6 +2,11 @@
 
 机器人资源位于 `robot/<profile>/`，每个目录包含 URDF、引用的展示 mesh、来源记录 `source.json` 和上游许可证（如有）。Google 使用保留轮子连续关节的 ManiSkill URDF，因此可以控制轮子、机械臂、夹爪和头部。宇树选用 G1 人形机器人（29 自由度）和 Go2 四足机器人（12 自由度）。轮式平台选用 TurtleBot3 Burger（2 个轮子关节）和 Clearpath Husky（4 个轮子关节）。五个模型各自独立存放。
 
+| 相关 | 链接 |
+|------|------|
+| 详细使用 | [16](16_usage.md) |
+| 配置 | [05](05_configuration.md) |
+
 ## 查看与操作
 
 在已有 SpaceHero 容器中运行：

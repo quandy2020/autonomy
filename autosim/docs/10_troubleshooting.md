@@ -5,6 +5,7 @@
 | 相关 | 链接 |
 |------|------|
 | 快速开始 | [03](03_quickstart.md) |
+| 详细使用 | [16](16_usage.md) |
 | Isaac | [07](07_isaac.md) |
 
 ---
@@ -17,6 +18,8 @@
 | `autolink` 缺 311 `.so` | 用 Isaac Python 重编 pybind，拷到 `install/autonomy/python/autolink/` |
 | `USD world not found` | 检查 `habitat.path`；InteriorAgent 需本地下载；可改 `simple_room.usd` |
 | Config `ValueError` | 见 [05](05_configuration.md)；查重复 / 空通道 |
+| `another AutoSim instance is already running` | 先 `scripts/run.sh stop`；同一时刻只运行一个实例 |
+| `unknown scene` / `sensor(s) not defined` | 用 `scripts/run.sh sim --list` 选择；显式传感器必须存在于配置 |
 
 ---
 

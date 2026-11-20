@@ -8,6 +8,7 @@
 | 角色 | 建议路径 |
 |------|----------|
 | 新手 | [00 指南](00_guide.md) → [03 快速开始](03_quickstart.md) → [06 话题](06_topics.md) |
+| 日常运行 | [16 详细使用指南](16_usage.md) → [05 配置](05_configuration.md) → [06 话题](06_topics.md) |
 | 集成 Autoviz / 导航 | [05 配置](05_configuration.md) → [08 地图与可视化](08_map_and_viz.md) |
 | Isaac / USD | [07 Isaac](07_isaac.md) → [10 排错](10_troubleshooting.md) |
 | Habitat 动态人体 | [14 Habitat humanoids](14_habitat_humanoids.md) → [04 后端](04_backends.md) |
@@ -34,6 +35,8 @@
 | 12 | [12_hunav_isaac.md](12_hunav_isaac.md) | HuNav Autolink / Isaac manager |
 | 13 | [13_atlas_validation.md](13_atlas_validation.md) | Atlas RGB-D + IMU、真值与地图验收 |
 | 14 | [14_habitat_humanoids.md](14_habitat_humanoids.md) | Habitat TrackVLA 式 SMPL-X 动态人体 |
+| 15 | [15_robot_articulation.md](15_robot_articulation.md) | Habitat 机器人模型、关节与传感器 |
+| 16 | [16_usage.md](16_usage.md) | 场景 / 机器人 / 传感器 / 控制 / 常用配方 |
 
 ## 维护约定
 
@@ -41,5 +44,3 @@
 - 每篇开头：一句话职责 +「相关文档」表；正文用短节，少重复，细节链到源码路径。
 - 配置真相以 `config/*.yaml` 与 `autosim/runtime/settings.py` 为准；文档只写稳定约定。
 - 大体积场景资源不入库，说明写在 [07 Isaac](07_isaac.md) 与 [`../usd/README.md`](../usd/README.md)。
-
-- [Habitat robot assets and joint controls](15_robot_articulation.md)

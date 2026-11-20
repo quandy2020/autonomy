@@ -35,7 +35,7 @@ AutoSim 把仿真世界（Habitat / Fake / Isaac）接到 **Autolink**：订阅 
 ```text
 autosim/
 ├── README.md           # 短入口 + 动图
-├── docs/               # 本目录（00–14）
+├── docs/               # 本目录（00–16）
 ├── config/             # YAML 配置真相
 ├── autosim/            # Python 包（runtime / backends / dataset / …）
 ├── datasets/           # 本地 LeRobot 输出（建议 gitignore）
@@ -55,6 +55,7 @@ autosim/
 | 角色 | 路径 |
 |------|------|
 | 第一次跑通 | [03](03_quickstart.md) → Fake → Autoviz [08](08_map_and_viz.md) |
+| 日常运行 / 换场景机器人传感器 | [16](16_usage.md) → [05](05_configuration.md) |
 | 换后端 | [04](04_backends.md) → [05](05_configuration.md) |
 | Isaac 室内场景 | [07](07_isaac.md) → [10](10_troubleshooting.md) |
 | Atlas 验证 | [13](13_atlas_validation.md) → Autoviz `atlas.autoviz` |

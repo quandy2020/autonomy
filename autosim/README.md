@@ -21,6 +21,8 @@
 | 12 | [HuNav Isaac](docs/12_hunav_isaac.md) | Autolink ComputeAgents / manager |
 | 13 | [Atlas 验证](docs/13_atlas_validation.md) | RGB-D + IMU、`/overall/map`、chase、真值评测 |
 | 14 | [Habitat humanoids](docs/14_habitat_humanoids.md) | Habitat SMPL-X 动态人体（本地 `data/humanoids/`） |
+| 15 | [机器人模型](docs/15_robot_articulation.md) | Habitat URDF、mesh、关节与传感器 |
+| 16 | [详细使用指南](docs/16_usage.md) | 场景 / 机器人 / 传感器 / 控制 / 常用配方 |
 
 索引：[`docs/README.md`](docs/README.md)。
 
@@ -218,4 +220,4 @@ pip install -e ".[isaac,dev]"      # Isaac extras（仍需 Isaac 环境）
 
 ## Articulated robot models
 
-Google Robot and Unitree humanoid/quadruped models are available under `robot/`, with Habitat rendering and named joint controls. See [robot usage](docs/15_robot_articulation.md).
+Google Robot and Unitree humanoid/quadruped models are available under `robot/`, with Habitat rendering and named joint controls. See [detailed usage](docs/16_usage.md) and [robot usage](docs/15_robot_articulation.md).
