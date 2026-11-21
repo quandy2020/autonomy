@@ -12,6 +12,17 @@ on:
         type: choice
         options: [x86_64, aarch64]
         required: true
+      cross_profile:
+        description: "Cross-build target, or native"
+        type: choice
+        default: native
+        options:
+          - native
+          - rockchip-rk3588-ubuntu2204
+          - rockchip-rk3506-debian12
+          - nvidia-agx-orin-jetpack6
+          - nvidia-orin-nx-jetpack6
+          - nvidia-orin-nano-jetpack6
       limit:
         description: "Inventory host/group selector (use architecture groups for mixed fleets)"
         type: string
@@ -32,8 +43,11 @@ permissions:
   contents: read
   actions: read
 
+env:
+  AUTONOMY_CLANG_FORMAT_VERSION: ${{ vars.AUTONOMY_CLANG_FORMAT_VERSION }}
+
 concurrency:
-  group: autonomy-release-${{ inputs.deploy_environment }}-${{ inputs.architecture }}
+  group: autonomy-release-${{ inputs.deploy_environment }}-${{ inputs.cross_profile != 'native' && inputs.cross_profile || inputs.architecture }}
   cancel-in-progress: false
 
 jobs:
@@ -49,11 +63,16 @@ jobs:
           ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
         run: |
           [[ "$REVISION" =~ ^[0-9a-f]{40}$ ]]
+          [[ -z "$ARTIFACT_RUN_ID" || "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]]
+          if [[ "$DEPLOY_ENVIRONMENT" != none ]]; then
+            test -n "$TARGET_LIMIT"
+          fi
           if [[ "$DEPLOY_ENVIRONMENT" == production ]]; then
-            [[ "$ARTIFACT_RUN_ID" =~ ^[0-9]+$ ]]
+            test -n "$ARTIFACT_RUN_ID" && test "$GITHUB_REF_TYPE" = branch
           fi
 
   quality:
+    if: inputs.deploy_environment != 'production'
     needs: validate
     uses: ./.github/workflows/ansible.yml
     with:
@@ -62,7 +81,7 @@ jobs:
   build:
     if: inputs.artifact_run_id == ''
     needs: quality
-    runs-on: [self-hosted, linux, "autonomy-build-${{ inputs.architecture }}"]
+    runs-on: [self-hosted, linux, "${{ inputs.cross_profile != 'native' && format('autonomy-cross-{0}', inputs.cross_profile) || format('autonomy-build-{0}', inputs.architecture) }}"]
     timeout-minutes: 120
     steps:
       - uses: actions/checkout@v4
@@ -71,11 +90,13 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - name: Build and test in the prepared native builder
+        if: inputs.cross_profile == 'native'
         env:
           EXPECTED_ARCH: ${{ inputs.architecture }}
           CCACHE_DIR: ${{ runner.tool_cache }}/autonomy-ccache/${{ inputs.architecture }}
         run: |
           test "$(uname -m)" = "$EXPECTED_ARCH"
+          python3 tools/python/clang_format_sources.py --check --report "$RUNNER_TEMP/autonomy-style.log"
           cmake -S . -B "$RUNNER_TEMP/autonomy-release-build" -G Ninja \
             -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/opt/autonomy \
             -DBUILD_AUTOVIZ=OFF -DBUILD_TEST=ON -DBUILD_GRPC=ON \
@@ -83,13 +104,61 @@ jobs:
           cmake --build "$RUNNER_TEMP/autonomy-release-build" --parallel "$(nproc)"
           ctest --test-dir "$RUNNER_TEMP/autonomy-release-build" --output-on-failure --no-tests=error
       - name: Package the tested build without rebuilding
+        if: inputs.cross_profile == 'native'
         run: |
           python3 tools/python/package_install_tarball.py --skip-build \
             --build-dir "$RUNNER_TEMP/autonomy-release-build" --output "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz"
           python3 ansible/scripts/inspect_artifact.py "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz" --prefix /opt/autonomy
+      - uses: actions/setup-python@v5
+        if: inputs.cross_profile != 'native'
+        with:
+          python-version: "3.12"
+      - name: Build and package for the selected cross profile
+        if: inputs.cross_profile != 'native'
+        env:
+          CROSS_PROFILE: ${{ inputs.cross_profile }}
+          CROSS_BUILD_WORK_DIR: ${{ runner.tool_cache }}/autonomy-cross
+          AUTONOMY_STYLE_REPORT: ${{ runner.temp }}/autonomy-style.log
+        run: |
+          python3 -m pip install -c ansible/requirements-lock.txt PyYAML
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import yaml
+          root = Path(os.environ['RUNNER_TEMP'])
+          config = yaml.safe_load(Path('ansible/vars/release-cross.yml').read_text())
+          config.update(cross_profile=os.environ['CROSS_PROFILE'], artifact_dir=str(root / 'cross-output'))
+          (root / 'cross-config.yml').write_text(yaml.safe_dump(config))
+          PY
+          python3 ansible/scripts/prepare_release.py --cross --incremental --config "$RUNNER_TEMP/cross-config.yml" > "$RUNNER_TEMP/cross-result.json"
+          python3 - <<'PY'
+          import json, os, shutil, sys
+          from pathlib import Path
+          sys.path.insert(0, str(Path('ansible/scripts').resolve()))
+          from inspect_artifact import inspect_artifact
+          root = Path(os.environ['RUNNER_TEMP'])
+          result = json.loads((root / 'cross-result.json').read_text())
+          source = Path(result['autonomy_artifact_path'])
+          metadata = inspect_artifact(source, '/opt/autonomy')
+          if not metadata.get('sysroot_sha256') or not metadata.get('image_id'):
+              raise SystemExit('Cross artifact requires a recorded sysroot digest and local builder image ID')
+          if metadata['cross_profile'] != os.environ['CROSS_PROFILE'] or metadata['sha256'] != result['autonomy_artifact_sha256']:
+              raise SystemExit('Unexpected cross artifact identity')
+          target = root / 'autonomy-artifacts/autonomy.tar.gz'
+          target.parent.mkdir()
+          shutil.copyfile(source, target)
+          target.with_suffix('.gz.sha256').write_text(f"{metadata['sha256']}  {target.name}\n")
+          PY
+      - name: Upload build style diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomy-style-report
+          path: ${{ runner.temp }}/autonomy-style.log
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
-          name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
+          name: autonomy-${{ inputs.cross_profile != 'native' && inputs.cross_profile || inputs.architecture }}-${{ inputs.revision }}
           path: |
             ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz
             ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz.sha256
@@ -99,23 +168,24 @@ jobs:
   deploy:
     if: >-
       always() && !cancelled() && inputs.deploy_environment != 'none'
-      && needs.quality.result == 'success'
-      && (needs.build.result == 'success' || needs.build.result == 'skipped')
-    needs: [quality, build]
+      && needs.validate.result == 'success'
+      && ((inputs.deploy_environment == 'production' && needs.build.result == 'skipped')
+        || (needs.quality.result == 'success' && (needs.build.result == 'success' || needs.build.result == 'skipped')))
+    needs: [validate, quality, build]
     environment: ${{ inputs.deploy_environment }}
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.revision }}
+          ref: ${{ github.workflow_sha }}
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
-          name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
+          name: autonomy-${{ inputs.cross_profile != 'native' && inputs.cross_profile || inputs.architecture }}-${{ inputs.revision }}
           path: ${{ runner.temp }}/autonomy-artifacts
           run-id: ${{ inputs.artifact_run_id || github.run_id }}
           github-token: ${{ github.token }}
@@ -123,7 +193,7 @@ jobs:
         if: inputs.deploy_environment == 'production'
         uses: actions/download-artifact@v4
         with:
-          name: deployment-audit-staging-${{ inputs.revision }}
+          name: deployment-accepted-staging-${{ inputs.revision }}
           path: ${{ runner.temp }}/autonomy-staging-evidence
           run-id: ${{ inputs.artifact_run_id }}
           github-token: ${{ github.token }}
@@ -133,17 +203,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id }}
           RELEASE_REVISION: ${{ inputs.revision }}
+          CROSS_PROFILE: ${{ inputs.cross_profile != 'native' && inputs.cross_profile || '' }}
         run: |
-          test "$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID" --jq '.conclusion')" = success
-          python3 - <<'PY'
-          import json, os
-          from pathlib import Path
-          evidence = json.loads((Path(os.environ['RUNNER_TEMP']) / 'autonomy-staging-evidence/deployment-audit.json').read_text())
-          expected_sha = (Path(os.environ['RUNNER_TEMP']) / 'autonomy-artifacts/autonomy.tar.gz.sha256').read_text().split()[0]
-          assert evidence['environment'] == 'staging'
-          assert evidence['revision'] == os.environ['RELEASE_REVISION']
-          assert evidence['artifact_sha256'] == expected_sha
-          PY
+          source="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID" --jq '[.conclusion, (.path | split("@")[0]), .head_branch] | join(" ")')"
+          if [[ "$source" != "success .github/workflows/ansible-release.yml $GITHUB_REF_NAME" ]]; then
+            echo 'Production requires a successful staging run of this release workflow on the same release branch.' >&2
+            exit 1
+          fi
+          python3 ansible/scripts/release_evidence.py verify "$RUNNER_TEMP/autonomy-staging-evidence/accepted.json" \
+            --revision "$RELEASE_REVISION" --cross-profile "$CROSS_PROFILE" \
+            --sha256 "$(cut -d ' ' -f 1 "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz.sha256")"
       - name: Install deploy tooling
         run: |
           python3 -m pip install -r ansible/requirements-ci.txt
@@ -152,19 +221,24 @@ jobs:
       - name: Record revision, inventory, public variables and target host list
         env:
           AUTONOMY_ARTIFACT_RUN_ID: ${{ inputs.artifact_run_id || github.run_id }}
+          DEPLOYMENT_REVISION: ${{ github.workflow_sha }}
           RELEASE_REVISION: ${{ inputs.revision }}
           DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
           TARGET_LIMIT: ${{ inputs.limit }}
+          CROSS_PROFILE: ${{ inputs.cross_profile != 'native' && inputs.cross_profile || '' }}
         run: |
           python3 ansible/scripts/deployment_audit.py \
             --environment "$DEPLOY_ENVIRONMENT" --revision "$RELEASE_REVISION" --limit "$TARGET_LIMIT" \
+            --deployment-revision "$DEPLOYMENT_REVISION" \
             --artifact-sha256 "$(cut -d ' ' -f 1 "$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz.sha256")" \
+            --cross-profile "$CROSS_PROFILE" \
             --output "$RUNNER_TEMP/deployment-audit.json"
       - name: Deploy approved artifact over verified SSH
         env:
           DEPLOY_ENVIRONMENT: ${{ inputs.deploy_environment }}
           TARGET_LIMIT: ${{ inputs.limit }}
           RELEASE_REVISION: ${{ inputs.revision }}
+          CROSS_PROFILE: ${{ inputs.cross_profile != 'native' && inputs.cross_profile || '' }}
           AUTONOMY_SSH_PRIVATE_KEY: ${{ secrets.AUTONOMY_SSH_PRIVATE_KEY }}
           AUTONOMY_SSH_KNOWN_HOSTS: ${{ secrets.AUTONOMY_SSH_KNOWN_HOSTS }}
         run: |
@@ -182,18 +256,35 @@ jobs:
           sha256sum --check autonomy.tar.gz.sha256
           artifact_sha="$(cut -d ' ' -f 1 autonomy.tar.gz.sha256)"
           cd "$GITHUB_WORKSPACE/ansible"
-          ./deploy.sh deploy "$DEPLOY_ENVIRONMENT" --limit "$TARGET_LIMIT" --private-key "$key_file" \
+          cross_args=()
+          if [[ -n "$CROSS_PROFILE" ]]; then
+            cross_args=(-e "autonomy_cross_release_profile=$CROSS_PROFILE")
+          fi
+          ./deploy.sh deploy "$DEPLOY_ENVIRONMENT" --limit "$TARGET_LIMIT" --private-key "$key_file" --incremental "${cross_args[@]}" \
             -e "autonomy_artifact_path=$RUNNER_TEMP/autonomy-artifacts/autonomy.tar.gz" \
             -e "autonomy_artifact_sha256=$artifact_sha" \
+            -e "autonomy_require_health_probe=true" \
             -e "autonomy_expected_git_sha=$RELEASE_REVISION"
       - name: Preserve accepted staging bytes for later production promotion
         if: inputs.deploy_environment == 'staging' && inputs.artifact_run_id != ''
         uses: actions/upload-artifact@v4
         with:
-          name: autonomy-${{ inputs.architecture }}-${{ inputs.revision }}
+          name: autonomy-${{ inputs.cross_profile != 'native' && inputs.cross_profile || inputs.architecture }}-${{ inputs.revision }}
           path: |
             ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz
             ${{ runner.temp }}/autonomy-artifacts/autonomy.tar.gz.sha256
+          if-no-files-found: error
+          retention-days: 30
+      - name: Record acceptance only after the target health gates pass
+        if: success() && inputs.deploy_environment == 'staging'
+        run: |
+          python3 ansible/scripts/release_evidence.py record "$RUNNER_TEMP/deployment-audit.json" "$RUNNER_TEMP/accepted.json"
+      - name: Upload staging acceptance evidence
+        if: inputs.deploy_environment == 'staging'
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-accepted-staging-${{ inputs.revision }}
+          path: ${{ runner.temp }}/accepted.json
           if-no-files-found: error
           retention-days: 30
       - name: Keep the deployment audit even when rollout fails

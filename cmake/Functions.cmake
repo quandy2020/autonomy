@@ -53,7 +53,9 @@ macro(autonomy_modules)
   endforeach()
   list(SORT AUTONOMY_MODULES)
   list(SORT AUTONOMY_ENABLED_MODULES)
-  message(STATUS "autonomy modules: ${AUTONOMY_ENABLED_MODULES}")
+  if("${AUTONOMY_BUILD_MODULES}" STREQUAL "")
+    message(STATUS "autonomy modules: ${AUTONOMY_ENABLED_MODULES}")
+  endif()
 endmacro()
 
 # --- embed helpers -----------------------------------------------------------
@@ -72,7 +74,7 @@ function(_autonomy_embed_config name)
   endif()
 endfunction()
 
-# Always embed required in-tree siblings (automsgs, autolink).
+# Embed the required in-tree siblings (automsgs, autolink).
 #
 # Call before autocmake_build() so stub Configs are on CMAKE_PREFIX_PATH
 # when package.xml peers are resolved. Pins Protobuf 3.19 first because
@@ -81,7 +83,7 @@ macro(autonomy_embed_siblings)
   include(EnsureProtobuf319)
   autonomy_require_protobuf()
 
-  if(NOT TARGET automsgs)
+  if("automsgs" IN_LIST AUTONOMY_SELECTED_PROJECTS AND NOT TARGET automsgs)
     if(NOT EXISTS "${PROJECT_SOURCE_DIR}/automsgs/CMakeLists.txt")
       message(FATAL_ERROR "automsgs missing at ${PROJECT_SOURCE_DIR}/automsgs")
     endif()
@@ -89,7 +91,7 @@ macro(autonomy_embed_siblings)
     _autonomy_embed_config(automsgs)
   endif()
 
-  if(NOT TARGET autolink)
+  if("autolink" IN_LIST AUTONOMY_SELECTED_PROJECTS AND NOT TARGET autolink)
     if(NOT EXISTS "${PROJECT_SOURCE_DIR}/autolink/CMakeLists.txt")
       message(FATAL_ERROR "autolink missing at ${PROJECT_SOURCE_DIR}/autolink")
     endif()
@@ -102,6 +104,14 @@ macro(autonomy_embed_siblings)
     add_subdirectory(autolink)
     _autonomy_embed_config(autolink)
   endif()
+endmacro()
+
+macro(autonomy_add_companions)
+  foreach(_companion IN ITEMS autodriver automanip autoviz)
+    if(_companion IN_LIST AUTONOMY_SELECTED_PROJECTS)
+      add_subdirectory(${_companion})
+    endif()
+  endforeach()
 endmacro()
 
 # --- version -----------------------------------------------------------------
@@ -196,7 +206,7 @@ macro(autonomy_add_domains)
     $<BUILD_INTERFACE:${PROJECT_BINARY_DIR}>
     $<INSTALL_INTERFACE:include>)
 
-  if(TARGET autolink_channel)
+  if(TARGET autolink_channel AND NOT AUTONOMY_MODULE_SELECTION)
     target_link_libraries(autolink_channel PRIVATE autonomy)
     target_include_directories(autolink_channel PRIVATE
       ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})

@@ -24,10 +24,12 @@ build_ignore:
   - ansible.cfg
   - deploy.sh
   - scripts/ci.sh
+  - scripts/doctor.sh
   - scripts/molecule.sh
   - scripts/install_collection.sh
   - scripts/vault-init.sh
   - scripts/deployment_audit.py
+  - scripts/release_evidence.py
   - scripts/controller_env.sh
   - scripts/prepare_release.py
   - scripts/smoke_runtime.py

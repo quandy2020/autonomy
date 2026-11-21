@@ -1,21 +1,43 @@
 ---
-- name: Validate artifact on the control machine
-  ansible.builtin.command:
-    argv:
-      - "{{ ansible_playbook_python }}"
-      - "{{ role_path }}/../../scripts/inspect_artifact.py"
-      - "{{ autonomy_artifact_path }}"
-      - --prefix
-      - "{{ autonomy_install_prefix }}"
-  register: autonomy_artifact_inspection
-  delegate_to: localhost
-  become: false
-  changed_when: false
-  check_mode: false
+- name: Validate each artifact identity once on the control machine
+  vars:
+    autonomy_artifact_validation_key: >-
+      {{ [autonomy_artifact_path, autonomy_install_prefix, autonomy_artifact_sha256] | to_json | hash('sha256') }}
+  block:
+    - name: Read cached artifact metadata for this host
+      ansible.builtin.set_fact:
+        autonomy_artifact_cached_metadata: >-
+          {{ (hostvars['localhost'].autonomy_artifact_checks | default({})).get(autonomy_artifact_validation_key, {}) }}
 
-- name: Resolve artifact metadata
-  ansible.builtin.set_fact:
-    autonomy_artifact_metadata: "{{ autonomy_artifact_inspection.stdout | from_json }}"
+    - name: Inspect artifact on controller cache miss
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - "{{ role_path }}/../../scripts/inspect_artifact.py"
+          - "{{ autonomy_artifact_path }}"
+          - --prefix
+          - "{{ autonomy_install_prefix }}"
+      register: autonomy_artifact_inspection
+      delegate_to: localhost
+      become: false
+      changed_when: false
+      check_mode: false
+      when: not autonomy_artifact_cached_metadata
+
+    - name: Remember archive validation for the current rollout
+      ansible.builtin.set_fact:
+        autonomy_artifact_checks: >-
+          {{ (hostvars['localhost'].autonomy_artifact_checks | default({}))
+             | combine({autonomy_artifact_validation_key: (autonomy_artifact_inspection.stdout | from_json)}) }}
+      delegate_to: localhost
+      delegate_facts: true
+      when: not (autonomy_artifact_inspection.skipped | default(false))
+
+    - name: Resolve artifact metadata
+      ansible.builtin.set_fact:
+        autonomy_artifact_metadata: >-
+          {{ autonomy_artifact_cached_metadata if autonomy_artifact_cached_metadata
+             else autonomy_artifact_inspection.stdout | from_json }}
 
 - name: Check artifact architecture and expected checksum
   ansible.builtin.assert:
@@ -23,6 +45,9 @@
       - autonomy_artifact_metadata.architecture == ansible_architecture
       - autonomy_expected_git_sha | length == 0 or autonomy_artifact_metadata.git_sha == autonomy_expected_git_sha
       - autonomy_artifact_sha256 | length == 0 or autonomy_artifact_metadata.sha256 == autonomy_artifact_sha256
+      - >-
+        autonomy_cross_release_profile is not defined
+        or (autonomy_artifact_metadata.cross_profile | default('')) == autonomy_cross_release_profile
       - autonomy_install_prefix != '/'
       - autonomy_release_dir != autonomy_install_prefix
       - not autonomy_release_dir.startswith(autonomy_install_prefix ~ '/')
@@ -52,6 +77,22 @@
 - name: Resolve content-addressed release directory
   ansible.builtin.set_fact:
     autonomy_artifact_release: "{{ autonomy_release_dir }}/{{ autonomy_artifact_metadata.sha256 }}"
+
+- name: Inspect current install without following its link
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}"
+    follow: false
+  register: autonomy_current_install
+
+- name: Require the exact active base for a module update
+  ansible.builtin.assert:
+    that:
+      - autonomy_profile != 'production'
+      - autonomy_health_probe_argv | length > 0
+      - autonomy_current_install.stat.lnk_source | default('') in
+        [autonomy_release_dir ~ '/' ~ autonomy_artifact_metadata.deployment_base_sha256, autonomy_artifact_release]
+    fail_msg: "Module deployment requires the active base archive and a health probe on a robots or staging target."
+  when: autonomy_artifact_metadata.deployment_base_sha256 is defined
 
 - name: Ensure release storage exists
   ansible.builtin.file:
@@ -89,20 +130,13 @@
         autonomy_artifact_wire_sha256: "{{ autonomy_artifact_metadata.sha256 }}"
         autonomy_artifact_delta_used: false
 
-    - name: Inspect the active release link for incremental staging
-      ansible.builtin.stat:
-        path: "{{ autonomy_install_prefix }}"
-        follow: false
-      register: autonomy_delta_active
-      when: autonomy_artifact_incremental | bool
-
     - name: Stage a smaller delta from the active managed release
       ansible.builtin.include_tasks: stage_delta.yml
       vars:
-        autonomy_incremental_basis: "{{ autonomy_delta_active.stat.lnk_source | default('') }}"
+        autonomy_incremental_basis: "{{ autonomy_current_install.stat.lnk_source | default('') }}"
       when:
-        - autonomy_artifact_incremental | bool
-        - autonomy_delta_active.stat.islnk | default(false)
+        - autonomy_artifact_incremental | bool or autonomy_artifact_metadata.deployment_base_sha256 is defined
+        - autonomy_current_install.stat.islnk | default(false)
         - (autonomy_incremental_basis | dirname) == autonomy_release_dir
         - (autonomy_incremental_basis | basename) is match('^[0-9a-f]{64}$')
 
@@ -146,11 +180,28 @@
         fail_msg: "Artifact is missing the executable for {{ item.item }}."
       loop: "{{ autonomy_staged_binaries.results }}"
 
+    - name: Inspect staged component configuration before activation
+      ansible.builtin.stat:
+        path: >-
+          {{ autonomy_artifact_stage.path }}/tree/{{ autonomy_install_prefix | basename }}/share/autonomy/config/{{ item }}
+        follow: false
+      loop: "{{ [''] + autonomy_config_components }}"
+      register: autonomy_staged_config
+      when: autonomy_config_from_artifact | bool
+
+    - name: Require directories for the selected bundle configuration
+      ansible.builtin.assert:
+        that: item.stat.isdir | default(false)
+        fail_msg: "Artifact is missing its configuration directory for {{ item.item | default('bundle', true) }}."
+      loop: "{{ autonomy_staged_config.results | default([]) }}"
+      when: autonomy_config_from_artifact | bool
+
     - name: Publish complete release directory
       ansible.builtin.command:
         argv:
-          - mv
-          - -T
+          - "{{ ansible_facts.python.executable | default('/usr/bin/python3') }}"
+          - -c
+          - "import os, sys; os.rename(sys.argv[1], sys.argv[2])"
           - "{{ autonomy_artifact_stage.path }}/tree/{{ autonomy_install_prefix | basename }}"
           - "{{ autonomy_artifact_release }}"
         creates: "{{ autonomy_artifact_release }}"
@@ -162,12 +213,6 @@
         state: absent
       when: autonomy_artifact_stage.path is defined
 
-- name: Inspect current install without following its link
-  ansible.builtin.stat:
-    path: "{{ autonomy_install_prefix }}"
-    follow: false
-  register: autonomy_current_install
-
 - name: Refuse to overwrite an unrelated install-prefix file
   ansible.builtin.assert:
     that:
@@ -176,6 +221,29 @@
         or autonomy_current_install.stat.isdir | default(false)
         or autonomy_current_install.stat.islnk | default(false)
     fail_msg: "Install prefix must be absent, a directory or a release symlink."
+
+- name: Prepare rollback for an active verified release
+  ansible.builtin.import_tasks: rollout_snapshot.yml
+  when:
+    - autonomy_rollout_transaction | default(false) | bool
+    - not ansible_check_mode
+    - autonomy_current_install.stat.islnk | default(false)
+    - (autonomy_current_install.stat.lnk_source | dirname) == autonomy_release_dir
+    - (autonomy_current_install.stat.lnk_source | basename) is match('^[0-9a-f]{64}$')
+    - >-
+      autonomy_current_install.stat.lnk_source != autonomy_artifact_release
+      or autonomy_artifact_metadata.deployment_base_sha256 is not defined
+
+- name: Require a rollback snapshot before activating a module update
+  ansible.builtin.assert:
+    that:
+      - autonomy_rollout_previous | default('') == autonomy_current_install.stat.lnk_source
+      - autonomy_rollout_backup.path is defined
+    fail_msg: "Module deployment requires a previously verified active release with a recoverable configuration."
+  when:
+    - not ansible_check_mode
+    - autonomy_artifact_metadata.deployment_base_sha256 is defined
+    - autonomy_current_install.stat.lnk_source != autonomy_artifact_release
 
 - name: Preserve existing directory installation during first migration
   ansible.builtin.command:

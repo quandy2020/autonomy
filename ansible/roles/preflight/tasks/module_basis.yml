@@ -1,0 +1,50 @@
+---
+- name: Identify the running release before a module build
+  ansible.builtin.stat:
+    path: "{{ autonomy_install_prefix }}"
+    follow: false
+  register: autonomy_plan_active
+
+- name: Require a managed release and a configured health probe
+  ansible.builtin.assert:
+    that:
+      - autonomy_plan_active.stat.islnk | default(false)
+      - (autonomy_plan_active.stat.lnk_source | dirname) == autonomy_release_dir
+      - (autonomy_plan_active.stat.lnk_source | basename) is match('^[0-9a-f]{64}$')
+      - autonomy_health_probe_argv | length > 0
+    fail_msg: "{{ inventory_hostname }} needs a managed active release and a health probe for a module build."
+
+- name: Read the active release checkpoint
+  ansible.builtin.slurp:
+    src: "{{ autonomy_release_dir }}/.last-verified"
+  become: "{{ autonomy_system_install | bool }}"
+  register: autonomy_plan_checkpoint_bytes
+
+- name: Verify the active release checkpoint and service set
+  ansible.builtin.assert:
+    that:
+      - checkpoint.schema == 1
+      - checkpoint.release == autonomy_plan_active.stat.lnk_source
+      - checkpoint.units == (autonomy_enabled_units | sort if autonomy_system_install | bool else [])
+    fail_msg: "{{ inventory_hostname }} has no matching verified checkpoint for the active release and service set."
+  vars:
+    checkpoint: "{{ autonomy_plan_checkpoint_bytes.content | b64decode | from_json }}"
+
+- name: Check the identity of a possible already applied update
+  when: (autonomy_plan_active.stat.lnk_source | basename) != autonomy_plan_module_base_sha256
+  block:
+    - name: Read the active release manifest
+      ansible.builtin.slurp:
+        src: "{{ autonomy_plan_active.stat.lnk_source }}/share/autonomy/MANIFEST.json"
+      register: autonomy_plan_active_manifest_bytes
+
+    - name: Require the expected base or a replay of the same module update
+      ansible.builtin.assert:
+        that:
+          - (active.deployment_base_sha256 | default('')) == autonomy_plan_module_base_sha256
+          - (active.git_sha | default('')) == autonomy_plan_module_git_sha
+          - (active.modules | default([]) | sort) == autonomy_plan_module_names
+          - (active.cross_profile | default('')) == autonomy_cross_release_profile
+        fail_msg: "{{ inventory_hostname }} has a different active module base. Stopped before compiling."
+      vars:
+        active: "{{ autonomy_plan_active_manifest_bytes.content | b64decode | from_json }}"

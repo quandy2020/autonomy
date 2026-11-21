@@ -9,6 +9,15 @@ import tarfile
 from pathlib import Path, PurePosixPath
 
 
+CROSS_ABIS = {
+    'rockchip-rk3506-debian12': ('armv7l', 'armhf', 'debian', '12', 'arm-linux-gnueabihf'),
+    **{profile: ('aarch64', 'arm64', 'ubuntu', '22.04', 'aarch64-linux-gnu') for profile in (
+        'rockchip-rk3588-ubuntu2204', 'nvidia-agx-orin-jetpack6',
+        'nvidia-orin-nx-jetpack6', 'nvidia-orin-nano-jetpack6',
+    )},
+}
+
+
 def inspect_artifact(path: Path, prefix: str) -> dict:
     root = PurePosixPath(prefix).name
     if (not prefix.startswith('/') or prefix == '/' or not root
@@ -44,6 +53,11 @@ def inspect_artifact(path: Path, prefix: str) -> dict:
         if not member.isfile() or member.size > 65536:
             raise ValueError('invalid or oversized manifest')
         manifest = json.load(archive.extractfile(member))
+        if not isinstance(manifest, dict) or type(manifest.get('schema_version', 0)) is not int:
+            raise ValueError('invalid artifact manifest')
+        schema = manifest.get('schema_version', 0)
+        if schema not in (0, 1):
+            raise ValueError('unsupported artifact manifest schema')
         if manifest.get('install_prefix') != prefix:
             raise ValueError('artifact install prefix does not match the deployment prefix')
         architecture = manifest.get('architecture')
@@ -51,19 +65,36 @@ def inspect_artifact(path: Path, prefix: str) -> dict:
         if 'cross_profile' in manifest:
             target = {key: manifest.get(key) for key in
                       ('cross_profile', 'target_dpkg_arch', 'target_os', 'target_version')}
-            if (not isinstance(target['cross_profile'], str)
-                    or not re.fullmatch(r'[a-z0-9]+(?:-[a-z0-9]+)+', target['cross_profile'])
-                    or (architecture, target['target_dpkg_arch'], target['target_os'], target['target_version'])
-                    not in (('aarch64', 'arm64', 'ubuntu', '22.04'), ('armv7l', 'armhf', 'debian', '12'))):
+            profile = target['cross_profile']
+            abi = CROSS_ABIS.get(profile) if isinstance(profile, str) else None
+            if (abi is None or
+                    (architecture, target['target_dpkg_arch'], target['target_os'], target['target_version']) != abi[:4]
+                    or (schema == 1 and manifest.get('target_abi') != abi[4])):
                 raise ValueError('invalid cross target in artifact manifest')
+            target['target_abi'] = abi[4]
+            for key, pattern in (('sysroot_sha256', r'[0-9a-f]{64}'), ('image_id', r'sha256:[0-9a-f]{64}')):
+                value = manifest.get(key)
+                if value is not None:
+                    if not isinstance(value, str) or not re.fullmatch(pattern, value):
+                        raise ValueError(f'invalid artifact {key}')
+                    target[key] = value
         elif architecture not in ('x86_64', 'aarch64'):
             raise ValueError('artifact needs an x86_64 or aarch64 architecture manifest')
+        if 'deployment_base_sha256' in manifest or 'modules' in manifest:
+            base, modules = manifest.get('deployment_base_sha256'), manifest.get('modules')
+            if (not target.get('sysroot_sha256') or not target.get('image_id') or schema != 1
+                    or not isinstance(base, str) or not re.fullmatch('[0-9a-f]{64}', base)
+                    or not isinstance(modules, list) or not modules
+                    or any(not isinstance(name, str) or not re.fullmatch(
+                        r'[a-z][a-z0-9_]*(/[a-z][a-z0-9_]*)?', name) for name in modules)):
+                raise ValueError('invalid modular artifact metadata')
+            target.update(deployment_base_sha256=base, modules=modules)
         digest = hashlib.sha256()
         stream.seek(0)
         for chunk in iter(lambda: stream.read(1024 * 1024), b''):
             digest.update(chunk)
     checksum = digest.hexdigest()
-    return {'sha256': checksum, 'architecture': architecture,
+    return {'sha256': checksum, 'architecture': architecture, 'schema_version': schema,
             'git_sha': manifest.get('git_sha', 'unknown'), 'install_prefix': prefix, **target}
 
 

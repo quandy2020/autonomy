@@ -1,6 +1,7 @@
 """Enforce collection boundaries and the public deployment policy."""
 from pathlib import Path
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -34,9 +35,18 @@ class ContractTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
 
     def test_production_playbooks_only_orchestrate_fully_qualified_roles(self):
+        def check_transactions(tasks, source):
+            for task in tasks:
+                if 'block' in task:
+                    for phase in ('block', 'rescue', 'always'):
+                        check_transactions(task.get(phase, []), source)
+                else:
+                    self.assertTrue(task.get('ansible.builtin.import_role', {}).get('name', '')
+                                    .startswith('openbot.autonomy_ops.'), source)
+
         for path in (ROOT / 'playbooks').glob('*.yml'):
             for play in yaml.safe_load(path.read_text()):
-                self.assertNotIn('tasks', play, path)
+                check_transactions(play.get('tasks', []), path)
                 self.assertNotIn('post_tasks', play, path)
                 for role in play.get('roles', []):
                     self.assertTrue(role['role'].startswith('openbot.autonomy_ops.'), path)
@@ -56,16 +66,21 @@ class ContractTest(unittest.TestCase):
                     self.assertIsNotNone(re.fullmatch(r'[a-zA-Z0-9_\[\]-]+==\d+\.\d+\.\d+', line))
 
     def test_local_collection_contains_runtime_support_and_excludes_controller_data(self):
-        manifest = ROOT / '.ansible/collections/ansible_collections/openbot/autonomy_ops/FILES.json'
-        if not manifest.exists():
+        roots = os.environ.get('ANSIBLE_COLLECTIONS_PATH', str(ROOT / '.ansible/collections'))
+        manifests = (Path(path) / 'ansible_collections/openbot/autonomy_ops/FILES.json'
+                     for path in roots.split(os.pathsep))
+        manifest = next((path for path in manifests if path.is_file()), None)
+        if manifest is None:
             self.skipTest('install the local collection first')
         names = {entry['name'] for entry in json.loads(manifest.read_text())['files']}
         self.assertIn('scripts/inspect_artifact.py', names)
         self.assertIn('scripts/artifact_delta.py', names)
+        self.assertIn('roles/artifact/files/restore_config.py', names)
         self.assertIn('vars/lock.yml', names)
         self.assertFalse(any(name.startswith(('inventory/', 'tests/', 'molecule/')) for name in names))
         self.assertNotIn('.vault_pass', names)
         self.assertNotIn('scripts/deployment_audit.py', names)
+        self.assertNotIn('scripts/release_evidence.py', names)
         self.assertNotIn('scripts/prepare_release.py', names)
         self.assertNotIn('scripts/smoke_runtime.py', names)
         self.assertNotIn('scripts/controller_env.sh', names)

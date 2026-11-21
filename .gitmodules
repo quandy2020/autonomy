@@ -10,3 +10,10 @@
 	path = autonomy/localization/argus/thirdparty/3d_bbs
 	url = https://github.com/KOKIAOKI/3d_bbs.git
 	branch = main
+[submodule "automanip/bolza/thirdparty/coal"]
+	path = automanip/bolza/thirdparty/coal
+	url = https://github.com/coal-library/coal.git
+	branch = devel
+[submodule "automanip/bolza/thirdparty/hpipm"]
+	path = automanip/bolza/thirdparty/hpipm
+	url = https://github.com/giaf/hpipm.git

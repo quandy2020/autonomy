@@ -1,0 +1,40 @@
+---
+- name: Acquire the target release lock before changing active state
+  when: not ansible_check_mode
+  become: "{{ autonomy_system_install | bool }}"
+  block:
+    - name: Require a dedicated absolute release path
+      ansible.builtin.assert:
+        that:
+          - autonomy_release_dir.startswith('/')
+          - autonomy_release_dir != '/'
+          - autonomy_release_dir != autonomy_install_prefix
+          - not autonomy_release_dir.startswith(autonomy_install_prefix ~ '/')
+
+    - name: Ensure the lock base directory exists
+      ansible.builtin.file:
+        path: "{{ autonomy_release_dir }}"
+        state: directory
+        mode: "0755"
+
+    - name: Atomically acquire the deployment lock
+      ansible.builtin.command:
+        argv: [mkdir, --, "{{ autonomy_release_dir }}/.deployment-lock"]
+      register: autonomy_rollout_lock
+      changed_when: false
+
+    - name: Record the operation and start time for interrupted-run diagnosis
+      ansible.builtin.copy:
+        content: "{{ {'mode': autonomy_play_mode, 'started_at': now(utc=true, fmt='%Y-%m-%dT%H:%M:%SZ')} | to_json }}\n"
+        dest: "{{ autonomy_release_dir }}/.deployment-lock/owner.json"
+        mode: '0600'
+      changed_when: false
+
+    - name: Initialize transaction state for this host
+      ansible.builtin.set_fact:
+        autonomy_rollout_finished: false
+        autonomy_rollout_recovered: false
+        autonomy_rollout_configuration_started: false
+        autonomy_rollout_needs_recovery: false
+        autonomy_rollout_previous: ""
+        autonomy_rollout_health_verified: false

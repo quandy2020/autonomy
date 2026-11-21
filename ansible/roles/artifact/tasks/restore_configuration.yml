@@ -1,0 +1,8 @@
+---
+- name: Restore the prior application configuration with compensation on failure
+  ansible.builtin.script:
+    cmd: >-
+      restore_config.py {{ autonomy_config_dir | quote }} {{ autonomy_configuration_snapshot | quote }}
+    executable: "{{ ansible_facts.python.executable | default('/usr/bin/python3') }}"
+  become: "{{ autonomy_system_install | bool }}"
+  changed_when: true

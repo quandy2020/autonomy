@@ -7,11 +7,13 @@
 #   restart 重启服务
 - name: Deploy autonomy stack
   hosts: autonomy
-  serial: "{{ autonomy_deploy_serial | default(1) }}"
+  serial: >-
+    {{ '100%' if autonomy_play_mode | default('full') in ['plan', 'verify']
+       else (autonomy_deploy_serial | default(1)) }}
   any_errors_fatal: true
   become: >-
     {{
-      false if autonomy_play_mode == 'check' or not autonomy_system_install | bool
+      false if autonomy_play_mode in ['check', 'plan', 'verify'] or not autonomy_system_install | bool
       else (autonomy_play_become | default(true) | bool)
     }}
   roles:
@@ -24,7 +26,7 @@
 
     - role: openbot.autonomy_ops.preflight
       tags: [preflight, check]
-      when: autonomy_play_mode in ['full', 'build', 'check']
+      when: autonomy_play_mode in ['full', 'build', 'check', 'plan']
 
     - role: openbot.autonomy_ops.runtime_bootstrap
       tags: [runtime_bootstrap, common]
@@ -49,18 +51,81 @@
         - autonomy_play_mode in ['full', 'build']
         - autonomy_deploy_mode == 'build'
 
-    - role: openbot.autonomy_ops.artifact
-      tags: [artifact]
-      when:
-        - autonomy_play_mode == 'full'
-        - autonomy_deploy_mode == 'artifact'
-
     - role: openbot.autonomy_ops.config
       tags: [config]
-      when: autonomy_play_mode in ['full', 'push']
+      when: autonomy_play_mode == 'full' and autonomy_deploy_mode == 'build'
 
     - role: openbot.autonomy_ops.services
       tags: [services, config, restart]
       when:
-        - autonomy_play_mode in ['full', 'push', 'restart']
-        - autonomy_system_install | bool
+        - autonomy_play_mode in ['full', 'verify']
+        - autonomy_play_mode != 'full' or autonomy_deploy_mode == 'build'
+        - autonomy_system_install | bool or autonomy_play_mode == 'verify'
+
+  tasks:
+    - name: Run configuration pushes and service restarts under the release lock
+      tags: [config, services, restart]
+      when: autonomy_play_mode in ['push', 'restart']
+      block:
+        - name: Lock active state before maintenance
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+            tasks_from: rollout_lock.yml
+        - name: Apply configuration with a recovery snapshot
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.config
+          when: autonomy_play_mode == 'push'
+        - name: Restart or verify maintained services
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.services
+          when:
+            - not (ansible_check_mode and autonomy_play_mode == 'push')
+            - autonomy_system_install | bool or autonomy_health_probe_argv | length > 0
+      rescue:
+        - name: Recover from a failed configuration push
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.config
+            tasks_from: push_restore.yml
+      always:
+        - name: Release only the acquired maintenance lock
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+            tasks_from: rollout_unlock.yml
+
+    - name: Publish, activate and verify one artifact transaction
+      tags: [artifact]
+      when:
+        - autonomy_play_mode == 'full'
+        - autonomy_deploy_mode == 'artifact'
+      vars:
+        autonomy_rollout_transaction: true
+      block:
+        - name: Lock this target against concurrent artifact deployments
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+            tasks_from: rollout_lock.yml
+        - name: Stage and activate the verified artifact
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+        - name: Apply release configuration
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.config
+          when: autonomy_artifact_metadata.deployment_base_sha256 is not defined
+        - name: Start and verify release services
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.services
+          when: autonomy_system_install | bool or autonomy_health_probe_argv | length > 0
+        - name: Checkpoint the verified release
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+            tasks_from: rollout_checkpoint.yml
+      rescue:
+        - name: Restore an eligible known-good release and stop the rollout
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+            tasks_from: rollout_restore.yml
+      always:
+        - name: Release the acquired deployment lock
+          ansible.builtin.import_role:
+            name: openbot.autonomy_ops.artifact
+            tasks_from: rollout_unlock.yml

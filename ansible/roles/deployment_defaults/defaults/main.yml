@@ -81,7 +81,7 @@ autonomy_apt_update_retry_delay: 15
 # 部署结束后检查 systemctl active 状态
 autonomy_run_verify: true
 
-# config 变更后自动重启服务（--tags config 单独执行也生效）
+# 配置变更后自动重启已选组件的服务。
 autonomy_restart_on_config_change: true
 
 # 默认逐台更新，单机失败立即停止；可在 staging 覆盖。
@@ -93,8 +93,12 @@ autonomy_config_components: [localization, task, bridge]
 autonomy_release_dir: "{{ autonomy_install_prefix }}-releases"
 autonomy_artifact_sha256: ""
 autonomy_cmake_extra_args: ["-DBUILD_AUTOVIZ=OFF", "-DBUILD_DOCS=OFF"]
+autonomy_build_modules: []
 autonomy_service_verify_retries: 20
 autonomy_service_verify_delay: 5
+autonomy_health_probe_argv: []
+autonomy_health_probe_timeout_seconds: 15
+autonomy_require_health_probe: false
 
 # Collection controller paths and explicit production policy.
 autonomy_controller_root: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | default(playbook_dir ~ '/..', true) }}"

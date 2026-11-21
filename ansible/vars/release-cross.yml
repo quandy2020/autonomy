@@ -5,6 +5,7 @@ cross_profile: rockchip-rk3588-ubuntu2204
 # sysroot:
 #   host: 192.168.1.100
 #   user: robot
+#   refresh: false  # true forces recollection on this invocation
 #   extra_dirs: [/opt/vendor-sdk]
 # image: autonomy.platform.x86_64
 # docker_platform: linux/amd64

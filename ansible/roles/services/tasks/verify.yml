@@ -9,25 +9,39 @@
       retries: "{{ autonomy_service_verify_retries }}"
       delay: "{{ autonomy_service_verify_delay }}"
       loop: "{{ autonomy_enabled_units }}"
-      become: true
+      become: "{{ autonomy_play_mode != 'verify' }}"
       changed_when: false
+      check_mode: false
+      when: autonomy_system_install | bool
+
+    - name: Run the project read-only runtime probe with a deadline
+      ansible.builtin.command:
+        argv: "{{ ['timeout', '-k', '2', autonomy_health_probe_timeout_seconds | string] + autonomy_health_probe_argv }}"
+      become: false
+      changed_when: false
+      check_mode: false
+      no_log: true
+      when: autonomy_health_probe_argv | length > 0
   rescue:
     - name: Collect service journals without exposing runtime secrets
       ansible.builtin.command:
         argv: [journalctl, -u, "{{ item }}", -n, "30", --no-pager]
       loop: "{{ autonomy_enabled_units }}"
-      become: true
+      become: "{{ autonomy_play_mode != 'verify' }}"
       changed_when: false
       failed_when: false
       no_log: true
+      when: autonomy_system_install | bool
 
     - name: Fail deployment after service startup failure
       ansible.builtin.fail:
         msg: >-
-          Service startup failed on {{ inventory_hostname }}.
+          A systemd or runtime health check failed on {{ inventory_hostname }}.
           Inspect systemctl status and journalctl locally on the target;
           runtime journal contents are not printed into CI logs.
 
-- name: Summarize service verification
-  ansible.builtin.debug:
-    msg: "All services active: {{ autonomy_enabled_units | join(', ') }}"
+- name: Record which health gates actually ran
+  ansible.builtin.set_fact:
+    autonomy_rollout_health_verified: >-
+      {{ (autonomy_system_install | bool and autonomy_enabled_units | length > 0)
+         or autonomy_health_probe_argv | length > 0 }}

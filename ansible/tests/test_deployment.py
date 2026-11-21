@@ -24,6 +24,8 @@ def load(name, path):
 INSPECT = load('inspect_artifact', ROOT / 'scripts/inspect_artifact.py')
 DELTA = load('artifact_delta', ROOT / 'scripts/artifact_delta.py')
 AUDIT = load('deployment_audit', ROOT / 'scripts/deployment_audit.py')
+EVIDENCE = load('release_evidence', ROOT / 'scripts/release_evidence.py')
+RETENTION = load('release_retention', ROOT / 'scripts/release_retention.py')
 PACKAGE = load('package_install_tarball', ROOT.parent / 'tools/python/package_install_tarball.py')
 with patch.dict('sys.modules', {'inspect_artifact': INSPECT}):
     RELEASE = load('prepare_release', ROOT / 'scripts/prepare_release.py')
@@ -33,7 +35,7 @@ class DeploymentTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.directory = Path(self.temp.name)
+        self.directory = Path(self.temp.name).resolve()
 
     def archive(self, extra=None, manifest=None):
         path = self.directory / 'artifact.tar.gz'
@@ -76,6 +78,14 @@ class DeploymentTest(unittest.TestCase):
         plan = DELTA.prepare(archive, '/opt/autonomy', digest, DELTA.inventory(base), directory)
         self.assertTrue(plan['use_delta'])
         self.assertEqual(plan['reused'], 1)
+        cache = self.directory / 'cache'
+        cache.mkdir()
+        files = DELTA.inventory(base)
+        first = DELTA.prepare_cached(archive, '/opt/autonomy', digest, files, cache)
+        self.assertFalse(first['cache_hit'])
+        with patch.object(DELTA, 'prepare', side_effect=AssertionError('repacked identical delta')):
+            self.assertEqual(DELTA.prepare_cached(archive, '/opt/autonomy', digest, files, cache),
+                             {**first, 'cache_hit': True})
         stage = self.directory / 'stage'
         stage.mkdir()
         DELTA.restore(base, stage, directory / 'reuse.json', plan['reuse_sha256'])
@@ -88,6 +98,9 @@ class DeploymentTest(unittest.TestCase):
         self.assertFalse((stage / 'autonomy/same').samefile(base / 'same'))
 
         (base / 'same').write_bytes(b'changed after inventory')
+        different = DELTA.prepare_cached(archive, '/opt/autonomy', digest, DELTA.inventory(base), cache)
+        self.assertFalse(different['cache_hit'])
+        self.assertNotEqual(different['payload_dir'], first['payload_dir'])
         stale = self.directory / 'stale'
         stale.mkdir()
         with self.assertRaisesRegex(ValueError, 'basis file changed'):
@@ -97,6 +110,21 @@ class DeploymentTest(unittest.TestCase):
         result = INSPECT.inspect_artifact(self.archive(), '/opt/autonomy')
         self.assertEqual(result['architecture'], 'x86_64')
         self.assertEqual(len(result['sha256']), 64)
+
+    def test_release_retention_protects_transitive_bases_and_respects_deployment_lock(self):
+        root = self.directory / 'releases'
+        active, base, ancestor, stale = ('a' * 64, 'b' * 64, 'c' * 64, 'd' * 64)
+        for release, parent in [(active, base), (base, ancestor), (ancestor, None), (stale, None)]:
+            manifest = root / release / 'share/autonomy/MANIFEST.json'
+            manifest.parent.mkdir(parents=True)
+            manifest.write_text(json.dumps({'deployment_base_sha256': parent}))
+        prefix = self.directory / 'autonomy'
+        prefix.symlink_to(root / active)
+        report = RETENTION.retention(prefix, root, keep=0)
+        self.assertEqual(report['cleanup_candidates'], [stale])
+        self.assertIn('module base', report['protected'][ancestor])
+        (root / '.deployment-lock').mkdir()
+        self.assertEqual(RETENTION.retention(prefix, root, keep=0)['cleanup_candidates'], [])
 
     def test_archive_escape_and_special_files_are_rejected(self):
         for name, kind, link in [
@@ -224,6 +252,7 @@ class DeploymentTest(unittest.TestCase):
         environment['HOME'] = str(self.directory)
         with patch.object(PACKAGE, 'bundle_configuration'), \
                 patch.object(PACKAGE, 'git_describe', return_value='fixture'), \
+                patch.object(PACKAGE.platform, 'machine', return_value='aarch64'), \
                 patch.dict(os.environ, environment, clear=True):
             self.assertEqual(PACKAGE.main(['--skip-build', '--build-dir', str(build)]), 0)
         self.assertEqual(INSPECT.inspect_artifact(output, '/opt/autonomy')['sha256'],
@@ -232,6 +261,18 @@ class DeploymentTest(unittest.TestCase):
             self.assertIn('autonomy/share/autonomy/payload', archive.getnames())
             metadata = json.load(archive.extractfile('autonomy/share/autonomy/MANIFEST.json'))
             self.assertEqual(metadata['cmake_build_type'], 'Debug')
+
+    def test_release_packager_refuses_a_selected_build_tree(self):
+        build = self.directory / 'modules'
+        build.mkdir()
+        (build / 'CMakeCache.txt').write_text('AUTONOMY_BUILD_MODULES:STRING=automsgs\n')
+        output = self.directory / 'autonomy.tar.gz'
+        with patch.object(PACKAGE, 'run') as run, patch('sys.stderr', new=io.StringIO()) as stderr:
+            with self.assertRaises(SystemExit):
+                PACKAGE.main(['--skip-build', '--build-dir', str(build), '--output', str(output)])
+            run.assert_not_called()
+            self.assertIn('requires a full build directory', stderr.getvalue())
+        self.assertFalse(output.exists())
 
     @unittest.skipUnless(shutil.which('patchelf') and shutil.which('cc') and shutil.which('c++'),
                          'ELF relocation regression requires patchelf and C/C++ compilers')
@@ -286,10 +327,14 @@ class DeploymentTest(unittest.TestCase):
         output = self.directory / 'audit.json'
         with patch.object(AUDIT.subprocess, 'check_output', side_effect=['a' * 40, 'b' * 40, 'hosts (1): robot01']):
             with patch.dict(os.environ, {'GITHUB_ACTOR': 'operator', 'UNRELATED_TOKEN': 'dummy-private-value'}):
-                self.assertEqual(AUDIT.main(['--environment', 'production', '--revision', 'a' * 40,
+                self.assertEqual(AUDIT.main(['--environment', 'production', '--revision', 'd' * 40,
+                                             '--deployment-revision', 'a' * 40,
                                              '--artifact-sha256', 'c' * 64, '--output', str(output)]), 0)
         record = json.loads(output.read_text())
         self.assertEqual(record['actor'], 'operator')
+        self.assertEqual(record['revision'], 'd' * 40)
+        self.assertEqual(record['deployment_revision'], 'a' * 40)
+        self.assertEqual(record['extra_variables']['autonomy_expected_git_sha'], 'd' * 40)
         self.assertEqual(record['inventory_tree'], 'b' * 40)
         self.assertNotIn('dummy-private-value', output.read_text())
 
@@ -303,9 +348,39 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual(error.exception.code, 2)
         self.assertFalse(output.exists())
 
+    def test_bridge_probe_requires_an_application_heartbeat(self):
+        bridge = self.directory / 'autonomy.bridge'
+        for response, expected in [
+            ({'status': {'code': 'STATUS_OK'}, 'sequence': 42, 'robot_time_ns': '123'}, 0),
+            ({'status': {'code': 'STATUS_ERROR'}, 'sequence': 42, 'robot_time_ns': '123'}, 1),
+            ({'status': {}, 'sequence': 41, 'robot_time_ns': '123'}, 1),
+        ]:
+            with self.subTest(response=response):
+                bridge.write_text(f'#!/bin/sh\nprintf \'%s\\n\' \'{json.dumps(response)}\'\n')
+                bridge.chmod(0o755)
+                result = subprocess.run([
+                    'python3', str(ROOT / 'scripts/probe_bridge.py'), '--bridge', str(bridge),
+                    '--target', '127.0.0.1:5005',
+                ], capture_output=True, text=True)
+                self.assertEqual(result.returncode, expected, result.stdout + result.stderr)
+
     def dispatch(self, *arguments, environment=None):
         executable = self.directory / 'ansible-playbook'
-        executable.write_text('#!/usr/bin/env python3\nimport json, sys\nprint(json.dumps(sys.argv[1:]))\n')
+        executable.write_text('''#!/usr/bin/env python3
+import json, os, sys
+if '--list-hosts' in sys.argv:
+    print('hosts (0):' if os.environ.get('AUTONOMY_TEST_EMPTY') else 'hosts (1):')
+if 'autonomy_play_mode=plan' in sys.argv and os.environ.get('AUTONOMY_TEST_PLAN_FAIL'):
+    sys.exit(37)
+for arg in sys.argv[1:]:
+    if arg.startswith('autonomy_delta_cache_dir='):
+        assert os.path.isdir(arg.split('=', 1)[1])
+if os.environ.get('AUTONOMY_TEST_COLOR_ENV'):
+    print(os.environ.get('ANSIBLE_FORCE_COLOR', '') + ':' + os.environ.get('ANSIBLE_NOCOLOR', ''), file=sys.stderr)
+print(json.dumps(sys.argv[1:]))
+if '--list-hosts' not in sys.argv:
+    sys.exit(int(os.environ.get('AUTONOMY_TEST_DEPLOY_EXIT', '0')))
+''')
         executable.chmod(0o755)
         galaxy = self.directory / 'ansible-galaxy'
         galaxy.write_text('#!/bin/sh\nexit 0\n')
@@ -318,6 +393,12 @@ class DeploymentTest(unittest.TestCase):
                               text=True, capture_output=True, env=env, stdin=subprocess.DEVNULL)
 
     def test_dispatch_modes_and_explicit_inventory_override(self):
+        for mode, inventory in [('build', 'inventory/hosts.yml'), ('deploy', 'inventory/robots/hosts.yml'),
+                                ('release', 'inventory/robots/hosts.yml'), ('cross-release', 'inventory/robots/hosts.yml')]:
+            with self.subTest(default_inventory=mode):
+                result = self.dispatch(mode, '--list-hosts', environment={'AUTONOMY_DEPLOY_ENV': ''})
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(json.loads(result.stdout.splitlines()[-1])[1], inventory)
         for mode, deployment in [('build', 'build'), ('deploy', 'artifact')]:
             with self.subTest(mode=mode):
                 result = self.dispatch(mode, 'staging', environment={'AUTONOMY_DEPLOY_ENV': 'robots'})
@@ -332,6 +413,98 @@ class DeploymentTest(unittest.TestCase):
         result = self.dispatch('deploy', 'robots', '--incremental', '--list-hosts')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('autonomy_artifact_incremental=true', json.loads(result.stdout.splitlines()[-1]))
+
+    def test_maintenance_rejects_task_filters_that_could_change_transaction_scope(self):
+        for mode in ('push', 'restart'):
+            with self.subTest(mode=mode):
+                result = self.dispatch(mode, 'robots', '--skip-tags=config')
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('Task selectors are not supported', result.stderr)
+
+    def test_incremental_dispatch_removes_cache_and_preserves_ansible_status(self):
+        for exit_code in (0, 42):
+            with self.subTest(exit_code=exit_code):
+                result = self.dispatch('deploy', 'robots', '-l', 'robot01', '--incremental', environment={
+                    'AUTONOMY_TEST_DEPLOY_EXIT': str(exit_code), 'TMPDIR': str(self.directory),
+                })
+                self.assertEqual(result.returncode, exit_code, result.stderr)
+                options = json.loads(result.stdout.splitlines()[-1])
+                self.assertTrue(any(arg.startswith('autonomy_delta_cache_dir=') for arg in options))
+                self.assertFalse(list(self.directory.glob('autonomy-delta.*')))
+
+    def test_short_and_long_deploy_options_share_the_same_routing(self):
+        base = self.directory / 'base package.tar.gz'
+        base.touch()
+        prefix = ('cross-release', 'robots', '-l', 'robot01', '-T', '15')
+        short = self.dispatch(*prefix, '-R', 'custom config.yml', '-I', '-B', str(base),
+                              '-m', 'autonomy/control', '--list-hosts')
+        long = self.dispatch(*prefix, '--release-config=custom config.yml', '--incremental',
+                             f'--base-artifact={base}', '--module=autonomy/control', '--list-hosts')
+        self.assertEqual(short.returncode, 0, short.stderr)
+        self.assertEqual(long.returncode, 0, long.stderr)
+        self.assertEqual(short.stdout, long.stdout)
+        self.assertIn('-T', json.loads(short.stdout.splitlines()[-1]))
+
+        build = self.dispatch('build', 'staging', '-m', 'autonomy/control', '-S')
+        self.assertEqual(build.returncode, 0, build.stderr)
+        options = json.loads(build.stdout.splitlines()[-1])
+        self.assertIn('autonomy_build_test=true', options)
+        self.assertIn({'autonomy_build_modules': ['autonomy/control']},
+                      [json.loads(arg) for arg in options if arg.startswith('{')])
+        missing = self.dispatch(*prefix, '-R', '--list-hosts')
+        self.assertNotEqual(missing.returncode, 0)
+        self.assertIn('--release-config requires', missing.stderr)
+
+    def test_color_modes_preserve_plain_logs_and_configure_ansible(self):
+        args = ('deploy', 'robots', '--list-hosts')
+        plain = self.dispatch(*args, environment={
+            'AUTONOMY_LOG_COLOR': 'auto', 'ANSIBLE_FORCE_COLOR': '1', 'AUTONOMY_TEST_COLOR_ENV': '1',
+        })
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        self.assertNotIn('\x1b[', plain.stdout)
+        self.assertTrue(plain.stderr.startswith('0:'))
+
+        forced = self.dispatch('-L', 'always', *args, environment={
+            'NO_COLOR': '1', 'AUTONOMY_TEST_COLOR_ENV': '1',
+        })
+        self.assertEqual(forced.returncode, 0, forced.stderr)
+        self.assertIn('\x1b[36m==> mode=', forced.stdout)
+        self.assertEqual(forced.stderr.strip(), '1:0')
+        self.assertEqual(json.loads(forced.stdout.splitlines()[-1]), json.loads(plain.stdout.splitlines()[-1]))
+
+        muted = self.dispatch(*args, '--color=never', environment={
+            'ANSIBLE_FORCE_COLOR': '1', 'AUTONOMY_TEST_COLOR_ENV': '1',
+        })
+        self.assertEqual(muted.returncode, 0, muted.stderr)
+        self.assertNotIn('\x1b[', muted.stdout)
+        self.assertEqual(muted.stderr.strip(), '0:1')
+
+        checked = self.dispatch('deploy', 'robots', '-L', 'always', environment={'AUTONOMY_TEST_COLOR_ENV': '1'})
+        self.assertEqual(checked.returncode, 0, checked.stderr)
+        self.assertEqual(checked.stderr.splitlines(), ['0:1', '1:0'])
+
+        rejected = self.dispatch('build', 'missing', '--color', 'always')
+        self.assertNotEqual(rejected.returncode, 0)
+        self.assertIn('\x1b[31mUnknown or non-canonical inventory', rejected.stderr)
+
+        invalid = self.dispatch(*args, '--color=violet')
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn('--color requires auto, always or never', invalid.stderr)
+
+    def test_help_colors_sections_and_includes_command_examples(self):
+        colored = self.dispatch('--help', '--color=always')
+        self.assertEqual(colored.returncode, 0, colored.stderr)
+        self.assertIn('\x1b[36mExamples:\x1b[0m', colored.stdout)
+        self.assertIn('\x1b[36mBuild and release options:\x1b[0m', colored.stdout)
+        self.assertIn('\x1b[32m  ./deploy.sh build -K -S', colored.stdout)
+        self.assertIn('cross-release robots -l robot01 -K -m autonomy/control', colored.stdout)
+        self.assertIn('push robots -l robot01 -K -C -D', colored.stdout)
+        self.assertIn('verify robots -l robot01 -e "autonomy_artifact_sha256=$sha"', colored.stdout)
+
+        plain = self.dispatch('--help', '-L', 'never', environment={'AUTONOMY_LOG_COLOR': 'always'})
+        self.assertEqual(plain.returncode, 0, plain.stderr)
+        self.assertIn('Examples:', plain.stdout)
+        self.assertNotIn('\x1b[', plain.stdout)
 
     def release_config(self):
         return {'container': 'fixture-builder', 'workspace': '/workspace with spaces',
@@ -362,10 +535,12 @@ class DeploymentTest(unittest.TestCase):
                          variables['autonomy_artifact_sha256'] + '  autonomy.tar.gz\n')
         commands = [call.args[0] for call in calls.call_args_list]
         self.assertEqual(commands[0][3], config['workspace'])
-        self.assertEqual(commands[0][5:7], ['colcon', 'build'])
-        self.assertIn('--skip-build', commands[1])
-        self.assertIn('--bundle-runtime', commands[1])
-        self.assertEqual(commands[2][1], 'cp')
+        self.assertTrue(commands[0][-2].endswith('/tools/python/clang_format_sources.py'))
+        self.assertEqual(commands[0][-1], '--check')
+        self.assertEqual(commands[1][5:7], ['colcon', 'build'])
+        self.assertIn('--skip-build', commands[2])
+        self.assertIn('--bundle-runtime', commands[2])
+        self.assertEqual(commands[3][1], 'cp')
         self.assertEqual(commands[-1][3:6], ['rm', '-rf', '--'])
 
     def test_failed_release_never_replaces_existing_artifact(self):
@@ -385,6 +560,8 @@ class DeploymentTest(unittest.TestCase):
             with self.subTest(step=failing_step), patch.object(RELEASE.subprocess, 'run', side_effect=execute):
                 with self.assertRaises(subprocess.CalledProcessError):
                     RELEASE.prepare(config)
+            if failing_step == 0:
+                self.assertFalse(any('colcon' in command for command in calls))
             self.assertFalse(any(command[1] == 'cp' for command in calls))
             self.assertEqual(output.read_bytes(), b'previous-release')
             self.assertEqual(calls[-1][3], 'rm')
@@ -421,12 +598,111 @@ class DeploymentTest(unittest.TestCase):
 
     def test_release_dispatch_stops_before_deployment_on_build_failure(self):
         docker = self.directory / 'docker'
-        docker.write_text('#!/bin/sh\nexit 23\n')
+        docker.write_text('#!/bin/sh\nif [ "$3" = uname ]; then echo x86_64; exit 0; fi\nexit 23\n')
         docker.chmod(0o755)
         result = self.dispatch('release', 'robots', '-l', 'robot01')
         self.assertNotEqual(result.returncode, 0)
         self.assertNotIn('==> mode=', result.stdout)
         self.assertIn('Deployment was not started', result.stderr)
+
+    def test_failed_preflight_stops_cross_release_before_build(self):
+        result = self.dispatch('cross-release', 'robots', '-l', 'robot01',
+                               environment={'AUTONOMY_TEST_PLAN_FAIL': '1'})
+        self.assertEqual(result.returncode, 37, result.stderr)
+        self.assertIn('Preflight selected hosts before building', result.stdout)
+        self.assertNotIn('==> mode=', result.stdout)
+
+        result = self.dispatch('deploy', 'staging', environment={'AUTONOMY_TEST_EMPTY': '1'})
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('matched no deploy targets', result.stderr)
+
+    def test_module_selection_reaches_native_build_and_cannot_replace_a_release(self):
+        result = self.dispatch('build', 'staging', '--module', 'autonomy/control', '--module=autolink', '--test')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        arguments = json.loads(result.stdout.splitlines()[-1])
+        self.assertIn({'autonomy_build_modules': ['autonomy/control', 'autolink']},
+                      [json.loads(arg) for arg in arguments if arg.startswith('{')])
+        self.assertIn('autonomy_build_test=true', arguments)
+        result = self.dispatch('cross-release', 'robots', '-l', 'robot01', '--module', 'automsgs')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('requires both --module and --base-artifact', result.stderr)
+
+    def test_cross_module_preparation_builds_without_packaging(self):
+        artifact_dir = self.directory / 'artifacts'
+        config = {'cross_profile': 'rockchip-rk3506-debian12', 'artifact_dir': str(artifact_dir)}
+        with patch.object(RELEASE, 'run') as execute:
+            result = RELEASE.prepare_cross(config, incremental=True, modules=['autonomy/control', 'automsgs'])
+        self.assertEqual(result['modules'], ['automsgs', 'autonomy/control'])
+        self.assertEqual(execute.call_args.args[2], 'build')
+        self.assertIn('--incremental', execute.call_args.args)
+        self.assertNotIn('autonomy_artifact_path', result)
+        self.assertFalse(artifact_dir.exists())
+
+    def test_module_archive_keeps_base_runtime_and_configuration(self):
+        profile = 'rockchip-rk3506-debian12'
+        config = {'cross_profile': profile, 'artifact_dir': str(self.directory / 'artifacts')}
+        identity = {'sysroot_sha256': 'a' * 64, 'image_id': 'sha256:' + 'b' * 64}
+        staged = self.directory / 'base/autonomy'
+        for name, value in {'bin/task': b'unchanged task', 'lib/libautomsgs.so': b'old',
+                            'share/autonomy/config/task/state': b'base config',
+                            'share/unchanged-resource': os.urandom(32 * 1024)}.items():
+            file = staged / name
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(value)
+        base = self.directory / 'base.tar.gz'
+        metadata = {'schema_version': 1, 'install_prefix': '/opt/autonomy', 'architecture': 'armv7l',
+                    'cross_profile': profile, 'target_os': 'debian', 'target_version': '12',
+                    'target_dpkg_arch': 'armhf', 'target_abi': 'arm-linux-gnueabihf', **identity}
+        base_sha = PACKAGE.write_archive(staged, base, metadata, reproducible=True)
+
+        def build(*command):
+            self.assertEqual(command[2], 'install')
+            self.assertIn('--incremental', command)
+            at = command.index('--expected-builder')
+            self.assertEqual(command[at + 1:at + 3], (identity['sysroot_sha256'], identity['image_id']))
+            stage = Path(command[command.index('--output-dir') + 1])
+            installed = stage / 'install/opt/autonomy'
+            for name, value in {'lib/libautomsgs.so': b'new',
+                                'share/autonomy/config/task/state': b'ignored config',
+                                'lib/cmake/automsgs/automsgs-config.cmake': b'ignored export'}.items():
+                file = installed / name
+                file.parent.mkdir(parents=True, exist_ok=True)
+                file.write_bytes(value)
+            (stage / 'build-provenance.json').write_text(json.dumps(identity))
+
+        with patch.object(RELEASE, 'run', side_effect=build):
+            result = RELEASE.prepare_cross(config, modules=['automsgs'], base_artifact=base)
+        archive = Path(result['autonomy_artifact_path'])
+        self.assertEqual(INSPECT.inspect_artifact(archive, '/opt/autonomy')['deployment_base_sha256'], base_sha)
+        with tarfile.open(archive) as content:
+            self.assertEqual(content.extractfile('autonomy/bin/task').read(), b'unchanged task')
+            self.assertEqual(content.extractfile('autonomy/lib/libautomsgs.so').read(), b'new')
+            self.assertEqual(content.extractfile('autonomy/share/autonomy/config/task/state').read(), b'base config')
+            self.assertNotIn('autonomy/lib/cmake/automsgs/automsgs-config.cmake', content.getnames())
+        transfer = self.directory / 'transfer'
+        transfer.mkdir()
+        plan = DELTA.prepare(archive, '/opt/autonomy', result['autonomy_artifact_sha256'],
+                             DELTA.inventory(staged), transfer)
+        self.assertTrue(plan['use_delta'])
+        with tarfile.open(transfer / 'delta.tar.gz') as content:
+            self.assertIn('autonomy/lib/libautomsgs.so', content.getnames())
+            self.assertNotIn('autonomy/share/unchanged-resource', content.getnames())
+
+    def test_promotion_requires_verified_staging_for_the_exact_release(self):
+        revision, digest, profile = '1' * 40, 'a' * 64, 'nvidia-orin-nx-jetpack6'
+        audit = {'environment': 'staging', 'revision': revision, 'artifact_sha256': digest,
+                 'cross_profile': profile, 'inventory_tree': 'inventory/staging',
+                 'host_limit': 'robot01', 'host_listing': 'hosts (1):\n  robot01'}
+        accepted = EVIDENCE.record(audit)
+        EVIDENCE.verify(accepted, revision, digest, profile)
+        for mismatch in [('2' * 40, digest, profile), (revision, 'b' * 64, profile),
+                         (revision, digest, 'nvidia-orin-nano-jetpack6')]:
+            with self.assertRaisesRegex(ValueError, 'does not match'):
+                EVIDENCE.verify(accepted, *mismatch)
+        with self.assertRaisesRegex(ValueError, 'completed and verified'):
+            EVIDENCE.verify(audit, revision, digest, profile)
+        with self.assertRaisesRegex(ValueError, 'at least one target'):
+            EVIDENCE.record({**audit, 'host_listing': 'hosts (0):'})
 
     def test_cross_release_stages_and_labels_real_target_artifact(self):
         config = {'cross_profile': 'rockchip-rk3506-debian12',

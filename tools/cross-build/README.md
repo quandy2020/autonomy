@@ -45,6 +45,20 @@ make install PROFILE="$profile" SOURCE="$PWD/tests/smoke"
 make install PROFILE="$profile" SOURCE=/absolute/path/to/project
 ```
 
+## 5. 按模块编译 Autonomy
+
+从 `tools/cross-build/` 执行。`MODULES` 用空格分隔，命令行的 `--module` 可重复。
+
+```sh
+make build PROFILE="$profile" MODULES="automsgs autonomy/control"
+python3 scripts/cross_build.py build --profile "$profile" \
+  --module automsgs --module autonomy/control --incremental
+```
+
+支持 `automsgs`、`autolink`、`autodriver`、`autoviz`、`automanip` 和 `autonomy`。`autonomy` 选择启用的领域，也可指定 `autonomy/common`、`autonomy/control`、`autonomy/localization` 等单个领域。CMake 自动加入依赖，并在配置时列出项目和领域。比如 `autonomy/control` 同时编译 `common`、`transform`、`map` 和共享 Protobuf 库。
+
+同一组模块可复用自己的构建目录，路径在构建结束后打印。此入口只编译，仍执行全仓第一方 C/C++ 格式门禁。`autoviz` 需目标 Qt 和 Ogre SDK，显式选择 `autonomy/bridge` 需启用 `BUILD_GRPC`。需要发布所选模块时，使用 [Ansible 模块发布](../../ansible/docs/cross-release.md#增量部署指定模块)。
+
 - [自定义镜像、CMake 参数和厂商 SDK](docs/onboarding.md)
 - [用 Ansible 一键编译、打包和部署](../../ansible/docs/cross-release.md)
 - [新增 Profile](docs/profiles.md) · [故障排查](docs/troubleshooting.md) · [设计](docs/design.md)

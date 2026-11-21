@@ -70,9 +70,20 @@
 
     - name: Create native build fixture source
       ansible.builtin.file:
-        path: /tmp/autonomy-build-source/scripts/install_deps
+        path: "{{ item }}"
         state: directory
         mode: "0755"
+      loop:
+        - /tmp/autonomy-build-source/scripts/install_deps
+        - /tmp/autonomy-build-source/tools/python
+
+    - name: Write the fixture style checker contract
+      ansible.builtin.copy:
+        dest: /tmp/autonomy-build-source/tools/python/clang_format_sources.py
+        mode: "0644"
+        content: |
+          import sys
+          sys.exit(0 if sys.argv[1:] == ['--check'] else 1)
 
     - name: Write minimal CMake build and CTest fixture
       ansible.builtin.copy:

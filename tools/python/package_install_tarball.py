@@ -194,7 +194,8 @@ def write_archive(staged_prefix: Path, output: Path, manifest: dict, *, reproduc
             with tarfile.open(fileobj=compressed, mode='w') as archive:
                 archive.add(staged_prefix, arcname=staged_prefix.name, filter=normalize)
     else:
-        run(["tar", "-C", str(staged_prefix.parent), "-czf", str(output), staged_prefix.name])
+        run(["tar", "-C", str(staged_prefix.parent), "-czf", str(output), staged_prefix.name],
+            env={**os.environ, "COPYFILE_DISABLE": "1"})
     digest = hashlib.sha256()
     with output.open("rb") as stream:
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -264,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
     stage = Path(tempfile.mkdtemp(prefix="autonomy-pkg-"))
     try:
         if not args.skip_build:
+            run([sys.executable, str(root / 'tools/python/clang_format_sources.py'), '--check'])
             print(f"[package] configure: {build_dir}")
             run(
                 [
@@ -280,6 +282,14 @@ def main(argv: list[str] | None = None) -> int:
                     f"-DBUILD_TEST={build_test}",
                 ]
             )
+        cache = {}
+        for line in (build_dir / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
+            if not line.startswith(("#", "//")) and "=" in line and ":" in line.split("=", 1)[0]:
+                key, value = line.split("=", 1)
+                cache[key.split(":", 1)[0]] = value
+        if cache.get('AUTONOMY_BUILD_MODULES'):
+            parser.error('the release archive requires a full build directory')
+        if not args.skip_build:
             run(["cmake", "--build", str(build_dir), "--parallel", str(args.jobs)])
 
         print(f"[package] build + stage install under {stage}")
@@ -298,12 +308,8 @@ def main(argv: list[str] | None = None) -> int:
             deduplicated_bytes = deduplicate_runtime_libraries(staged_prefix / 'lib')
             print(f'[package] deduplicated runtime libraries: {deduplicated_bytes} bytes saved')
 
-        cache = {}
-        for line in (build_dir / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
-            if not line.startswith(("#", "//")) and "=" in line and ":" in line.split("=", 1)[0]:
-                key, value = line.split("=", 1)
-                cache[key.split(":", 1)[0]] = value
         manifest = {
+            "schema_version": 1,
             "git_sha": git_sha(root),
             "git_describe": git_describe(root),
             "install_prefix": str(install_prefix),

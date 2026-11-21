@@ -1,0 +1,27 @@
+---
+- name: Release only the lock acquired by this transaction
+  when: autonomy_rollout_lock.rc | default(1) == 0
+  become: "{{ autonomy_system_install | bool }}"
+  block:
+    - name: Remove an unused or successfully restored backup
+      ansible.builtin.file:
+        path: "{{ autonomy_rollout_backup.path }}"
+        state: absent
+      changed_when: false
+      when:
+        - autonomy_rollout_backup.path is defined
+        - >-
+          (autonomy_rollout_finished | default(false)) or
+          (autonomy_rollout_recovered | default(false)) or
+          not (autonomy_rollout_needs_recovery | default(false))
+  always:
+    - name: Remove the operation metadata from the acquired lock
+      ansible.builtin.file:
+        path: "{{ autonomy_release_dir }}/.deployment-lock/owner.json"
+        state: absent
+      changed_when: false
+
+    - name: Unlock this target release directory
+      ansible.builtin.command:
+        argv: [rmdir, --, "{{ autonomy_release_dir }}/.deployment-lock"]
+      changed_when: false

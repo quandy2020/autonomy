@@ -12,6 +12,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTAINER = os.environ.get('AUTONOMY_TEST_CONTAINER')
+CONTAINER_PYTHON = os.environ.get('AUTONOMY_TEST_PYTHON', '/usr/bin/python3')
 
 
 @unittest.skipUnless(CONTAINER, 'set AUTONOMY_TEST_CONTAINER for isolated Docker integration')
@@ -22,7 +23,7 @@ class ArtifactLifecycleTest(unittest.TestCase):
             inventory = directory / 'inventory.json'
             inventory.write_text(json.dumps({'all': {'hosts': {CONTAINER: {
                 'ansible_connection': 'community.docker.docker',
-                'ansible_python_interpreter': '/usr/bin/python3',
+                'ansible_python_interpreter': CONTAINER_PYTHON,
             }}}}))
             prefix = '/tmp/autonomy-artifact-' + directory.name
             base = {'autonomy_install_prefix': prefix, 'autonomy_services': ['task'],

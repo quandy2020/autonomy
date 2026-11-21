@@ -8,9 +8,15 @@
   ansible.builtin.assert:
     that:
       - autonomy_version_lock.schema == 1
-      - ansible_facts.distribution == 'Ubuntu'
-      - ansible_facts.distribution_version in autonomy_version_lock.ubuntu_versions
-      - ansible_facts.architecture in autonomy_version_lock.architectures
+      - >-
+        (ansible_facts.distribution == 'Ubuntu' and
+         ansible_facts.distribution_version in autonomy_version_lock.ubuntu_versions and
+         ansible_facts.architecture in autonomy_version_lock.architectures)
+        or
+        (autonomy_deploy_mode == 'artifact' and not autonomy_install_dependencies | bool and
+         (autonomy_cross_profile | default('')) == 'rockchip-rk3506-debian12' and
+         ansible_facts.distribution == 'Debian' and
+         ansible_facts.distribution_major_version == '12' and ansible_facts.architecture == 'armv7l')
       - not autonomy_install_dependencies | bool or autonomy_version_lock.apt_packages | length > 0
       - >-
         autonomy_play_mode not in ['full', 'build'] or autonomy_deploy_mode != 'build'

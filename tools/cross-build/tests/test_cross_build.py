@@ -1,10 +1,13 @@
-"""Offline regression tests. Execution is deferred at the user's request."""
+"""Offline regression tests for the cross-build tool."""
 import argparse
 import copy
+from io import StringIO
 import json
 import os
 from pathlib import Path
+import shutil
 import struct
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -107,6 +110,24 @@ class CrossBuildTests(unittest.TestCase):
                 with cb.profile_lock(self.root, self.meta['platform']):
                     pass
 
+    def test_sysroot_digest_reuses_content_hash_and_detects_in_place_edit(self):
+        workspace = self.root
+        self.root = workspace / 'sysroot'
+        self.sysroot()
+        self.file('.cross-build.json', b'{"source": "builder@reference-board"}')
+        header = self.file('usr/include/stdio.h', b'old header')
+        profile = self.meta['platform']
+        with patch.object(cb, 'WORK', workspace / 'work'), patch.object(
+                cb, 'sysroot_fingerprint', wraps=cb.sysroot_fingerprint) as hash_tree:
+            before = cb.verified_sysroot_digest(self.root, profile)
+            self.assertEqual(cb.verified_sysroot_digest(self.root, profile), before)
+            self.assertEqual(hash_tree.call_count, 1)
+            info = header.stat()
+            header.write_bytes(b'new header')
+            os.utime(header, ns=(info.st_atime_ns, info.st_mtime_ns))
+            self.assertNotEqual(cb.verified_sysroot_digest(self.root, profile), before)
+            self.assertEqual(hash_tree.call_count, 2)
+
     def test_build_keeps_cmake_arguments_separate_and_mounts_source_readonly(self):
         workspace = self.root
         self.root = workspace / 'work/sysroots' / self.meta['platform']
@@ -126,6 +147,49 @@ class CrossBuildTests(unittest.TestCase):
         self.assertEqual(command[-1], '-DMESSAGE=a b;$(touch nope)')
         self.assertIn(f'type=bind,src={source},dst=/src,readonly', command)
         self.assertIn(f'type=bind,src={self.root},dst=/sysroot,readonly', command)
+
+    def test_selected_modules_are_forwarded_as_one_cmake_value_in_a_separate_build(self):
+        workspace = self.root
+        self.root = workspace / 'work/sysroots' / self.meta['platform']
+        self.sysroot()
+        args = argparse.Namespace(source=str(cb.ROOT.parents[1]), image=None,
+                                  docker_platform='linux/amd64', command='build',
+                                  output_dir=None, install_prefix=None, incremental=False,
+                                  modules=['autonomy/control', 'automsgs', 'automsgs'], cmake_args=[])
+        with patch.object(cb, 'WORK', workspace / 'work'), patch.object(cb, 'run') as execute:
+            cb.build_project(args, self.meta)
+        command = execute.call_args.args[0]
+        self.assertIn('-DAUTONOMY_BUILD_MODULES=automsgs;autonomy/control', command)
+        self.assertFalse(any(arg == f'type=bind,src={workspace}/work/build/{self.meta["platform"]},dst=/build'
+                             for arg in command))
+
+    def test_module_selection_is_compile_only(self):
+        with patch.dict(os.environ, {'CROSS_BUILD_MODULES': 'automsgs'}), \
+                patch('sys.stderr', new_callable=StringIO) as stderr:
+            with self.assertRaises(SystemExit):
+                cb.main(['install', '--profile', self.meta['platform']])
+            self.assertIn('--module requires build', stderr.getvalue())
+
+    @unittest.skipUnless(shutil.which('cmake'), 'requires CMake to verify the module dependency graph')
+    def test_cmake_resolves_only_requested_projects_and_dependencies(self):
+        resolver = cb.ROOT.parents[1] / 'cmake/SelectModules.cmake'
+        script = self.file('select.cmake', f'''
+cmake_minimum_required(VERSION 3.20)
+include("{resolver}")
+autonomy_resolve_modules("autonomy/control;automsgs;autonomy/control"
+  "common;control;localization;map;transform" "common;localization")
+list(SORT AUTONOMY_SELECTED_PROJECTS)
+if(NOT AUTONOMY_ENABLED_MODULES STREQUAL "common;control;map;transform"
+    OR NOT AUTONOMY_SELECTED_PROJECTS STREQUAL "autolink;automsgs")
+  message(FATAL_ERROR "Unexpected selection: ${{AUTONOMY_ENABLED_MODULES}} / ${{AUTONOMY_SELECTED_PROJECTS}}")
+endif()
+autonomy_resolve_modules("automsgs" "common;localization" "common;localization")
+if(AUTONOMY_ENABLED_MODULES OR NOT AUTONOMY_SELECTED_PROJECTS STREQUAL "automsgs")
+  message(FATAL_ERROR "automsgs alone must not configure autonomy domains or autolink")
+endif()
+'''.encode())
+        result = subprocess.run(['cmake', '-P', str(script)], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_cache_reuses_objects_across_staging_paths_but_isolates_sdk_and_image(self):
         base = self.root

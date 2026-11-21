@@ -72,6 +72,7 @@ option(BUILD_DOCS        "Build Sphinx documentation"               OFF)
 option(BUILD_TEST        "Build unit tests"                         OFF)
 option(BUILD_TOOLS       "Build tools"                              ON)
 option(BUILD_AUTOVIZ     "Build autoviz"                            ON)
+set(AUTONOMY_BUILD_MODULES "" CACHE STRING "Semicolon-separated projects or autonomy/<domain> to build")
 option(AUTOVIZ_BUILD_WIDGET_TESTS
   "Build only the Autoviz widget QtTest suite"                      OFF)
 
@@ -114,7 +115,23 @@ include("${PROJECT_SOURCE_DIR}/cmake/Functions.cmake")
 #   later find_package / package.xml resolution sees them as FOUND.
 #   Must run before autocmake_build().
 autonomy_modules()
+set(AUTONOMY_MODULE_SELECTION FALSE)
+if(NOT "${AUTONOMY_BUILD_MODULES}" STREQUAL "")
+  set(AUTONOMY_MODULE_SELECTION TRUE)
+  include(cmake/SelectModules.cmake)
+  autonomy_resolve_modules("${AUTONOMY_BUILD_MODULES}" "${AUTONOMY_MODULES}" "${AUTONOMY_ENABLED_MODULES}")
+  message(STATUS "Selected projects: ${AUTONOMY_SELECTED_PROJECTS}; autonomy domains: ${AUTONOMY_ENABLED_MODULES}")
+else()
+  set(AUTONOMY_SELECTED_PROJECTS automsgs autolink autodriver automanip)
+  if(BUILD_AUTOVIZ)
+    list(APPEND AUTONOMY_SELECTED_PROJECTS autoviz)
+  endif()
+endif()
 autonomy_embed_siblings()
+if(AUTONOMY_MODULE_SELECTION AND NOT AUTONOMY_ENABLED_MODULES)
+  autonomy_add_companions()
+  return()
+endif()
 
 # --- autocmake project -------------------------------------------------------
 # autocmake_project()  — package metadata from package.xml / version.
@@ -194,11 +211,7 @@ include(cmake/ExplorationTests.cmake)
 # --- companions --------------------------------------------------------------
 # Built after domains so they can link autonomy / autolink / automsgs.
 # Same idea as autodriver adding chassis/ from its root CMakeLists.
-add_subdirectory(autodriver)           # required sensor / chassis HAL
-add_subdirectory(automanip)            # planning stack + bolza OCP sub-library
-if(BUILD_AUTOVIZ)
-  add_subdirectory(autoviz)            # optional visualization stack
-endif()
+autonomy_add_companions()
 
 # --- install -----------------------------------------------------------------
 # Domain public headers (+ generated *.pb.h) and cmake/modules/.

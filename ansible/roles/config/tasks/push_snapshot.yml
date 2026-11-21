@@ -1,0 +1,40 @@
+---
+- name: Inspect the configuration directory before writing
+  ansible.builtin.stat:
+    path: "{{ autonomy_config_dir }}"
+    follow: false
+  register: autonomy_push_current
+
+- name: Snapshot the previous configuration beside its live directory
+  when: autonomy_push_current.stat.exists
+  become: "{{ autonomy_system_install | bool }}"
+  block:
+    - name: Require a real, dedicated configuration directory
+      ansible.builtin.assert:
+        that:
+          - autonomy_push_current.stat.isdir | default(false)
+          - autonomy_config_dir.startswith('/')
+          - (autonomy_config_dir | dirname) != '/'
+          - "'..' not in autonomy_config_dir.split('/')"
+          - autonomy_config_dir not in [autonomy_install_prefix, autonomy_release_dir, autonomy_data_dir]
+          - not autonomy_data_dir.startswith(autonomy_config_dir ~ '/')
+          - not autonomy_release_dir.startswith(autonomy_config_dir ~ '/')
+        fail_msg: "Use a dedicated real configuration directory before pushing configuration."
+
+    - name: Allocate private configuration snapshot
+      ansible.builtin.tempfile:
+        state: directory
+        path: "{{ autonomy_config_dir | dirname }}"
+        prefix: .autonomy-config-
+      register: autonomy_push_snapshot
+      changed_when: false
+
+    - name: Copy existing configuration with its original metadata
+      ansible.builtin.command:
+        argv: [cp, -a, --, "{{ autonomy_config_dir }}", "{{ autonomy_push_snapshot.path }}/config"]
+      changed_when: false
+      register: autonomy_push_snapshot_copy
+
+    - name: Report the snapshot before touching the active configuration
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} pre-push snapshot: {{ autonomy_push_snapshot.path }}"

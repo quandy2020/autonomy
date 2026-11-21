@@ -2,18 +2,49 @@
 - name: Validate deployment contract
   ansible.builtin.assert:
     that:
-      - autonomy_play_mode in ['full', 'build', 'push', 'check', 'restart']
+      - autonomy_play_mode in ['full', 'build', 'push', 'check', 'plan', 'verify', 'restart']
       - autonomy_deploy_mode in ['build', 'artifact']
       - autonomy_play_mode != 'build' or autonomy_deploy_mode == 'build'
       - autonomy_services | difference(autonomy_service_name_map.keys() | list) | length == 0
       - autonomy_system_install | bool or not autonomy_install_dependencies | bool
-      - not autonomy_require_ci | bool or autonomy_play_mode == 'check' or lookup('env', 'GITHUB_ACTIONS') == 'true'
+      - >-
+        not autonomy_require_ci | bool or autonomy_play_mode in ['check', 'plan', 'verify']
+        or lookup('env', 'GITHUB_ACTIONS') == 'true'
       - autonomy_profile != 'production' or use_locked_versions | bool
       - autonomy_profile != 'production' or autonomy_system_install | bool
     fail_msg: >-
       Invalid deployment mode, services or installation policy. User installation requires dependency
       installation disabled; production requires system installation, version locks and approved CI.
     quiet: true
+
+- name: Keep module selection in compile-only modes
+  ansible.builtin.assert:
+    that:
+      - autonomy_build_modules | type_debug == 'list'
+      - autonomy_build_modules | reject('match', '^[a-z][a-z0-9_]*(/[a-z][a-z0-9_]*)?$') | list | length == 0
+      - >-
+        autonomy_build_modules | length == 0 or
+        (autonomy_deploy_mode == 'build' and autonomy_play_mode in ['plan', 'build'])
+      - autonomy_cmake_extra_args | select('match', '^-DAUTONOMY_BUILD_MODULES[:=]') | list | length == 0
+    fail_msg: "Use autonomy_build_modules with build mode for selective compilation."
+    quiet: true
+
+- name: Validate the application probe before release changes
+  ansible.builtin.assert:
+    that:
+      - autonomy_health_probe_argv is sequence
+      - autonomy_health_probe_argv is not string
+      - autonomy_health_probe_argv is not mapping
+      - autonomy_health_probe_argv | select('string') | list | length == autonomy_health_probe_argv | length
+      - autonomy_health_probe_timeout_seconds | int > 0
+      - >-
+        not (autonomy_require_health_probe | bool
+             or (autonomy_profile == 'production' and autonomy_system_install | bool and autonomy_services | length > 0))
+        or autonomy_health_probe_argv | length > 0
+    fail_msg: "Configure a bounded, read-only autonomy_health_probe_argv for this release."
+    quiet: true
+  when:
+    - autonomy_play_mode in ['plan', 'verify', 'push', 'restart'] or (autonomy_play_mode == 'full' and autonomy_deploy_mode == 'artifact')
 
 - name: Require one cross profile across the selected release hosts
   ansible.builtin.assert:

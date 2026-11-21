@@ -27,7 +27,31 @@
             content: |
               cmake_minimum_required(VERSION 3.20)
               project(autonomy_build_fixture NONE)
+              if(AUTONOMY_BUILD_MODULES STREQUAL "automsgs;autonomy/control")
+                add_custom_command(OUTPUT compiled-modules
+                  COMMAND ${CMAKE_COMMAND} -E touch compiled-modules)
+                add_custom_target(selected_modules ALL DEPENDS compiled-modules)
+                if(BUILD_TEST)
+                  enable_testing()
+                  add_test(NAME selected_module_exists COMMAND ${CMAKE_COMMAND} -E compare_files
+                    compiled-modules compiled-modules)
+                endif()
+              endif()
               install(FILES CMakeLists.txt DESTINATION share/autonomy)
+
+        - name: Create fixture style checker directory
+          ansible.builtin.file:
+            path: "{{ autonomy_build_fixture.path }}/tools/python"
+            state: directory
+            mode: "0755"
+
+        - name: Write the fixture style checker contract
+          ansible.builtin.copy:
+            dest: "{{ autonomy_build_fixture.path }}/tools/python/clang_format_sources.py"
+            mode: "0644"
+            content: |
+              import sys
+              sys.exit(0 if sys.argv[1:] == ['--check'] else 1)
 
         - name: Configure fixture paths
           ansible.builtin.set_fact:
@@ -58,6 +82,26 @@
         - name: Require a real installed result
           ansible.builtin.assert:
             that: autonomy_build_result.stat.exists
+
+        - name: Build modules in isolation with reverse input order
+          ansible.builtin.include_role:
+            name: openbot.autonomy_ops.build
+          vars:
+            autonomy_build_modules: [autonomy/control, automsgs, automsgs]
+            autonomy_build_test: true
+            autonomy_install_prefix: "{{ autonomy_build_fixture.path }}/unused-install"
+
+        - name: Locate compile-only output
+          ansible.builtin.stat:
+            path: "{{ autonomy_effective_build_dir }}/compiled-modules"
+          register: autonomy_selected_result
+
+        - name: Require isolated compilation without installation
+          ansible.builtin.assert:
+            that:
+              - autonomy_effective_build_dir.startswith(autonomy_cmake_build_dir ~ '/.modules/')
+              - autonomy_selected_result.stat.exists
+              - autonomy_cmake_install.skipped
       always:
         - name: Remove build fixture
           ansible.builtin.file:

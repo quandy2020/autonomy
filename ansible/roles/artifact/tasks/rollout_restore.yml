@@ -1,0 +1,55 @@
+---
+- name: Detect changes to the release link or live configuration
+  ansible.builtin.set_fact:
+    autonomy_rollout_needs_recovery: >-
+      {{ (autonomy_artifact_activation.changed | default(false))
+         or ((autonomy_rollout_configuration_started | default(false))
+             and (autonomy_config_changed | default(true))) }}
+
+- name: Restore the previous release when its checkpoint is complete
+  when:
+    - autonomy_rollout_needs_recovery
+    - not (autonomy_unit_files.changed | default(false))
+    - autonomy_rollout_previous | default('') | length > 0
+    - autonomy_rollout_backup.path is defined
+  block:
+    - name: Restore the release configuration snapshot
+      ansible.builtin.import_tasks: restore_configuration.yml
+      vars:
+        autonomy_configuration_snapshot: "{{ autonomy_rollout_backup.path }}"
+
+    - name: Reactivate the previous verified artifact
+      ansible.builtin.file:
+        path: "{{ autonomy_install_prefix }}"
+        src: "{{ autonomy_rollout_previous }}"
+        state: link
+        follow: false
+        force: true
+
+    - name: Restart selected services on the recovered artifact
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        state: restarted
+      loop: "{{ autonomy_enabled_units }}"
+      when: autonomy_system_install | bool
+
+    - name: Recheck service and application health after recovery
+      ansible.builtin.import_role:
+        name: openbot.autonomy_ops.services
+        tasks_from: verify.yml
+
+    - name: Record successful recovery
+      ansible.builtin.set_fact:
+        autonomy_rollout_recovered: true
+
+- name: Stop rollout after the failed transaction
+  ansible.builtin.fail:
+    msg: >-
+      Release failed on {{ inventory_hostname }}.
+      {% if autonomy_rollout_recovered | default(false) %}
+      Previous verified release restored and checked.
+      {% elif autonomy_rollout_needs_recovery %}
+      Automatic rollback was unavailable. Check the live install and configuration before retrying.
+      {% else %}
+      No release link or live configuration change was reported.
+      {% endif %}

@@ -1,4 +1,17 @@
 ---
+- name: Mark the start of live configuration writes for release recovery
+  ansible.builtin.set_fact:
+    autonomy_rollout_configuration_started: true
+  when:
+    - autonomy_rollout_transaction | default(false) | bool
+    - not ansible_check_mode
+
+- name: Snapshot existing configuration before a real push
+  ansible.builtin.include_tasks: push_snapshot.yml
+  when:
+    - autonomy_play_mode == 'push'
+    - not ansible_check_mode
+
 - name: Ensure config directory exists
   ansible.builtin.file:
     path: "{{ autonomy_config_dir }}"
@@ -68,7 +81,7 @@
   args:
     executable: /bin/bash
   register: autonomy_config_permissions
-  changed_when: autonomy_config_permissions.stdout | length > 0
+  changed_when: autonomy_config_permissions.stdout | default('') | length > 0
   become: "{{ autonomy_system_install | bool }}"
 
 - name: Report runtime configuration changes
@@ -80,3 +93,20 @@
          or autonomy_config_permissions.changed
          or autonomy_config_owner.changed
          or autonomy_config_directory.changed }}
+
+- name: Drop the temporary backup after an unchanged push
+  ansible.builtin.file:
+    path: "{{ autonomy_push_snapshot.path }}"
+    state: absent
+  when:
+    - autonomy_push_snapshot.path is defined
+    - not autonomy_config_changed
+  changed_when: false
+  become: "{{ autonomy_system_install | bool }}"
+
+- name: Record the configuration restore point
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} configuration snapshot: {{ autonomy_push_snapshot.path }}"
+  when:
+    - autonomy_push_snapshot.path is defined
+    - autonomy_config_changed

@@ -1,15 +1,75 @@
 ---
 - name: Configure and start selected services
   ansible.builtin.import_tasks: configure.yml
-  when: autonomy_play_mode == 'full'
+  when:
+    - autonomy_play_mode == 'full' and autonomy_system_install | bool
+    - (autonomy_artifact_metadata | default({})).deployment_base_sha256 is not defined
 
 - name: Restart on explicit request or changed pushed configuration
   ansible.builtin.import_tasks: restart.yml
   when: >-
-    autonomy_play_mode == 'restart'
-    or (autonomy_play_mode == 'push' and autonomy_restart_on_config_change | bool
-        and autonomy_config_changed | default(false))
+    autonomy_system_install | bool and
+    (autonomy_play_mode == 'restart'
+     or (autonomy_play_mode == 'full' and
+         (autonomy_artifact_metadata | default({})).deployment_base_sha256 is defined and
+         autonomy_artifact_activation.changed | default(false))
+     or (autonomy_play_mode == 'push' and autonomy_restart_on_config_change | bool
+         and not ansible_check_mode and autonomy_config_changed | default(false)))
 
 - name: Verify selected services
   ansible.builtin.import_tasks: verify.yml
-  when: autonomy_run_verify | bool
+  when:
+    - autonomy_system_install | bool or autonomy_health_probe_argv | length > 0
+    - >-
+      autonomy_run_verify | bool or autonomy_play_mode == 'verify'
+      or autonomy_require_health_probe | bool or autonomy_profile == 'production'
+      or (autonomy_artifact_metadata | default({})).deployment_base_sha256 is defined
+
+- name: Identify the currently installed version
+  when: autonomy_play_mode == 'verify'
+  block:
+    - name: Inspect installed version link
+      ansible.builtin.stat:
+        path: "{{ autonomy_install_prefix }}"
+        follow: false
+      register: autonomy_verified_install
+
+    - name: Check the active version directory exists
+      ansible.builtin.stat:
+        path: "{{ autonomy_install_prefix }}"
+        follow: true
+      register: autonomy_verified_release
+
+    - name: Require the expected installed artifact when specified
+      ansible.builtin.assert:
+        that:
+          - autonomy_verified_release.stat.isdir | default(false)
+          - >-
+            autonomy_artifact_sha256 | length == 0 or
+            (
+              autonomy_verified_install.stat.lnk_source | default('') ==
+              (autonomy_release_dir ~ '/' ~ autonomy_artifact_sha256)
+            )
+        fail_msg: "The expected install is not active on {{ inventory_hostname }}."
+        success_msg: >-
+          {{ inventory_hostname }} is using
+          {{ autonomy_verified_install.stat.lnk_source | default(autonomy_install_prefix) }}.
+
+- name: Report retained release versions and cleanup candidates without deleting files
+  when:
+    - autonomy_play_mode == 'verify'
+    - autonomy_show_release_retention | default(false) | bool
+  block:
+    - name: List release retention candidates on the target
+      ansible.builtin.script:
+        cmd: >-
+          {{ (role_path ~ '/../../scripts/release_retention.py') | quote }}
+          {{ autonomy_install_prefix | quote }} {{ autonomy_release_dir | quote }}
+        executable: "{{ ansible_facts.python.executable | default('/usr/bin/python3') }}"
+      become: "{{ autonomy_system_install | bool }}"
+      changed_when: false
+      register: autonomy_retention_report
+
+    - name: Show the retention result
+      ansible.builtin.debug:
+        msg: "{{ autonomy_retention_report.stdout | from_json }}"

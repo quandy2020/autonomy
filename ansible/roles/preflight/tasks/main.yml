@@ -10,6 +10,11 @@
       - mount
   when: ansible_distribution is not defined
 
+- name: Select the Debian platform baseline when the target actually declares it
+  ansible.builtin.set_fact:
+    autonomy_debian_cross_target: >-
+      {{ autonomy_deploy_mode == 'artifact' and (autonomy_cross_profile | default('')) == 'rockchip-rk3506-debian12' }}
+
 - name: Require Ubuntu 22.04 (production / staging strict)
   ansible.builtin.assert:
     that:
@@ -19,7 +24,9 @@
       Target must be Ubuntu 22.04 (found {{ ansible_distribution | default('unknown') }}
       {{ ansible_distribution_version | default('') }}).
     quiet: true
-  when: autonomy_preflight_strict_os | bool
+  when:
+    - autonomy_preflight_strict_os | bool
+    - not autonomy_debian_cross_target
 
 - name: Require a supported target OS in relaxed environments
   ansible.builtin.assert:
@@ -33,7 +40,7 @@
       Target {{ ansible_distribution | default('unknown') }}
       {{ ansible_distribution_version | default('') }} must match the configured deployment platform.
     quiet: true
-  when: not (autonomy_preflight_strict_os | bool)
+  when: not (autonomy_preflight_strict_os | bool) or autonomy_debian_cross_target
 
 - name: Check supported CPU architecture
   ansible.builtin.assert:
@@ -58,3 +65,78 @@
     quiet: true
   loop: "{{ ansible_mounts | default([]) | selectattr('mount', 'equalto', '/') | list }}"
   when: ansible_mounts is defined
+
+- name: Check the filesystem that will contain the release before building
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts.python.executable | default('/usr/bin/python3') }}"
+      - -c
+      - |
+        import pathlib, shutil, sys
+        path = pathlib.Path(sys.argv[1])
+        while not path.exists() and path != path.parent:
+            path = path.parent
+        print(shutil.disk_usage(path).free // (1024 * 1024))
+      - "{{ autonomy_release_dir if autonomy_deploy_mode == 'artifact' else autonomy_cmake_build_dir }}"
+  register: autonomy_plan_free_mb
+  changed_when: false
+  check_mode: false
+  when: autonomy_play_mode == 'plan'
+
+- name: Report target storage and verify the release fits the host policy
+  ansible.builtin.assert:
+    that: autonomy_plan_free_mb.stdout | int >= autonomy_min_free_disk_mb | int
+    fail_msg: "{{ inventory_hostname }} needs {{ autonomy_min_free_disk_mb }} MiB free on the release filesystem."
+    success_msg: "{{ inventory_hostname }} has {{ autonomy_plan_free_mb.stdout }} MiB free on the release filesystem."
+  when: autonomy_play_mode == 'plan'
+
+- name: Match the native build architecture before compiling
+  ansible.builtin.assert:
+    that: ansible_architecture == autonomy_plan_target_architecture
+    fail_msg: "{{ inventory_hostname }} needs a {{ ansible_architecture }} artifact, but the native builder is {{ autonomy_plan_target_architecture }}."
+  when:
+    - autonomy_play_mode == 'plan'
+    - autonomy_plan_target_architecture is defined
+
+- name: Verify required target-side release commands without invoking them
+  ansible.builtin.command:
+    argv: >-
+      {{ [ansible_facts.python.executable | default('/usr/bin/python3'), '-c',
+          'import shutil,sys; missing = [name for name in sys.argv[1:] if not shutil.which(name)]; '
+          ~ 'print(", ".join(missing), file=sys.stderr) if missing else None; sys.exit(bool(missing))',
+          'tar']
+         + (['systemctl'] if autonomy_system_install | bool and autonomy_enabled_units | length > 0 else [])
+         + (['timeout', autonomy_health_probe_argv[0]] if autonomy_health_probe_argv | length > 0 else []) }}
+  changed_when: false
+  check_mode: false
+  when:
+    - autonomy_play_mode in ['plan', 'full']
+    - autonomy_deploy_mode == 'artifact'
+
+- name: Check the cross release's actual target ABI before building
+  when:
+    - autonomy_play_mode == 'plan'
+    - autonomy_plan_target_dpkg_arch is defined
+  block:
+    - name: Read target Debian package architecture
+      ansible.builtin.command:
+        argv: [dpkg, --print-architecture]
+      register: autonomy_plan_architecture
+      changed_when: false
+      check_mode: false
+
+    - name: Match the target OS and package ABI
+      ansible.builtin.assert:
+        that:
+          - ansible_distribution | lower == autonomy_plan_target_os
+          - >-
+            (ansible_distribution_major_version if ansible_distribution == 'Debian' else ansible_distribution_version)
+            == autonomy_plan_target_version
+          - autonomy_plan_architecture.stdout == autonomy_plan_target_dpkg_arch
+        fail_msg: "{{ inventory_hostname }} does not match the OS or ABI for {{ autonomy_cross_release_profile }}."
+
+- name: Validate the module release base before compiling
+  ansible.builtin.include_tasks: module_basis.yml
+  when:
+    - autonomy_play_mode == 'plan'
+    - autonomy_plan_module_base_sha256 is defined

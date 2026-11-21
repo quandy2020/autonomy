@@ -1,0 +1,15 @@
+---
+- name: Record the last release confirmed by the deployed service checks
+  ansible.builtin.copy:
+    content: >-
+      {{ {'schema': 1, 'release': autonomy_artifact_release,
+          'units': (autonomy_enabled_units | sort if autonomy_system_install | bool else [])} | to_json }}
+    dest: "{{ autonomy_release_dir }}/.last-verified"
+    mode: "0600"
+  when:
+    - not ansible_check_mode
+    - autonomy_rollout_health_verified | default(false) | bool
+
+- name: Mark this release transaction successful
+  ansible.builtin.set_fact:
+    autonomy_rollout_finished: true

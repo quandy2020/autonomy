@@ -36,15 +36,11 @@
 
     - name: Compare the verified artifact with the active release
       ansible.builtin.command:
-        argv:
-          - "{{ ansible_playbook_python }}"
-          - "{{ autonomy_delta_script }}"
-          - prepare
-          - "{{ autonomy_artifact_path }}"
-          - "{{ autonomy_install_prefix }}"
-          - "{{ autonomy_artifact_metadata.sha256 }}"
-          - "{{ autonomy_delta_work.path }}/basis.json"
-          - "{{ autonomy_delta_work.path }}"
+        argv: >-
+          {{ [ansible_playbook_python, autonomy_delta_script, 'prepare',
+              autonomy_artifact_path, autonomy_install_prefix, autonomy_artifact_metadata.sha256,
+              autonomy_delta_work.path ~ '/basis.json', autonomy_delta_work.path]
+             + (['--cache', autonomy_delta_cache_dir] if autonomy_delta_cache_dir | default('') else []) }}
       delegate_to: localhost
       become: false
       register: autonomy_delta_preparation
@@ -59,7 +55,7 @@
       block:
         - name: Copy the reuse plan into staging
           ansible.builtin.copy:
-            src: "{{ autonomy_delta_work.path }}/reuse.json"
+            src: "{{ autonomy_delta_plan.payload_dir | default(autonomy_delta_work.path) }}/reuse.json"
             dest: "{{ autonomy_artifact_stage.path }}/reuse.json"
             mode: "0600"
 
@@ -76,7 +72,7 @@
 
         - name: Transfer the delta archive
           ansible.builtin.copy:
-            src: "{{ autonomy_delta_work.path }}/delta.tar.gz"
+            src: "{{ autonomy_delta_plan.payload_dir | default(autonomy_delta_work.path) }}/delta.tar.gz"
             dest: "{{ autonomy_artifact_stage.path }}/release.tar.gz"
             mode: "0600"
 
@@ -90,7 +86,8 @@
             msg: >-
               Reused {{ autonomy_delta_plan.reused }} files.
               Transferred {{ autonomy_delta_plan.wire_bytes }} bytes
-              instead of {{ autonomy_delta_plan.full_bytes }} bytes.
+              instead of {{ autonomy_delta_plan.full_bytes }} bytes
+              (controller cache {{ 'hit' if autonomy_delta_plan.cache_hit | default(false) else 'miss' }}).
   always:
     - name: Remove controller delta files
       ansible.builtin.file:

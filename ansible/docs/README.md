@@ -10,6 +10,8 @@
 
 向 ARM 板卡发布请使用 [一键交叉编译与分发](cross-release.md)。
 
+参数搭配和可复制的命令见 [常用命令行参数](cli.md)。
+
 ## 首次使用只改配置
 
 1. [inventory/robots/hosts.yml](../inventory/robots/hosts.yml)：填写 `robot01` 的真实 IP 和 SSH 用户。

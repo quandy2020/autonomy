@@ -1,0 +1,69 @@
+---
+- name: Check whether the active artifact has a verified checkpoint
+  ansible.builtin.stat:
+    path: "{{ autonomy_release_dir }}/.last-verified"
+    follow: false
+  register: autonomy_rollout_marker
+
+- name: Read the last verified release identity
+  ansible.builtin.slurp:
+    src: "{{ autonomy_release_dir }}/.last-verified"
+  register: autonomy_rollout_verified
+  when: autonomy_rollout_marker.stat.isreg | default(false)
+
+- name: Read the checkpoint identity and service set
+  ansible.builtin.set_fact:
+    autonomy_rollout_checkpoint: "{{ autonomy_rollout_checkpoint_payload | from_json }}"
+  vars:
+    autonomy_rollout_checkpoint_payload: "{{ autonomy_rollout_verified.content | default('') | b64decode | trim }}"
+  when: autonomy_rollout_checkpoint_payload.startswith('{')
+
+- name: Save the configuration when the active version is known good
+  when: >-
+    (autonomy_rollout_checkpoint.schema | default(0)) == 1
+    and autonomy_rollout_checkpoint.release == autonomy_current_install.stat.lnk_source
+    and autonomy_rollout_checkpoint.units == (autonomy_enabled_units | sort if autonomy_system_install | bool else [])
+  block:
+    - name: Protect system and runtime paths from rollback operations
+      ansible.builtin.assert:
+        that:
+          - autonomy_config_dir.startswith('/')
+          - (autonomy_config_dir | dirname) != '/'
+          - "'..' not in autonomy_config_dir.split('/')"
+          - autonomy_config_dir != autonomy_data_dir
+          - not autonomy_data_dir.startswith(autonomy_config_dir ~ '/')
+          - not autonomy_config_dir.startswith(autonomy_data_dir ~ '/')
+          - autonomy_config_dir != autonomy_release_dir
+          - not autonomy_release_dir.startswith(autonomy_config_dir ~ '/')
+          - not autonomy_config_dir.startswith(autonomy_release_dir ~ '/')
+          - autonomy_config_dir != autonomy_install_prefix
+          - not autonomy_install_prefix.startswith(autonomy_config_dir ~ '/')
+          - not autonomy_config_dir.startswith(autonomy_install_prefix ~ '/')
+
+    - name: Inspect the current configuration directory without following links
+      ansible.builtin.stat:
+        path: "{{ autonomy_config_dir }}"
+        follow: false
+      register: autonomy_rollout_config_stat
+
+    - name: Require a real prior configuration directory
+      ansible.builtin.assert:
+        that: autonomy_rollout_config_stat.stat.isdir | default(false)
+        fail_msg: "Known-good release has no real configuration directory to snapshot for rollback."
+
+    - name: Allocate the rollback backup beside the active configuration
+      ansible.builtin.tempfile:
+        state: directory
+        path: "{{ autonomy_config_dir | dirname }}"
+        prefix: .autonomy-rollback-
+      register: autonomy_rollout_backup
+      changed_when: false
+
+    - name: Snapshot the current application configuration
+      ansible.builtin.command:
+        argv: [cp, -a, --, "{{ autonomy_config_dir }}", "{{ autonomy_rollout_backup.path }}/config"]
+      changed_when: false
+
+    - name: Record the active verified release as recoverable
+      ansible.builtin.set_fact:
+        autonomy_rollout_previous: "{{ autonomy_current_install.stat.lnk_source }}"

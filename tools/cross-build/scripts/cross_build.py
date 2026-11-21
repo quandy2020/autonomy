@@ -17,7 +17,7 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
-WORK = ROOT / 'work'
+WORK = Path(os.environ.get('CROSS_BUILD_WORK_DIR', str(ROOT / 'work'))).expanduser().resolve()
 DEFAULT_IMAGE = 'autonomy.platform.x86_64'
 ABIS = {
     'aarch64': ('aarch64-linux-gnu', 2, 183, '/lib/ld-linux-aarch64.so.1'),
@@ -252,6 +252,7 @@ def collect_sysroot(args, meta):
         normalize_links(staging)
         release = verify_tree(staging, meta)
         manifest = {'platform': meta['platform'], 'source': remote, 'paths': paths,
+                    'extra_dirs': [validate_extra_dir(value) for value in args.extra_dir],
                     'collected_at': datetime.now(timezone.utc).isoformat(), 'os_release': release}
         if meta['stack'] == 'jetpack':
             manifest['nv_tegra_release'] = (staging / 'etc/nv_tegra_release').read_text()
@@ -283,13 +284,50 @@ def sysroot_fingerprint(sysroot):
     return digest.hexdigest()
 
 
-def incremental_build_dir(args, meta, source, sysroot, image_id, cmake_args):
+def sysroot_stat_key(sysroot):
+    digest = hashlib.sha256()
+    for path in [sysroot, *sorted(sysroot.rglob('*'))]:
+        if path == sysroot / '.cross-build.json':
+            continue
+        info = path.lstat()
+        origin = (info.st_dev, info.st_ino, info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns)
+        digest.update(os.fsencode(path.relative_to(sysroot)) + b'\0' + repr(origin).encode() + b'\n')
+    return digest.hexdigest()
+
+
+def verified_sysroot_digest(sysroot, profile):
+    manifest = sysroot / '.cross-build.json'
+    # External sysroots have no controller-owned collection history.
+    if (not manifest.is_file() or not json.loads(manifest.read_text()).get('source')
+            or os.environ.get('CROSS_BUILD_REHASH_SYSROOT') == '1'):
+        return sysroot_fingerprint(sysroot)
+    cache = WORK / '.sysroot-digests' / (profile + '.json')
+    identity = sysroot_stat_key(sysroot)
+    try:
+        previous = json.loads(cache.read_text())
+        if (previous['version'] == 1 and previous['stat_key'] == identity
+                and re.fullmatch(r'[0-9a-f]{64}', previous['sha256'])):
+            print('Reusing verified sysroot content digest', flush=True)
+            return previous['sha256']
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    sha256 = sysroot_fingerprint(sysroot)
+    if sysroot_stat_key(sysroot) != identity:
+        raise ValueError('sysroot changed while its content digest was being calculated')
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    temporary = cache.with_suffix('.tmp')
+    temporary.write_text(json.dumps({'version': 1, 'stat_key': identity, 'sha256': sha256}) + '\n')
+    os.replace(temporary, cache)
+    return sha256
+
+
+def incremental_build_dir(args, meta, source, sysroot, image_id, cmake_args, sysroot_sha=None):
     profile = meta['platform']
     family = f"{meta['vendor']}-{meta['family']}.cmake"
     toolchain_files = [Path(__file__), ROOT / 'profiles' / profile / 'toolchain.cmake',
                        ROOT / 'cmake/linux.cmake', ROOT / 'cmake/platform' / family]
     inputs = {
-        'source': str(source), 'profile': meta, 'sysroot': sysroot_fingerprint(sysroot),
+        'source': str(source), 'profile': meta, 'sysroot': sysroot_sha or sysroot_fingerprint(sysroot),
         'image_id': image_id, 'docker_platform': args.docker_platform,
         'prefix': args.install_prefix or '/install', 'cmake_args': cmake_args,
         'toolchain': [hashlib.sha256(path.read_bytes()).hexdigest() for path in toolchain_files],
@@ -334,18 +372,34 @@ def build_project(args, meta):
     extra = args.cmake_args
     if extra and extra[0] == '--':
         extra = extra[1:]
+    modules = sorted(set(getattr(args, 'modules', [])))
+    if modules:
+        selection = ';'.join(modules)
+        output = output / '.modules' / hashlib.sha256(selection.encode()).hexdigest()
+        extra = [*extra, '-DAUTONOMY_BUILD_MODULES=' + selection]
     image = args.image or DEFAULT_IMAGE
     epoch = None
+    provenance_dir = Path(args.output_dir).expanduser().resolve() if args.install_prefix else None
+    sysroot_sha = verified_sysroot_digest(sysroot, meta['platform']) if provenance_dir or args.incremental else None
+    image_id = None
     if args.incremental:
         epoch = source_date_epoch(source)
         image_id = local_image_id(image, args.docker_platform)
+        expected_builder = getattr(args, 'expected_builder', None)
+        if expected_builder and [sysroot_sha, image_id] != expected_builder:
+            raise ValueError('module build requires the base artifact sysroot and local builder image')
         if image_id:
-            output = incremental_build_dir(args, meta, source, sysroot, image_id, extra)
+            output = incremental_build_dir(args, meta, source, sysroot, image_id, extra, sysroot_sha)
             image = image_id
             action = 'Reusing' if (output / 'CMakeCache.txt').exists() else 'Creating'
             print(f'{action} incremental build cache: {output}', flush=True)
         else:
             print('No matching local image ID; using an isolated build.', flush=True)
+            if modules:
+                output.mkdir(parents=True, exist_ok=True)
+                output = Path(tempfile.mkdtemp(prefix='build-', dir=output))
+    if modules and args.command != 'install':
+        install = output / 'install'
     for path in (output, install):
         path.mkdir(parents=True, exist_ok=True)
     # Docker --mount uses comma-delimited fields and cannot represent these paths.
@@ -376,18 +430,39 @@ def build_project(args, meta):
               '  }\n'
               'done\n'
               f'{triple}-gcc --version\n'
-              'cmake -S /src -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release '
+              'timed() {\n'
+              '  label=$1; shift; started=$(date +%s)\n'
+              '  printf "[cross-build] %s\\n" "$label"\n'
+              '  "$@"\n'
+              '  printf "[cross-build] %s: %ss\\n" "$label" "$(( $(date +%s) - started ))"\n'
+              '}\n'
+              'timed Configure cmake -S /src -B /build -G Ninja -DCMAKE_BUILD_TYPE=Release '
               f'-DCMAKE_TOOLCHAIN_FILE=/cross/profiles/{meta["platform"]}/toolchain.cmake '
               '"-DCMAKE_INSTALL_PREFIX=$prefix" "$@"\n'
-              'cmake --build /build --parallel\n')
+              'timed Compile cmake --build /build --parallel\n')
     if args.command == 'install':
         if args.install_prefix:
-            script += 'DESTDIR=/install cmake --install /build --prefix "$prefix"\n'
+            script += 'timed Stage env DESTDIR=/install cmake --install /build --prefix "$prefix"\n'
         else:
-            script += 'cmake --install /build\n'
+            script += 'timed Stage cmake --install /build\n'
     command += [image, '-c', script, 'cross-build',
                 args.install_prefix or '/install', *extra]
     run(command)
+    if modules:
+        print(f'Module build directory: {output}', flush=True)
+    if provenance_dir:
+        (provenance_dir / 'build-provenance.json').write_text(json.dumps(
+            {'sysroot_sha256': sysroot_sha, 'image_id': image_id}, indent=2,
+        ) + '\n')
+
+
+def sysroot_matches_source(args, meta):
+    path = WORK / 'sysroots' / meta['platform'] / '.cross-build.json'
+    if not path.is_file():
+        return False
+    manifest = json.loads(path.read_text())
+    return (manifest.get('source') == f'{args.user}@{args.host}'
+            and manifest.get('extra_dirs') == [validate_extra_dir(value) for value in args.extra_dir])
 
 
 def main(argv=None):
@@ -400,14 +475,22 @@ def main(argv=None):
     parser.add_argument('--output-dir', help='Use build/ and install/ under this workspace')
     parser.add_argument('--install-prefix', help='Stage an absolute target install prefix below install/')
     parser.add_argument('--incremental', action='store_true', help='Reuse a compatible CMake build directory')
+    parser.add_argument('--module', dest='modules', action='append', default=[],
+                        help='Build an Autonomy project or autonomy/<domain>; repeat to select more')
+    parser.add_argument('--expected-builder', nargs=2, metavar=('SYSROOT_SHA256', 'IMAGE_ID'),
+                        help='Require the baseline sysroot and image before compiling an incremental module update')
     parser.add_argument('--image', default=os.environ.get('IMAGE') or None)
     parser.add_argument('--docker-platform', default=os.environ.get('DOCKER_PLATFORM') or 'linux/amd64',
                         choices=['linux/amd64', 'linux/arm64'])
     parser.add_argument('--extra-dir', action='append', default=[])
-    parser.add_argument('--refresh-sysroot', action='store_true', help='Collect the sysroot before install')
+    collection = parser.add_mutually_exclusive_group()
+    collection.add_argument('--refresh-sysroot', action='store_true', help='Collect the sysroot before install')
+    collection.add_argument('--ensure-sysroot', action='store_true', help='Collect only if the configured snapshot is missing')
     # parse_known_args keeps arbitrary CMake -D arguments without shell re-parsing.
     args, extra = parser.parse_known_args(argv)
     args.cmake_args = extra
+    if not args.modules:
+        args.modules = os.environ.get('CROSS_BUILD_MODULES', '').split()
     if extra and (args.command not in ('build', 'install') or extra[0] != '--'):
         parser.error('CMake arguments are accepted only after -- for build/install')
     if args.install_prefix and (
@@ -416,10 +499,23 @@ def main(argv=None):
             or os.path.normpath(args.install_prefix) != args.install_prefix
             or args.install_prefix.startswith('//')):
         parser.error('--install-prefix requires install, --output-dir and an absolute non-root prefix')
-    if args.refresh_sysroot and args.command != 'install':
-        parser.error('--refresh-sysroot requires install')
-    if args.incremental and (args.command not in ('build', 'install') or not args.output_dir):
-        parser.error('--incremental requires build or install and a separate --output-dir')
+    if args.modules and (args.command not in ('build', 'install')
+                         or (args.command == 'install' and not args.install_prefix)
+                         or Path(args.source).expanduser().resolve() != ROOT.parents[1].resolve()):
+        parser.error('--module requires build of the Autonomy repository or install into an explicit staging directory')
+    if any(not re.fullmatch(r'[a-z][a-z0-9_]*(/[a-z][a-z0-9_]*)?', name) for name in args.modules):
+        parser.error('module names must be projects or autonomy/<domain>')
+    if args.expected_builder and (not args.modules or not args.incremental or args.command != 'install'
+                                  or not re.fullmatch('[0-9a-f]{64}', args.expected_builder[0])
+                                  or not re.fullmatch('sha256:[0-9a-f]{64}', args.expected_builder[1])):
+        parser.error('--expected-builder requires an incremental staged module install and exact hashes')
+    if Path(args.source).expanduser().resolve() == ROOT.parents[1].resolve() and any(
+            re.match(r'-DAUTONOMY_BUILD_MODULES[:=]', arg) for arg in extra):
+        parser.error('use --module to select Autonomy modules')
+    if (args.refresh_sysroot or args.ensure_sysroot) and args.command not in ('build', 'install'):
+        parser.error('sysroot collection options require build or install')
+    if args.incremental and (args.command not in ('build', 'install') or not (args.output_dir or args.modules)):
+        parser.error('--incremental requires --output-dir or a selected module build')
     try:
         if args.command in ('list', 'check'):
             for directory in profile_dirs():
@@ -427,6 +523,13 @@ def main(argv=None):
                 print(f'{meta["platform"]:42} {meta["triple"]:24} {meta["distro"]} {meta["distro_version"]} gcc-{meta["gcc_major"]}')
             return 0
         meta = load_profile(args.profile)
+        if args.command in ('build', 'install'):
+            source = Path(args.source).expanduser().resolve()
+            if source == ROOT.parents[1].resolve():
+                style = [sys.executable, source / 'tools/python/clang_format_sources.py', '--check']
+                if os.environ.get('AUTONOMY_STYLE_REPORT'):
+                    style += ['--report', os.environ['AUTONOMY_STYLE_REPORT']]
+                run(style)
         with profile_lock(WORK, meta['platform']):
             if args.command == 'sysroot':
                 collect_sysroot(args, meta)
@@ -434,7 +537,7 @@ def main(argv=None):
                 verify_tree(WORK / 'sysroots' / meta['platform'], meta)
                 print('Sysroot structural checks passed; runtime/SDK compatibility is not tested.')
             else:
-                if args.refresh_sysroot:
+                if args.refresh_sysroot or (args.ensure_sysroot and not sysroot_matches_source(args, meta)):
                     collect_sysroot(args, meta)
                 build_project(args, meta)
         return 0
