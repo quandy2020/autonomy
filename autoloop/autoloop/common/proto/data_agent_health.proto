@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package autoloop.common;
+
+message DataAgentHealth {
+  string robot_id = 1;
+  bool latch_set = 2;
+  uint64 ring_samples = 3;
+  uint64 snapshots_written = 4;
+  uint64 upload_pending = 5;
+  uint64 dropped = 6;
+  int64 last_heartbeat_utc_ns = 7;
+  string last_error = 8;
+}

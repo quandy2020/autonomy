@@ -65,6 +65,13 @@ class ContractTest(unittest.TestCase):
                 if line and not line.startswith(('#', '-r ', '-c ')):
                     self.assertIsNotNone(re.fullmatch(r'[a-zA-Z0-9_\[\]-]+==\d+\.\d+\.\d+', line))
 
+    def test_ci_installs_pinned_galaxy_dependencies_before_local_collection(self):
+        script = (ROOT / 'scripts/ci.sh').read_text()
+        dependencies = 'ansible-galaxy collection install -r "${ROOT}/requirements.yml"'
+        local_collection = '"${ROOT}/scripts/install_collection.sh"'
+        self.assertIn(dependencies, script)
+        self.assertLess(script.index(dependencies), script.index(local_collection))
+
     def test_local_collection_contains_runtime_support_and_excludes_controller_data(self):
         roots = os.environ.get('ANSIBLE_COLLECTIONS_PATH', str(ROOT / '.ansible/collections'))
         manifests = (Path(path) / 'ansible_collections/openbot/autonomy_ops/FILES.json'

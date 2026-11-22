@@ -688,6 +688,47 @@ if '--list-hosts' not in sys.argv:
             self.assertIn('autonomy/lib/libautomsgs.so', content.getnames())
             self.assertNotIn('autonomy/share/unchanged-resource', content.getnames())
 
+    def test_module_archive_removes_paths_owned_by_the_previous_module_update(self):
+        profile = 'rockchip-rk3506-debian12'
+        identity = {'sysroot_sha256': 'a' * 64, 'image_id': 'sha256:' + 'b' * 64}
+        staged = self.directory / 'base/autonomy'
+        for name, value in {'lib/libautomsgs-old.so': b'old', 'bin/task': b'base task'}.items():
+            file = staged / name
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_bytes(value)
+        base = self.directory / 'base.tar.gz'
+        metadata = {'schema_version': 1, 'install_prefix': '/opt/autonomy', 'architecture': 'armv7l',
+                    'cross_profile': profile, 'target_os': 'debian', 'target_version': '12',
+                    'target_dpkg_arch': 'armhf', 'target_abi': 'arm-linux-gnueabihf',
+                    'modules': ['automsgs'],
+                    'module_runtime_files': ['lib/libautomsgs-old.so'], **identity}
+        base_sha = PACKAGE.write_archive(staged, base, metadata, reproducible=True)
+        update = self.directory / 'update.tar.gz'
+        update_root = self.directory / 'update/autonomy'
+        (update_root / 'lib').mkdir(parents=True)
+        (update_root / 'lib/libautomsgs-new.so').write_bytes(b'new')
+        PACKAGE.write_archive(update_root, update, metadata, reproducible=True)
+        merged = self.directory / 'merged.tar.gz'
+        RELEASE.merge_module_archive(base, update, merged, '/opt/autonomy', base_sha,
+                                     ['automsgs'], ['lib/libautomsgs-new.so'])
+        with tarfile.open(merged) as content:
+            self.assertNotIn('autonomy/lib/libautomsgs-old.so', content.getnames())
+            self.assertEqual(content.extractfile('autonomy/lib/libautomsgs-new.so').read(), b'new')
+
+    def test_module_archive_rejects_unsafe_runtime_file_paths(self):
+        base = self.directory / 'base.tar.gz'
+        update = self.directory / 'update.tar.gz'
+        root = self.directory / 'root/autonomy'
+        (root / 'lib').mkdir(parents=True)
+        (root / 'lib/libautomsgs.so').write_bytes(b'new')
+        metadata = {'install_prefix': '/opt/autonomy', 'architecture': 'armv7l'}
+        base_sha = PACKAGE.write_archive(root, base, metadata, reproducible=True)
+        PACKAGE.write_archive(root, update, metadata, reproducible=True)
+
+        with self.assertRaisesRegex(ValueError, 'module runtime file list is invalid'):
+            RELEASE.merge_module_archive(base, update, self.directory / 'merged.tar.gz',
+                                         '/opt/autonomy', base_sha, ['automsgs'], ['../../escape'])
+
     def test_promotion_requires_verified_staging_for_the_exact_release(self):
         revision, digest, profile = '1' * 40, 'a' * 64, 'nvidia-orin-nx-jetpack6'
         audit = {'environment': 'staging', 'revision': revision, 'artifact_sha256': digest,

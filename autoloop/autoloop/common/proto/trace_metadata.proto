@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package autoloop.common;
+
+message TraceMetadata {
+  string trace_id = 1;
+  string span_id = 2;
+  string parent_span_id = 3;
+  string robot_id = 4;
+  string episode_id = 5;
+  int64 mono_ns = 6;
+  int64 utc_ns = 7;
+}

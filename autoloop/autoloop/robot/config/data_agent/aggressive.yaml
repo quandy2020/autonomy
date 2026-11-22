@@ -1,0 +1,3 @@
+window_sec: 4.0
+max_samples: 8192
+priority_floor: 3

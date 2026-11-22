@@ -56,7 +56,9 @@ base=/absolute/path/to/current-autonomy.tar.gz
 
 `cross-release` 自动执行同一预检，先核对活动版本、原基线、健康检查点和服务集合，再开始编译。系统安装需要 sudo 读取受保护的检查点。发布锁内再次核对活动版本。命令自动启用增量编译和增量传输，将模块运行文件合入完整制品，保留现场配置和 systemd 单元。验证失败时恢复旧版本并复检。下一次更新可把本次成功发布的归档作为基线。
 
-先生成制品时，把 `cross-release robots …` 换成 `cross-build --base-artifact "$base" --module …`，再按下文的 `deploy` 用法分发。模块发布适用于 `robots` 和 `staging`。基线与模块构建的 Profile、sysroot 和镜像必须一致。需要删除旧文件、更新现场配置或引入不兼容 ABI 时，执行完整发布。
+先生成制品时，把 `cross-release robots …` 换成 `cross-build --base-artifact "$base" --module …`，再按下文的 `deploy` 用法分发。模块发布适用于 `robots` 和 `staging`。基线与模块构建的 Profile、sysroot 和镜像必须一致。需要清理完整基线中的历史文件、更新现场配置或引入不兼容 ABI 时，执行完整发布。
+
+模块制品会记录该模块组写入的运行时文件。以相同模块组再次发布时，已记录但不再生成的文件会从新制品移除。完整基线没有模块文件归属记录，因此首次模块更新不会删除其中的历史文件。涉及删除或改变模块组时，发布完整制品。
 
 默认制品目录为 `~/.autonomy/artifacts/`。用 `--release-config FILE` 切换 Profile 配置。控制机按制品摘要命名归档并生成 `.sha256` 文件，构建失败时部署阶段不会开始。
 

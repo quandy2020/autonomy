@@ -1,0 +1,8 @@
+[submodule "thirdparty/civetweb"]
+	path = thirdparty/civetweb
+	url = https://github.com/civetweb/civetweb.git
+	branch = master
+[submodule "thirdparty/mcap"]
+	path = thirdparty/mcap
+	url = https://github.com/foxglove/mcap.git
+	branch = main

@@ -130,7 +130,7 @@ def inspect_module_base(artifact, prefix, profile):
     return base
 
 
-def merge_module_archive(base, update, output, prefix, base_sha256):
+def merge_module_archive(base, update, output, prefix, base_sha256, modules, runtime_files):
     root = PurePosixPath(prefix).name
     manifest = PurePosixPath(root, 'share/autonomy/MANIFEST.json')
 
@@ -142,6 +142,10 @@ def merge_module_archive(base, update, output, prefix, base_sha256):
                 and path.name != 'package.xml'
                 and path.parts[:3] != ('share', 'autonomy', 'config'))
 
+    selected_modules = sorted(set(modules))
+    runtime_files = {PurePosixPath(name) for name in runtime_files}
+    if any(not path.parts or path.is_absolute() or '..' in path.parts for path in runtime_files):
+        raise ValueError('module runtime file list is invalid')
     with (base.open('rb') as source, tarfile.open(update, 'r:gz') as patch, output.open('wb') as destination,
           gzip.GzipFile(filename='', mode='wb', fileobj=destination, mtime=0) as compressed):
         checksum = hashlib.sha256()
@@ -151,12 +155,24 @@ def merge_module_archive(base, update, output, prefix, base_sha256):
             raise ValueError('base artifact changed during module packaging')
         source.seek(0)
         with tarfile.open(fileobj=source, mode='r:gz') as original, tarfile.open(fileobj=compressed, mode='w') as merged:
+            base_manifest = json.load(original.extractfile(str(manifest)))
+            previous_files = set()
+            if base_manifest.get('modules') == selected_modules:
+                listed = base_manifest.get('module_runtime_files', [])
+                if not isinstance(listed, list) or any(
+                        not isinstance(name, str) or PurePosixPath(name).is_absolute()
+                        or '..' in PurePosixPath(name).parts for name in listed):
+                    raise ValueError('base module runtime file list is invalid')
+                previous_files = {PurePosixPath(name) for name in listed}
             changes = {PurePosixPath(item.name): item for item in patch if runtime(item)}
             changes.pop(manifest, None)
             if not changes:
                 raise ValueError('selected modules produced no deployable runtime files')
             changes[manifest] = patch.getmember(str(manifest))
             for item in original:
+                relative = PurePosixPath(item.name).relative_to(root)
+                if relative in previous_files and relative not in runtime_files:
+                    continue
                 if PurePosixPath(item.name) in changes:
                     if item.isdir():
                         raise ValueError(f'module payload would replace a directory: {item.name}')
@@ -276,7 +292,18 @@ def prepare_cross(config, *, incremental=False, modules=(), base_artifact=None):
             archive = stage / 'modules.tar.gz' if base is not None else staged
             write_archive(installed, archive, manifest, reproducible=incremental)
         if base is not None:
-            merge_module_archive(base_artifact, archive, staged, prefix, base['sha256'])
+            module_runtime_files = []
+            with tarfile.open(archive, 'r:gz') as content:
+                for member in content:
+                    path = PurePosixPath(member.name).relative_to(install_prefix.name)
+                    if (member.isfile() and path.parts and path.parts[0] in ('bin', 'lib', 'lib64', 'libexec', 'share')
+                            and not {'cmake', 'pkgconfig', 'autocmake_index', 'ament_index'}.intersection(path.parts)
+                            and path.name != 'package.xml' and path.parts[:3] != ('share', 'autonomy', 'config')):
+                        module_runtime_files.append(path.as_posix())
+            manifest['module_runtime_files'] = sorted(module_runtime_files)
+            with redirect_stdout(sys.stderr):
+                write_archive(installed, archive, manifest, reproducible=incremental)
+            merge_module_archive(base_artifact, archive, staged, prefix, base['sha256'], modules, module_runtime_files)
         metadata = inspect_artifact(staged, prefix)
         artifact = artifact_dir / f"autonomy-{profile}-{metadata['sha256']}.tar.gz"
         checksum = stage / 'autonomy.sha256'

@@ -15,6 +15,7 @@ if ! command -v ansible-playbook >/dev/null 2>&1; then
   exit 1
 fi
 
+ansible-galaxy collection install -r "${ROOT}/requirements.yml"
 "${ROOT}/scripts/install_collection.sh"
 
 echo "[ansible-ci] shell syntax and deployment regressions"

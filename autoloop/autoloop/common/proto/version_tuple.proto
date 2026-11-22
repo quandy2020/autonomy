@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package autoloop.common;
+
+// Deterministic version quadruple. Empty field → diagnostic queue, not training.
+message VersionTuple {
+  string policy_version = 1;
+  string env_version = 2;
+  string git_sha = 3;
+  string seed = 4;
+}
+
+message DualClock {
+  int64 mono_ns = 1;
+  int64 utc_ns = 2;
+}
+
+message EpisodeSidecar {
+  string episode_id = 1;
+  VersionTuple version = 2;
+  DualClock start = 3;
+  DualClock end = 4;
+  bool admitted = 5;
+  repeated string missing_fields = 6;
+  string robot_id = 7;
+  int32 priority = 8;
+  string content_sha256 = 9;
+}

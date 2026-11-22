@@ -1,0 +1,5 @@
+---
+Checks: 'clang-diagnostic-*,clang-analyzer-*,-clang-analyzer-alpha.*'
+WarningsAsErrors: ''
+HeaderFilterRegex: 'autoloop/.*'
+FormatStyle: file

@@ -1,0 +1,5 @@
+services:
+  data_agent:
+    build:
+      context: ../../..
+      dockerfile: autoloop/robot/docker/Dockerfile.robot
