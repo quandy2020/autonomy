@@ -17,3 +17,11 @@
 [submodule "automanip/bolza/thirdparty/hpipm"]
 	path = automanip/bolza/thirdparty/hpipm
 	url = https://github.com/giaf/hpipm.git
+[submodule "autoloop/thirdparty/civetweb"]
+	path = autoloop/thirdparty/civetweb
+	url = https://github.com/civetweb/civetweb.git
+	branch = master
+[submodule "autoloop/thirdparty/mcap"]
+	path = autoloop/thirdparty/mcap
+	url = https://github.com/foxglove/mcap.git
+	branch = main
