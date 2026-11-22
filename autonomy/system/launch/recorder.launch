@@ -1,5 +1,5 @@
 <!--
-  Standalone autonomy.recorder (bypass evidence capture).
+  Standalone autoloop.recorder (bypass evidence capture).
   Does not start planning/control/task. Pair with autonomy.launch or an
   already-running stack. Tester full dump: recorder_full.launch / --full-dump.
 
@@ -11,7 +11,7 @@
   <module>
     <name>recorder</name>
     <type>binary</type>
-    <process_name>autonomy.recorder --conf=recorder.pb.txt</process_name>
+    <process_name>autoloop.recorder --conf=recorder.pb.txt</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>

@@ -1,0 +1,12 @@
+<!--
+  L4 latch-only safety monitor. Never publishes /cmd_vel.
+-->
+<autolink>
+  <module>
+    <name>safety_monitor</name>
+    <type>binary</type>
+    <process_name>autoloop.recorder safety --conf=recorder.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

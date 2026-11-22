@@ -20,6 +20,7 @@ include(Proto)
 include(Glog)
 include(MCAP)
 include(AutoLink)
+include(WorkspaceDeps)
 
 option(BUILD_TESTING "Build Autoloop unit tests" ON)
 if(BUILD_TESTING)

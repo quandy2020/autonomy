@@ -53,7 +53,7 @@ namespace recorder {
 proto::RecorderOptions LoadRecorderOptions(const std::string& conf_file);
 
 /**
- * @brief Default record root: AUTONOMY_RECORD_ROOT, else $HOME/.autonomy/records.
+ * @brief Default record root: AUTOLOOP_RECORD_ROOT, else $HOME/.autoloop/records.
  * @return Directory path.
  */
 std::string DefaultRecordRoot();

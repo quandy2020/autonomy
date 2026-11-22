@@ -1,0 +1,12 @@
+<!--
+  Tester full-dump: one session episode, periodic MCAP flush.
+-->
+<autolink>
+  <module>
+    <name>recorder</name>
+    <type>binary</type>
+    <process_name>autoloop.recorder --conf=recorder.pb.txt --full-dump</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

@@ -9,8 +9,8 @@
 
 ```bash
 autolink_launch safety.launch
-autonomy.recorder safety --conf=recorder.pb.txt
-autonomy.recorder verify-chain -i ~/.autonomy/records/safety/chain.bin
+autoloop.recorder safety --conf=recorder.pb.txt
+autoloop.recorder verify-chain -i ~/.autoloop/records/safety/chain.bin
 ```
 
 链文件：`safety_chain_path` 或 `$output_dir/safety/chain.bin`。episode sidecar 的 `safety_events` 与此同源。急停文件闩仍是 `AUTONOMY_SAFETY_LATCH_PATH`。

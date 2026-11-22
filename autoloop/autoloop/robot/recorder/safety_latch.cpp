@@ -19,19 +19,23 @@ namespace fs = std::filesystem;
 std::string RuntimeRoot() {
     if (const char* xdg = std::getenv("XDG_RUNTIME_DIR");
         xdg != nullptr && xdg[0] != '\0') {
-        return std::string(xdg) + "/autoloop";
+        return std::string(xdg) + "/autonomy";
     }
     if (const char* home = std::getenv("HOME");
         home != nullptr && home[0] != '\0') {
-        return std::string(home) + "/.autoloop/runtime";
+        return std::string(home) + "/.autonomy/runtime";
     }
-    return "/tmp/autoloop";
+    return "/tmp/autonomy";
 }
 
 }  // namespace
 
 std::string SafetyLatch::DefaultPath() {
     if (const char* override_path = std::getenv("AUTOLOOP_SAFETY_LATCH_PATH");
+        override_path != nullptr && override_path[0] != '\0') {
+        return override_path;
+    }
+    if (const char* override_path = std::getenv("AUTONOMY_SAFETY_LATCH_PATH");
         override_path != nullptr && override_path[0] != '\0') {
         return override_path;
     }

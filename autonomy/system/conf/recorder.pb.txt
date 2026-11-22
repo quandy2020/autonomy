@@ -1,10 +1,10 @@
-# autonomy.recorder — bypass evidence capture (L1).
-# Proto: autonomy/system/recorder/proto/recorder_options.proto
+# autoloop.recorder — bypass evidence capture (L1).
+# Proto: autoloop/autoloop/robot/recorder/proto/recorder_options.proto
 # Channels match control/constants.hpp + task/common/names.hpp.
 # KEEP_LAST depth/queue 0 → heuristic (BEST_EFFORT; high-rate 32/64,
 # bulky 2/8; --full-dump raises bulky to 16).
 #
-# Tester full dump: autonomy.recorder --full-dump  or  full_dump: true
+# Tester full dump: autoloop.recorder --full-dump  or  full_dump: true
 
 output_dir: ""
 buffer_sec: 30

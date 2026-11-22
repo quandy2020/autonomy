@@ -1,0 +1,15 @@
+<!--
+  Standalone autoloop.recorder (bypass evidence capture).
+  Does not start planning/control/task.
+
+  autolink_launch recorder.launch
+-->
+<autolink>
+  <module>
+    <name>recorder</name>
+    <type>binary</type>
+    <process_name>autoloop.recorder --conf=recorder.pb.txt</process_name>
+    <exception_handler>respawn</exception_handler>
+    <respawn_limit>3</respawn_limit>
+  </module>
+</autolink>

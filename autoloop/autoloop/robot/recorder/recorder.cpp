@@ -166,7 +166,9 @@ proto::RecorderOptions LoadRecorderOptions(const std::string& conf_file) {
     if (autolink::common::PathIsAbsolute(file) ||
         file.find('/') != std::string::npos) {
         std::string path;
-        if (autolink::common::GetFilePathWithEnv(file, "AUTONOMY_CONF_PATH",
+        if (autolink::common::GetFilePathWithEnv(file, "AUTOLOOP_CONF_PATH",
+                                                 &path) ||
+            autolink::common::GetFilePathWithEnv(file, "AUTONOMY_CONF_PATH",
                                                  &path) ||
             autolink::common::PathExists(file)) {
             if (path.empty()) {

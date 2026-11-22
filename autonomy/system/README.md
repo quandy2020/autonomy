@@ -15,9 +15,9 @@
 | 身份/配置 | `conf/`、`conf/profiles/`、`options` |
 | 进程 | `launch/` + `critical_processes`（monitor conf） |
 | 健康 | `monitor/` |
-| 安全 | `safety/safety_latch` + `monitor/mrm_*` + `recorder safety`（L4 闩锁监控） |
+| 安全 | `safety/safety_latch` + `monitor/mrm_*`；L4 监控进程为 `autoloop.recorder safety` |
 | 日志 | `conf/logging.pb.txt` + `logging/` 事件包 |
-| 数据 | `conf/data.pb.txt`、`recorder/` 证据链、[`docs/recorder/`](docs/recorder/)、`launch/recorder_full.launch`、`launch/replay.launch`、DataPackage |
+| 数据 | 证据链在 Autoloop（`autoloop.recorder`）；launch 仍从此树拉起 |
 | OTA | `ota/` + `tools/python/package_ota_delta.py` |
 | 对外 API | `bridge` + `automsgs` RPC（非本树） |
 
@@ -26,7 +26,7 @@
 | 模块 | 默认 | respawn | 说明 |
 |------|------|---------|------|
 | monitor | 是 | 是 | 健康真相源 |
-| recorder | 是 | 是 | 旁路证据采集（`AUTONOMY_BUILD_RECORDER`） |
+| recorder | 是 | 是 | 旁路证据采集（进程 `autoloop.recorder`，源码在 Autoloop） |
 | planning | 是 | 是 | |
 | control | 是 | 是 | |
 | task | 是 | 是 | |

@@ -2,9 +2,9 @@
 
 旁路进程：订阅 autolink，不修改 planning / control / perception。MCAP 容器 + Protobuf 载荷；缺版本四元组进诊断队列，不进训练。
 
-长文：[`../docs/recorder/`](../docs/recorder/)（需求 / 方案 / 架构 / 数据流 / 使用）。
+长文：[`../../../../docs/recorder/`](../../../../docs/recorder/)（需求 / 方案 / 架构 / 数据流 / 使用）。
 
-开关：`-DAUTONOMY_BUILD_RECORDER=ON`（默认 ON）。
+开关：`-DAUTOLOOP_BUILD_RECORDER=ON`（默认 ON）。
 
 ```bash
 autoloop.recorder --conf=recorder.pb.txt

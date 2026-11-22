@@ -28,7 +28,7 @@ namespace recorder {
  */
 class SafetyLatch {
 public:
-    /// Override via AUTOLOOP_SAFETY_LATCH_PATH; default under runtime dir.
+    /// Override via AUTOLOOP_SAFETY_LATCH_PATH or AUTONOMY_SAFETY_LATCH_PATH.
     static std::string DefaultPath();
 
     explicit SafetyLatch(std::string path = DefaultPath());
