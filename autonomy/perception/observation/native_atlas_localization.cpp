@@ -147,23 +147,34 @@ public:
             AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=no_identity";
             return nullptr;
         }
-        // Only the newest attempt may certify current localization: an older
-        // healthy pose can never stand in for a newer unhealthy one. A few
-        // milliseconds of producer/consumer clock skew must not reject it.
-        const auto found = samples_.find(latest_status_stamp_);
-        if (found == samples_.end() || !found->second.status ||
-            !found->second.status->healthy || found->second.status->identity != *identity_ ||
-            !found->second.pose || !found->second.backend_from_camera) {
-            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=incomplete_latest";
+        const auto newest = samples_.find(latest_status_stamp_);
+        if (newest == samples_.end() || !newest->second.status ||
+            newest->second.status->identity != *identity_) {
+            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=no_current_status";
             return nullptr;
         }
-        const double stamp = Seconds(found->first);
-        if (now + kLatestStampSkew < stamp || now > stamp + options_.evidence_lifetime) {
-            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=stale age=" << (now - stamp)
-                             << " lifetime=" << options_.evidence_lifetime;
+        // A newest attempt that is not healthy must never be replaced by an older
+        // pose: that is how a lost track would look localized. A healthy attempt
+        // whose pose is still in flight is different: the previous healthy sample
+        // was produced after the same track was already locked.
+        if (!newest->second.status->healthy) {
+            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=unhealthy";
             return nullptr;
         }
-        return &found->second;
+        for (auto it = samples_.rbegin(); it != samples_.rend(); ++it) {
+            const auto& sample = it->second;
+            if (!sample.status || !sample.status->healthy ||
+                sample.status->identity != *identity_ || !sample.pose ||
+                !sample.backend_from_camera) continue;
+            const double stamp = Seconds(it->first);
+            if (now + kLatestStampSkew < stamp || now > stamp + options_.evidence_lifetime) continue;
+            if (&sample != &newest->second) {
+                AINFO_EVERY(400) << "ATLAS_LATEST_FALLBACK age=" << (now - stamp);
+            }
+            return &sample;
+        }
+        AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=no_complete_sample";
+        return nullptr;
     }
 
     NativeAtlasLocalizationOptions options_;  ///< Immutable physical installation and native endpoint policy.
