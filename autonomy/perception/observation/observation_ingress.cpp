@@ -11,6 +11,9 @@
 
 namespace autonomy::perception {
 namespace {
+/// Acquisition stamps can lead the consumer clock by a few milliseconds of
+/// producer jitter; reject only genuinely future frames.
+constexpr double kAcquisitionSkewTolerance = .01;
 /** @brief Require the view to use the same attested acquisition transform. */
 bool SameTransform(const RigidTransform& a, const RigidTransform& b) {
     if ((a.translation - b.translation).Norm() > 1e-9) return false;
@@ -39,7 +42,7 @@ bool AcquisitionLocalization::Valid(SensorKind sensor, const std::string& frame,
     return healthy && !world_frame.empty() && !sensor_frame.empty() && sensor_frame == frame &&
         map_epoch && calibration_revision && (support & Mask(sensor)) && !(support & ~SensorMask{3}) &&
         world_from_sensor.Valid() && world_from_base.Valid() && std::isfinite(stamp) &&
-        std::isfinite(now) && stamp <= now + 1e-6 && std::isfinite(valid_from) &&
+        std::isfinite(now) && stamp <= now + kAcquisitionSkewTolerance && std::isfinite(valid_from) &&
         std::isfinite(valid_until) && valid_from <= stamp && stamp <= valid_until && now <= valid_until;
 }
 

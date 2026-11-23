@@ -10,8 +10,8 @@
   "path_type": "DUBIN",
   "path_continuity_type": "DISCONTINUOUS",
   "turn_point_distance": 0.05,
-  "controller_id": "rpp_controller",
+  "controller_id": "graceful_controller",
   "controller_supports_reverse": false,
-  "max_transport_poses": 40,
+  "max_transport_poses": 400,
   "navigation_timeout": 600.0
 }

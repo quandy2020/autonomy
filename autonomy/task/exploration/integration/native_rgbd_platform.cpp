@@ -1141,7 +1141,7 @@ public:
         const auto proof = localization_->Lookup(perception::SensorKind::kRgbd,options_.localization.camera_frame,stamp,now);
         if (!proof) {
             AINFO_EVERY(20) << "NATIVE_POSE_STALE reason=no_calibrated_proof stamp=" << stamp
-                           << " now=" << now;
+                           << " now=" << now << " " << localization_->LatestSampleSummary(now);
             return;
         }
         const auto native_stamp = static_cast<std::uint64_t>(camera->header().stamp().sec())*1000000000ULL+camera->header().stamp().nanosec();

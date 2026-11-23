@@ -318,6 +318,7 @@ def main():
                     'time_budget': args.exploration_time_budget,
                     'require_return': bool(args.require_return), 'require_save': True,
                     'prune_unobservable_units': False,
+                    'maximum_sensor_wait': 600.0,
                     'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': args.region[0], 'min_y': args.region[1],
                                'max_x': args.region[2], 'max_y': args.region[3]},
@@ -364,7 +365,7 @@ def main():
                             'maximum_position_drift': .08, 'completion_tolerance': .08,
                             'maximum_pose_age': 1.,
                             'support_radius': .8, 'support_ring_radius': 1.2,
-                            'support_timeout': 600., 'minimum_support_cells': 8,
+                            'support_timeout': 3600., 'minimum_support_cells': 8,
                         },
                     })
                 config_file.write_text(yaml.safe_dump(settings, sort_keys=False))

@@ -670,15 +670,34 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   // is what keeps a narrow doorway or a wall-adjacent strip from becoming a
   // permanent grey hole in the coverage display.
   const bool use_band = headland || goal.generate_regions();
-  F2CCells core = cells.Clone();
+  // The room boundary still contains the strip between the robot clearance and
+  // the obstacle cells.  Drawing the outermost pass on that boundary puts the
+  // footprint inside the costmap's inflation layer, where the controller stops
+  // with "robot in obstacle".  Inset the work area by half the robot width so
+  // the wall pass keeps a real gap from the walls.
+  F2CCells work = cells;
+  const double wall_margin = std::max(0.25, 0.5 * config.robot_width);
+  {
+    proto::HeadlandMode margin_mode = band_mode;
+    margin_mode.set_mode("CONSTANT");
+    margin_mode.set_width(wall_margin);
+    try {
+      auto inset = headlands.GenerateHeadlands(cells, margin_mode);
+      if (!inset.IsEmpty() && inset.Area() > 1e-3) {
+        work = std::move(inset);
+      }
+    } catch (const std::exception&) {
+    }
+  }
+  F2CCells core = work.Clone();
   bool band = false;
   if (use_band) {
     try {
-      core = headlands.GenerateHeadlands(cells, band_mode);
+      core = headlands.GenerateHeadlands(work, band_mode);
       band = !core.IsEmpty() && core.Area() > 1e-3;
     } catch (const std::exception& error) {
       std::fprintf(stderr, "headland inset failed: %s\n", error.what());
-      core = cells.Clone();
+      core = work.Clone();
       band = false;
       // A room too narrow for the configured band still needs a wall pass
       // that is not drawn on the wall itself: retry with a half-swath inset
@@ -686,7 +705,7 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
       proto::HeadlandMode thin = band_mode;
       thin.set_width(std::max(0.05, 0.5 * config.operation_width));
       try {
-        auto thin_core = headlands.GenerateHeadlands(cells, thin);
+        auto thin_core = headlands.GenerateHeadlands(work, thin);
         if (!thin_core.IsEmpty() && thin_core.Area() > 1e-3) {
           core = thin_core;
           band = true;
@@ -736,9 +755,9 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     const F2CPoint near = path.size() > 1 ? path.AtStart() : F2CPoint(0.0, 0.0);
     try {
       for (const auto& band_cells : headlands.GenerateHeadlandSwaths(
-               cells, config.operation_width, band_mode)) {
+               work, config.operation_width, band_mode)) {
         F2CPath loop = path_generator.GeneratePerimeter(
-            band_cells, cells, near, goal.path_mode());
+            band_cells, work, near, goal.path_mode());
         if (loop.size() > 1) {
           band_path += loop;
         }

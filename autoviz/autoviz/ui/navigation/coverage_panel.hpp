@@ -142,6 +142,10 @@ class CoveragePanel : public QWidget {
 
   /** @brief Submit the edited field as a complete coverage navigation task. */
   void StartCoverage();
+  /** @brief Retry the tour after an execution failure without resetting the budget. */
+  void ResumeCoverage();
+  /** @brief Send the current tour goal (shared by start and resume). */
+  void SendCoverageGoal();
 
   /** @brief Observe native acceptance, progress and terminal results. */
   void PollActions();
@@ -238,6 +242,7 @@ class CoveragePanel : public QWidget {
   bool busy_{false};
   bool cancel_requested_{false};
   bool pending_replan_{false};
+  int resume_attempts_{0};
   std::uint64_t obstacle_signature_{0};
   std::shared_ptr<ComputeClient> compute_client_;
   std::shared_ptr<NavigateClient> navigate_client_;

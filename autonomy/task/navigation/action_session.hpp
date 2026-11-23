@@ -8,11 +8,14 @@
 #pragma once
 
 #include <functional>
+#include <string>
 #include <chrono>
 #include <cmath>
 #include <future>
 #include <memory>
 #include <mutex>
+#include <type_traits>
+#include <utility>
 
 #include <behaviortree_cpp/bt_factory.h>
 
@@ -23,6 +26,27 @@
 namespace autonomy {
 namespace task {
 namespace navigation {
+
+namespace detail {
+
+template <typename T, typename = void>
+struct HasErrorMsg : std::false_type {};
+
+/** @brief True when an action result exposes a human readable error text. */
+template <typename T>
+struct HasErrorMsg<T, std::void_t<decltype(std::declval<const T&>().error_msg())>>
+    : std::true_type {};
+
+/** @brief Surface the server's failure text instead of a bare "action failed". */
+template <typename T>
+std::string FailureText(const T& result) {
+    if constexpr (HasErrorMsg<T>::value) {
+        if (!result.error_msg().empty()) return result.error_msg();
+    }
+    return "action failed";
+}
+
+}  // namespace detail
 
 template <typename ActionT, typename ClientT = common::TaskActionClient<ActionT>>
 class ActionSession
@@ -257,7 +281,9 @@ BT::NodeStatus ActionSession<ActionT, ClientT>::Tick(
                 Reset();
                 return BT::NodeStatus::SUCCESS;
             }
-            on_failure(static_cast<int>(wrapped.code), "action failed");
+            on_failure(static_cast<int>(wrapped.code),
+                       wrapped.result ? detail::FailureText(*wrapped.result)
+                                      : std::string("action failed"));
             Reset();
             return BT::NodeStatus::FAILURE;
         }

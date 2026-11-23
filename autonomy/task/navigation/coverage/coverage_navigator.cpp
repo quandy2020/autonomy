@@ -4,6 +4,8 @@
  * @brief Native complete-coverage coverage navigator implementation. */
 #include "autonomy/task/navigation/coverage/coverage_navigator.hpp"
 
+#include <cstdio>
+
 #include <filesystem>
 #include <thread>
 

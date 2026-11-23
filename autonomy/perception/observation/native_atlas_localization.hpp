@@ -52,6 +52,8 @@ public:
      * @return The original automsgs message, preserving its integer acquisition Header.
      */
     std::optional<::automsgs::msgs::nav_msgs::Odometry> LatestBackendPose(double now) const;
+    /** @brief Diagnostic summary of the newest stored sample for one acquisition window. */
+    std::string LatestSampleSummary(double now) const;
     /** @brief Install an explicit platform-derived alignment anchored to that newest healthy acquisition.
      * @param alignment Transform with navigation parent, backend child and the exact anchor stamp.
      * @param now Current source-clock time; stale anchors are rejected.

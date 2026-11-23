@@ -1135,6 +1135,13 @@ void CoveragePanel::PreviewCoverage() {
 }
 
 void CoveragePanel::StartCoverage() {
+  resume_attempts_ = 0;
+  SendCoverageGoal();
+}
+
+void CoveragePanel::ResumeCoverage() { SendCoverageGoal(); }
+
+void CoveragePanel::SendCoverageGoal() {
   if (drawing_) {
     CancelObstacleDraft();
   }
@@ -1205,6 +1212,21 @@ void CoveragePanel::CancelCoverage() {
   }
   if (busy_) {
     SetStatus(tr("Canceling coverage…"));
+    // The navigator can be mid-segment when the operator cancels.  Its action
+    // result may never arrive if the controller is also stuck, so release the
+    // panel after a bounded wait instead of leaving every button disabled.
+    QPointer<CoveragePanel> self(this);
+    QTimer::singleShot(6000, this, [self] {
+      if (!self || !self->busy_ || !self->cancel_requested_) {
+        return;
+      }
+      self->navigate_goal_.reset();
+      self->compute_goal_.reset();
+      self->cancel_requested_ = false;
+      self->SetBusy(false);
+      self->SetProgress(false);
+      self->SetStatus(tr("Coverage canceled"), QStringLiteral("ok"));
+    });
   }
 }
 
@@ -1345,16 +1367,36 @@ void CoveragePanel::PollActions() {
           if (remaining_value_ != nullptr) {
             remaining_value_->setText(QStringLiteral("0 m"));
           }
+          resume_attempts_ = 0;
           SetStatus(finished_all
                         ? tr("All %1 room(s) cleaned").arg(regions_.size())
                         : tr("Complete coverage succeeded · %1 segment(s)")
                               .arg(result.result->completed_segments()),
                     QStringLiteral("ok"));
         } else {
-          SetStatus(result.result
-                        ? QString::fromStdString(result.result->error_msg())
-                        : tr("Coverage navigation failed"),
-                    QStringLiteral("error"));
+          const QString reason =
+              result.result
+                  ? QString::fromStdString(result.result->error_msg())
+                  : tr("Coverage navigation failed");
+          // The controller aborts now and then on a tight turn.  Keep the
+          // mission alive by replanning from the pose the robot actually
+          // reached; three consecutive failures without finishing stop the
+          // loop and leave the reason on screen.
+          if (!cancel_requested_ && resume_attempts_ < 3) {
+            ++resume_attempts_;
+            SetStatus(tr("Resuming coverage (%1/3) after: %2")
+                          .arg(resume_attempts_)
+                          .arg(reason),
+                      QStringLiteral("warn"));
+            QPointer<CoveragePanel> self(this);
+            QTimer::singleShot(2500, this, [self] {
+              if (self && !self->cancel_requested_) {
+                self->ResumeCoverage();
+              }
+            });
+          } else {
+            SetStatus(reason, QStringLiteral("error"));
+          }
         }
         navigate_goal_.reset();
         SetBusy(false);

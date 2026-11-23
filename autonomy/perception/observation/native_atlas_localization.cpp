@@ -243,6 +243,22 @@ bool NativeAtlasLocalization::PushOdometry(const ::automsgs::msgs::nav_msgs::Odo
     return true;
 }
 
+std::string NativeAtlasLocalization::LatestSampleSummary(double now) const {
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    const auto found = impl_->samples_.find(impl_->latest_status_stamp_);
+    if (found == impl_->samples_.end()) return "newest=none";
+    const auto& sample = found->second;
+    std::string result = "newest_key=" + std::to_string(found->first);
+    result += sample.status ? (sample.status->healthy ? " healthy=1" : " healthy=0") : " status=0";
+    result += sample.pose ? " pose=1" : " pose=0";
+    result += sample.backend_from_camera ? " rigid=1" : " rigid=0";
+    if (impl_->identity_ && sample.status)
+        result += sample.status->identity == *impl_->identity_ ? " identity=1" : " identity=0";
+    const double key_seconds = static_cast<double>(found->first) * 1e-9;
+    result += " key_age=" + std::to_string(now - key_seconds);
+    return result;
+}
+
 std::optional<::automsgs::msgs::nav_msgs::Odometry> NativeAtlasLocalization::LatestBackendPose(double now) const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
     const auto sample = impl_->Latest(now);
@@ -267,7 +283,8 @@ bool NativeAtlasLocalization::SetWorldAlignment(
 std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(
     SensorKind sensor, const std::string& frame, double acquisition, double now) const {
     if (sensor != SensorKind::kRgbd || frame != impl_->options_.camera_frame || !std::isfinite(acquisition) ||
-        !std::isfinite(now) || now < acquisition || now > acquisition + impl_->options_.evidence_lifetime) return {};
+        !std::isfinite(now) || now + kLatestStampSkew < acquisition ||
+        now > acquisition + impl_->options_.evidence_lifetime) return {};
     std::lock_guard<std::mutex> lock(impl_->mutex_);
     if (!impl_->identity_ || !impl_->navigation_from_backend_) return {};
     // Native stamps arrive as int32 seconds + uint32 nanoseconds; the same
