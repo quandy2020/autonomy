@@ -69,8 +69,7 @@ bool VisualizationManager::initialize(const char* binary_name) {
       topology->channel_manager());
 
   if (ws_options_.enabled && ws_options_.port != 0) {
-    ws_bridge_ =
-        std::make_shared<bridge::WsBridge>(autolink_.node(), ws_options_);
+    ws_bridge_ = std::make_shared<bridge::WsBridge>(ws_options_);
     if (!ws_bridge_->Start()) {
       LOG(WARNING) << "WebSocket server failed to bind " << ws_options_.host
                    << ":" << ws_options_.port;
@@ -187,6 +186,7 @@ void VisualizationManager::applySession(const SessionConfig& config) {
   }
   displays_.clear();
   display_views_.clear();
+  dismissed_display_channels_.clear();
   interactive_marker_registry_ = display::InteractiveMarkerRegistry{};
 
   fixed_frame_ = config.fixed_frame;
@@ -804,7 +804,9 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
   auto prefer_type = [](const std::vector<std::string>& types) -> std::string {
     // Image / TwistStamped are hidden from Displays (ImageDock / Teleop).
     static const char* kPreferred[] = {"PointCloud2", "Imu",         "Odometry",
-                                       "LaserScan",   "Path",        "Marker",
+                                       "LaserScan",   "RadarFov",     "RadarScan",
+                                       "RadarTracks",
+                                       "Path",        "Marker",
                                        "MarkerArray", "RobotModel",  "Camera",
                                        "CameraInfo",  "Pose",        "PoseStamped",
                                        "TF"};
@@ -962,10 +964,17 @@ int VisualizationManager::ensureDisplaysForRecordChannels(
   return added;
 }
 
-bool VisualizationManager::addDisplay(const DisplayConfig& config) {
+bool VisualizationManager::addDisplay(const DisplayConfig& config, bool force) {
+  if (!force && !config.channel.empty() &&
+      dismissed_display_channels_.count(config.channel) > 0) {
+    return false;
+  }
   auto display = DisplayFactory::create(config);
   if (display == nullptr) {
     return false;
+  }
+  if (!config.channel.empty()) {
+    dismissed_display_channels_.erase(config.channel);
   }
   attachDisplay(std::move(display), config.enabled);
   return true;
@@ -975,7 +984,14 @@ bool VisualizationManager::removeDisplay(std::size_t index, int child_index) {
   if (index >= displays_.size()) {
     return false;
   }
+  auto remember_dismissed = [this](const display::Display* display) {
+    if (display == nullptr || display->channel().empty()) {
+      return;
+    }
+    dismissed_display_channels_.insert(display->channel());
+  };
   if (child_index < 0) {
+    remember_dismissed(displays_[index].get());
     displays_[index]->setEnabled(false);
     displays_.erase(displays_.begin() + static_cast<std::ptrdiff_t>(index));
     rebuildDisplayViews();
@@ -987,6 +1003,7 @@ bool VisualizationManager::removeDisplay(std::size_t index, int child_index) {
     return false;
   }
   if (display::Display* child = group->child(static_cast<std::size_t>(child_index))) {
+    remember_dismissed(child);
     child->setEnabled(false);
   }
   group->takeChild(static_cast<std::size_t>(child_index));
@@ -1127,7 +1144,7 @@ bool VisualizationManager::duplicateDisplay(std::size_t index) {
   config.channel = source->channel();
   config.enabled = source->enabled();
   config.properties = source->properties();
-  return addDisplay(config);
+  return addDisplay(config, true);
 }
 
 void VisualizationManager::setDisplayName(std::size_t index,

@@ -9,7 +9,10 @@
     <file>icons/aviz_1024.png</file>
     <file>icons/aviz.icns</file>
     <file>icons/classes/AccelStamped.png</file>
+    <file>icons/classes/AmbientSound.png</file>
     <file>icons/classes/Axes.png</file>
+    <file>icons/classes/BoundingBox.png</file>
+    <file>icons/classes/BoundingBox3DArray.png</file>
     <file>icons/classes/Camera.png</file>
     <file>icons/classes/CameraInfo.png</file>
     <file>icons/classes/DepthCloud.png</file>
@@ -17,44 +20,74 @@
     <file>icons/classes/Effort.png</file>
     <file>icons/classes/FluidPressure.png</file>
     <file>icons/classes/FocusCamera.svg</file>
+    <file>icons/classes/Footstep.png</file>
     <file>icons/classes/Grid.png</file>
     <file>icons/classes/GridCells.png</file>
+    <file>icons/classes/GridMap.png</file>
     <file>icons/classes/Group.png</file>
     <file>icons/classes/Help.svg</file>
+    <file>icons/classes/HumanSkeletonArray.png</file>
     <file>icons/classes/Illuminance.png</file>
     <file>icons/classes/Image.png</file>
     <file>icons/classes/Imu.png</file>
     <file>icons/classes/Interact.png</file>
     <file>icons/classes/InteractiveMarkers.png</file>
     <file>icons/classes/LaserScan.png</file>
+    <file>icons/classes/LinearGauge.png</file>
     <file>icons/classes/Map.png</file>
     <file>icons/classes/Marker.png</file>
     <file>icons/classes/MarkerArray.png</file>
     <file>icons/classes/Measure.svg</file>
     <file>icons/classes/MoveCamera.png</file>
+    <file>icons/classes/Normal.png</file>
     <file>icons/classes/Odometry.png</file>
+    <file>icons/classes/OverlayCamera.png</file>
+    <file>icons/classes/OverlayDiagnostic.png</file>
+    <file>icons/classes/OverlayDiagnostics.png</file>
+    <file>icons/classes/OverlayGps.png</file>
+    <file>icons/classes/OverlayImage.png</file>
+    <file>icons/classes/OverlayMenu.png</file>
+    <file>icons/classes/OverlayString.png</file>
+    <file>icons/classes/OverlayText.png</file>
     <file>icons/classes/Path.png</file>
+    <file>icons/classes/PeoplePositionMeasurementArray.png</file>
+    <file>icons/classes/Pictogram.png</file>
+    <file>icons/classes/PictogramArray.png</file>
+    <file>icons/classes/PieChart.png</file>
+    <file>icons/classes/Plotter2D.png</file>
     <file>icons/classes/PointCloud.png</file>
     <file>icons/classes/PointCloud2.png</file>
     <file>icons/classes/PointStamped.png</file>
     <file>icons/classes/Polygon.png</file>
+    <file>icons/classes/PolygonArray.png</file>
     <file>icons/classes/Pose.png</file>
     <file>icons/classes/PoseArray.png</file>
     <file>icons/classes/PoseWithCovariance.png</file>
     <file>icons/classes/PublishPoint.svg</file>
+    <file>icons/classes/RadarFov.png</file>
+    <file>icons/classes/RadarScan.png</file>
+    <file>icons/classes/RadarTracks.png</file>
     <file>icons/classes/Range.png</file>
+    <file>icons/classes/RecognitionBoundingBoxArray.png</file>
     <file>icons/classes/RelativeHumidity.png</file>
     <file>icons/classes/RobotModel.png</file>
+    <file>icons/classes/ScenePublisher.png</file>
+    <file>icons/classes/SegmentArray.png</file>
     <file>icons/classes/Select.png</file>
     <file>icons/classes/Selection.png</file>
     <file>icons/classes/SetGoal.png</file>
     <file>icons/classes/SetInitialPose.png</file>
+    <file>icons/classes/SimpleOccupancyGridArray.png</file>
     <file>icons/classes/TF.png</file>
+    <file>icons/classes/TFTrajectory.png</file>
+    <file>icons/classes/TargetVisualizer.png</file>
     <file>icons/classes/Temperature.png</file>
     <file>icons/classes/Time.png</file>
     <file>icons/classes/ToolProperties.svg</file>
+    <file>icons/classes/TorusArray.png</file>
     <file>icons/classes/Transformation.png</file>
     <file>icons/classes/TwistStamped.png</file>
+    <file>icons/classes/VideoCapture.png</file>
     <file>icons/classes/Views.svg</file>
     <file>icons/classes/Wrench.png</file>
     <file>icons/default/class.png</file>

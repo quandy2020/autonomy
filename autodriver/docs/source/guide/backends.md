@@ -44,7 +44,7 @@ CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}`；未找到 SDK 时�
 | `PointCloudModule` | `PointCloudBackendRegistry` | `realsense`、`orbbec` | `PointCloud2` | 需 SDK |
 | `Lidar3dModule` | `LidarBackendRegistry` | `velodyne`/`udp`、`hesai`/`pandar`、`livox`；stub: rslidar/… | `PointCloud2` | 已实现 + stub |
 | `Lidar2dModule` | `Lidar2dBackendRegistry` | `rplidar`/`slamtec` | `LaserScan` | RPLidar 已实现 |
-| `RadarModule` | `RadarBackendRegistry` | `conti`/`continental` | PointCloud2（占位） | **stub** |
+| `RadarModule` | `RadarBackendRegistry` | `icl1122`/`evb1122`/`um10034`/`iclegend`；`conti`/`continental` | PointCloud2（目标列表 / Conti 占位） | **icl1122 已实现**；conti stub |
 | `MicrophoneModule` | `MicrophoneBackendRegistry` | `respeaker` | Image 承载 PCM（占位） | **stub** |
 | `RangeModule` | — | — | `Range` | **仅 Attach** |
 | `ChassisManager` | `ChassisBackendRegistry` | `stub` / 厂商 | Twist ↔ RobotState / Odom | stub 可联调 |
@@ -61,7 +61,7 @@ CMake：`AUTODRIVER_WITH_{REALSENSE,ORBBEC,RPLIDAR,LIVOX}`；未找到 SDK 时�
 | `gps/` | NMEA、`gps/parser`、serial/CAN、`backend_registry` |
 | `camera/` | `backend_registry`、`realsense/`、`orbbec/` |
 | `smartereye/` | Camera stub |
-| `radar/` | Registry + Conti stub |
+| `radar/` | Registry + Conti stub + `icl1122/`（EVB1122 UART） |
 | `microphone/` | Registry + Respeaker stub |
 | `lidar/` | `UdpScanDriverBase`、Livox assembler、queue、scan_cut、compensator、velodyne/hesai/livox/rplidar、stubs |
 | `bridge/` | `Publisher`、`PoseFeeder`、`channels.hpp` |
@@ -218,11 +218,12 @@ Channel 对齐 OrbbecSDK_ROS2 Gemini 330：`/camera/color|depth|left_ir|right_ir
 
 | YAML | backend | 状态 | 落地方向 |
 |---|---|---|---|
+| `radar` | `icl1122` / `evb1122` / `um10034` / `iclegend` | **已实现** | USB CDC → `RadarScan` + `RadarTracks` + `PointCloud2`；autoviz：`config/radar.autoviz`；见 `radar/icl1122/` |
 | `radar` | `conti` / `continental` | stub | ProtocolData + canbus |
 | `microphone` | `respeaker` | stub | PortAudio / USB HID |
 | `camera` | `smartereye` | stub | 厂商 SDK |
 
-样本占位：`RadarSample` ≈ PointCloud2，`MicrophoneSample` ≈ Image（PCM）。扩展：实现 Create + 注册宏，**不必**改 Module。见 [Stub](../sensor/stubs.md)。
+样本：`RadarSample` ≈ PointCloud2，`MicrophoneSample` ≈ Image（PCM）。扩展：实现 Create + 注册宏，**不必**改 Module。见 [Stub](../sensor/stubs.md) · [`radar/README.md`](../../../autodriver/radar/README.md)。
 
 ---
 

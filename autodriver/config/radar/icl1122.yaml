@@ -1,0 +1,29 @@
+# ICL1122 — 无官方 GUI：透传 Range-FFT 测距 (JoySpace / UM10034 §5).
+#
+# 主机下发寄存器后板子输出 ICLH Range-FFT @ 921600。
+# - 距离：CFAR 峰 × range_resolution_m（默认只保留最强 1 峰，单人）
+# - 角度：双 RX 相位差 AoA（1T2R）
+# - 速度：主峰距离对时间差分（非 Doppler FFT）
+#
+# 若以后有室内演示固件（AA FF @ 256000）：host_bringup false, baud 256000.
+
+device: /dev/ttyACM0
+baud: 921600
+frame_id: radar_link
+
+host_bringup: true
+register_config: thirdparty/24GMmwave/config/RegisterConfig_8_chirp_64_rangebin_50Hz.txt
+chirp_number: 8
+range_bins: 64
+num_rx: 2
+cmd_response_ms: 200
+range_resolution_m: 0.15
+peak_ratio: 8.0
+skip_near_bins: 5
+max_peaks: 1
+min_peak_frac: 0.5
+publish_spectrum: false
+rx_spacing_m: 0.00625
+
+publish_tracks: true
+publish_points: true

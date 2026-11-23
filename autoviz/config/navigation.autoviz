@@ -18,7 +18,7 @@ ChannelsBrowser:
   ProbeEnabled: true
   TypeFilter: 0
 CurrentView:
-  Distance: 13.07761001586914
+  Distance: 26
   FarClipDistance: 1e+05
   FocalShapeFixedSize: true
   FocalShapeSize: 0.05000000074505806
@@ -31,13 +31,13 @@ CurrentView:
   InvertZAxis: false
   Name: Current
   NearClipDistance: 0.009999999776482582
-  Pitch: 0.8250000476837158
+  Pitch: 1.45
   Target:
-    X: -3.2714719772338867
-    Y: 2.100587844848633
-    Z: 2.2229835987091064
+    X: 0
+    Y: 0
+    Z: 0
   Type: Orbit
-  Yaw: 9.904972076416016
+  Yaw: 0
 Displays:
   - Channel: /mppi_controller/transformed_global_plan
     Enabled: false

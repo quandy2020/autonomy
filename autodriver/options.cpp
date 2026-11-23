@@ -161,7 +161,7 @@ public:
             out, c_, "CONFIG",
             {
                 {"-c, --config-dir <DIR>",
-                 "Config root (contains config/)  [env: AUTODRIVER_PATH]"},
+                 "Package root (.../autodriver) or config/  [env: AUTODRIVER_PATH]"},
                 {"    --config-file <FILE>",
                  std::string("Config basename  [default: ") +
                      kDefaultConfigBasename + "]"},
@@ -175,6 +175,8 @@ public:
             << "  autodriver\n"
                "  autodriver /path/to/autodriver\n"
                "  autodriver -c /path/to/autodriver "
+               "--config-file autodriver_hardware.yaml\n"
+               "  autodriver -c /path/to/autodriver/config "
                "--config-file autodriver_hardware.yaml\n"
                "  autodriver -n\n"
                "  autodriver --no-udev\n"
@@ -193,7 +195,7 @@ public:
 
         out << '\n'
             << c_.dim
-            << "  Runtime knobs (node_name, plugin_dir, pose_channel, …) "
+            << "  Runtime knobs (node_name, plugin_dir, pose_channel, ...) "
                "belong in YAML.\n"
             << c_.reset;
 

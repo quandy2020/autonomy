@@ -16,7 +16,7 @@ at this root.
 ## Modules (RViz names)
 
 `accel/`, `axes/`, `camera/`, `camera_info/`, `depth_cloud/`, `effort/`,
-`grid/`, `grid_cells/`, `image/`, `interactive_markers/`, `laser_scan/`,
+`grid/`, `grid_cells/`, `image/`, `interactive_markers/`, `laser_scan/`, `radar/`,
 `map/`, `marker/`, `marker_array/`, `odometry/`, `path/`, `point/`,
 `pointcloud/`, `polygon/`, `pose/` (Pose + TargetVisualizer + TFTrajectory),
 `pose_array/`, `pose_covariance/`, `fluid_pressure/`, `range/`,
@@ -28,6 +28,7 @@ at this root.
 | Directory | Displays |
 |-----------|----------|
 | `imu/` | Imu |
+| `radar/` | RadarScan, RadarTracks |
 | `grid_map/` | GridMap |
 | `scalar_sensor/` | Illuminance |
 | `overlay/` | OverlayText, String, Plotter2D, PieChart, LinearGauge, OverlayImage, OverlayCamera, OverlayMenu |

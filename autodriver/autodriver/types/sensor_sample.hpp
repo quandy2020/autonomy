@@ -40,6 +40,7 @@
 #include <automsgs/msgs/sensor_msgs/nav_sat_fix.pb.h>
 #include <automsgs/msgs/sensor_msgs/nav_sat_status.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
+#include <automsgs/msgs/sensor_msgs/radar.pb.h>
 #include <automsgs/msgs/sensor_msgs/range.pb.h>
 #include <automsgs/msgs/std_msgs/header.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
@@ -379,9 +380,46 @@ using RangeSample =
 using WheelOdometrySample =
     TypedSample<SensorType::kWheelOdometry, automsgs::msgs::nav_msgs::Odometry>;
 
-// Radar: temporary PointCloud2 placeholder until dedicated radar msgs land.
-using RadarSample =
-    TypedSample<SensorType::kRadar, automsgs::msgs::sensor_msgs::PointCloud2>;
+/**
+ * @class autodriver::RadarFrame
+ * @brief RadarScan sample with optional RadarTracks + PointCloud2 sidecar.
+ */
+class RadarFrame
+    : public TypedSample<SensorType::kRadar,
+                         automsgs::msgs::sensor_msgs::RadarScan> {
+ public:
+    AUTOLINK_SHARED_PTR_DEFINITIONS(RadarFrame)
+
+    using Base = TypedSample<SensorType::kRadar,
+                             automsgs::msgs::sensor_msgs::RadarScan>;
+    using Base::Base;
+
+    // Object-list tracks (demo firmware / Conti-style).
+    automsgs::msgs::sensor_msgs::RadarTracks tracks;
+    bool has_tracks{false};
+
+    // Cartesian cloud for autoviz PointCloud2 display.
+    automsgs::msgs::sensor_msgs::PointCloud2 cloud;
+    bool has_cloud{false};
+
+    std::string frame_id;
+
+    Message& StampInPlace() {
+        Stamp(msg.mutable_header());
+        if (!frame_id.empty()) {
+            msg.mutable_header()->set_frame_id(frame_id);
+        }
+        if (has_tracks) {
+            tracks.mutable_header()->CopyFrom(msg.header());
+        }
+        if (has_cloud) {
+            cloud.mutable_header()->CopyFrom(msg.header());
+        }
+        return msg;
+    }
+};
+
+using RadarSample = RadarFrame;
 
 // Microphone: Image used as raw PCM byte bag (encoding e.g. audio/pcm16).
 using MicrophoneSample =

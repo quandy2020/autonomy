@@ -556,50 +556,6 @@ void CoveragePanel::EnsureClients() {
     preview_writer_ =
         node->CreateWriter<automsgs::msgs::nav_msgs::Path>("/coverage/plan");
   }
-  bool exists = false;
-  for (auto* display : manager_->displays()) {
-    if (display != nullptr && display->channel() == "/coverage/plan") {
-      exists = true;
-      // The preview is a plan, not a live route: pruning behind the robot
-      // hides every swath already passed and makes covered rooms look empty.
-      display->setPropertyValue("prune_behind_robot", "false");
-      display->setPropertyValue("hide_when_arrived", "false");
-      // The coloured room paths carry the geometry; keep the whole tour only
-      // as a faint guide so it links the rooms without drowning them.
-      display->setPropertyValue("color", "150;155;165");
-      display->setPropertyValue("alpha", "0.55");
-      display->setPropertyValue("line_width", "0.05");
-    }
-  }
-  if (!exists) {
-    common::DisplayConfig config;
-    config.type = "Path";
-    config.name = "Full coverage path";
-    config.channel = "/coverage/plan";
-    config.enabled = true;
-    config.properties["color"] = "150;155;165";
-    config.properties["line_width"] = "0.05";
-    config.properties["alpha"] = "0.55";
-    config.properties["offset"] = "0;0;0.10";
-    config.properties["prune_behind_robot"] = "false";
-    config.properties["hide_when_arrived"] = "false";
-    manager_->addDisplay(config);
-  }
-  bool markers_exist = false;
-  for (const auto* display : manager_->displays()) {
-    if (display != nullptr && display->channel() == "/coverage/markers") {
-      markers_exist = true;
-    }
-  }
-  if (!markers_exist) {
-    common::DisplayConfig config;
-    config.type = "MarkerArray";
-    config.name = "Coverage field and swaths";
-    config.channel = "/coverage/markers";
-    config.enabled = true;
-    config.properties["use_custom_color"] = "false";
-    manager_->addDisplay(config);
-  }
   if (!odom_reader_) {
     QPointer<CoveragePanel> self(this);
     odom_reader_ = node->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
@@ -622,13 +578,60 @@ void CoveragePanel::EnsureClients() {
     sketch_writer_ = node->CreateWriter<
         automsgs::msgs::visualization_msgs::MarkerArray>("/coverage/sketch");
   }
-  bool rooms_exist = false;
-  for (const auto* display : manager_->displays()) {
-    if (display != nullptr && display->channel() == "/coverage/regions") {
-      rooms_exist = true;
+}
+
+void CoveragePanel::EnsureCoverageDisplays() {
+  if (coverage_displays_seeded_ || manager_ == nullptr) {
+    return;
+  }
+  if (manager_->autolinkNode() == nullptr) {
+    return;
+  }
+
+  auto has_channel = [this](const char* channel) {
+    for (const auto* display : manager_->displays()) {
+      if (display != nullptr && display->channel() == channel) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  if (!has_channel("/coverage/plan")) {
+    common::DisplayConfig config;
+    config.type = "Path";
+    config.name = "Full coverage path";
+    config.channel = "/coverage/plan";
+    config.enabled = true;
+    config.properties["color"] = "90;200;120";
+    config.properties["line_width"] = "0.05";
+    config.properties["alpha"] = "0.35";
+    config.properties["offset"] = "0;0;0.10";
+    config.properties["prune_behind_robot"] = "false";
+    config.properties["hide_when_arrived"] = "false";
+    manager_->addDisplay(config);
+  } else {
+    for (auto* display : manager_->displays()) {
+      if (display == nullptr || display->channel() != "/coverage/plan") {
+        continue;
+      }
+      display->setPropertyValue("prune_behind_robot", "false");
+      display->setPropertyValue("hide_when_arrived", "false");
+      display->setPropertyValue("color", "90;200;120");
+      display->setPropertyValue("alpha", "0.35");
+      display->setPropertyValue("line_width", "0.05");
     }
   }
-  if (!rooms_exist) {
+  if (!has_channel("/coverage/markers")) {
+    common::DisplayConfig config;
+    config.type = "MarkerArray";
+    config.name = "Coverage field and swaths";
+    config.channel = "/coverage/markers";
+    config.enabled = true;
+    config.properties["use_custom_color"] = "false";
+    manager_->addDisplay(config);
+  }
+  if (!has_channel("/coverage/regions")) {
     common::DisplayConfig config;
     config.type = "MarkerArray";
     config.name = "Coverage rooms";
@@ -637,13 +640,7 @@ void CoveragePanel::EnsureClients() {
     config.properties["use_custom_color"] = "false";
     manager_->addDisplay(config);
   }
-  bool sketch_exists = false;
-  for (const auto* display : manager_->displays()) {
-    if (display != nullptr && display->channel() == "/coverage/sketch") {
-      sketch_exists = true;
-    }
-  }
-  if (!sketch_exists) {
+  if (!has_channel("/coverage/sketch")) {
     common::DisplayConfig config;
     config.type = "MarkerArray";
     config.name = "Coverage obstacles";
@@ -652,6 +649,7 @@ void CoveragePanel::EnsureClients() {
     config.properties["use_custom_color"] = "false";
     manager_->addDisplay(config);
   }
+  coverage_displays_seeded_ = true;
 }
 
 int CoveragePanel::FieldRingIndex() const {
@@ -1259,6 +1257,7 @@ void CoveragePanel::PollActions() {
   };
   try {
     EnsureClients();
+    EnsureCoverageDisplays();
     if (compute_acceptance_.valid() &&
         compute_acceptance_.wait_for(std::chrono::seconds(0)) ==
             std::future_status::ready) {

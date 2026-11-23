@@ -84,6 +84,47 @@ inline std::string LidarImuChannelForPoints(const std::string& points_channel) {
   return points_channel + "/imu";
 }
 
+/**
+ * @brief Strip a known radar scan/objects suffix, else return @p scan as-is.
+ */
+inline std::string RadarChannelStem(const std::string& scan_channel) {
+  constexpr std::string_view kScan = "/scan";
+  constexpr std::string_view kObjects = "/objects";
+  constexpr std::string_view kRadar = "/radar";
+  if (scan_channel.size() >= kScan.size() &&
+      scan_channel.compare(scan_channel.size() - kScan.size(), kScan.size(),
+                           kScan) == 0) {
+    return scan_channel.substr(0, scan_channel.size() - kScan.size());
+  }
+  if (scan_channel.size() >= kObjects.size() &&
+      scan_channel.compare(scan_channel.size() - kObjects.size(),
+                           kObjects.size(), kObjects) == 0) {
+    return scan_channel.substr(0, scan_channel.size() - kObjects.size());
+  }
+  if (scan_channel.size() >= kRadar.size() &&
+      scan_channel.compare(scan_channel.size() - kRadar.size(), kRadar.size(),
+                           kRadar) == 0) {
+    return scan_channel.substr(0, scan_channel.size() - kRadar.size());
+  }
+  return scan_channel;
+}
+
+/** @brief Derive RadarTracks channel from the primary RadarScan channel. */
+inline std::string RadarTracksChannelForScan(const std::string& scan_channel) {
+  if (scan_channel.empty()) {
+    return {};
+  }
+  return RadarChannelStem(scan_channel) + "/tracks";
+}
+
+/** @brief Derive PointCloud2 channel from the primary RadarScan channel. */
+inline std::string RadarPointsChannelForScan(const std::string& scan_channel) {
+  if (scan_channel.empty()) {
+    return {};
+  }
+  return RadarChannelStem(scan_channel) + "/points";
+}
+
 }  // namespace bridge
 }  // namespace autodriver
 

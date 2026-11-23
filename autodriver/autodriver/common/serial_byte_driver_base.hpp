@@ -24,6 +24,8 @@
  *
  * Optional hooks (hide base defaults when needed):
  * - `bool PrepareStart()` — before opening the stream; return false to abort
+ * - `bool AfterConnect()` — after Connect, before the reader thread; return false
+ *   to abort (e.g. host bring-up / register write)
  * - `void OnStopped()` — after join / stream reset (e.g. release parsers)
  *
  * Derived destructor must call `Stop()` before destroying parser state that
@@ -44,6 +46,7 @@
 #include "autodriver/common/stream.hpp"
 #include "autodriver/driver_params.hpp"
 #include "autodriver/sensor_driver.hpp"
+#include "autolink/common/log.hpp"
 #include "autolink/common/macros.hpp"
 
 namespace autodriver {
@@ -111,6 +114,16 @@ public:
         const int baud = ParseInt(params_, "baud", 115200);
         stream_ = common::CreateSerialStream(device, baud);
         if (!stream_ || !stream_->Connect()) {
+            AERROR << id_ << " serial open failed device=" << device
+                   << " baud=" << baud
+                   << (stream_ ? (" err=" + stream_->last_error()) : "");
+            stream_.reset();
+            self().OnStopped();
+            running_ = false;
+            return false;
+        }
+        if (!self().AfterConnect()) {
+            stream_->Disconnect();
             stream_.reset();
             self().OnStopped();
             running_ = false;
@@ -157,6 +170,13 @@ public:
      * @return Always true; Derived may hide to create parsers / validate params.
      */
     bool PrepareStart() { return true; }
+
+    /**
+     * @brief Default AfterConnect hook (no-op success).
+     * @return Always true; Derived may hide to send host bring-up while the
+     *         reader thread is not yet running (`stream_` is connected).
+     */
+    bool AfterConnect() { return true; }
 
     /**
      * @brief Default OnStopped hook (no-op).

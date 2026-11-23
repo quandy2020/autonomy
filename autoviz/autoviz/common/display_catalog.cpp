@@ -36,6 +36,17 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
                {"automsgs.msgs.tf2_msgs.TFMessage", "tf2_msgs.TFMessage"}),
       MakeInfo("LaserScan", "autoviz", "Shows a sensor_msgs/LaserScan message.",
                {"automsgs.msgs.sensor_msgs.LaserScan", "sensor_msgs.LaserScan"}),
+      MakeInfo("RadarFov", "autoviz",
+               "EVB1122 / TrafficRadar sector chart: road strip, FOV fan, "
+               "range rings and distance labels."),
+      MakeInfo("RadarScan", "autoviz",
+               "Shows sensor_msgs/RadarScan returns as colored points.",
+               {"automsgs.msgs.sensor_msgs.RadarScan", "sensor_msgs.RadarScan"}),
+      MakeInfo("RadarTracks", "autoviz",
+               "Shows sensor_msgs/RadarTracks as boxes, velocity arrows, "
+               "and ID/range labels.",
+               {"automsgs.msgs.sensor_msgs.RadarTracks",
+                "sensor_msgs.RadarTracks"}),
       MakeInfo("PointCloud2", "autoviz",
                "Shows a sensor_msgs/PointCloud2 message.",
                {"automsgs.msgs.sensor_msgs.PointCloud2",

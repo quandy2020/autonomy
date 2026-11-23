@@ -25,6 +25,53 @@
 namespace autoviz {
 namespace {
 
+QString AliasDisplayIconStem(const QString& display_type) {
+  static const struct {
+    const char* type;
+    const char* stem;
+  } kAlias[] = {
+      {"GridMap", "Map"},
+      {"OverlayImage", "Image"},
+      {"OverlayCamera", "Camera"},
+      {"VideoCapture", "Camera"},
+      {"ScenePublisher", "Camera"},
+      {"PolygonArray", "Polygon"},
+      {"BoundingBox", "Marker"},
+      {"BoundingBox3DArray", "MarkerArray"},
+      {"RecognitionBoundingBoxArray", "MarkerArray"},
+      {"SimpleOccupancyGridArray", "GridCells"},
+      {"TFTrajectory", "Path"},
+      {"SegmentArray", "Path"},
+      {"Pictogram", "Marker"},
+      {"PictogramArray", "MarkerArray"},
+      {"PeoplePositionMeasurementArray", "PoseArray"},
+      {"TargetVisualizer", "SetGoal"},
+      {"Footstep", "Pose"},
+      {"HumanSkeletonArray", "RobotModel"},
+      {"Normal", "Axes"},
+      {"OverlayMenu", "Group"},
+      {"OverlayDiagnostic", "Temperature"},
+      {"OverlayDiagnostics", "Temperature"},
+      {"OverlayGps", "Pose"},
+      {"OverlayText", "Time"},
+      {"OverlayString", "Time"},
+      {"Plotter2D", "Path"},
+      {"LinearGauge", "Effort"},
+      {"PieChart", "Range"},
+      {"AmbientSound", "Illuminance"},
+      {"TorusArray", "Marker"},
+      {"RadarFov", "Range"},
+      {"RadarScan", "LaserScan"},
+      {"RadarTracks", "PoseArray"},
+  };
+  for (const auto& entry : kAlias) {
+    if (display_type == QLatin1String(entry.type)) {
+      return QLatin1String(entry.stem);
+    }
+  }
+  return {};
+}
+
 QString MapDisplayIcon(const QString& display_type) {
   return QStringLiteral(":/autoviz/icons/classes/") + display_type;
 }
@@ -548,10 +595,16 @@ QIcon LoadIconByBase(const QString& resource_base) {
 }
 
 QIcon LoadDisplayIcon(const QString& display_type) {
-  const QString base = MapDisplayIcon(display_type);
-  QIcon icon = LoadIconByBase(base);
+  QIcon icon = LoadIconByBase(MapDisplayIcon(display_type));
   if (!icon.isNull()) {
     return icon;
+  }
+  const QString alias = AliasDisplayIconStem(display_type);
+  if (!alias.isEmpty()) {
+    icon = LoadIconByBase(QStringLiteral(":/autoviz/icons/classes/") + alias);
+    if (!icon.isNull()) {
+      return icon;
+    }
   }
   return LoadIconByBase(QStringLiteral(":/autoviz/icons/default/class"));
 }

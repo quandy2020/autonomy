@@ -27,6 +27,9 @@
 #include "autoviz/plugins/displays/image/image_display.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_display.hpp"
 #include "autoviz/plugins/displays/laser_scan/laser_scan_display.hpp"
+#include "autoviz/plugins/displays/radar/radar_fov_display.hpp"
+#include "autoviz/plugins/displays/radar/radar_scan_display.hpp"
+#include "autoviz/plugins/displays/radar/radar_tracks_display.hpp"
 #include "autoviz/plugins/displays/map/map_display.hpp"
 #include "autoviz/plugins/displays/marker_array/marker_array_display.hpp"
 #include "autoviz/plugins/displays/marker/marker_display.hpp"
@@ -160,6 +163,34 @@ void DisplayRegistry::registerBuiltinTypes() {
             std::make_unique<display::LaserScanDisplay>(config.channel), config);
       },
       [] { return MakeDefault("LaserScan", "Scan", ""); });
+
+  registerType(
+      "RadarFov",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(std::make_unique<display::RadarFovDisplay>(),
+                               config);
+      },
+      [] { return MakeDefault("RadarFov", "RadarFov", ""); });
+
+  registerType(
+      "RadarScan",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(
+            std::make_unique<display::RadarScanDisplay>(config.channel),
+            config);
+      },
+      [] { return MakeDefault("RadarScan", "RadarScan", "/radar/front/scan"); });
+
+  registerType(
+      "RadarTracks",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(
+            std::make_unique<display::RadarTracksDisplay>(config.channel),
+            config);
+      },
+      [] {
+        return MakeDefault("RadarTracks", "RadarTracks", "/radar/front/tracks");
+      });
 
   registerType(
       "Marker",

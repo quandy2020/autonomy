@@ -1216,9 +1216,12 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
 
     basename = NormalizeConfigBasename(std::move(basename));
 
-    const std::string root = configuration_directory.empty()
-                                 ? common::WorkRoot()
-                                 : configuration_directory;
+    std::string root = configuration_directory.empty()
+                           ? common::WorkRoot()
+                           : configuration_directory;
+    while (!root.empty() && (root.back() == '/' || root.back() == '\\')) {
+        root.pop_back();
+    }
 
     auto try_candidate = [](const std::string& candidate) -> std::string {
         if (candidate.empty()) {
@@ -1233,12 +1236,30 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
         return {};
     };
 
-    const std::string relative = GetAbsolutePath(root, "config/" + basename);
-    if (std::string hit = try_candidate(relative); !hit.empty()) {
+    // Prefer package root/config/<basename>. Also accept --config-dir pointing
+    // directly at the config/ folder (common when copying help examples).
+    const bool root_is_config_dir =
+        root.size() >= 7 &&
+        (root.compare(root.size() - 7, 7, "/config") == 0 || root == "config");
+    const std::string under_config = GetAbsolutePath(root, "config/" + basename);
+    const std::string under_root = GetAbsolutePath(root, basename);
+    if (std::string hit = try_candidate(
+            root_is_config_dir ? under_root : under_config);
+        !hit.empty()) {
+        AINFO << "config_path: " << hit;
         return hit;
     }
-    // Also allow basename already including camera/... without forcing
-    // another nesting when user passes camera/orbbec/gemini_330.yaml.
+    if (!root_is_config_dir) {
+        if (std::string hit = try_candidate(under_root); !hit.empty()) {
+            AINFO << "config_path: " << hit;
+            return hit;
+        }
+    } else {
+        if (std::string hit = try_candidate(under_config); !hit.empty()) {
+            AINFO << "config_path: " << hit;
+            return hit;
+        }
+    }
 
     const std::string install_relative = GetAbsolutePath(
         conf::kDefaultDistributionHome, "share/autodriver/config/" + basename);
@@ -1247,8 +1268,10 @@ std::string ResolveConfigPath(const std::string& configuration_directory,
         return hit;
     }
 
-    AINFO << "config_path: " << relative;
-    return relative;
+    const std::string preferred =
+        root_is_config_dir ? under_root : under_config;
+    AINFO << "config_path: " << preferred;
+    return preferred;
 }
 
 /**

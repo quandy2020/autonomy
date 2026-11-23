@@ -5,6 +5,7 @@
 #include "autoviz/bridge/ws_bridge.hpp"
 
 #include <cstdlib>
+#include <unistd.h>
 #include <utility>
 
 #include "glog/logging.h"
@@ -35,9 +36,7 @@ int32_t PendingQueueSizeFromEnv() {
 
 }  // namespace
 
-WsBridge::WsBridge(std::shared_ptr<::autolink::Node> node,
-                   WsServerOptions options)
-    : options_(std::move(options)), node_(std::move(node)) {}
+WsBridge::WsBridge(WsServerOptions options) : options_(std::move(options)) {}
 
 WsBridge::~WsBridge() { Stop(); }
 
@@ -45,8 +44,11 @@ bool WsBridge::Start() {
   if (running_) {
     return true;
   }
+  // Own node so WS readers never collide with Autoviz display subscriptions
+  // (Autolink allows one reader per channel per node).
+  node_ = ::autolink::CreateNode("autoviz_ws_" + std::to_string(getpid()));
   if (node_ == nullptr) {
-    LOG(ERROR) << "WebSocket server needs an Autolink node";
+    LOG(ERROR) << "WebSocket server failed to create Autolink node";
     return false;
   }
 
@@ -61,6 +63,7 @@ bool WsBridge::Start() {
       });
   if (!server_->Start()) {
     server_.reset();
+    node_.reset();
     return false;
   }
 
@@ -83,6 +86,7 @@ bool WsBridge::Start() {
     LOG(ERROR) << "WebSocket server failed to listen for topology changes";
     server_->Stop();
     server_.reset();
+    node_.reset();
     return false;
   }
 
@@ -114,6 +118,7 @@ void WsBridge::Stop() {
     channels_by_topic_.clear();
     topic_by_id_.clear();
   }
+  node_.reset();
 }
 
 bool WsBridge::IsRunning() const { return running_; }

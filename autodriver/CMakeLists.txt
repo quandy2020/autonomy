@@ -45,6 +45,11 @@ option(AUTODRIVER_WITH_GENISOM_L1W
 if(DEFINED AUTODRIVER_BUILD_TEST AND NOT AUTODRIVER_BUILD_TEST)
   set(BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 endif()
+# Root CMake may keep BUILD_TESTING cached OFF even when BUILD_TEST /
+# AUTODRIVER_BUILD_TEST is ON (see autonomy/common, control).
+if(AUTODRIVER_BUILD_TEST AND NOT BUILD_TESTING)
+  set(BUILD_TESTING ON)
+endif()
 
 autocmake_project()
 autocmake_build(QUIT)
@@ -227,6 +232,7 @@ if(AUTODRIVER_BUILD_TEST)
   autocmake_test(test_joy_mapper SOURCES test/test_joy_mapper.cpp DEPENDENCIES autodriver)
   autocmake_test(test_canbus_skeleton SOURCES test/test_canbus_skeleton.cpp DEPENDENCIES autodriver)
   autocmake_test(test_skeleton_modules SOURCES test/test_skeleton_modules.cpp DEPENDENCIES autodriver)
+  autocmake_test(test_icl1122_protocol SOURCES test/test_icl1122_protocol.cpp DEPENDENCIES autodriver)
 endif()
 
 if(AUTODRIVER_BUILD_DOCS)

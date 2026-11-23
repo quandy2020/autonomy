@@ -18,11 +18,6 @@
 #pragma once
 
 #include <map>
-#include <memory>
-#include <mutex>
-#include <optional>
-
-#include <autolink/node/reader.hpp>
 
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 #include "autoviz/common/display_property.hpp"
@@ -75,13 +70,6 @@ class MarkerArrayDisplay
   void onPropertyChanged(const std::string& key) override;
 
  protected:
-  /** @brief Subscribe with the marker schema instead of the generic raw path. */
-  void onEnable() override;
-  /** @brief Release the typed reader before the Autolink node is torn down. */
-  void onDisable() override;
-  /** @brief Drain the latest typed marker array on the UI thread. */
-  void onUpdate() override;
-
   /**
    * @brief Upserts every marker in @p message into @c markers_.
    *
@@ -104,15 +92,6 @@ class MarkerArrayDisplay
   void clearReceivedData() override;
 
  private:
-  using MarkerArray = automsgs::msgs::visualization_msgs::MarkerArray;
-  std::shared_ptr<::autolink::Reader<MarkerArray>> typed_reader_;
-  /** Shared with the reader callback so a destroyed display is never touched. */
-  struct PendingState {
-    std::mutex mutex;
-    std::shared_ptr<const MarkerArray> message;
-    bool alive{true};
-  };
-  std::shared_ptr<PendingState> pending_state_;
   /** Namespace+id → cached marker / mesh. */
   std::map<MarkerKey, StoredMarker> markers_;
 };

@@ -1851,7 +1851,7 @@ void DisplaysPanel::onAddDisplay() {
     config.channel.clear();
   }
   config.name = uniqueDisplayName(config.name);
-  if (!manager_->addDisplay(config)) {
+  if (!manager_->addDisplay(config, true)) {
     return;
   }
   refresh();

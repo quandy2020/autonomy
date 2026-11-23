@@ -6,7 +6,7 @@ Registry 已完成占位注册；多数情况下 `Create` 返回 `nullptr`，或
 
 | YAML | Module | backend | 消息占位 | 待实现 |
 |---|---|---|---|---|
-| `radar` | `RadarModule` | `conti`（`continental`） | PointCloud2 | Conti + canbus |
+| `radar` | `RadarModule` | `icl1122`（实装）/ `conti`（stub） | PointCloud2 | EVB1122 UART；Conti + canbus |
 | `microphone` | `MicrophoneModule` | `respeaker` | Image 承载 PCM | PortAudio |
 | `camera` | `CameraModule` | `smartereye` | Image | 厂商 SDK；`config/camera/smartereye/` |
 | `range` | `RangeModule` | — | Range | 真实采集循环 |

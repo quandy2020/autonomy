@@ -24,6 +24,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include <QImage>
@@ -539,9 +540,10 @@ class VisualizationManager {
    * @brief Creates and attaches a display from config.
    *
    * @param config Type, name, channel, properties, children.
+   * @param force When false, skip channels the user already removed.
    * @return @c true if the type was known and the display was added.
    */
-  bool addDisplay(const DisplayConfig& config);
+  bool addDisplay(const DisplayConfig& config, bool force = false);
 
   /**
    * @brief Removes a display (or a child of a Group).
@@ -1025,6 +1027,8 @@ class VisualizationManager {
   uint32_t active_viewport_bit_ = 0;
   std::vector<std::unique_ptr<display::Display>> displays_;
   std::vector<display::Display*> display_views_;
+  /** Channels the user removed; auto-add paths must not recreate them. */
+  std::unordered_set<std::string> dismissed_display_channels_;
   std::vector<integration::ChannelInfo> cached_channels_;
   std::function<void()> redraw_callback_;
   std::function<void(const std::string&)> background_color_callback_;

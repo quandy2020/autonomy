@@ -1016,6 +1016,12 @@ public:
         pose_epoch_ = event.epoch;
         pose_stamp_ = event.stamp;
         localization_ = event.localization & perception::Mask(options_.mode);
+        if (!localization_) {
+            AINFO_EVERY(20) << "EXPLORATION_POSE_MASK event=" << static_cast<unsigned>(event.localization)
+                            << " mode=" << static_cast<int>(options_.mode)
+                            << " mode_mask=" << static_cast<unsigned>(perception::Mask(options_.mode))
+                            << " stamp=" << event.stamp;
+        }
         pose_history_.push_back(event);
         if(pose_history_.size()>512)pose_history_.pop_front();
     }
@@ -1945,6 +1951,11 @@ public:
             CancelRecoveryOperation();
             snapshot_.state = ExplorationState::kWaitingForSensor;
             if (!PoseReady(now)) {
+            AINFO_EVERY(20) << "EXPLORATION_SENSOR_WAIT ready=" << snapshot_.sensors.ready
+                            << " active=" << static_cast<unsigned>(snapshot_.sensors.active_sensors)
+                            << " localization=" << static_cast<unsigned>(localization_)
+                            << " pose_ready=" << PoseReady(now)
+                            << " pose_age=" << (now - pose_stamp_);
                 if (!wait_started_) wait_started_ = now;
             } else {
                 // Localization is back: the health monitor may still be re-arming, but

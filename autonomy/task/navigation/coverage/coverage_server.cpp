@@ -351,25 +351,27 @@ bool AddTraversableLink(F2CPath& path, const F2CPoint& from,
  */
 bool AddUTurn(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
               const F2CCells& free, double velocity,
-              double min_radius = 0.0) {
+              double min_radius = 0.0,
+              const F2CPoint& outward = F2CPoint(0.0, 0.0)) {
   const double chord = from.Distance(to);
   if (chord < 1e-6) {
     return false;
   }
-  // A hairpin whose radius is half the row spacing cannot be steered by the
-  // robot; leave it to the pivot / traversable-link fallback instead.
   if (min_radius > 0.0 && 0.5 * chord < 0.98 * min_radius) {
     return false;
   }
-  // A pass has two ways round the same chord. Try the one that stays inside
-  // the room; trying only one direction is why half of the joints used to fall
-  // back to a pivot turn.
+  const double radius = 0.5 * chord;
+  const F2CPoint center((from.GetX() + to.GetX()) * 0.5,
+                        (from.GetY() + to.GetY()) * 0.5);
+  const double start_angle =
+      std::atan2(from.GetY() - center.GetY(), from.GetX() - center.GetX());
+  // Both halves of the hairpin stay inside a wide room.  Prefer the one that
+  // bulges past the pass end instead of curling back into the swept area:
+  // the operator sees an outward arc at every row end.
+  F2CPath best;
+  bool have_best = false;
+  double best_score = -std::numeric_limits<double>::max();
   for (const double sweep : {M_PI, -M_PI}) {
-    const double radius = 0.5 * chord;
-    const F2CPoint center((from.GetX() + to.GetX()) * 0.5,
-                          (from.GetY() + to.GetY()) * 0.5);
-    const double start_angle =
-        std::atan2(from.GetY() - center.GetY(), from.GetX() - center.GetX());
     const int steps = std::min(
         160, std::max(12, static_cast<int>(std::ceil(std::abs(sweep) * radius /
                                                      0.01))));
@@ -389,12 +391,25 @@ bool AddUTurn(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
               velocity);
       previous = current;
     }
-    if (inside) {
-      path += candidate;
-      return true;
+    if (!inside) {
+      continue;
+    }
+    const double mid_angle = start_angle + 0.5 * sweep;
+    const double score = (center.GetX() + radius * std::cos(mid_angle)) *
+                             outward.GetX() +
+                         (center.GetY() + radius * std::sin(mid_angle)) *
+                             outward.GetY();
+    if (!have_best || score > best_score) {
+      best = candidate;
+      best_score = score;
+      have_best = true;
     }
   }
-  return false;
+  if (!have_best) {
+    return false;
+  }
+  path += best;
+  return true;
 }
 
 /**
@@ -407,6 +422,96 @@ bool AddUTurn(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
  * remaining long hops with 2-opt keeps every join one row spacing wide, so the
  * turn planner can draw an arc.
  */
+/**
+ * @brief Visit the passes in lateral order, starting at the row end nearest
+ * to @p anchor and alternating direction, so the sweep is one serpentine that
+ * begins next to the wall loop instead of somewhere in the middle.
+ */
+F2CSwaths RowSerpentine(const F2CSwaths& swaths, const F2CPoint& anchor) {
+  if (swaths.size() < 2) {
+    return swaths;
+  }
+  const F2CPoint delta = swaths[0].EndPoint() - swaths[0].StartPoint();
+  const double length = std::hypot(delta.GetX(), delta.GetY());
+  if (length < 1e-6) {
+    return swaths;
+  }
+  const F2CPoint axis(delta.GetX() / length, delta.GetY() / length);
+  const F2CPoint normal(-axis.GetY(), axis.GetX());
+  const auto reverse_swath = [](const F2CSwath& swath) {
+    F2CLineString line;
+    for (int i = static_cast<int>(swath.NumPoints()) - 1; i >= 0; --i) {
+      line.AddPoint(swath.GetPoint(i));
+    }
+    return F2CSwath(line, swath.GetWidth(), swath.GetId());
+  };
+  // Passes are parallel lines; a doorway can split one pass into several
+  // collinear pieces.  Pieces of the same pass belong to one row and are
+  // driven in sequence, otherwise the sweep zig-zags inside a single row.
+  struct Piece {
+    double lateral{0.0};
+    double along{0.0};
+    F2CSwath swath;
+  };
+  std::vector<Piece> pieces;
+  pieces.reserve(swaths.size());
+  for (const auto& swath : swaths) {
+    F2CSwath value = swath;
+    if ((value.EndPoint() - value.StartPoint()).GetX() * axis.GetX() +
+            (value.EndPoint() - value.StartPoint()).GetY() * axis.GetY() <
+        0.0) {
+      value = reverse_swath(value);
+    }
+    const F2CPoint mid = value.StartPoint() +
+                         (value.EndPoint() - value.StartPoint()) * 0.5;
+    pieces.push_back({mid.GetX() * normal.GetX() + mid.GetY() * normal.GetY(),
+                      mid.GetX() * axis.GetX() + mid.GetY() * axis.GetY(),
+                      value});
+  }
+  std::sort(pieces.begin(), pieces.end(), [](const Piece& a, const Piece& b) {
+    if (std::abs(a.lateral - b.lateral) > 1e-6) {
+      return a.lateral < b.lateral;
+    }
+    return a.along < b.along;
+  });
+  // Bucket the pieces into rows.
+  std::vector<std::vector<Piece>> rows;
+  for (const auto& piece : pieces) {
+    if (rows.empty() ||
+        std::abs(rows.back().front().lateral - piece.lateral) > 1e-3) {
+      rows.emplace_back();
+    }
+    rows.back().push_back(piece);
+  }
+  const auto row_start = [](const std::vector<Piece>& row) {
+    return row.front().swath.StartPoint();
+  };
+  const auto row_end = [](const std::vector<Piece>& row) {
+    return row.back().swath.EndPoint();
+  };
+  const double front = std::min(anchor.Distance(row_start(rows.front())),
+                                anchor.Distance(row_end(rows.front())));
+  const double back = std::min(anchor.Distance(row_start(rows.back())),
+                               anchor.Distance(row_end(rows.back())));
+  const bool forward = front <= back;
+  const std::vector<Piece>& first = forward ? rows.front() : rows.back();
+  const bool first_reversed =
+      anchor.Distance(row_end(first)) < anchor.Distance(row_start(first));
+  F2CSwaths ordered;
+  for (std::size_t i = 0; i < rows.size(); ++i) {
+    const std::size_t index = forward ? i : rows.size() - 1 - i;
+    const auto& row = rows[index];
+    const bool reverse = first_reversed ^ (i % 2 == 1);
+    for (std::size_t j = 0; j < row.size(); ++j) {
+      const Piece& piece = reverse ? row[row.size() - 1 - j] : row[j];
+      const F2CSwath oriented =
+          reverse ? reverse_swath(piece.swath) : piece.swath;
+      ordered.Append(oriented.GetPath(), oriented.GetWidth());
+    }
+  }
+  return ordered;
+}
+
 F2CSwaths OrderSweep(const F2CSwaths& swaths) {
   if (swaths.size() < 3) {
     return swaths;
@@ -531,11 +636,35 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
     if (have_previous) {
       F2CPath turn;
       bool turned = false;
-      // A half circle whose radius is the half row spacing (7.5 cm) is tighter
-      // than the robot can steer.  Let the bounded-curvature planner join the
-      // passes when the room leaves room for the loop; the sweep fallbacks
-      // below still handle corridors where it does not.
-      if (robot != nullptr && turn_planner != nullptr) {
+      const double dx = start.GetX() - previous_end.GetX();
+      const double dy = start.GetY() - previous_end.GetY();
+      // Neighbouring passes are one row apart.  Clip differences leave the two
+      // ends a fraction of a metre out of alignment, which turned the hairpin
+      // into an oblique hook.  Walk along the row to the next start column and
+      // draw the half circle there; that is the rounded turn of the reference
+      // boustrophedon.
+      const bool hairpin = std::abs(dy) > 1e-6 && std::abs(dy) <= 0.35 &&
+                           std::abs(dx) <= 2.5;
+      if (hairpin) {
+        F2CPoint from = previous_end;
+        if (std::abs(dx) > 1e-3) {
+          const F2CPoint aligned(start.GetX(), previous_end.GetY());
+          if (free.IsPointIn(aligned)) {
+            AddLine(turn, previous_end, aligned,
+                    f2c::types::PathSectionType::TURN, velocity);
+            from = aligned;
+          }
+        }
+        const F2CPoint outward(std::cos(previous_angle),
+                               std::sin(previous_angle));
+        turned = AddUTurn(turn, from, start, free, velocity, 0.0, outward);
+        if (!turned) {
+          turn = F2CPath();
+        }
+      }
+      // A change of strip needs a steered join; the bounded-curvature planner
+      // gives one when the room has space for the loop.
+      if (!turned && !hairpin && robot != nullptr && turn_planner != nullptr) {
         try {
           turn = f2c::pp::PathPlanning::PlanPathForConnection(
               *robot, previous_end, previous_angle, F2CMultiPoint(), start,
@@ -546,7 +675,6 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
           turned = false;
         }
       }
-      // Only wrap a short gap: a long chord would draw a huge circle.
       if (!turned) {
         turned = previous_end.Distance(start) <= 0.9 &&
                  AddUTurn(turn, previous_end, start, free, velocity,
@@ -577,9 +705,14 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
       if (turned) {
         path += turn;
         ++*smooth_turns;
-      } else if (previous_end.Distance(start) > 0.9) {
-        // A change of strip: follow the room around a concave boundary instead
-        // of cutting a straight line through the wall.
+      } else if (previous_end.Distance(start) > 0.9 ||
+                 (!SegmentClear(free_space, previous_end, start) &&
+                  std::abs((start.GetX() - previous_end.GetX()) *
+                               std::sin(previous_angle) -
+                           (start.GetY() - previous_end.GetY()) *
+                               std::cos(previous_angle)) < 0.06)) {
+        // A change of strip, or the two halves of one pass split by a doorway:
+        // follow the free space round the notch instead of cutting through it.
         AddTraversableLink(path, previous_end, start, free_space, velocity);
         ++*link_turns;
       } else {
@@ -634,10 +767,79 @@ struct RoomCoverage {
 
 /** @brief Straight connector between two planned pieces inside one room. */
 F2CPath RoomLink(const F2CPoint& from, double from_angle, const F2CPoint& to,
-                 double to_angle, const Configuration& config) {
+                 double to_angle, const Configuration& config,
+                 const F2CCells& field) {
   F2CPath link;
   const double length = from.Distance(to);
   if (length < 1e-6) {
+    return link;
+  }
+  (void)field;
+  const double delta = F2CPoint::GetAngleDiffAbs(from_angle, to_angle);
+  // Wall loop and interior sweep meet at roughly a right angle.  Draw the
+  // quarter circle that turns from one heading into the other: it hugs the
+  // corner like the reference drawing, where a Bezier or a straight chord
+  // would slice diagonally across the room.
+  if (delta > 0.6 * M_PI && delta < 1.4 * M_PI) {
+    const double sign =
+        std::sin(to_angle - from_angle) > 0.0 ? 1.0 : -1.0;
+    const double radius = std::min(0.45, 0.9 * length);
+    const F2CPoint normal(-std::sin(from_angle) * sign,
+                          std::cos(from_angle) * sign);
+    const F2CPoint center(from.GetX() + normal.GetX() * radius,
+                          from.GetY() + normal.GetY() * radius);
+    const double start_angle =
+        std::atan2(from.GetY() - center.GetY(), from.GetX() - center.GetX());
+    const int steps = 18;
+    F2CPoint previous = from;
+    for (int i = 1; i <= steps; ++i) {
+      const double angle = start_angle + sign * M_PI * 0.5 * i / steps;
+      const F2CPoint point(center.GetX() + radius * std::cos(angle),
+                           center.GetY() + radius * std::sin(angle));
+      link.AddState(previous, (point - previous).GetAngleFromPoint(),
+                    previous.Distance(point), f2c::types::PathDirection::FORWARD,
+                    f2c::types::PathSectionType::TURN, config.turn_speed);
+      previous = point;
+    }
+    if (previous.Distance(to) < std::max(0.5, 2.0 * radius)) {
+      link.AddState(previous, to_angle, previous.Distance(to),
+                    f2c::types::PathDirection::FORWARD,
+                    f2c::types::PathSectionType::TURN, config.turn_speed);
+      link.AddState(to, to_angle, 0.0, f2c::types::PathDirection::FORWARD,
+                    f2c::types::PathSectionType::TURN, config.turn_speed);
+      return link;
+    }
+    link = F2CPath();
+  }
+  const double d1x = std::cos(from_angle), d1y = std::sin(from_angle);
+  const double d2x = std::cos(to_angle), d2y = std::sin(to_angle);
+  const double dx = to.GetX() - from.GetX();
+  const double dy = to.GetY() - from.GetY();
+  const double denominator = d1x * d2y - d1y * d2x;
+  F2CPoint control;
+  bool have_control = false;
+  if (std::abs(denominator) > 1e-4) {
+    const double along = (dx * d2y - dy * d2x) / denominator;
+    control = F2CPoint(from.GetX() + d1x * along, from.GetY() + d1y * along);
+    have_control = along > 1e-3;
+  }
+  if (have_control) {
+    const int steps = std::max(4, static_cast<int>(std::ceil(length / 0.05)));
+    F2CPoint previous = from;
+    for (int i = 1; i <= steps; ++i) {
+      const double t = static_cast<double>(i) / steps;
+      const double u = 1.0 - t;
+      const F2CPoint point(u * u * from.GetX() + 2.0 * u * t * control.GetX() +
+                               t * t * to.GetX(),
+                           u * u * from.GetY() + 2.0 * u * t * control.GetY() +
+                               t * t * to.GetY());
+      link.AddState(previous, (point - previous).GetAngleFromPoint(),
+                    previous.Distance(point), f2c::types::PathDirection::FORWARD,
+                    f2c::types::PathSectionType::TURN, config.turn_speed);
+      previous = point;
+    }
+    link.AddState(to, to_angle, 0.0, f2c::types::PathDirection::FORWARD,
+                  f2c::types::PathSectionType::TURN, config.turn_speed);
     return link;
   }
   const double heading = std::atan2(to.GetY() - from.GetY(),
@@ -646,8 +848,6 @@ F2CPath RoomLink(const F2CPoint& from, double from_angle, const F2CPoint& to,
                 f2c::types::PathSectionType::TURN, config.turn_speed);
   link.AddState(to, heading, 0.0, f2c::types::PathDirection::FORWARD,
                 f2c::types::PathSectionType::TURN, config.turn_speed);
-  (void)from_angle;
-  (void)to_angle;
   return link;
 }
 
@@ -725,40 +925,31 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   int smooth = 0;
   int tight = 0;
   int links = 0;
-  if (grouped.SizeTotal() > 0) {
-    RouteGenerator route_generator(config);
-    F2CRoute route =
-        route_generator.GenerateRoute(core, core, grouped, goal.route_mode(), {});
-    route.SetField(core);
-    ordered = Flatten(route);
-    if (ordered.size() == grouped.SizeTotal()) {
-      ordered = OrderSweep(ordered);
-      path = BuildSweepPath(ordered, core, config.cruise_speed, &smooth,
-                            &tight, &links);
-      if (path.size() < 2) {
-        path = F2CPath();
-        ordered = F2CSwaths();
-      }
-    } else {
-      ordered = F2CSwaths();
-    }
-  }
-  if (!band && path.size() < 2) {
-    return output;
-  }
 
-  // Sweep the wall band with concentric passes so the room is covered up to
-  // the walls while the interior keeps its arc turns.
+  // The wall loop is generated first: where it ends decides which edge row the
+  // interior serpentine starts on, so the two pieces meet beside each other and
+  // no stroke has to cross the room.
   F2CPath band_path;
+  F2CPath band_ring;
   if (band) {
     PathGenerator path_generator(config);
-    const F2CPoint near = path.size() > 1 ? path.AtStart() : F2CPoint(0.0, 0.0);
+    F2CPoint near(0.0, 0.0);
+    if (!core.IsEmpty() && core.GetCellBorder(0).size() > 0) {
+      near = core.GetCellBorder(0)[0];
+    }
     try {
       for (const auto& band_cells : headlands.GenerateHeadlandSwaths(
                work, config.operation_width, band_mode)) {
         F2CPath loop = path_generator.GeneratePerimeter(
             band_cells, work, near, goal.path_mode());
         if (loop.size() > 1) {
+          if (band_path.size() > 1) {
+            // Step from one wall ring to the next with a rounded link; a raw
+            // concatenation draws a straight jump between two rings.
+            band_path += RoomLink(band_path.AtEnd(), band_path.back().angle,
+                                  loop.AtStart(), loop[0].angle, config, work);
+          }
+          band_ring = loop;
           band_path += loop;
         }
       }
@@ -768,15 +959,82 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     }
   }
   const bool perimeter = band_path.size() > 1;
+  // Walk along the wall ring towards the sweep start instead of cutting across
+  // the room: the operator sees the loop turn into the serpentine at a corner.
+  const auto ring_walk = [&](F2CPath& out, const F2CPoint& from,
+                             const F2CPoint& target) {
+    if (band_ring.size() < 3) {
+      return;
+    }
+    std::size_t best = 0;
+    double best_distance = std::numeric_limits<double>::max();
+    for (std::size_t i = 0; i < band_ring.size(); ++i) {
+      const double distance = band_ring[i].point.Distance(target);
+      if (distance < best_distance) {
+        best_distance = distance;
+        best = i;
+      }
+    }
+    // Either way round the ring reaches the same corner; take the shorter arc
+    // so the loop never doubles back on itself.
+    double forward = 0.0;
+    for (std::size_t i = 1; i <= best; ++i) {
+      forward += band_ring[i - 1].point.Distance(band_ring[i].point);
+    }
+    double backward = 0.0;
+    for (std::size_t i = band_ring.size() - 1; i > best; --i) {
+      backward += band_ring[i].point.Distance(band_ring[i - 1].point);
+    }
+    F2CPoint previous = from;
+    const auto append = [&](const F2CPoint& point) {
+      if (previous.Distance(point) < 1e-6) {
+        return;
+      }
+      out.AddState(previous, (point - previous).GetAngleFromPoint(),
+                   previous.Distance(point), f2c::types::PathDirection::FORWARD,
+                   f2c::types::PathSectionType::TURN, config.cruise_speed);
+      previous = point;
+    };
+    if (forward <= backward) {
+      for (std::size_t i = 0; i <= best; ++i) {
+        append(band_ring[i].point);
+      }
+    } else {
+      for (std::size_t i = band_ring.size() - 1; i + 1 > best; --i) {
+        append(band_ring[i].point);
+      }
+      append(band_ring[best].point);
+    }
+  };
+
+  if (grouped.SizeTotal() > 0) {
+    F2CSwaths flat;
+    for (const auto& group : grouped) {
+      flat.Append(group);
+    }
+    const F2CPoint anchor =
+        perimeter ? band_path.AtEnd() : flat[0].StartPoint();
+    ordered = RowSerpentine(flat, anchor);
+    // U-turns at the row ends bulge half a row into the wall band, so the
+    // collision check uses the room rather than the inner core.
+    path = BuildSweepPath(ordered, work, config.cruise_speed, &smooth, &tight,
+                          &links);
+    if (path.size() < 2) {
+      path = F2CPath();
+      ordered = F2CSwaths();
+    }
+  }
   if (!perimeter && path.size() < 2) {
     return output;
   }
+
   F2CPath total;
   if (perimeter) {
     total += band_path;
     if (path.size() > 1) {
+      ring_walk(total, total.AtEnd(), path.AtStart());
       total += RoomLink(total.AtEnd(), total.back().angle, path.AtStart(),
-                        path[0].angle, config);
+                        path[0].angle, config, work);
       total += path;
     }
   } else {

@@ -588,6 +588,19 @@ void SceneOverlay::addLineLoop(const std::vector<QVector3D>& points,
   request.line_width = line_width;
   request.color = ToVec4(color);
   wide_line_loop_requests_.push_back(std::move(request));
+  // Ogre uploads lines, not wide-loop triangles. Keep a 1px polyline so rings
+  // and halos still appear in the 3D View.
+  const QVector4D c = ToVec4(color);
+  for (std::size_t i = 0; i < points.size(); ++i) {
+    const QVector3D& a = points[i];
+    const QVector3D& b = points[(i + 1) % points.size()];
+    if ((b - a).lengthSquared() < 1e-12f) {
+      continue;
+    }
+    line_vertices_.push_back({a, c});
+    line_vertices_.push_back({b, c});
+  }
+  line_dirty_ = true;
 }
 
 void SceneOverlay::addViewFacingTexturedQuad(const QVector3D& center,

@@ -190,6 +190,9 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
         config.session.prune_after_sweeps = static_cast<unsigned>(sweeps);
     }
     options.mapping.resolution = yaml["mapping_resolution"].as<double>();
+    options.mapping.floor_span_tolerance =
+        yaml["floor_span_tolerance"] ? yaml["floor_span_tolerance"].as<double>() :
+        NativeObservationMapperOptions{}.floor_span_tolerance;
     options.mapping.sensor_heights[1] = actual_mount.translation().z();
     options.mapping.robot_height = config.coverage.safety.robot_height = yaml["robot_height"].as<double>();
     options.mapping.vertical_margin = config.coverage.safety.vertical_margin = yaml["vertical_margin"].as<double>();

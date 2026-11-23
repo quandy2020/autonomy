@@ -1,0 +1,84 @@
+# ICL1122 / EVB1122 PPI (UM10034 §2.3)
+# X 横向, Y 距离(前方), Z 上. H FOV ±43°, E FOV ±14°.
+# Channel: /radar/front/scan (+ tracks)
+
+Global:
+  FixedFrame: radar_link
+
+Window:
+  Width: 1400
+  Height: 900
+
+Views:
+  - Name: 3D View
+    Type: TopDownOrtho
+    Distance: 8.0
+    Target:
+      X: 0
+      Y: 3
+      Z: 0
+    Yaw: 0.0
+    TargetFrame: radar_link
+
+Displays:
+  - Name: RadarFov
+    Type: RadarFov
+    Enabled: true
+    Properties:
+      max_range: "6"
+      half_fov_deg: "43"
+      half_el_deg: "14"
+      ring_interval: "1"
+      show_road: "false"
+      show_fov: "true"
+      show_beam: "false"
+      show_rings: "true"
+      show_labels: "true"
+      fov_color: 48;196;255
+      alpha: "0.14"
+      ring_color: 210;228;240
+      ring_alpha: "0.80"
+      edge_alpha: "0.90"
+      label_color: 240;245;250
+  - Name: Grid
+    Type: Grid
+    Enabled: false
+  - Name: Axes
+    Type: Axes
+    Enabled: false
+  - Name: RadarScan
+    Type: RadarScan
+    Channel: /radar/front/scan
+    Enabled: true
+    Properties:
+      alpha: "1.0"
+      color: 255;255;255
+      color_transform: Range
+      point_size: "28"
+      style: Spheres
+      show_range: "true"
+      show_spokes: "true"
+      show_halo: "true"
+      show_hud: "true"
+      label_color: 255;236;120
+      label_height: "0.22"
+  - Name: RadarTracks
+    Type: RadarTracks
+    Channel: /radar/front/tracks
+    Enabled: true
+    Properties:
+      alpha: "0.88"
+      coloring: Auto
+      color: 255;92;92
+      label_color: 255;230;120
+      show_velocity: "true"
+      show_id: "true"
+      show_range: "true"
+      style: Solid
+      velocity_scale: "0.6"
+      min_size: "0.28"
+      label_height: "0.28"
+  - Name: RadarPoints
+    Type: PointCloud2
+    Channel: /radar/front/points
+    Enabled: false

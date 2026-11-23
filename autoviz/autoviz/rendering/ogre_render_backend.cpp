@@ -66,13 +66,37 @@ void UploadFlatTriangles(Ogre::ManualObject* object,
   if (object == nullptr || mesh.empty()) {
     return;
   }
-  object->begin("Autoviz/FlatNoLighting", Ogre::RenderOperation::OT_TRIANGLE_LIST);
-  for (const OgreLineVertex& vertex : mesh) {
-    object->position(ToOgre(vertex.position));
-    object->colour(vertex.color.x(), vertex.color.y(), vertex.color.z(),
-                   vertex.color.w());
-  }
-  object->end();
+  // Overlay fills (RadarFov, discs) carry vertex alpha. FlatNoLighting uses
+  // SBT_REPLACE and ignores it, so a 0.05 wash renders as a solid slab.
+  auto upload = [&](bool translucent) {
+    bool began = false;
+    for (std::size_t i = 0; i + 2 < mesh.size(); i += 3) {
+      const float a = std::min(mesh[i].color.w(),
+                               std::min(mesh[i + 1].color.w(), mesh[i + 2].color.w()));
+      const bool is_translucent =
+          a < OgreMaterialManager::kUnitAlphaThreshold;
+      if (is_translucent != translucent) {
+        continue;
+      }
+      if (!began) {
+        object->begin(translucent ? "Autoviz/FlatNoLightingAlpha"
+                                  : "Autoviz/FlatNoLighting",
+                      Ogre::RenderOperation::OT_TRIANGLE_LIST);
+        began = true;
+      }
+      for (int k = 0; k < 3; ++k) {
+        const OgreLineVertex& vertex = mesh[i + static_cast<std::size_t>(k)];
+        object->position(ToOgre(vertex.position));
+        object->colour(vertex.color.x(), vertex.color.y(), vertex.color.z(),
+                       vertex.color.w());
+      }
+    }
+    if (began) {
+      object->end();
+    }
+  };
+  upload(false);
+  upload(true);
 }
 
 void UploadPbrTriangles(Ogre::ManualObject* object,
@@ -489,6 +513,9 @@ bool OgreRenderBackend::initialize() {
   impl_->overlay_flat_object =
       impl_->scene->createManualObject("AvizOverlayFlat");
   impl_->overlay_pbr_object = impl_->scene->createManualObject("AvizOverlayPbr");
+  impl_->overlay_flat_object->setRenderQueueGroup(Ogre::RENDER_QUEUE_MAIN);
+  impl_->overlay_lines_object->setRenderQueueGroup(
+      static_cast<Ogre::uint8>(Ogre::RENDER_QUEUE_MAIN + 2));
   impl_->scene->getRootSceneNode()->attachObject(impl_->overlay_lines_object);
   impl_->scene->getRootSceneNode()->attachObject(impl_->overlay_flat_object);
   impl_->scene->getRootSceneNode()->attachObject(impl_->overlay_pbr_object);

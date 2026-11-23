@@ -94,6 +94,8 @@ class CoveragePanel : public QWidget {
 
   /** @brief Initialize native clients and the full-path preview display. */
   void EnsureClients();
+  /** @brief Add coverage viz displays once; never recreates user-removed ones. */
+  void EnsureCoverageDisplays();
 
   /** @brief Synchronize control availability with goal ownership. */
   void SetBusy(bool busy);
@@ -239,6 +241,7 @@ class CoveragePanel : public QWidget {
       click_reader_;
   std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>
       odom_reader_;
+  bool coverage_displays_seeded_{false};
   bool busy_{false};
   bool cancel_requested_{false};
   bool pending_replan_{false};

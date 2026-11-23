@@ -27,12 +27,13 @@ namespace bridge {
 /**
  * Autolink writers → civetweb WebSocket clients.
  *
- * Reuses Autoviz's existing Node. Clients subscribe by channel id; the first
- * subscriber lazily creates a @c Reader<RawMessage>.
+ * Uses a dedicated Autolink node so WS readers never collide with Autoviz
+ * display subscriptions (one reader per channel per node). Clients subscribe
+ * by channel id; the first subscriber lazily creates a @c Reader<RawMessage>.
  */
 class WsBridge : public std::enable_shared_from_this<WsBridge> {
  public:
-  WsBridge(std::shared_ptr<::autolink::Node> node, WsServerOptions options);
+  explicit WsBridge(WsServerOptions options);
   ~WsBridge();
 
   WsBridge(const WsBridge&) = delete;

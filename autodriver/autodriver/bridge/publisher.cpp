@@ -163,7 +163,7 @@ bool Publisher::HandleSensorAttach(const Config::Sensor& sensor, SensorType type
         case SensorType::kWheelOdometry:
             return OpenTypedWriter<SensorType::kWheelOdometry>(sensor);
         case SensorType::kRadar:
-            return OpenTypedWriter<SensorType::kRadar>(sensor);
+            return OpenRadarWriters(sensor);
         case SensorType::kMicrophone:
             return OpenTypedWriter<SensorType::kMicrophone>(sensor);
     }
@@ -401,6 +401,110 @@ bool Publisher::OpenLidar3dWriters(const Config::Sensor& sensor) {
                     imu_writer->Write(
                         std::shared_ptr<ImuMessage>(sample, &imu->msg));
                 }
+            }
+        };
+
+    WriteLock lock(lock_);
+    writers_[sensor.id] = std::move(fanout);
+    AINFO << "writer " << sensor.id << " -> " << joined;
+    return true;
+}
+
+bool Publisher::OpenRadarWriters(const Config::Sensor& sensor) {
+    using ScanMsg = automsgs::msgs::sensor_msgs::RadarScan;
+    using TracksMsg = automsgs::msgs::sensor_msgs::RadarTracks;
+    using CloudMsg = automsgs::msgs::sensor_msgs::PointCloud2;
+
+    const std::vector<std::string> channels =
+        ResolvePublishChannels(sensor, SensorType::kRadar);
+    if (channels.empty()) {
+        AERROR << "no publish channel for " << sensor.id;
+        return false;
+    }
+    const std::string& scan_channel = channels.front();
+
+    const bool publish_tracks =
+        hardware::ParseBool(sensor.params, "publish_tracks", true);
+    const bool publish_points =
+        hardware::ParseBool(sensor.params, "publish_points", true);
+    std::string tracks_channel = hardware::GetString(
+        sensor.params, "tracks_channel",
+        publish_tracks ? RadarTracksChannelForScan(scan_channel) : "");
+    std::string points_channel = hardware::GetString(
+        sensor.params, "points_channel",
+        publish_points ? RadarPointsChannelForScan(scan_channel) : "");
+
+    auto scan_writer = node_->CreateWriter<ScanMsg>(WriterAttr(scan_channel));
+    if (!scan_writer) {
+        AERROR << "CreateWriter failed on " << scan_channel;
+        return false;
+    }
+
+    std::shared_ptr<autolink::Writer<TracksMsg>> tracks_writer;
+    if (publish_tracks && !tracks_channel.empty()) {
+        tracks_writer =
+            node_->CreateWriter<TracksMsg>(WriterAttr(tracks_channel));
+        if (!tracks_writer) {
+            AERROR << "CreateWriter failed on " << tracks_channel;
+            return false;
+        }
+    }
+
+    std::shared_ptr<autolink::Writer<CloudMsg>> points_writer;
+    if (publish_points && !points_channel.empty()) {
+        points_writer =
+            node_->CreateWriter<CloudMsg>(WriterAttr(points_channel));
+        if (!points_writer) {
+            AERROR << "CreateWriter failed on " << points_channel;
+            return false;
+        }
+    }
+
+    // Extra scan fanout when YAML lists multiple channels.
+    std::vector<std::shared_ptr<autolink::Writer<ScanMsg>>> extra_scan;
+    for (std::size_t i = 1; i < channels.size(); ++i) {
+        auto w = node_->CreateWriter<ScanMsg>(WriterAttr(channels[i]));
+        if (!w) {
+            AERROR << "CreateWriter failed on " << channels[i];
+            return false;
+        }
+        extra_scan.push_back(std::move(w));
+    }
+
+    std::string joined = scan_channel;
+    if (tracks_writer) {
+        joined += " + " + tracks_channel;
+    }
+    if (points_writer) {
+        joined += " + " + points_channel;
+    }
+
+    WriteFn fanout =
+        [scan_writer = std::move(scan_writer),
+         tracks_writer = std::move(tracks_writer),
+         points_writer = std::move(points_writer),
+         extra_scan = std::move(extra_scan)](
+            const std::shared_ptr<SensorSample>& sample) {
+            if (!sample) {
+                return;
+            }
+            auto* frame = dynamic_cast<RadarSample*>(sample.get());
+            if (frame == nullptr) {
+                return;
+            }
+            const auto scan =
+                std::shared_ptr<ScanMsg>(sample, &frame->msg);
+            scan_writer->Write(scan);
+            for (const auto& w : extra_scan) {
+                w->Write(scan);
+            }
+            if (tracks_writer && frame->has_tracks) {
+                tracks_writer->Write(
+                    std::shared_ptr<TracksMsg>(sample, &frame->tracks));
+            }
+            if (points_writer && frame->has_cloud) {
+                points_writer->Write(
+                    std::shared_ptr<CloudMsg>(sample, &frame->cloud));
             }
         };
 

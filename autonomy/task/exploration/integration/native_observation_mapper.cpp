@@ -72,6 +72,9 @@ public:
             options_.minimum_height >= options_.maximum_height || !std::isfinite(options_.robot_height) || options_.robot_height <= 0 ||
             !std::isfinite(options_.vertical_margin) || options_.vertical_margin < 0 ||
             !std::isfinite(options_.ground_tolerance) || options_.ground_tolerance <= 0 ||
+            !std::isfinite(options_.floor_span_tolerance) ||
+            options_.floor_span_tolerance < options_.ground_tolerance ||
+            options_.floor_span_tolerance > .25 ||
             !options_.maximum_voxels || !options_.maximum_rays || options_.maximum_rays > 1000000 ||
             !options_.maximum_pending_ordinals || options_.output_directory.empty())
             throw std::invalid_argument("native mapper requires explicit finite scope, heights, budgets and persistence directory");
@@ -181,14 +184,21 @@ public:
             if (!layers_->getIndex(position,index)) continue;
             double probability = 0;
             const bool known = occupancy_->ProbabilityAt(center.x,center.y,&probability);
-            const double floor = layers_->at("elevation",index), low = layers_->at("floor_min",index);
+            // Ground classification and navigation-floor admission have different
+            // contracts. The classifier stays conservative; a cell may aggregate
+            // several floor returns whose min/max differ by sensor quantisation or
+            // a small ramp. Use the measured lower surface as the floor and let the
+            // footprint floor-step check reject discontinuities between cells.
+            const double low = layers_->at("floor_min",index);
+            const double measured_high = layers_->at("elevation",index);
             n::GridCell cell;
-            cell.floor_height = floor; cell.ceiling_height = std::numeric_limits<double>::quiet_NaN();
+            cell.floor_height = low; cell.ceiling_height = std::numeric_limits<double>::quiet_NaN();
             if (known && probability >= .5) cell.state = n::CellState::kOccupied;
-            else if (known && std::isfinite(floor) && std::isfinite(low)) {
-                cell.ceiling_height = Ceiling(position,floor);
-                if (floor-low <= options_.ground_tolerance &&
-                    cell.ceiling_height-floor >= options_.robot_height+options_.vertical_margin)
+            else if (known && std::isfinite(low) && std::isfinite(measured_high) &&
+                     measured_high >= low &&
+                     measured_high-low <= options_.floor_span_tolerance) {
+                cell.ceiling_height = Ceiling(position,low);
+                if (cell.ceiling_height-low >= options_.robot_height+options_.vertical_margin)
                     cell.state = n::CellState::kFree;
             }
             layers_->at("ceiling",index) = static_cast<float>(cell.ceiling_height);

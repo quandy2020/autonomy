@@ -1099,13 +1099,10 @@ void FrameSession::restoreWindowLayout() {
   if (frame_->panels_->navigation_dock_ != nullptr) {
     frame_->layout_->ensureSidebarDockAttached(frame_->panels_->navigation_dock_);
   }
-  // Ensure main-column docks are owned by the center host before mosaic restore.
-  for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
-    if (dock == nullptr || !frame_->layout_->isMainPanel(dock)) {
-      continue;
-    }
-    frame_->layout_->ensureMainPanelDockAttached(dock);
-  }
+  // Do not attach every main dock here. addPanel() always show()s, which
+  // undoes applyDefaultDockLayout and grids Messages/Channels/Image/Plot
+  // when the session has no mosaic / VisiblePanels (e.g. radar.autoviz).
+  // Mosaic restore and applyPanelVisibility attach only the docks they need.
   frame_->chrome_->syncToolbarToActiveTool();
   frame_->viewport_->syncViewportTitleBarTools();
 
@@ -1163,6 +1160,10 @@ void FrameSession::restoreWindowLayout() {
   }
   if (restored_mosaic) {
     frame_->layout_->syncCenterLayout();
+  } else if (frame_->manager_->visiblePanels().empty() && !have_mosaic) {
+    // radar.autoviz / other lean configs omit mosaic + VisiblePanels.
+    // Keep 3D View in the center; do not grid Messages/Channels/Image/Plot.
+    frame_->layout_->applyMainPanelDefaultLayout();
   } else {
     frame_->layout_->center_manual_layout_ = false;
     frame_->layout_->scheduleTileCenterPanels();

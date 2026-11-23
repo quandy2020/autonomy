@@ -140,7 +140,7 @@ Create 时空串默认：imu/gps→`serial`，camera/point_cloud→`realsense`�
 | `PointCloudModule` | `point_cloud` / 折叠 `point_clouds` | `PointCloudBackendRegistry` | `realsense` | `camera/` |
 | `Lidar2dModule` | `lidar_2d` | `Lidar2dBackendRegistry` | `rplidar` | `lidar/` |
 | `Lidar3dModule` | `lidar_3d` | `LidarBackendRegistry` | `velodyne` | `lidar/` |
-| `RadarModule` | `radar` | `RadarBackendRegistry` | `conti` | `radar/` |
+| `RadarModule` | `radar` | `RadarBackendRegistry` | `conti`（空串默认）；实装 `icl1122` | `radar/` |
 | `MicrophoneModule` | `microphone` | `MicrophoneBackendRegistry` | `respeaker` | `mic/` |
 | `RangeModule` | `range` | —（仅 Attach） | — | `range/` |
 | `ChassisManager` | `chassis` | `ChassisBackendRegistry` | `stub` | `chassis/` |

@@ -137,7 +137,7 @@ Orbbec 一键安装：`./scripts/install_orbbec_sdk.sh`（官方 `.deb`；`ORBBE
 
 | YAML | backend | 待实现 |
 |---|---|---|
-| `radar` | `conti` | ProtocolData + canbus |
+| `radar` | `icl1122`（EVB1122）/ `conti` stub | USB CDC 目标列表；Conti 待 ProtocolData |
 | `microphone` | `respeaker` | PortAudio |
 | `camera` + smartereye | `smartereye` | 厂商 SDK |
 | `rslidar`/`lslidar`/… | stub | 参照 Velodyne/Livox 实现 |

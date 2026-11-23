@@ -49,7 +49,7 @@ chassis:
 # Joystick teleop — DualSense USB or Bluetooth → /cmd_vel.
 # Left stick Y forward, right stick X yaw. See config/joy/dualsense.yaml.
 joy:
-  enable: true
+  enable: false
   profile: dualsense            # dualsense | ps5 | generic
   device: /dev/input/js0        # jstest /dev/input/js0
   joy_channel: /joy
@@ -90,7 +90,7 @@ sensors:
       params_file: lidar/hesai/xt32.yaml
 
     - name: jt128
-      enable: true
+      enable: false   # needs AUTODRIVER_HAVE_HESAI_SDK + scripts/install_hesai_lidar_sdk.sh
       channel: /lidar/jt128/points
       backend: hesai
       params_file: lidar/hesai/jt128.yaml
@@ -103,7 +103,7 @@ sensors:
 
   camera:
     - name: realsense_d455
-      enable: true
+      enable: false   # needs librealsense + AUTODRIVER_HAVE_REALSENSE
       backend: realsense
       params_file: camera/realsense/d455.yaml
       width: 848
@@ -139,6 +139,21 @@ sensors:
       channel: /gps/fix
       port: /dev/ttyUSB2
       baudrate: 9600
+
+  # ICL1122 / EVB1122 (UM10034P) USB CDC — RadarScan + tracks/points.
+  radar:
+    - name: front
+      enable: true
+      channel: /radar/front/scan
+      backend: icl1122
+      params_file: radar/icl1122.yaml
+      params:
+        # device/baud from params_file (USB CDC may re-enumerate ACM0/ACM1)
+        frame_id: radar_link
+        publish_tracks: true
+        publish_points: true
+        tracks_channel: /radar/front/tracks
+        points_channel: /radar/front/points
 
   range:
     - name: range_main

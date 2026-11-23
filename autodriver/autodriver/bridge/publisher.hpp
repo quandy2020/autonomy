@@ -154,6 +154,13 @@ private:
     bool OpenLidar3dWriters(const Config::Sensor& sensor);
 
     /**
+     * @brief Opens RadarScan + optional RadarTracks / PointCloud2 writers.
+     * @param[in] sensor Radar sensor configuration from YAML.
+     * @return true when writers were opened successfully; false otherwise.
+     */
+    bool OpenRadarWriters(const Config::Sensor& sensor);
+
+    /**
      * @brief Starts the background publish worker if not already running.
      */
     void EnsurePublishThread();

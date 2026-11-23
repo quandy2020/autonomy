@@ -27,9 +27,14 @@
 
 #if defined(__linux__)
 #include <fcntl.h>
+#include <sys/ioctl.h>
 #include <sys/select.h>
-#include <termios.h>
 #include <unistd.h>
+// termios2 (BOTHER) before glibc termios — avoid struct clash.
+#define termios asm_termios
+#include <asm/termbits.h>
+#undef termios
+#include <termios.h>
 #endif
 
 namespace autodriver {
@@ -53,8 +58,22 @@ speed_t ToTermiosBaud(int baud_rate)
     case 230400: return B230400;
     case 460800: return B460800;
     case 921600: return B921600;
-    default: return B115200;
+    default: return B0;  // use termios2 BOTHER below
   }
+}
+
+/** @brief Set arbitrary baud (e.g. 256000 for ICLM_TrafficRadar) via TCSETS2. */
+bool SetCustomBaud(int fd, int baud_rate)
+{
+  termios2 tio{};
+  if (ioctl(fd, TCGETS2, &tio) != 0) {
+    return false;
+  }
+  tio.c_cflag &= ~CBAUD;
+  tio.c_cflag |= BOTHER;
+  tio.c_ispeed = static_cast<speed_t>(baud_rate);
+  tio.c_ospeed = static_cast<speed_t>(baud_rate);
+  return ioctl(fd, TCSETS2, &tio) == 0;
 }
 #endif
 
@@ -89,8 +108,15 @@ bool SerialPort::Open(const std::string & device, int baud_rate)
   }
 
   cfmakeraw(&options);
-  cfsetispeed(&options, ToTermiosBaud(baud_rate));
-  cfsetospeed(&options, ToTermiosBaud(baud_rate));
+  const speed_t std_baud = ToTermiosBaud(baud_rate);
+  if (std_baud != B0) {
+    cfsetispeed(&options, std_baud);
+    cfsetospeed(&options, std_baud);
+  } else {
+    // Placeholder; overwritten by SetCustomBaud (BOTHER).
+    cfsetispeed(&options, B38400);
+    cfsetospeed(&options, B38400);
+  }
   options.c_cflag |= (CLOCAL | CREAD);
   options.c_cflag &= ~CSIZE;
   options.c_cflag |= CS8;
@@ -103,6 +129,14 @@ bool SerialPort::Open(const std::string & device, int baud_rate)
     last_error_ = std::string("tcsetattr failed: ") + std::strerror(errno);
     Close();
     return false;
+  }
+
+  if (std_baud == B0) {
+    if (!SetCustomBaud(fd_, baud_rate)) {
+      last_error_ = std::string("custom baud failed: ") + std::strerror(errno);
+      Close();
+      return false;
+    }
   }
 
   return true;

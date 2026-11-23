@@ -219,10 +219,10 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
     const auto& color =
         kPalette[static_cast<std::size_t>(std::max(0, region.color_index())) %
                  kPalette.size()];
-    Fill(regions, rings, frame, 1000 + label_id, color, 0.20f, 0.012f);
+    Fill(regions, rings, frame, 1000 + label_id, color, 0.45f, 0.012f);
     for (const auto& ring : rings) {
-      auto* line = Line(regions, frame, "region", outline_id++, color, 1.0f,
-                        0.07f, 0.08f);
+      auto* line = Line(regions, frame, "region", outline_id++, color, 0.75f,
+                        0.05f, 0.08f);
       for (const auto& point : ring) {
         auto* out = line->add_points();
         out->set_x(point.first);
@@ -240,16 +240,18 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
       path->set_type(Marker::LINE_STRIP);
       path->set_action(Marker::ADD);
       path->mutable_pose()->mutable_orientation()->set_w(1.0);
-      path->mutable_scale()->set_x(0.05);
-      path->mutable_color()->set_r(color[0]);
-      path->mutable_color()->set_g(color[1]);
-      path->mutable_color()->set_b(color[2]);
-      path->mutable_color()->set_a(0.95f);
+      path->mutable_scale()->set_x(0.12);
+      // The coverage stroke is green like the reference drawing; the room fill
+      // underneath keeps its own palette colour so blocks stay distinguishable.
+      path->mutable_color()->set_r(0.10f);
+      path->mutable_color()->set_g(0.78f);
+      path->mutable_color()->set_b(0.28f);
+      path->mutable_color()->set_a(1.0f);
       for (const auto& pose : region.nav_path().poses()) {
         auto* point = path->add_points();
         point->set_x(pose.pose().position().x());
         point->set_y(pose.pose().position().y());
-        point->set_z(0.14);
+        point->set_z(0.30);
       }
     }
     double center_x = 0.0;

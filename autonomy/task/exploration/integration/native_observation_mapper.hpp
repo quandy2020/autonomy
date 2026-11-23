@@ -24,6 +24,7 @@ struct NativeObservationMapperOptions {
     double robot_height = .25;  ///< Actual chassis height for conservative navigable-column classification.
     double vertical_margin = .05;  ///< Additional required vertical clearance, metres.
     double ground_tolerance = .03;  ///< Ground classifier's actual measured-height tolerance, metres.
+    double floor_span_tolerance = .15;  ///< Maximum per-cell min/max ground spread admitted as one floor, metres.
     std::array<double, 2> sensor_heights{0, 0};  ///< Actual LiDAR/RGB-D installation heights above the ground prior.
     std::size_t maximum_voxels = 2000000;  ///< Allocation bound for existing ESDF and observed-voxel bookkeeping.
     std::size_t maximum_rays = 100000;  ///< Actual per-packet measured-ray work bound.

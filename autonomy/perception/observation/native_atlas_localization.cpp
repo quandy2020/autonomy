@@ -193,6 +193,7 @@ public:
     std::optional<::automsgs::msgs::geometry_msgs::TransformStamped> alignment_;  ///< Explicit alignment revoked on coordinate changes.
     std::optional<RigidTransform> navigation_from_backend_;  ///< Validated composition transform for current epoch only.
     std::optional<Fallback> fallback_;  ///< Latest validation-only fallback sample.
+    std::optional<RigidTransform> fallback_anchor_;  ///< native_from_odom captured from one Atlas pose.
 };
 
 NativeAtlasLocalization::NativeAtlasLocalization(NativeAtlasLocalizationOptions options)
@@ -298,7 +299,21 @@ void NativeAtlasLocalization::InjectFallbackPose(const ::automsgs::msgs::nav_msg
                                     impl_->options_.base_from_camera.transform().translation());
     if (!installation) return;
     std::lock_guard<std::mutex> lock(impl_->mutex_);
-    impl_->fallback_ = Impl::Fallback{*stamp, *rigid, Inverse(*installation)};
+    if (!impl_->fallback_anchor_ && impl_->navigation_from_backend_) {
+        const auto found = impl_->samples_.find(impl_->latest_status_stamp_);
+        if (found != impl_->samples_.end() && found->second.backend_from_camera &&
+            std::abs(static_cast<double>(*stamp - found->first)) <= 2e8) {
+            // One Atlas pose fixes the native-from-odom offset so a later fallback
+            // stays in the map frame instead of jumping to the raw odometry frame.
+            const auto atlas_world = Compose(Compose(*impl_->navigation_from_backend_,
+                                                    *found->second.backend_from_camera),
+                                             impl_->camera_from_base_);
+            impl_->fallback_anchor_ = Compose(atlas_world, Inverse(*rigid));
+        }
+    }
+    const RigidTransform world_from_base = impl_->fallback_anchor_
+        ? Compose(*impl_->fallback_anchor_, *rigid) : *rigid;
+    impl_->fallback_ = Impl::Fallback{*stamp, world_from_base, Inverse(*installation)};
 }
 
 std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(

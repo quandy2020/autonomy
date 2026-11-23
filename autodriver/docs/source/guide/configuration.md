@@ -597,22 +597,26 @@ camera:
 | `frame_id` | 图像 frame（子项可覆盖） |
 | `model` / `serial` / `index` | 设备过滤 |
 
-### 7.7 `radar` / `microphone` / `range`（占位）
+### 7.7 `radar` / `microphone` / `range`
 
 | 键 | 消息 | backend | 状态 |
 |---|---|---|---|
-| `radar` | PointCloud2（占位） | `conti`（别名 `continental`） | stub，Create 常返回 `nullptr` |
+| `radar` | PointCloud2（目标点） | `icl1122`（`evb1122`/`um10034`/`iclegend`） | EVB1122 USB CDC；Demo 目标帧 |
+| `radar` | PointCloud2（占位） | `conti`（`continental`） | stub |
 | `microphone` | Image 承载 PCM | `respeaker` | stub |
 | `range` | `sensor_msgs/Range` | — | 仅 Attach，无采集 |
 
 ```yaml
 radar:
   - name: front
-    enable: false
+    enable: true
     channel: /radar/front/objects
-    backend: conti
+    backend: icl1122
+    params_file: radar/icl1122.yaml
     params:
-      interface: can0
+      device: /dev/ttyACM0
+      baud: 115200
+      frame_id: radar_link
 
 microphone:
   - name: cabin
