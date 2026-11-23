@@ -548,9 +548,16 @@ void MapChangesRetireRecoveryRequests() {
         fixture->Pose(1.06, 0);
         fixture->refresh_reply = Receipt(old_request);
         const auto state = fixture->session->Tick(1.06);
+        // Reopening is scoped to the loss episode: a live map retires the
+        // receipt, but the same gap must not replay its reopening every frame.
+        // Same-epoch drift keeps the open loss; a new alignment epoch resets the
+        // loss ledger and re-creates the work domain. Either way unfinished work
+        // survives and no receipt confirms completion.
+        const bool unfinished = variant == 0 ? state.observation_losses.pending_sources != 0
+                                             : state.pending_units > 0;
         Require(fixture->mapping_cancellations.size() == 1 &&
                 fixture->mapping_cancellations.back().SameRequest(old_request) &&
-                state.pending_units > 0 && !state.completion_confirmed &&
+                unfinished && !state.completion_confirmed &&
                 !state.observation_recovery_generation && !fixture->save_request,
                 "changed map consumed an old recovery receipt or erased unfinished work");
     }

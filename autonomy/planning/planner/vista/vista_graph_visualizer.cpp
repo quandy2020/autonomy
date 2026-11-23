@@ -93,6 +93,14 @@ bool VistaGraphVisualizer::Publish(const VisibilityGraph& graph,
     point->set_z(0.055);
   }
 
+  // Ogre software/hardware vertex buffers have a bounded single-buffer
+  // capacity. Keep the visual graph representative while the planner retains
+  // the complete edge set for routing.
+  constexpr std::size_t kMaximumVisualizedEdges = 1500;
+  const std::size_t edge_stride = std::max<std::size_t>(
+      1, (graph.edges.size() + kMaximumVisualizedEdges - 1) /
+             kMaximumVisualizedEdges);
+  std::size_t valid_edge_index = 0;
   for (const auto& entry : graph.edges) {
     const auto& edge = entry.second;
     if (!edge.valid) {
@@ -101,6 +109,9 @@ bool VistaGraphVisualizer::Publish(const VisibilityGraph& graph,
     const auto first = graph.nodes.find(edge.id.first);
     const auto second = graph.nodes.find(edge.id.second);
     if (first == graph.nodes.end() || second == graph.nodes.end()) {
+      continue;
+    }
+    if ((valid_edge_index++ % edge_stride) != 0) {
       continue;
     }
     const auto& a = first->second.pose;

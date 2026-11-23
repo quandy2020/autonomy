@@ -43,6 +43,7 @@
 #include "autoviz/common/tool_manager.hpp"
 #include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
+#include "autoviz/bridge/ws_options.hpp"
 #include "autoviz/common/interaction/autolink_context.hpp"
 #include "autoviz/common/interaction/channel_manager.hpp"
 #include "autoviz/common/interaction/playback_controller.hpp"
@@ -52,6 +53,9 @@
 namespace autoviz {
 namespace rendering {
 class OgreSceneHost;
+}
+namespace bridge {
+class WsBridge;
 }
 namespace common {
 
@@ -105,6 +109,19 @@ class VisualizationManager {
    * @return @c true on success.
    */
   bool initialize(const char* binary_name);
+
+  /**
+   * @brief Civetweb WebSocket listen options. Call before @ref initialize().
+   *
+   * Disabled when @c options.enabled is false or @c options.port is 0.
+   * Bind failure is non-fatal (Autoviz still runs).
+   */
+  void setWsServerOptions(bridge::WsServerOptions options);
+
+  /**
+   * @brief Whether the embedded WebSocket server is listening.
+   */
+  bool wsServerRunning() const;
 
   /**
    * @brief Shuts down Autolink, clears displays, and marks the manager idle.
@@ -997,6 +1014,8 @@ class VisualizationManager {
                                                 int child_index);
 
   integration::AutolinkContext autolink_;
+  bridge::WsServerOptions ws_options_;
+  std::shared_ptr<bridge::WsBridge> ws_bridge_;
   std::unique_ptr<integration::ChannelManager> channel_manager_;
   autoviz::transform::Buffer* tf_buffer_ = nullptr;
   autoviz::transform::Listener tf_listener_;

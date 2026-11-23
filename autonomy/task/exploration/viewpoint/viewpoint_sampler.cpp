@@ -53,6 +53,8 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         result.canceled = true;
         return result;
     }
+    int checked_cell = -1;
+    bool cell_safe = false;
     const auto initial_cursor = cursor;
     for (; cursor < total; ++cursor) {
         if (cancel_checker && cancel_checker()) {
@@ -75,6 +77,15 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         auto pose = grid.CellCenter(cell.x, cell.y);
         const double distance = reachable.DistanceTo(pose);
         if (!std::isfinite(distance)) continue;
+        // The route owner admits only poses its conservative footprint check
+        // certifies. Proposing a viewpoint the router must reject left the
+        // session with candidates but no reachable local route.
+        const int cell_index = static_cast<int>(cursor / options.yaw_samples);
+        if (cell_index != checked_cell) {
+            checked_cell = cell_index;
+            cell_safe = geometry->VerifyPose(pose).safe;
+        }
+        if (!cell_safe) continue;
         pose.yaw = 2 * autonomy::navigation::kPi * (cursor % options.yaw_samples) /
                    options.yaw_samples;
         auto contribution = evaluator.Predict(pose, state, map, active);

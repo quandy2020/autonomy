@@ -171,6 +171,14 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     const auto region = yaml["region"];
     bounds = {region["min_x"].as<double>(),region["min_y"].as<double>(),region["max_x"].as<double>(),region["max_y"].as<double>()};
     config.session.allowed_region = bounds;
+    // A tracking outage longer than the default 30 s ended whole runs even
+    // when Atlas recovered moments later. Keep the bound explicit and configurable.
+    {
+        const double wait = yaml["maximum_sensor_wait"] ? yaml["maximum_sensor_wait"].as<double>() : 120.0;
+        if (!std::isfinite(wait) || wait < 1.0 || wait > 600.0)
+            throw std::invalid_argument("maximum_sensor_wait must be within [1, 600] seconds");
+        config.session.maximum_sensor_wait = wait;
+    }
     options.mapping.resolution = yaml["mapping_resolution"].as<double>();
     options.mapping.sensor_heights[1] = actual_mount.translation().z();
     options.mapping.robot_height = config.coverage.safety.robot_height = yaml["robot_height"].as<double>();
@@ -299,6 +307,10 @@ public:
             planner_->GetCostmapWrapper()->Stop();
             const auto plugin = std::dynamic_pointer_cast<planning::planner::vista::VistaPlanner>(planner_->GetPlanner(options_.exploration.routes.planner_id));
             if (!plugin) throw std::invalid_argument("native exploration requires the existing configured Vista plugin");
+            // Exploration targets live beyond the mapped area, so the route
+            // model must admit unmapped cells when selecting a viewpoint;
+            // VerifyNativeCommand still vetoes actual motion.
+            plugin->SharedRoutePlanner()->SetAllowUnknown(true);
             plugin->SetMapViewSource([this] {
                 auto view = mapper_->LatestView();
                 if (view) AttachStartupSupport(*view);
@@ -370,10 +382,11 @@ public:
         const double yaw = std::atan2(2 * (rotation.w() * rotation.z() +
             rotation.x() * rotation.y()), 1 - 2 * (rotation.y() * rotation.y() +
             rotation.z() * rotation.z()));
-        auto client = std::make_shared<StartupSpinClient>(node_, kStartupSpinAction);
-        if (!client->ActionServerIsReady() &&
-            !client->WaitForActionServer(std::chrono::milliseconds(200)))
-            return false;
+        // The measured owner loop drives yaw directly, so no action client is
+        // created here. Re-creating one per request left its feedback reader
+        // registered and made every later rotation fail with
+        // "reader with the same channel already exists".
+        std::shared_ptr<StartupSpinClient> client;
         const double now = Now();
         // Let the native action observe its own deadline and publish its final
         // zero command before this independent completion check expires.
@@ -1102,7 +1115,10 @@ public:
         std::lock_guard<std::mutex> lock(pose_mutex_);
         if (closed_.load()) return;
         const double now = Now(); const auto camera = localization_->LatestBackendPose(now);
-        if (!camera) return;
+        if (!camera) {
+            AINFO_EVERY(20) << "NATIVE_POSE_STALE reason=no_backend_pose now=" << now;
+            return;
+        }
         const auto& source_pose = camera->pose().pose().pose();
         if (!localization_->WorldAlignment()) {
             const auto& mount = options_.localization.base_from_camera.transform();
@@ -1115,7 +1131,11 @@ public:
         }
         const double stamp = camera->header().stamp().sec()+camera->header().stamp().nanosec()*1e-9;
         const auto proof = localization_->Lookup(perception::SensorKind::kRgbd,options_.localization.camera_frame,stamp,now);
-        if (!proof) return;
+        if (!proof) {
+            AINFO_EVERY(20) << "NATIVE_POSE_STALE reason=no_calibrated_proof stamp=" << stamp
+                           << " now=" << now;
+            return;
+        }
         const auto native_stamp = static_cast<std::uint64_t>(camera->header().stamp().sec())*1000000000ULL+camera->header().stamp().nanosec();
         if (last_epoch_ == proof->map_epoch && native_stamp <= last_stamp_) return;
         Eigen::Isometry3d pose = Eigen::Isometry3d::Identity();

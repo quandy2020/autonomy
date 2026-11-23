@@ -2,6 +2,7 @@
  * Copyright 2026 The Openbot Authors (duyongquan)
  *****************************************************************************/
 
+#include <cstdint>
 #include <memory>
 #include <unistd.h>
 
@@ -23,6 +24,7 @@
 #include "autoviz/ui/app/translation.hpp"
 #include <glog/logging.h>
 
+#include "autoviz/bridge/ws_options.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/common/widget/foundation/motion_policy.hpp"
 #include "autoviz/platform/opengl_setup.hpp"
@@ -87,6 +89,20 @@ int main(int argc, char** argv) {
           "Optional session config (.autoviz) and/or Autolink record "
           "(.record/.bag/.mcap) to open and play"),
       QStringLiteral("[files...]"));
+  QCommandLineOption no_ws_option(
+      QStringLiteral("no-ws"),
+      QStringLiteral("Disable the embedded WebSocket server"));
+  parser.addOption(no_ws_option);
+  QCommandLineOption ws_host_option(
+      QStringLiteral("ws-host"),
+      QStringLiteral("WebSocket bind address"),
+      QStringLiteral("host"), QStringLiteral("0.0.0.0"));
+  parser.addOption(ws_host_option);
+  QCommandLineOption ws_port_option(
+      QStringLiteral("ws-port"),
+      QStringLiteral("WebSocket port (0 disables)"),
+      QStringLiteral("port"), QStringLiteral("8765"));
+  parser.addOption(ws_port_option);
   parser.process(app);
 
   QString splash_path;
@@ -141,6 +157,18 @@ int main(int argc, char** argv) {
   }
 
   auto manager = std::make_shared<autoviz::common::VisualizationManager>();
+  autoviz::bridge::WsServerOptions ws_options;
+  ws_options.enabled = !parser.isSet(no_ws_option);
+  ws_options.host = parser.value(ws_host_option).toStdString();
+  bool port_ok = false;
+  const int ws_port = parser.value(ws_port_option).toInt(&port_ok);
+  if (port_ok && ws_port >= 0 && ws_port <= 65535) {
+    ws_options.port = static_cast<uint16_t>(ws_port);
+  }
+  if (ws_options.port == 0) {
+    ws_options.enabled = false;
+  }
+  manager->setWsServerOptions(std::move(ws_options));
   if (splash != nullptr) {
     splash->showStatusFor(QStringLiteral("Initializing"));
   }

@@ -101,7 +101,7 @@ bool Contains(const std::vector<Ring>& rings, double x, double y) {
 Marker* Fill(Markers& markers, const std::vector<Ring>& rings,
              const std::string& frame, int id, const Palette& color,
              float alpha, float z) {
-  constexpr double kStep = 0.25;
+  constexpr double kStep = 0.5;
   auto* marker = markers.add_markers();
   marker->mutable_header()->set_frame_id(frame);
   marker->set_ns("region_fill");
@@ -263,33 +263,47 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
     ++label_id;
   }
 
-  int swath_id = 0;
-  for (const auto& swath : result.coverage_path().swaths()) {
-    const auto& poses = swath.path().poses();
-    if (poses.empty()) {
-      continue;
-    }
-    Palette color = fallback_swath;
-    const double x0 = poses.Get(0).pose().position().x();
-    const double y0 = poses.Get(0).pose().position().y();
-    for (std::size_t index = 0; index < room_rings.size(); ++index) {
-      if (Contains(room_rings[index], x0, y0)) {
-        color = kPalette[index % kPalette.size()];
-        break;
+  // One LINE_LIST marker carries every pass. Publishing one marker per pass
+  // produced hundreds of markers per plan and destabilised the viewer.
+  {
+    auto* segments = swaths.add_markers();
+    segments->mutable_header()->set_frame_id(frame);
+    segments->set_ns("swaths");
+    segments->set_id(0);
+    segments->set_type(Marker::LINE_LIST);
+    segments->set_action(Marker::ADD);
+    segments->mutable_pose()->mutable_orientation()->set_w(1.0);
+    segments->mutable_pose()->mutable_position()->set_z(0.07);
+    segments->mutable_scale()->set_x(0.05);
+    const Palette color = fallback_swath;
+    segments->mutable_color()->set_r(color[0]);
+    segments->mutable_color()->set_g(color[1]);
+    segments->mutable_color()->set_b(color[2]);
+    segments->mutable_color()->set_a(0.95f);
+    for (const auto& swath : result.coverage_path().swaths()) {
+      const auto& poses = swath.path().poses();
+      if (poses.size() < 2) {
+        continue;
       }
-    }
-    auto* line = Line(swaths, frame, "swaths", swath_id++, color, 0.95f, 0.05f,
-                      0.07f);
-    for (const auto& pose : poses) {
-      auto* out = line->add_points();
-      out->set_x(pose.pose().position().x());
-      out->set_y(pose.pose().position().y());
+      const int stride = std::max(1, static_cast<int>(poses.size() / 24));
+      for (int index = 0; index + stride < poses.size(); index += stride) {
+        const auto& a = poses.Get(index).pose().position();
+        const auto& b = poses.Get(index + stride).pose().position();
+        auto* first = segments->add_points();
+        first->set_x(a.x());
+        first->set_y(a.y());
+        auto* second = segments->add_points();
+        second->set_x(b.x());
+        second->set_y(b.y());
+      }
     }
   }
 
   auto* clear = combined.add_markers();
   clear->set_action(Marker::DELETEALL);
-  for (const auto& list : {fields, headlands, regions, swaths}) {
+  // Region colours travel on their own channel; duplicating them here would
+  // double the marker count for no visual gain.
+  for (const auto& list : {fields, headlands, swaths}) {
     for (const auto& marker : list.markers()) {
       *combined.add_markers() = marker;
     }
@@ -297,11 +311,20 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
   if (result.nav_path().poses_size() > 1) {
     auto* line = Line(combined, frame, "global_path", 90000, global_color,
                       1.0f, 0.14f, 0.16f);
-    for (const auto& pose : result.nav_path().poses()) {
+    // One polyline with tens of thousands of vertices stalls the viewer; keep
+    // the outline readable and the message small.
+    const auto& poses = result.nav_path().poses();
+    const int stride = std::max(1, static_cast<int>(poses.size() / 4000));
+    for (int index = 0; index < poses.size(); index += stride) {
+      const auto& pose = poses.Get(index);
       auto* out = line->add_points();
       out->set_x(pose.pose().position().x());
       out->set_y(pose.pose().position().y());
     }
+    const auto& last = poses.Get(poses.size() - 1);
+    auto* out = line->add_points();
+    out->set_x(last.pose().position().x());
+    out->set_y(last.pose().position().y());
   }
   fields_->Write(fields);
   headlands_->Write(headlands);

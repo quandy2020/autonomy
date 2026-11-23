@@ -17,6 +17,7 @@ struct SafetyOptions {
   double vertical_margin = 0.05;
   double max_floor_step = 0.08;
   std::optional<StartupSupportRegion> startup_support;  ///< Explicit start-only closure of self-occluded unknown cells.
+  bool allow_unknown = false;  ///< Exploration route model may cross unmapped cells; execution is still gated separately.
 };
 struct SafetyResult {
   bool safe = false;

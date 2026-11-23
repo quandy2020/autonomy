@@ -3,6 +3,7 @@
  * @brief Exact native tracking correlation, coordinate revocation and calibrated base-pose composition.
  */
 #include "autonomy/perception/observation/native_atlas_localization.hpp"
+#include "autonomy/common/logging.hpp"
 
 #include <charconv>
 #include <cmath>
@@ -18,6 +19,8 @@ namespace {
 using Time = ::automsgs::msgs::builtin_interfaces::Time;
 using Status = ::automsgs::msgs::diagnostic_msgs::DiagnosticStatus;
 using BackendIdentity = std::tuple<std::string, std::uint64_t, std::uint64_t, std::uint64_t>;
+/// Producer/consumer clock skew tolerated when correlating status and pose.
+constexpr double kLatestStampSkew = .01;
 
 /** @brief Keep source identity in integer nanoseconds before any source-clock conversion. */
 std::optional<std::int64_t> Stamp(const Time& time) {
@@ -140,14 +143,29 @@ public:
     }
     /** @brief Read only the latest current-epoch healthy exact-time pose under the mutex. */
     const Sample* Latest(double now) const {
-        if (!identity_ || !std::isfinite(now)) return nullptr;
-        const auto found = samples_.find(latest_status_stamp_);
-        if (found == samples_.end() || !found->second.status || !found->second.status->healthy ||
-            found->second.status->identity != *identity_ || !found->second.pose || !found->second.backend_from_camera)
+        if (!identity_ || !std::isfinite(now)) {
+            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=no_identity";
             return nullptr;
+        }
+        // Only the newest attempt may certify current localization: an older
+        // healthy pose can never stand in for a newer unhealthy one. A few
+        // milliseconds of producer/consumer clock skew must not reject it.
+        const auto found = samples_.find(latest_status_stamp_);
+        if (found == samples_.end() || !found->second.status ||
+            !found->second.status->healthy || found->second.status->identity != *identity_ ||
+            !found->second.pose || !found->second.backend_from_camera) {
+            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=incomplete_latest";
+            return nullptr;
+        }
         const double stamp = Seconds(found->first);
-        return now >= stamp && now <= stamp + options_.evidence_lifetime ? &found->second : nullptr;
+        if (now + kLatestStampSkew < stamp || now > stamp + options_.evidence_lifetime) {
+            AINFO_EVERY(200) << "ATLAS_LATEST_REJECT reason=stale age=" << (now - stamp)
+                             << " lifetime=" << options_.evidence_lifetime;
+            return nullptr;
+        }
+        return &found->second;
     }
+
     NativeAtlasLocalizationOptions options_;  ///< Immutable physical installation and native endpoint policy.
     RigidTransform camera_from_base_;  ///< Inverse of the actual validated installation.
     mutable std::mutex mutex_;  ///< Serializes native callbacks, platform alignment and lookup.
@@ -241,12 +259,26 @@ std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(
         !std::isfinite(now) || now < acquisition || now > acquisition + impl_->options_.evidence_lifetime) return {};
     std::lock_guard<std::mutex> lock(impl_->mutex_);
     if (!impl_->identity_ || !impl_->navigation_from_backend_) return {};
+    // Native stamps arrive as int32 seconds + uint32 nanoseconds; the same
+    // physical instant round-tripped through different paths can differ in the
+    // last double bits, so exact equality silently rejected real matches and
+    // every miss cost the caller a full localization timeout. Match within one
+    // microsecond - far below any sensor period, so a genuinely different frame
+    // can never be substituted - and still reject ties.
+    constexpr double kMaxStampSkewSeconds = 1e-6;
     const Impl::Sample* selected = nullptr;
-    for (const auto& item : impl_->samples_) if (Seconds(item.first) == acquisition) {
-        // Even unhealthy/partial colliding native slots are ambiguous in the
-        // caller's double clock; none can silently stand for the other.
-        if (selected) return {};
-        selected = &item.second;
+    double selected_skew = kMaxStampSkewSeconds;
+    for (const auto& item : impl_->samples_) {
+        const double skew = std::abs(Seconds(item.first) - acquisition);
+        if (skew > kMaxStampSkewSeconds) continue;
+        if (skew < selected_skew - 1e-12) {
+            selected = &item.second;
+            selected_skew = skew;
+        } else if (skew <= selected_skew + 1e-12 && selected != nullptr) {
+            // Even unhealthy/partial colliding native slots are ambiguous in the
+            // caller's double clock; none can silently stand for the other.
+            return {};
+        }
     }
     if (!selected || !selected->status || !selected->status->healthy || !selected->backend_from_camera ||
         selected->status->identity != *impl_->identity_) return {};

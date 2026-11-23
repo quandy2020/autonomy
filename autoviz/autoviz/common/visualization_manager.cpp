@@ -4,6 +4,7 @@
 
 #include "autoviz/common/visualization_manager.hpp"
 
+#include "autoviz/bridge/ws_bridge.hpp"
 #include "autolink/time/time.hpp"
 #include <automsgs/msgs/time_utils.hpp>
 #include "autoviz/common/display_catalog.hpp"
@@ -22,6 +23,8 @@
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
 #include "autoviz/rendering/mesh_resource.hpp"
 #include "autoviz/rendering/ogre_scene_host.hpp"
+
+#include <glog/logging.h>
 
 #include <algorithm>
 #include <functional>
@@ -65,6 +68,16 @@ bool VisualizationManager::initialize(const char* binary_name) {
   channel_manager_ = std::make_unique<integration::ChannelManager>(
       topology->channel_manager());
 
+  if (ws_options_.enabled && ws_options_.port != 0) {
+    ws_bridge_ =
+        std::make_shared<bridge::WsBridge>(autolink_.node(), ws_options_);
+    if (!ws_bridge_->Start()) {
+      LOG(WARNING) << "WebSocket server failed to bind " << ws_options_.host
+                   << ":" << ws_options_.port;
+      ws_bridge_.reset();
+    }
+  }
+
   // Apply defaults. Channel-backed displays start disabled to avoid racing
   // loadConfig() (teardown can stall in RemoveCRoutine under publisher flood).
   // Channel-less displays (e.g. Grid) stay enabled so the default scene shows
@@ -101,6 +114,14 @@ void VisualizationManager::detachDisplaysFromScene() {
   }
 }
 
+void VisualizationManager::setWsServerOptions(bridge::WsServerOptions options) {
+  ws_options_ = std::move(options);
+}
+
+bool VisualizationManager::wsServerRunning() const {
+  return ws_bridge_ != nullptr && ws_bridge_->IsRunning();
+}
+
 void VisualizationManager::shutdown() {
   if (!initialized_) {
     return;
@@ -117,6 +138,10 @@ void VisualizationManager::shutdown() {
   display_views_.clear();
   interactive_marker_registry_ = display::InteractiveMarkerRegistry{};
   channel_manager_.reset();
+  if (ws_bridge_) {
+    ws_bridge_->Stop();
+    ws_bridge_.reset();
+  }
   tf_listener_.stop();
   integration::ChannelReaderRegistry::instance().setNode(nullptr);
   integration::ChannelWriterRegistry::instance().setNode(nullptr);

@@ -402,22 +402,16 @@ void drawStoredMarkers(
                 std::clamp(static_cast<float>(c.b()), 0.f, 1.f),
                 std::clamp(static_cast<float>(c.a()), 0.f, 1.f));
           }
-          if (use_ogre) {
-            ogre_lines.push_back({points[i - 1], points[i], seg_color});
-          } else {
-            scene.addLine(points[i - 1], points[i], seg_color);
-          }
+          // GL overlay is the reliable path for thin primitives; the Ogre
+          // line/point buffers render empty in several backends.
+          scene.addLine(points[i - 1], points[i], seg_color);
         }
       }
     } else if (marker.type() == kLineList && marker.points_size() >= 2) {
       std::vector<QVector3D> points;
       if (MarkerPointsInFixedFrame(marker, context, &points)) {
         for (std::size_t i = 1; i < points.size(); i += 2) {
-          if (use_ogre) {
-            ogre_lines.push_back({points[i - 1], points[i], color});
-          } else {
-            scene.addLine(points[i - 1], points[i], color);
-          }
+          scene.addLine(points[i - 1], points[i], color);
         }
       }
     } else if (marker.type() == kPoints && marker.points_size() >= 1) {
@@ -426,21 +420,7 @@ void drawStoredMarkers(
         const int color_count = marker.colors_size();
         const bool per_point_color =
             color_count > 0 && color_count == marker.points_size();
-        if (use_ogre) {
-          ogre_points.reserve(ogre_points.size() + points.size());
-          for (int i = 0; i < static_cast<int>(points.size()); ++i) {
-            QColor point_color = color;
-            if (per_point_color) {
-              const auto& c = marker.colors(i);
-              point_color = QColor::fromRgbF(
-                  std::clamp(static_cast<float>(c.r()), 0.f, 1.f),
-                  std::clamp(static_cast<float>(c.g()), 0.f, 1.f),
-                  std::clamp(static_cast<float>(c.b()), 0.f, 1.f),
-                  std::clamp(static_cast<float>(c.a()), 0.f, 1.f));
-            }
-            ogre_points.push_back({points[static_cast<size_t>(i)], point_color});
-          }
-        } else if (per_point_color) {
+        if (per_point_color) {
           for (int i = 0; i < static_cast<int>(points.size()); ++i) {
             const auto& c = marker.colors(i);
             const QColor point_color = QColor::fromRgbF(
@@ -519,17 +499,10 @@ void drawStoredMarkers(
   }
 
   if (use_ogre) {
-    drawLineSegmentsOgreOrGl(context, scene, display_prefix + "/lines", ogre_lines);
     drawEntityMeshesOgreOrGl(context, scene, display_prefix + "/meshes",
                              ogre_entity_meshes);
     drawMeshesOgreOrGl(context, scene, display_prefix + "/tri_meshes",
                        ogre_manual_meshes);
-    if (!ogre_points.empty()) {
-      drawColoredPointsOgreOrGl(context, scene, display_prefix + "/points",
-                                "MarkerPoints", point_size,
-                                rendering::PointCloudStyle::kSquares, ogre_points,
-                                false);
-    }
   }
 }
 

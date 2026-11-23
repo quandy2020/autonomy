@@ -1186,6 +1186,27 @@ void CoveragePanel::CancelCoverage() {
 }
 
 void CoveragePanel::PollActions() {
+  // The plan is a dense boustrophedon polyline: one household map already
+  // holds ~26k poses. A uniform stride used to cut that down to 1500 points,
+  // which collapsed whole rooms into a couple of diagonals and made them look
+  // uncovered. The Path display draws a plain line strip, so keep the geometry
+  // intact and only thin pathological inputs.
+  const auto PreviewPath = [this](const auto& path) {
+    constexpr int kPreviewPoseLimit = 200000;
+    const int count = path.poses_size();
+    if (count <= kPreviewPoseLimit) {
+      preview_writer_->Write(path);
+      return;
+    }
+    automsgs::msgs::nav_msgs::Path thin;
+    thin.mutable_header()->set_frame_id(path.header().frame_id());
+    const int stride = (count + kPreviewPoseLimit - 1) / kPreviewPoseLimit;
+    for (int index = 0; index < count; index += stride) {
+      *thin.add_poses() = path.poses().Get(index);
+    }
+    *thin.add_poses() = path.poses().Get(count - 1);
+    preview_writer_->Write(thin);
+  };
   try {
     EnsureClients();
     if (compute_acceptance_.valid() &&
@@ -1247,7 +1268,7 @@ void CoveragePanel::PollActions() {
             if (clean_rooms_ != nullptr) {
               clean_rooms_->setEnabled(!regions_.empty());
             }
-            preview_writer_->Write(result.result->nav_path());
+            PreviewPath(result.result->nav_path());
             SetStatus(tr("Rooms ready · %1 room(s) · %2% · %3 m travel")
                           .arg(result.result->regions_size())
                           .arg(result.result->core_coverage() * 100, 0, 'f', 1)
@@ -1258,7 +1279,7 @@ void CoveragePanel::PollActions() {
             SetProgress(false);
             return;
           }
-          preview_writer_->Write(result.result->nav_path());
+          PreviewPath(result.result->nav_path());
           if (progress_value_ != nullptr) {
             progress_value_->setText(
                 QStringLiteral("%1%").arg(result.result->core_coverage() * 100,
@@ -1570,6 +1591,7 @@ void CoveragePanel::ActivateTool(const QString& tool_id) {
     }
   }
 }
+
 
 void CoveragePanel::SplitRooms(bool from_map) {
   try {

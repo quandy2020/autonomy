@@ -130,8 +130,14 @@ void NavigationTask::CancelRemoteNavigation()
     }
     if (gate) {
         gate->Revoke();
-        if (!gate->WaitForDrain(NavigationCancelTimeout()))
-            throw std::runtime_error("native motion cancellation has no confirmed terminal drain");
+        if (!gate->WaitForDrain(NavigationCancelTimeout())) {
+            // A single learned-controller step can overrun the first window.
+            // Revoke again and allow one more bounded drain; an actually moving
+            // robot still fails this check.
+            gate->Revoke();
+            if (!gate->WaitForDrain(NavigationCancelTimeout()))
+                throw std::runtime_error("native motion cancellation has no confirmed terminal drain");
+        }
     }
 }
 

@@ -160,10 +160,9 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
     }
     next_label = frontier.empty() ? 0 : 1;
   }
-  // Grow every core back into the free space, but never further than the
-  // erosion radius, otherwise a label runs through the doorway and drags a
-  // tongue of one room into its neighbour. The frontier starts on the whole
-  // core, not on a single seed cell, so the room regains its full extent.
+  // Grow every core back into the free space, but stop at the erosion radius
+  // so the initial room split stays stable. The frontier starts on the whole
+  // core, not on a single seed cell, so each room regains its full extent.
   std::vector<int> steps(count, 0);
   for (std::size_t index = 0; index < count; ++index) {
     if (label[index] >= 0) {
@@ -198,6 +197,118 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
         label[next] = current;
         steps[next] = steps[static_cast<std::size_t>(index)] + 1;
         frontier.push_back(static_cast<int>(next));
+      }
+    }
+  }
+
+  // The bounded growth above keeps the initial room split stable, but it
+  // leaves narrow corridors and wall bands unlabeled. A substantial passage
+  // is still traversable and must be covered, so attach each large unlabeled
+  // component to its nearest room. Small door thresholds and wall slivers
+  // stay unlabeled: the room polygons remain separate and the global
+  // connector already traverses those narrow openings.
+  std::vector<unsigned char> seen(count, 0);
+  const double cell_area =
+      static_cast<double>(map.resolution()) * map.resolution();
+  for (std::size_t seed = 0; seed < count; ++seed) {
+    if (free[seed] == 0 || label[seed] >= 0 || seen[seed] != 0) {
+      continue;
+    }
+    std::vector<int> component;
+    std::deque<int> pending{static_cast<int>(seed)};
+    seen[seed] = 1;
+    while (!pending.empty()) {
+      const int index = pending.front();
+      pending.pop_front();
+      component.push_back(index);
+      const int row = index / width;
+      const int column = index % width;
+      for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+          if (std::abs(dx) + std::abs(dy) != 1) {
+            continue;
+          }
+          const int next_column = column + dx;
+          const int next_row = row + dy;
+          if (next_column < 0 || next_row < 0 || next_column >= width ||
+              next_row >= height) {
+            continue;
+          }
+          const std::size_t next =
+              static_cast<std::size_t>(next_row * width + next_column);
+          if (free[next] == 0 || label[next] >= 0 || seen[next] != 0) {
+            continue;
+          }
+          seen[next] = 1;
+          pending.push_back(static_cast<int>(next));
+        }
+      }
+    }
+    if (static_cast<double>(component.size()) * cell_area <
+        options.min_area) {
+      continue;
+    }
+
+    // Seed the fill from every cell that already touches a room. When a
+    // passage lies between two rooms, the two labels meet in the middle.
+    std::deque<int> fill;
+    for (const int index : component) {
+      const int row = index / width;
+      const int column = index % width;
+      for (int dy = -1; dy <= 1 && label[index] < 0; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+          if (std::abs(dx) + std::abs(dy) != 1) {
+            continue;
+          }
+          const int next_column = column + dx;
+          const int next_row = row + dy;
+          if (next_column < 0 || next_row < 0 || next_column >= width ||
+              next_row >= height) {
+            continue;
+          }
+          const std::size_t next =
+              static_cast<std::size_t>(next_row * width + next_column);
+          if (label[next] < 0) {
+            continue;
+          }
+          label[index] = label[next];
+          fill.push_back(index);
+          break;
+        }
+      }
+    }
+    if (fill.empty()) {
+      // A free island with no room core becomes its own region.
+      const int new_label = next_label++;
+      for (const int index : component) {
+        label[index] = new_label;
+      }
+      continue;
+    }
+    while (!fill.empty()) {
+      const int index = fill.front();
+      fill.pop_front();
+      const int row = index / width;
+      const int column = index % width;
+      for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+          if (std::abs(dx) + std::abs(dy) != 1) {
+            continue;
+          }
+          const int next_column = column + dx;
+          const int next_row = row + dy;
+          if (next_column < 0 || next_row < 0 || next_column >= width ||
+              next_row >= height) {
+            continue;
+          }
+          const std::size_t next =
+              static_cast<std::size_t>(next_row * width + next_column);
+          if (free[next] == 0 || label[next] >= 0 || seen[next] == 0) {
+            continue;
+          }
+          label[next] = label[index];
+          fill.push_back(static_cast<int>(next));
+        }
       }
     }
   }
@@ -396,44 +507,6 @@ std::vector<F2CCells> RegionSegmenter::MapSplit(
       continue;
     }
 
-    // A room that fills most of its bounding box is a plain rectangle;
-    // returning the rectangle avoids the raster staircase entirely and
-    // keeps every edge long enough for the turn planner.
-    int min_column = width;
-    int max_column = -1;
-    int min_row = height;
-    int max_row = -1;
-    long long inside_count = 0;
-    for (int row = 0; row < height; ++row) {
-      for (int column = 0; column < width; ++column) {
-        if (!inside(column, row)) {
-          continue;
-        }
-        ++inside_count;
-        min_column = std::min(min_column, column);
-        max_column = std::max(max_column, column);
-        min_row = std::min(min_row, row);
-        max_row = std::max(max_row, row);
-      }
-    }
-    const long long box_area =
-        static_cast<long long>(max_column - min_column + 1) *
-        static_cast<long long>(max_row - min_row + 1);
-    if (box_area > 0 && inside_count * 100 >= box_area * 85) {
-      const auto to_world = [&](int column, int row) {
-        const double x = static_cast<double>(column) * resolution;
-        const double y = static_cast<double>(row) * resolution;
-        return std::pair<double, double>(map.origin_x() + c * x - s * y,
-                                         map.origin_y() + s * x + c * y);
-      };
-      std::vector<std::pair<double, double>> box;
-      box.push_back(to_world(min_column, min_row));
-      box.push_back(to_world(max_column + 1, min_row));
-      box.push_back(to_world(max_column + 1, max_row + 1));
-      box.push_back(to_world(min_column, max_row + 1));
-      rooms.push_back(Room{area, std::move(box)});
-      continue;
-    }
     // Snap the traced outline onto a lattice the turn planner can follow.
     // Each axis is rounded on its own, so the outline stays rectilinear
     // while wall jogs shorter than the lattice disappear.

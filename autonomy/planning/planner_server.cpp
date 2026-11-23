@@ -569,7 +569,7 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
           << " code=" << return_code;
     // A blocked start/goal still leaves a valid, newly admitted graph. Avoid
     // showing an empty Vista channel merely because this route failed.
-    if (return_code != planner::vista::proto::PLANNER_SUCCESS)
+    if (return_code != static_cast<uint32_t>(proto::PLANNER_SUCCESS))
         PublishVistaGraph(resolved_planner_id);
     ThrowOnPlannerResultCode(return_code, resolved_planner_id);
     PublishVistaGraph(resolved_planner_id);

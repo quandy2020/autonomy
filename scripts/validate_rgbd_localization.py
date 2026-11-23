@@ -86,8 +86,8 @@ def camera_settings(info, rgb, depth, fps, height):
         # RGB-D has no stereo pair. This nominal ORB close-depth baseline is an
         # algorithm setting; image depth remains measured metres at scale one.
         'Stereo.b: 0.1', 'Stereo.ThDepth: 40.0', 'RGBD.DepthMapFactor: 1.0',
-        'ORBextractor.nFeatures: 1200', 'ORBextractor.scaleFactor: 1.2',
-        'ORBextractor.nLevels: 8', 'ORBextractor.iniThFAST: 20', 'ORBextractor.minThFAST: 7',
+        'ORBextractor.nFeatures: 2000', 'ORBextractor.scaleFactor: 1.2',
+        'ORBextractor.nLevels: 8', 'ORBextractor.iniThFAST: 15', 'ORBextractor.minThFAST: 5',
         # Atlas parses these required settings even when its viewer is disabled.
         'Viewer.KeyFrameSize: 0.05', 'Viewer.KeyFrameLineWidth: 1.0',
         'Viewer.GraphLineWidth: 0.9', 'Viewer.PointSize: 2.0',
@@ -123,8 +123,8 @@ def main():
     parser.add_argument('--horizontal-margin', type=float, default=.02,
                         help='Additional native footprint inflation in metres')
     args = parser.parse_args()
-    if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 60000:
-        parser.error('use an isolated validation prefix and 500..60000 steps')
+    if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 200000:
+        parser.error('use an isolated validation prefix and 500..200000 steps')
     if not 1 <= args.exploration_time_budget <= 1800:
         parser.error('exploration time budget must be within 1..1800 seconds')
     if not (args.region[0] < args.region[2] and args.region[1] < args.region[3]):
@@ -332,7 +332,17 @@ def main():
                 config_file = args.output / 'native-rgbd-platform.yaml'
                 if args.controller_options:
                     options_copy = args.output / 'native-controller-options.json'
-                    options_copy.write_bytes(args.controller_options.read_bytes())
+                    # The recorded options carried a diagnostics channel pinned to
+                    # an older run prefix, so every online policy run published its
+                    # diagnostics to a dead channel and no closed-loop evidence
+                    # could ever be read back. Re-point it at this run's prefix
+                    # before the controller is started.
+                    options_payload = json.loads(args.controller_options.read_text())
+                    policy_options = options_payload.get('policy_controller_options')
+                    if isinstance(policy_options, dict):
+                        policy_options['diagnostics_topic'] = (
+                            args.prefix + '/native/policy_diagnostics')
+                    options_copy.write_text(json.dumps(options_payload, indent=2) + chr(10))
                     report['controller_options_sha256'] = hashlib.sha256(options_copy.read_bytes()).hexdigest()
                     report['actual_execution_requested'] = True
                     settings.update({
@@ -353,7 +363,7 @@ def main():
                             'maximum_position_drift': .08, 'completion_tolerance': .08,
                             'maximum_pose_age': 1.,
                             'support_radius': .8, 'support_ring_radius': 1.2,
-                            'support_timeout': 60., 'minimum_support_cells': 8,
+                            'support_timeout': 600., 'minimum_support_cells': 8,
                         },
                     })
                 config_file.write_text(yaml.safe_dump(settings, sort_keys=False))

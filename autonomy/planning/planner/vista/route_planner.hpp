@@ -49,6 +49,11 @@ public:
     /** @brief Find a checked route with cancelable graph search and grid fallback. */
     VistaRoute CreateRoute(const Pose2d& start, const Pose2d& goal,
                             const std::function<bool()>& canceled = {}) const;
+    /** @brief Let the route model cross unmapped cells.
+     * @details Exploration must be able to plan toward frontier candidates that
+     * lie beyond the mapped area; execution safety stays with the command gate.
+     */
+    void SetAllowUnknown(bool allow);
     /** @brief Return an owned graph copy serialized against updates. */
     VisibilityGraph GraphSnapshot() const;
     /** @brief Read provenance without copying graph vertices and edges.

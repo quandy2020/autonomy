@@ -78,7 +78,9 @@ void GeometrySafety::BuildDistanceField() {
       const bool startup_unknown = options_.startup_support &&
           cell.state == CellState::kUnknown &&
           options_.startup_support->Contains(center.x, center.y);
-      if (cell.state != CellState::kFree && !startup_unknown) column[y] = 0.0;
+      const bool traversable = cell.state == CellState::kFree ||
+          (options_.allow_unknown && cell.state == CellState::kUnknown);
+      if (!traversable && !startup_unknown) column[y] = 0.0;
     }
     const auto transformed = SquaredDistanceTransform(column);
     for (int y = 0; y < map_->height(); ++y) distances_[map_->Index(x, y)] = transformed[y];
@@ -124,6 +126,7 @@ SafetyResult GeometrySafety::VerifyPose(const Pose2d& pose, double extra_padding
       static_cast<int>(std::floor((pose.x + radius - map_->origin_x()) / res)));
   const int y1 = std::min(map_->height() - 1,
       static_cast<int>(std::floor((pose.y + radius - map_->origin_y()) / res)));
+  bool have_height_evidence = false;
   double min_floor = std::numeric_limits<double>::infinity();
   double max_floor = -std::numeric_limits<double>::infinity();
   double min_ceiling = std::numeric_limits<double>::infinity();
@@ -140,8 +143,17 @@ SafetyResult GeometrySafety::VerifyPose(const Pose2d& pose, double extra_padding
       const bool startup_unknown = options_.startup_support &&
           surface.state == CellState::kUnknown &&
           options_.startup_support->Contains(cell_x, cell_y);
-      if (surface.state != CellState::kFree && !startup_unknown)
+      const bool exploration_unknown = options_.allow_unknown &&
+          surface.state == CellState::kUnknown && !startup_unknown;
+      if (surface.state != CellState::kFree && !startup_unknown && !exploration_unknown)
         return {false, clearance, "unknown or occupied footprint"};
+      if (exploration_unknown) {
+        // No measurement exists here, so there is no height evidence to check.
+        // Route admission may cross this cell; the command gate still refuses
+        // to actuate into space it cannot certify.
+        continue;
+      }
+      have_height_evidence = true;
       const double floor_height = startup_unknown
           ? options_.startup_support->floor_height : surface.floor_height;
       const double ceiling_height = startup_unknown
@@ -155,7 +167,7 @@ SafetyResult GeometrySafety::VerifyPose(const Pose2d& pose, double extra_padding
       min_ceiling = std::min(min_ceiling, ceiling_height);
     }
   }
-  if (max_floor - min_floor > options_.max_floor_step + 1e-12) {
+  if (have_height_evidence && max_floor - min_floor > options_.max_floor_step + 1e-12) {
     return {false, clearance, "floor step exceeds limit"};
   }
   if (min_ceiling - max_floor < options_.robot_height + options_.vertical_margin) {

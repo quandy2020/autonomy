@@ -117,11 +117,18 @@ void ObservationBuffer::RecordLossLocked(SensorKind sensor, std::uint64_t first,
                                          std::uint64_t last) {
     const auto index = sensor == SensorKind::kLidar ? 0U : 1U;
     const auto source = Mask(sensor);
-    const bool changed = !(pending_first_loss_.present & source) ||
-        first < pending_first_loss_.sequence[index] || last > pending_last_loss_.sequence[index];
+    // A generation identifies one loss episode. Extending an interval that is
+    // still open is the same episode: with continuous rejected input this used
+    // to bump the generation on every frame, which turned one real gap into
+    // hundreds of owner invalidations. Only a newly opened source, an earlier
+    // interval start, or a separately disconnected interval starts a new one.
+    const bool open = (pending_first_loss_.present & source) != 0;
+    const bool began = !open;
+    const bool earlier = open && first < pending_first_loss_.sequence[index];
+    const bool separate = open && first > pending_last_loss_.sequence[index] + 1;
     RecordFirstLoss(pending_first_loss_, sensor, first);
     pending_last_loss_.Include(sensor, last);
-    if (changed) ++loss_generation_;
+    if (began || earlier || separate) ++loss_generation_;
 }
 bool ObservationBuffer::HasUnrecoveredLossThrough(const ObservationCut& cut) const {
     std::lock_guard<std::mutex> lock(mutex_);

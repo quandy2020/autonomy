@@ -432,10 +432,53 @@ function(autoviz_install_desktop_assets)
 endfunction()
 
 # ---------------------------------------------------------------------------
+# Civetweb + nlohmann/json for Autoviz's WebSocket server.
+# Reuses autolink thirdparty copies.
+# ---------------------------------------------------------------------------
+function(autoviz_link_civetweb _target)
+  set(_autolink_root "${AUTOVIZ_DEPS_ROOT}/autolink")
+  set(_civetweb_c "${_autolink_root}/thirdparty/civetweb/src/civetweb.c")
+  if(NOT EXISTS "${_civetweb_c}")
+    message(FATAL_ERROR
+      "Autoviz: missing civetweb at ${_civetweb_c}\n"
+      "Run: git submodule update --init --recursive")
+  endif()
+
+  if(NOT TARGET civetweb)
+    add_library(civetweb STATIC "${_civetweb_c}")
+    target_include_directories(civetweb PUBLIC
+      "${_autolink_root}/thirdparty/civetweb/include")
+    target_compile_definitions(civetweb PUBLIC
+      USE_WEBSOCKET
+      NO_SSL
+      NO_CGI
+      NO_CACHING)
+    find_package(Threads REQUIRED)
+    target_link_libraries(civetweb PUBLIC Threads::Threads)
+    if(UNIX AND NOT APPLE)
+      target_link_libraries(civetweb PUBLIC dl)
+    endif()
+  endif()
+  # libautoviz is SHARED; civetweb must be built with -fPIC.
+  set_target_properties(civetweb PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
+  if(NOT TARGET nlohmann_json::nlohmann_json)
+    add_library(nlohmann_json INTERFACE)
+    target_include_directories(nlohmann_json INTERFACE
+      "${_autolink_root}/thirdparty/json/single_include")
+    add_library(nlohmann_json::nlohmann_json ALIAS nlohmann_json)
+  endif()
+
+  target_link_libraries(${_target} PRIVATE
+    civetweb nlohmann_json::nlohmann_json)
+endfunction()
+
+# ---------------------------------------------------------------------------
 # Post-create wiring for libautoviz: Qt / FFmpeg / Ogre / i18n.
 # ---------------------------------------------------------------------------
 function(autoviz_finalize_library _target)
   target_include_directories(${_target} PRIVATE ${AUTOVIZ_DEPS_ROOT})
+  autoviz_link_civetweb(${_target})
   add_dependencies(${_target} automsgs)
 
   # yaml-cpp compatible API backed by fkYAML (autonomy/common/yaml.hpp).

@@ -741,9 +741,33 @@ public:
         if (!loss.pending_sources) return;
         const auto geometry = map_ ? map_->geometry_revision : 0;
         if (recovery_loss_ && recovery_loss_->generation == loss.generation &&
-            recovery_loss_->map_epoch == loss.map_epoch && recovery_geometry_ == geometry &&
-            recovery_requirements_ == coverage_.requirements_revision() &&
-            recovery_sensor_epoch_ == snapshot_.sensors.sensor_epoch) return;
+            recovery_loss_->map_epoch == loss.map_epoch &&
+            recovery_sensor_epoch_ == snapshot_.sensors.sensor_epoch) {
+            // One open gap keeps its identity while admitted observations keep
+            // advancing the map and the work domain. Treating those revisions as
+            // a fresh loss retired the in-flight recovery request and restarted
+            // the plan on every frame, so one real gap was replayed as hundreds
+            // of plans and no sweep could finish. Geometry drift is bookkeeping
+            // here: the recovery poll still retires a request whose certification
+            // target moved backwards, and a new generation, alignment epoch or
+            // sensing epoch falls through to the full invalidation below.
+            recovery_geometry_ = geometry;
+            const auto requirements = coverage_.requirements_revision();
+            if (recovery_requirements_ != requirements) {
+                // A new work item can be marked satisfied by measurements that
+                // belong to the still-open gap. Reopen those source requirements
+                // without abandoning the observation motion that is already
+                // acquiring the replacement views.
+                coverage_.InvalidateSources(loss.pending_sources);
+                // Invalidation bumps the work revision itself; recording the
+                // pre-invalidation value would re-enter this branch forever and
+                // invalidate every in-flight plan.
+                recovery_requirements_ = coverage_.requirements_revision();
+                worker_reset_requested_.store(true);
+                snapshot_.completion_confirmed = false;
+            }
+            return;
+        }
         RevokeCompletion();
         if (finishing_) return;  // Partial/canceled results retain loss but do not restart exploration.
         CancelRecoveryOperation();
@@ -806,8 +830,8 @@ public:
         version.recovery_loss = recovery_loss_;
         version.recovery_region = options_.allowed_region;
         recovery_operation_ = version;
-        ++loss_recovery_attempts_;
         if (!services_.request_map_refresh(version)) {
+            ++loss_recovery_attempts_;
             CancelRecoveryOperation();
             loss_recovery_after_ = now + options_.blocked_retry_delay;
             snapshot_.reason = "mapper rejected observation scope recovery";
@@ -819,13 +843,20 @@ public:
         if (!recovery_operation_ || !recovery_loss_) return;
         const auto version = *recovery_operation_;
         const auto loss = observations_.LossSnapshot();
-        if (now > version.valid_until || !map_ || version.map_epoch != map_->map_epoch ||
+        const bool broken = now > version.valid_until || !map_ ||
+            version.map_epoch != map_->map_epoch ||
             loss.generation != recovery_loss_->generation ||
             loss.map_epoch != recovery_loss_->map_epoch || !loss.pending_sources ||
-            version.geometry_revision != map_->geometry_revision ||
-            version.requirements_revision != coverage_.requirements_revision() ||
             version.sensor_epoch != snapshot_.sensors.sensor_epoch ||
-            !snapshot_.sensors.ready || !PoseReady(now) || PendingInvalidation()) {
+            !snapshot_.sensors.ready || !PoseReady(now) || PendingInvalidation();
+        // A live map retires the receipt it was requested against. That is a
+        // re-based certification target, not a failed recovery, so it must not
+        // consume the bounded failure budget while mapping stays active.
+        const bool rebased = !broken &&
+            (map_->geometry_revision < version.geometry_revision ||
+             version.requirements_revision != coverage_.requirements_revision());
+        if (broken || rebased) {
+            if (!rebased) ++loss_recovery_attempts_;
             CancelRecoveryOperation();
             loss_recovery_after_ = now + options_.blocked_retry_delay;
             snapshot_.reason = "observation recovery dependency or deadline changed";
@@ -840,6 +871,7 @@ public:
             !recovery_reply_->recovery_scope_confirmed ||
             (options_.observation_recovery_policy == ObservationRecoveryPolicy::kRequireOriginalReplay &&
              !recovery_reply_->original_inputs_replayed)) {
+            ++loss_recovery_attempts_;
             CancelRecoveryOperation();
             loss_recovery_after_ = now + options_.blocked_retry_delay;
             snapshot_.reason = "mapper receipt did not certify the required loss recovery policy";

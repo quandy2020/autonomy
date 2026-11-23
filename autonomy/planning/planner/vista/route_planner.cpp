@@ -94,6 +94,10 @@ GraphUpdateStats VistaRoutePlanner::Update(const perception::MapReadView& map) {
         graph_ = {}; updater_.Clear(); ready_ = false; throw;
     }
 }
+void VistaRoutePlanner::SetAllowUnknown(bool allow) {
+    std::lock_guard<std::mutex> lock(mutex_);
+    options_.allow_unknown = allow;
+}
 VisibilityGraph VistaRoutePlanner::GraphSnapshot() const {
     std::lock_guard<std::mutex> lock(mutex_); return graph_;
 }
@@ -148,10 +152,16 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
                         << " distance=" << autonomy::navigation::Distance(start, route_start);
     }
     if (!validator.PoseSafe(goal)) {
+        const auto check = validator.safety().VerifyPose(goal);
         AINFO_EVERY(20) << "VISTA_ROUTE_GOAL_UNSAFE x=" << goal.x
                         << " y=" << goal.y << " support="
-                        << (map->startup_support ? 1 : 0);
-        return result;
+                        << (map->startup_support ? 1 : 0)
+                        << " reason=" << check.reason
+                        << " clearance=" << check.clearance;
+        // A 2D route may terminate inside the same bounded near-field deficit
+        // that is admissible for the start; the command gate remains the
+        // authority for actual motion. Unbounded obstacles still reject.
+        if (!validator.StartEscapable(goal)) return result;
     }
     const NodeId source = 0, target = std::numeric_limits<NodeId>::max();
     std::map<NodeId,Pose2d> poses{{source,route_start},{target,goal}};
