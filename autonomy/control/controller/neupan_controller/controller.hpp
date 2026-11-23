@@ -16,7 +16,7 @@
 
 /**
  * @file controller.hpp
- * @brief NeupanController plugin: cached path/scan + ONNX distance encoder.
+ * @brief NeupanController plugin: LaserScan + NeuPanPlanner.
  */
 
 #pragma once
@@ -24,16 +24,15 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <vector>
 
 #include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 #include <automsgs/msgs/sensor_msgs/laser_scan.pb.h>
 #include <Eigen/Core>
 
 #include "autonomy/control/common/controller_interface.hpp"
-#include "autonomy/control/controller/neupan_controller/motion_planner.hpp"
 #include "autonomy/control/controller/neupan_controller/obstacle_extractor.hpp"
-#include "autonomy/control/controller/neupan_controller/path_cache.hpp"
-#include "autonomy/control/controller/neupan_controller/robot_footprint.hpp"
+#include "autonomy/control/controller/neupan_controller/planner.hpp"
 #include "autonomy/control/controller/neupan_controller/types.hpp"
 #include "autonomy/control/proto/neupan_controller.pb.h"
 
@@ -44,13 +43,11 @@ namespace neupan_controller {
 
 /**
  * @class NeupanController
- * @brief Map-free local controller powered by a trained NeuPAN ObsPointNet.
+ * @brief Map-free local controller: DUNE (ONNX) + NRMP (DAQP) + PAN.
  *
- * Architecture (cache-oriented):
- * - @c SetPlan builds a @ref PathCache (SoA) once.
- * - @c SetLaserScan stores a shared scan snapshot.
- * - Each tick reuses an Eigen [2,N] obstacle buffer and cached laser
- * extrinsics.
+ * @c SetPlan feeds @ref NeuPanPlanner::SetInitialPath. Each tick extracts
+ * laser points in the base frame, transforms them to world, and runs
+ * @ref NeuPanPlanner::Forward.
  */
 class NeupanController : public common::ControllerInterface
 {
@@ -84,21 +81,20 @@ public:
 
 private:
     bool EnsureInitialized(std::string* error);
-    RobotFootprint CreateRobotFootprint(std::string* error) const;
+    Mat2X CreateVertices(std::string* error) const;
     void CacheLaserExtrinsic();
 
-    std::string plugin_name_;
     proto::NeupanControllerOptions options_neupan_;
-    std::unique_ptr<MotionPlanner> planner_;
+    std::unique_ptr<NeuPanPlanner> planner_;
     LaserExtrinsic laser_extrinsic_;
+    bool omni_{false};
 
-    std::shared_ptr<const PathCache> path_cache_;
-    std::mutex path_mutex_;
+    std::vector<InitialPath::PathPoint> path_points_;
+    std::mutex planner_mutex_;
 
     std::shared_ptr<const automsgs::msgs::sensor_msgs::LaserScan> laser_scan_;
     std::mutex laser_scan_mutex_;
 
-    // Reused per-tick obstacle buffer (avoids Point protobuf allocations).
     Eigen::Matrix2Xd obstacle_points_buffer_;
 
     double speed_limit_scale_{1.0};

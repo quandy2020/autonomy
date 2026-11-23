@@ -13,6 +13,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <iostream>
 #include <functional>
 #include <limits>
 #include <queue>
@@ -349,9 +350,15 @@ bool AddTraversableLink(F2CPath& path, const F2CPoint& from,
  * @return True when every sampled point stays inside @p free.
  */
 bool AddUTurn(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
-              const F2CCells& free, double velocity) {
+              const F2CCells& free, double velocity,
+              double min_radius = 0.0) {
   const double chord = from.Distance(to);
   if (chord < 1e-6) {
+    return false;
+  }
+  // A hairpin whose radius is half the row spacing cannot be steered by the
+  // robot; leave it to the pivot / traversable-link fallback instead.
+  if (min_radius > 0.0 && 0.5 * chord < 0.98 * min_radius) {
     return false;
   }
   // A pass has two ways round the same chord. Try the one that stays inside
@@ -495,10 +502,12 @@ F2CSwaths OrderSweep(const F2CSwaths& swaths) {
  */
 F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
                        double velocity, int* smooth_turns, int* tight_turns,
-                       int* link_turns) {
+                       int* link_turns, const F2CRobot* robot = nullptr,
+                       f2c::pp::TurningBase* turn_planner = nullptr) {
   F2CPath path;
   const FreeSpace free_space(free);
   F2CPoint previous_end;
+  double previous_angle = 0.0;
   bool have_previous = false;
   for (const auto& swath : swaths) {
     const auto& line = swath.GetPath();
@@ -521,9 +530,28 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
     }
     if (have_previous) {
       F2CPath turn;
+      bool turned = false;
+      // A half circle whose radius is the half row spacing (7.5 cm) is tighter
+      // than the robot can steer.  Let the bounded-curvature planner join the
+      // passes when the room leaves room for the loop; the sweep fallbacks
+      // below still handle corridors where it does not.
+      if (robot != nullptr && turn_planner != nullptr) {
+        try {
+          turn = f2c::pp::PathPlanning::PlanPathForConnection(
+              *robot, previous_end, previous_angle, F2CMultiPoint(), start,
+              (end - start).GetAngleFromPoint(), *turn_planner, &free);
+          turned = turn.size() > 1;
+        } catch (const std::exception&) {
+          turn = F2CPath();
+          turned = false;
+        }
+      }
       // Only wrap a short gap: a long chord would draw a huge circle.
-      bool turned = previous_end.Distance(start) <= 0.9 &&
-                    AddUTurn(turn, previous_end, start, free, velocity);
+      if (!turned) {
+        turned = previous_end.Distance(start) <= 0.9 &&
+                 AddUTurn(turn, previous_end, start, free, velocity,
+                          robot != nullptr ? robot->GetMinTurningRadius() : 0.0);
+      }
       if (!turned) {
         // Consecutive passes of different strips do not share an end line.
         // Run along the pass direction to the point beside the next start,
@@ -542,7 +570,8 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
           turn = F2CPath();
           AddLine(turn, previous_end, staging,
                   f2c::types::PathSectionType::TURN, velocity);
-          turned = AddUTurn(turn, staging, start, free, velocity);
+          turned = AddUTurn(turn, staging, start, free, velocity,
+                            robot != nullptr ? robot->GetMinTurningRadius() : 0.0);
         }
       }
       if (turned) {
@@ -570,8 +599,18 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
         ++*tight_turns;
       }
     }
+    // Seal the arrival at the pass start: the join ends with the approach
+    // heading while the pass has its own heading.  A zero-length state makes
+    // that change a pivot at the pass start instead of an impossible kink.
+    if (have_previous && path.size() > 0 &&
+        path.AtEnd().Distance(start) < 1e-6) {
+      path.AddState(start, path.back().angle, 0.0,
+                    f2c::types::PathDirection::FORWARD,
+                    f2c::types::PathSectionType::TURN, velocity);
+    }
     AddLine(path, start, end, f2c::types::PathSectionType::SWATH, velocity);
     previous_end = end;
+    previous_angle = (end - start).GetAngleFromPoint();
     have_previous = true;
   }
   return path;
@@ -626,41 +665,67 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   if (!band_mode.has_width()) {
     band_mode.set_width(config.headland_width);
   }
-  // The reference sweep runs each pass from wall to wall, so the swaths are
-  // generated on the full room polygon instead of an inset headland band.
-  bool band = false;
+  // Map regions are segmented on the complete free space.  A headland band
+  // then covers the wall edge while the interior is swept separately.  This
+  // is what keeps a narrow doorway or a wall-adjacent strip from becoming a
+  // permanent grey hole in the coverage display.
+  const bool use_band = headland || goal.generate_regions();
   F2CCells core = cells.Clone();
-  (void)headland;
-  (void)band_mode;
-  SwathGenerator swath_generator(config);
-  auto grouped = swath_generator.GenerateSwathsByCells(core, goal.swath_mode());
-  if (grouped.SizeTotal() == 0) {
-    return output;
+  bool band = false;
+  if (use_band) {
+    try {
+      core = headlands.GenerateHeadlands(cells, band_mode);
+      band = !core.IsEmpty() && core.Area() > 1e-3;
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "headland inset failed: %s\n", error.what());
+      core = cells.Clone();
+      band = false;
+      // A room too narrow for the configured band still needs a wall pass
+      // that is not drawn on the wall itself: retry with a half-swath inset
+      // so the perimeter keeps a little clearance from the obstacle cells.
+      proto::HeadlandMode thin = band_mode;
+      thin.set_width(std::max(0.05, 0.5 * config.operation_width));
+      try {
+        auto thin_core = headlands.GenerateHeadlands(cells, thin);
+        if (!thin_core.IsEmpty() && thin_core.Area() > 1e-3) {
+          core = thin_core;
+          band = true;
+        }
+      } catch (const std::exception&) {
+      }
+    }
   }
-  RouteGenerator route_generator(config);
-  F2CRoute route =
-      route_generator.GenerateRoute(core, core, grouped, goal.route_mode(), {});
-  route.SetField(core);
-  F2CSwaths ordered = Flatten(route);
-  if (ordered.size() != grouped.SizeTotal()) {
-    return output;
-  }
-  ordered = OrderSweep(ordered);
 
+  SwathGenerator swath_generator(config);
+  auto grouped = core.IsEmpty()
+                     ? F2CSwathsByCells()
+                     : swath_generator.GenerateSwathsByCells(core,
+                                                              goal.swath_mode());
+  F2CSwaths ordered;
+  F2CPath path;
   int smooth = 0;
   int tight = 0;
   int links = 0;
-  F2CPath path = BuildSweepPath(ordered, cells, config.cruise_speed, &smooth,
-                                &tight, &links);
-  if (path.size() < 2) {
-    return output;
+  if (grouped.SizeTotal() > 0) {
+    RouteGenerator route_generator(config);
+    F2CRoute route =
+        route_generator.GenerateRoute(core, core, grouped, goal.route_mode(), {});
+    route.SetField(core);
+    ordered = Flatten(route);
+    if (ordered.size() == grouped.SizeTotal()) {
+      ordered = OrderSweep(ordered);
+      path = BuildSweepPath(ordered, core, config.cruise_speed, &smooth,
+                            &tight, &links);
+      if (path.size() < 2) {
+        path = F2CPath();
+        ordered = F2CSwaths();
+      }
+    } else {
+      ordered = F2CSwaths();
+    }
   }
-  output.arc_turns = smooth;
-  output.pivot_turns = tight;
-  output.link_turns = links;
-  if (tight > 0) {
-    std::fprintf(stderr, "room sweep: %d arc turns, %d in-place turns\n", smooth,
-                 tight);
+  if (!band && path.size() < 2) {
+    return output;
   }
 
   // Sweep the wall band with concentric passes so the room is covered up to
@@ -668,32 +733,50 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   F2CPath band_path;
   if (band) {
     PathGenerator path_generator(config);
+    const F2CPoint near = path.size() > 1 ? path.AtStart() : F2CPoint(0.0, 0.0);
     try {
       for (const auto& band_cells : headlands.GenerateHeadlandSwaths(
                cells, config.operation_width, band_mode)) {
         F2CPath loop = path_generator.GeneratePerimeter(
-            band_cells, cells, path.AtStart(), goal.path_mode());
+            band_cells, cells, near, goal.path_mode());
         if (loop.size() > 1) {
           band_path += loop;
         }
       }
-    } catch (const std::exception&) {
+    } catch (const std::exception& error) {
+      std::fprintf(stderr, "headland band failed: %s\n", error.what());
       band_path = F2CPath();
     }
   }
   const bool perimeter = band_path.size() > 1;
+  if (!perimeter && path.size() < 2) {
+    return output;
+  }
   F2CPath total;
   if (perimeter) {
     total += band_path;
-    total += RoomLink(total.AtEnd(), total.back().angle, path.AtStart(),
-                      path[0].angle, config);
+    if (path.size() > 1) {
+      total += RoomLink(total.AtEnd(), total.back().angle, path.AtStart(),
+                        path[0].angle, config);
+      total += path;
+    }
+  } else {
+    total += path;
   }
-  total += path;
   output.path = total;
   output.swaths = ordered;
   output.swath_count = static_cast<int>(ordered.size());
-  const double core_coverage =
-      f2c::obj::FieldCoverage().ComputeCost(core, ordered);
+  output.arc_turns = smooth;
+  output.pivot_turns = tight;
+  output.link_turns = links;
+  if (tight > 0) {
+    std::fprintf(stderr, "room sweep: %d arc turns, %d in-place turns\n", smooth,
+                 tight);
+  }
+  double core_coverage = 0.0;
+  if (!core.IsEmpty() && core.Area() > 1e-9 && ordered.size() > 0) {
+    core_coverage = f2c::obj::FieldCoverage().ComputeCost(core, ordered);
+  }
   const double room_area = cells.Area();
   const double band_area = std::max(0.0, room_area - core.Area());
   output.coverage =
@@ -731,7 +814,13 @@ ComputeAction::Result PlanMapRegions(
   if (!connector.Valid()) {
     throw RequestException("Occupancy map has no traversable free space");
   }
-  std::vector<F2CCells> rooms = RegionSegmenter::MapSplit(goal.map(), {});
+  RegionSegmenter::MapOptions map_options;
+  // Keep the room cores separated by the robot clearance, then extend each
+  // label over the wall strip in MapSplit.  PlanRoom turns that strip into a
+  // headland band.
+  map_options.clearance = std::max(0.0, radius);
+  std::vector<F2CCells> rooms =
+      RegionSegmenter::MapSplit(goal.map(), map_options);
   if (rooms.empty()) {
     throw RequestException("Map split found no rooms");
   }
@@ -966,6 +1055,36 @@ ComputeAction::Result PlanMapRegions(
     if (room.path.size() > 1) {
       ExportPath(room.path, room_field, frame, true,
                  config.turn_point_distance, planned_room);
+    }
+    // A rounded corner in a thin wall band can graze a cell the occupancy grid
+    // marks blocked.  Drop those samples so the published tour never enters an
+    // obstacle; the neighbouring samples are a few centimetres apart, so the
+    // drawn line still follows the same pass.
+    if (planned_room.nav_path().poses_size() > 0) {
+      NavPath filtered;
+      filtered.mutable_header()->CopyFrom(planned_room.nav_path().header());
+      int adjusted = 0;
+      for (const auto& pose : planned_room.nav_path().poses()) {
+        const auto& p = pose.pose().position();
+        auto* out = filtered.add_poses();
+        *out = pose;
+        if (connector.Free(p.x(), p.y())) {
+          continue;
+        }
+        // The wall pass is drawn on the outermost free line; rounding a
+        // corner can push a sample one cell into the obstacle.  Pull it back
+        // to the nearest traversable cell instead of deleting the pass.
+        const auto free_point = connector.NearestFree({p.x(), p.y()});
+        out->mutable_pose()->mutable_position()->set_x(free_point.first);
+        out->mutable_pose()->mutable_position()->set_y(free_point.second);
+        ++adjusted;
+      }
+      if (adjusted > 0) {
+        result.add_warnings("Region " + std::to_string(index + 1) + ": " +
+                            std::to_string(adjusted) +
+                            " pose(s) snapped out of occupied cells");
+        *planned_room.mutable_nav_path() = filtered;
+      }
     }
     for (const auto& swath : planned_room.coverage_path().swaths()) {
       *components->add_swaths() = swath;
@@ -1252,7 +1371,28 @@ ComputeAction::Result CoverageServer::Compute(
       if (path_enabled) {
         stage("path", 0.7);
         PathGenerator pp(effective);
-        path = pp.GeneratePath(route, goal.path_mode());
+        try {
+          path = pp.GeneratePath(route, goal.path_mode());
+        } catch (const std::exception& error) {
+          // Household rooms are tighter than the bounded-curvature turn
+          // planner assumes: a Dubins join between two passes can run out of
+          // search space.  Fall back to the sweep builder, which rounds the
+          // U-turns where it can and pivots in place where the walls leave no
+          // room.
+          int smooth = 0, tight = 0, links = 0;
+          RobotParams fallback_robot(effective);
+          auto fallback_turn = pp.CreateCurve(goal.path_mode());
+          path = BuildSweepPath(swaths, core, effective.cruise_speed,
+                                &smooth, &tight, &links,
+                                &fallback_robot.GetRobot(),
+                                fallback_turn.get());
+          if (path.size() < 2) {
+            throw;
+          }
+          result.add_warnings(
+              std::string("bounded-curvature join fell back to sweep turns: ") +
+              error.what());
+        }
         if (goal.generate_headland_swaths()) {
           stage("headland_swaths", 0.8);
           F2CPath perimeter;
@@ -1299,6 +1439,10 @@ ComputeAction::Result CoverageServer::Compute(
             F2CPath pair;
             pair.AddState(path[i]);
             if (i + 1 < path.size()) pair.AddState(path[i + 1]);
+            if (!f2c::pp::detail::ValidPath(pair, robot.GetRobot(), &free)) {
+              if (i + 1 < path.size()) {
+              }
+            }
             if (!f2c::pp::detail::ValidPath(pair, robot.GetRobot(), &free))
               throw std::runtime_error(
                   "Final path constraint failure at state " +
@@ -1332,8 +1476,10 @@ ComputeAction::Result CoverageServer::Compute(
       RegionSegmenter::Options options;
       options.columns = goal.region_columns() > 0 ? goal.region_columns() : 2;
       options.rows = goal.region_rows() > 0 ? goal.region_rows() : 2;
+      RegionSegmenter::MapOptions map_options;
+      map_options.clearance = std::max(0.0, effective.robot_radius);
       std::vector<F2CCells> regions =
-          map_based ? RegionSegmenter::MapSplit(goal.map(), RegionSegmenter::MapOptions{})
+          map_based ? RegionSegmenter::MapSplit(goal.map(), map_options)
                     : RegionSegmenter::GridSplit(field, options);
       std::vector<std::pair<double, double>> centroids;
       for (const auto& cells : regions) {

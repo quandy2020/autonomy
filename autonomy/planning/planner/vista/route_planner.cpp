@@ -143,7 +143,8 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
                             << " floor=" << map->startup_support->floor_height
                             << " ceiling=" << map->startup_support->ceiling_height;
         }
-        if (!validator.StartEscapable(start)) return result;
+        // An occupied self-hit on the robot's own cell must not block routing:
+        // a nearby strictly safe cell is a valid route origin.
         const auto anchor = FindStartAnchor(*map, validator, start);
         if (!anchor) return result;
         route_start = *anchor;
@@ -206,8 +207,10 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     } else {
         result.used_grid_fallback = true;
         // Grid connectivity is a fallback, so graph sparsification cannot declare unreachable.
+        // The fallback must expand from the admitted route origin: the raw pose can
+        // be inside its own safety margin and would yield an empty field.
         autonomy::navigation::ReachabilityField field(
-            std::make_shared<autonomy::navigation::GeometrySafety>(validator.safety()),start,0,canceled);
+            std::make_shared<autonomy::navigation::GeometrySafety>(validator.safety()),route_start,0,canceled);
         auto route = field.PathTo(goal);
         if (field.canceled() || is_canceled()) { result.canceled = true; return result; }
         if (!route.poses.empty()) {

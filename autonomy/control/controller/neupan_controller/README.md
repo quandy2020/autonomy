@@ -1,45 +1,39 @@
 # Neupan Controller
 
-Loads a trained NeuPAN obstacle-point network and produces differential-drive commands `(v, ω)`.
+NeuPAN local controller: **DUNE** (ONNX ObsPointNet) + **NRMP** (DAQP QP) + **PAN**
+alternating loop. Differential and omni kinematics. No PyTorch / cvxpy / OSQP.
 
-Upstream algorithm: [NeuPAN](https://github.com/hanruihua/NeuPAN) (T-RO 2025).
+Algorithm: [NeuPAN](https://github.com/hanruihua/NeuPAN) (T-RO 2025). Layout
+informed by the public `neupan_cpp` port; this tree is Apache-2.0 and solves
+the QP with in-repo DAQP (`common/math/miqp`).
 
-## Export model
+## Export DUNE (ONNX)
 
 ```bash
-python3 tools/neupan/export_distance_encoder_onnx.py \
-  --checkpoint /path/to/model_5000.pth \
-  --edge-count 4 \
-  --output /path/to/distance_encoder.onnx
+python3 autonomy/control/controller/neupan_controller/tools/export_distance_encoder_onnx.py \
+  --checkpoint autonomy/control/conf/models/neupan_model_5000.pth \
+  --output autonomy/control/conf/models/neupan_distance_encoder.onnx
 ```
 
-`edge-count` must match the robot footprint edge count used in training (rectangle → 4).
+`edge-count` must match the footprint used in training (rectangle → 4).
+
+Without `neural_encoder_model_path`, the planner still tracks the global path
+(empty obstacle duals). Collision avoidance requires the encoder.
 
 ## Configure
 
-See [`conf/neupan_controller_example.pb.txt`](../../conf/neupan_controller_example.pb.txt):
+See `conf/neupan_controller_example.pb.txt`:
 
 - `controller_plugins: "neupan_controller:NeupanController"`
 - `neupan_controller_options.neural_encoder_model_path`
+- `robot_kinematics`: `differential` / `omni`
 
-## Architecture
+## Tick
 
 ```
-SetPlan  → PathCache (SoA x/y/yaw, warm-started closest index)
-SetScan  → shared LaserScan snapshot
-Tick     → Eigen[2,N] obstacles (reused buffer)
-         → DistanceEncoder (nearest features only)
-         → MotionPlanner → Twist
+SetPlan  → NeuPanPlanner::SetInitialPath
+SetScan  → LaserScan snapshot
+Tick     → base-frame points → world
+         → NeuPanPlanner (InitialPath + PAN[DistanceEncoder, NRMP])
+         → Twist (v,ω) or omni (vx,vy)
 ```
-
-| Module | Role |
-|---|---|
-| `types` | Shared POD (`LaserExtrinsic`, `DistanceFeatures`) |
-| `path_cache` | Flat path cache + lookahead |
-| `obstacle_extractor` | LaserScan → Eigen points |
-| `robot_footprint` | `Polygon` → Eigen halfspaces `A p ≤ b` |
-| `distance_encoder` | ONNX infer; only nearest dual kept |
-| `motion_planner` | Distance-gated path tracking |
-| `controller` | Plugin wiring / shared_ptr snapshots |
-
-Hot-path caches: laser extrinsic POD, path SoA, reusable Eigen / float scratch buffers, reused FloatTensorMap.

@@ -83,6 +83,14 @@ autocmake_test(control.policy_frame_align_test
 autocmake_test(control.policy_sand_planner_test
   SOURCES controller/policy_controller/sand_planner_test.cpp
   DEPENDENCIES autonomy_control)
+foreach(suite IN ITEMS robot_model nrmp planner obstacle_extractor)
+  add_executable(control.neupan_${suite}_test
+    controller/neupan_controller/${suite}_test.cpp)
+  target_link_libraries(control.neupan_${suite}_test PRIVATE
+    autonomy_control autonomy_common)
+  add_test(NAME control.neupan_${suite}_test COMMAND control.neupan_${suite}_test)
+  set_tests_properties(control.neupan_${suite}_test PROPERTIES TIMEOUT 60)
+endforeach()
 
 # These bounded scenario programs have their own main, rather than GTest cases.
 # Register them directly so autocmake's GTest XML verifier is not applied and

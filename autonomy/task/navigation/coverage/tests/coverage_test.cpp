@@ -72,6 +72,17 @@ void RequireInsideRooms(const ComputeAction::Result& out) {
   }
 }
 
+bool CrossesDoor(const ComputeAction::Result& out) {
+  for (const auto& pose : out.nav_path().poses()) {
+    const double x = pose.pose().position().x();
+    const double y = pose.pose().position().y();
+    if (x >= 3.85 && x <= 4.25 && y > 0.2 && y < 1.2) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void Success(const ComputeAction::Result& result){Require(result.error_code()==proto::NONE,"Planning failed: "+result.error_msg());Require(result.coverage_path().swaths_size()>0,"Missing swaths");}
 int main(int argc,char** argv) {
   std::vector<std::pair<std::string,std::function<void()>>> tests;
@@ -86,7 +97,7 @@ int main(int argc,char** argv) {
   add("region_tsp_matrix",[]{std::vector<std::vector<double>> c{{0,1,9},{1,0,1},{9,1,0}};std::vector<double> s{0,5,5};const auto r=RegionOrderer::Order(c,s);Require(r.order.size()==3,"Matrix TSP dropped rooms");Require(r.order[0]==0&&r.order[1]==1&&r.order[2]==2,"Matrix TSP order wrong");Require(std::abs(r.distance-2.0)<1e-9,"Matrix TSP cost wrong");});
   add("swath_spacing_override",[&]{auto r=Rectangle();r.set_robot_radius(0.4);r.set_swath_spacing(1.0);auto out=server.Compute(r);Success(out);for(const auto& s:out.coverage_path().swaths())Require(std::abs(s.width()-1.0)<1e-9,"Swath width ignores swath_spacing");auto wide=Rectangle();wide.set_robot_radius(0.4);wide.set_swath_spacing(2.0);auto wide_out=server.Compute(wide);Success(wide_out);Require(out.coverage_path().swaths_size()>wide_out.coverage_path().swaths_size(),"Tighter spacing should produce more swaths");});
   add("invalid_swath_spacing",[&]{auto r=Rectangle();r.set_swath_spacing(0);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Zero spacing accepted");r.set_swath_spacing(-1);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Negative spacing accepted");});
-  add("map_rooms_connect_through_door",[&]{Configuration tight;tight.robot_width=0.3;tight.operation_width=0.5;tight.min_turning_radius=0.3;tight.headland_width=0.6;CoverageServer map_server(tight);auto r=TwoRoomMap();auto out=map_server.Compute(r);Require(out.error_code()==proto::NONE,std::string("Map plan failed: ")+out.error_msg());Require(out.regions_size()==2,"Expected two rooms");Require(out.nav_path().poses_size()>0,"Missing global path");RequireInsideRooms(out);Require(out.travel_distance()>4.0,"Travel distance ignores the door detour");});
+  add("map_rooms_connect_through_door",[&]{Configuration tight;tight.robot_width=0.3;tight.operation_width=0.5;tight.min_turning_radius=0.3;tight.headland_width=0.6;CoverageServer map_server(tight);auto r=TwoRoomMap();auto out=map_server.Compute(r);Require(out.error_code()==proto::NONE,std::string("Map plan failed: ")+out.error_msg());Require(out.regions_size()==2,"Expected two rooms");Require(out.nav_path().poses_size()>0,"Missing global path");RequireInsideRooms(out);Require(CrossesDoor(out),"Global path never passes through the door");});
   add("flags_path_requires_route",[&]{auto r=Rectangle();r.set_generate_route(false);Require(server.Compute(r).error_code()==proto::INVALID_REQUEST,"Bad flag combination accepted");});
   add("swaths_only",[&]{auto r=Rectangle();r.set_generate_route(false);r.set_generate_path(false);auto out=server.Compute(r);Success(out);Require(!out.coverage_path().swaths_ordered()&&out.nav_path().poses().empty(),"Wrong stage output");});
   add("route_only",[&]{auto r=Rectangle();r.set_generate_path(false);auto out=server.Compute(r);Success(out);Require(out.coverage_path().swaths_ordered()&&!out.coverage_path().contains_turns(),"Wrong route output");});

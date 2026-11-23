@@ -179,6 +179,14 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
             throw std::invalid_argument("maximum_sensor_wait must be within [1, 600] seconds");
         config.session.maximum_sensor_wait = wait;
     }
+    config.session.prune_unobservable_units =
+        yaml["prune_unobservable_units"] ? yaml["prune_unobservable_units"].as<bool>() : false;
+    if (yaml["prune_after_sweeps"]) {
+        const auto sweeps = yaml["prune_after_sweeps"].as<int>();
+        if (sweeps < 1 || sweeps > 100)
+            throw std::invalid_argument("prune_after_sweeps must be within [1, 100]");
+        config.session.prune_after_sweeps = static_cast<unsigned>(sweeps);
+    }
     options.mapping.resolution = yaml["mapping_resolution"].as<double>();
     options.mapping.sensor_heights[1] = actual_mount.translation().z();
     options.mapping.robot_height = config.coverage.safety.robot_height = yaml["robot_height"].as<double>();

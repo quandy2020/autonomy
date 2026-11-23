@@ -148,6 +148,9 @@ class CoveragePanel : public QWidget {
 
   /** @brief Split the field into rooms, optionally from live /map. */
   void SplitRooms(bool from_map);
+  // Copies the live /map occupancy grid into the request so a preview plans
+  // around walls instead of the bare work-area rectangle.
+  bool AttachLiveMap(autonomy::task::coverage::proto::CoverageRequest* request);
 
   /** @brief Start full coverage of one room. */
   void StartRegion(std::size_t index);

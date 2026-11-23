@@ -1,7 +1,9 @@
 # Example ControllerOptions snippet for NeupanController.
-# 1) Export encoder: tools/neupan/export_distance_encoder_onnx.py \
-#      --checkpoint ... --edge-count 4 --output ...
-# 2) Set neural_encoder_model_path below and enable the plugin.
+# Weights live in autonomy/control/conf/models/ (gitignored).
+# Export:
+#   python3 autonomy/control/controller/neupan_controller/tools/export_distance_encoder_onnx.py \
+#     --checkpoint autonomy/control/conf/models/neupan_model_5000.pth \
+#     --output autonomy/control/conf/models/neupan_distance_encoder.onnx
 
 controller_frequency: 20.0
 publish_zero_velocity: true
@@ -9,7 +11,7 @@ publish_zero_velocity: true
 controller_plugins: "neupan_controller:NeupanController"
 
 neupan_controller_options {
-  neural_encoder_model_path: "/abs/path/to/distance_encoder.onnx"
+  neural_encoder_model_path: "models/neupan_distance_encoder.onnx"
   inference_backend: "onnx"
   inference_execution_provider: "cpu"
 

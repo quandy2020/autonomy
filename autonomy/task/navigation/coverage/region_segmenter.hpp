@@ -38,6 +38,7 @@ class RegionSegmenter {
     int max_regions{32};           /**< Keep at most this many rooms. */
     double min_passage_width{1.4}; /**< Doorways narrower than this split
                                         rooms; wider openings stay joined. */
+    double clearance{0.4};         /**< Robot radius kept clear of walls. */
   };
 
   /**

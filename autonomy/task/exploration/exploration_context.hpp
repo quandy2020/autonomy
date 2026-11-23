@@ -150,6 +150,8 @@ struct ExplorationSessionOptions {
     unsigned completion_rounds=3;  ///< Required stable completion rounds with valid observation evidence.
     ObservationRecoveryPolicy observation_recovery_policy = ObservationRecoveryPolicy::kReobserveScope;  ///< Fixed loss recovery/retention requirement.
     double maximum_sensor_wait=30;  ///< Bounded sensing/localization outage wait in seconds.
+    bool prune_unobservable_units = false;  ///< Opt-in: drop requirements no free viewpoint can observe.
+    unsigned prune_after_sweeps = 3;  ///< Zero-gain complete sweeps required before pruning.
     double planning_timeout=10;  ///< Deadline duration for a worker planning job, in seconds.
     double map_operation_timeout=10;  ///< Deadline duration for refresh, recovery or save, in seconds.
     double nominal_speed=.4;  ///< Translational speed used only for budget estimates, in meters per second.

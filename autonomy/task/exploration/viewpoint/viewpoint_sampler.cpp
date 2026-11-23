@@ -48,7 +48,33 @@ ViewpointSamplingResult ViewpointSampler::Sample(
                     << " support=" << (map.startup_support ? 1 : 0)
                     << " grid=" << grid.width() << "x" << grid.height()
                     << " stride=" << stride << " cursor=" << cursor;
-    autonomy::navigation::ReachabilityField reachable(geometry, start, 0, cancel_checker);
+    // The reachability field is empty unless its origin is verifiably safe. A robot
+    // standing on a cell the mapper has not certified as free would then make every
+    // viewpoint unreachable, so fall back to the nearest safe neighbouring cell.
+    Pose2d origin = start;
+    if (!start_check.safe) {
+        const auto cell = grid.WorldToCell(start);
+        if (cell) {
+            const int span = std::max(1, static_cast<int>(std::ceil(.60 / grid.resolution())));
+            double best = std::numeric_limits<double>::infinity();
+            for (int dy = -span; dy <= span; ++dy) for (int dx = -span; dx <= span; ++dx) {
+                const int x = cell->x + dx, y = cell->y + dy;
+                if (!grid.Contains(x, y) || grid.At(x, y).state != autonomy::navigation::CellState::kFree)
+                    continue;
+                auto candidate = grid.CellCenter(x, y);
+                candidate.yaw = start.yaw;
+                const double distance = autonomy::navigation::Distance(start, candidate);
+                if (distance <= 1e-9 || distance > .60 || distance >= best) continue;
+                if (!geometry->VerifyPose(candidate).safe) continue;
+                best = distance; origin = candidate;
+            }
+            if (best < std::numeric_limits<double>::infinity()) {
+                AINFO_EVERY(20) << "EXPLORATION_SAMPLER start_anchor=(" << origin.x << ","
+                                << origin.y << ") distance=" << best;
+            }
+        }
+    }
+    autonomy::navigation::ReachabilityField reachable(geometry, origin, 0, cancel_checker);
     if (reachable.canceled()) {
         result.canceled = true;
         return result;
@@ -83,7 +109,12 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         const int cell_index = static_cast<int>(cursor / options.yaw_samples);
         if (cell_index != checked_cell) {
             checked_cell = cell_index;
-            cell_safe = geometry->VerifyPose(pose).safe;
+            const auto verified = geometry->VerifyPose(pose);
+            // Admit exactly what the route owner admits: its bounded start/goal
+            // escape tolerance, not the strict footprint verdict alone.
+            const double radius = safety.robot_radius + safety.horizontal_margin;
+            cell_safe = verified.safe ||
+                geometry->Clearance(pose) + .02 + 1e-12 >= radius;
         }
         if (!cell_safe) continue;
         pose.yaw = 2 * autonomy::navigation::kPi * (cursor % options.yaw_samples) /

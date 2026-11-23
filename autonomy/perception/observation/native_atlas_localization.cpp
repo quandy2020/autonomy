@@ -291,6 +291,21 @@ std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(
             return {};
         }
     }
+    if (!selected) {
+        // Status and odometry can be stamped a few milliseconds apart even when
+        // they describe the same acquisition. A nearby complete sample moves the
+        // pose by millimetres at walking speed and keeps the frame localized.
+        constexpr double kNearbyAcquisitionSeconds = .05;
+        double best = kNearbyAcquisitionSeconds;
+        for (const auto& item : impl_->samples_) {
+            if (!item.second.status || !item.second.status->healthy ||
+                item.second.status->identity != *impl_->identity_ ||
+                !item.second.backend_from_camera || !item.second.pose) continue;
+            const double delta = std::abs(Seconds(item.first) - acquisition);
+            if (!std::isfinite(delta) || delta > best) continue;
+            best = delta; selected = &item.second;
+        }
+    }
     if (!selected || !selected->status || !selected->status->healthy || !selected->backend_from_camera ||
         selected->status->identity != *impl_->identity_) return {};
     AcquisitionLocalization result;

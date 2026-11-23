@@ -308,7 +308,7 @@ def main():
                 settings = {
                     'clock_domain': 'system', 'camera_info_file': str(info_file), 'tf_static_file': str(tf_file),
                     'depth_topic': channels['depth'], 'camera_info_topic': channels['camera_info'], 'calibration_revision': 1,
-                    'minimum_depth': .1, 'maximum_depth': 8., 'atlas_frame': 'atlas_optical_map',
+                    'minimum_depth': .25, 'maximum_depth': 8., 'atlas_frame': 'atlas_optical_map',
                     'ray_pixel_stride': 4,
                     'navigation_frame': 'native_exploration_map', 'physical_base_frame': habitat['sensors']['odom']['child_frame'],
                     'navigation_base_frame': 'native_exploration_base', 'atlas_odometry_topic': args.prefix + '/atlas/odometry',
@@ -317,6 +317,7 @@ def main():
                     'navigation_tree': '/workspace/autonomy/src/autonomy/autonomy/task/conf/behavior_tree/navigation/navigate_to_pose_exploration.xml',
                     'time_budget': args.exploration_time_budget,
                     'require_return': bool(args.require_return), 'require_save': True,
+                    'prune_unobservable_units': False,
                     'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': args.region[0], 'min_y': args.region[1],
                                'max_x': args.region[2], 'max_y': args.region[3]},

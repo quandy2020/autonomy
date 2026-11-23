@@ -557,9 +557,13 @@ void CoveragePanel::EnsureClients() {
         node->CreateWriter<automsgs::msgs::nav_msgs::Path>("/coverage/plan");
   }
   bool exists = false;
-  for (const auto* display : manager_->displays()) {
+  for (auto* display : manager_->displays()) {
     if (display != nullptr && display->channel() == "/coverage/plan") {
       exists = true;
+      // The preview is a plan, not a live route: pruning behind the robot
+      // hides every swath already passed and makes covered rooms look empty.
+      display->setPropertyValue("prune_behind_robot", "false");
+      display->setPropertyValue("hide_when_arrived", "false");
     }
   }
   if (!exists) {
@@ -572,6 +576,8 @@ void CoveragePanel::EnsureClients() {
     config.properties["line_width"] = "0.10";
     config.properties["alpha"] = "0.95";
     config.properties["offset"] = "0;0;0.10";
+    config.properties["prune_behind_robot"] = "false";
+    config.properties["hide_when_arrived"] = "false";
     manager_->addDisplay(config);
   }
   bool markers_exist = false;
@@ -1093,6 +1099,7 @@ autonomy::task::coverage::proto::CoverageRequest CoveragePanel::BuildRequest()
   request.mutable_path_mode()->set_continuity_mode("DISCONTINUOUS");
   request.mutable_path_mode()->set_turn_point_distance(0.05);
   request.set_coordinates_in_cartesian_frame(true);
+  request.set_generate_headland(true);
   return request;
 }
 
@@ -1108,6 +1115,14 @@ void CoveragePanel::PreviewCoverage() {
     }
     Compute::Goal goal;
     *goal.mutable_request() = BuildRequest();
+    // A plan over the bare work-area rectangle crosses walls. When the live
+    // occupancy grid is available, preview the same per-room tour that
+    // "Clean all rooms" executes.
+    if (AttachLiveMap(goal.mutable_request())) {
+      goal.mutable_request()->set_generate_regions(true);
+      goal.mutable_request()->set_region_columns(room_columns_->value());
+      goal.mutable_request()->set_region_rows(room_rows_->value());
+    }
     cancel_requested_ = false;
     pending_replan_ = false;
     compute_acceptance_ = compute_client_->AsyncSendGoal(goal);
@@ -1131,6 +1146,14 @@ void CoveragePanel::StartCoverage() {
     }
     Navigate::Goal goal;
     *goal.mutable_request() = BuildRequest();
+    // Drive exactly what Preview showed: split the live map into rooms, plan
+    // every room on its own and stitch the legs between them.  A single plan
+    // over the bare work-area rectangle would cut through the walls.
+    if (AttachLiveMap(goal.mutable_request())) {
+      goal.mutable_request()->set_generate_regions(true);
+      goal.mutable_request()->set_region_columns(room_columns_->value());
+      goal.mutable_request()->set_region_rows(room_rows_->value());
+    }
     goal.set_task_id(
         QUuid::createUuid().toString(QUuid::WithoutBraces).toStdString());
     goal.set_client_id("autoviz-navigation-panel");
@@ -1593,6 +1616,43 @@ void CoveragePanel::ActivateTool(const QString& tool_id) {
 }
 
 
+bool CoveragePanel::AttachLiveMap(
+    autonomy::task::coverage::proto::CoverageRequest* request) {
+  if (request == nullptr) {
+    return false;
+  }
+  display::MapDisplay* map_display = nullptr;
+  for (auto* candidate : manager_->displays()) {
+    auto* map = dynamic_cast<display::MapDisplay*>(candidate);
+    if (map != nullptr && map->channel() == "/map") {
+      map_display = map;
+      break;
+    }
+  }
+  const auto* grid =
+      map_display != nullptr ? map_display->mapMessage() : nullptr;
+  if (grid == nullptr || grid->info().width() == 0 ||
+      grid->info().height() == 0 ||
+      grid->data().size() != static_cast<std::size_t>(grid->info().width()) *
+                                  static_cast<std::size_t>(grid->info().height())) {
+    return false;
+  }
+  auto* map = request->mutable_map();
+  map->set_frame_id(grid->header().frame_id());
+  map->set_resolution(grid->info().resolution());
+  map->set_width(grid->info().width());
+  map->set_height(grid->info().height());
+  map->set_origin_x(grid->info().origin().position().x());
+  map->set_origin_y(grid->info().origin().position().y());
+  const auto& q = grid->info().origin().orientation();
+  map->set_origin_yaw(std::atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
+                                 1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z())));
+  for (const int value : grid->data()) {
+    map->add_data(value);
+  }
+  return true;
+}
+
 void CoveragePanel::SplitRooms(bool from_map) {
   try {
     CommitEditors();
@@ -1605,33 +1665,8 @@ void CoveragePanel::SplitRooms(bool from_map) {
     goal.mutable_request()->set_generate_regions(true);
     goal.mutable_request()->set_region_columns(room_columns_->value());
     goal.mutable_request()->set_region_rows(room_rows_->value());
-    if (from_map) {
-      display::MapDisplay* map_display = nullptr;
-      for (auto* candidate : manager_->displays()) {
-        auto* map = dynamic_cast<display::MapDisplay*>(candidate);
-        if (map != nullptr && map->channel() == "/map") {
-          map_display = map;
-          break;
-        }
-      }
-      const auto* grid =
-          map_display != nullptr ? map_display->mapMessage() : nullptr;
-      if (grid == nullptr) {
-        throw std::runtime_error("No /map occupancy grid available");
-      }
-      auto* map = goal.mutable_request()->mutable_map();
-      map->set_frame_id(grid->header().frame_id());
-      map->set_resolution(grid->info().resolution());
-      map->set_width(grid->info().width());
-      map->set_height(grid->info().height());
-      map->set_origin_x(grid->info().origin().position().x());
-      map->set_origin_y(grid->info().origin().position().y());
-      const auto& q = grid->info().origin().orientation();
-      map->set_origin_yaw(std::atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
-                                    1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z())));
-      for (const int value : grid->data()) {
-        map->add_data(value);
-      }
+    if (from_map && !AttachLiveMap(goal.mutable_request())) {
+      throw std::runtime_error("No /map occupancy grid available");
     }
     cancel_requested_ = false;
     compute_acceptance_ = compute_client_->AsyncSendGoal(goal);
@@ -1648,8 +1683,8 @@ void CoveragePanel::StartAllRooms() {
     SetStatus(tr("Split the map into rooms first"));
     return;
   }
-  cleaning_regions_ = true;
-  StartRegion(0);
+  cleaning_regions_ = false;
+  StartCoverage();
 }
 
 void CoveragePanel::StartRegion(std::size_t index) {
@@ -1671,7 +1706,28 @@ void CoveragePanel::StartRegion(std::size_t index) {
     auto request = BuildRequest();
     request.clear_polygons();
     request.set_generate_regions(false);
-    request.set_generate_headland(false);
+    // A room narrower than twice the wall band loses its whole core in the
+    // headland inset and the planner rejects the goal.  Keep the band for
+    // wide rooms and fall back to a plain sweep for thin corridors.
+    double ring_area = 0.0;
+    double ring_perimeter = 0.0;
+    for (const auto& polygon : region.polygons()) {
+      const auto& points = polygon.coordinates();
+      const int count = points.size();
+      for (int i = 0; i < count; ++i) {
+        const auto& a = points.Get(i);
+        const auto& b = points.Get((i + 1) % count);
+        ring_area += a.axis1() * b.axis2() - b.axis1() * a.axis2();
+        ring_perimeter += std::hypot(b.axis1() - a.axis1(),
+                                     b.axis2() - a.axis2());
+      }
+    }
+    ring_area = std::abs(ring_area) * 0.5;
+    const double mean_width =
+        ring_perimeter > 1e-6 ? 2.0 * ring_area / ring_perimeter : 0.0;
+    const bool narrow_room =
+        mean_width < 2.0 * headland_->value() + 0.2;
+    request.set_generate_headland(!narrow_room);
     for (const auto& polygon : region.polygons()) {
       auto* ring = request.add_polygons();
       for (const auto& point : polygon.coordinates()) {

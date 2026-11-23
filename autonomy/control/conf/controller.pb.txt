@@ -419,6 +419,7 @@ nmpc_controller_options {
 
 # ---------- NeuPAN ----------
 # See conf/neupan_controller_example.pb.txt
+# Weights: autonomy/control/conf/models/neupan_distance_encoder.onnx
 # neupan_controller_options {
-#   neural_encoder_model_path: "/path/to/distance_encoder.onnx"
+#   neural_encoder_model_path: "models/neupan_distance_encoder.onnx"
 # }

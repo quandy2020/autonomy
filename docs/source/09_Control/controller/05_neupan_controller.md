@@ -1,7 +1,7 @@
 (neupan-controller)=
 # 5. NeuPAN Controller
 
-激光障碍点 + **ONNX 距离编码** + 运动规划，输出差速 $(v,\omega)$。基于 [NeuPAN](https://github.com/hanruihua/NeuPAN)。源码：`neupan_controller/`。
+激光障碍点 + **ONNX DUNE** + **NRMP（DAQP）** + PAN，输出差速 $(v,\omega)$ 或全向 $(v_x,v_y)$。基于 [NeuPAN](https://github.com/hanruihua/NeuPAN)。源码：`neupan_controller/`。QP 使用仓库内 `common/math/miqp`（DAQP），不依赖 OSQP / cvxpy。
 
 激光障碍点经 ONNX 距离编码再进运动规划，输出线速度与角速度。有稳定 LaserScan 且模型已导出时，可在传统几何控制外接学习距离场；scan 不对齐或无 ONNX 时不要选。
 
@@ -12,26 +12,25 @@
 ## 流水线
 
 ```text
-SetPlan → PathCache
+SetPlan → NeuPanPlanner::SetInitialPath
 SetScan → LaserScan 快照
-Tick → ObstacleExtractor → DistanceEncoder (ONNX) → MotionPlanner → Twist
+Tick → ObstacleExtractor → world 点 → NeuPanPlanner (PAN: DistanceEncoder + NRMP) → Twist
 ```
 
 | 模块 | 作用 |
 |------|------|
-| `path_cache` | 路径 SoA + lookahead |
-| `obstacle_extractor` | Scan → 点集 |
-| `robot_footprint` | 多边形 → 半空间 |
-| `distance_encoder` | ONNX 推理 |
-| `motion_planner` | 距离门控跟踪 |
+| `planner` | `NeuPanPlanner`：参考路径 + PAN |
+| `obstacle_extractor` | Scan → 基座系点集 |
+| `robot_model` | 运动学 + 足迹半空间 G/h |
+| `distance_encoder` | ONNX DUNE 对偶 |
+| `nrmp` | DAQP 二次规划 |
 
 ## 模型导出
 
 ```bash
-python3 tools/neupan/export_distance_encoder_onnx.py \
-  --checkpoint /path/to/model.pth \
-  --edge-count 4 \
-  --output /path/to/distance_encoder.onnx
+python3 autonomy/control/controller/neupan_controller/tools/export_distance_encoder_onnx.py \
+  --checkpoint autonomy/control/conf/models/neupan_model_5000.pth \
+  --output autonomy/control/conf/models/neupan_distance_encoder.onnx
 ```
 
 `edge-count` 须与训练足迹边数一致（矩形常为 4）。

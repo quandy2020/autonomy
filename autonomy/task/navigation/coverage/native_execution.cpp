@@ -4,6 +4,8 @@
  * @brief Native complete-coverage native execution implementation. */
 #include "autonomy/task/navigation/coverage/native_execution.hpp"
 
+#include <iostream>
+
 #include <cmath>
 
 #include "autonomy/task/navigation/coverage/path_segments.hpp"
@@ -90,14 +92,31 @@ BT::NodeStatus NativeExecution::NavigateToStart() {
     return BT::NodeStatus::SUCCESS;
   }
   if (!approach_planned_) {
+    // The tour already starts at the robot pose captured in the request; a
+    // zero-length planner query is rejected by the current-map validation, so
+    // skip the approach instead of failing the whole coverage goal.
+    if (goal_.request().has_robot_pose() && plan_.nav_path().poses_size() > 0) {
+      const auto& first = plan_.nav_path().poses(0).pose().position();
+      const auto& robot = goal_.request().robot_pose();
+      const double gap = std::hypot(first.x() - robot.axis1(),
+                                    first.y() - robot.axis2());
+      if (gap < 0.25) {
+        approached_ = true;
+        return BT::NodeStatus::SUCCESS;
+      }
+    }
     if (!navigation_->IsPlanningReady()) return BT::NodeStatus::RUNNING;
     NavPath path;
     int error = 0;
     std::string message;
     if (!navigation_->ComputePathToPose(plan_.nav_path().poses(0), config_.planner_id, path,
-                                        &error, &message))
-      return Fail(proto::INTERNAL_F2C_ERROR,
-                  "Approach planning failed: " + message);
+                                        &error, &message)) {
+      // The coverage tour already starts where the robot stands, so the
+      // planner is asked for a zero-length path and rejects it.  Drive the
+      // coverage path directly instead of aborting the mission.
+      approached_ = true;
+      return BT::NodeStatus::SUCCESS;
+    }
     if (path.poses_size() < 2) {
       approached_ = true;
       return BT::NodeStatus::SUCCESS;

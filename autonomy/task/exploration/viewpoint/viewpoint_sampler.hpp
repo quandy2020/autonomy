@@ -21,7 +21,9 @@ struct ViewpointSamplingOptions {
     unsigned yaw_samples = 8;  ///< Number of uniform executable direction samples.
     std::size_t maximum_candidates = 512;  ///< Maximum positive-gain views returned.
     std::size_t maximum_evaluations = 8192;  ///< Maximum visibility predictions.
-    std::size_t maximum_examined = 8192;  ///< Maximum slots checked, including skips.
+    std::size_t maximum_examined = 100000;  ///< Maximum slots checked, including skips.
+                                            ///< One call must reach the known region
+                                            ///< instead of ending in empty unknown corners.
 };
 
 /** @brief Page progress; a limited or canceled page is never a whole sweep proof. */

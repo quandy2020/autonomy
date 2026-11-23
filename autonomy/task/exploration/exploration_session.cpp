@@ -1682,6 +1682,20 @@ public:
                 Retry(now, "no adaptation preserves required observation coverage");
                 continue;
             }
+            if (options_.prune_unobservable_units && result.decision.sweep_checked &&
+                !result.decision.sampling_limited && coverage_.PendingCount()) {
+                if (++unobservable_sweeps_ >= std::max(1U, options_.prune_after_sweeps)) {
+                    std::vector<CoverageId> unobservable;
+                    for (const auto& item : coverage_.units())
+                        if (item.second.pending) unobservable.push_back(item.first);
+                    for (const auto& id : unobservable) coverage_.Remove(id);
+                    unobservable_sweeps_ = 0;
+                    AINFO << "EXPLORATION_PRUNE unobservable=" << unobservable.size()
+                          << " pending_after=" << coverage_.PendingCount();
+                }
+            } else {
+                unobservable_sweeps_ = 0;
+            }
             if (recovery_loss_) {
                 if (!coverage_.PendingCount() && !snapshot_.live_frontiers &&
                     result.decision.sweep_checked && result.decision.grid_fallback_checked &&
@@ -1930,8 +1944,14 @@ public:
             CancelStartupObservation();
             CancelRecoveryOperation();
             snapshot_.state = ExplorationState::kWaitingForSensor;
-            if (!wait_started_) wait_started_ = now;
-            if (now - *wait_started_ > options_.maximum_sensor_wait)
+            if (!PoseReady(now)) {
+                if (!wait_started_) wait_started_ = now;
+            } else {
+                // Localization is back: the health monitor may still be re-arming, but
+                // the outage window must not keep running on a recovered pose.
+                wait_started_.reset();
+            }
+            if (wait_started_ && now - *wait_started_ > options_.maximum_sensor_wait)
                 BeginFinish(!localization_ ? ExplorationOutcome::kFailedLocalization :
                             ExplorationOutcome::kIncompleteObservation, now);
             Publish();
@@ -2154,6 +2174,7 @@ public:
     perception::ObservationCut observation_baseline_{};  ///< Last verified excluded historical prefix.
     std::uint64_t observation_recovery_generation_ = 0;  ///< Last verified replacement-baseline identity.
     std::uint64_t recovery_geometry_ = 0, recovery_requirements_ = 0, recovery_sensor_epoch_ = 0;
+    unsigned unobservable_sweeps_ = 0;  ///< Consecutive zero-gain complete sweeps.
     unsigned loss_recovery_attempts_ = 0;  ///< Bounded refresh attempts for one compatible loss scope.
     double loss_recovery_after_ = 0;  ///< Earliest owner-clock time of a retry.
     std::optional<PhaseTicket> active_phase_;

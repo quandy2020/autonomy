@@ -21,8 +21,6 @@
 
 #pragma once
 
-#include <limits>
-
 #include <Eigen/Core>
 
 namespace autonomy {
@@ -40,16 +38,29 @@ struct LaserExtrinsic {
     double range_max{30.0};
 };
 
-/**
- * @brief Nearest-obstacle latent features used by MotionPlanner.
- *
- * Only the closest obstacle is retained (full-batch dual tensors are not kept).
- */
-struct DistanceFeatures {
-    /** @brief Minimum latent distance, or +inf when N = 0. */
-    double min_distance{std::numeric_limits<double>::infinity()};
-    /** @brief Dual direction lambda of the nearest point in the world frame. */
-    Eigen::Vector2d nearest_dual_direction{Eigen::Vector2d::Zero()};
+using Mat = Eigen::MatrixXd;
+using Vec = Eigen::VectorXd;
+using Mat2X = Eigen::Matrix2Xd;
+using Mat3X = Eigen::Matrix3Xd;
+using Mat22 = Eigen::Matrix2d;
+using Mat33 = Eigen::Matrix3d;
+using Mat32 = Eigen::Matrix<double, 3, 2>;
+using Vec2 = Eigen::Vector2d;
+using Vec3 = Eigen::Vector3d;
+
+/** @brief Diff: (v, omega). Omni: (speed, travel direction). */
+enum class Kinematics { kDiff, kOmni };
+
+/** @brief NRMP / adjust weights (NeuPAN paper). */
+struct NrmpParams {
+    int max_num{10};
+    Vec3 q_s{Vec3::Ones()};
+    double p_u{1.0};
+    double eta{10.0};
+    double d_max{1.0};
+    double d_min{0.1};
+    double ro_obs{400.0};
+    double bk{0.1};
 };
 
 }  // namespace neupan_controller

@@ -20,7 +20,8 @@ package autonomy.control.proto;
 // Export trained NeuPAN obstacle-point network weights to ONNX with
 // tools/neupan/export_distance_encoder_onnx.py.
 message NeupanControllerOptions {
-  // Path to the distance encoder ONNX model (input [N,2] → [N,edge_count]).
+  // Distance encoder ONNX (input [N,2] → [N,edge_count]). Relative paths
+  // resolve under autonomy/control/conf/ (e.g. models/neupan_distance_encoder.onnx).
   string neural_encoder_model_path = 1;
   // Inference backend id: "onnx" (default) or "tensorrt".
   string inference_backend = 2;
@@ -36,7 +37,8 @@ message NeupanControllerOptions {
   // Emergency stop when encoder distance falls below this [m].
   double collision_stop_distance = 7;
 
-  // Robot kinematics model: "differential" | "ackermann".
+  // Robot kinematics: "differential" | "omni" | "ackermann" (ackermann uses
+  // the same NRMP model as differential with a rear-biased rectangle).
   string robot_kinematics = 8;
   double footprint_length = 9;
   double footprint_width = 10;

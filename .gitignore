@@ -136,7 +136,7 @@ autonomy/navigation/conf/models/*.onnx
 autonomy/navigation/conf/models/*.engine
 autonomy/navigation/conf/models/*.plan
 
-# Policy / SanD-Planner checkpoints and exported graphs (do not commit)
+# Policy / SanD / NeuPAN checkpoints and exported graphs (do not commit)
 autonomy/control/conf/models/*.pth
 autonomy/control/conf/models/*.onnx
 autonomy/control/conf/models/*.engine
