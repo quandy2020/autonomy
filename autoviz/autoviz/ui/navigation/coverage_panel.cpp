@@ -228,7 +228,7 @@ void CoveragePanel::BuildUi() {
   headland_->setRange(0.1, 20.0);
   headland_->setDecimals(2);
   headland_->setSingleStep(0.05);
-  headland_->setValue(1.2);
+  headland_->setValue(0.3);
   headland_->setSuffix(tr(" m"));
   headland_->setButtonSymbols(QAbstractSpinBox::NoButtons);
   headland_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -564,6 +564,11 @@ void CoveragePanel::EnsureClients() {
       // hides every swath already passed and makes covered rooms look empty.
       display->setPropertyValue("prune_behind_robot", "false");
       display->setPropertyValue("hide_when_arrived", "false");
+      // The coloured room paths carry the geometry; keep the whole tour only
+      // as a faint guide so it links the rooms without drowning them.
+      display->setPropertyValue("color", "150;155;165");
+      display->setPropertyValue("alpha", "0.55");
+      display->setPropertyValue("line_width", "0.05");
     }
   }
   if (!exists) {
@@ -572,9 +577,9 @@ void CoveragePanel::EnsureClients() {
     config.name = "Full coverage path";
     config.channel = "/coverage/plan";
     config.enabled = true;
-    config.properties["color"] = "255;215;70";
-    config.properties["line_width"] = "0.10";
-    config.properties["alpha"] = "0.95";
+    config.properties["color"] = "150;155;165";
+    config.properties["line_width"] = "0.05";
+    config.properties["alpha"] = "0.55";
     config.properties["offset"] = "0;0;0.10";
     config.properties["prune_behind_robot"] = "false";
     config.properties["hide_when_arrived"] = "false";

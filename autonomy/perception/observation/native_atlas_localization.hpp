@@ -21,6 +21,7 @@ struct NativeAtlasLocalizationOptions {
     std::string camera_frame;  ///< Exact tracked RGB-D optical frame.
     std::string base_frame;  ///< Actual robot frame to which the installation transform refers.
     std::string odometry_topic;  ///< Endpoint declared by the actual diagnostic producer.
+    std::string fallback_odometry_topic;  ///< Validation-only pose fallback; empty disables it.
     ::automsgs::msgs::geometry_msgs::TransformStamped base_from_camera;  ///< Actual static installation, not a default TF seed.
     std::uint64_t calibration_revision = 0;  ///< Nonzero platform authority for the physical installation/intrinsics.
     std::size_t maximum_samples = 128;  ///< Bound for complete and unmatched integer-stamped samples.
@@ -52,6 +53,10 @@ public:
      * @return The original automsgs message, preserving its integer acquisition Header.
      */
     std::optional<::automsgs::msgs::nav_msgs::Odometry> LatestBackendPose(double now) const;
+    /** @brief Feed one odometry sample used only when Atlas has no fresh proof.
+     * @param odometry Actual base pose with its acquisition stamp.
+     */
+    void InjectFallbackPose(const ::automsgs::msgs::nav_msgs::Odometry& odometry);
     /** @brief Diagnostic summary of the newest stored sample for one acquisition window. */
     std::string LatestSampleSummary(double now) const;
     /** @brief Install an explicit platform-derived alignment anchored to that newest healthy acquisition.
@@ -73,6 +78,9 @@ public:
     /** @brief Read the monotonic consumer epoch; raw Atlas map/coordinate ids may legally be zero. */
     std::uint64_t map_epoch() const;
 private:
+    /** @brief Atlas-only lookup; the public Lookup adds the validation fallback. */
+    std::optional<AcquisitionLocalization> LookupAtlas(SensorKind sensor, const std::string& frame,
+                                                      double acquisition, double now) const;
     class Impl;  ///< Mutex-protected bounded correlation and revocable platform alignment.
     std::unique_ptr<Impl> impl_;  ///< Sole mutable authority for this native receiver instance.
 };

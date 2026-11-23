@@ -112,6 +112,8 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     options.navigation_base_frame = yaml["navigation_base_frame"].as<std::string>();
     options.localization.odometry_topic = yaml["atlas_odometry_topic"].as<std::string>(); options.status_topic = yaml["atlas_status_topic"].as<std::string>();
     options.localization.calibration_revision = config.input.depth_calibration_revision; options.localization.evidence_lifetime = .75;
+    options.localization.fallback_odometry_topic =
+        yaml["fallback_odometry_topic"] ? yaml["fallback_odometry_topic"].as<std::string>() : std::string{};
     ::autonomy::transform::tf2::BufferCore mounts;
     for (const auto& transform : tf.transforms()) {
         if (transform.header().frame_id() == "map" || transform.header().frame_id() == "odom" ||
@@ -1221,6 +1223,7 @@ public:
     std::shared_ptr<perception::ReaderRetirement> retirement_;  ///< Actual provider teardown and completion evidence.
     std::shared_ptr<autolink::Reader<::automsgs::msgs::nav_msgs::Odometry>> odometry_reader_;  ///< Actual configured Atlas pose reader.
     std::shared_ptr<autolink::Reader<::automsgs::msgs::diagnostic_msgs::DiagnosticArray>> status_reader_;  ///< Actual matching Atlas status reader.
+    std::shared_ptr<autolink::Reader<::automsgs::msgs::nav_msgs::Odometry>> fallback_odometry_reader_;  ///< Validation-only pose fallback reader.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::nav_msgs::Odometry>> odometry_writer_;  ///< Actual calibrated base-pose output.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::map_msgs::OccupancyGrid>> occupancy_writer_;  ///< Actual mapper output, never GT or predicted coverage.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::map_msgs::GridMap>> grid_writer_;  ///< Actual grid_map geometry layers.
@@ -1334,6 +1337,17 @@ bool NativeRgbdPlatform::Install() {
         state->status_reader_ = state->node_->CreateReader<::automsgs::msgs::diagnostic_msgs::DiagnosticArray>(state->options_.status_topic,[weak](const auto& message) {
             if (auto self = weak.lock(); self && message && !self->closed_.load()) if (self->localization_->PushStatus(*message)) self->PoseReady();
         });
+        if (!state->options_.localization.fallback_odometry_topic.empty()) {
+            state->fallback_odometry_reader_ = state->node_->CreateReader<::automsgs::msgs::nav_msgs::Odometry>(
+                state->options_.localization.fallback_odometry_topic, [weak](const auto& message) {
+                    if (auto self = weak.lock(); self && message && !self->closed_.load()) {
+                        self->localization_->InjectFallbackPose(*message);
+                        self->PoseReady();
+                    }
+                });
+            if (!state->fallback_odometry_reader_)
+                throw std::runtime_error("validation fallback odometry reader creation failed");
+        }
         if (!state->odometry_reader_ || !state->status_reader_ || !state->odometry_writer_ || !state->occupancy_writer_ || !state->grid_writer_ ||
             !state->measured_coverage_writer_ || !state->coverage_metadata_writer_)
             throw std::runtime_error("actual native RGB-D reader/writer creation failed");

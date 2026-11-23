@@ -230,6 +230,28 @@ void CoverageVisualizer::Publish(const ComputeAction::Result& result) {
       }
     }
     room_rings.push_back(std::move(rings));
+    // The tour is per-room, so draw each room's pass in that room's colour.
+    // A single colour for the whole tour hides which block a line belongs to.
+    if (region.nav_path().poses_size() > 1) {
+      auto* path = regions.add_markers();
+      path->mutable_header()->set_frame_id(frame);
+      path->set_ns("region_path");
+      path->set_id(3000 + label_id);
+      path->set_type(Marker::LINE_STRIP);
+      path->set_action(Marker::ADD);
+      path->mutable_pose()->mutable_orientation()->set_w(1.0);
+      path->mutable_scale()->set_x(0.05);
+      path->mutable_color()->set_r(color[0]);
+      path->mutable_color()->set_g(color[1]);
+      path->mutable_color()->set_b(color[2]);
+      path->mutable_color()->set_a(0.95f);
+      for (const auto& pose : region.nav_path().poses()) {
+        auto* point = path->add_points();
+        point->set_x(pose.pose().position().x());
+        point->set_y(pose.pose().position().y());
+        point->set_z(0.14);
+      }
+    }
     double center_x = 0.0;
     double center_y = 0.0;
     int center_count = 0;

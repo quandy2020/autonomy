@@ -5,7 +5,7 @@
   "min_turning_radius": 0.4,
   "cruise_speed": 0.4,
   "turn_speed": 0.25,
-  "headland_width": 1.2,
+  "headland_width": 0.3,
   "route_type": "BOUSTROPHEDON",
   "path_type": "DUBIN",
   "path_continuity_type": "DISCONTINUOUS",

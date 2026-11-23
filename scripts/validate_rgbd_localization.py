@@ -319,6 +319,7 @@ def main():
                     'require_return': bool(args.require_return), 'require_save': True,
                     'prune_unobservable_units': False,
                     'maximum_sensor_wait': 600.0,
+                    'fallback_odometry_topic': '',
                     'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': args.region[0], 'min_y': args.region[1],
                                'max_x': args.region[2], 'max_y': args.region[3]},

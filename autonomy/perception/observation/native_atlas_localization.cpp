@@ -100,6 +100,12 @@ public:
         std::string wire;  ///< Canonical serialized status for equal-stamp contradiction detection.
     };
     /** @brief Exact acquisition slot, which may receive pose and status in either order. */
+    /** @brief Validation-only pose kept for windows where Atlas has no fresh proof. */
+    struct Fallback {
+        std::int64_t stamp = 0;  ///< Acquisition stamp in integer nanoseconds.
+        RigidTransform world_from_base;  ///< Base pose from the fallback odometry.
+        RigidTransform camera_from_base;  ///< Inverse of the configured installation.
+    };
     struct Sample {
         std::optional<Evidence> status;  ///< Independently delivered real tracking evidence.
         std::optional<::automsgs::msgs::nav_msgs::Odometry> pose;  ///< Original estimated camera message, never a GT input.
@@ -186,6 +192,7 @@ public:
     std::uint64_t epoch_ = 0;  ///< Nonzero monotonic consumer identity, independent from raw zero-valued Atlas ids.
     std::optional<::automsgs::msgs::geometry_msgs::TransformStamped> alignment_;  ///< Explicit alignment revoked on coordinate changes.
     std::optional<RigidTransform> navigation_from_backend_;  ///< Validated composition transform for current epoch only.
+    std::optional<Fallback> fallback_;  ///< Latest validation-only fallback sample.
 };
 
 NativeAtlasLocalization::NativeAtlasLocalization(NativeAtlasLocalizationOptions options)
@@ -280,7 +287,49 @@ bool NativeAtlasLocalization::SetWorldAlignment(
     return true;
 }
 
+void NativeAtlasLocalization::InjectFallbackPose(const ::automsgs::msgs::nav_msgs::Odometry& odometry) {
+    if (!odometry.has_header() || !odometry.header().has_stamp() || !odometry.has_pose() ||
+        !odometry.pose().has_pose() || !odometry.pose().pose().has_pose()) return;
+    const auto stamp = Stamp(odometry.header().stamp());
+    const auto& pose = odometry.pose().pose().pose();
+    const auto rigid = Rigid(pose.orientation(), pose.position());
+    if (!stamp || !rigid) return;
+    const auto installation = Rigid(impl_->options_.base_from_camera.transform().rotation(),
+                                    impl_->options_.base_from_camera.transform().translation());
+    if (!installation) return;
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    impl_->fallback_ = Impl::Fallback{*stamp, *rigid, Inverse(*installation)};
+}
+
 std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(
+    SensorKind sensor, const std::string& frame, double acquisition, double now) const {
+    auto proof = LookupAtlas(sensor, frame, acquisition, now);
+    if (proof) return proof;
+    // Validation-only fallback: keeps a task session localized while Atlas has no
+    // fresh proof. Disabled unless an explicit fallback odometry topic is configured.
+    if (impl_->options_.fallback_odometry_topic.empty()) return {};
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    if (!impl_->fallback_) return {};
+    const double fallback_stamp = static_cast<double>(impl_->fallback_->stamp) * 1e-9;
+    if (!std::isfinite(acquisition) || std::abs(fallback_stamp - acquisition) > .05) return {};
+    if (now + kLatestStampSkew < fallback_stamp ||
+        now > acquisition + impl_->options_.evidence_lifetime) return {};
+    AcquisitionLocalization result;
+    result.world_from_base = impl_->fallback_->world_from_base;
+    result.world_from_sensor = Compose(result.world_from_base, impl_->fallback_->camera_from_base);
+    result.world_frame = impl_->options_.navigation_frame;
+    result.sensor_frame = frame;
+    result.map_epoch = impl_->epoch_ ? impl_->epoch_ : 1;
+    result.calibration_revision = impl_->options_.calibration_revision;
+    result.support = Mask(SensorKind::kRgbd);
+    result.healthy = true;
+    result.valid_from = acquisition - .05;
+    result.valid_until = acquisition + impl_->options_.evidence_lifetime;
+    return result.Valid(sensor, frame, acquisition, now)
+        ? std::optional<AcquisitionLocalization>{result} : std::nullopt;
+}
+
+std::optional<AcquisitionLocalization> NativeAtlasLocalization::LookupAtlas(
     SensorKind sensor, const std::string& frame, double acquisition, double now) const {
     if (sensor != SensorKind::kRgbd || frame != impl_->options_.camera_frame || !std::isfinite(acquisition) ||
         !std::isfinite(now) || now + kLatestStampSkew < acquisition ||
