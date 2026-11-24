@@ -19,8 +19,11 @@ CoverageRealization CoverageEvaluator::Apply(const perception::SensorObservation
             if (along < 0 || along > ray.distance+u.tolerance) continue;
             const double miss = (d-ray.direction*along).Norm();
             if (miss > u.tolerance) continue;
-            if (u.id.kind != CoverageKind::kFrontier &&
-                (!ray.hit || (ray.Endpoint()-u.center).Norm() > u.tolerance)) continue;
+            // A frontier is resolved only by a measured surface at that cell.
+            // A no-hit ray merely passes through unknown space; treating it as
+            // evidence completed the visible map boundary without moving the
+            // robot or making any of those cells known.
+            if (!ray.hit || (ray.Endpoint()-u.center).Norm() > u.tolerance) continue;
             const double normal_norm = u.normal.Norm();
             double incidence = 1;
             if (normal_norm > 1e-6) {

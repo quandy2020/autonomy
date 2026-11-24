@@ -123,6 +123,16 @@ void ActualCoverageAndDeduplication() {
     Require(evaluator.Apply(actual,1,state).confirmed_units==0,"no-return ray cannot complete surface observation");
     actual.rays[0].hit=true;
     Require(evaluator.Apply(actual,1,state).confirmed_units==1 && state.Complete(unit.id),"actual measured surface completes");
+    e::CoverageUnit frontier;
+    frontier.id={6,0,0,0,e::CoverageKind::kFrontier};
+    frontier.center={2,0,0};
+    state.Upsert(frontier);
+    actual.rays[0].hit=false;
+    Require(evaluator.Apply(actual,1,state).confirmed_units==0 && state.PendingCount()==1,
+            "a no-return ray cannot resolve a frontier without moving or revealing its cell");
+    actual.rays[0].hit=true;
+    Require(evaluator.Apply(actual,1,state).confirmed_units==1 && state.Complete(frontier.id),
+            "a measured frontier return resolves the frontier");
     Require(evaluator.Apply(actual,1,state).realized_gain==0,"repeated frame does not add coverage");
     unit.id.x=3;unit.center={2,0,0};unit.required_sensors=3;state.Upsert(unit);
     evaluator.Apply(actual,1,state);

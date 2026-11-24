@@ -1,10 +1,26 @@
 /*
- * Copyright 2026 The Openbot Authors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
  * @file plugin_utils.hpp
  * @brief Resolve native navigation clients and invocation-owned dispatch gates.
  */
 
-#pragma once
+#ifndef AUTONOMY_TASK_NAVIGATION_PLUGINS_PLUGIN_UTILS_HPP_
+#define AUTONOMY_TASK_NAVIGATION_PLUGINS_PLUGIN_UTILS_HPP_
 
 #include "autonomy/task/behavior_tree/plugin_utils.hpp"
 #include "autonomy/task/navigation/navigation_client.hpp"
@@ -27,7 +43,12 @@ inline std::shared_ptr<common::MotionDispatchGate> ResolveMotionGate(const BT::T
     return gate;
 }
 
-/** @brief Resolve the native NavigationClient associated with the node's invocation. */
+/**
+ * @brief Resolves the navigation client owned by this invocation.
+ * @param[in] node Behavior tree node resolving the client.
+ * @return Shared client; never null for a native navigation invocation.
+ * @throws std::runtime_error when the invocation has no installed client.
+ */
 inline ::autonomy::task::navigation::NavigationClient::Ptr ResolveClient(
     const BT::TreeNode& node) {
     return ::autonomy::task::plugins::ResolveClient<
@@ -43,3 +64,5 @@ ToProtoDuration(double seconds) {
 }
 
 }  // namespace autonomy::task::plugins::navigation
+
+#endif  // AUTONOMY_TASK_NAVIGATION_PLUGINS_PLUGIN_UTILS_HPP_

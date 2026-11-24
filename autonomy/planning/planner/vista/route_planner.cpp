@@ -174,8 +174,8 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
     for (const auto& e : graph.edges) if (e.second.valid) connect(e.first.first,e.first.second,e.second.length);
     for (const auto& n : poses) {
         if (is_canceled()) { result.canceled = true; return result; }
-        if (n.first != source && validator.Validate(source,start,n.first,n.second).valid)
-            connect(source,n.first,autonomy::navigation::Distance(start,n.second));
+        if (n.first != source && validator.Validate(source,route_start,n.first,n.second).valid)
+            connect(source,n.first,autonomy::navigation::Distance(route_start,n.second));
         if (n.first != target && n.first != source && validator.Validate(target,goal,n.first,n.second).valid)
             connect(target,n.first,autonomy::navigation::Distance(goal,n.second));
     }

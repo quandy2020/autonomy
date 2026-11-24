@@ -680,6 +680,12 @@ void FrameLayout::ensureSidebarDockAttached(PanelDockWidget* dock) {
   if (dock == nullptr || isMainPanel(dock)) {
     return;
   }
+  // A dock restored from the session mosaic lives in MainPanelHost; re-docking
+  // it as a sidebar destroys the restored split tree (panes vanish, the
+  // default layout reappears). Mosaic ownership wins over catalog role.
+  if (main_panel_host_ != nullptr && main_panel_host_->hostsPanel(dock)) {
+    return;
+  }
   const bool is_teleop = frame_->panels_->panelTypeId(dock) == QLatin1String("TeleopDock");
   const bool is_navigation =
       frame_->panels_->panelTypeId(dock) == QLatin1String("NavigationDock");

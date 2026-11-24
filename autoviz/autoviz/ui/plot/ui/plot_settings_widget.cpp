@@ -231,9 +231,9 @@ PlotSettingsWidget::PlotSettingsWidget(common::VisualizationManager* manager,
   setMinimumWidth(260);
   auto* outer = new QVBoxLayout(this);
   outer->setContentsMargins(
-      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
-  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+      PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin(),
+      PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin());
+  outer->setSpacing(PanelSettingsLayout::OuterSpacing());
   outer->setAlignment(Qt::AlignTop);
 
   auto* title_form = new QFormLayout();

@@ -4,6 +4,7 @@
 Usage:
     ./tools/configure.py
     ./tools/configure.py --release
+    ./tools/configure.py --tests  # also build core / headless-UI tests
     ./tools/configure.py --ogre   # no-op; Ogre is always required
 """
 
@@ -25,6 +26,11 @@ from common import autoviz_build_dir, find_autoviz_root, log_ok, log_step
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--release", action="store_true", help="Release build type")
+    parser.add_argument(
+        "--tests",
+        action="store_true",
+        help="Build the core / headless-UI regression tests",
+    )
     parser.add_argument(
         "--ogre",
         action="store_true",
@@ -82,6 +88,8 @@ def main() -> int:
         log_step(f"macOS: CMAKE_PREFIX_PATH={qt_prefix}")
     if args.ogre:
         log_step("note: --ogre is deprecated (Ogre viewport is always ON)")
+    if args.tests:
+        cmake_args.append("-DAUTOVIZ_BUILD_CORE_TESTS=ON")
     cmake_args.extend(args.extra)
 
     log_step(f"Configure {build_dir}")

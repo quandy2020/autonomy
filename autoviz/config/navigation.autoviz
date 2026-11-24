@@ -514,6 +514,54 @@ Displays:
       use_fixed_frame: true
       use_rainbow: true
     Type: PointCloud2
+  - Channel: /coverage/plan
+    Enabled: true
+    Name: Coverage plan
+    Properties:
+      alpha: 0.95
+      arrive_distance: 0.35
+      buffer_length: 1
+      color: 26;190;71
+      dash_length: 0.26
+      flow_arrow_size: 0.12
+      flow_arrow_spacing: 0.55
+      flow_speed: 0.9
+      gap_length: 0.18
+      hide_when_arrived: false
+      line_style: Billboards
+      line_width: 0.06
+      offset: 0;0;0.30
+      path_pattern: Solid
+      pose_arrow_head_diameter: 0.3
+      pose_arrow_head_length: 0.2
+      pose_arrow_shaft_diameter: 0.1
+      pose_arrow_shaft_length: 0.1
+      pose_axes_length: 0.3
+      pose_axes_radius: 0.03
+      pose_color: 26;190;71
+      pose_style: None
+      prune_behind_robot: false
+      robot_frame: base_link
+      show_flow_arrows: false
+    Type: Path
+  - Channel: /coverage/regions
+    Enabled: true
+    Name: Coverage rooms
+    Properties:
+      use_custom_color: false
+    Type: MarkerArray
+  - Channel: /coverage/markers
+    Enabled: true
+    Name: Coverage swaths
+    Properties:
+      use_custom_color: false
+    Type: MarkerArray
+  - Channel: /coverage/sketch
+    Enabled: true
+    Name: Coverage obstacles
+    Properties:
+      use_custom_color: false
+    Type: MarkerArray
 Global:
   ActiveTool: Interact
   BackgroundColor: 22;26;36

@@ -58,7 +58,11 @@ class MessageQueue {
   MessageQueue(MessageQueue&& other) noexcept;
 
   /**
-   * @brief Move-assigns, transferring pending payloads and registry slot.
+   * @brief Move-assigns, transferring pending payloads.
+   *
+   * Keeps @c this queue's process-wide registry slot and drops @p other's, so
+   * a moved-from queue is never reached by @ref clearAllPending().
+   *
    * @param other Source queue (left empty / unregistered).
    * @return @c *this.
    */

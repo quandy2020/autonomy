@@ -61,6 +61,33 @@ cmake --build build --target autoviz_app
 
 Ogre 细节见 [rendering/ogre.md](../rendering/ogre.md)。
 
+## 测试
+
+`AUTOVIZ_BUILD_CORE_TESTS=ON` 会构建两组回归测试：
+
+| 测试 | 覆盖 |
+|------|------|
+| `autoviz_interaction_test` | `MessageQueue` 最新值 / FIFO / 移动语义 / 全局清理 |
+| `autoviz_mosaic_restore_test` | 会话 `MainPanelState` 恢复、嵌套 split、缺失面板占位与持久化 |
+
+```bash
+# 一条命令：构建 + 跑测试（自动打开测试选项）
+python3 tools/build.py --test
+
+# 独立 CMake 构建
+cmake -B build -DAUTOVIZ_BUILD_CORE_TESTS=ON
+./scripts/run_autoviz_tests.sh
+
+# Autonomy 工作空间（colcon 构建树）
+AUTOVIZ_BUILD_DIR=build/autonomy ./src/autonomy/autoviz/scripts/run_autoviz_tests.sh
+
+# 仅跑 ctest
+ctest --test-dir build/autonomy -R autoviz --output-on-failure
+```
+
+脚本把 JUnit 写到 `<build>/autoviz-test-results/junit.xml`，不会混入其它包的历史 ctest XML。
+`tools/build.py --test` 走同一套过滤与结果目录，并支持 `AUTOVIZ_BUILD_DIR` 指向 colcon 构建树。
+
 ## 产物布局
 
 ```text

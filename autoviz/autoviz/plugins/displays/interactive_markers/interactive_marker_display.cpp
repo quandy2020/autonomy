@@ -78,9 +78,10 @@ void InteractiveMarkerDisplay::onEnable() {
   init_reader_ =
       context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
           init_channel,
-          [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
+          [queue = init_queue_](
+              const std::shared_ptr<autolink::message::RawMessage>& msg) {
             if (msg != nullptr) {
-              init_queue_.push(msg->message);
+              queue->push(msg->message);
             }
           });
 }
@@ -229,7 +230,7 @@ void InteractiveMarkerDisplay::processMessage(
 }
 
 void InteractiveMarkerDisplay::onUpdate() {
-  while (auto payload = init_queue_.pop()) {
+  while (auto payload = init_queue_->pop()) {
     automsgs::msgs::visualization_msgs::InteractiveMarkerInit init;
     if (!init.ParseFromString(*payload)) {
       continue;
@@ -249,7 +250,7 @@ void InteractiveMarkerDisplay::onUpdate() {
 
 void InteractiveMarkerDisplay::clearReceivedData() {
   eraseAllMarkers();
-  init_queue_.clear();
+  init_queue_->clear();
   syncRegistry();
 }
 

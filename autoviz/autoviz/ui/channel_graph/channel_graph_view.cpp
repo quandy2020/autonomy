@@ -722,18 +722,25 @@ class GraphVertexItem : public QGraphicsObject {
     DrawCardShadow(painter, card);
 
     // One cyan family: surface / border / avatar all from Autoviz accent.
+    const bool dark = theme::ShellIsDark();
     const QColor surface_top =
-        (hovered || selected || emphasized) ? QColor(0xec, 0xfe, 0xff)
-                                            : QColor(0xff, 0xff, 0xff);
+        dark ? (hovered || selected || emphasized ? QColor(0x3a, 0x3a, 0x3c)
+                                                  : theme::Shell().panel_surface)
+             : (hovered || selected || emphasized ? QColor(0xec, 0xfe, 0xff)
+                                                  : QColor(0xff, 0xff, 0xff));
     const QColor surface_bot =
-        (hovered || selected || emphasized) ? QColor(0xcf, 0xfa, 0xfe)
-                                            : QColor(0xf0, 0xf9, 0xff);
+        dark ? (hovered || selected || emphasized ? theme::Shell().panel_cool
+                                                  : theme::Shell().panel_bg)
+             : (hovered || selected || emphasized ? QColor(0xcf, 0xfa, 0xfe)
+                                                  : QColor(0xf0, 0xf9, 0xff));
     QLinearGradient surface(shape_rect_.topLeft(), shape_rect_.bottomLeft());
     surface.setColorAt(0.0, surface_top);
     surface.setColorAt(1.0, surface_bot);
 
     const QColor border_color =
-        selected || emphasized ? accent : QColor(0x67, 0xe8, 0xf9);
+        selected || emphasized
+            ? accent
+            : (dark ? theme::Shell().panel_border : QColor(0x67, 0xe8, 0xf9));
     painter->setPen(QPen(border_color, selected || emphasized ? 1.8 : 1.3));
     painter->setBrush(surface);
     painter->drawPath(card);
@@ -750,11 +757,12 @@ class GraphVertexItem : public QGraphicsObject {
                kNodeAvatar, kNodeAvatar),
         Qt::AlignCenter, nodeInitial());
 
-    painter->setPen(QColor(0x1e, 0x29, 0x3b));
+    painter->setPen(dark ? theme::Shell().text : QColor(0x1e, 0x29, 0x3b));
     painter->setFont(title_font_);
     painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
     if (!detail_text_.isEmpty()) {
-      painter->setPen(QColor(0x64, 0x74, 0x8b));
+      painter->setPen(dark ? theme::Shell().secondary_text
+                           : QColor(0x64, 0x74, 0x8b));
       painter->setFont(detail_font_);
       painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignLeft, detail_text_);
     }
@@ -768,15 +776,22 @@ class GraphVertexItem : public QGraphicsObject {
     // Light rose card — same language as node / channel.
     const bool hot = hovered || selected || emphasized;
     QLinearGradient surface(shape_rect_.topLeft(), shape_rect_.bottomLeft());
+    const bool dark = theme::ShellIsDark();
     if (hot) {
-      surface.setColorAt(0.0, QColor(0xff, 0xe4, 0xe6));  // rose-100
-      surface.setColorAt(1.0, QColor(0xfe, 0xcd, 0xd3));  // rose-200
+      surface.setColorAt(0.0, dark ? QColor(0x4a, 0x2c, 0x30)
+                                   : QColor(0xff, 0xe4, 0xe6));
+      surface.setColorAt(1.0, dark ? QColor(0x3a, 0x22, 0x26)
+                                   : QColor(0xfe, 0xcd, 0xd3));
     } else {
-      surface.setColorAt(0.0, QColor(0xff, 0xf1, 0xf2));  // rose-50
-      surface.setColorAt(1.0, QColor(0xff, 0xe4, 0xe6));  // rose-100
+      surface.setColorAt(0.0, dark ? theme::Shell().panel_surface
+                                   : QColor(0xff, 0xf1, 0xf2));
+      surface.setColorAt(1.0, dark ? theme::Shell().panel_bg
+                                   : QColor(0xff, 0xe4, 0xe6));
     }
     const QColor border =
-        selected || emphasized ? accent : QColor(0xfe, 0xa3, 0xb4);  // rose-300
+        selected || emphasized
+            ? accent
+            : (dark ? theme::Shell().border : QColor(0xfe, 0xa3, 0xb4));
     painter->setPen(QPen(border, selected || emphasized ? 1.8 : 1.3));
     painter->setBrush(surface);
     painter->drawPath(card);
@@ -793,11 +808,12 @@ class GraphVertexItem : public QGraphicsObject {
                kNodeAvatar, kNodeAvatar),
         Qt::AlignCenter, QStringLiteral("S"));
 
-    painter->setPen(QColor(0x1e, 0x29, 0x3b));
+    painter->setPen(dark ? theme::Shell().text : QColor(0x1e, 0x29, 0x3b));
     painter->setFont(title_font_);
     painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
     if (!detail_text_.isEmpty()) {
-      painter->setPen(QColor(0x64, 0x74, 0x8b));
+      painter->setPen(dark ? theme::Shell().secondary_text
+                           : QColor(0x64, 0x74, 0x8b));
       painter->setFont(detail_font_);
       painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignLeft, detail_text_);
     }
@@ -811,22 +827,33 @@ class GraphVertexItem : public QGraphicsObject {
     const ActivityBand band = activityBand();
     const QColor activity = ColorForActivityBand(band);
     const bool hot = hovered || selected || emphasized;
+    const bool dark = theme::ShellIsDark();
     QLinearGradient surface(shape_rect_.topLeft(), shape_rect_.bottomLeft());
     if (band == ActivityBand::kHealthy && !hot) {
-      surface.setColorAt(0.0, QColor(0xec, 0xfd, 0xf5));  // emerald-50
-      surface.setColorAt(1.0, QColor(0xd1, 0xfa, 0xe5));  // emerald-100
+      surface.setColorAt(0.0, dark ? QColor(0x12, 0x2b, 0x22)
+                                   : QColor(0xec, 0xfd, 0xf5));
+      surface.setColorAt(1.0, dark ? QColor(0x0e, 0x22, 0x1b)
+                                   : QColor(0xd1, 0xfa, 0xe5));
     } else if (band == ActivityBand::kLow && !hot) {
-      surface.setColorAt(0.0, QColor(0xff, 0xfb, 0xeb));  // amber-50
-      surface.setColorAt(1.0, QColor(0xfe, 0xf3, 0xc7));  // amber-100
+      surface.setColorAt(0.0, dark ? QColor(0x30, 0x27, 0x12)
+                                   : QColor(0xff, 0xfb, 0xeb));
+      surface.setColorAt(1.0, dark ? QColor(0x26, 0x1f, 0x0e)
+                                   : QColor(0xfe, 0xf3, 0xc7));
     } else if (band == ActivityBand::kSilent && !hot) {
-      surface.setColorAt(0.0, QColor(0xf8, 0xfa, 0xfc));  // slate-50
-      surface.setColorAt(1.0, QColor(0xf1, 0xf5, 0xf9));  // slate-100
+      surface.setColorAt(0.0, dark ? theme::Shell().panel_surface
+                                   : QColor(0xf8, 0xfa, 0xfc));
+      surface.setColorAt(1.0, dark ? theme::Shell().panel_bg
+                                   : QColor(0xf1, 0xf5, 0xf9));
     } else if (hot) {
-      surface.setColorAt(0.0, QColor(0xf3, 0xe8, 0xff));  // violet-100
-      surface.setColorAt(1.0, QColor(0xe9, 0xd5, 0xff));  // violet-200
+      surface.setColorAt(0.0, dark ? QColor(0x33, 0x28, 0x45)
+                                   : QColor(0xf3, 0xe8, 0xff));
+      surface.setColorAt(1.0, dark ? QColor(0x2a, 0x20, 0x3a)
+                                   : QColor(0xe9, 0xd5, 0xff));
     } else {
-      surface.setColorAt(0.0, QColor(0xfa, 0xf5, 0xff));  // violet-50
-      surface.setColorAt(1.0, QColor(0xf3, 0xe8, 0xff));  // violet-100
+      surface.setColorAt(0.0, dark ? theme::Shell().panel_surface
+                                   : QColor(0xfa, 0xf5, 0xff));
+      surface.setColorAt(1.0, dark ? theme::Shell().panel_bg
+                                   : QColor(0xf3, 0xe8, 0xff));
     }
 
     QColor border = accent;
@@ -848,11 +875,13 @@ class GraphVertexItem : public QGraphicsObject {
     painter->drawEllipse(QPointF(shape_rect_.left() + 9.0, cy), 3.6, 3.6);
     painter->drawEllipse(QPointF(shape_rect_.right() - 9.0, cy), 3.6, 3.6);
 
-    painter->setPen(QColor(0x1e, 0x29, 0x3b));
+    painter->setPen(dark ? theme::Shell().text : QColor(0x1e, 0x29, 0x3b));
     painter->setFont(title_font_);
     painter->drawText(title_rect_, Qt::AlignVCenter | Qt::AlignLeft, title_text_);
     if (!detail_text_.isEmpty()) {
-      painter->setPen(activity_initialized_ ? activity : QColor(0x64, 0x74, 0x8b));
+      painter->setPen(activity_initialized_ ? activity
+                                            : (dark ? theme::Shell().secondary_text
+                                                    : QColor(0x64, 0x74, 0x8b)));
       painter->setFont(detail_font_);
       painter->drawText(detail_rect_, Qt::AlignVCenter | Qt::AlignRight, detail_text_);
     }
@@ -1309,7 +1338,8 @@ ChannelGraphView::ChannelGraphView(QWidget* parent) : QGraphicsView(parent) {
   setResizeAnchor(QGraphicsView::AnchorViewCenter);
   setViewportUpdateMode(QGraphicsView::BoundingRectViewportUpdate);
   setFrameShape(QFrame::NoFrame);
-  setBackgroundBrush(QColor(0xe0, 0xf2, 0xfe));
+  setBackgroundBrush(theme::ShellIsDark() ? theme::Shell().panel_bg
+                                          : QColor(0xe0, 0xf2, 0xfe));
   setStyleSheet(style::sheet(QStringLiteral("channel_graph")));
 
   flow_timer_ = new QTimer(this);

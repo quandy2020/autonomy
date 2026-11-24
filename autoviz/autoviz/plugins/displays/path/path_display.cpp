@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <cstdio>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
@@ -612,8 +613,12 @@ void PathDisplay::onDraw(rendering::SceneOverlay& scene) {
   const float line_width =
       common::ParseFloatProperty(propertyValue("line_width", "0.03"), 0.03f);
   const std::string pattern = pathPattern();
+  // The coverage preview is a plan, not a live route: pruning at the robot
+  // hides every already-passed room and makes covered blocks look empty.
+  const bool coverage_plan = channel() == "/coverage/plan";
   const bool prune = common::ParseBoolProperty(
-      propertyValue("prune_behind_robot", "true"), true);
+      propertyValue("prune_behind_robot", coverage_plan ? "false" : "true"),
+      !coverage_plan);
   const bool hide_arrived = common::ParseBoolProperty(
       propertyValue("hide_when_arrived", "true"), true);
 

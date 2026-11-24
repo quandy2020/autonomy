@@ -1,3 +1,31 @@
+if(AUTOVIZ_BUILD_CORE_TESTS)
+  find_package(Threads REQUIRED)
+  add_executable(autoviz_interaction_test
+    core/interaction_test.cpp
+    ../autoviz/common/interaction/message_queue.cpp)
+  target_link_libraries(autoviz_interaction_test PRIVATE Threads::Threads)
+  target_include_directories(autoviz_interaction_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_compile_features(autoviz_interaction_test PRIVATE cxx_std_17)
+  add_test(NAME autoviz_interaction_test COMMAND autoviz_interaction_test)
+  set_tests_properties(autoviz_interaction_test PROPERTIES TIMEOUT 30)
+
+  # Headless Qt regression for the session mosaic (MainPanelState) restore.
+  add_executable(autoviz_mosaic_restore_test
+    ui/mosaic_restore_test.cpp)
+  target_include_directories(autoviz_mosaic_restore_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_compile_features(autoviz_mosaic_restore_test PRIVATE cxx_std_17)
+  target_link_libraries(autoviz_mosaic_restore_test
+    PRIVATE autoviz Qt6::Widgets)
+  add_test(NAME autoviz_mosaic_restore_test
+    COMMAND autoviz_mosaic_restore_test)
+  set_tests_properties(autoviz_mosaic_restore_test PROPERTIES
+    ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
+    TIMEOUT 30)
+endif()
+
+if(AUTOVIZ_BUILD_WIDGET_TESTS)
 find_package(Qt6 REQUIRED COMPONENTS Test)
 
 function(autoviz_add_widget_test target source)
@@ -34,3 +62,4 @@ autoviz_add_widget_test(
   autoviz_widget_rtl_navigation_test widget/widget_rtl_navigation_test.cpp)
 autoviz_add_widget_test(
   autoviz_widget_table_test widget/widget_table_test.cpp)
+endif()  # AUTOVIZ_BUILD_WIDGET_TESTS

@@ -296,9 +296,9 @@ QString MainWindowStatusBarStyle() {
 }
 
 QString PropertyInspectorTitleStyle() {
-  // Horizontal inset comes from layout (PanelSettingsLayout::kOuterMargin),
+  // Horizontal inset comes from layout (PanelSettingsLayout::OuterMargin()),
   // matching the Properties dock icon column — do not add QSS padding here.
-  return style::type(style::Role::Body, 12, 700) +
+  return style::type(style::Role::Body, theme::Shell().font_body, 600) +
          QStringLiteral(" padding: 0;");
 }
 
@@ -315,6 +315,9 @@ void ApplyPanelShell(QWidget* widget) {
   }
   widget->setAutoFillBackground(false);
   widget->setAttribute(Qt::WA_StyledBackground, true);
+  // Rounded background: leave the corners to the dock's painted base instead
+  // of declaring the whole widget opaque.
+  widget->setAttribute(Qt::WA_OpaquePaintEvent, false);
   widget->setStyleSheet(PanelShellStyle(widget->objectName()));
 }
 
@@ -362,7 +365,10 @@ void StyleCompactSettingsField(QWidget* field) {
   if (ShouldSkipSettingsPolish(field)) {
     return;
   }
-  constexpr int kH = 20;
+  // Field height comes from the theme so settings rows, native controls and
+  // QSS agree without local literals.
+  const theme::ShellTokens shell = theme::Shell();
+  const int kH = shell.field_height;
   field->setFixedHeight(kH);
   field->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
@@ -381,7 +387,7 @@ void StyleCompactSettingsField(QWidget* field) {
     combo->setObjectName(QStringLiteral("AutovizSettingsCombo"));
     combo->setStyleSheet(fields);
     if (combo->lineEdit() != nullptr) {
-      combo->lineEdit()->setFixedHeight(18);
+      combo->lineEdit()->setFixedHeight(kH - 2 * shell.field_padding_v);
     }
     return;
   }
@@ -406,7 +412,8 @@ void PolishSettingsFields(QWidget* root) {
     StyleCompactSettingsField(spin);
   }
   // Soft form labels (skip hints / section titles that already have styles).
-  const QString form_label = style::type(style::Role::Muted, 12, 500);
+  const QString form_label =
+      style::type(style::Role::Muted, theme::Shell().font_small, 500);
   for (QLabel* label : root->findChildren<QLabel*>()) {
     if (label == nullptr || !label->styleSheet().isEmpty()) {
       continue;
@@ -423,7 +430,8 @@ void PolishSettingsFields(QWidget* root) {
 
 QLabel* MakeSettingsFormLabel(const QString& text, QWidget* parent) {
   auto* label = new QLabel(text, parent);
-  label->setStyleSheet(style::type(style::Role::Muted, 12, 500));
+  label->setStyleSheet(
+      style::type(style::Role::Muted, theme::Shell().font_small, 500));
   return label;
 }
 
@@ -444,9 +452,9 @@ void ApplyCompactVBox(QVBoxLayout* layout) {
     return;
   }
   layout->setContentsMargins(
-      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
-  layout->setSpacing(PanelSettingsLayout::kOuterSpacing);
+      PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin(),
+      PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin());
+  layout->setSpacing(PanelSettingsLayout::OuterSpacing());
   layout->setAlignment(Qt::AlignTop);
 }
 

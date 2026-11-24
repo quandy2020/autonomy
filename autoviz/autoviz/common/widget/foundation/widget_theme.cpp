@@ -8,6 +8,8 @@
 #include <QVariant>
 #include <QWidget>
 
+#include "autoviz/ui/theme/tokens.hpp"
+
 namespace autoviz::widget {
 namespace {
 
@@ -26,9 +28,11 @@ ThemeAppearance ResolveAppearance(ThemeAppearance appearance,
   if (appearance != ThemeAppearance::kSystem) {
     return appearance;
   }
-  return qGray(palette.color(QPalette::Window).rgb()) < 128
-             ? ThemeAppearance::kDark
-             : ThemeAppearance::kLight;
+  Q_UNUSED(palette);
+  // The app's theme is authoritative: QApplication::palette() can be replaced
+  // by the platform theme after startup and must not flip widget colors.
+  return theme::ShellIsDark() ? ThemeAppearance::kDark
+                              : ThemeAppearance::kLight;
 }
 
 void ApplyPalette(QWidget* widget, const QPalette& palette, style::Tone tone,

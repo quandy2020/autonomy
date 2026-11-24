@@ -7,6 +7,7 @@
 #include <QObject>
 #include "autoviz/common/selection.hpp"
 #include <algorithm>
+#include <cstdio>
 #include <unordered_map>
 #include <unordered_set>
 #include <QApplication>
@@ -152,9 +153,22 @@ class LayoutTransitionCover : public QWidget {
   QGraphicsOpacityEffect* effect_ = nullptr;
 };
 
+/**
+ * Force one paint after this many skipped ticks even if the platform keeps
+ * reporting the window as unexposed (safety valve against a stuck window).
+ */
+constexpr int kForcePaintAfterOccludedTicks = 90;
+
+int SanitizedIdleDivisor(int divisor) {
+  return std::clamp(divisor, kMinIdleRenderDivisor, kMaxIdleRenderDivisor);
+}
+
 }  // namespace
 
-FrameSession::FrameSession(VisualizationFrame* frame) : frame_(frame) {}
+FrameSession::FrameSession(VisualizationFrame* frame)
+    : frame_(frame),
+      idle_render_divisor_(
+          SanitizedIdleDivisor(LoadAppUiPreferences().idle_render_divisor)) {}
 
 void FrameSession::updateWindowTitle() {
   QString title = QStringLiteral("Autoviz");
@@ -481,6 +495,7 @@ bool IsViewportDockObjectName(const QString& object_name) {
 
 void FrameSession::ensureSessionMainPanels() {
   QSet<QString> needed;
+  QSet<QString> mosaic_leaves;
   for (const std::string& panel : frame_->manager_->visiblePanels()) {
     const QString name =
         QString::fromStdString(NormalizePanelObjectName(panel));
@@ -504,7 +519,9 @@ void FrameSession::ensureSessionMainPanels() {
     const QJsonDocument document = QJsonDocument::fromJson(json);
     if (document.isObject()) {
       CollectMosaicLeafNames(
-          document.object().value(QStringLiteral("root")).toObject(), &needed);
+          document.object().value(QStringLiteral("root")).toObject(),
+          &mosaic_leaves);
+      needed.unite(mosaic_leaves);
     }
   }
 
@@ -520,6 +537,27 @@ void FrameSession::ensureSessionMainPanels() {
       if (dock != nullptr) {
         dock->hide();
       }
+      continue;
+    }
+    // Sidebar-style panels (Map / Service / Teleop / Navigation …) can also be
+    // saved as mosaic panes. Create only those mosaic leaves here so the
+    // resolver does not drop them and collapse the restored split tree;
+    // ordinary hidden/sidebar entries keep their previous lazy creation.
+    if (!mosaic_leaves.contains(name)) {
+      continue;
+    }
+    // showPanelByObjectName() shows the dock and clears the manual-layout
+    // flags (Change semantics). Restore them so the queued tile cannot
+    // overwrite the mosaic that is about to be built.
+    const bool was_manual = frame_->layout_->center_manual_layout_;
+    const bool was_suppressed = frame_->layout_->suppress_center_tile_;
+    const int epoch = frame_->layout_->center_tile_epoch_;
+    frame_->layout_->showPanelByObjectName(name);
+    frame_->layout_->center_manual_layout_ = was_manual;
+    frame_->layout_->suppress_center_tile_ = was_suppressed;
+    frame_->layout_->center_tile_epoch_ = epoch;
+    if (PanelDockWidget* dock = frame_->findChild<PanelDockWidget*>(name)) {
+      dock->hide();
     }
   }
 }
@@ -1143,6 +1181,8 @@ void FrameSession::restoreWindowLayout() {
         mosaic, [this](const QString& object_name) -> QDockWidget* {
           return frame_->findChild<PanelDockWidget*>(object_name);
         });
+    LOG(INFO) << "mosaic: restore " << (restored_mosaic ? "ok" : "FAILED")
+              << " for session mosaic (" << mosaic.size() << " bytes)";
     // Create deferred GL windows into final panes, but keep them parked.
     // reinstall must not recreate/map under reveal_held_ (loadConfig flicker).
     for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
@@ -1457,9 +1497,34 @@ void FrameSession::onFixedFrameChanged(const QString& /*frame*/) {
   frame_->chrome_->updateStatusBar();
 }
 
+void FrameSession::markViewportDirty() { viewport_dirty_ = true; }
+
+void FrameSession::setIdleRenderDivisor(int divisor) {
+  idle_render_divisor_ = SanitizedIdleDivisor(divisor);
+  viewport_dirty_ = true;
+}
+
 void FrameSession::onRenderTick() {
   if (app_inactive_) {
+    // Repaint once on resume even if nothing else changed.
+    viewport_dirty_ = true;
     return;
+  }
+  if (frame_->isMinimized()) {
+    viewport_dirty_ = true;
+    return;
+  }
+  const QWindow* window = frame_->windowHandle();
+  if (window != nullptr && !window->isExposed()) {
+    // Covered / on another virtual desktop. Keep the dirty flag so the first
+    // exposed tick repaints, but stop drawing until then.
+    viewport_dirty_ = true;
+    if (++occluded_ticks_ < kForcePaintAfterOccludedTicks) {
+      return;
+    }
+    occluded_ticks_ = 0;
+  } else {
+    occluded_ticks_ = 0;
   }
   const qint64 elapsed_ms = render_elapsed_.restart();
   // After backgrounding, elapsed can be huge; clamp so FPS/view ticks don't
@@ -1468,6 +1533,18 @@ void FrameSession::onRenderTick() {
       static_cast<float>(std::min<qint64>(elapsed_ms, 100)) / 1000.f;
   frame_->viewport_->syncToolContext();
   frame_->manager_->update();
+
+  // Idle throttling: distinguish "needs a repaint" from "just tick".
+  const bool dirty = viewport_dirty_;
+  viewport_dirty_ = false;
+  if (dirty) {
+    idle_render_skip_ = 0;
+  } else if (++idle_render_skip_ % idle_render_divisor_ != 0) {
+    frame_->panels_->tickVisibleImagePanels();
+    frame_->chrome_->updateFps();
+    return;
+  }
+
   // Per-3D-View overlay draw — split panes must not share parent geometry.
   const ViewportPanelEntry* active_entry =
       frame_->viewport_->activeViewportEntry();
@@ -1750,8 +1827,10 @@ void FrameSession::applyUiPreferences(const AppSettingsResult& settings,
   ui_preferences.accent_color = settings.accent_color;
   ui_preferences.start_maximized = settings.start_maximized;
   ui_preferences.viewport_hud_visible = previous_ui.viewport_hud_visible;
+  ui_preferences.idle_render_divisor = settings.idle_render_divisor;
   ui_preferences.shortcuts = settings.shortcuts;
   SaveAppUiPreferences(ui_preferences);
+  setIdleRenderDivisor(settings.idle_render_divisor);
 
   if (ui_preferences.start_maximized) {
     frame_->showMaximized();

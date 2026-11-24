@@ -40,6 +40,13 @@ constexpr int kAxisRightWide = 56;
 constexpr int kAxisBottom = 56;
 constexpr double kExactSampleEpsilon = 1e-6;
 
+/** Tooltip / inspector plate fill that follows the active shell. */
+QColor TooltipPlateFill(int alpha) {
+  QColor fill = theme::Shell().panel_surface;
+  fill.setAlpha(alpha);
+  return fill;
+}
+
 /** Header stamp (sec + nsec) → local calendar time for tooltip / inspect. */
 QString FormatHeaderStampDateTime(double stamp_sec, bool two_line) {
   if (!std::isfinite(stamp_sec)) {
@@ -876,7 +883,7 @@ QVector<PlotChartWidget::TooltipRow> PlotChartWidget::buildTooltipRows(
 
   TooltipRow header;
   header.label = formatTooltipXValue(x);
-  header.color = QColor(60, 60, 60);
+  header.color = theme::Shell().secondary_text;
   header.value_text = QString();
   rows.push_back(header);
 
@@ -1333,11 +1340,11 @@ void PlotChartWidget::drawInspection(QPainter& painter, const AxisRange& range,
     const int box_w = max_w + 20;
     const int box_h = lines.size() * (fm.height() + 4) + 12;
     const QRect box(chart.left() + 8, chart.bottom() - box_h - 8, box_w, box_h);
-    painter.setPen(QColor(180, 180, 180));
-    painter.setBrush(QColor(255, 255, 255, 240));
+    painter.setPen(theme::Shell().panel_border);
+    painter.setBrush(TooltipPlateFill(240));
     painter.drawRoundedRect(box, 4, 4);
     int y = box.top() + 8;
-    painter.setPen(QColor(40, 40, 40));
+    painter.setPen(theme::Shell().text);
     for (const QString& line : lines) {
       painter.drawText(QRect(box.left() + 10, y, box.width() - 20, fm.height() + 4),
                        Qt::AlignLeft | Qt::AlignVCenter, line);
@@ -1501,11 +1508,11 @@ void PlotChartWidget::drawBrush(QPainter& painter, const AxisRange& range,
   const int box_w = std::min(max_w + 20, chart.width() - 16);
   const int box_h = lines.size() * (fm.height() + 4) + 12;
   const QRect box(chart.left() + 8, chart.top() + 8, box_w, box_h);
-  painter.setPen(QColor(180, 180, 180));
-  painter.setBrush(QColor(255, 255, 255, 245));
+  painter.setPen(theme::Shell().panel_border);
+  painter.setBrush(TooltipPlateFill(245));
   painter.drawRoundedRect(box, 4, 4);
   int y = box.top() + 8;
-  painter.setPen(QColor(40, 40, 40));
+  painter.setPen(theme::Shell().text);
   for (const QString& line : lines) {
     painter.drawText(QRect(box.left() + 10, y, box.width() - 20, fm.height() + 4),
                      Qt::AlignLeft | Qt::AlignVCenter, line);
@@ -1542,15 +1549,15 @@ void PlotChartWidget::drawTooltip(QPainter& painter) const {
   }
 
   const QRect box(left, top, width, height);
-  painter.setPen(QColor(180, 180, 180));
-  painter.setBrush(QColor(255, 255, 255, 245));
+  painter.setPen(theme::Shell().panel_border);
+  painter.setBrush(TooltipPlateFill(245));
   painter.drawRoundedRect(box, 4, 4);
 
   int y = box.top() + 8;
   for (int i = 0; i < tooltip_rows_.size(); ++i) {
     const TooltipRow& row = tooltip_rows_.at(i);
     if (i == 0) {
-      painter.setPen(QColor(60, 60, 60));
+      painter.setPen(theme::Shell().secondary_text);
       painter.drawText(QRect(box.left() + 10, y, box.width() - 20, row_h),
                        Qt::AlignLeft | Qt::AlignVCenter, row.label);
       y += row_h;
@@ -1558,7 +1565,8 @@ void PlotChartWidget::drawTooltip(QPainter& painter) const {
     }
 
     painter.fillRect(QRect(box.left() + 10, y + row_h / 2 - 4, 8, 8), row.color);
-    painter.setPen(row.latched ? QColor(120, 120, 120) : QColor(40, 40, 40));
+    painter.setPen(row.latched ? theme::Shell().disabled_text
+                               : theme::Shell().text);
     painter.drawText(QRect(box.left() + 22, y, max_label, row_h),
                      Qt::AlignLeft | Qt::AlignVCenter, row.label);
     painter.drawText(QRect(box.right() - max_value - 10, y, max_value, row_h),
@@ -1616,7 +1624,7 @@ void PlotChartWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.drawRoundedRect(add_button, 4, 4);
     painter.fillRect(QRect(add_button.left() + 10, add_button.top() + 10, 8, 8),
                      theme::Shell().accent);
-    painter.setPen(QColor(60, 60, 60));
+    painter.setPen(theme::Shell().secondary_text);
     painter.drawText(add_button.adjusted(24, 0, -8, 0),
                      Qt::AlignVCenter | Qt::AlignLeft,
                      tr("Click to add a series…"));

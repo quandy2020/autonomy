@@ -1,11 +1,26 @@
-/**
- * Copyright 2026 The Openbot Authors
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
  * @file async_remote_action_node.hpp
  * @brief Native action polling with revocable dispatch and explicit resumption.
  */
 
-#pragma once
+#ifndef AUTONOMY_TASK_NAVIGATION_PLUGINS_ASYNC_REMOTE_ACTION_NODE_HPP_
+#define AUTONOMY_TASK_NAVIGATION_PLUGINS_ASYNC_REMOTE_ACTION_NODE_HPP_
 
 #include <string>
 
@@ -27,7 +42,9 @@ class AsyncRemoteActionNode : public BtStatefulAction
 public:
     using Result = typename ActionT::Result; ///< Authoritative action payload.
 
-    /** @brief Bind the BT node name and shared navigation blackboard. */
+    /**
+     * @brief Bind the BT node name and shared navigation blackboard.
+     */
     AsyncRemoteActionNode(const std::string& name, const BT::NodeConfig& config)
         : BtStatefulAction(name, config) {}
 
@@ -35,16 +52,29 @@ protected:
     using Goal = typename ActionT::Goal; ///< Request rebuilt by the concrete node.
     using Client = common::TaskActionClient<ActionT>; ///< Native task RPC facade.
 
-    /** @brief Resolve the specific RPC client from the navigation owner. */
+    /**
+     * @brief Resolves the specific RPC client from the navigation owner.
+     * @param[in] client Navigation client that owns every action client.
+     * @return Reference to the action client this node drives.
+     */
     virtual Client& GetClient(::autonomy::task::navigation::NavigationClient& client) = 0;
-    /** @brief Return the retained invocation session used for this action. */
+    /**
+     * @brief Returns the retained invocation session used for this action.
+     * @param[in] client Navigation client; the default implementation ignores it
+     *            and reuses the node-local session.
+     * @return Session that owns the goal handle and its cancellation state.
+     */
     virtual ::autonomy::task::navigation::ActionSession<ActionT>& GetSession(
         ::autonomy::task::navigation::NavigationClient& client)
     {
         (void)client;
         return local_session_;
     }
-    /** @brief Validate and populate an action request before local admission. */
+    /**
+     * @brief Validates and populates an action request before local admission.
+     * @param[out] goal Request filled from the node ports.
+     * @return false when the ports do not describe a usable request.
+     */
     virtual bool BuildGoal(Goal& goal) = 0;
     /**
      * @brief Rebuild retained intent after confirmed cancellation and resume.
@@ -61,13 +91,19 @@ protected:
      * candidate built during a refused pause must not become admitted state.
      */
     virtual void OnGoalDispatched(const Goal& /*goal*/) noexcept {}
-    /** @brief Identify the action in readiness and failure diagnostics. */
+    /**
+     * @brief Identify the action in readiness and failure diagnostics.
+     */
     virtual const char* ServerLabel() const = 0;
 
-    /** @brief Latch execution only after the local session has been started. */
+    /**
+     * @brief Latch execution only after the local session has been started.
+     */
     bool LatchAfterFirstTick() const override { return remote_started_; }
 
-    /** @brief Check readiness and commit one invocation-owned request. */
+    /**
+     * @brief Check readiness and commit one invocation-owned request.
+     */
     BT::NodeStatus OnFirstTick() override
     {
         auto client = ResolveClient(*this);
@@ -96,7 +132,9 @@ protected:
         return BT::NodeStatus::RUNNING;
     }
 
-    /** @brief Resume confirmed remaining intent, or poll the admitted session. */
+    /**
+     * @brief Resume confirmed remaining intent, or poll the admitted session.
+     */
     BT::NodeStatus OnExecute() override
     {
         auto client = ResolveClient(*this);
@@ -138,7 +176,9 @@ protected:
         return status;
     }
 
-    /** @brief Initiate goal-specific cancellation without fabricating a stop. */
+    /**
+     * @brief Initiate goal-specific cancellation without fabricating a stop.
+     */
     void OnHalted() override
     {
         auto client = ResolveClient(*this);
@@ -153,3 +193,5 @@ protected:
 };
 
 }  // namespace autonomy::task::plugins::navigation
+
+#endif  // AUTONOMY_TASK_NAVIGATION_PLUGINS_ASYNC_REMOTE_ACTION_NODE_HPP_

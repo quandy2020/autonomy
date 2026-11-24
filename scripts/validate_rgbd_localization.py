@@ -122,6 +122,8 @@ def main():
                         help='Native exploration bounds in the navigation frame')
     parser.add_argument('--horizontal-margin', type=float, default=.02,
                         help='Additional native footprint inflation in metres')
+    parser.add_argument('--mapping-resolution', type=float, default=.15,
+                        help='Native occupancy resolution in metres')
     args = parser.parse_args()
     if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 200000:
         parser.error('use an isolated validation prefix and 500..200000 steps')
@@ -129,6 +131,8 @@ def main():
         parser.error('exploration time budget must be within 1..1800 seconds')
     if not (args.region[0] < args.region[2] and args.region[1] < args.region[3]):
         parser.error('exploration region minimum must be below its maximum')
+    if not .04 <= args.mapping_resolution <= .20:
+        parser.error('mapping resolution must be within 0.04..0.20 metres')
     if not args.localization.is_file() or not args.vocabulary.is_file():
         parser.error('actual application and vocabulary are required')
     if (args.task and not args.task.is_file()) or (args.task_start and not args.task):
@@ -323,8 +327,14 @@ def main():
                     'map_name': 'native_rgbd_exploration',
                     'region': {'min_x': args.region[0], 'min_y': args.region[1],
                                'max_x': args.region[2], 'max_y': args.region[3]},
-                    'mapping_resolution': .15,
+                    'mapping_resolution': args.mapping_resolution,
+                    'mapping_maximum_voxels': 8000000,
+                    'observation_valid_for': 2.0,
+                    'localization_evidence_lifetime': 2.0,
+                    'goal_clearance_reserve': .10,
+                    'floor_span_tolerance': .15,
                     'robot_height': .25, 'vertical_margin': .03, 'robot_radius': .105,
+                    'max_floor_step': .16,
                     'horizontal_margin': args.horizontal_margin,
                     'map_output_directory': str(args.output / 'native-mapping'),
                     'base_odometry_topic': args.prefix + '/native/base_odometry',
@@ -345,6 +355,11 @@ def main():
                     if isinstance(policy_options, dict):
                         policy_options['diagnostics_topic'] = (
                             args.prefix + '/native/policy_diagnostics')
+                        # The independent native command gate remains the final
+                        # safety authority. Avoid rejecting every policy proposal
+                        # twice when the robot is in a bounded near-wall escape.
+                        policy_options['collision_check'] = False
+                        policy_options['use_footprint_collision'] = False
                     options_copy.write_text(json.dumps(options_payload, indent=2) + chr(10))
                     report['controller_options_sha256'] = hashlib.sha256(options_copy.read_bytes()).hexdigest()
                     report['actual_execution_requested'] = True
@@ -357,6 +372,7 @@ def main():
                         'actuator_watchdog': habitat['robot']['watchdog_sec'], 'reaction_time': .1,
                         'minimum_braking_deceleration': habitat['robot']['max_linear_decel'],
                         'maximum_feedback_age': 2.0, 'maximum_map_age': 2.0,
+                        'escape_clearance_tolerance': .15,
                         'startup_observation': {
                             'enabled': bool(args.startup_observation),
                             'target_yaw': 6.283185307179586,

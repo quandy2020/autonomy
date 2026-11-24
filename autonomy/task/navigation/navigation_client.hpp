@@ -1,11 +1,26 @@
 /*
- * Copyright 2026 The Openbot Authors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
- * Thin RPC facade: task process delegates planning/control/map work to other
- * processes. No in-process planner, controller, or costmap access.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#pragma once
+/**
+ * @file navigation_client.hpp
+ * @brief Navigation client.
+ */
+
+#ifndef AUTONOMY_TASK_NAVIGATION_NAVIGATION_CLIENT_HPP_
+#define AUTONOMY_TASK_NAVIGATION_NAVIGATION_CLIENT_HPP_
 
 #include <atomic>
 #include <chrono>
@@ -64,31 +79,106 @@ class NavigationClient
 public:
     using Ptr = std::shared_ptr<NavigationClient>;
 
+    /**
+     * @brief Builds the shared client bound to an Autolink node.
+     * @param[in] node Node used to create the action clients and service clients.
+     * @return Newly created client; the caller decides where to publish it.
+     */
     static Ptr Create(std::shared_ptr<autolink::Node> node);
+    /**
+     * @brief Publishes the client through the process-wide shared slot.
+     *
+     * Behavior tree nodes resolve the client from this slot when the blackboard
+     * does not carry one, so a navigator installs it once at startup.
+     *
+     * @param[in] client Client to retain; an empty pointer clears the slot.
+     */
     static void SetShared(const Ptr& client);
+    /**
+     * @brief Resolves the client from a behavior tree blackboard.
+     * @param[in] blackboard Blackboard that may hold an installed client.
+     * @return The stored client, or the process-wide shared client as fallback.
+     */
     static Ptr FromBlackboard(const std::shared_ptr<BT::Blackboard>& blackboard);
+    /**
+     * @brief Resolves the client from a behavior tree node.
+     * @param[in] node Node whose blackboard is inspected.
+     * @return The stored client, or the process-wide shared client as fallback.
+     */
     static Ptr FromNode(const BT::TreeNode& node);
 
+    /**
+     * @brief Reports whether the planning action servers are available.
+     * @return true when a path request can be sent without waiting for discovery.
+     */
     bool IsPlanningReady() const;
+    /**
+     * @brief Reports whether the follow/spin/backup/wait action servers exist.
+     * @return true when motion requests can be sent without waiting for discovery.
+     */
     bool IsControlReady() const;
 
+    /**
+     * @brief Plans a path from the current robot pose to one goal.
+     *
+     * Blocks until the planner answers, the request times out, or
+     * @ref CancelPlanning aborts the wait.
+     *
+     * @param[in] goal Goal pose in its own frame.
+     * @param[in] planner_id Planner plugin id; empty selects the server default.
+     * @param[out] path Planned path, empty when planning failed.
+     * @param[out] error_code Optional planner error code (0 on success).
+     * @param[out] error_message Optional planner error text.
+     * @return true when a non-empty path was returned.
+     */
     bool ComputePathToPose(const automsgs::msgs::geometry_msgs::PoseStamped& goal,
                            const std::string& planner_id,
                            automsgs::msgs::nav_msgs::Path& path,
                            int* error_code = nullptr,
                            std::string* error_message = nullptr);
 
+    /**
+     * @brief Plans a path that visits several goals in the given order.
+     * @param[in] goals Ordered waypoint list; must contain at least one pose.
+     * @param[in] planner_id Planner plugin id; empty selects the server default.
+     * @param[out] path Planned path through every waypoint.
+     * @param[out] error_code Optional planner error code (0 on success).
+     * @param[out] error_message Optional planner error text.
+     * @return true when a non-empty path was returned.
+     */
     bool ComputePathThroughPoses(
         const std::vector<automsgs::msgs::geometry_msgs::PoseStamped>& goals,
         const std::string& planner_id, automsgs::msgs::nav_msgs::Path& path,
         int* error_code = nullptr, std::string* error_message = nullptr);
 
+    /**
+     * @brief Smooths a planned path with the server defaults.
+     * @param[in] unsmoothed Path returned by the planner.
+     * @param[in] smoother_id Smoother plugin id; empty selects the server default.
+     * @param[out] smoothed Smoothed path, empty when smoothing failed.
+     * @param[out] error_code Optional smoother error code (0 on success).
+     * @param[out] error_message Optional smoother error text.
+     * @return true when a non-empty smoothed path was returned.
+     */
     bool SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
                     const std::string& smoother_id,
                     automsgs::msgs::nav_msgs::Path& smoothed,
                     int* error_code = nullptr,
                     std::string* error_message = nullptr);
 
+    /**
+     * @brief Smooths a path with an explicit time budget and collision policy.
+     * @param[in] unsmoothed Path returned by the planner.
+     * @param[in] smoother_id Smoother plugin id; empty selects the server default.
+     * @param[in] max_smoothing_duration Wall-clock budget in seconds; zero lets
+     *            the server pick its own limit.
+     * @param[in] check_for_collisions When true the smoother rejects segments
+     *            that would leave the traversable space.
+     * @param[out] smoothed Smoothed path, empty when smoothing failed.
+     * @param[out] error_code Optional smoother error code (0 on success).
+     * @param[out] error_message Optional smoother error text.
+     * @return true when a non-empty smoothed path was returned.
+     */
     bool SmoothPath(const automsgs::msgs::nav_msgs::Path& unsmoothed,
                     const std::string& smoother_id,
                     double max_smoothing_duration, bool check_for_collisions,
@@ -96,12 +186,38 @@ public:
                     int* error_code = nullptr,
                     std::string* error_message = nullptr);
 
+    /**
+     * @brief Asks the planner whether a path is still traversable.
+     * @param[in] path Path to validate.
+     * @param[in] max_cost Highest costmap value still considered drivable.
+     * @param[in] consider_unknown_as_obstacle When true unknown cells block the
+     *            path; when false they are treated as free.
+     * @return true when the planner reports the path as valid.
+     */
     bool IsPathValid(const automsgs::msgs::nav_msgs::Path& path, uint8_t max_cost,
                      bool consider_unknown_as_obstacle) const;
 
+    /**
+     * @brief Clears the costmap around the robot before a recovery attempt.
+     * @return true when the clear service acknowledged the request.
+     */
     bool ClearCostmap() const;
 
+    /**
+     * @brief Reports arrival using the current goal feedback only.
+     * @param[in] distance_tolerance Remaining distance treated as arrival, metres.
+     * @return true when the follower reported less than the tolerance left.
+     */
     bool IsGoalReached(double distance_tolerance) const;
+    /**
+     * @brief Reports arrival by comparing the current pose with a goal pose.
+     * @param[in] goal Goal pose in its own frame.
+     * @param[in] distance_tolerance Allowed planar distance in metres.
+     * @param[in] yaw_tolerance Allowed heading difference in radians.
+     * @param[in] robot_frame Frame id the transform lookup starts from.
+     * @param[in] max_pose_age Oldest acceptable pose age in seconds.
+     * @return true when the live pose is inside both tolerances.
+     */
     bool IsGoalReached(const automsgs::msgs::geometry_msgs::PoseStamped& goal,
                        double distance_tolerance, double yaw_tolerance,
                        const std::string& robot_frame = "base_link",
@@ -110,6 +226,9 @@ public:
     /** Latest FollowPath feedback distance, if any. */
     [[nodiscard]] bool TryGetDistanceToGoal(float* distance_to_goal) const;
 
+    /**
+     * @brief Cancels every motion goal this client currently owns.
+     */
     void CancelActiveMotion();
 
     /**
@@ -215,3 +334,5 @@ private:
 }  // namespace navigation
 }  // namespace task
 }  // namespace autonomy
+
+#endif  // AUTONOMY_TASK_NAVIGATION_NAVIGATION_CLIENT_HPP_

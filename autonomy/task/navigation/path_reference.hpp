@@ -1,12 +1,26 @@
-/* Copyright 2026 The Openbot Authors. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
  * @file path_reference.hpp
  * @brief Preserve complete route geometry when compacting and comparing paths.
- *
- * This helper does not infer collision freedom. It only removes numerically
- * redundant points, and treats a changed remaining polyline as a new reference.
  */
-#pragma once
+
+#ifndef AUTONOMY_TASK_NAVIGATION_PATH_REFERENCE_HPP_
+#define AUTONOMY_TASK_NAVIGATION_PATH_REFERENCE_HPP_
 
 #include <array>
 #include <cmath>
@@ -18,7 +32,9 @@
 
 namespace autonomy::task::navigation {
 
-/** @brief Geometry and orientation of one controller reference pose. */
+/**
+ * @brief Geometry and orientation of one controller reference pose.
+ */
 struct PathReferencePose {
     std::array<double, 3> position{};     ///< Metric XYZ in the path frame.
     std::array<double, 4> orientation{};  ///< Quaternion XYZW; zero stays unspecified.
@@ -103,7 +119,10 @@ private:
     static constexpr long double kPositionTolerance = 1e-9L; ///< Numerical tolerance in metres.
     static constexpr double kOrientationTolerance = 1e-12;   ///< Quaternion component tolerance.
 
-    /** @brief Compare metric positions without quantizing or wrapping coordinates. */
+    /**
+     * @brief Compare metric positions without quantizing or wrapping
+              * coordinates.
+     */
     static bool SamePosition(const PathReferencePose& a, const PathReferencePose& b) {
         long double squared = 0;
         for (std::size_t j = 0; j < 3; ++j) {
@@ -113,7 +132,9 @@ private:
         return squared <= kPositionTolerance * kPositionTolerance;
     }
 
-    /** @brief Quaternion sign changes describe the same orientation. */
+    /**
+     * @brief Quaternion sign changes describe the same orientation.
+     */
     static bool SameOrientation(const PathReferencePose& a, const PathReferencePose& b) {
         bool same = true;
         bool negated = true;
@@ -124,12 +145,17 @@ private:
         return same || negated;
     }
 
-    /** @brief Compare all controller-visible pose geometry. */
+    /**
+     * @brief Compare all controller-visible pose geometry.
+     */
     static bool SamePose(const PathReferencePose& a, const PathReferencePose& b) {
         return SamePosition(a, b) && SameOrientation(a, b);
     }
 
-    /** @brief Test a point against the bounded 3D segment, never its infinite line. */
+    /**
+     * @brief Test a point against the bounded 3D segment, never its infinite
+              * line.
+     */
     static bool OnSegment(const PathReferencePose& point, const PathReferencePose& a,
                           const PathReferencePose& b) {
         std::array<long double, 3> direction{};
@@ -153,7 +179,10 @@ private:
         return error_squared <= kPositionTolerance * kPositionTolerance;
     }
 
-    /** @brief Validate every omitted pose against the actual compacted segment. */
+    /**
+     * @brief Validate every omitted pose against the actual compacted
+              * segment.
+     */
     bool PreservesInterval(std::size_t first, std::size_t last) const {
         if (!SameOrientation(poses_[first], poses_[last])) return false;
         for (std::size_t i = first + 1; i < last; ++i) {
@@ -163,7 +192,10 @@ private:
         return true;
     }
 
-    /** @brief Compare the entire remaining ordered sequence, not just its endpoint. */
+    /**
+     * @brief Compare the entire remaining ordered sequence, not just its
+              * endpoint.
+     */
     bool SameTail(std::size_t here, std::size_t there, const PathReference& candidate) const {
         if (retained_.size() - here != candidate.retained_.size() - there) return false;
         for (; here < retained_.size(); ++here, ++there) {
@@ -180,3 +212,5 @@ private:
 };
 
 }  // namespace autonomy::task::navigation
+
+#endif  // AUTONOMY_TASK_NAVIGATION_PATH_REFERENCE_HPP_

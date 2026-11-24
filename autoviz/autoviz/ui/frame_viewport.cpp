@@ -1016,6 +1016,12 @@ rendering::ViewController* FrameViewport::activeViewController() {
 }
 
 void FrameViewport::requestViewportUpdate() {
+  // Record the request before the reentrancy branch below: displays call this
+  // from processMessage while the manager is updating, and the idle throttle
+  // must still see that a repaint is pending.
+  if (frame_->session_ != nullptr) {
+    frame_->session_->markViewportDirty();
+  }
   // While frame_->manager_->update() is running, displays often call request_redraw from
   // processMessage. Nested syncToolContext + frame_->update() storms the UI thread —
   // especially after returning from the background with a message backlog.

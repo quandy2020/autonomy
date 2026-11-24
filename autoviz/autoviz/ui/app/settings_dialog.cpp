@@ -234,7 +234,7 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
       style::sheet(QStringLiteral("app_settings"), AppSettingsTokens()));
 
   const AppUiPreferences ui_prefs = LoadAppUiPreferences();
-  theme_mode_ = ui_prefs.theme_mode.isEmpty() ? QStringLiteral("dark")
+  theme_mode_ = ui_prefs.theme_mode.isEmpty() ? QStringLiteral("light")
                                               : ui_prefs.theme_mode;
   accent_color_ = ui_prefs.accent_color;
   preview_restore_theme_ = theme_mode_;
@@ -437,6 +437,17 @@ AppSettingsDialog::AppSettingsDialog(common::VisualizationManager* manager,
     fps_layout->addWidget(frame_rate_slider_);
     fps_layout->addWidget(frame_rate_spin_);
     gl->addWidget(MakeRow(group, tr("Frame rate"), fps_field, false));
+
+    idle_render_spin_ = new QSpinBox(group);
+    idle_render_spin_->setRange(kMinIdleRenderDivisor, kMaxIdleRenderDivisor);
+    idle_render_spin_->setSuffix(tr(" x"));
+    idle_render_spin_->setToolTip(
+        tr("Idle ticks between repaints; 1 = always paint. "
+           "Data intake stays at the target frame rate."));
+    idle_render_spin_->setValue(
+        LoadAppUiPreferences().idle_render_divisor);
+    gl->addWidget(
+        MakeRow(group, tr("Idle repaint divisor"), idle_render_spin_, false));
 
     pages_->addWidget(WrapPage(MakePageShell(pages_, group)));
   }
@@ -744,6 +755,9 @@ AppSettingsResult AppSettingsDialog::resultValues() const {
     result.background_color =
         common::FormatColorProperty(backgroundColorFromUi());
     result.frame_rate = frame_rate_spin_->value();
+    if (idle_render_spin_ != nullptr) {
+      result.idle_render_divisor = idle_render_spin_->value();
+    }
     result.time_sync_mode = static_cast<common::TimeSyncMode>(
         time_sync_combo_->currentData().toInt());
     result.time_paused = time_paused_check_->isChecked();
@@ -752,7 +766,7 @@ AppSettingsResult AppSettingsDialog::resultValues() const {
     result.plot_settings_visible = show_panel_settings_check_->isChecked();
   }
   result.language_code = language_combo_->currentData().toString();
-  result.theme_mode = theme_mode_.isEmpty() ? QStringLiteral("dark")
+  result.theme_mode = theme_mode_.isEmpty() ? QStringLiteral("light")
                                             : theme_mode_;
   result.accent_color = accent_color_;
   result.start_maximized = start_maximized_check_->isChecked();

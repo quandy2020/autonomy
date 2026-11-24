@@ -1,8 +1,26 @@
 /*
- * Copyright 2025 The Openbot Authors (duyongquan)
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
-#pragma once
+/**
+ * @file behavior_tree_navigator.hpp
+ * @brief BT navigator base (nav2_core::BehaviorTreeNavigator analogue).
+ */
+
+#ifndef AUTONOMY_TASK_NAVIGATION_BEHAVIOR_TREE_NAVIGATOR_HPP_
+#define AUTONOMY_TASK_NAVIGATION_BEHAVIOR_TREE_NAVIGATOR_HPP_
 
 #include <functional>
 #include <memory>
@@ -64,6 +82,15 @@ public:
     using GoalPtr = std::shared_ptr<const Goal>;
     using ResultPtr = std::shared_ptr<Result>;
 
+    /**
+     * @brief Binds one behavior-tree navigator to its engine and action server.
+     * @param[in] name Navigator id also used for the action name suffix.
+     * @param[in] node Autolink node that hosts the action server.
+     * @param[in] engine Behavior tree engine shared with the task app.
+     * @param[in] context Per-navigator blackboard context (frames, client, ...).
+     * @param[in] muxer Arbitration object that owns the single active navigator.
+     * @param[in] default_tree_xml Tree used when a goal does not name one.
+     */
     BehaviorTreeNavigator(std::string name,
                           std::shared_ptr<autolink::Node> node,
                           std::shared_ptr<behavior_tree::BtEngine> engine,
@@ -75,12 +102,34 @@ public:
 
     const std::string& GetName() const { return name_; }
 
+    /**
+     * @brief Starts a new navigation and takes the muxer token.
+     *
+     * The call fails when another navigator already owns the muxer, so a caller
+     * can report "busy" instead of silently preempting another task.
+     *
+     * @param[in] goal Accepted action goal.
+     * @param[in] tree_xml Optional tree override; empty uses the default tree.
+     * @return true when this navigator became the active one.
+     */
     bool StartWithGoal(GoalPtr goal, const std::string& tree_xml = "");
 
+    /**
+     * @brief Reports whether a goal is currently executing.
+     * @return true between a successful @ref StartWithGoal and the terminal result.
+     */
     bool IsRunning() const;
     bool IsInitialized() const { return static_cast<bool>(action_server_); }
+    /**
+     * @brief Cancels the executing goal and releases the muxer token.
+     * @return true when an active goal was canceled.
+     */
     bool Cancel();
 
+    /**
+     * @brief Installs a callback invoked on every terminal tree status.
+     * @param[in] hook Callback receiving the final run status; may be empty.
+     */
     void SetCompletionHook(std::function<void(behavior_tree::RunStatus)> hook) {
         completion_hook_ = std::move(hook);
     }
@@ -196,3 +245,5 @@ bool BehaviorTreeNavigator<ActionT>::Cancel() {
 }  // namespace navigation
 }  // namespace task
 }  // namespace autonomy
+
+#endif  // AUTONOMY_TASK_NAVIGATION_BEHAVIOR_TREE_NAVIGATOR_HPP_

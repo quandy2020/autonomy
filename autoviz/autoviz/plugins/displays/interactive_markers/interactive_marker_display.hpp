@@ -92,7 +92,8 @@ class InteractiveMarkerDisplay
   std::map<std::string, InteractiveMarker::SharedPtr> interactive_markers_map_;
 
   std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> init_reader_;
-  integration::MessageQueue init_queue_;
+  std::shared_ptr<integration::MessageQueue> init_queue_ =
+      std::make_shared<integration::MessageQueue>();
 };
 
 }  // namespace display

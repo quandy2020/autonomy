@@ -47,6 +47,16 @@ QColor AppThemeSuggestedViewportBackground();
 QPalette BuildThemePalette();
 
 /**
+ * @brief Baseline sheet for native value controls (combos, editors, tables).
+ *
+ * Installed on the main window so panels that do not ship their own field QSS
+ * still follow the shell theme. Widget-local sheets take precedence.
+ *
+ * @return QSS text built from @ref theme::Shell().
+ */
+QString BuildNativeControlStyleSheet();
+
+/**
  * @brief Apply frosted-glass theme: Fusion base + cool light palette + cyan accents.
  *
  * Sets Fusion style with @ref ProxyStyle, applies @ref BuildThemePalette(), and

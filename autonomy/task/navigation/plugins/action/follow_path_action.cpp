@@ -1,5 +1,20 @@
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
- * Copyright 2026 The Openbot Authors
  * @file follow_path_action.cpp
  * @brief Follow current paths through revocable, invocation-owned dispatch.
  */
@@ -22,15 +37,22 @@ namespace autonomy::task::plugins::navigation {
 
 namespace navigation_actions = automsgs::actions;
 
-/** @brief Follow complete route geometry with revocable replacement/resumption. */
+/**
+ * @brief Follow complete route geometry with revocable
+          * replacement/resumption.
+ */
 class FollowPathAction : public AsyncRemoteActionNode<navigation_actions::FollowPathAction>
 {
 public:
-    /** @brief Bind the native BT name and its shared navigation context. */
+    /**
+     * @brief Bind the native BT name and its shared navigation context.
+     */
     FollowPathAction(const std::string& name, const BT::NodeConfig& config)
         : AsyncRemoteActionNode(name, config) {}
 
-    /** @brief Expose route, controller, transport budget and error ports. */
+    /**
+     * @brief Expose route, controller, transport budget and error ports.
+     */
     static BT::PortsList providedPorts()
     {
         return {
@@ -47,20 +69,26 @@ public:
     }
 
 protected:
-    /** @brief Resolve the native FollowPath RPC client owned by navigation. */
+    /**
+     * @brief Resolve the native FollowPath RPC client owned by navigation.
+     */
     Client& GetClient(::autonomy::task::navigation::NavigationClient& client) override
     {
         return client.follow_path_client();
     }
 
-    /** @brief Reuse this navigation invocation's retained FollowPath session. */
+    /**
+     * @brief Reuse this navigation invocation's retained FollowPath session.
+     */
     ::autonomy::task::navigation::ActionSession<navigation_actions::FollowPathAction>&
     GetSession(::autonomy::task::navigation::NavigationClient& client) override
     {
         return client.follow_session();
     }
 
-    /** @brief Validate and compact a complete route without deleting bends. */
+    /**
+     * @brief Validate and compact a complete route without deleting bends.
+     */
     bool BuildGoal(Goal& goal) override
     {
         automsgs::msgs::nav_msgs::Path path;
@@ -113,7 +141,9 @@ protected:
         return true;
     }
 
-    /** @brief Admit a complete route or retain a concurrently paused session. */
+    /**
+     * @brief Admit a complete route or retain a concurrently paused session.
+     */
     BT::NodeStatus OnFirstTick() override
     {
         auto client = ResolveClient(*this);
@@ -165,7 +195,10 @@ protected:
         return BT::NodeStatus::RUNNING;
     }
 
-    /** @brief Revalidate rolling references before polling or resuming execution. */
+    /**
+     * @brief Revalidate rolling references before polling or resuming
+              * execution.
+     */
     BT::NodeStatus OnExecute() override
     {
         auto client = ResolveClient(*this);
@@ -204,7 +237,9 @@ protected:
         return AsyncRemoteActionNode::OnExecute();
     }
 
-    /** @brief Cancel the matching invocation and release its route references. */
+    /**
+     * @brief Cancel the matching invocation and release its route references.
+     */
     void OnHalted() override
     {
         AINFO << "FollowPath: halted by behavior tree";
@@ -213,7 +248,10 @@ protected:
         pending_reference_.reset();
     }
 
-    /** @brief Identify the remote service in readiness and dispatch diagnostics. */
+    /**
+     * @brief Identify the remote service in readiness and dispatch
+              * diagnostics.
+     */
     const char* ServerLabel() const override { return "follow_path"; }
 
     /**
@@ -225,7 +263,9 @@ protected:
         return BuildGoal(goal);
     }
 
-    /** @brief Commit initial, rolling and resumed bookkeeping after admission. */
+    /**
+     * @brief Commit initial, rolling and resumed bookkeeping after admission.
+     */
     void OnGoalDispatched(const Goal& /*goal*/) noexcept override {
         if (pending_reference_) {
             sent_reference_.swap(pending_reference_);

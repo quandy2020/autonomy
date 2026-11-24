@@ -10,6 +10,7 @@
 #include <atomic>
 #include <chrono>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <future>
 #include <mutex>
@@ -101,7 +102,12 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     config.input.depth_calibration_revision = yaml["calibration_revision"].as<std::uint64_t>();
     config.input.depth_rectified = true;
     config.input.minimum_depth = yaml["minimum_depth"].as<double>(); config.input.maximum_depth = yaml["maximum_depth"].as<double>();
-    config.input.decoding.valid_for = .75; config.input.localization_wait_timeout = std::chrono::milliseconds(250);
+    config.input.decoding.valid_for = yaml["observation_valid_for"]
+        ? yaml["observation_valid_for"].as<double>() : .75;
+    if (!std::isfinite(config.input.decoding.valid_for) || config.input.decoding.valid_for <= 0 ||
+        config.input.decoding.valid_for > 5.0)
+        throw std::invalid_argument("observation_valid_for must be within (0, 5] seconds");
+    config.input.localization_wait_timeout = std::chrono::milliseconds(250);
     config.input.decoding.rgbd_pixel_stride = yaml["ray_pixel_stride"] ? yaml["ray_pixel_stride"].as<unsigned>() : 4;
     const auto calibration = perception::NativeDepthCalibration(camera,config.input.depth_calibration_revision,true,
         config.input.minimum_depth,config.input.maximum_depth);
@@ -111,7 +117,13 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     options.localization.camera_frame = camera.header().frame_id(); options.localization.base_frame = yaml["physical_base_frame"].as<std::string>();
     options.navigation_base_frame = yaml["navigation_base_frame"].as<std::string>();
     options.localization.odometry_topic = yaml["atlas_odometry_topic"].as<std::string>(); options.status_topic = yaml["atlas_status_topic"].as<std::string>();
-    options.localization.calibration_revision = config.input.depth_calibration_revision; options.localization.evidence_lifetime = .75;
+    options.localization.calibration_revision = config.input.depth_calibration_revision;
+    options.localization.evidence_lifetime = yaml["localization_evidence_lifetime"]
+        ? yaml["localization_evidence_lifetime"].as<double>() : .75;
+    if (!std::isfinite(options.localization.evidence_lifetime) ||
+        options.localization.evidence_lifetime <= 0 ||
+        options.localization.evidence_lifetime > 5.0)
+        throw std::invalid_argument("localization_evidence_lifetime must be within (0, 5] seconds");
     options.localization.fallback_odometry_topic =
         yaml["fallback_odometry_topic"] ? yaml["fallback_odometry_topic"].as<std::string>() : std::string{};
     ::autonomy::transform::tf2::BufferCore mounts;
@@ -190,12 +202,22 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
         config.session.prune_after_sweeps = static_cast<unsigned>(sweeps);
     }
     options.mapping.resolution = yaml["mapping_resolution"].as<double>();
+    if (yaml["mapping_maximum_voxels"]) {
+        const auto voxels = yaml["mapping_maximum_voxels"].as<long long>();
+        if (voxels < 100000 || voxels > 32000000)
+            throw std::invalid_argument("mapping_maximum_voxels must be within [100000, 32000000]");
+        options.mapping.maximum_voxels = static_cast<std::size_t>(voxels);
+    }
+    config.coverage.sampling.goal_clearance_reserve =
+        yaml["goal_clearance_reserve"] ? yaml["goal_clearance_reserve"].as<double>() : .05;
     options.mapping.floor_span_tolerance =
         yaml["floor_span_tolerance"] ? yaml["floor_span_tolerance"].as<double>() :
         NativeObservationMapperOptions{}.floor_span_tolerance;
     options.mapping.sensor_heights[1] = actual_mount.translation().z();
     options.mapping.robot_height = config.coverage.safety.robot_height = yaml["robot_height"].as<double>();
     options.mapping.vertical_margin = config.coverage.safety.vertical_margin = yaml["vertical_margin"].as<double>();
+    if (yaml["max_floor_step"])
+        config.coverage.safety.max_floor_step = yaml["max_floor_step"].as<double>();
     config.coverage.safety.robot_radius = yaml["robot_radius"].as<double>();
     config.coverage.safety.horizontal_margin = yaml["horizontal_margin"].as<double>();
     options.mapping.output_directory = Path(root,yaml["map_output_directory"].as<std::string>());
@@ -228,6 +250,9 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
             options.command_gate.maximum_feedback_age = yaml["maximum_feedback_age"].as<double>();
         if (yaml["maximum_map_age"])
             options.command_gate.maximum_map_age = yaml["maximum_map_age"].as<double>();
+        if (yaml["escape_clearance_tolerance"])
+            options.command_gate.escape_clearance_tolerance =
+                yaml["escape_clearance_tolerance"].as<double>();
         controller.mutable_policy_controller_options()->set_image_topic(options.controller_image_topic);
         controller.mutable_policy_controller_options()->set_robot_frame(options.navigation_base_frame);
         // The native relay preserves the calibrated optical frame instead of
@@ -862,8 +887,16 @@ public:
                             << position.y() << " distance=" << distance
                             << " radius=" << startup_support_->radius;
             if (distance > startup_support_->radius) {
-                startup_support_.reset();
-                return;
+                // Keep the measured floor/ceiling closure local to the moving
+                // robot. The closure still only substitutes unknown cells and
+                // therefore cannot erase an observed occupied/conflicting cell.
+                startup_support_->center_x = position.x();
+                startup_support_->center_y = position.y();
+                startup_support_expires_ =
+                    Now() + options_.exploration.session.startup_observation.support_timeout;
+                AINFO_EVERY(40) << "NATIVE_SUPPORT_REANCHOR center="
+                                << position.x() << "," << position.y()
+                                << " radius=" << startup_support_->radius;
             }
         }
         // The measured floor/ceiling closure remains valid while the robot
@@ -1017,6 +1050,131 @@ public:
             startup_support_expires_ = 0;
         }
     }
+    /** @brief Find a nearby strictly safe cell for a bounded near-wall escape. */
+    std::optional<Pose2d> FindEscapeTarget(const MapReadView& map, const Pose2d& current) const {
+        if (!map.grid) return std::nullopt;
+        auto body = options_.command_gate.body;
+        if (map.footprint_inflated) { body.robot_radius = 1e-9; body.horizontal_margin = 0; }
+        if (map.startup_support) body.startup_support = map.startup_support;
+        autonomy::navigation::GeometrySafety geometry(map.grid, body);
+        const auto current_check = geometry.VerifyPose(current);
+        const auto cell = map.grid->WorldToCell(current);
+        if (!cell) return std::nullopt;
+        const double resolution = map.grid->resolution();
+        const int span = static_cast<int>(std::ceil(1.20 / resolution));
+        std::optional<Pose2d> best;
+        double best_distance = std::numeric_limits<double>::infinity();
+        std::optional<Pose2d> roomiest;
+        double roomiest_clearance = -1;
+        const double radius = body.robot_radius + body.horizontal_margin;
+        for (int dy = -span; dy <= span; ++dy) for (int dx = -span; dx <= span; ++dx) {
+            const int x = cell->x + dx, y = cell->y + dy;
+            if (!map.grid->Contains(x, y) ||
+                map.grid->At(x, y).state != autonomy::navigation::CellState::kFree) continue;
+            auto candidate = map.grid->CellCenter(x, y);
+            candidate.yaw = current.yaw;
+            const auto checked = geometry.VerifyPose(candidate);
+            if (checked.clearance <= 0) continue;
+            const double distance = autonomy::navigation::Distance(current, candidate);
+            if (distance <= .02 || distance > 1.20 + 1e-9) continue;
+            if (checked.clearance >= radius + .01) {
+                // A certified cell is the intended escape; take the nearest one
+                // so the chord stays short and cannot cross a wall.
+                if (distance < best_distance) { best = candidate; best_distance = distance; }
+                continue;
+            }
+            // Coarse map cells can leave a whole neighbourhood inside the
+            // footprint band.  Keeping a strict "must improve by 1.5 cm" rule
+            // then finds no target at all and the robot spins forever, so keep
+            // the roomiest reachable cell as a bounded fallback and let the
+            // command gate certify the actual motion.
+            if (checked.clearance > roomiest_clearance) {
+                roomiest = candidate; roomiest_clearance = checked.clearance;
+            }
+        }
+        if (!best) best = roomiest;
+        if (!best) {
+            AWARN_EVERY(60) << "NATIVE_ESCAPE_NO_TARGET clearance=" << current_check.clearance;
+        }
+        return best;
+    }
+    /** @brief Publish a low-speed escape toward a strictly safe nearby cell.
+     * The command still passes the independent native command gate; this only
+     * supplies a direction when the controller itself is aimed into a wall.
+     */
+    bool TryEscape(const ::automsgs::msgs::nav_msgs::Odometry& feedback,
+                   const MapReadView& map, const Pose2d& current,
+                   const std::string& rejection) {
+        if (Now() < next_escape_after_) return false;
+        const auto& q = feedback.pose().pose().pose().orientation();
+        const double yaw = std::atan2(2 * (q.w() * q.z() + q.x() * q.y()),
+                                     1 - 2 * (q.y() * q.y() + q.z() * q.z()));
+        auto body = options_.command_gate.body;
+        if (map.footprint_inflated) { body.robot_radius = 1e-9; body.horizontal_margin = 0; }
+        if (map.startup_support) body.startup_support = map.startup_support;
+        autonomy::navigation::GeometrySafety geometry(map.grid, body);
+        const auto current_check = geometry.VerifyPose(current);
+        const double radius = body.robot_radius + body.horizontal_margin;
+        if (current_check.safe || current_check.clearance + options_.command_gate.escape_clearance_tolerance
+                + 1e-12 < radius) return false;
+        const auto target = FindEscapeTarget(map, current);
+        if (!target) return false;
+        const double dx = target->x - current.x, dy = target->y - current.y;
+        const double forward = std::cos(yaw) * dx + std::sin(yaw) * dy;
+        const double lateral = -std::sin(yaw) * dx + std::cos(yaw) * dy;
+        const double bearing = std::atan2(lateral, forward);
+        ::automsgs::msgs::geometry_msgs::TwistStamped escape;
+        escape.mutable_header()->mutable_stamp()->CopyFrom(::automsgs::msgs::builtin_interfaces::TimeNow());
+        escape.mutable_header()->set_frame_id(options_.navigation_base_frame);
+        // Face the escape direction before translating: the gate evaluates the
+        // stopping envelope along the commanded heading, so an angled escape
+        // would put its stop point back inside the wall the robot is leaving.
+        // When already aligned, walk a bounded speed ladder so the stop point
+        // stays inside the certified cell instead of failing the 0.5 m/s one.
+        constexpr double kAlignTolerance = .12;
+        std::vector<double> speeds;
+        if (std::abs(bearing) > kAlignTolerance) {
+            speeds.push_back(0.0);
+        } else {
+            speeds = {.50, .35, .25, .18, .12};
+        }
+        ::automsgs::msgs::geometry_msgs::TwistStamped accepted;
+        std::string verdict_reason;
+        double accepted_speed = -1.0;
+        for (double speed : speeds) {
+            ::automsgs::msgs::geometry_msgs::TwistStamped candidate;
+            candidate.mutable_header()->CopyFrom(escape.header());
+            if (speed <= 0.0) {
+                candidate.mutable_twist()->mutable_angular()->set_z(std::clamp(bearing * 1.5, -.8, .8));
+            } else {
+                // Cross the current discretized occupied/unknown cell before
+                // the stopping envelope is evaluated; the command gate still
+                // performs the full directional stop and geometry checks.
+                candidate.mutable_twist()->mutable_linear()->set_x(speed);
+                candidate.mutable_twist()->mutable_angular()->set_z(std::clamp(bearing * 1.2, -.5, .5));
+            }
+            const auto verdict = control::VerifyNativeCommand(candidate, feedback, map,
+                                                              options_.command_gate, Now());
+            if (!verdict.safe) { verdict_reason = verdict.reason; continue; }
+            accepted = std::move(candidate);
+            accepted_speed = speed;
+            break;
+        }
+        if (accepted_speed < 0.0) {
+            AWARN_EVERY(20) << "NATIVE_ESCAPE_BLOCKED target=" << target->x << "," << target->y
+                            << " bearing=" << bearing << " reason=" << verdict_reason;
+            return false;
+        }
+        const bool written = command_writer_ && command_writer_->Write(accepted);
+        if (written) {
+            next_escape_after_ = Now() + .25;
+            AINFO_EVERY(10) << "NATIVE_ESCAPE target=" << target->x << "," << target->y
+                            << " bearing=" << bearing << " linear=" << accepted_speed
+                            << " before=" << rejection;
+        }
+        return written;
+    }
+
     /** @brief Independent actual-map command admission and existing TwistStamped transport. */
     bool PublishControlCommand(const ::automsgs::msgs::geometry_msgs::TwistStamped& command) {
         if (!command_writer_ || !command.has_header() || !command.has_twist() ||
@@ -1063,6 +1221,44 @@ public:
             AttachStartupSupport(*map);
             const auto verdict = control::VerifyNativeCommand(command,*feedback,*map,options_.command_gate,Now());
             if (!verdict.safe) {
+                // The command speed fixes the stopping envelope. When the body
+                // and heading are fine but the full-speed stop would touch an
+                // obstacle, publish a slower version of the same command rather
+                // than rotating in place forever. Every candidate still passes
+                // the independent gate; this only adapts the speed it admits.
+                const double requested = std::abs(twist.linear().x());
+                if (requested > 1e-9) {
+                    for (double fraction : {.70, .50, .35, .25, .18, .12}) {
+                        auto slower = command;
+                        slower.mutable_twist()->mutable_linear()->set_x(
+                            twist.linear().x() > 0 ? requested * fraction : -requested * fraction);
+                        const auto slowed = control::VerifyNativeCommand(
+                            slower, *feedback, *map, options_.command_gate, Now());
+                        if (!slowed.safe) continue;
+                        AINFO_EVERY(20) << "NATIVE_EXECUTION_SLOWED linear="
+                                        << slower.twist().linear().x()
+                                        << " requested=" << twist.linear().x()
+                                        << " reason=" << verdict.reason;
+                        return command_writer_->Write(slower);
+                    }
+                }
+                const auto& current_body = feedback->pose().pose().pose();
+                const auto& current_q = current_body.orientation();
+                const Pose2d escape_pose{current_body.position().x(), current_body.position().y(),
+                    std::atan2(2 * (current_q.w() * current_q.z() + current_q.x() * current_q.y()),
+                               1 - 2 * (current_q.y() * current_q.y() + current_q.z() * current_q.z()))};
+                if (TryEscape(*feedback, *map, escape_pose, verdict.reason)) return true;
+                if (verdict.reason.rfind("stale or future", 0) == 0) {
+                    const auto header_stamp = [](const auto& header) {
+                        return header.has_stamp()
+                            ? header.stamp().sec() + header.stamp().nanosec() * 1e-9 : -1.0;
+                    };
+                    AWARN << "NATIVE_EXECUTION_TIME now=" << Now()
+                          << " command=" << header_stamp(command.header())
+                          << " feedback=" << header_stamp(feedback->header())
+                          << " map=" << map->source_stamp
+                          << " pose=" << header_stamp(feedback->pose().pose().header());
+                }
                 // A near-wall controller proposal can be safe while stationary
                 // and still have an uncertified swept segment. Preserve the
                 // controller's planar yaw request and stop translation so it
@@ -1083,6 +1279,18 @@ public:
                         return command_writer_->Write(rotation_only);
                     }
                 }
+                if (TryEscape(*feedback, *map, Pose2d{
+                        feedback->pose().pose().pose().position().x(),
+                        feedback->pose().pose().pose().position().y(),
+                        std::atan2(2 * (feedback->pose().pose().pose().orientation().w() *
+                                         feedback->pose().pose().pose().orientation().z() +
+                                         feedback->pose().pose().pose().orientation().x() *
+                                         feedback->pose().pose().pose().orientation().y()),
+                                   1 - 2 * (feedback->pose().pose().pose().orientation().y() *
+                                             feedback->pose().pose().pose().orientation().y() +
+                                             feedback->pose().pose().pose().orientation().z() *
+                                             feedback->pose().pose().pose().orientation().z()))}, verdict.reason))
+                    return true;
                 AWARN << "NATIVE_EXECUTION_BLOCKED " << verdict.reason;
                 return false;
             }
@@ -1212,6 +1420,7 @@ public:
     std::mutex startup_support_mutex_;  ///< Protects the start-only support closure shared by map consumers.
     std::optional<autonomy::navigation::StartupSupportRegion> startup_support_;  ///< Measured closure never written to the map.
     double startup_support_expires_ = 0;  ///< Absolute expiry of the start-only closure, seconds.
+    double next_escape_after_ = 0;  ///< Rate-limit independent near-wall escape commands.
     std::optional<::automsgs::msgs::nav_msgs::Odometry> control_state_;  ///< Original calibrated feedback retained under pose_mutex_, never a previous command.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::geometry_msgs::TwistStamped>> command_writer_;  ///< Actual isolated actuator transport after independent map checks.
     std::shared_ptr<autolink::Writer<::automsgs::msgs::sensor_msgs::Image>> control_image_writer_;  ///< Full original depth in the calibrated private optical alias.
@@ -1219,6 +1428,7 @@ public:
     ::autonomy::transform::Buffer* buffer_ = nullptr;  ///< Existing process-local TF buffer; only isolated navigation frames are added.
     std::atomic<bool> closed_{false};  ///< Immediate provider-admission revocation.
     std::mutex pose_mutex_;  ///< Serializes actual pose alignment/publication across native callbacks.
+    double next_map_snapshot_ = 0;  ///< Wall-clock deadline for the next periodic map evidence file.
     std::uint64_t reported_session_ = 0;  ///< Last actual Session identity reported by the sole task packet owner.
     perception::SensorMask reported_losses_ = 0;  ///< Last actual unresolved-loss mask logged by the task owner.
     std::uint64_t last_epoch_ = 0, last_stamp_ = 0;  ///< Previous actual same-epoch native acquisition used for base velocity.
@@ -1269,6 +1479,34 @@ bool NativeRgbdPlatform::Install() {
             const auto occupancy = state->mapper_->Occupancy(); const auto grid = state->mapper_->Grid();
             if (occupancy && state->occupancy_writer_) state->occupancy_writer_->Write(*occupancy);
             if (grid && state->grid_writer_) state->grid_writer_->Write(*grid);
+            // Persist the live map every minute. A run that is stopped by its
+            // time budget or by an operator must still leave measurable
+            // coverage evidence; the terminal save phase is not guaranteed to
+            // be reached by every session.
+            if (occupancy && grid && now >= state->next_map_snapshot_ &&
+                !state->options_.mapping.output_directory.empty()) {
+                state->next_map_snapshot_ = now + 60.0;
+                const auto stamp = static_cast<long long>(now);
+                const auto write = [&](const std::string& name, const auto& message) {
+                    std::string bytes;
+                    if (!message.SerializeToString(&bytes)) return false;
+                    const auto path = state->options_.mapping.output_directory / (name + ".pb");
+                    const auto temporary = path.string() + ".tmp";
+                    {
+                        std::ofstream out(temporary, std::ios::binary | std::ios::trunc);
+                        if (!out) return false;
+                        out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+                        if (!out) return false;
+                    }
+                    std::error_code error;
+                    std::filesystem::rename(temporary, path, error);
+                    return !error;
+                };
+                const bool saved =
+                    write("snapshot-" + std::to_string(stamp) + ".occupancy", *occupancy) &&
+                    write("snapshot-" + std::to_string(stamp) + ".grid", *grid);
+                AINFO << "NATIVE_MAP_SNAPSHOT stamp=" << stamp << " success=" << saved;
+            }
             const auto task = state->task_.lock();
             const auto snapshot = task ? task->GetExplorationSnapshot() : std::nullopt;
             if (snapshot && snapshot->session_id && snapshot->measured_coverage_map && state->measured_coverage_writer_ &&

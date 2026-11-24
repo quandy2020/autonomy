@@ -846,7 +846,10 @@ void FrameChrome::rebuildPanelsMenuToggles() {
   }
 
   for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
-    if (dock == nullptr || dock->property("panelDisposed").toBool()) {
+    if (dock == nullptr || dock->property("panelDisposed").toBool() ||
+        dock->property("mosaicPlaceholder").toBool()) {
+      // Placeholders stand in for panels whose type is unavailable; they are
+      // not user panels and must not appear in the Panels menu.
       continue;
     }
     const QString type_id = frame_->panels_->panelTypeId(dock);

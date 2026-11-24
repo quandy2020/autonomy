@@ -1,12 +1,24 @@
-/* Copyright 2026 The Openbot Authors. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
  * @file motion_dispatch_test.cpp
  * @brief Native dispatch ownership, uncertain acceptance and cancellation tests.
- *
- * The transport controls RPC ordering only. Goal handles, per-goal evidence,
- * ActionSession and the NavigationTask worker are production implementations.
- * A distinct action type avoids replacing any production transport template.
  */
+
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -25,7 +37,9 @@
 #include <automsgs/actions/nav_actions.pb.h>
 #include "autolink/action/client.hpp"
 
-/** @brief Unique transport fixture using actual navigation protobuf payloads. */
+/**
+ * @brief Unique transport fixture using actual navigation protobuf payloads.
+ */
 struct DispatchProbeAction {
     using Goal = automsgs::actions::FollowPathAction::Goal;
     using Feedback = automsgs::actions::FollowPathAction::Feedback;
@@ -42,7 +56,10 @@ class Client<DispatchProbeAction> {
 public:
     using GoalHandle = ClientGoalHandle<DispatchProbeAction>;
     using WrappedResult = GoalHandle::WrappedResult;
-    /** @brief The same callback contract as the production asynchronous client. */
+    /**
+     * @brief The same callback contract as the production asynchronous
+              * client.
+     */
     struct SendGoalOptions {
         std::function<void(std::shared_ptr<GoalHandle>)> goal_response_callback;
         GoalHandle::FeedbackCallback feedback_callback;
@@ -51,7 +68,10 @@ public:
         std::function<void(const GoalUUID&)> goal_rejection_callback;
         std::function<void(const GoalUUID&, std::exception_ptr)> goal_error_callback;
     };
-    /** @brief Construct a genuine, result-aware native handle for a recorded UUID. */
+    /**
+     * @brief Construct a genuine, result-aware native handle for a recorded
+              * UUID.
+     */
     static std::shared_ptr<GoalHandle> Handle(const GoalUUID& id,
                                             const SendGoalOptions& options) {
         GoalInfo info; info.goal_id = id; info.stamp = 1;
@@ -60,18 +80,28 @@ public:
         handle->SetResultAwareness(true);
         return handle;
     }
-    /** @brief Complete the native promise and its real result callback. */
+    /**
+     * @brief Complete the native promise and its real result callback.
+     */
     static void Finish(const std::shared_ptr<GoalHandle>& handle,
                        const WrappedResult& result) { handle->SetResult(result); }
-    /** @brief Simulate a local monitor losing awareness without remote termination. */
+    /**
+     * @brief Simulate a local monitor losing awareness without remote
+              * termination.
+     */
     static void ForgetAwareness(const std::shared_ptr<GoalHandle>& handle) {
         handle->SetResultAwareness(false);
     }
-    /** @brief Exercise the production invalidation path, not a terminal callback. */
+    /**
+     * @brief Exercise the production invalidation path, not a terminal
+              * callback.
+     */
     static void Invalidate(const std::shared_ptr<GoalHandle>& handle) {
         handle->Invalidate(UnawareGoalHandleError());
     }
-    /** @brief Deliver a delayed native status observation. */
+    /**
+     * @brief Deliver a delayed native status observation.
+     */
     static void Status(const std::shared_ptr<GoalHandle>& handle, GoalStatus status) {
         handle->SetStatus(static_cast<int8_t>(status));
     }
@@ -93,11 +123,15 @@ using Code = autolink::action::ResultCode;
 using Cancellation = autonomy::task::common::TaskActionClient<DispatchProbeAction>::GoalCancellation;
 namespace proto = autonomy::task::proto;
 
-/** @brief Fail a contract observation with its exact missing requirement. */
+/**
+ * @brief Fail a contract observation with its exact missing requirement.
+ */
 void Require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
-/** @brief Await actual observable effects with a bounded deadline. */
+/**
+ * @brief Await actual observable effects with a bounded deadline.
+ */
 template <class Predicate>
 bool Await(Predicate predicate, std::chrono::milliseconds timeout = 1500ms) {
     const auto end = std::chrono::steady_clock::now() + timeout;
@@ -105,13 +139,18 @@ bool Await(Predicate predicate, std::chrono::milliseconds timeout = 1500ms) {
         std::this_thread::sleep_for(1ms);
     return predicate();
 }
-/** @brief Prepare a ready cancel acknowledgment; it is not a movement result. */
+/**
+ * @brief Prepare a ready cancel acknowledgment; it is not a movement result.
+ */
 std::shared_future<bool> Ack(bool accepted) {
     std::promise<bool> promise; promise.set_value(accepted);
     return promise.get_future().share();
 }
 
-/** @brief Evidence for a single transport request, independent of local sessions. */
+/**
+ * @brief Evidence for a single transport request, independent of local
+          * sessions.
+ */
 struct Record {
     UUID id{};                                  ///< Recorded send identity.
     Native::SendGoalOptions options;             ///< Immutable transport callbacks.
@@ -120,9 +159,15 @@ struct Record {
     std::mutex mutex;                            ///< Protects handle publication.
     std::atomic<bool> finished{false};            ///< Prevents duplicate promise completion.
 };
-/** @brief Controlled RPC replies, including ambiguity and missing acknowledgments. */
+/**
+ * @brief Controlled RPC replies, including ambiguity and missing
+          * acknowledgments.
+ */
 enum class CancelReply { kAccept, kReject, kException, kThrow, kInvalid, kPending };
-/** @brief Shared fixture effects; production cancellation captures this weakly. */
+/**
+ * @brief Shared fixture effects; production cancellation captures this
+          * weakly.
+ */
 struct TransportState {
     std::mutex mutex;                            ///< Protects recorded requests/effects.
     std::condition_variable wake;                ///< Send entry/release handshake.
@@ -143,42 +188,58 @@ struct TransportState {
     BT::NodeStatus last_tick_status{BT::NodeStatus::IDLE}; ///< Result returned by the actual node.
 };
 
-/** @brief Return a stable recorded request without holding fixture locks. */
+/**
+ * @brief Return a stable recorded request without holding fixture locks.
+ */
 std::shared_ptr<Record> Request(const std::shared_ptr<TransportState>& state,
                                 std::size_t index = 0) {
     std::lock_guard<std::mutex> lock(state->mutex);
     return state->records.at(index);
 }
-/** @brief Count actual sends, rather than local reservations or intentions. */
+/**
+ * @brief Count actual sends, rather than local reservations or intentions.
+ */
 std::size_t Sends(const std::shared_ptr<TransportState>& state) {
     std::lock_guard<std::mutex> lock(state->mutex); return state->records.size();
 }
-/** @brief Count UUID-targeted cancellation calls. */
+/**
+ * @brief Count UUID-targeted cancellation calls.
+ */
 std::size_t Cancels(const std::shared_ptr<TransportState>& state) {
     std::lock_guard<std::mutex> lock(state->mutex); return state->canceled.size();
 }
-/** @brief Observe entry only after the native identity callback has run. */
+/**
+ * @brief Observe entry only after the native identity callback has run.
+ */
 bool Entered(const std::shared_ptr<TransportState>& state, std::size_t count = 1) {
     std::unique_lock<std::mutex> lock(state->mutex);
     return state->wake.wait_for(lock, 1500ms, [&] { return state->entered >= count; });
 }
-/** @brief Release a potentially blocked sender, including failure cleanup. */
+/**
+ * @brief Release a potentially blocked sender, including failure cleanup.
+ */
 void Release(const std::shared_ptr<TransportState>& state) {
     std::lock_guard<std::mutex> lock(state->mutex);
     state->released = true; state->tick_released = true; state->wake.notify_all();
 }
 
-/** @brief Observe an executing native node after the runner's pre-tick checks. */
+/**
+ * @brief Observe an executing native node after the runner's pre-tick checks.
+ */
 bool EnteredTick(const std::shared_ptr<TransportState>& state) {
     std::unique_lock<std::mutex> lock(state->mutex);
     return state->wake.wait_for(lock, 1500ms, [&] { return state->tick_entered != 0; });
 }
-/** @brief Let the already executing node poll the newly suspended session. */
+/**
+ * @brief Let the already executing node poll the newly suspended session.
+ */
 void ReleaseTick(const std::shared_ptr<TransportState>& state) {
     std::lock_guard<std::mutex> lock(state->mutex);
     state->tick_released = true; state->wake.notify_all();
 }
-/** @brief Deliver a terminal result through the actual native handle promise. */
+/**
+ * @brief Deliver a terminal result through the actual native handle promise.
+ */
 void Finish(const std::shared_ptr<Record>& record, Code code = Code::CANCELED,
             const UUID* override_id = nullptr) {
     std::shared_ptr<Handle> handle;
@@ -191,7 +252,10 @@ void Finish(const std::shared_ptr<Record>& record, Code code = Code::CANCELED,
         static_cast<decltype(result.result->error_code())>(0));
     Native::Finish(handle, result);
 }
-/** @brief Publish matching acceptance; native result awareness precedes callbacks. */
+/**
+ * @brief Publish matching acceptance; native result awareness precedes
+          * callbacks.
+ */
 void Accept(const std::shared_ptr<Record>& record) {
     auto handle = Native::Handle(record->id, record->options);
     { std::lock_guard<std::mutex> lock(record->mutex); record->handle = handle; }
@@ -199,7 +263,9 @@ void Accept(const std::shared_ptr<Record>& record) {
     if (record->options.goal_response_callback) record->options.goal_response_callback(handle);
 }
 
-/** @brief Control transport timing while reusing production GoalCancellation. */
+/**
+ * @brief Control transport timing while reusing production GoalCancellation.
+ */
 class ControlledClient {
 public:
     using Goal = DispatchProbeAction::Goal;
@@ -207,9 +273,13 @@ public:
     using WrappedResult = Wrapped;
     using SendGoalOptions = Native::SendGoalOptions;
     using GoalCancellation = Cancellation;
-    /** @brief Bind recorded transport effects, not a BT node or task. */
+    /**
+     * @brief Bind recorded transport effects, not a BT node or task.
+     */
     explicit ControlledClient(std::shared_ptr<TransportState> state) : state_(std::move(state)) {}
-    /** @brief Install a weak, UUID-targeted cancel transport boundary. */
+    /**
+     * @brief Install a weak, UUID-targeted cancel transport boundary.
+     */
     std::shared_ptr<GoalCancellation> MakeGoalCancellation() {
         const std::weak_ptr<TransportState> weak = state_;
         return std::make_shared<GoalCancellation>([weak](const UUID& id) {
@@ -242,7 +312,9 @@ public:
             return Ack(reply == CancelReply::kAccept);
         });
     }
-    /** @brief Register UUID before optionally blocking the actual send call. */
+    /**
+     * @brief Register UUID before optionally blocking the actual send call.
+     */
     std::shared_future<std::shared_ptr<GoalHandle>> AsyncSendGoal(
         const Goal&, const SendGoalOptions& options) {
         auto record = std::make_shared<Record>(); record->options = options;
@@ -264,7 +336,9 @@ private:
 };
 using Session = autonomy::task::navigation::ActionSession<DispatchProbeAction, ControlledClient>;
 
-/** @brief One independently enabled production gate with a controlled sender. */
+/**
+ * @brief One independently enabled production gate with a controlled sender.
+ */
 struct Fixture {
     std::shared_ptr<TransportState> state = std::make_shared<TransportState>(); ///< RPC effects.
     ControlledClient client{state};             ///< Native-compatible sender boundary.
@@ -272,16 +346,23 @@ struct Fixture {
     Session session;                            ///< Actual production action session.
     Fixture() { Require(gate->Enable(), "enable fresh fixture gate"); }
     ~Fixture() { Release(state); }
-    /** @brief Commit one request with actual callback configuration. */
+    /**
+     * @brief Commit one request with actual callback configuration.
+     */
     void Begin() { Require(session.Begin(client, {}, gate), "commit fixture send"); }
-    /** @brief Poll real session completion, observing success separately. */
+    /**
+     * @brief Poll real session completion, observing success separately.
+     */
     BT::NodeStatus Tick(unsigned* success = nullptr) {
         return session.Tick({}, [success](const auto&) { if (success) ++*success; },
                             [](int, const std::string&) {});
     }
 };
 
-/** @brief Closed admission cannot reach transport; unstarted tickets settle locally. */
+/**
+ * @brief Closed admission cannot reach transport; unstarted tickets settle
+          * locally.
+ */
 void Admission() {
     Fixture f; f.gate->Close();
     Require(!f.session.Begin(f.client, {}, f.gate) && Sends(f.state) == 0,
@@ -294,7 +375,10 @@ void Admission() {
     Require(!ticket->Start() && f.gate->Drained() && cancels == 0,
             "unstarted revoked reservation needs no remote terminal");
 }
-/** @brief Cancellation must remain reachable while Begin holds its session mutex. */
+/**
+ * @brief Cancellation must remain reachable while Begin holds its session
+          * mutex.
+ */
 void BlockedLateAcceptance() {
     Fixture f; f.state->block_send = true;
     auto sending = std::async(std::launch::async, [&] { return f.session.Begin(f.client, {}, f.gate); });
@@ -312,7 +396,9 @@ void BlockedLateAcceptance() {
     Finish(Request(f.state));
     Require(f.gate->Drained(), "matching terminal drains revoked send");
 }
-/** @brief ACK and terminal result are separate observable facts. */
+/**
+ * @brief ACK and terminal result are separate observable facts.
+ */
 void AckAndRevokedResult() {
     Fixture f; f.Begin(); Accept(Request(f.state));
     Require(f.Tick() == BT::NodeStatus::RUNNING, "accepted send executes");
@@ -329,7 +415,9 @@ void AckAndRevokedResult() {
     Require(f.gate->Drained() && f.Tick(&success) == BT::NodeStatus::FAILURE && success == 0,
             "revoked success cannot publish current action success");
 }
-/** @brief Resume requires a matching terminal and a new owner revision. */
+/**
+ * @brief Resume requires a matching terminal and a new owner revision.
+ */
 void RetainedResume() {
     Fixture f; f.Begin(); auto previous = Request(f.state); Accept(previous);
     Require(f.Tick() == BT::NodeStatus::RUNNING, "retained path running before pause");
@@ -344,7 +432,10 @@ void RetainedResume() {
     Require(f.gate->Drained(), "resumed path retains independent cancellation ownership");
 }
 
-/** @brief Pause during acceptance retains a real session through late termination. */
+/**
+ * @brief Pause during acceptance retains a real session through late
+          * termination.
+ */
 void PausedTickRetainsIntent() {
     Fixture f; f.Begin(); auto old = Request(f.state);
     f.gate->Suspend(); f.gate->Revoke();
@@ -364,7 +455,10 @@ void PausedTickRetainsIntent() {
     f.gate->Close(); f.gate->Revoke(); Finish(resumed);
 }
 
-/** @brief Refused replacement admission cannot destroy a preceding running action. */
+/**
+ * @brief Refused replacement admission cannot destroy a preceding running
+          * action.
+ */
 void RefusedReplacementRetainsIntent() {
     Fixture f; f.Begin(); auto old = Request(f.state); Accept(old);
     Require(f.Tick() == BT::NodeStatus::RUNNING && f.session.has_goal_handle(),
@@ -384,7 +478,10 @@ void RefusedReplacementRetainsIntent() {
     f.gate->Close(); f.gate->Revoke(); Finish(resumed);
 }
 
-/** @brief Final cancellation and explicit halt supersede recoverable paused state. */
+/**
+ * @brief Final cancellation and explicit halt supersede recoverable paused
+          * state.
+ */
 void CancellationOverridesPause() {
     {
         Fixture f; f.Begin(); auto old = Request(f.state); Accept(old);
@@ -407,7 +504,9 @@ void CancellationOverridesPause() {
         Finish(old); Require(f.gate->Drained(), "explicit halt preserves goal cancellation debt");
     }
 }
-/** @brief Cancel callbacks can synchronously query/reenter the gate. */
+/**
+ * @brief Cancel callbacks can synchronously query/reenter the gate.
+ */
 void ReentrantCancellation() {
     Fixture f; f.Begin(); Accept(Request(f.state));
     f.state->cancel_hook = [&] { f.gate->Close(); Require(!f.gate->Drained(), "reentrant pending drain"); };
@@ -416,7 +515,9 @@ void ReentrantCancellation() {
     revoke.get(); Finish(Request(f.state));
     Require(f.gate->Drained(), "reentrant cancellation preserves terminal ownership");
 }
-/** @brief Observable cancel failure forbids another actual send. */
+/**
+ * @brief Observable cancel failure forbids another actual send.
+ */
 void CancellationFailures() {
     for (auto reply : {CancelReply::kReject, CancelReply::kException, CancelReply::kThrow,
                        CancelReply::kInvalid, CancelReply::kPending}) {
@@ -433,7 +534,9 @@ void CancellationFailures() {
                 "terminal evidence does not silently clear sticky invocation fault");
     }
 }
-/** @brief A null acceptance is not sufficient to prove rejection. */
+/**
+ * @brief A null acceptance is not sufficient to prove rejection.
+ */
 void RejectionAndSendUncertainty() {
     {
         Fixture f; f.Begin(); auto record = Request(f.state);
@@ -456,7 +559,9 @@ void RejectionAndSendUncertainty() {
         Require(f.gate->Drained(), "late authoritative terminal settles uncertain send");
     }
 }
-/** @brief Wrong identities and nonterminal statuses cannot fabricate a drain. */
+/**
+ * @brief Wrong identities and nonterminal statuses cannot fabricate a drain.
+ */
 void ResultIdentity() {
     Fixture f; f.Begin(); auto record = Request(f.state); Accept(record);
     Wrapped wrong; wrong.goal_id = record->id; ++wrong.goal_id[1]; wrong.code = Code::CANCELED;
@@ -466,7 +571,10 @@ void ResultIdentity() {
     record->options.result_callback(terminal);
     Require(f.gate->Drained(), "matching terminal remains usable after identity fault");
 }
-/** @brief Terminal callbacks before accepted callbacks retain correct ownership. */
+/**
+ * @brief Terminal callbacks before accepted callbacks retain correct
+          * ownership.
+ */
 void ResultBeforeAcceptance() {
     Fixture f; f.Begin(); auto record = Request(f.state);
     auto handle = Native::Handle(record->id, record->options);
@@ -477,7 +585,10 @@ void ResultBeforeAcceptance() {
     Require(f.gate->Drained() && f.Tick(&success) == BT::NodeStatus::SUCCESS && success == 1,
             "result-before-accept yields one matching success");
 }
-/** @brief Replanning preserves server preemption while owning both pending results. */
+/**
+ * @brief Replanning preserves server preemption while owning both pending
+          * results.
+ */
 void RollingReplacement() {
     Fixture f; f.Begin(); auto old = Request(f.state); Accept(old);
     Require(f.Tick() == BT::NodeStatus::RUNNING, "first path accepted and running");
@@ -495,7 +606,9 @@ void RollingReplacement() {
               "only unfinished current goal is canceled after old terminal"); }
     Finish(latest); Require(f.gate->Drained(), "all rolling movement obligations settle");
 }
-/** @brief Dropping local session state does not drop late-accept cancellation. */
+/**
+ * @brief Dropping local session state does not drop late-accept cancellation.
+ */
 void DestroyedSession() {
     auto state = std::make_shared<TransportState>(); ControlledClient client(state);
     auto gate = std::make_shared<Gate>(); Require(gate->Enable(), "enable destruction fixture");
@@ -504,7 +617,10 @@ void DestroyedSession() {
     Require(Cancels(state) == 1 && !gate->Drained(), "late acceptance after local destruction cancels");
     Finish(Request(state)); Require(gate->Drained(), "destroyed session retains terminal responsibility");
 }
-/** @brief Revoked planning cannot block physical-motion drain or revive old tickets. */
+/**
+ * @brief Revoked planning cannot block physical-motion drain or revive old
+          * tickets.
+ */
 void PlanningAndRevision() {
     Fixture f; unsigned planning_cancels = 0;
     auto plan = f.gate->Reserve([&] { ++planning_cancels; }, [] { return true; }, Gate::Kind::kPlanning);
@@ -515,7 +631,9 @@ void PlanningAndRevision() {
     plan->Finish();
 }
 
-/** @brief Local planning retirement keeps transport-owned late cancellation. */
+/**
+ * @brief Local planning retirement keeps transport-owned late cancellation.
+ */
 void PlanningLateAcceptance() {
     auto state = std::make_shared<TransportState>(); ControlledClient client(state);
     auto gate = std::make_shared<Gate>(); Require(gate->Enable(), "enable planning fixture");
@@ -540,7 +658,9 @@ void PlanningLateAcceptance() {
     Require(accepted.valid(), "planning transport response remains independently observable");
 }
 
-/** @brief Local loss/destruction must never invent an ABORTED remote result. */
+/**
+ * @brief Local loss/destruction must never invent an ABORTED remote result.
+ */
 void NativeHandleLocalUncertainty() {
     UUID id{}; id[0] = 41;
     unsigned callbacks = 0; Native::SendGoalOptions options;
@@ -570,7 +690,9 @@ void NativeHandleLocalUncertainty() {
     }
 }
 
-/** @brief Terminal callbacks permit another thread to query the real handle. */
+/**
+ * @brief Terminal callbacks permit another thread to query the real handle.
+ */
 void NativeHandleTerminalDelivery() {
     UUID id{}; id[0] = 42;
     std::promise<void> callback_entered;
@@ -599,7 +721,9 @@ void NativeHandleTerminalDelivery() {
             "stale status and duplicate result cannot regress real terminal evidence");
 }
 
-/** @brief Genuine native worker node with the production action polling path. */
+/**
+ * @brief Genuine native worker node with the production action polling path.
+ */
 class DispatchNode final : public BT::StatefulActionNode {
 public:
     DispatchNode(const std::string& name, const BT::NodeConfig& config)
@@ -643,9 +767,14 @@ private:
     std::shared_ptr<Gate> gate_;                  ///< Gate installed by production NavigationTask.
     Session session_;                            ///< Actual production acceptance/result polling.
 };
-/** @brief Register the fixture node through the actual native factory registry. */
+/**
+ * @brief Register the fixture node through the actual native factory
+          * registry.
+ */
 void Register(BT::BehaviorTreeFactory& factory) { factory.registerNodeType<DispatchNode>("DispatchProbe"); }
-/** @brief Own a real XML tree until every task worker has joined. */
+/**
+ * @brief Own a real XML tree until every task worker has joined.
+ */
 class Xml {
 public:
     Xml() {
@@ -662,7 +791,10 @@ public:
 private:
     std::filesystem::path path_;                 ///< Unique fixture file only.
 };
-/** @brief Native task with real default cancellation/drain; no cancel override. */
+/**
+ * @brief Native task with real default cancellation/drain; no cancel
+          * override.
+ */
 class TaskHarness final : public autonomy::task::NavigationTask {
 public:
     std::shared_ptr<TransportState> state = std::make_shared<TransportState>(); ///< RPC fixture.
@@ -680,7 +812,10 @@ protected:
         NavigationTask::PopulateBlackboard(board); board->set("dispatch_transport", state);
     }
 };
-/** @brief Construct a valid native navigation request and unique task identity. */
+/**
+ * @brief Construct a valid native navigation request and unique task
+          * identity.
+ */
 proto::NavigationGoal Goal(const Xml& xml, const std::string& id = "dispatch-A") {
     proto::NavigationGoal goal; goal.set_command(proto::NAV_CMD_START);
     goal.mutable_header()->set_task_id(id); goal.mutable_header()->set_client_id("exploration-parent");
@@ -690,14 +825,20 @@ proto::NavigationGoal Goal(const Xml& xml, const std::string& id = "dispatch-A")
     pose->mutable_pose()->mutable_orientation()->set_w(1);
     return goal;
 }
-/** @brief Initialize, accept and observe a production worker's actual transport call. */
+/**
+ * @brief Initialize, accept and observe a production worker's actual
+          * transport call.
+ */
 void Start(TaskHarness& task, const Xml& xml) {
     proto::TaskServerOptions options;
     Require(task.Initialize(options), "initialize native dispatch task");
     Require(task.SubmitGoal(Goal(xml)), "native dispatch task accepts request");
     Require(Entered(task.state), "native worker commits transport send");
 }
-/** @brief Native Cancel reaches a blocked send before join and waits terminal evidence. */
+/**
+ * @brief Native Cancel reaches a blocked send before join and waits terminal
+          * evidence.
+ */
 void NativeBlockedCancellation() {
     Xml xml; TaskHarness task; task.state->block_send = true;
     task.state->terminate_on_cancel = true; Start(task, xml);
@@ -713,7 +854,9 @@ void NativeBlockedCancellation() {
             "native cancel uses late UUID acceptance without blocked session lock");
     Require(gate->Drained(), "native cancel observed matching terminal");
 }
-/** @brief Pause cancels execution and resume must issue a fresh owned request. */
+/**
+ * @brief Pause cancels execution and resume must issue a fresh owned request.
+ */
 void NativePauseResume() {
     Xml xml; TaskHarness task; task.state->terminate_on_cancel = true; Start(task, xml);
     Accept(Request(task.state));
@@ -725,7 +868,10 @@ void NativePauseResume() {
     Require(task.Cancel(), "resumed task cancels with genuine terminal result");
 }
 
-/** @brief Pause after entry into an actual node must not lose its resumable session. */
+/**
+ * @brief Pause after entry into an actual node must not lose its resumable
+          * session.
+ */
 void NativePauseDuringTick() {
     Xml xml; TaskHarness task;
     task.state->terminate_on_cancel = true; task.state->block_tick = true;
@@ -749,7 +895,10 @@ void NativePauseDuringTick() {
             "actual node retains session and resends after native resume");
     Accept(Request(task.state, 1)); Require(task.Cancel(), "resumed native node retains cancellation");
 }
-/** @brief Failed cancellation blocks new START/Resume until explicit drained reinit. */
+/**
+ * @brief Failed cancellation blocks new START/Resume until explicit drained
+          * reinit.
+ */
 void NativeCancellationFault() {
     Xml xml; TaskHarness task; task.state->reply = CancelReply::kReject; Start(task, xml);
     Accept(Request(task.state));
@@ -766,7 +915,10 @@ void NativeCancellationFault() {
     Accept(Request(task.state, 1)); Require(task.Cancel(), "fresh owner cancellation remains functional");
 }
 
-/** @brief A guarded native send still requires its actual terminal after cancel ACK. */
+/**
+ * @brief A guarded native send still requires its actual terminal after
+          * cancel ACK.
+ */
 void NativePermitCancellationDrain() {
     Xml xml; TaskHarness task; task.cancel_timeout=500ms;
     auto allowed=std::make_shared<std::atomic<bool>>(true);
@@ -794,7 +946,10 @@ void NativePermitCancellationDrain() {
             !task.GetResultForTask("dispatch-stale",&result), "drained result keeps native identity");
 }
 
-/** @brief Owner loss during an admitted node tick is checked by its action session. */
+/**
+ * @brief Owner loss during an admitted node tick is checked by its action
+          * session.
+ */
 void NativePermitDuringTick() {
     Xml xml; TaskHarness task; task.state->terminate_on_cancel=true;
     task.state->block_tick=true;
@@ -814,7 +969,9 @@ void NativePermitDuringTick() {
 }
 }  // namespace
 
-/** @brief Run actual ownership scenarios; emit one named result per contract. */
+/**
+ * @brief Run actual ownership scenarios; emit one named result per contract.
+ */
 int main() {
     autonomy::task::AddBtNodeRegistrar(&Register);
     try {

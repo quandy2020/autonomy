@@ -30,13 +30,19 @@
 namespace autoviz {
 namespace {
 
+/**
+ * Custom dock header height. Leaves room for the panel title while keeping the
+ * title tools vertically centred; title-bar show/hide paths share this value.
+ */
+int DockTitleBarHeight() { return theme::Shell().dock_title_height; }
+
 class DockTitleBar : public QWidget {
  public:
   explicit DockTitleBar(QWidget* parent = nullptr) : QWidget(parent) {
     setObjectName(QString::fromLatin1(AppThemeIds::kDockTitleBar));
     setAttribute(Qt::WA_StyledBackground, false);
     setAutoFillBackground(false);
-    setFixedHeight(28);
+    setFixedHeight(DockTitleBarHeight());
     setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     setMinimumWidth(0);
   }
@@ -95,8 +101,8 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
 
   icon_label_ = new QLabel(title_bar_);
   // Keep icon flush with title-bar left inset so it lines up with inspector
-  // content (Plot title, Title row, etc. use PanelSettingsLayout::kOuterMargin).
-  icon_label_->setContentsMargins(0, 2, 0, 0);
+  // content (Plot title, Title row, etc. use PanelSettingsLayout::OuterMargin()).
+  icon_label_->setContentsMargins(0, 0, 0, 0);
   icon_label_->setVisible(false);
   // Labels must not steal mouse events — QDockWidget drag/snap (吸附) is
   // driven by the title-bar widget (eventFilter / ignored mouse events).
@@ -117,7 +123,8 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
       IconLoader::panelTitleIcon(QStringLiteral("panel.close")));
   close_button->setIconSize(QSize(16, 16));
   close_button->setAutoRaise(true);
-  close_button->setFixedSize(QSize(24, 22));
+  close_button->setFixedSize(
+      QSize(theme::Shell().dock_title_tool, theme::Shell().dock_title_tool));
   close_button->setToolTip(tr("Close"));
   close_button->setStyleSheet(
       style::sheet(QStringLiteral("chrome/dock_close_button")));
@@ -125,7 +132,12 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
 
   auto* title_layout = new QHBoxLayout(title_bar_);
   // Same left inset as Property Inspector content (Plot / Title / …).
-  title_layout->setContentsMargins(PanelSettingsLayout::kOuterMargin, 2, 4, 2);
+  const int title_pad_v =
+      (DockTitleBarHeight() - theme::Shell().dock_title_tool) / 2;
+  title_layout->setContentsMargins(PanelSettingsLayout::OuterMargin(),
+                                   title_pad_v,
+                                   PanelSettingsLayout::OuterSpacing(),
+                                   title_pad_v);
   title_layout->setSpacing(2);
   title_layout->addWidget(icon_label_, 0);
   // Title yields width so tools + close stay visible on narrow docks.
@@ -139,6 +151,14 @@ PanelDockWidget::PanelDockWidget(const QString& name, QWidget* parent)
   title_bar_->installEventFilter(this);
 }
 
+void PanelDockWidget::paintEvent(QPaintEvent* event) {
+  // Square base behind the rounded panel content. Without it the content's
+  // 14px corners expose the unpainted backing store (black wedges).
+  QPainter painter(this);
+  painter.fillRect(rect(), theme::Shell().panel_surface);
+  QDockWidget::paintEvent(event);
+}
+
 void PanelDockWidget::setTitleBarVisible(bool visible) {
   if (title_bar_ == nullptr) {
     return;
@@ -149,7 +169,7 @@ void PanelDockWidget::setTitleBarVisible(bool visible) {
       setTitleBarWidget(title_bar_);
     }
     title_bar_->show();
-    title_bar_->setFixedHeight(28);
+    title_bar_->setFixedHeight(DockTitleBarHeight());
     return;
   }
   if (title_bar_placeholder_ == nullptr) {
@@ -195,8 +215,11 @@ void PanelDockWidget::setTitleBarTools(QWidget* tools) {
                            tools->sizeHint().width());
   title_tools_host_->setMinimumWidth(tools_w);
   // margins + icon + elided title slack + close
-  constexpr int kChrome = 8 + 20 + 48 + 28 + 8;
-  setMinimumWidth(qMax(minimumWidth(), tools_w + kChrome));
+  const theme::ShellTokens shell = theme::Shell();
+  const int chrome = PanelSettingsLayout::OuterMargin() * 2 +
+                     shell.title_icon + shell.title_slack +
+                     shell.dock_title_tool;
+  setMinimumWidth(qMax(minimumWidth(), tools_w + chrome));
 }
 
 void PanelDockWidget::setContentWidget(QWidget* child) {

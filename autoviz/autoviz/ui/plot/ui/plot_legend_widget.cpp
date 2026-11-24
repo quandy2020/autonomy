@@ -12,6 +12,7 @@
 
 #include "autoviz/ui/plot/field/plot_path_utils.hpp"
 #include "autoviz/ui/plot/plot_types.hpp"
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace plot {
@@ -22,7 +23,9 @@ PlotLegendWidget::PlotLegendWidget(QWidget* parent) : QFrame(parent) {
   setAttribute(Qt::WA_TransparentForMouseEvents, false);
   setCursor(Qt::ArrowCursor);
   QPalette pal = palette();
-  pal.setColor(QPalette::Window, QColor(255, 255, 255, 230));
+  QColor legend_fill = theme::Shell().panel_surface;
+  legend_fill.setAlpha(230);
+  pal.setColor(QPalette::Window, legend_fill);
   setPalette(pal);
   setVisible(false);
 }

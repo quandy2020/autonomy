@@ -266,17 +266,16 @@ void RobotModelDisplay::display_urdf_content() {
   }
 }
 
-void RobotModelDisplay::updateRobot() {
+bool RobotModelDisplay::updateRobot() {
   if (robot_ == nullptr || context_ == nullptr) {
-    return;
+    return false;
   }
   // RViz RobotModelDisplay::updateRobot — TFLinkUpdater + Robot::update.
   // Per-link status is not mirrored (Autoviz has a single status line); failed
   // lookups clear the link pose so draw falls back to JointState FK.
   const std::string tf_prefix = propertyValue("tf_prefix", "");
   robot::TFLinkUpdater updater(context_, {}, tf_prefix);
-  robot_->update(updater);
-  has_new_transforms_ = true;
+  return robot_->update(updater);
 }
 
 void RobotModelDisplay::subscribeChannels() {
@@ -430,11 +429,21 @@ void RobotModelDisplay::onUpdate() {
       static_cast<std::int64_t>(std::llround(interval_sec * 1e9)));
   const bool due = rate < std::chrono::microseconds(100) ||
                    time_since_last_transform_ >= rate;
-  if (has_new_transforms_ || due) {
-    updateRobot();
+  // A periodic TF refresh is only meaningful when the buffer actually changed;
+  // otherwise every tick would re-walk all links for identical poses.
+  const std::uint64_t revision =
+      context_ != nullptr && context_->tf_buffer != nullptr
+          ? context_->tf_buffer->revision()
+          : 0;
+  const bool tf_changed = revision != tf_revision_seen_;
+  if (has_new_transforms_ || (due && tf_changed)) {
+    // Only a real pose delta needs a repaint; a static robot with
+    // Update Interval 0 must not pin the renderer at the target frame rate.
+    const bool changed = updateRobot();
     has_new_transforms_ = false;
     time_since_last_transform_ = std::chrono::nanoseconds(0);
-    if (context_ != nullptr && context_->request_redraw) {
+    tf_revision_seen_ = revision;
+    if (changed && context_ != nullptr && context_->request_redraw) {
       context_->request_redraw();
     }
   }

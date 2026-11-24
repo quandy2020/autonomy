@@ -9,7 +9,8 @@ background: {{dock-title}}; border: none;
 /* @end */
 
 /* @section dock_title_label */
-font-weight: 600; color: {{text}}; padding: 0 4px;
+font-size: {{font-title}}px; font-weight: 600; color: {{text}};
+padding: 0 {{space-3}}px; letter-spacing: 0.1px;
 /* @end */
 
 /* @section dock_close_button */
@@ -18,7 +19,7 @@ QToolButton {
   margin: 0 1px;
   padding: 1px;
   background: transparent;
-  border-radius: 4px;
+  border-radius: {{r-sm}}px;
 }
 QToolButton:hover {
   background: palette(midlight);
@@ -58,7 +59,7 @@ background: {{panel-bar}}; color: {{muted}}; border-top: 1px solid {{panel-borde
 /* @end */
 
 /* @section layout */
-QSplitter { background: {{panel-surface}}; }
+QSplitter { background: {{window}}; }
 QScrollArea { background: {{panel-surface}}; border: none; }
 /* @end */
 
@@ -76,15 +77,15 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox {
   background: {{editor-bg}};
   color: {{text}};
   border: 1px solid {{border}};
-  border-radius: 6px;
-  padding: 0px 6px;
+  border-radius: {{r-sm}}px;
+  padding: 0px {{space-3}}px;
   min-height: 0px;
   max-height: 20px;
   font-size: 12px;
 }
 QComboBox QLineEdit {
   background: transparent; border: none;
-  padding: 0px 2px; min-height: 0px; max-height: 18px;
+  padding: 0px {{space-1}}px; min-height: 0px; max-height: 18px;
   font-size: 12px;
 }
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus {
@@ -117,14 +118,14 @@ QToolTip {
   background-color: palette(toolTipBase);
   color: palette(toolTipText);
   border: 1px solid palette(mid);
-  padding: 4px 8px;
+  padding: {{space-2}}px {{space-4}}px;
 }
 QToolButton {
   border: 1px solid transparent;
   margin: 0 1px;
   padding: 1px;
   background: transparent;
-  border-radius: 4px;
+  border-radius: {{r-sm}}px;
   color: palette(text);
 }
 QToolButton:hover {
@@ -161,7 +162,7 @@ QTreeWidget, QTreeView {
   color: {{text}};
   border: none;
   outline: none;
-  padding: 2px 2px;
+  padding: {{space-1}}px {{space-1}}px;
   font-size: 13px;
   show-decoration-selected: 0;
 }
@@ -174,12 +175,12 @@ QListWidget, QListView {
   color: {{text}};
   border: none;
   outline: none;
-  padding: 4px;
+  padding: {{space-2}}px;
   font-size: 13px;
   show-decoration-selected: 0;
 }
 QListWidget::item, QListView::item {
-  padding: 6px 10px;
+  padding: {{space-3}}px {{space-5}}px;
   min-height: 24px;
   border: none;
   outline: none;
@@ -200,11 +201,11 @@ QListWidget::item:selected, QListView::item:selected {
 /* @section help */
 /* surface/help */
 QTextBrowser {
-  background: rgba(255,255,255,0.42);
+  background: {{surface-a42}};
   color: {{muted}};
   border: none;
   border-top: 1px solid {{panel-border}};
-  padding: 12px 14px 14px 14px;
+  padding: {{space-6}}px {{space-7}}px {{space-7}}px {{space-7}}px;
   font-size: 12px;
 }
 /* @end */
@@ -216,7 +217,7 @@ QTextBrowser {
   color: {{text}};
   border: none;
   border-top: 1px solid {{panel-border}};
-  padding: 10px;
+  padding: {{space-5}}px;
   font-size: 12px;
 }
 /* @end */
@@ -230,7 +231,7 @@ QToolTip {
   background-color: palette(toolTipBase);
   color: palette(toolTipText);
   border: 1px solid palette(mid);
-  padding: 4px 8px;
+  padding: {{space-2}}px {{space-4}}px;
 }
 QFrame#AutovizViewportToolGroup {
   background: transparent;
@@ -241,7 +242,7 @@ QFrame#AutovizViewportToolGroup QToolButton {
   margin: 0;
   padding: 0;
   background: transparent;
-  border-radius: 10px;
+  border-radius: {{r-md}}px;
   color: {{icon-color}};
 }
 QFrame#AutovizViewportToolGroup QToolButton:hover {

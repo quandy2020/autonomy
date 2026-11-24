@@ -1,7 +1,24 @@
-// Copyright (c) 2023 Open Navigation LLC; Autonomy adaptation 2026.
-// SPDX-License-Identifier: Apache-2.0
-/** @file path_generator.cpp
- * @brief Native complete-coverage path generator implementation. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file path_generator.cpp
+ * @brief Native complete-coverage path generator implementation.
+ */
+
 #include "autonomy/task/navigation/coverage/path_generator.hpp"
 
 #include <cmath>
@@ -308,6 +325,49 @@ F2CPath PathGenerator::GeneratePerimeter(const F2CCells& rings,
       if (!hole) {
         AppendFallbackRing(path, edges, robot, *fallback_turn, config_);
         continue;
+      }
+      // A pillar-sized hole needs no steered join: walking its boundary covers
+      // it and skips the A* search that dominated obstacle-dense rooms.
+      {
+        double twice_area = 0.0;
+        for (std::size_t i = 0; i + 1 < ring.size(); ++i) {
+          twice_area += ring[i].GetX() * ring[i + 1].GetY() -
+                        ring[i + 1].GetX() * ring[i].GetY();
+        }
+        // A pillar standing against the outer wall is part of the wall band: the
+      // ring around it would overlap the band and only add clutter.
+      {
+        double centre_x = 0.0, centre_y = 0.0;
+        for (const auto& point : ring) {
+          centre_x += point.GetX();
+          centre_y += point.GetY();
+        }
+        centre_x /= static_cast<double>(ring.size());
+        centre_y /= static_cast<double>(ring.size());
+        bool touches_wall = false;
+        for (const auto& point : ring) {
+          const double dx = point.GetX() - centre_x;
+          const double dy = point.GetY() - centre_y;
+          const double norm = std::hypot(dx, dy);
+          if (norm < 1e-6) {
+            continue;
+          }
+          const F2CPoint probe(point.GetX() + dx / norm * 0.5,
+                               point.GetY() + dy / norm * 0.5);
+          if (!field.IsPointIn(probe)) {
+            touches_wall = true;
+            break;
+          }
+        }
+        if (touches_wall) {
+          continue;
+        }
+      }
+      if (std::abs(twice_area) * 0.5 < 3.0) {
+          // Pillars are covered by the row passes beside them; a ring per pillar
+          // only added clutter to the drawing and time to the plan.
+          continue;
+        }
       }
       F2CRoute route;
       for (const auto& edge : edges)

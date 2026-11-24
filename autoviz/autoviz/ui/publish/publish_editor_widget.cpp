@@ -144,10 +144,10 @@ PublishEditorWidget::PublishEditorWidget(common::VisualizationManager* manager,
   latest_fill_timer_->setSingleShot(true);
 
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(PanelSettingsLayout::kOuterMargin,
-                           PanelSettingsLayout::kOuterMargin,
-                           PanelSettingsLayout::kOuterMargin,
-                           PanelSettingsLayout::kOuterMargin);
+  root->setContentsMargins(PanelSettingsLayout::OuterMargin(),
+                           PanelSettingsLayout::OuterMargin(),
+                           PanelSettingsLayout::OuterMargin(),
+                           PanelSettingsLayout::OuterMargin());
   root->setSpacing(8);
 
   auto* collection_frame = new QFrame(this);

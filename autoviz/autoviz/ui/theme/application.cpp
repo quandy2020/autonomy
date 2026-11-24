@@ -123,6 +123,38 @@ QColor AppThemeSuggestedViewportBackground() { return QColor(48, 48, 48); }
 
 QPalette BuildThemePalette() { return BuildPaletteFromShell(theme::Shell()); }
 
+QString BuildNativeControlStyleSheet() {
+  const theme::ShellTokens t = theme::Shell();
+  const QString surface = Hex(t.panel_surface);
+  const QString sunken = Hex(t.panel_bg);
+  const QString text = Hex(t.text);
+  const QString muted = Hex(t.secondary_text);
+  const QString border = Hex(t.panel_border);
+  const QString sel = Hex(t.selection_bg);
+  return QStringLiteral(
+             "QComboBox, QLineEdit, QSpinBox, QDoubleSpinBox, QAbstractSpinBox {"
+             " background: %1; color: %2; border: 1px solid %3;"
+             " border-radius: %7px; padding: %8px %9px; min-height: %10px;"
+             " selection-background-color: %5; }"
+             "QComboBox:disabled, QLineEdit:disabled, QSpinBox:disabled,"
+             "QDoubleSpinBox:disabled { color: %6; }"
+             "QComboBox QAbstractItemView { background: %1; color: %2;"
+             " border: 1px solid %3; selection-background-color: %5; }"
+             "QHeaderView::section { background: %4; color: %2; border: none;"
+             " border-bottom: 1px solid %3; padding: %11px %12px;"
+             " font-size: %13px; font-weight: 600; }"
+             "QTableView { background: %4; color: %2; gridline-color: %3; }"
+             "QTableView::item:selected { background: %5; color: %2; }")
+      .arg(surface, text, border, sunken, sel, muted)
+      .arg(QString::number(t.control_radius),          // %7
+           QString::number(t.field_padding_v),         // %8
+           QString::number(t.field_padding_h),         // %9
+           QString::number(t.field_height_compact),    // %10
+           QString::number(t.header_padding_v),        // %11
+           QString::number(t.header_padding_h),        // %12
+           QString::number(t.font_small));             // %13
+}
+
 QString BuildAppThemeStylesheet() {
   return BuildShellStylesheet(theme::Shell());
 }
@@ -280,6 +312,30 @@ void EnsureSystemColorSchemeWatch(QApplication& app) {
 #endif
 }
 
+namespace {
+
+// The platform theme can replace QApplication::palette() once the first window
+// maps (observed on X11: dark shell palette -> Fusion default #efefef). Unstyled
+// native widgets then fall back to light gray inside dark panels. Re-assert the
+// shell palette whenever Qt reports an application palette change.
+class ShellPaletteGuard : public QObject {
+ public:
+  explicit ShellPaletteGuard(QObject* parent) : QObject(parent) {}
+
+ protected:
+  bool eventFilter(QObject* watched, QEvent* event) override {
+    if (event->type() == QEvent::ApplicationPaletteChange) {
+      const QColor want = theme::Shell().window;
+      if (QApplication::palette().color(QPalette::Window) != want) {
+        QApplication::setPalette(BuildPaletteFromShell(theme::Shell()));
+      }
+    }
+    return QObject::eventFilter(watched, event);
+  }
+};
+
+}  // namespace
+
 void ApplyAppTheme(QApplication& app) {
   ApplyAppFont(app);
   EnsureSystemColorSchemeWatch(app);
@@ -294,6 +350,9 @@ void ApplyAppTheme(QApplication& app) {
   proxy->setMenuShortcutColor(theme.secondary_text);
   app.setStyle(proxy);
   app.setPalette(BuildPaletteFromShell(theme));
+  if (app.findChild<ShellPaletteGuard*>() == nullptr) {
+    app.installEventFilter(new ShellPaletteGuard(&app));
+  }
   widget::InvalidateThemeTokens();
   // Do not install the full theme.qss on QApplication. Under Qt 6.2 +
   // WA_NativeWindow Ogre + live Autolink, QCss::Selector::pseudoElement /

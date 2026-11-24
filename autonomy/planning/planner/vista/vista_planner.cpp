@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <utility>
 #include "autolink/plugin_manager/plugin_manager.hpp"
+#include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d_wrapper.hpp"
 
 namespace autonomy::planning::planner::vista {
@@ -81,6 +82,23 @@ void VistaPlanner::Configure(const proto::PlannerOptions& options, const std::st
                              MapViewSource source, VistaPlannerSettings settings) {
     if (!source || name.empty()) throw std::invalid_argument("invalid VistaPlanner configuration");
     std::lock_guard<std::mutex> lock(mutex_);
+    // Configure() is the path used by the planner server, and it used to skip
+    // the footprint-derived radius applied by the constructor.  The route model
+    // then required 0.20 m while exploration certified goals at 0.105 m, so a
+    // robot standing 0.11 m from a wall could never obtain a route.  Adopt the
+    // same body radius here so both layers agree on one footprint.
+    if (costmap_) {
+        if (costmap_->getUseRadius()) settings.safety.robot_radius = costmap_->getRobotRadius();
+        else {
+            double radius = 0;
+            for (const auto& p : costmap_->getRobotFootprint())
+                radius = std::max(radius, std::hypot(p.x(), p.y()));
+            if (radius > 0) settings.safety.robot_radius = radius;
+        }
+    }
+    AINFO << "VISTA_ROUTE_LIMITS robot_radius=" << settings.safety.robot_radius
+          << " horizontal_margin=" << settings.safety.horizontal_margin
+          << " required=" << settings.safety.robot_radius + settings.safety.horizontal_margin;
     Initialize(settings); options_ = options; name_ = name; map_source_ = std::move(source);
 }
 void VistaPlanner::SetMapViewSource(MapViewSource source) {

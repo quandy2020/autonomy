@@ -172,8 +172,8 @@ class GlassWell : public QWidget {
     QPainterPath path;
     path.addRoundedRect(card, 14.0, 14.0);
 
-    painter.fillPath(path, QColor(255, 255, 255));
-    painter.setPen(QPen(QColor(198, 198, 200), 1.0));
+    painter.fillPath(path, theme::Shell().panel_surface);
+    painter.setPen(QPen(theme::Shell().panel_border, 1.0));
     painter.drawPath(path);
   }
 };

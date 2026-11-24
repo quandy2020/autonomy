@@ -61,6 +61,12 @@ VisualizationFrame::VisualizationFrame(
     setWindowIcon(app_icon);
   }
   setupUi();
+  // Give the shell an explicit palette: the platform theme can replace
+  // QApplication::palette() once the first window maps, which would otherwise
+  // leak a light palette into every native widget (combos, tables, editors)
+  // created after startup.
+  setPalette(BuildThemePalette());
+  setStyleSheet(BuildNativeControlStyleSheet());
   setAcceptDrops(true);
   session_->setupRecordDropOverlay();
   qApp->installEventFilter(this);

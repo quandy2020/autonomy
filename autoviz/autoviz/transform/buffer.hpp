@@ -20,6 +20,8 @@
 #pragma once
 
 #include <cstdint>
+#include <atomic>
+#include <cstdint>
 #include <mutex>
 #include <string>
 #include <unordered_map>
@@ -90,6 +92,16 @@ class Buffer : public tf2::BufferCore {
    * @return Vector of @ref TfFrameStats (one entry per known frame).
    */
   std::vector<TfFrameStats> frameStats() const;
+
+  /**
+   * @brief Monotonic counter bumped whenever the buffer content changes.
+   *
+   * Consumers that poll TF (RobotModel, TfDisplay) cache this value so an
+   * unchanged tree does not trigger lookups, repaints or scene uploads.
+   *
+   * @return Revision number; @c 0 before the first transform.
+   */
+  std::uint64_t revision() const { return revision_.load(std::memory_order_relaxed); }
 
   /**
    * @brief Looks up the transform from @p source_frame to @p target_frame.
@@ -167,6 +179,9 @@ class Buffer : public tf2::BufferCore {
    */
   static automsgs::msgs::geometry_msgs::TransformStamped FromTf2Message(
       const geometry_msgs::TransformStamped& transform);
+
+  /** Bumped on every applied transform / clear (see @ref revision()). */
+  std::atomic<std::uint64_t> revision_{0};
 
   /** Guards @c frame_stats_. */
   mutable std::mutex stats_mutex_;

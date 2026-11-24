@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include <chrono>
 #include <memory>
 #include <string>
@@ -72,7 +74,11 @@ class RobotModelDisplay : public Display {
   virtual void load_urdf_from_file(const std::string& filepath);
   virtual void load_urdf_from_string(const std::string& robot_description);
   void display_urdf_content();
-  void updateRobot();
+  /** @return @c true when a link pose changed and a repaint is required. */
+  bool updateRobot();
+
+  /** TF buffer revision consumed by the last @ref updateRobot() pass. */
+  std::uint64_t tf_revision_seen_ = 0;
 
  private:
   void subscribeChannels();

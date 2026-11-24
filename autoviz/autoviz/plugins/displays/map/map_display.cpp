@@ -179,10 +179,13 @@ void MapDisplay::onEnable() {
   ChannelDisplay<automsgs::msgs::map_msgs::OccupancyGrid>::onEnable();
   if (update_subscription_id_ == 0 && !channel().empty()) {
     const std::string update_channel = channel() + "_update";
+    // Capture the queue rather than `this`: reader callbacks may still be in
+    // flight when the display is destroyed.
+    std::shared_ptr<integration::MessageQueue> queue = update_queue_;
     update_subscription_id_ =
         integration::ChannelReaderRegistry::instance().subscribe(
             update_channel,
-            [this](const std::string& payload) { update_queue_.push(payload); });
+            [queue](const std::string& payload) { queue->push(payload); });
   }
 }
 
@@ -192,7 +195,7 @@ void MapDisplay::onDisable() {
         update_subscription_id_);
     update_subscription_id_ = 0;
   }
-  update_queue_.clear();
+  update_queue_->clear();
   ChannelDisplay<automsgs::msgs::map_msgs::OccupancyGrid>::onDisable();
 }
 
@@ -201,7 +204,7 @@ void MapDisplay::onUpdate() {
   if (!has_full_map_) {
     return;
   }
-  if (auto payload = update_queue_.takeLatest()) {
+  if (auto payload = update_queue_->takeLatest()) {
     automsgs::msgs::map_msgs::OccupancyGridUpdate update;
     const std::string decoded = integration::DecodeChannelPayload(*payload);
     if (update.ParseFromString(decoded) || update.ParseFromString(*payload)) {
@@ -479,7 +482,7 @@ void MapDisplay::processMessage(
 void MapDisplay::clearReceivedData() {
   has_full_map_ = false;
   current_message_.Clear();
-  update_queue_.clear();
+  update_queue_->clear();
   geometry_dirty_ = false;
   clearGeometry();
 }

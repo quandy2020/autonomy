@@ -63,6 +63,7 @@ struct AppSettingsResult {
   std::string render_backend;    /**< @c OpenGL / @c Ogre. */
   std::string background_color;  /**< Encoded viewport background. */
   int frame_rate = 30;           /**< Target render FPS. */
+  int idle_render_divisor = kDefaultIdleRenderDivisor; /**< Idle throttle. */
   common::TimeSyncMode time_sync_mode{}; /**< Time sync policy. */
   bool time_paused = false;      /**< Playback paused flag. */
   bool hide_left_dock = false;   /**< Hide left sidebar. */
@@ -125,6 +126,7 @@ class AppSettingsDialog : public QDialog {
   QComboBox* render_backend_combo_ = nullptr;
   QComboBox* time_sync_combo_ = nullptr;
   QSpinBox* frame_rate_spin_ = nullptr;
+  QSpinBox* idle_render_spin_ = nullptr;
   QSlider* frame_rate_slider_ = nullptr;
   QPushButton* background_button_ = nullptr;
   QLabel* background_preview_ = nullptr;

@@ -270,7 +270,32 @@ std::string NativeAtlasLocalization::LatestSampleSummary(double now) const {
 std::optional<::automsgs::msgs::nav_msgs::Odometry> NativeAtlasLocalization::LatestBackendPose(double now) const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
     const auto sample = impl_->Latest(now);
-    return sample ? sample->pose : std::nullopt;
+    if (sample) return sample->pose;
+    if (impl_->options_.fallback_odometry_topic.empty() || !impl_->fallback_) return std::nullopt;
+    const auto& fallback = *impl_->fallback_;
+    const double stamp = static_cast<double>(fallback.stamp) * 1e-9;
+    if (!std::isfinite(stamp) || now + kLatestStampSkew < stamp ||
+        now > stamp + impl_->options_.evidence_lifetime) return std::nullopt;
+    ::automsgs::msgs::nav_msgs::Odometry result;
+    auto* header = result.mutable_header();
+    header->set_frame_id(impl_->options_.navigation_frame);
+    result.set_child_frame_id(impl_->options_.base_frame);
+    auto* stamp_message = header->mutable_stamp();
+    stamp_message->set_sec(static_cast<std::int32_t>(fallback.stamp / 1000000000));
+    stamp_message->set_nanosec(static_cast<std::uint32_t>(fallback.stamp % 1000000000));
+    auto* pose_with_covariance = result.mutable_pose();
+    auto* pose_stamped = pose_with_covariance->mutable_pose();
+    *pose_stamped->mutable_header() = *header;
+    auto* pose = pose_stamped->mutable_pose();
+    auto* position = pose->mutable_position();
+    position->set_x(fallback.world_from_base.translation.x);
+    position->set_y(fallback.world_from_base.translation.y);
+    position->set_z(fallback.world_from_base.translation.z);
+    const auto& r = fallback.world_from_base.rotation;
+    auto* orientation = pose->mutable_orientation();
+    orientation->set_w(r[0]); orientation->set_x(r[1]);
+    orientation->set_y(r[2]); orientation->set_z(r[3]);
+    return result;
 }
 
 bool NativeAtlasLocalization::SetWorldAlignment(

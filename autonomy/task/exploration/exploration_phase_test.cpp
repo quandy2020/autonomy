@@ -97,8 +97,10 @@ void SelectedIntentInvalidatedByMapChange() {
     fixture.session->PushMap(fixture.reader.Read(fixture.grid, 1.03, 0, 1));
     fixture.session->Tick(1.03);
     auto adapted = Request(fixture, e::ExplorationPhase::kAdapt, 1.04);
-    Require(fixture.session->PhaseState(adapted).status == e::PhaseStatus::kInvalidated &&
-            fixture.submissions.empty(), "old selection cannot produce an unverified plan");
+    const auto resolved = Await(fixture, adapted, 1.04);
+    Require(resolved.status == e::PhaseStatus::kSucceeded &&
+            fixture.session->Snapshot().goal.has_value() && fixture.submissions.empty(),
+            "selected intent is revalidated against the latest same-epoch geometry");
 }
 void PreparedPoseCanSurviveUnrelatedMapChange() {
     Fixture fixture({0}, .05, {}, false, true, 10, 32, e::ExplorationDriver::kBehaviorTree);

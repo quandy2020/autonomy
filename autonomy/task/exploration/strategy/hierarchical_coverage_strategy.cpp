@@ -169,8 +169,20 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
                        << " candidates=" << sampled.candidates.size();
     }
     if(cancel_checker && cancel_checker()){decision.canceled=true;return decision;}
-    if(!decision.local_route.views.empty() && decision.local_route.reachable){
-        const auto& view=decision.local_route.views.front();ObservationGoal goal;
+    const ExplorationRoute* selected_route = nullptr;
+    if(!decision.local_route.views.empty() && decision.local_route.reachable) {
+        selected_route = &decision.local_route;
+    } else if(!decision.global_route.views.empty() && decision.global_route.reachable) {
+        // A local page can be empty or disconnected while a coarse regional
+        // representative still has a valid route. Returning no goal here
+        // falsely declared a global dead end and stalled the session.
+        selected_route = &decision.global_route;
+        AINFO_EVERY(5) << "EXPLORATION_GLOBAL_FALLBACK local_reachable="
+                       << decision.local_route.reachable
+                       << " global_views=" << decision.global_route.views.size();
+    }
+    if(selected_route) {
+        const auto& view=selected_route->views.front();ObservationGoal goal;
         if(mandatory && std::any_of(view.contributions.begin(),view.contributions.end(),
             [&](const auto& c){return c.id==*mandatory && c.quality>0;}))last_fair_selection_=now;
         goal.goal_id=++next_goal_;goal.goal_version=1;goal.map_epoch=map.map_epoch;goal.coverage_revision=state.revision();

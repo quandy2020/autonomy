@@ -40,6 +40,7 @@ void Buffer::clear() {
     frame_stats_.clear();
   }
   tf2::BufferCore::clear();
+  revision_.fetch_add(1, std::memory_order_relaxed);
 }
 
 geometry_msgs::TransformStamped Buffer::ToTf2Message(
@@ -164,6 +165,7 @@ void Buffer::setTransform(
   try {
     recordFrameStats(transform, authority, is_static);
     tf2::BufferCore::setTransform(ToTf2Message(transform), authority, is_static);
+    revision_.fetch_add(1, std::memory_order_relaxed);
   } catch (const tf2::TransformException& ex) {
     LOG(WARNING) << "Failed to apply transform [" << transform.header().frame_id()
                  << " -> " << transform.child_frame_id() << "]: " << ex.what();

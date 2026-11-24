@@ -171,7 +171,8 @@ public:
                 stats_.rejected_by_reason[index][reason] != std::numeric_limits<std::uint64_t>::max())
                 ++stats_.rejected_by_reason[index][reason];
         }
-        if (result != ObservationIngressResult::kAccepted) {
+        if (result != ObservationIngressResult::kAccepted &&
+            result != ObservationIngressResult::kInvalidEvidence) {
             try { loss_(index == 0 ? SensorKind::kLidar : SensorKind::kRgbd, sequence); }
             catch (...) { Fail(); }
         }
@@ -250,8 +251,14 @@ public:
                 const auto result = expired ? ObservationIngressResult::kInvalidLocalization : TryPending(input);
                 lock.lock();
                 if (!running_.load() && result != ObservationIngressResult::kAccepted) break;
-                if (result == ObservationIngressResult::kInvalidLocalization &&
+                if ((result == ObservationIngressResult::kInvalidLocalization ||
+                     result == ObservationIngressResult::kInvalidEvidence) &&
                     std::chrono::steady_clock::now() < input.deadline) {
+                    // Pose publication and packet validity are independent
+                    // callbacks. A packet observed in the few-millisecond window
+                    // before its matching proof arrives is retryable; dropping it
+                    // immediately creates a permanent source gap and forces a
+                    // full scope recovery for a transient handoff.
                     pending_ready_.wait_until(lock, std::min(input.deadline,
                         std::chrono::steady_clock::now() + options_.localization_retry_interval),
                         [&] { return !running_.load(); });

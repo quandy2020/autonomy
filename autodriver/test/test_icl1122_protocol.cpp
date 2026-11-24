@@ -19,7 +19,9 @@
  * @brief Unit tests for EVB1122 / ICL1122 UART frame parsers.
  */
 
+#include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <optional>
 #include <vector>
 
@@ -156,4 +158,72 @@ TEST(Icl1122RangeFft, ParsesSubframeAndAssemblesPeaks) {
       /*skip_near_bins=*/0, &xs, &ys, &intens);
   ASSERT_EQ(xs.size(), 1u);
   EXPECT_NEAR(ys[0], 0.0f, 1e-6);
+}
+
+
+TEST(Icl1122RangeFft, DopplerVelocityFromChirpPhase) {
+  // UM10034P §5.3 2DFFT: a target whose bin phase advances by a fixed step
+  // per chirp has radial velocity lambda * step / (4*pi*T_chirp).
+  constexpr std::uint32_t kBins = 16;
+  constexpr std::uint32_t kRx = 2;
+  constexpr std::uint32_t kChirps = 8;
+  constexpr std::size_t kPerRx = kBins * 4;
+  constexpr std::size_t kPerChirp = kPerRx * kRx;
+  constexpr std::uint32_t kTargetBin = 5;
+  constexpr double kChirpPeriod = 0.0025;
+  constexpr double kLambda = 0.0125;
+  constexpr double kPhaseStep = 0.6;
+  std::vector<std::uint8_t> iq(kPerChirp * kChirps, 0);
+  const auto put = [&iq](std::size_t offset, std::int16_t value) {
+    std::memcpy(iq.data() + offset, &value, sizeof(value));
+  };
+  for (std::uint32_t c = 0; c < kChirps; ++c) {
+    for (std::uint32_t rx = 0; rx < kRx; ++rx) {
+      for (std::uint32_t b = 0; b < kBins; ++b) {
+        double re = 500.0;  // static clutter everywhere
+        double im = 0.0;
+        if (b == kTargetBin) {
+          re += 3000.0 * std::cos(kPhaseStep * c);
+          im += 3000.0 * std::sin(kPhaseStep * c);
+        }
+        const std::size_t offset = c * kPerChirp + rx * kPerRx + b * 4;
+        put(offset, static_cast<std::int16_t>(std::lround(re)));
+        put(offset + 2, static_cast<std::int16_t>(std::lround(im)));
+      }
+    }
+  }
+  float velocity = 0.f;
+  float quality = 0.f;
+  ASSERT_TRUE(autodriver::protocol::EstimateIcl1122DopplerVelocity(
+      iq, kTargetBin, kBins, kRx, kChirps, kChirpPeriod, kLambda, &velocity,
+      &quality));
+  const double expected = kLambda * kPhaseStep / (4.0 * M_PI * kChirpPeriod);
+  // MTI and int16 quantisation bias the lag-1 estimate by a few percent.
+  EXPECT_NEAR(velocity, expected, 0.05 * expected);
+  EXPECT_GT(quality, 0.9f);
+}
+
+TEST(Icl1122RangeFft, PeakBinInterpolation) {
+  const std::vector<float> magnitude = {1.f, 40.f, 100.f, 30.f, 1.f};
+  EXPECT_NEAR(
+      autodriver::protocol::InterpolateIcl1122PeakBin(magnitude, 2),
+      2.0 - 0.5 * 10.0 / 130.0, 1e-6);
+  EXPECT_DOUBLE_EQ(
+      autodriver::protocol::InterpolateIcl1122PeakBin(magnitude, 0), 0.0);
+}
+
+TEST(Icl1122RangeFft, RangePeaksUseInterpolatedDistance) {
+  std::vector<float> magnitude(16, 1.f);
+  magnitude[10] = 100.f;
+  magnitude[9] = 40.f;
+  magnitude[11] = 30.f;
+  std::vector<float> xs;
+  std::vector<float> ys;
+  std::vector<float> intensities;
+  std::vector<std::size_t> bins;
+  autodriver::protocol::ExtractIcl1122RangePeaks(magnitude, 0.15, 4.0f, 3, &xs,
+                                                 &ys, &intensities, &bins);
+  ASSERT_EQ(ys.size(), 1u);
+  EXPECT_EQ(bins[0], 10u);
+  EXPECT_NEAR(ys[0], (10.0 - 0.5 * 10.0 / 130.0) * 0.15, 1e-5);
 }

@@ -6,8 +6,8 @@
 
 QAbstractSpinBox, QDoubleSpinBox, QSpinBox {
   background: {{base}}; color: {{text}};
-  border: 1px solid {{border}}; border-radius: 6px;
-  padding: 0px 6px; min-height: 0px; max-height: {{h}}px;
+  border: 1px solid {{border}}; border-radius: {{r-ctrl}}px;
+  padding: 0px {{space-5}}px; min-height: 0px; max-height: {{h}}px;
   font-size: 12px;
   outline: none;
 }
@@ -25,13 +25,13 @@ QSpinBox QLineEdit:focus {
 }
 
 QComboBox#AutovizSettingsCombo {
-  background: #FFFFFF; color: {{text}};
-  border: 1px solid {{border}}; border-radius: 6px;
-  padding: 0px 16px 0px 6px; min-height: 0px; max-height: {{h}}px;
+  background: {{panel-surface}}; color: {{text}};
+  border: 1px solid {{border}}; border-radius: {{r-ctrl}}px;
+  padding: 0px 18px 0px {{space-5}}px; min-height: 0px; max-height: {{h}}px;
   font-size: 12px;
 }
 QComboBox#AutovizSettingsCombo:focus {
-  border-color: {{accent}}; background: rgba(255,255,255,0.96);
+  border-color: {{accent}}; background: {{surface-a96}};
 }
 QComboBox#AutovizSettingsCombo::drop-down {
   subcontrol-origin: padding; subcontrol-position: center right;
@@ -39,40 +39,40 @@ QComboBox#AutovizSettingsCombo::drop-down {
 }
 QComboBox#AutovizSettingsCombo QLineEdit {
   background: transparent; border: none;
-  padding: 0px 2px; min-height: 0px; max-height: 18px;
+  padding: 0px {{space-1}}px; min-height: 0px; max-height: 18px;
   font-size: 12px;
 }
 
 QLineEdit#AutovizSettingsLineEdit {
-  background: #FFFFFF; color: {{text}};
-  border: 1px solid {{border}}; border-radius: 6px;
-  padding: 0px 6px; min-height: 0px; max-height: {{h}}px;
+  background: {{panel-surface}}; color: {{text}};
+  border: 1px solid {{border}}; border-radius: {{r-ctrl}}px;
+  padding: 0px {{space-5}}px; min-height: 0px; max-height: {{h}}px;
   font-size: 12px;
 }
 QLineEdit#AutovizSettingsLineEdit:focus {
-  border-color: {{accent}}; background: rgba(255,255,255,0.96);
+  border-color: {{accent}}; background: {{surface-a96}};
 }
 
 QLineEdit#AutovizFilterLineEdit {
   background: {{panel-bg}}; color: {{text}};
   border: 1px solid {{border}}; border-radius: {{r-ctrl}}px;
-  padding: 6px 10px; min-height: 26px;
+  padding: {{space-3}}px {{space-6}}px; min-height: 30px;
 }
 QLineEdit#AutovizFilterLineEdit:focus {
-  border-color: {{accent-soft}}; background: #FFFFFF;
+  border-color: {{accent-soft}}; background: {{panel-surface}};
 }
 
 QLineEdit#AutovizCyanLineEdit {
   background: {{panel-surface}}; color: {{panel-text}};
-  border: 1px solid {{panel-border}}; border-radius: 8px;
-  padding: 6px 10px; min-height: 26px;
+  border: 1px solid {{panel-border}}; border-radius: {{r-ctrl}}px;
+  padding: {{space-3}}px {{space-6}}px; min-height: 30px;
 }
 QLineEdit#AutovizCyanLineEdit:focus { border-color: {{panel-accent}}; }
 
 QComboBox#AutovizCyanCombo {
   background: {{panel-surface}}; color: {{panel-text}};
-  border: 1px solid {{panel-border}}; border-radius: 8px;
-  padding: 5px 10px; min-height: 28px;
+  border: 1px solid {{panel-border}}; border-radius: {{r-ctrl}}px;
+  padding: {{space-3}}px {{space-6}}px; min-height: 30px;
 }
 QComboBox#AutovizCyanCombo:hover { border-color: {{panel-accent}}; }
 QComboBox#AutovizCyanCombo:focus { border-color: {{panel-accent}}; }
@@ -86,9 +86,9 @@ QComboBox#AutovizCyanCombo QAbstractItemView {
 }
 
 QComboBox#AutovizToolbarCombo {
-  background: #FFFFFF; color: {{text}};
-  border: 1px solid {{border}}; border-radius: 8px;
-  padding: 2px 8px; min-height: 26px; font-size: 12px;
+  background: {{panel-surface}}; color: {{text}};
+  border: 1px solid {{border}}; border-radius: {{r-ctrl}}px;
+  padding: {{space-2}}px {{space-5}}px; min-height: 28px; font-size: 12px;
 }
 QComboBox#AutovizToolbarCombo:focus { border-color: {{accent}}; }
 QComboBox#AutovizToolbarCombo::drop-down { border: none; width: 18px; }
@@ -100,9 +100,9 @@ QComboBox#AutovizToolbarCombo::drop-down { border: none; width: 18px; }
 /* compact_group — QGroupBox (Liquid Glass settings sections) */
 QGroupBox {
   border: 1px solid {{panel-border}};
-  border-radius: 10px;
-  margin-top: 6px;
-  padding: 10px 8px 8px 8px;
+  border-radius: {{r-panel}}px;
+  margin-top: {{space-4}}px;
+  padding: {{space-7}}px {{space-6}}px {{space-6}}px {{space-6}}px;
   background: {{panel-bg}};
 }
 QGroupBox::title {
@@ -112,12 +112,13 @@ QGroupBox::title {
 
 /* segmented_toggle — container #AutovizSegmentedToggle */
 #AutovizSegmentedToggle {
-  background: rgba(241,245,249,0.85); border: 1px solid {{panel-border}};
-  border-radius: {{r-ctrl}}px; padding: 3px;
+  background: {{surface-a85}}; border: 1px solid {{panel-border}};
+  border-radius: {{r-ctrl}}px; padding: 4px;
 }
 #AutovizSegmentedToggle QPushButton {
-  border: none; padding: 5px 12px; background: transparent;
-  border-radius: 9px; color: {{muted}}; font-weight: 600;
+  border: none; padding: 6px 14px; background: transparent;
+  border-radius: {{r-sm}}px; color: {{muted}}; font-weight: 600; font-size: 12px;
+  min-height: 24px;
 }
 #AutovizSegmentedToggle QPushButton:checked {
   background: {{sel-bg}}; color: {{accent}}; font-weight: 700;
@@ -131,7 +132,7 @@ QGroupBox::title {
 QFrame#AutovizCollapsibleSection {
   background: {{panel-surface}};
   border: 1px solid {{panel-border}};
-  border-radius: 8px;
+  border-radius: {{r-ctrl}}px;
 }
 
 /* collapsible_header — direct header button on section */
@@ -146,14 +147,14 @@ QFrame#AutovizCollapsibleSection > QPushButton:checked { color: {{accent}}; }
 /* settings_check */
 QCheckBox {
   spacing: 6px; font-size: 12px; color: {{text}};
-  min-height: 16px; max-height: 18px;
+  min-height: 18px; max-height: 20px;
 }
 
 /* soft_card — token {{name}} on target widget id */
 #{{name}} {
-  background: #FFFFFF;
+  background: {{panel-surface}};
   border: 1px solid {{panel-border}};
-  border-radius: 10px;
+  border-radius: {{r-panel}}px;
 }
 /* @end */
 
@@ -161,14 +162,14 @@ QCheckBox {
 /* control/badges.qss */
 
 QLabel#AutovizAccentBadge {
-  color: white; background: {{panel-accent}}; border-radius: 9px;
-  padding: 2px 8px; font-size: 10px; font-weight: 700;
+  color: {{on-accent}}; background: {{panel-accent}}; border-radius: {{r-sm}}px;
+  padding: {{space-1}}px {{space-4}}px; font-size: 11px; font-weight: 700;
 }
 
 QLabel#AutovizCyanStatusChip {
   color: {{panel-accent}}; background: {{accent-a10}};
-  border: 1px solid {{accent-a28}}; border-radius: 10px;
-  padding: 3px 10px; font-size: 11px; font-weight: 700;
+  border: 1px solid {{accent-a28}}; border-radius: {{r-md}}px;
+  padding: 3px {{space-5}}px; font-size: 11px; font-weight: 700;
 }
 /* @end */
 
@@ -176,7 +177,7 @@ QLabel#AutovizCyanStatusChip {
 /* light toolbar icon — TF Tree / Channel Graph */
 QToolButton#AutovizLightToolbarIcon {
   background: transparent; border: 1px solid transparent;
-  border-radius: 6px; padding: 3px; color: {{panel-text}};
+  border-radius: {{r-sm}}px; padding: 3px; color: {{panel-text}};
   min-width: 26px; max-width: 26px; min-height: 26px; max-height: 26px;
 }
 QToolButton#AutovizLightToolbarIcon:hover {
@@ -191,8 +192,8 @@ QToolButton#AutovizLightToolbarIcon:disabled { color: {{disabled}}; }
 /* cyan text tool buttons (Expand / Collapse, …) */
 QToolButton#AutovizCyanToolButton {
   color: {{panel-accent}}; background: {{accent-a10}};
-  border: 1px solid {{accent-a35}}; border-radius: 8px;
-  padding: 4px 10px; font-size: 12px; font-weight: 600;
+  border: 1px solid {{accent-a35}}; border-radius: {{r-sm}}px;
+  padding: {{space-2}}px {{space-5}}px; font-size: 12px; font-weight: 600;
 }
 QToolButton#AutovizCyanToolButton:hover { background: {{accent-a18}}; }
 QToolButton#AutovizCyanToolButton:pressed { background: {{accent-a26}}; }
@@ -202,11 +203,11 @@ QToolButton#AutovizCyanToolButton:pressed { background: {{accent-a26}}; }
 /* control/primary_button */
 QPushButton {
   background: {{accent}};
-  color: #FFFFFF;
+  color: {{on-accent}};
   border: 1px solid {{accent}};
-  border-radius: 14px;
-  padding: 0 14px;
-  min-height: 30px;
+  border-radius: {{r-btn}}px;
+  padding: 0 {{space-8}}px;
+  min-height: {{h-btn}}px;
   font-weight: 700;
   font-size: 12px;
 }
@@ -214,7 +215,7 @@ QPushButton:hover { background: {{accent}}; }
 QPushButton:pressed { background: {{accent}}; }
 QPushButton:disabled {
   background: {{accent-soft}};
-  color: rgba(255,255,255,0.55);
+  color: {{on-accent-muted}};
   border-color: {{accent-a28}};
 }
 /* @end */
@@ -225,9 +226,9 @@ QPushButton {
   background: {{button}};
   color: {{text}};
   border: 1px solid {{border}};
-  border-radius: 14px;
-  padding: 0 12px;
-  min-height: 30px;
+  border-radius: {{r-btn}}px;
+  padding: 0 {{space-7}}px;
+  min-height: {{h-btn}}px;
   font-weight: 600;
   font-size: 12px;
 }
@@ -247,30 +248,32 @@ QPushButton:disabled {
 /* @section destructive_button */
 /* control/destructive_button */
 QPushButton {
-  background: #FFFFFF; color: #DC2626;
-  border: 1px solid rgba(252,165,165,0.90); border-radius: 14px;
-  padding: 0 12px; min-height: 30px; font-weight: 600; font-size: 12px;
+  background: {{panel-surface}}; color: {{danger}};
+  border: 1px solid {{danger-border}};
+  border-radius: {{r-btn}}px;
+  padding: 0 {{space-7}}px; min-height: {{h-btn}}px;
+  font-weight: 600; font-size: 12px;
 }
-QPushButton:hover { background: rgba(254,226,226,0.90); }
-QPushButton:pressed { background: rgba(254,202,202,0.95); }
+QPushButton:hover { background: {{danger-soft}}; }
+QPushButton:pressed { background: {{danger-soft}}; }
 QPushButton:disabled {
   color: {{disabled}}; border-color: {{border-light}};
-  background: rgba(255,255,255,0.40);
+  background: {{surface-a42}};
 }
 /* @end */
 
 /* @section compact_button */
 /* control/compact_button */
 QPushButton, QToolButton {
-  color: {{accent-pressed}}; background: #FFFFFF;
-  border: 1px solid {{accent}}; border-radius: 10px;
-  padding: 4px 10px; font-size: 12px; font-weight: 600;
+  color: {{accent-pressed}}; background: {{panel-surface}};
+  border: 1px solid {{accent}}; border-radius: {{r-ctrl}}px;
+  padding: {{space-2}}px {{space-5}}px; font-size: 12px; font-weight: 600;
 }
 QPushButton:hover, QToolButton:hover {
-  background: #FFFFFF; color: {{accent}};
+  background: {{panel-surface}}; color: {{accent}};
 }
 QPushButton:pressed, QToolButton:pressed {
-  background: #E0F2FE;
+  background: {{accent-soft}};
 }
 QPushButton:checked, QToolButton:checked {
   background: {{sel-bg}}; color: {{accent}};
@@ -282,8 +285,8 @@ QPushButton:checked, QToolButton:checked {
 /* control/color_button */
 QPushButton {
   background:{{color}}; color:white;
-  border: 1px solid palette(mid); border-radius: 6px;
-  padding: 0px 6px; min-height: 0px; max-height: 20px;
+  border: 1px solid palette(mid); border-radius: {{r-sm}}px;
+  padding: 0px {{space-3}}px; min-height: 0px; max-height: 20px;
   font-size: 11px; font-weight: 600;
 }
 /* @end */
@@ -291,13 +294,13 @@ QPushButton {
 /* @section color_button_empty */
 /* control/color_button_empty */
 QPushButton {
-  background: #FFFFFF; color: {{accent-pressed}};
-  border: 1px solid {{accent}}; border-radius: 6px;
-  padding: 0px 6px; min-height: 0px; max-height: 20px;
+  background: {{panel-surface}}; color: {{accent-pressed}};
+  border: 1px solid {{accent}}; border-radius: {{r-sm}}px;
+  padding: 0px {{space-3}}px; min-height: 0px; max-height: 20px;
   font-size: 11px; font-weight: 600;
 }
 QPushButton:hover {
-  background: #FFFFFF; color: {{accent}};
+  background: {{panel-surface}}; color: {{accent}};
 }
 /* @end */
 
@@ -307,9 +310,9 @@ QToolButton {
   color: {{muted}};
   background: transparent;
   border: none;
-  font-size: 14px;
+  font-size: 13px;
   padding: 0px;
-  border-radius: 8px;
+  border-radius: {{r-sm}}px;
 }
 QToolButton:hover { color: {{accent}}; background: {{hover}}; }
 /* @end */
@@ -317,9 +320,9 @@ QToolButton:hover { color: {{accent}}; background: {{hover}}; }
 /* @section tool_button */
 /* control/tool_button — compact toolbar icon buttons */
 QToolButton {
-  background: #FFFFFF; color: {{text}};
-  border: 1px solid {{accent}}; border-radius: 8px;
-  padding: 4px; min-width: 28px; min-height: 28px;
+  background: {{panel-surface}}; color: {{text}};
+  border: 1px solid {{accent}}; border-radius: {{r-sm}}px;
+  padding: {{space-2}}px; min-width: 28px; min-height: 28px;
 }
 QToolButton:hover { background: {{hover}}; color: {{accent}}; border-color: transparent; }
 QToolButton:pressed { background: {{sel-bg}}; }

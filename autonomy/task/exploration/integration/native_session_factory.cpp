@@ -162,7 +162,8 @@ bool ConfigureNativeExploration(const std::shared_ptr<ExplorationTask>& task,
         coverage.sampling.angular_speed = options.nominal_angular_speed;
         coverage.sampling.observation_time = options.minimum_observation_time;
         auto strategy = std::make_shared<HierarchicalCoverageStrategy>(paths, evaluator, coverage);
-        auto adapter = std::make_shared<GoalPoseAdapter>(paths, evaluator, coverage.safety);
+        auto adapter = std::make_shared<GoalPoseAdapter>(paths, evaluator, coverage.safety,
+                                                         coverage.sampling.goal_clearance_reserve);
         return std::make_shared<ExplorationSession>(strategy, adapter, paths, std::move(services), options);
     };
     auto localization = [lookup = platform.localization, settings](perception::SensorKind sensor,

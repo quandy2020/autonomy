@@ -26,7 +26,10 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
 #include <string>
+#include <string_view>
 
 #include "autoviz/plugins/displays/display.hpp"
 #include "autoviz/common/interaction/channel_payload.hpp"
@@ -56,7 +59,7 @@ bool IsValidChannelName(const std::string& channel) {
  *
  * ## Data flow
  *
- * - **In:** Autolink callback → @c queue_.push → @ref onUpdate takes latest →
+ * - **In:** Autolink callback → @c queue_->push → @ref onUpdate takes latest →
  *   decode → @ref processMessage.
  * - **Out:** subclass @ref onDraw reads cached state built in
  *   @ref processMessage.
@@ -103,9 +106,10 @@ class ChannelDisplay : public Display {
    */
   void reset() override {
     Display::reset();
-    queue_.clear();
+    queue_->clear();
     has_received_message_ = false;
     parse_failed_ = false;
+    subscribe_attempted_ = false;
     clearReceivedData();
     if (context_ != nullptr && context_->request_redraw) {
       context_->request_redraw();
@@ -143,6 +147,7 @@ class ChannelDisplay : public Display {
       onDisable();
     }
     channel_ = IsValidChannelName(channel) ? channel : std::string{};
+    subscribe_attempted_ = false;
     if (active) {
       onEnable();
     }
@@ -164,6 +169,7 @@ class ChannelDisplay : public Display {
   void onEnable() override {
     has_received_message_ = false;
     parse_failed_ = false;
+    subscribe_attempted_ = false;
     if (context_ == nullptr || context_->autolink == nullptr ||
         context_->autolink->node() == nullptr) {
       setStatusError("Autolink not ready");
@@ -191,7 +197,7 @@ class ChannelDisplay : public Display {
       integration::ChannelReaderRegistry::instance().unsubscribe(subscription_id_);
       subscription_id_ = 0;
     }
-    queue_.clear();
+    queue_->clear();
     // Do not request_redraw here: ~ChannelDisplay calls onDisable while
     // VisualizationManager is clearing displays_; a sync redraw would
     // manager_->update() into destroyed Display objects (SIGSEGV).
@@ -208,16 +214,34 @@ class ChannelDisplay : public Display {
   void onUpdate() override {
     if (subscription_id_ == 0 && !channel_.empty() && context_ != nullptr &&
         context_->autolink != nullptr && context_->autolink->node() != nullptr) {
-      subscribeChannel();
+      // Retry throttled: a permanently invalid channel used to call
+      // CreateReader on every frame.
+      const std::uint64_t frame = context_->frameCount();
+      if (!subscribe_attempted_ ||
+          frame >= subscribe_attempt_frame_ + kSubscribeRetryFrames) {
+        subscribe_attempted_ = true;
+        subscribe_attempt_frame_ = frame;
+        subscribeChannel();
+      }
     }
     const std::size_t depth = std::max<std::size_t>(1, messageQueueDepth());
-    queue_.setMaxDepth(depth);
-    auto handle_payload = [this](const std::string& payload) {
+    queue_->setMaxDepth(depth);
+    bool handled_any = false;
+    auto handle_payload = [this, &handled_any](const std::string& payload) {
       ProtoT proto;
-      const std::string decoded = integration::DecodeChannelPayload(payload);
-      if (proto.ParseFromString(decoded) || proto.ParseFromString(payload)) {
+      // Parse in place: payloads can be multi-megabyte point clouds and the
+      // old path copied them twice (DecodeChannelPayload + ParseFromString).
+      const std::string_view framed =
+          integration::ChannelPayloadView(payload);
+      const bool framed_ok =
+          proto.ParseFromArray(framed.data(), static_cast<int>(framed.size()));
+      const bool raw_ok =
+          !framed_ok && proto.ParseFromArray(payload.data(),
+                                             static_cast<int>(payload.size()));
+      if (framed_ok || raw_ok) {
         has_received_message_ = true;
         parse_failed_ = false;
+        handled_any = true;
         processMessage(proto);
       } else {
         parse_failed_ = true;
@@ -226,15 +250,20 @@ class ChannelDisplay : public Display {
     if (depth <= 1) {
       // Visualization only needs the newest sample; draining a full backlog
       // on the UI thread freezes checkbox toggles and the 3D view.
-      if (auto payload = queue_.takeLatest()) {
+      if (auto payload = queue_->takeLatest()) {
         handle_payload(*payload);
       }
     } else {
       // RViz2 PointCloudCommon: process every retained cloud so Decay Time
       // can accumulate intermediate frames that arrived between UI ticks.
-      while (auto payload = queue_.pop()) {
+      while (auto payload = queue_->pop()) {
         handle_payload(*payload);
       }
+    }
+    // Displays that update only cached state still need one repaint; the
+    // session throttles idle frames, so data arrival must clear that gate.
+    if (handled_any && context_ != nullptr && context_->request_redraw) {
+      context_->request_redraw();
     }
     afterQueueProcessed();
     if (channel_.empty()) {
@@ -275,14 +304,22 @@ class ChannelDisplay : public Display {
     if (subscription_id_ != 0 || channel_.empty()) {
       return;
     }
+    // Capture the queue, not `this`: fanOut() invokes already-copied callbacks
+    // outside its lock, so one can still run right after this display is
+    // destroyed. A shared queue keeps that write harmless.
+    std::shared_ptr<integration::MessageQueue> queue = queue_;
     subscription_id_ = integration::ChannelReaderRegistry::instance().subscribe(
-        channel_, [this](const std::string& payload) { queue_.push(payload); });
+        channel_,
+        [queue](const std::string& payload) { queue->push(payload); });
     if (subscription_id_ == 0) {
       setStatusError("Failed to subscribe channel");
     }
   }
 
  private:
+  /** Frames between subscription retries for a channel that failed to bind. */
+  static constexpr std::uint64_t kSubscribeRetryFrames = 30;
+
   /** Catalog / factory type id. */
   std::string type_id_;
 
@@ -292,8 +329,14 @@ class ChannelDisplay : public Display {
   /** Declared message type string (schema hint). */
   std::string message_type_;
 
-  /** Thread-safe raw payload queue; only latest is taken in @ref onUpdate. */
-  integration::MessageQueue queue_;
+  /**
+   * Thread-safe raw payload queue; only latest is taken in @ref onUpdate.
+   *
+   * Shared with reader callbacks (see @ref subscribeChannel) so an in-flight
+   * callback cannot write into a destroyed display.
+   */
+  std::shared_ptr<integration::MessageQueue> queue_ =
+      std::make_shared<integration::MessageQueue>();
 
   /** Registry subscription handle; @c 0 means unsubscribed. */
   integration::ChannelReaderRegistry::SubscriptionId subscription_id_ = 0;
@@ -303,6 +346,12 @@ class ChannelDisplay : public Display {
 
   /** Set when the latest payload failed protobuf parse. */
   bool parse_failed_ = false;
+
+  /** Whether a subscription attempt was made since enable/reset. */
+  bool subscribe_attempted_ = false;
+
+  /** Frame of the last subscription attempt (throttles retries). */
+  std::uint64_t subscribe_attempt_frame_ = 0;
 };
 
 }  // namespace display

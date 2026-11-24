@@ -52,3 +52,23 @@
 - 配置：`config/radar/icl1122.yaml`
 
 详见 [backends](../../docs/source/guide/backends.md)。
+
+## UM10034P Rev.1.1 手册要点（本驱动据此校核）
+
+| 项目 | 手册值 | 代码落点 |
+|---|---|---|
+| 频段 | 24 GHz ISM，扫频 24–25 GHz 可配 | `center_frequency_hz`，`wavelength_m_ = c/f` |
+| 距离分辨率 | `c/(2B)`；GUI 示例 24000–24245 MHz（B=245 MHz）→ **0.63 m/bin** | `bandwidth_hz` → `range_resolution_m`（覆盖旧值并告警） |
+| 测速 | Doppler FFT（§5.3）；示例 32 chirp、1270 µs → **v_max 2.45 m/s，Δv 0.15 m/s** | `EstimateIcl1122DopplerVelocity()`：chirp 间相位差，替代整 bin 帧差 |
+| 距离细分 | 分辨率决定量化步长 | `InterpolateIcl1122PeakBin()`：三点抛物线插值，亚 bin 距离 |
+| 天线 | 0° 合成增益 ≈20 dBi；6 dBi 波束 **86°×28°（H×E）**，H 面 **±43°** | `max_abs_azimuth_deg` 方位门控 |
+| 芯片杂波抑制 | 数字部分含变系数杂波抑制，输出已抑制的 Range FFT | 慢时间再做一次 MTI（去每 RX 复均值） |
+| 数据帧 | 0xAA dword：RX[23]、chirp[19:11]、FFT 点数[10:0]；尾部 checksum[31:16]、frame[15:12]、0x55 | `protocol.cpp` / `range_fft.cpp`（与 24GMmwave 参考实现一致） |
+| MCU 封包 | `49 43 4C 48` + len(2) + type + channel + data + `49 43 4C 54` | `Icl1122McuParser` |
+| 接口速率 | USB 2.0 High Speed，最大 34 Mbps；IAP 用 256000 | YAML `baud`（USB CDC 名义值） |
+
+启动日志新增：
+
+```
+ICL1122 scale dR=0.612 m lambda=0.01243 m bandwidth_hz=2.45e+08 chirp_period_s=0 v_max=0 m/s v_res=0 m/s az_limit_rad=0.750492
+```

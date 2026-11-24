@@ -62,8 +62,8 @@ ServiceEditorWidget::ServiceEditorWidget(common::VisualizationManager* manager,
 
   auto* root = new QVBoxLayout(this);
   root->setContentsMargins(
-      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-      PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
+      PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin(),
+      PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin());
   root->setSpacing(6);
 
   rqt_top_bar_ = new QWidget(this);

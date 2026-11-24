@@ -460,6 +460,21 @@ class FrameSession {
   void onRenderTick();
 
   /**
+   * @brief Marks the viewport dirty so the next render tick repaints.
+   *
+   * Full-rate data intake still happens every tick; only the draw / GL present
+   * pass is throttled while idle.
+   */
+  void markViewportDirty();
+
+  /**
+   * @brief Sets the idle repaint divisor (clamped to the preference range).
+   *
+   * 1 keeps painting every tick; higher values skip draw passes while idle.
+   */
+  void setIdleRenderDivisor(int divisor);
+
+  /**
    * @brief Global Reset: clears playback and visualization state.
    */
   void onReset();
@@ -534,6 +549,18 @@ class FrameSession {
 
   /** Application is inactive (pause rendering). */
   bool app_inactive_ = false;
+
+  /** Set whenever the viewport pass must repaint (data, input, camera). */
+  bool viewport_dirty_ = true;
+
+  /** Consecutive idle ticks; drives idle_render_divisor_ throttling. */
+  int idle_render_skip_ = 0;
+
+  /** Ticks spent occluded / unexposed before a safety repaint. */
+  int occluded_ticks_ = 0;
+
+  /** Idle ticks between repaints (1 = always paint). */
+  int idle_render_divisor_ = kDefaultIdleRenderDivisor;
 
   /** Guards @ref onAboutToQuit() so closeEvent + aboutToQuit stay idempotent. */
   bool quit_teardown_done_ = false;

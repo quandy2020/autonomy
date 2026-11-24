@@ -10,6 +10,7 @@
 #include <QApplication>
 #include <QCommandLineParser>
 #include <QEasingCurve>
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QGuiApplication>
@@ -35,7 +36,39 @@
 
 namespace {
 
+/**
+ * Extra time granted to the normal close path (close fade + Ogre teardown)
+ * before the smoke hook leaves with _exit(). Not user-visible.
+ */
+constexpr int kSmokeTeardownGraceMs = 1500;
+
 QString defaultConfigPath() {
+  // Prefer the session shipped with the binary (install / build tree) over the
+  // process CWD. Otherwise launching from another directory silently starts
+  // without the default session.
+  const QString app_dir = QCoreApplication::applicationDirPath();
+  const QStringList roots{
+      app_dir,
+      QDir(app_dir).filePath(QStringLiteral("..")),
+      QDir(app_dir).filePath(QStringLiteral("../..")),
+      // install layout: <prefix>/bin/autoviz + <prefix>/share/autonomy/autoviz
+      QDir(app_dir).filePath(QStringLiteral("../share/autonomy/autoviz")),
+      QDir(app_dir).filePath(QStringLiteral("../share/autoviz")),
+      QDir(app_dir).filePath(QStringLiteral("../../share/autonomy/autoviz")),
+      // build tree: build/autonomy/bin/autoviz + src/autonomy/autoviz/config
+      QDir(app_dir).filePath(QStringLiteral("../../../src/autonomy/autoviz")),
+  };
+  for (const QString& root : roots) {
+    const QString shipped = QDir(root).filePath(QStringLiteral("default.autoviz"));
+    if (QFile::exists(shipped)) {
+      return shipped;
+    }
+    const QString nested =
+        QDir(root).filePath(QStringLiteral("config/default.autoviz"));
+    if (QFile::exists(nested)) {
+      return nested;
+    }
+  }
   return QStringLiteral("config/default.autoviz");
 }
 
@@ -277,6 +310,10 @@ int main(int argc, char** argv) {
       // Close the main window (runs closeEvent / Ogre teardown) rather than
       // QCoreApplication::quit → closeAllWindows, which races GLX hideChildren.
       QTimer::singleShot(smoke_ms, &frame, &QWidget::close);
+      // Headless CI guard: close() can be ignored by the startup grace gate or
+      // stall in the close fade, which left smoke runs hanging until timeout.
+      // Give the normal teardown a fixed budget, then leave hard.
+      QTimer::singleShot(smoke_ms + kSmokeTeardownGraceMs, []() { _exit(0); });
     }
     code = app.exec();
   }

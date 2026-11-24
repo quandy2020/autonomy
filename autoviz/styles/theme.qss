@@ -17,7 +17,7 @@ QMenuBar {
   color: {{text}};
   border: none;
   border-bottom: 1px solid {{panel-border}};
-  padding: 2px 8px;
+  padding: {{space-1}}px {{space-4}}px;
   spacing: 2px;
   min-height: 32px;
 }
@@ -27,27 +27,27 @@ QToolBar {
   border: none;
   border-bottom: 1px solid {{panel-border}};
   spacing: 2px;
-  padding: 2px 6px;
+  padding: {{space-1}}px {{space-3}}px;
   min-height: 32px;
 }
 QToolBar#AutovizToolBar {
   spacing: 2px;
-  padding: 3px 8px;
+  padding: 3px {{space-4}}px;
   min-height: 34px;
 }
 QToolButton {
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 5px;
-  padding: 3px 6px;
+  border-radius: {{r-sm}}px;
+  padding: 3px {{space-3}}px;
   color: {{text}};
   font-weight: 500;
   font-size: 12px;
 }
 QToolBar#AutovizToolBar QToolButton {
-  padding: 3px 6px;
+  padding: 3px {{space-3}}px;
   margin: 0;
-  border-radius: 5px;
+  border-radius: {{r-sm}}px;
   color: {{muted}};
 }
 QToolButton:hover {
@@ -69,7 +69,7 @@ QToolButton:checked:hover {
 QToolButton:disabled { color: {{disabled}}; }
 QToolButton#AutovizToolbarChromeButton,
 QToolButton#AutovizToolbarSidebarToggle {
-  padding: 4px;
+  padding: {{space-2}}px;
   min-width: 28px;
   max-width: 28px;
   min-height: 28px;
@@ -80,7 +80,7 @@ QStatusBar {
   background: {{panel-bar}};
   color: {{muted}};
   border-top: 1px solid {{panel-border}};
-  padding: 2px 8px;
+  padding: {{space-1}}px {{space-4}}px;
   font-size: 12px;
 }
 
@@ -96,8 +96,8 @@ QDockWidget { color: {{text}}; background: transparent; }
 QGroupBox {
   border: 1px solid {{panel-border}};
   border-radius: {{r-panel}}px;
-  margin-top: 12px;
-  padding: 14px 10px 10px 10px;
+  margin-top: {{space-6}}px;
+  padding: {{space-7}}px {{space-5}}px {{space-5}}px {{space-5}}px;
   background: {{panel-surface}};
   color: {{muted}};
   font-weight: 700;
@@ -108,18 +108,18 @@ QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QTextEdit, QPlainTextEdit {
   color: {{text}};
   border: 1px solid {{border}};
   border-radius: {{r-ctrl}}px;
-  padding: 5px 8px;
-  min-height: 24px;
+  padding: {{space-3}}px {{space-5}}px;
+  min-height: {{h-field}}px;
   selection-background-color: {{sel-bg}};
   selection-color: {{sel-text}};
 }
 QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus,
 QTextEdit:focus, QPlainTextEdit:focus {
   border: 1px solid {{accent-soft}};
-  background: #FFFFFF;
+  background: {{panel-surface}};
 }
 QComboBox QAbstractItemView {
-  background: rgba(255,255,255,0.96);
+  background: {{surface-a96}};
   color: {{text}};
   border: 1px solid {{panel-border}};
   border-radius: {{r-ctrl}}px;
@@ -133,7 +133,7 @@ QCheckBox, QRadioButton { spacing: 6px; color: {{text}}; }
 
 QProgressBar {
   background: {{border-light}}; border: 1px solid {{border}};
-  border-radius: 8px; text-align: center; color: {{text}};
+  border-radius: {{r-sm}}px; text-align: center; color: {{text}};
 }
 
 /* --- app/views.qss --- */
@@ -157,6 +157,8 @@ QHeaderView {
   background: {{panel-bar}};
   color: {{muted}};
   border: none;
+  font-size: 12px;
+  font-weight: 600;
 }
 /* Scrollbars painted by ProxyStyle (Liquid Glass capsule). Avoid QSS here —
  * stylesheet scrollbars fight Fusion proxy painting and look like gray rails. */
@@ -177,7 +179,7 @@ QToolTip {
   background-color: {{card}};
   color: {{text}};
   border: 1px solid {{border}};
-  padding: 4px 8px;
+  padding: {{space-2}}px {{space-4}}px;
 }
 
 /* --- app/panel_ids.qss --- */
@@ -204,11 +206,13 @@ QToolTip {
   border: none;
 }
 #{{id-dock-title}} QLabel {
-  font-weight: 600; color: {{text}}; padding: 0 4px;
+  font-size: {{font-title}}px; font-weight: 600; color: {{text}};
+  padding: 0 {{space-3}}px;
+  letter-spacing: 0.1px;
 }
 #{{id-title-tools}} QToolButton {
   border: 1px solid transparent; padding: 2px; background: transparent;
-  border-radius: 8px;
+  border-radius: {{r-sm}}px;
 }
 #{{id-title-tools}} QToolButton:hover {
   background: {{hover}}; border-color: transparent;
@@ -221,7 +225,9 @@ QToolTip {
   color: {{muted}}; font-size: 11px;
 }
 #{{id-section}} {
-  font-size: 13px; font-weight: 700; color: {{text}}; background: transparent;
+  font-size: {{font-section}}px; font-weight: 600; color: {{text}};
+  background: transparent;
+  padding: {{space-2}}px 0 {{space-1}}px 0;
 }
 #{{id-pi-title}} {
   font-weight: 700; padding: 0; color: {{text}};

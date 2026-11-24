@@ -1,9 +1,10 @@
-# ICL1122 — 无官方 GUI：透传 Range-FFT 测距 (JoySpace / UM10034 §5).
+# ICL1122 — 无官方 GUI：透传 Range-FFT 测距
+# 参考：UM10034P_Rev.1.1《EVB1122 评估套件用户手册》§2 / §4.4 / §5.3 / §5.4
 #
 # 主机下发寄存器后板子输出 ICLH Range-FFT @ 921600。
-# - 距离：CFAR 峰 × range_resolution_m（默认只保留最强 1 峰，单人）
+# - 距离：CFAR 峰 × range_resolution_m + 抛物线亚 bin 插值（max_peaks=3）
 # - 角度：双 RX 相位差 AoA（1T2R）
-# - 速度：主峰距离对时间差分（非 Doppler FFT）
+# - 速度：chirp 间相位差 2DFFT（UM10034P §5.3），失败时回退帧差
 #
 # 若以后有室内演示固件（AA FF @ 256000）：host_bringup false, baud 256000.
 
@@ -17,11 +18,28 @@ chirp_number: 8
 range_bins: 64
 num_rx: 2
 cmd_response_ms: 200
-range_resolution_m: 0.15
+range_resolution_m: 0.15   # 必须与寄存器带宽一致：0.15≈1 GHz，0.179=840 MHz，0.63=245 MHz（手册 GUI 示例）
+
+# --- UM10034P Rev.1.1 标定项 -------------------------------------------------
+# §4.4/§5.4：距离分辨率 = c/(2B)。手册 GUI 示例 24000-24245 MHz（B=245 MHz）
+# 对应 0.63 m/bin；840 MHz 对应 0.179 m/bin。bandwidth_hz > 0 时覆盖上面的
+# range_resolution_m，并在启动日志打印最终 dR / lambda。
+bandwidth_hz: 0
+center_frequency_hz: 24125000000.0
+
+# §5.3 2DFFT：chirp 间相位差 → 径向速度。chirp_period_s=0 时用
+# “实测帧周期 / 每帧 chirp 数”自动估计；doppler_sign=-1 可翻转 IQ 相位约定。
+chirp_period_s: 0.0
+doppler_enable: true
+doppler_sign: 1.0
+
+# §2.3 天线：0° 合成增益约 20 dBi；6 dBi 波束 86°×28°（H×E），H 面 ±43°。
+# 超出该方位锥的峰按旁瓣/多径丢弃；<=0 关闭门控。
+max_abs_azimuth_deg: 43.0
 peak_ratio: 8.0
 skip_near_bins: 5
-max_peaks: 1
-min_peak_frac: 0.5
+max_peaks: 3
+min_peak_frac: 0.35
 publish_spectrum: false
 rx_spacing_m: 0.00625
 

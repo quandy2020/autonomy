@@ -52,9 +52,9 @@ MapSettingsWidget::MapSettingsWidget(common::VisualizationManager* manager,
     : manager_(manager), config_(DefaultMapPanelConfig()), QWidget(parent) {
   ApplyCompactSettingsShell(this);
   auto* root = new QVBoxLayout(this);
-  root->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-                           PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
-  root->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  root->setContentsMargins(PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin(),
+                           PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin());
+  root->setSpacing(PanelSettingsLayout::OuterSpacing());
   root->setAlignment(Qt::AlignTop);
 
   auto* attribute_host = new QWidget(this);

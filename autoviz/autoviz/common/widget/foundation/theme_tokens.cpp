@@ -301,9 +301,11 @@ const ThemeTokens& GetThemeTokens(const QWidget* widget, style::Tone tone) {
   if (appearance == QLatin1String("light")) {
     return GetThemeTokens(tone, ThemeAppearance::kLight);
   }
-  return GetThemeTokens(
-      tone,
-      AppearanceFromColor(widget->palette().color(widget->backgroundRole())));
+  // Follow the app's explicit shell appearance. The platform theme can reset
+  // QApplication::palette() once the first window maps, which previously made
+  // every widget-kit control fall back to light colors in dark mode.
+  return GetThemeTokens(tone, theme::ShellIsDark() ? ThemeAppearance::kDark
+                                                   : ThemeAppearance::kLight);
 }
 
 void InvalidateThemeTokens() noexcept { Cache().valid = false; }

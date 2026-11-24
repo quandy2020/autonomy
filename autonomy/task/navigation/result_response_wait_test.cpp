@@ -1,6 +1,20 @@
-/**
- * Copyright 2026 The Openbot Authors
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
  * @file result_response_wait_test.cpp
  * @brief Verify the production result waiter with real asynchronous promises.
  */
@@ -21,12 +35,16 @@ namespace {
 using autolink::action::internal::WaitForResultResponse;
 using namespace std::chrono_literals;
 
-/** @brief Fail with a named lifecycle contract instead of hanging the test. */
+/**
+ * @brief Fail with a named lifecycle contract instead of hanging the test.
+ */
 void Require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-/** @brief A ready real response remains available after local monitor release. */
+/**
+ * @brief A ready real response remains available after local monitor release.
+ */
 void ReadyEvidenceWins() {
     std::promise<int> promise;
     const auto response = promise.get_future().share();
@@ -36,7 +54,10 @@ void ReadyEvidenceWins() {
     Require(response.get() == 17, "waiter changed the transport response");
 }
 
-/** @brief Local release does not fabricate a result or consume a pending future. */
+/**
+ * @brief Local release does not fabricate a result or consume a pending
+          * future.
+ */
 void PendingRelease() {
     std::promise<int> promise;
     const auto response = promise.get_future().share();
@@ -48,7 +69,9 @@ void PendingRelease() {
     Require(response.get() == 29, "released future no longer receives its real response");
 }
 
-/** @brief Release wakes a worker whose native response never arrives. */
+/**
+ * @brief Release wakes a worker whose native response never arrives.
+ */
 void ReleaseWhileWaiting() {
     std::promise<int> promise;
     const auto response = promise.get_future().share();
@@ -75,7 +98,10 @@ void ReleaseWhileWaiting() {
             "test unexpectedly needed a real response to stop");
 }
 
-/** @brief Retained actions do not acquire an arbitrary overall execution timeout. */
+/**
+ * @brief Retained actions do not acquire an arbitrary overall execution
+          * timeout.
+ */
 void RetainedLongAction() {
     std::promise<int> promise;
     const auto response = promise.get_future().share();
@@ -97,7 +123,10 @@ void RetainedLongAction() {
     Require(response.get() == 53, "real response was consumed by the waiter");
 }
 
-/** @brief A transport exception stays an exception, including after local release. */
+/**
+ * @brief A transport exception stays an exception, including after local
+          * release.
+ */
 void PreserveResponseException() {
     std::promise<int> promise;
     const auto response = promise.get_future().share();
@@ -112,7 +141,9 @@ void PreserveResponseException() {
     Require(failed, "transport exception was replaced with a fake response");
 }
 
-/** @brief Invalid or deferred work cannot make get() execute a blocking task. */
+/**
+ * @brief Invalid or deferred work cannot make get() execute a blocking task.
+ */
 void RejectNonAsyncInput() {
     bool invalid = false;
     try { WaitForResultResponse(std::shared_future<int>{}, [] { return true; }); }
@@ -142,7 +173,9 @@ void RejectNonAsyncInput() {
 
 }  // namespace
 
-/** @brief Run named contracts against the exact production result-wait helper. */
+/**
+ * @brief Run named contracts against the exact production result-wait helper.
+ */
 int main() {
     const std::vector<std::pair<const char*, void (*)()>> tests = {
         {"ready_terminal_evidence", ReadyEvidenceWins},

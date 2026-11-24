@@ -1,8 +1,26 @@
-// Copyright 2026 The Openbot Authors (duyongquan).
-// SPDX-License-Identifier: Apache-2.0
-/** @file region_orderer.hpp
- * @brief TSP ordering for coverage rooms. */
-#pragma once
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file region_orderer.hpp
+ * @brief TSP ordering for coverage rooms.
+ */
+
+#ifndef AUTONOMY_TASK_NAVIGATION_COVERAGE_REGION_ORDERER_HPP_
+#define AUTONOMY_TASK_NAVIGATION_COVERAGE_REGION_ORDERER_HPP_
 
 #include <cstddef>
 #include <utility>
@@ -11,42 +29,58 @@
 namespace autonomy::task::coverage {
 
 /**
- * @class RegionOrderer
- * @brief Orders coverage rooms for short inter-room travel.
+ * @class autonomy::task::coverage::RegionOrderer
+ * @brief Orders the coverage rooms to keep the travel between them short.
  *
- * Nearest-neighbour construction followed by 2-opt refinement. Room counts are
- * small (a home map has tens of rooms), so an exact solver is unnecessary.
- * Distances are supplied by the caller so that wall-aware travel lengths can
- * replace straight-line distances.
+ * The tour is built with a nearest-neighbour construction and then improved by
+ * 2-opt passes. A household map holds tens of rooms, so an exact solver buys
+ * nothing while costing planning time. The caller supplies the cost matrix, so
+ * the ordering can use wall-aware A* distances instead of straight lines.
  */
 class RegionOrderer {
  public:
-  /** @brief Ordered indices and the total travel length. */
+  /**
+   * @brief Result of one ordering pass.
+   */
   struct Result {
-    std::vector<std::size_t> order;  /**< Visit order into the input list. */
-    double distance{0.0};            /**< Total travel in metres. */
+    // Visit order as indices into the caller's room list.
+    std::vector<std::size_t> order;
+
+    // Travelled length of @c order in metres.
+    double distance{0.0};
   };
 
   RegionOrderer() = delete;
 
   /**
-   * @brief Orders @p centroids starting from (@p start_x, @p start_y).
-   * @param centroids Room centroids in the map frame.
-   * @param start_x Robot start x.
-   * @param start_y Robot start y.
-   * @return Visit order and total straight-line travel distance.
+   * @brief Orders rooms by straight-line distance from one start pose.
+   *
+   * Convenience overload for callers without a map; it assumes the path between
+   * two rooms is unobstructed, so prefer the cost-matrix overload whenever an
+   * occupancy grid is available.
+   *
+   * @param[in] centroids Room centroids in the map frame.
+   * @param[in] start_x Robot start x coordinate in metres.
+   * @param[in] start_y Robot start y coordinate in metres.
+   * @return Visit order and the summed straight-line travel distance.
    */
   static Result Order(const std::vector<std::pair<double, double>>& centroids,
                       double start_x, double start_y);
 
   /**
    * @brief Orders rooms using an explicit travel-cost matrix.
-   * @param costs @c costs[i][j] travel cost from room @c i to room @c j.
-   * @param from_start Travel cost from the robot pose to each room.
-   * @return Visit order and total travel cost.
+   *
+   * @param[in] costs Asymmetric cost matrix; @c costs[i][j] is the traversable
+   *            distance from room @c i to room @c j in metres, infinity when the
+   *            two rooms cannot be connected.
+   * @param[in] from_start Cost from the robot pose to every room, used to pick
+   *            the first room of the tour.
+   * @return Visit order and the summed travel cost of that order.
    */
   static Result Order(const std::vector<std::vector<double>>& costs,
                       const std::vector<double>& from_start);
 };
 
 }  // namespace autonomy::task::coverage
+
+#endif  // AUTONOMY_TASK_NAVIGATION_COVERAGE_REGION_ORDERER_HPP_

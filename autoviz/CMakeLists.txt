@@ -9,6 +9,7 @@ cmake_minimum_required(VERSION 3.20)
 project(autoviz VERSION 0.1.0 LANGUAGES CXX C)
 
 option(AUTOVIZ_BUILD_WIDGET_TESTS "Build the Autoviz widget QtTest suite" OFF)
+option(AUTOVIZ_BUILD_CORE_TESTS "Build the Autoviz core + headless UI test suite" OFF)
 option(AUTOVIZ_BUILD_WIDGET_GALLERY
   "Build the Autoviz widget component gallery" OFF)
 
@@ -54,7 +55,8 @@ endif()
 target_link_libraries(autoviz_app PRIVATE
   Qt6::Core Qt6::Gui Qt6::Widgets glog::glog)
 
-if(AUTOVIZ_BUILD_WIDGET_TESTS)
+if(AUTOVIZ_BUILD_WIDGET_TESTS OR AUTOVIZ_BUILD_CORE_TESTS)
+  enable_testing()
   add_subdirectory(test)
 endif()
 

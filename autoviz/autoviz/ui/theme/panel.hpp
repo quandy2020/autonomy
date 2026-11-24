@@ -20,6 +20,8 @@
 
 #include <QString>
 
+#include "autoviz/ui/theme/tokens.hpp"
+
 class QAbstractItemView;
 class QFormLayout;
 class QFrame;
@@ -73,9 +75,11 @@ inline constexpr char kAppMenu[] = "AutovizAppMenu";           /**< Frosted app 
  */
 struct PanelSettingsLayout {
   /** Matches PanelDockWidget title-bar left inset (icon / title column). */
-  static constexpr int kOuterMargin = 8;    /**< Outer layout margin (px). */
-  static constexpr int kOuterSpacing = 4;   /**< Outer layout spacing (px). */
-  static constexpr int kSectionSpacing = 3; /**< Between settings sections (px). */
+  static int OuterMargin() { return theme::Shell().content_margin; }
+  /** Spacing between stacked settings rows. */
+  static int OuterSpacing() { return theme::Shell().content_spacing; }
+  /** Spacing between settings sections. */
+  static int SectionSpacing() { return theme::Shell().section_spacing; }
 };
 
 /**

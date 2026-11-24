@@ -353,6 +353,15 @@ public:
         const auto reply = services_.poll_startup_observation();
         if (!reply || !reply->version.SameRequest(*startup_observation_)) return;
         startup_observation_.reset();
+        // A bounded sensor/viewpoint cancellation is not a terminal action
+        // failure. Keep the startup phase eligible for a later retry once the
+        // input owner is healthy again instead of poisoning it forever.
+        if (!reply->success && reply->reason.find("canceled") != std::string::npos) {
+            startup_observation_failed_ = false;
+            snapshot_.startup_observation_reason = reply->reason;
+            snapshot_.reason = reply->reason;
+            return;
+        }
         startup_observation_confirmed_ = reply->success;
         startup_observation_failed_ = !reply->success;
         snapshot_.startup_observation_confirmed = reply->success;
@@ -528,8 +537,7 @@ public:
             case ExplorationPhase::kAdapt:
                 if (finishing_ || !snapshot_.selection || !selected_version_ ||
                     selected_version_->map_epoch != map_->map_epoch ||
-                    selected_version_->sensor_epoch != snapshot_.sensors.sensor_epoch ||
-                    selected_version_->requirements_revision != coverage_.requirements_revision())
+                    selected_version_->sensor_epoch != snapshot_.sensors.sensor_epoch)
                     return finish(PhaseStatus::kInvalidated, "selected observation intent is no longer current");
                 // The selected intent is a spatial observation requirement, not
                 // a committed path. Adapt it against the latest same-epoch map;
@@ -947,10 +955,18 @@ public:
         const bool alignment = coverage_.epoch() != next.map_epoch;
         if(changed){
             RevokeCompletion();return_cache_.reset();
-            if (active_phase_ && (active_phase_->phase == ExplorationPhase::kSelect ||
-                active_phase_->phase == ExplorationPhase::kAdapt || alignment))
+            // Geometry updates arrive while a full-map selection scan is still
+            // running. The scan owns an immutable MapReadView and the Adapt
+            // phase deliberately revalidates against the latest same-epoch map,
+            // so cancelling here created a livelock: every fresh selection was
+            // discarded by the next observation. Only an alignment-epoch change
+            // invalidates the in-flight selection contract.
+            if (alignment)
                 CancelActivePhase(PhaseStatus::kInvalidated, "map changed during the phase");
-            snapshot_.selection.reset(); selected_version_.reset();
+            if (alignment) {
+                snapshot_.selection.reset();
+                selected_version_.reset();
+            }
         }
         if (alignment) {
             CancelPlanning();
@@ -977,9 +993,19 @@ public:
         }
         map_ = std::move(next);
         if (!changed) return;
-        CancelPlanning();
+        // Keep an in-flight selection scan alive across geometry-only updates;
+        // its result is versioned and revalidated by the Adapt phase.
         const auto frontiers = FrontierExtractor{}.Extract(*map_,
             options_.frontier_observation_height, options_.allowed_region);
+        std::set<CoverageId> live_frontiers;
+        for (const auto& unit : frontiers) live_frontiers.insert(unit.id);
+        std::vector<CoverageId> retired_frontiers;
+        for (const auto& item : coverage_.units()) {
+            if (item.first.kind == CoverageKind::kFrontier && item.second.pending &&
+                live_frontiers.count(item.first) == 0)
+                retired_frontiers.push_back(item.first);
+        }
+        for (const auto& id : retired_frontiers) coverage_.Remove(id);
         for (const auto& item : coverage_.units()) {
             const auto& unit = item.second;
             // A map cell becoming known does not replace actual ray evidence.
@@ -1684,6 +1710,21 @@ public:
                 SubmitNavigation(snapshot_.goal->execution_pose, now);
                 continue;
             }
+            if (result.phase == ExplorationPhase::kSelect && !result.decision.goal &&
+                coverage_.PendingCount() &&
+                (result.decision.sampling_limited || result.decision.sweep_checked) &&
+                !recovery_rotation_ && !recovery_loss_ && !finishing_) {
+                // The sampler found useful views but none has an admissible route
+                // from the current pose. A bounded in-place re-observation is
+                // safer than repeatedly choosing the same unreachable intent or
+                // relaxing the command gate while the robot is near an obstacle.
+                FinishPhase(PhaseStatus::kRetryable,
+                    "no admissible route; bounded re-observation");
+                if (StartRecoveryRotation(now)) {
+                    AINFO << "EXPLORATION_ROUTE_RECOVERY pending=" << coverage_.PendingCount();
+                    continue;
+                }
+            }
             if (result.decision.goal) {
                 Retry(now, "no adaptation preserves required observation coverage");
                 continue;
@@ -2046,13 +2087,21 @@ public:
                         arrived_at_ = now;
                         snapshot_.state = ExplorationState::kObserving;
                     } else Retry(now, "arrival pose not confirmed");
-                } else Retry(now, "navigation failed or arrival pose not confirmed");
+                } else {
+                    Retry(now, "navigation failed or arrival pose not confirmed");
+                    if (StartRecoveryRotation(now))
+                        snapshot_.reason = "navigation failed; bounded re-observation started";
+                }
             } else if (now > navigation_->valid_until) {
                 if (finishing_) {
                     CancelNavigation();
                     snapshot_.result.returned = ReturnOutcome::kReturnFailed;
                     AfterReturn(now);
-                } else Retry(now, "navigation deadline exceeded");
+                } else {
+                    Retry(now, "navigation deadline exceeded");
+                    if (StartRecoveryRotation(now))
+                        snapshot_.reason = "navigation deadline; bounded re-observation started";
+                }
             }
         }
         if (snapshot_.state == ExplorationState::kObserving) {

@@ -1,7 +1,24 @@
-// Copyright 2026 The Openbot Authors (duyongquan).
-// SPDX-License-Identifier: Apache-2.0
-/** @file coverage_panel.cpp
- * @brief Region coverage panel implementation. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file coverage_panel.cpp
+ * @brief Region coverage panel implementation.
+ */
+
 #include "autoviz/ui/navigation/coverage_panel.hpp"
 
 #ifdef AUTONOMY_BUILD_COVERAGE
@@ -37,6 +54,8 @@
 #include <QSignalBlocker>
 #include <QTime>
 #include <QTimer>
+
+#include <cstdio>
 #include <QToolButton>
 #include <QUuid>
 #include <QVBoxLayout>
@@ -555,6 +574,11 @@ void CoveragePanel::EnsureClients() {
   if (!preview_writer_) {
     preview_writer_ =
         node->CreateWriter<automsgs::msgs::nav_msgs::Path>("/coverage/plan");
+    // Publish once so the channel exists before its display subscribes; a
+    // reader created against a not-yet-published channel never attaches.
+    automsgs::msgs::nav_msgs::Path empty;
+    empty.mutable_header()->set_frame_id("map");
+    preview_writer_->Write(empty);
   }
   if (!odom_reader_) {
     QPointer<CoveragePanel> self(this);
@@ -596,6 +620,18 @@ void CoveragePanel::EnsureCoverageDisplays() {
     }
     return false;
   };
+  // A layout restored from a previous session can leave these overlays
+  // disabled; then the panel publishes into channels nobody draws.
+  for (auto* display : manager_->displays()) {
+    if (display == nullptr) {
+      continue;
+    }
+    const std::string channel = display->channel();
+    if (channel == "/coverage/plan" || channel == "/coverage/markers" ||
+        channel == "/coverage/regions") {
+      display->setEnabled(true);
+    }
+  }
 
   if (!has_channel("/coverage/plan")) {
     common::DisplayConfig config;
@@ -649,6 +685,9 @@ void CoveragePanel::EnsureCoverageDisplays() {
     config.properties["use_custom_color"] = "false";
     manager_->addDisplay(config);
   }
+  // Only latch once the manager really took the displays.  Early in startup
+  // addDisplay can fail; latching then left the panel publishing into
+  // channels with zero subscribers.
   coverage_displays_seeded_ = true;
 }
 

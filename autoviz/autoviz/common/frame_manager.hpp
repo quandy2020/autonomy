@@ -16,7 +16,10 @@
 
 #pragma once
 
+#include <cstdint>
+#include <limits>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <QQuaternion>
@@ -154,7 +157,11 @@ class FrameManager {
   std::vector<std::string> allFrameNames() const;
 
   /**
-   * @brief Periodic update (wall-clock origin bookkeeping, etc.).
+   * @brief Periodic update: freezes the lookup time for this tick.
+   *
+   * Displays query the same frame several times per tick (RobotModel links,
+   * overlays, tools). Reusing one timestamp keeps those lookups cacheable and
+   * consistent within a frame.
    */
   void update();
 
@@ -166,6 +173,27 @@ class FrameManager {
   SyncMode sync_mode_ = SyncMode::kOff;       /**< Time sync strategy. */
   double synced_time_sec_ = 0.0;              /**< Last @ref syncTime value. */
   double wall_origin_sec_ = 0.0;              /**< Wall-clock origin. */
+
+  /**
+   * @brief One resolved frame pose for the current tick.
+   *
+   * Failures are cached too so a missing frame does not retry (and throw)
+   * once per display per tick.
+   */
+  struct CachedPose {
+    bool ok = false;
+    QVector3D position;
+    QQuaternion orientation;
+  };
+
+  /** Lookup time frozen by @ref update(); NaN until the first tick. */
+  double cache_time_sec_ = std::numeric_limits<double>::quiet_NaN();
+
+  /** TF buffer revision the cache was built against. */
+  mutable std::uint64_t cache_revision_ = 0;
+
+  /** Per-frame pose cache for the current tick (cleared by @ref update()). */
+  mutable std::unordered_map<std::string, CachedPose> pose_cache_;
 };
 
 }  // namespace common

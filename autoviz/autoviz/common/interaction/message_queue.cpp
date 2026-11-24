@@ -64,6 +64,18 @@ MessageQueue& MessageQueue::operator=(MessageQueue&& other) noexcept {
     queue_ = std::move(other.queue_);
     max_depth_ = other.max_depth_;
   }
+  // Move-assign keeps `this`'s slot and drops `other`'s so a moved-from queue
+  // is never reached by clearAllPending(). `this` may itself have been moved
+  // from earlier (no slot), so re-register it when missing.
+  {
+    std::lock_guard<std::mutex> lock(registryMutex());
+    auto& queues = registry();
+    queues.erase(std::remove(queues.begin(), queues.end(), &other),
+                 queues.end());
+    if (std::find(queues.begin(), queues.end(), this) == queues.end()) {
+      queues.push_back(this);
+    }
+  }
   return *this;
 }
 
@@ -76,12 +88,12 @@ bool MessageQueue::acceptIncoming() {
 }
 
 void MessageQueue::clearAllPending() {
-  std::vector<MessageQueue*> queues;
-  {
-    std::lock_guard<std::mutex> lock(registryMutex());
-    queues = registry();
-  }
-  for (MessageQueue* queue : queues) {
+  // Keep registryMutex() held while clearing: copying the pointer list and
+  // clearing outside the lock let a queue be destroyed in between, leaving a
+  // dangling pointer. Lock order is registryMutex() -> mutex_; no code path
+  // takes mutex_ and then registryMutex().
+  std::lock_guard<std::mutex> lock(registryMutex());
+  for (MessageQueue* queue : registry()) {
     if (queue != nullptr) {
       queue->clear();
     }

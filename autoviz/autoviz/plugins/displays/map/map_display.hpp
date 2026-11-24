@@ -183,8 +183,9 @@ class MapDisplay
   /** @c true after at least one full OccupancyGrid was received. */
   bool has_full_map_ = false;
 
-  /** Queue for OccupancyGridUpdate payloads. */
-  integration::MessageQueue update_queue_;
+  /** Queue for OccupancyGridUpdate payloads (shared with the reader callback). */
+  std::shared_ptr<integration::MessageQueue> update_queue_ =
+      std::make_shared<integration::MessageQueue>();
 
   /** Registry subscription for the update channel; @c 0 if none. */
   integration::ChannelReaderRegistry::SubscriptionId update_subscription_id_ = 0;

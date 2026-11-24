@@ -1,8 +1,24 @@
-/* Copyright 2026 The Openbot Authors. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 /**
  * @file path_reference_test.cpp
  * @brief Route replacement and compaction contracts using the production helper.
  */
+
 #include <cmath>
 #include <iostream>
 #include <limits>
@@ -16,17 +32,24 @@ namespace {
 using Pose = autonomy::task::navigation::PathReferencePose;
 using Reference = autonomy::task::navigation::PathReference;
 
-/** @brief Fail immediately with the violated route contract. */
+/**
+ * @brief Fail immediately with the violated route contract.
+ */
 void Require(bool condition, const char* message) {
     if (!condition) throw std::runtime_error(message);
 }
 
-/** @brief Construct metric test input, without substituting production logic. */
+/**
+ * @brief Construct metric test input, without substituting production logic.
+ */
 Pose Point(double x, double y = 0, double z = 0) {
     return {{x, y, z}, {0, 0, 0, 1}};
 }
 
-/** @brief Dense straight paths compress, while a narrow detour is fully retained. */
+/**
+ * @brief Dense straight paths compress, while a narrow detour is fully
+          * retained.
+ */
 void CompleteGeometry() {
     std::vector<Pose> straight;
     for (int i = 0; i <= 200; ++i) straight.push_back(Point(i * 0.01));
@@ -43,7 +66,10 @@ void CompleteGeometry() {
     Require(origin.HasSameRemainingPath(origin), "origin goal was treated as a sentinel");
 }
 
-/** @brief Forward start motion and resampling do not spuriously replace a route. */
+/**
+ * @brief Forward start motion and resampling do not spuriously replace a
+          * route.
+ */
 void ProgressAndResampling() {
     Reference original("map", "controller", {Point(0), Point(2), Point(2, 2), Point(4, 2)});
     Reference moved("map", "controller", {Point(0.75), Point(1), Point(2), Point(2, 2), Point(4, 2)});
@@ -60,7 +86,9 @@ void ProgressAndResampling() {
     Require(!original.HasSameRemainingPath(reverse), "backward extension was ignored");
 }
 
-/** @brief Changed controller, frame, height and terminal yaw are new intent. */
+/**
+ * @brief Changed controller, frame, height and terminal yaw are new intent.
+ */
 void ReferenceIdentity() {
     Reference original("map", "first", {Point(0), Point(1)});
     Require(!original.HasSameRemainingPath(Reference("odom", "first", {Point(0), Point(1)})),
@@ -80,7 +108,9 @@ void ReferenceIdentity() {
     Require(rotate.retained_indices().size() == 3, "intermediate orientation was removed");
 }
 
-/** @brief Revisiting a coordinate cannot conceal removal of a future loop. */
+/**
+ * @brief Revisiting a coordinate cannot conceal removal of a future loop.
+ */
 void LoopsAndBacktracking() {
     Reference loop("map", "", {Point(0), Point(1), Point(1, 1), Point(0, 1), Point(0), Point(2)});
     Require(!loop.HasSameRemainingPath(Reference("map", "", {Point(0), Point(2)})),
@@ -92,7 +122,10 @@ void LoopsAndBacktracking() {
             "an exactly redundant pose was not compacted");
 }
 
-/** @brief Rechecking all original poses prevents accumulated near-collinear drift. */
+/**
+ * @brief Rechecking all original poses prevents accumulated near-collinear
+          * drift.
+ */
 void BoundedCompaction() {
     std::vector<Pose> arc;
     for (int i = 0; i < 200; ++i) arc.push_back(Point(i, i * i * 1e-10));
@@ -110,7 +143,9 @@ void BoundedCompaction() {
     }
 }
 
-/** @brief Missing frames and nonfinite geometry must fail before transmission. */
+/**
+ * @brief Missing frames and nonfinite geometry must fail before transmission.
+ */
 void InvalidInput() {
     for (int kind = 0; kind < 4; ++kind) {
         bool rejected = false;
@@ -125,7 +160,9 @@ void InvalidInput() {
 }
 }  // namespace
 
-/** @brief Execute named geometry contracts; this does not validate middleware. */
+/**
+ * @brief Execute named geometry contracts; this does not validate middleware.
+ */
 int main() {
     try {
         for (const auto& test : std::vector<std::pair<const char*, void(*)()>>{

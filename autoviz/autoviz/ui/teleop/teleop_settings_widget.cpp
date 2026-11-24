@@ -107,11 +107,11 @@ TeleopSettingsWidget::TeleopSettingsWidget(common::VisualizationManager* manager
   ApplyCompactSettingsShell(this);
 
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin);
-  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setContentsMargins(PanelSettingsLayout::OuterMargin(),
+                            PanelSettingsLayout::OuterMargin(),
+                            PanelSettingsLayout::OuterMargin(),
+                            PanelSettingsLayout::OuterMargin());
+  outer->setSpacing(PanelSettingsLayout::OuterSpacing());
   outer->setAlignment(Qt::AlignTop);
 
   // —— Panel ——

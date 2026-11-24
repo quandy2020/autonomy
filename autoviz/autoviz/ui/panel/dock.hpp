@@ -22,6 +22,7 @@
 #include <QPoint>
 
 class QMouseEvent;
+class QPaintEvent;
 class QToolButton;
 class QMainWindow;
 
@@ -160,6 +161,7 @@ class PanelDockWidget : public QDockWidget {
    * @brief Emits @ref closed() then accepts the close.
    * @param event Close event.
    */
+  void paintEvent(QPaintEvent* event) override;
   void closeEvent(QCloseEvent* event) override;
 
   /**

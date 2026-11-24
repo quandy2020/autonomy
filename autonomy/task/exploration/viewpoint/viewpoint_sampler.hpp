@@ -18,6 +18,7 @@ struct ViewpointSamplingOptions {
     double nominal_speed = .4;  ///< Translation speed for travel cost, in m/s.
     double angular_speed = .5;  ///< Rotation speed for turn cost, in rad/s.
     double observation_time = .5;  ///< Expected dwell at one view, in seconds.
+    double goal_clearance_reserve = .05;  ///< Extra footprint margin required for an executable view.
     unsigned yaw_samples = 8;  ///< Number of uniform executable direction samples.
     std::size_t maximum_candidates = 512;  ///< Maximum positive-gain views returned.
     std::size_t maximum_evaluations = 8192;  ///< Maximum visibility predictions.

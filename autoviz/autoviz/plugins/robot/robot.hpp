@@ -108,10 +108,12 @@ class Robot {
   /**
    * @brief Updates every link pose from @p updater (RViz @c Robot::update).
    *
+   * @return @c true when any link pose actually moved or lost its transform.
+   *
    * Links that fail lookup keep @c have_transform false so @ref draw can fall
    * back to JointState FK × root TF.
    */
-  void update(const LinkUpdater& updater);
+  bool update(const LinkUpdater& updater);
 
   /**
    * @brief Draws the robot for the current link / joint / TF state.

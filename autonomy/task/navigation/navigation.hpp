@@ -1,12 +1,26 @@
 /*
- * Copyright 2026 The Openbot Authors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
- * NavigationTask — behavior-tree navigator for single-pose and through-poses
- * goals. NavigationClient delegates RPCs; TaskServer owns exclusive activation.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
-/** @file navigation.hpp @brief Versioned native navigation admission and cancellation. */
 
-#pragma once
+/**
+ * @file navigation.hpp
+ * @brief Versioned native navigation admission and cancellation.
+ */
+
+#ifndef AUTONOMY_TASK_NAVIGATION_NAVIGATION_HPP_
+#define AUTONOMY_TASK_NAVIGATION_NAVIGATION_HPP_
 
 #include <atomic>
 #include <chrono>
@@ -26,7 +40,10 @@
 namespace autonomy {
 namespace task {
 
-/** @brief Admit validated goals, preserve accepted identity and revoke stale ticks. */
+/**
+ * @brief Admit validated goals, preserve accepted identity and revoke stale
+          * ticks.
+ */
 class NavigationTask : public BtTaskApp<
                            ::autonomy::task::proto::NavigationGoal,
                            ::autonomy::task::proto::NavigationFeedback,
@@ -45,7 +62,10 @@ public:
     bool Pause() override;
     /// Resume a paused invocation after restoring its current tick eligibility.
     bool Resume() override;
-    /** @brief Cancel only the matching pending or accepted navigation identity. */
+    /**
+     * @brief Cancel only the matching pending or accepted navigation
+              * identity.
+     */
     bool CancelForTask(const std::string& expected_task_id);
     /**
      * @brief Admit a named START/REPLAN with its parent's cooperative permission.
@@ -63,7 +83,10 @@ public:
         const ::autonomy::task::proto::NavigationGoal& goal,
         common::MotionDispatchGate::Permit permit,
         std::shared_ptr<common::MotionAdmission> admission = {});
-    /** @brief Install ordinary START/REPLAN scheduling while no invocation is pending or active. */
+    /**
+     * @brief Install ordinary START/REPLAN scheduling while no invocation is
+              * pending or active.
+     */
     void SetMotionAdmission(common::MotionAdmission::Factory factory);
     /** @brief Set native world/base frame defaults while no invocation is active.
      * @details Explicit goal frames remain authoritative. This supports an
@@ -120,7 +143,9 @@ protected:
 private:
     std::string global_frame_{"map"};  ///< Idle-configured native navigation world default.
     std::string robot_base_frame_{"base_link"};  ///< Actual embedding application's robot TF frame.
-    /** @brief Domain admission with one immutable candidate execution gate. */
+    /**
+     * @brief Domain admission with one immutable candidate execution gate.
+     */
     bool AdmitGoal(const ::autonomy::task::proto::NavigationGoal& goal,
                    const std::shared_ptr<common::MotionDispatchGate>& source_gate,
                    std::shared_ptr<common::MotionAdmission> admission = {});
@@ -177,3 +202,5 @@ private:
 
 }  // namespace task
 }  // namespace autonomy
+
+#endif  // AUTONOMY_TASK_NAVIGATION_NAVIGATION_HPP_

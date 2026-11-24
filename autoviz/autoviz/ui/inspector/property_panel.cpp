@@ -21,8 +21,8 @@ PropertyInspectorPanel::PropertyInspectorPanel(QWidget* parent) : QWidget(parent
   // Layout inset (not QSS padding) so "Plot" lines up with dock icon + Title.
   auto* title_row = new QWidget(this);
   auto* title_row_layout = new QHBoxLayout(title_row);
-  title_row_layout->setContentsMargins(PanelSettingsLayout::kOuterMargin, 6,
-                                       PanelSettingsLayout::kOuterMargin, 4);
+  title_row_layout->setContentsMargins(PanelSettingsLayout::OuterMargin(), 6,
+                                       PanelSettingsLayout::OuterMargin(), 4);
   title_row_layout->setSpacing(0);
   title_label_ = new QLabel(tr("Panel"), title_row);
   title_label_->setObjectName(
@@ -39,10 +39,10 @@ PropertyInspectorPanel::PropertyInspectorPanel(QWidget* parent) : QWidget(parent
 
   placeholder_ = new QWidget(content_host_);
   auto* placeholder_layout = new QVBoxLayout(placeholder_);
-  placeholder_layout->setContentsMargins(PanelSettingsLayout::kOuterMargin,
-                                         PanelSettingsLayout::kOuterMargin,
-                                         PanelSettingsLayout::kOuterMargin,
-                                         PanelSettingsLayout::kOuterMargin);
+  placeholder_layout->setContentsMargins(PanelSettingsLayout::OuterMargin(),
+                                         PanelSettingsLayout::OuterMargin(),
+                                         PanelSettingsLayout::OuterMargin(),
+                                         PanelSettingsLayout::OuterMargin());
   auto* hint = new QLabel(
       tr("Select a panel in the center area to edit its properties here."),
       placeholder_);

@@ -1,7 +1,24 @@
-// Copyright (c) 2023 Open Navigation LLC; Autonomy adaptation 2026.
-// SPDX-License-Identifier: Apache-2.0
-/** @file coverage_server.cpp
- * @brief Native complete-coverage coverage server implementation. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file coverage_server.cpp
+ * @brief Native complete-coverage coverage server implementation.
+ */
+
 #include "autonomy/task/navigation/coverage/coverage_server.hpp"
 
 #include "autonomy/task/navigation/coverage/map_connector.hpp"
@@ -13,6 +30,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <functional>
 #include <limits>
@@ -131,7 +149,9 @@ F2CSwaths Flatten(const F2CRoute& route) {
   return result;
 }
 
-/** @brief Append one straight state so the exporter samples the whole line. */
+/**
+ * @brief Append one straight state so the exporter samples the whole line.
+ */
 void AddLine(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
              f2c::types::PathSectionType type, double velocity) {
   const double length = from.Distance(to);
@@ -144,7 +164,9 @@ void AddLine(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
                 velocity);
 }
 
-/** @brief Check a segment by sampling the free-space predicate. */
+/**
+ * @brief Check a segment by sampling the free-space predicate.
+ */
 bool SegmentClear(const FreeSpace& free, const F2CPoint& from,
                   const F2CPoint& to) {
   const double length = from.Distance(to);
@@ -313,7 +335,9 @@ std::vector<F2CPoint> RouteAround(const F2CPoint& from, const F2CPoint& to,
   return simplified;
 }
 
-/** @brief Append a straight link, or a wall-following detour when needed. */
+/**
+ * @brief Append a straight link, or a wall-following detour when needed.
+ */
 bool AddTraversableLink(F2CPath& path, const F2CPoint& from,
                         const F2CPoint& to, const FreeSpace& free,
                         double velocity) {
@@ -355,6 +379,11 @@ bool AddUTurn(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
               const F2CPoint& outward = F2CPoint(0.0, 0.0)) {
   const double chord = from.Distance(to);
   if (chord < 1e-6) {
+    return false;
+  }
+  // Only a real hairpin (about one row spacing) is drawn as an arc.  A longer
+  // chord would produce a metre-wide loop around a pillar.
+  if (chord > 0.5) {
     return false;
   }
   if (min_radius > 0.0 && 0.5 * chord < 0.98 * min_radius) {
@@ -427,7 +456,8 @@ bool AddUTurn(F2CPath& path, const F2CPoint& from, const F2CPoint& to,
  * to @p anchor and alternating direction, so the sweep is one serpentine that
  * begins next to the wall loop instead of somewhere in the middle.
  */
-F2CSwaths RowSerpentine(const F2CSwaths& swaths, const F2CPoint& anchor) {
+F2CSwaths RowSerpentine(const F2CSwaths& swaths, const F2CPoint& anchor,
+                        const F2CCells* free = nullptr) {
   if (swaths.size() < 2) {
     return swaths;
   }
@@ -456,6 +486,12 @@ F2CSwaths RowSerpentine(const F2CSwaths& swaths, const F2CPoint& anchor) {
   std::vector<Piece> pieces;
   pieces.reserve(swaths.size());
   for (const auto& swath : swaths) {
+    // A niche barely wider than the pass spacing yields a one or two row
+    // serpentine that reads as a stray squiggle; the wall ring already covers
+    // that sliver.
+    if (swath.StartPoint().Distance(swath.EndPoint()) < 0.35) {
+      continue;
+    }
     F2CSwath value = swath;
     if ((value.EndPoint() - value.StartPoint()).GetX() * axis.GetX() +
             (value.EndPoint() - value.StartPoint()).GetY() * axis.GetY() <
@@ -483,6 +519,51 @@ F2CSwaths RowSerpentine(const F2CSwaths& swaths, const F2CPoint& anchor) {
     }
     rows.back().push_back(piece);
   }
+  // A niche only a couple of passes deep turns into a stray `S`.  Replace such
+  // a run with one pass down its middle: the area stays covered and the drawing
+  // keeps clean outward turns.
+  const auto row_length = [](const std::vector<Piece>& row) {
+    double total = 0.0;
+    for (const auto& piece : row) {
+      total += piece.swath.StartPoint().Distance(piece.swath.EndPoint());
+    }
+    return total;
+  };
+  std::vector<std::vector<Piece>> compact;
+  for (std::size_t i = 0; i < rows.size();) {
+    std::size_t j = i;
+    while (j < rows.size() && row_length(rows[j]) < 0.6) {
+      ++j;
+    }
+    if (j - i >= 2) {
+      double lateral = 0.0;
+      double from = std::numeric_limits<double>::max();
+      double to = -std::numeric_limits<double>::max();
+      for (std::size_t k = i; k < j; ++k) {
+        lateral += rows[k].front().lateral;
+        for (const auto& piece : rows[k]) {
+          from = std::min(from, piece.along - 0.5 * piece.swath.StartPoint().Distance(
+                                             piece.swath.EndPoint()));
+          to = std::max(to, piece.along + 0.5 * piece.swath.StartPoint().Distance(
+                                           piece.swath.EndPoint()));
+        }
+      }
+      lateral /= static_cast<double>(j - i);
+      F2CLineString line;
+      line.AddPoint(F2CPoint(axis.GetX() * from + normal.GetX() * lateral,
+                             axis.GetY() * from + normal.GetY() * lateral));
+      line.AddPoint(F2CPoint(axis.GetX() * to + normal.GetX() * lateral,
+                             axis.GetY() * to + normal.GetY() * lateral));
+      compact.push_back({Piece{lateral, 0.5 * (from + to),
+                               F2CSwath(line, rows[i].front().swath.GetWidth())}});
+      i = j;
+      continue;
+    }
+    compact.push_back(rows[i]);
+    ++i;
+  }
+  rows = std::move(compact);
+
   const auto row_start = [](const std::vector<Piece>& row) {
     return row.front().swath.StartPoint();
   };
@@ -624,7 +705,9 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
     // Leave a small gap at both ends: the half-circle U-turn needs that space
     // and the reference sweep shows the same rounded corner at each pass end.
     const double length = start.Distance(end);
-    const double trim = std::min(0.12, 0.45 * length);
+    // Keep the pass full length: trimming the ends left a stub beside every
+    // hairpin, which the corner smoother turned into a notch.
+    const double trim = 0.0;
     if (length > 1e-6 && trim > 1e-6) {
       const F2CPoint direction((end.GetX() - start.GetX()) / length,
                                (end.GetY() - start.GetY()) / length);
@@ -705,17 +788,16 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
       if (turned) {
         path += turn;
         ++*smooth_turns;
-      } else if (previous_end.Distance(start) > 0.9 ||
-                 (!SegmentClear(free_space, previous_end, start) &&
-                  std::abs((start.GetX() - previous_end.GetX()) *
-                               std::sin(previous_angle) -
-                           (start.GetY() - previous_end.GetY()) *
-                               std::cos(previous_angle)) < 0.06)) {
-        // A change of strip, or the two halves of one pass split by a doorway:
-        // follow the free space round the notch instead of cutting through it.
+      } else if (!SegmentClear(free_space, previous_end, start)) {
+        // A dynamic obstacle sits between the two passes. Straight runs keep
+        // the common case fast, but a blocked join must go around the hole
+        // instead of driving through it.
         AddTraversableLink(path, previous_end, start, free_space, velocity);
         ++*link_turns;
       } else {
+        // Inside a room the next pass is reached with a straight run and an
+        // in-place turn: an A* detour per gap drew the diagonal scrawl and
+        // dominated plan time on obstacle-dense maps.
         // No room for the arc: rotate in place instead of leaving the room.
         std::fprintf(stderr,
                      "pivot %.2f,%.2f -> %.2f,%.2f chord %.2f\n",
@@ -754,7 +836,9 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
 
 namespace {
 
-/** @brief Coverage generated for a single room. */
+/**
+ * @brief Coverage generated for a single room.
+ */
 struct RoomCoverage {
   F2CPath path;
   F2CSwaths swaths;
@@ -765,7 +849,91 @@ struct RoomCoverage {
   int link_turns{0};
 };
 
-/** @brief Straight connector between two planned pieces inside one room. */
+/**
+ * @brief Straight connector between two planned pieces inside one room.
+ */
+/**
+ * @brief Replace every remaining corner with an outward circular arc.
+ *
+ * The wall ring, the grid links around doorways and the pass joins all leave
+ * right angles in the polyline.  Rounding each vertex towards the outside gives
+ * the continuous, convex turns of the reference drawing.
+ */
+F2CPath SmoothCorners(const F2CPath& path, double radius, double step,
+                      double velocity) {
+  if (path.size() < 3 || radius <= 1e-3) {
+    return path;
+  }
+  std::vector<F2CPoint> points;
+  points.reserve(static_cast<std::size_t>(path.size()) + 1);
+  for (const auto& state : path) {
+    points.push_back(state.point);
+  }
+  points.push_back(path.AtEnd());
+
+  F2CPath out;
+  F2CPoint previous = points.front();
+  for (std::size_t i = 1; i + 1 < points.size(); ++i) {
+    const F2CPoint& a = points[i - 1];
+    const F2CPoint& b = points[i];
+    const F2CPoint& c = points[i + 1];
+    const double ab = a.Distance(b);
+    const double bc = b.Distance(c);
+    if (ab < 1e-6 || bc < 1e-6) {
+      continue;
+    }
+    const F2CPoint d1((b.GetX() - a.GetX()) / ab, (b.GetY() - a.GetY()) / ab);
+    const F2CPoint d2((c.GetX() - b.GetX()) / bc, (c.GetY() - b.GetY()) / bc);
+    const double turn = F2CPoint::GetAngleDiffAbs(
+        std::atan2(d1.GetY(), d1.GetX()), std::atan2(d2.GetY(), d2.GetX()));
+    if (turn < 0.05) {
+      if (previous.Distance(b) > 1e-6) {
+        out.AddState(previous, (b - previous).GetAngleFromPoint(),
+                     previous.Distance(b),
+                     f2c::types::PathDirection::FORWARD,
+                     f2c::types::PathSectionType::SWATH, velocity);
+        previous = b;
+      }
+      continue;
+    }
+    const double cut = std::min({radius, 0.45 * ab, 0.45 * bc});
+    const F2CPoint entry(b.GetX() - d1.GetX() * cut, b.GetY() - d1.GetY() * cut);
+    const F2CPoint exit(b.GetX() + d2.GetX() * cut, b.GetY() + d2.GetY() * cut);
+    if (previous.Distance(entry) > 1e-6) {
+      out.AddState(previous, (entry - previous).GetAngleFromPoint(),
+                   previous.Distance(entry),
+                   f2c::types::PathDirection::FORWARD,
+                   f2c::types::PathSectionType::SWATH, velocity);
+    }
+    const int steps = std::max(4, static_cast<int>(std::ceil(
+                                       (turn * cut) / std::max(step, 1e-3))));
+    F2CPoint last = entry;
+    for (int k = 1; k <= steps; ++k) {
+      const double t = static_cast<double>(k) / steps;
+      const double u = 1.0 - t;
+      const F2CPoint point(u * u * entry.GetX() + 2.0 * u * t * b.GetX() +
+                               t * t * exit.GetX(),
+                           u * u * entry.GetY() + 2.0 * u * t * b.GetY() +
+                               t * t * exit.GetY());
+      if (last.Distance(point) < 1e-6) {
+        continue;
+      }
+      out.AddState(last, (point - last).GetAngleFromPoint(),
+                   last.Distance(point), f2c::types::PathDirection::FORWARD,
+                   f2c::types::PathSectionType::TURN, velocity);
+      last = point;
+    }
+    previous = exit;
+  }
+  if (previous.Distance(points.back()) > 1e-6) {
+    out.AddState(previous, (points.back() - previous).GetAngleFromPoint(),
+                 previous.Distance(points.back()),
+                 f2c::types::PathDirection::FORWARD,
+                 f2c::types::PathSectionType::SWATH, velocity);
+  }
+  return out.size() > 1 ? out : path;
+}
+
 F2CPath RoomLink(const F2CPoint& from, double from_angle, const F2CPoint& to,
                  double to_angle, const Configuration& config,
                  const F2CCells& field) {
@@ -865,6 +1033,13 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   if (!band_mode.has_width()) {
     band_mode.set_width(config.headland_width);
   }
+  // Keep the inset and the ring count consistent: one 0.15 m ring needs a
+  // 0.15 m band, otherwise the core starts a ring too far in and leaves a
+  // strip between the wall pass and the serpentine.
+  if (config.headland_passes > 0) {
+    band_mode.set_width(static_cast<double>(config.headland_passes) *
+                        config.operation_width);
+  }
   // Map regions are segmented on the complete free space.  A headland band
   // then covers the wall edge while the interior is swept separately.  This
   // is what keeps a narrow doorway or a wall-adjacent strip from becoming a
@@ -939,7 +1114,14 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     }
     try {
       for (const auto& band_cells : headlands.GenerateHeadlandSwaths(
-               work, config.operation_width, band_mode)) {
+               work, config.operation_width, band_mode,
+               static_cast<int>(config.headland_passes))) {
+        // Rings around pillars measure about 2 m2 and only add clutter; the row
+        // passes beside them cover that sliver.  A real wall band (corridors,
+        // narrow strips) is 4 m2 and up, so it keeps its coverage.
+        if (band_cells.Area() < 3.0) {
+          continue;
+        }
         F2CPath loop = path_generator.GeneratePerimeter(
             band_cells, work, near, goal.path_mode());
         if (loop.size() > 1) {
@@ -1030,6 +1212,12 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
 
   F2CPath total;
   if (perimeter) {
+    if (std::getenv("COV_DUMP_BAND") != nullptr) {
+      for (const auto& state : band_path) {
+        std::fprintf(stderr, "BAND %.3f %.3f %.3f\n", state.point.GetX(),
+                     state.point.GetY(), state.len);
+      }
+    }
     total += band_path;
     if (path.size() > 1) {
       ring_walk(total, total.AtEnd(), path.AtStart());
@@ -1040,7 +1228,8 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   } else {
     total += path;
   }
-  output.path = total;
+  output.path = SmoothCorners(total, std::max(0.20, config.robot_radius * 0.6),
+                              config.turn_point_distance, config.turn_speed);
   output.swaths = ordered;
   output.swath_count = static_cast<int>(ordered.size());
   output.arc_turns = smooth;
@@ -1072,6 +1261,67 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
  * order. The result carries per-room polygons, paths and coverage plus the
  * stitched global path consumed by the visualizer.
  */
+/**
+ * @brief Stamps the request obstacle rings into an occupancy grid copy.
+ *
+ * A map-driven request carries the live grid, but obstacles the operator drew in
+ * the panel only exist as polygons. Rasterising them keeps one source of truth
+ * for the room split, the A* links and the swath clipping.
+ *
+ * @param[in] map Occupancy grid from the request.
+ * @param[in] goal Request whose rings after the first one are obstacles.
+ * @return Grid copy with every obstacle cell marked occupied.
+ */
+proto::OccupancyMap ApplyObstaclePolygons(const proto::OccupancyMap& map,
+                                          const proto::CoverageRequest& goal) {
+  if (goal.polygons_size() <= 1 || map.width() == 0 || map.height() == 0) {
+    return map;
+  }
+  proto::OccupancyMap out = map;
+  const double resolution = out.resolution();
+  const double ox = out.origin_x();
+  const double oy = out.origin_y();
+  std::vector<std::vector<std::pair<double, double>>> rings;
+  for (int i = 1; i < goal.polygons_size(); ++i) {
+    const auto& polygon = goal.polygons(i);
+    if (polygon.coordinates_size() < 3) {
+      continue;
+    }
+    std::vector<std::pair<double, double>> ring;
+    ring.reserve(static_cast<std::size_t>(polygon.coordinates_size()));
+    for (const auto& p : polygon.coordinates()) {
+      ring.emplace_back(p.axis1(), p.axis2());
+    }
+    rings.push_back(std::move(ring));
+  }
+  if (rings.empty()) {
+    return out;
+  }
+  for (int row = 0; row < out.height(); ++row) {
+    for (int column = 0; column < out.width(); ++column) {
+      const double x = ox + (column + 0.5) * resolution;
+      const double y = oy + (row + 0.5) * resolution;
+      bool inside = false;
+      for (const auto& ring : rings) {
+        bool odd = false;
+        for (std::size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
+          const double xi = ring[i].first, yi = ring[i].second;
+          const double xj = ring[j].first, yj = ring[j].second;
+          if (((yi > y) != (yj > y)) &&
+              (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+            odd = !odd;
+          }
+        }
+        inside = inside || odd;
+      }
+      if (inside) {
+        out.set_data(row * out.width() + column, 100);
+      }
+    }
+  }
+  return out;
+}
+
 ComputeAction::Result PlanMapRegions(
     const Configuration& config, const proto::CoverageRequest& goal,
     const F2CField& master, const F2CCells& field, const std::string& frame,
@@ -1087,7 +1337,11 @@ ComputeAction::Result PlanMapRegions(
     connector_options.occupied_threshold = goal.map().occupied_threshold();
   }
   connector_options.clearance = std::max(0.0, radius);
-  const MapConnector connector(goal.map(), connector_options);
+  // Operator-drawn obstacles exist only as polygons; stamp them into the grid
+  // so the split, the A* links and the swaths all avoid them.
+  const proto::OccupancyMap effective_map =
+      ApplyObstaclePolygons(goal.map(), goal);
+  const MapConnector connector(effective_map, connector_options);
   if (!connector.Valid()) {
     throw RequestException("Occupancy map has no traversable free space");
   }
@@ -1097,7 +1351,7 @@ ComputeAction::Result PlanMapRegions(
   // headland band.
   map_options.clearance = std::max(0.0, radius);
   std::vector<F2CCells> rooms =
-      RegionSegmenter::MapSplit(goal.map(), map_options);
+      RegionSegmenter::MapSplit(effective_map, map_options);
   if (rooms.empty()) {
     throw RequestException("Map split found no rooms");
   }
@@ -1133,18 +1387,19 @@ ComputeAction::Result PlanMapRegions(
   std::vector<std::vector<double>> costs(
       rooms.size(), std::vector<double>(rooms.size(), kUnreachable));
   std::vector<double> from_start(rooms.size(), kUnreachable);
+  // One grid flood per room fills a whole row of the cost matrix; a Dijkstra
+  // per pair made large maps (30+ rooms) take minutes.
   for (std::size_t from = 0; from < rooms.size(); ++from) {
     CheckCanceled(cancel);
+    const auto row = connector.Distances(anchors[from], anchors);
     for (std::size_t to = 0; to < rooms.size(); ++to) {
-      if (from == to) {
-        costs[from][to] = 0.0;
-      } else {
-        costs[from][to] = connector.Distance(anchors[from], anchors[to]);
-      }
+      costs[from][to] = (from == to) ? 0.0 : row[to];
     }
-    from_start[from] =
-        have_start ? connector.Distance(start, anchors[from]) : (from == 0 ? 0.0
-                                                                        : kUnreachable);
+  }
+  if (have_start) {
+    from_start = connector.Distances(start, anchors);
+  } else {
+    from_start[0] = 0.0;
   }
 
   // Rooms are grouped by navigable connectivity. Only the group reachable
@@ -1382,6 +1637,9 @@ ComputeAction::Result PlanMapRegions(
       const auto& entry_pose = planned_room.nav_path().poses(0).pose().position();
       const std::pair<double, double> entry{entry_pose.x(), entry_pose.y()};
       if (have_cursor) {
+        // Room-to-room travel is always an A* route over the occupancy grid:
+        // the same distance function that orders the TSP tour also draws the
+        // leg, so the tour never cuts through a wall.
         const auto link = connector.Connect(cursor, entry);
         if (!link.points.empty()) {
           for (std::size_t point = 1; point < link.points.size(); ++point) {
@@ -1389,6 +1647,13 @@ ComputeAction::Result PlanMapRegions(
           }
           travel += link.distance;
           ++connected;
+          result.add_warnings("A* link " + std::to_string(index + 1) + ": " +
+                              std::to_string(link.distance) + " m, " +
+                              std::to_string(link.points.size()) + " nodes");
+        } else {
+          result.add_warnings("A* link " + std::to_string(index + 1) +
+                              " failed: no traversable route from the "
+                              "previous room");
         }
       }
       for (const auto& pose : planned_room.nav_path().poses()) {
@@ -1550,14 +1815,38 @@ ComputeAction::Result CoverageServer::Compute(
       if (goal.polygons().empty())
         throw RequestException("Missing field polygon");
       F2CCell cell;
-      for (const auto& polygon : goal.polygons()) {
+      int outer_sign = 0;
+      for (std::size_t ring_index = 0; ring_index < goal.polygons_size();
+           ++ring_index) {
+        const auto& polygon = goal.polygons(static_cast<int>(ring_index));
         if (polygon.coordinates_size() < 3)
           throw RequestException("Ring needs at least three vertices");
-        F2CLinearRing ring;
+        std::vector<std::pair<double, double>> points;
+        points.reserve(static_cast<std::size_t>(polygon.coordinates_size()));
         for (const auto& p : polygon.coordinates()) {
           if (!std::isfinite(p.axis1()) || !std::isfinite(p.axis2()))
             throw RequestException("Nonfinite coordinate");
-          ring.AddPoint(p.axis1(), p.axis2());
+          points.emplace_back(p.axis1(), p.axis2());
+        }
+        // The first ring is the work area, every later ring is an obstacle.
+        // Boost only treats a ring as a hole when it winds opposite to the
+        // outer one, and the operator draws rings in arbitrary direction.
+        double twice_area = 0.0;
+        for (std::size_t i = 0; i + 1 < points.size(); ++i) {
+          twice_area += points[i].first * points[i + 1].second -
+                        points[i + 1].first * points[i].second;
+        }
+        twice_area += points.back().first * points.front().second -
+                      points.front().first * points.back().second;
+        const int sign = twice_area >= 0.0 ? 1 : -1;
+        if (ring_index == 0) {
+          outer_sign = sign;
+        } else if (sign == outer_sign) {
+          std::reverse(points.begin(), points.end());
+        }
+        F2CLinearRing ring;
+        for (const auto& point : points) {
+          ring.AddPoint(point.first, point.second);
         }
         ring.CloseRing();
         cell.AddRing(ring);
@@ -1675,7 +1964,8 @@ ComputeAction::Result CoverageServer::Compute(
           F2CPath perimeter;
           if (goal.headland_full_coverage()) {
             for (const auto& ring : hg.GenerateHeadlandSwaths(
-                     field, effective.operation_width, goal.headland_mode())) {
+                     field, effective.operation_width, goal.headland_mode(),
+                     static_cast<int>(effective.headland_passes))) {
               auto next = pp.GeneratePerimeter(ring, field, path.AtStart(), goal.path_mode());
               if (perimeter.size() > 0 && next.size() > 0) {
                 RobotParams ring_robot(effective);

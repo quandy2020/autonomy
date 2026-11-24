@@ -72,23 +72,21 @@ Icl1122RadarDriver::Icl1122RadarDriver(SensorId id, DriverParams params)
       frame_id_(GetString(params_, "frame_id", "radar_link")),
       register_config_(GetString(params_, "register_config", "")),
       cmd_response_ms_(ParseInt(params_, "cmd_response_ms", 200)),
-      range_resolution_m_(
-          ParseDouble(params_, "range_resolution_m", 0.375)),
-      peak_ratio_(static_cast<float>(
-          ParseDouble(params_, "peak_ratio", 4.0))),
+      range_resolution_m_(ParseDouble(params_, "range_resolution_m", 0.375)),
+      bandwidth_hz_(ParseDouble(params_, "bandwidth_hz", 0.0)),
+      chirp_period_s_(ParseDouble(params_, "chirp_period_s", 0.0)),
+      doppler_enable_(ParseBool(params_, "doppler_enable", true)),
+      doppler_sign_(ParseDouble(params_, "doppler_sign", 1.0)),
+      max_abs_azimuth_rad_(
+          ParseDouble(params_, "max_abs_azimuth_deg", 43.0) * kDegToRad),
+      peak_ratio_(static_cast<float>(ParseDouble(params_, "peak_ratio", 4.0))),
       skip_near_bins_(static_cast<std::size_t>(
           ParseInt(params_, "skip_near_bins", 3))),
       max_peaks_(static_cast<std::size_t>(ParseInt(params_, "max_peaks", 1))),
       min_peak_frac_(static_cast<float>(
           ParseDouble(params_, "min_peak_frac", 0.45))),
       publish_spectrum_(ParseBool(params_, "publish_spectrum", false)),
-      rx_spacing_m_(ParseDouble(params_, "rx_spacing_m", 0.00625)),
-      bandwidth_hz_(ParseDouble(params_, "bandwidth_hz", 0.0)),
-      chirp_period_s_(ParseDouble(params_, "chirp_period_s", 0.0)),
-      doppler_enable_(ParseBool(params_, "doppler_enable", true)),
-      doppler_sign_(ParseDouble(params_, "doppler_sign", 1.0)),
-      max_abs_azimuth_rad_(
-          ParseDouble(params_, "max_abs_azimuth_deg", 43.0) * kDegToRad) {
+      rx_spacing_m_(ParseDouble(params_, "rx_spacing_m", 0.00625)) {
   // Default false: UM10034 §4.5 Demo AA FF targets. JoySpace §5 FFT needs
   // an explicit host_bringup: true (see config/radar/icl1122.yaml).
   host_bringup_ = ParseBool(params_, "host_bringup", false);
@@ -96,8 +94,7 @@ Icl1122RadarDriver::Icl1122RadarDriver(SensorId id, DriverParams params)
       static_cast<std::uint32_t>(ParseInt(params_, "chirp_number", 16));
   const auto bins =
       static_cast<std::uint32_t>(ParseInt(params_, "range_bins", 8));
-  const auto rx =
-      static_cast<std::uint32_t>(ParseInt(params_, "num_rx", 2));
+  const auto rx = static_cast<std::uint32_t>(ParseInt(params_, "num_rx", 2));
   range_fft_.SetConfig(chirps, bins, rx);
 
   // UM10034P §2: 24 GHz ISM, 24-25 GHz sweep. §4.4/§5.4: the reported range
@@ -118,10 +115,19 @@ Icl1122RadarDriver::Icl1122RadarDriver(SensorId id, DriverParams params)
     }
     range_resolution_m_ = implied;
   }
+  // UM10034P §5.3: v_max = lambda/(4*T_chirp), dv = lambda/(2*N*T_chirp)
+  // (manual example: T = 1270 us, N = 32 -> 2.45 m/s and 0.15 m/s).
+  double v_max = 0.0;
+  double v_res = 0.0;
+  if (chirp_period_s_ > 0.0 && chirps > 1) {
+    v_max = wavelength_m_ / (4.0 * chirp_period_s_);
+    v_res = wavelength_m_ / (2.0 * static_cast<double>(chirps) * chirp_period_s_);
+  }
   AINFO << "ICL1122 scale dR=" << range_resolution_m_
         << " m lambda=" << wavelength_m_ << " m bandwidth_hz=" << bandwidth_hz_
-        << " chirp_period_s=" << chirp_period_s_
-        << " az_limit_rad=" << max_abs_azimuth_rad_;
+        << " chirp_period_s=" << chirp_period_s_ << " v_max=" << v_max
+        << " m/s v_res=" << v_res << " m/s az_limit_rad="
+        << max_abs_azimuth_rad_;
 }
 
 std::string Icl1122RadarDriver::ResolveRegisterConfigPath() const {
@@ -264,7 +270,7 @@ void Icl1122RadarDriver::EmitRangeFftCloud(
   protocol::ExtractIcl1122RangePeaks(frame.bin_magnitude, range_resolution_m_,
                                      peak_ratio_, skip_near_bins_, &peak_x,
                                      &peak_y, &peak_i, &peak_bins);
-  // Indoor Range-FFT: walls/multipath → many CFAR ghosts; keep strongest.
+  // Indoor Range-FFT: walls/multipath -> many CFAR ghosts; keep strongest.
   protocol::KeepTopIcl1122Peaks(max_peaks_, min_peak_frac_, &peak_x, &peak_y,
                                 &peak_i, &peak_bins);
 
@@ -280,50 +286,72 @@ void Icl1122RadarDriver::EmitRangeFftCloud(
   const autolink::Time now = autolink::Time::Now();
   const std::uint64_t stamp_ns = now.ToNanosecond();
 
-  // UM10034P §2.3: the 6 dBi beam spans 86° x 28° (H x E); the H plane covers
-
-  // ±43°, so returns outside that cone are grating lobes / multipath.
-
+  // UM10034P §2.3: the 6 dBi beam spans 86 x 28 deg (H x E); the H plane
+  // covers +/-43 deg, so returns outside that cone are grating lobes/multipath.
   std::vector<std::size_t> kept;
-
   kept.reserve(peak_y.size());
-
-  for (std::size_t k = 0; k < kept.size(); ++k) {
-
-    const std::size_t i = kept[k];
-
-    const float az = protocol::EstimateIcl1122AzimuthFromIq(
-
+  std::vector<float> azimuths(peak_y.size(), 0.f);
+  for (std::size_t i = 0; i < peak_y.size(); ++i) {
+    azimuths[i] = protocol::EstimateIcl1122AzimuthFromIq(
         frame.iq_bytes, peak_bins[i], frame.range_bins, frame.num_rx,
-
         frame.chirp_number, rx_spacing_m_, wavelength_m_);
+    if (max_abs_azimuth_rad_ > 0.0 &&
+        std::fabs(azimuths[i]) > max_abs_azimuth_rad_) {
+      continue;
+    }
+    kept.push_back(i);
+  }
 
+  // UM10034P §5.3: chirp period for the 2DFFT velocity. Explicit config wins;
+  // otherwise use the measured frame period divided by the chirp count.
+  double doppler_period = chirp_period_s_;
+  if (!(doppler_period > 0.0) && last_range_fft_stamp_ns_ > 0 &&
+      stamp_ns > last_range_fft_stamp_ns_ && frame.chirp_number > 1) {
+    const double frame_dt =
+        static_cast<double>(stamp_ns - last_range_fft_stamp_ns_) * 1e-9;
+    if (frame_dt > 0.002 && frame_dt < 0.5) {
+      measured_frame_period_s_ = measured_frame_period_s_ > 0.0
+          ? 0.8 * measured_frame_period_s_ + 0.2 * frame_dt : frame_dt;
+      doppler_period = measured_frame_period_s_ / frame.chirp_number;
+    }
+  }
+  last_range_fft_stamp_ns_ = stamp_ns;
+
+  // Strongest peak (first after the angle gate) -> range-rate fallback.
+  float primary_m = kept.empty() ? -1.f : peak_y[kept.front()];
+  float primary_vel = 0.f;
+  if (primary_m >= 0.f && have_prev_nearest_ && prev_stamp_ns_ > 0 &&
+      stamp_ns > prev_stamp_ns_) {
+    const double dt = static_cast<double>(stamp_ns - prev_stamp_ns_) * 1e-9;
+    if (dt > 0.005 && dt < 0.5) {
+      primary_vel = static_cast<float>((primary_m - prev_nearest_m_) / dt);
+    }
+  }
+  if (primary_m >= 0.f) {
+    have_prev_nearest_ = true;
+    prev_nearest_m_ = primary_m;
+    prev_stamp_ns_ = stamp_ns;
+  }
+
+  // Peaks -> RadarScan with dual-RX AoA + 2DFFT radial velocity.
+  automsgs::msgs::sensor_msgs::RadarScan scan;
+  automsgs::msgs::sensor_msgs::RadarTracks tracks;
+  for (std::size_t k = 0; k < kept.size(); ++k) {
+    const std::size_t i = kept[k];
+    const float az = azimuths[i];
     // UM10034P §5.3 2DFFT: the chirp-to-chirp phase step is the radial
-
-    // velocity, far finer than a whole-bin frame difference. The frame
-
-    // difference stays as the fallback when the frame period is unknown.
-
+    // velocity; the frame difference remains the fallback when the chirp
+    // period is unknown.
     float doppler = 0.f;
-
     float quality = 0.f;
-
     const bool have_doppler =
-
         doppler_enable_ && doppler_period > 0.0 &&
-
         protocol::EstimateIcl1122DopplerVelocity(
-
             frame.iq_bytes, peak_bins[i], frame.range_bins, frame.num_rx,
-
             frame.chirp_number, doppler_period, wavelength_m_, &doppler,
-
             &quality);
-
     const float vel = have_doppler
-
                           ? static_cast<float>(doppler * doppler_sign_)
-
                           : (k == 0 ? primary_vel : 0.f);
 
     auto* ret = scan.add_returns();
@@ -339,7 +367,7 @@ void Icl1122RadarDriver::EmitRangeFftCloud(
     peak_x[i] = x;
 
     auto* tr = tracks.add_tracks();
-    SetTrackUuid(tr->mutable_uuid(), static_cast<std::uint32_t>(i));
+    SetTrackUuid(tr->mutable_uuid(), static_cast<std::uint32_t>(k));
     tr->mutable_position()->set_x(x);
     tr->mutable_position()->set_y(y);
     tr->mutable_position()->set_z(0.0);
@@ -361,45 +389,25 @@ void Icl1122RadarDriver::EmitRangeFftCloud(
   }
 
   automsgs::msgs::sensor_msgs::PointCloud2 cloud;
-
   lidar::InitXyzitCloud(&cloud, frame_id_);
-
   std::string& cloud_data = *cloud.mutable_data();
-
   if (publish_spectrum_) {
-
     cloud_data.reserve(cloud_y.size() * lidar::kXyzitPointStep);
-
     for (std::size_t i = 0; i < cloud_y.size(); ++i) {
-
       lidar::AppendXyzitPoint(&cloud_data, cloud_x[i], cloud_y[i], 0.f,
-
                               cloud_i[i], static_cast<double>(stamp_ns));
-
     }
-
     lidar::FinishXyzitCloud(&cloud,
-
                             static_cast<std::uint32_t>(cloud_y.size()));
-
   } else {
-
     cloud_data.reserve(kept.size() * lidar::kXyzitPointStep);
-
     for (std::size_t k = 0; k < kept.size(); ++k) {
-
       const std::size_t i = kept[k];
-
       lidar::AppendXyzitPoint(&cloud_data, peak_x[i], peak_y[i], 0.f,
-
                               peak_i[i], static_cast<double>(stamp_ns));
-
     }
-
     lidar::FinishXyzitCloud(&cloud, static_cast<std::uint32_t>(kept.size()));
-
   }
-
 
   auto sample = std::make_unique<RadarSample>(id_, now, std::move(scan));
   sample->frame_id = frame_id_;

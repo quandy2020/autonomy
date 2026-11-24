@@ -75,7 +75,7 @@ QToolButton* CreateTitleToolButton(QWidget* parent, const QIcon& icon,
   button->setAutoRaise(true);
   button->setToolTip(tip);
   button->setCheckable(checkable);
-  button->setFixedSize(QSize(24, 22));
+  button->setFixedSize(QSize(28, 28));
   return button;
 }
 
@@ -83,11 +83,11 @@ QToolButton* CreatePlotTitleToolButton(QWidget* parent, const QIcon& icon,
                                        const QString& tip, bool checkable) {
   auto* button = new QToolButton(parent);
   button->setIcon(icon);
-  button->setIconSize(QSize(18, 18));
+  button->setIconSize(QSize(16, 16));
   button->setAutoRaise(true);
   button->setToolTip(tip);
   button->setCheckable(checkable);
-  button->setFixedSize(QSize(26, 24));
+  button->setFixedSize(QSize(28, 28));
   return button;
 }
 

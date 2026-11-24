@@ -21,9 +21,9 @@ ServiceSettingsWidget::ServiceSettingsWidget(QWidget* parent)
     : config_(DefaultServiceCallPanelConfig()), QWidget(parent) {
   ApplyCompactSettingsShell(this);
   auto* outer = new QVBoxLayout(this);
-  outer->setContentsMargins(PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin,
-                            PanelSettingsLayout::kOuterMargin, PanelSettingsLayout::kOuterMargin);
-  outer->setSpacing(PanelSettingsLayout::kOuterSpacing);
+  outer->setContentsMargins(PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin(),
+                            PanelSettingsLayout::OuterMargin(), PanelSettingsLayout::OuterMargin());
+  outer->setSpacing(PanelSettingsLayout::OuterSpacing());
   outer->setAlignment(Qt::AlignTop);
 
   auto* general_body = new QWidget(this);

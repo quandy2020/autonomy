@@ -74,6 +74,13 @@ bool VisualizationManager::initialize(const char* binary_name) {
       LOG(WARNING) << "WebSocket server failed to bind " << ws_options_.host
                    << ":" << ws_options_.port;
       ws_bridge_.reset();
+    } else if (ws_options_.host != "127.0.0.1" &&
+               ws_options_.host != "localhost" &&
+               ws_options_.host != "::1") {
+      LOG(WARNING) << "WebSocket bridge listening on " << ws_options_.host
+                   << ":" << ws_options_.port
+                   << " without authentication; use --ws-host 127.0.0.1 or "
+                      "--no-ws to restrict access";
     }
   }
 

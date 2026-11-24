@@ -1,8 +1,26 @@
-/* Copyright 2026 The Openbot Authors */
-/** @file async_path_action_node.hpp
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file async_path_action_node.hpp
  * @brief Native nonblocking plan acceptance, correlated results and map validation.
  */
-#pragma once
+
+#ifndef AUTONOMY_TASK_NAVIGATION_PLUGINS_ASYNC_PATH_ACTION_NODE_HPP_
+#define AUTONOMY_TASK_NAVIGATION_PLUGINS_ASYNC_PATH_ACTION_NODE_HPP_
 
 #include <chrono>
 #include <cmath>
@@ -23,8 +41,23 @@ namespace autonomy::task::plugins::navigation {
  * Each stage retains its own acceptance, result and map-validation evidence.
  */
 template <typename ActionT>
+/**
+ * @class AsyncPathActionNode
+ * @brief Base node that drives one plan/act action asynchronously.
+ *
+ * The node sends the goal on the first tick, polls the action result on every
+ * following tick and cancels the request when the tree is halted, so a preempt
+ * or a shutdown never leaves a native goal running in the background.
+ * Subclasses only choose the client, build the goal and publish the produced
+ * path.
+ */
 class AsyncPathActionNode : public BtStatefulAction {
 public:
+    /**
+     * @brief Constructs the node and binds it to the tree node config.
+     * @param[in] name Node name from the tree XML.
+     * @param[in] config Ports and blackboard supplied by the tree.
+     */
     AsyncPathActionNode(const std::string& name, const BT::NodeConfig& config)
         : BtStatefulAction(name, config) {}
     ~AsyncPathActionNode() override { CancelRequest(); }
@@ -39,13 +72,50 @@ protected:
     using Pose = automsgs::msgs::geometry_msgs::PoseStamped;
     using NavClient = ::autonomy::task::navigation::NavigationClient;
 
+    /**
+     * @brief Selects the action client this node drives.
+     * @param[in] client Navigation client owning every action client.
+     * @return Reference to the action client used by this node.
+     */
     virtual Client& GetClient(NavClient& client) = 0;
+    /**
+     * @brief Fills the action goal from the node ports.
+     * @param[out] goal Goal sent to the action server.
+     * @param[out] endpoint Final pose, used to decide whether the goal is empty.
+     * @return false when the ports do not describe a usable goal.
+     */
     virtual bool BuildGoal(Goal& goal, Pose& endpoint) = 0;
+    /**
+     * @brief Publishes the path produced or accepted by this node.
+     * @param[in] path Path to write to the output port.
+     * @param[in] computed true when the path came from the server, false when it
+     *            is the node's initial fallback.
+     */
     virtual void OutputPath(const Path& path, bool computed) = 0;
+    /**
+     * @brief Reports whether an empty goal should succeed immediately.
+     * @return true when the node treats "nothing to do" as success.
+     */
     virtual bool EmptyGoalIsComplete() const { return false; }
-    virtual Path InitialFallback(const Goal&) const { return {}; }
+    /**
+     * @brief Path published while the server is still computing.
+     * @param[in] goal Goal being executed.
+     * @return Fallback path, usually empty.
+     */
+    virtual Path InitialFallback(const Goal& goal) const { return {}; }
+    /**
+     * @brief Selects whether the node consumes the published /plan message.
+     * @return true when the node waits for the published plan as well.
+     */
     virtual bool UsePublishedPlan() const { return true; }
-    virtual void RecordResult(const Result&) {}
+    /**
+     * @brief Stores the terminal action result in the node state.
+     * @param[in] result Result returned by the action server.
+     */
+    virtual void RecordResult(const Result& result) {}
+    /**
+     * @brief Clears per-goal result metadata before a new goal is sent.
+     */
     virtual void ResetResultMetadata() {}
 
     int GoalEpoch() const { return Epoch(); }
@@ -278,3 +348,5 @@ private:
     NavClient::PathValidationFuture validation_;
 };
 }  // namespace autonomy::task::plugins::navigation
+
+#endif  // AUTONOMY_TASK_NAVIGATION_PLUGINS_ASYNC_PATH_ACTION_NODE_HPP_

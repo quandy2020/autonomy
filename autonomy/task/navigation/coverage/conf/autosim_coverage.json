@@ -6,6 +6,7 @@
   "cruise_speed": 0.4,
   "turn_speed": 0.25,
   "headland_width": 0.3,
+  "headland_passes": 1,
   "route_type": "BOUSTROPHEDON",
   "path_type": "DUBIN",
   "path_continuity_type": "DISCONTINUOUS",

@@ -1,11 +1,26 @@
 /*
- * Copyright 2026 The Openbot Authors
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
  *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
  * @file action_session.hpp
  * @brief Poll native action goals with revocable, per-goal dispatch ownership.
  */
 
-#pragma once
+#ifndef AUTONOMY_TASK_NAVIGATION_ACTION_SESSION_HPP_
+#define AUTONOMY_TASK_NAVIGATION_ACTION_SESSION_HPP_
 
 #include <functional>
 #include <string>
@@ -32,12 +47,16 @@ namespace detail {
 template <typename T, typename = void>
 struct HasErrorMsg : std::false_type {};
 
-/** @brief True when an action result exposes a human readable error text. */
+/**
+ * @brief True when an action result exposes a human readable error text.
+ */
 template <typename T>
 struct HasErrorMsg<T, std::void_t<decltype(std::declval<const T&>().error_msg())>>
     : std::true_type {};
 
-/** @brief Surface the server's failure text instead of a bare "action failed". */
+/**
+ * @brief Surface the server's failure text instead of a bare "action failed".
+ */
 template <typename T>
 std::string FailureText(const T& result) {
     if constexpr (HasErrorMsg<T>::value) {
@@ -59,7 +78,10 @@ public:
     using GoalHandle = typename Client::GoalHandle;
     using WrappedResult = typename Client::WrappedResult;
 
-    /** @brief Register ownership and commit one send; false when admission is revoked. */
+    /**
+     * @brief Register ownership and commit one send; false when admission is
+              * revoked.
+     */
     bool Begin(Client& client, const Goal& goal,
                const std::shared_ptr<common::MotionDispatchGate>& gate = {});
     void Cancel(Client& client);
@@ -301,3 +323,5 @@ BT::NodeStatus ActionSession<ActionT, ClientT>::Tick(
 }  // namespace navigation
 }  // namespace task
 }  // namespace autonomy
+
+#endif  // AUTONOMY_TASK_NAVIGATION_ACTION_SESSION_HPP_

@@ -164,11 +164,45 @@ QHash<QString, QString> tokens(Tone tone) {
   t.insert(QStringLiteral("{{accent-a55}}"), accent_a(55));
   t.insert(QStringLiteral("{{accent-a70}}"), accent_a(70));
   t.insert(QStringLiteral("{{accent-a90}}"), accent_a(230));
+
+  // Theme-aware translucent surfaces / hairlines. Light mode keeps the exact
+  // same pixels as the old hardcoded rgba(255,255,255,*) / rgba(0,0,0,*) values;
+  // dark mode derives them from the live shell instead of staying white.
+  auto surface_a = [&](int alpha) {
+    QColor c = s.panel_surface;
+    c.setAlpha(qBound(0, alpha, 255));
+    return theme::Rgba(c);
+  };
+  t.insert(QStringLiteral("{{surface-a42}}"), surface_a(107));
+  t.insert(QStringLiteral("{{surface-a70}}"), surface_a(70));
+  t.insert(QStringLiteral("{{surface-a85}}"), surface_a(217));
+  t.insert(QStringLiteral("{{surface-a90}}"), surface_a(90));
+  t.insert(QStringLiteral("{{surface-a96}}"), surface_a(245));
+  auto ink_a = [&](int alpha) {
+    QColor c = s.text;
+    c.setAlpha(qBound(0, alpha, 255));
+    return theme::Rgba(c);
+  };
+  t.insert(QStringLiteral("{{hairline-faint}}"), ink_a(13));
+  t.insert(QStringLiteral("{{hairline}}"), ink_a(23));
+  t.insert(QStringLiteral("{{hairline-strong}}"), ink_a(46));
   t.insert(QStringLiteral("{{sel-bg}}"), theme::Hex(s.selection_bg));
   t.insert(QStringLiteral("{{sel-text}}"), theme::Hex(s.selection_text));
   t.insert(QStringLiteral("{{border}}"), theme::Hex(s.border));
   t.insert(QStringLiteral("{{border-light}}"), theme::Hex(s.border_light));
   t.insert(QStringLiteral("{{disabled}}"), theme::Hex(s.disabled_text));
+  t.insert(QStringLiteral("{{danger}}"), theme::Hex(s.danger));
+  t.insert(QStringLiteral("{{danger-hover}}"), theme::Hex(s.danger_hover));
+  t.insert(QStringLiteral("{{danger-pressed}}"), theme::Hex(s.danger_pressed));
+  t.insert(QStringLiteral("{{danger-soft}}"), theme::Hex(s.danger_soft));
+  t.insert(QStringLiteral("{{danger-border}}"), theme::Hex(s.danger_border));
+  t.insert(QStringLiteral("{{danger-filled}}"), theme::Hex(s.danger_filled));
+  t.insert(QStringLiteral("{{danger-filled-hover}}"),
+           theme::Hex(s.danger_filled_hover));
+  t.insert(QStringLiteral("{{danger-filled-pressed}}"),
+           theme::Hex(s.danger_filled_pressed));
+  t.insert(QStringLiteral("{{warning}}"), theme::Hex(s.warning));
+  t.insert(QStringLiteral("{{on-accent-muted}}"), theme::Rgba(s.on_accent_muted));
   t.insert(QStringLiteral("{{toolbar}}"), theme::Hex(s.toolbar_bg));
   t.insert(QStringLiteral("{{hover}}"), theme::Hex(s.hover_bg));
   t.insert(QStringLiteral("{{dock-title}}"), theme::Hex(s.dock_title));
@@ -182,6 +216,30 @@ QHash<QString, QString> tokens(Tone tone) {
   t.insert(QStringLiteral("{{r-panel}}"), QString::number(s.panel_radius));
   t.insert(QStringLiteral("{{r-title}}"), QString::number(s.title_radius));
   t.insert(QStringLiteral("{{r-ctrl}}"), QString::number(s.control_radius));
+  // Layout metrics for QSS. Widgets read the same values from ShellTokens.
+  t.insert(QStringLiteral("{{r-btn}}"), QString::number(s.button_radius));
+  t.insert(QStringLiteral("{{r-xs}}"), QString::number(s.radius_xs));
+  t.insert(QStringLiteral("{{r-sm}}"), QString::number(s.radius_sm));
+  t.insert(QStringLiteral("{{r-md}}"), QString::number(s.radius_md));
+  // Spacing scale for QSS padding / margin declarations.
+  for (int step = 1; step <= 8; ++step) {
+    const int value = step == 1   ? s.space_1
+                      : step == 2 ? s.space_2
+                      : step == 3 ? s.space_3
+                      : step == 4 ? s.space_4
+                      : step == 5 ? s.space_5
+                      : step == 6 ? s.space_6
+                      : step == 7 ? s.space_7
+                                  : s.space_8;
+    t.insert(QStringLiteral("{{space-%1}}").arg(step), QString::number(value));
+  }
+  t.insert(QStringLiteral("{{h-field}}"), QString::number(s.field_height));
+  t.insert(QStringLiteral("{{h-btn}}"), QString::number(s.button_height));
+  t.insert(QStringLiteral("{{font-small}}"), QString::number(s.font_small));
+  t.insert(QStringLiteral("{{font-body}}"), QString::number(s.font_body));
+  t.insert(QStringLiteral("{{font-title}}"), QString::number(s.font_title));
+  t.insert(QStringLiteral("{{font-section}}"),
+           QString::number(s.font_section));
   t.insert(QStringLiteral("{{id-content}}"),
            QString::fromLatin1(AppThemeIds::kPanelContent));
   t.insert(QStringLiteral("{{id-toolbar}}"),

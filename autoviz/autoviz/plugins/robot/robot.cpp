@@ -268,7 +268,12 @@ void Robot::setJointPositions(
   }
 }
 
-void Robot::update(const LinkUpdater& updater) {
+bool Robot::update(const LinkUpdater& updater) {
+  // Below these thresholds a link counts as static, so a periodic TF pass over
+  // an unchanged tree does not force a repaint.
+  static constexpr float kPositionEpsilonSq = 1e-10f;
+  static constexpr float kOrientationEpsilonDot = 1e-7f;
+  bool changed = false;
   for (auto& [name, link] : links_) {
     if (link == nullptr) {
       continue;
@@ -280,12 +285,26 @@ void Robot::update(const LinkUpdater& updater) {
     if (updater.getLinkTransforms(name, &visual_position, &visual_orientation,
                                   &collision_position,
                                   &collision_orientation)) {
+      const bool was_placed = link->hasTransform();
+      const float position_delta =
+          (link->getVisualPosition() - visual_position).lengthSquared();
+      const float orientation_dot =
+          QQuaternion::dotProduct(link->getVisualOrientation(),
+                                  visual_orientation);
+      if (!was_placed || position_delta > kPositionEpsilonSq ||
+          std::abs(1.f - std::abs(orientation_dot)) > kOrientationEpsilonDot) {
+        changed = true;
+      }
       link->setTransforms(visual_position, visual_orientation,
                           collision_position, collision_orientation);
     } else {
+      if (link->hasTransform()) {
+        changed = true;
+      }
       link->clearTransform();
     }
   }
+  return changed;
 }
 
 void Robot::cacheGeometryMesh(

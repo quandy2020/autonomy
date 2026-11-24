@@ -1,5 +1,26 @@
-/* Copyright 2026 The Openbot Authors */
-#pragma once
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file path_update.hpp
+ * @brief Path update.
+ */
+
+#ifndef AUTONOMY_TASK_NAVIGATION_PATH_UPDATE_HPP_
+#define AUTONOMY_TASK_NAVIGATION_PATH_UPDATE_HPP_
 
 #include <algorithm>
 #include <cmath>
@@ -10,6 +31,11 @@
 
 namespace autonomy::task::navigation {
 
+/**
+ * @brief Extracts the planar yaw of a quaternion.
+ * @param[in] q Orientation quaternion (x, y, z, w).
+ * @return Yaw in radians, or NaN when the quaternion is degenerate.
+ */
 inline double PoseYaw(const automsgs::msgs::geometry_msgs::Quaternion& q)
 {
     const double norm = q.x()*q.x() + q.y()*q.y() + q.z()*q.z() + q.w()*q.w();
@@ -18,11 +44,30 @@ inline double PoseYaw(const automsgs::msgs::geometry_msgs::Quaternion& q)
                       norm - 2.0*(q.y()*q.y() + q.z()*q.z()));
 }
 
+/**
+ * @brief Reports whether two frame ids can be compared directly.
+ * @param[in] a First frame id; empty means "unspecified".
+ * @param[in] b Second frame id; empty means "unspecified".
+ * @return true when the ids match, or when either side leaves it unset.
+ */
 inline bool CompatibleFrames(const std::string& a, const std::string& b)
 {
     return a.empty() || b.empty() || a == b;
 }
 
+/**
+ * @brief Compares two goal poses with a metric and a yaw tolerance.
+ *
+ * Used to decide whether a new goal can reuse the running navigation instead of
+ * preempting it. A missing orientation falls back to a XY-only comparison, which
+ * matches how a 2D goal is submitted.
+ *
+ * @param[in] a First pose.
+ * @param[in] b Second pose.
+ * @param[in] xy_tolerance Allowed planar distance in metres.
+ * @param[in] yaw_tolerance Allowed heading difference in radians.
+ * @return true when frames, position and heading all match inside tolerance.
+ */
 inline bool SameGoalPose(const automsgs::msgs::geometry_msgs::PoseStamped& a,
                          const automsgs::msgs::geometry_msgs::PoseStamped& b,
                          double xy_tolerance = 0.05, double yaw_tolerance = 0.05)
@@ -106,3 +151,5 @@ inline bool EquivalentPathSuffix(const automsgs::msgs::nav_msgs::Path& a,
     return true;
 }
 }  // namespace autonomy::task::navigation
+
+#endif  // AUTONOMY_TASK_NAVIGATION_PATH_UPDATE_HPP_

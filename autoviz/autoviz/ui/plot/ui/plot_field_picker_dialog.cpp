@@ -136,7 +136,7 @@ class GlassPane : public QWidget {
     const QRectF card = QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5);
     QPainterPath path;
     path.addRoundedRect(card, 10.0, 10.0);
-    painter.fillPath(path, QColor(255, 255, 255));
+    painter.fillPath(path, theme::Shell().panel_surface);
     painter.setPen(QPen(theme::Shell().border_light, 1.0));
     painter.drawPath(path);
   }

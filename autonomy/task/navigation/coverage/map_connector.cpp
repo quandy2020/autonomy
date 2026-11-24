@@ -1,7 +1,24 @@
-// Copyright 2026 The Openbot Authors (duyongquan).
-// SPDX-License-Identifier: Apache-2.0
-/** @file map_connector.cpp
- * @brief Occupancy-grid connectivity implementation. */
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file map_connector.cpp
+ * @brief Occupancy-grid connectivity implementation.
+ */
+
 #include "autonomy/task/navigation/coverage/map_connector.hpp"
 
 #include <algorithm>
@@ -9,13 +26,16 @@
 #include <cstddef>
 #include <limits>
 #include <queue>
+#include <unordered_map>
 
 namespace autonomy::task::coverage {
 namespace {
 
 constexpr double kInfinity = std::numeric_limits<double>::max() / 4.0;
 
-/** @brief Eight-connected neighbourhood used for metric grid searches. */
+/**
+ * @brief Eight-connected neighbourhood used for metric grid searches.
+ */
 constexpr int kSteps[8][2] = {{1, 0},  {-1, 0}, {0, 1},  {0, -1},
                               {1, 1},  {1, -1}, {-1, 1}, {-1, -1}};
 
@@ -232,6 +252,73 @@ MapConnector::Visit MapConnector::Connect(
                    visit.points[index].second - visit.points[index - 1].second);
   }
   return visit;
+}
+
+std::vector<double> MapConnector::Distances(
+    const std::pair<double, double>& from,
+    const std::vector<std::pair<double, double>>& targets) const {
+  std::vector<double> result(targets.size(), kInfinity);
+  if (!Valid()) {
+    for (std::size_t i = 0; i < targets.size(); ++i) {
+      result[i] = std::hypot(targets[i].first - from.first,
+                             targets[i].second - from.second);
+    }
+    return result;
+  }
+  const auto snapped_from = NearestFree(from);
+  const auto start = Cell(snapped_from.first, snapped_from.second);
+  if (!CellFree(start.first, start.second)) {
+    return result;
+  }
+  const std::size_t total = free_.size();
+  std::unordered_map<std::size_t, std::size_t> wanted;
+  for (std::size_t i = 0; i < targets.size(); ++i) {
+    const auto snapped = NearestFree(targets[i]);
+    const auto cell = Cell(snapped.first, snapped.second);
+    if (!CellFree(cell.first, cell.second)) {
+      continue;
+    }
+    wanted.emplace(static_cast<std::size_t>(cell.second * width_ + cell.first), i);
+  }
+  std::vector<double> best(total, kInfinity);
+  const std::size_t start_index =
+      static_cast<std::size_t>(start.second * width_ + start.first);
+  best[start_index] = 0.0;
+  using Entry = std::pair<double, std::size_t>;
+  std::priority_queue<Entry, std::vector<Entry>, std::greater<Entry>> queue;
+  queue.emplace(0.0, start_index);
+  std::size_t remaining = wanted.size();
+  while (!queue.empty() && remaining > 0) {
+    const auto [cost, index] = queue.top();
+    queue.pop();
+    if (cost > best[index] + 1e-12) {
+      continue;
+    }
+    const auto hit = wanted.find(index);
+    if (hit != wanted.end()) {
+      result[hit->second] = cost;
+      --remaining;
+    }
+    const int row = static_cast<int>(index) / width_;
+    const int column = static_cast<int>(index) % width_;
+    for (const auto& step : kSteps) {
+      const int next_column = column + step[0];
+      const int next_row = row + step[1];
+      if (!CellFree(next_column, next_row)) {
+        continue;
+      }
+      const auto next =
+          static_cast<std::size_t>(next_row * width_ + next_column);
+      const bool diagonal = step[0] != 0 && step[1] != 0;
+      const double candidate =
+          cost + (diagonal ? resolution_ * std::sqrt(2.0) : resolution_);
+      if (candidate + 1e-12 < best[next]) {
+        best[next] = candidate;
+        queue.emplace(candidate, next);
+      }
+    }
+  }
+  return result;
 }
 
 double MapConnector::Distance(const std::pair<double, double>& from,

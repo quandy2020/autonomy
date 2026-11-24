@@ -21,7 +21,9 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         !std::isfinite(options.spacing) || options.spacing <= 0 ||
         !std::isfinite(options.nominal_speed) || options.nominal_speed <= 0 ||
         !std::isfinite(options.angular_speed) || options.angular_speed <= 0 ||
-        !std::isfinite(options.observation_time) || options.observation_time <= 0)
+        !std::isfinite(options.observation_time) || options.observation_time <= 0 ||
+        !std::isfinite(options.goal_clearance_reserve) ||
+        options.goal_clearance_reserve < 0 || options.goal_clearance_reserve > .30)
         throw std::invalid_argument("invalid viewpoint sampling configuration");
     if (map.startup_support) safety.startup_support = map.startup_support;
     const auto& grid = *map.grid;
@@ -65,7 +67,8 @@ ViewpointSamplingResult ViewpointSampler::Sample(
                 candidate.yaw = start.yaw;
                 const double distance = autonomy::navigation::Distance(start, candidate);
                 if (distance <= 1e-9 || distance > .60 || distance >= best) continue;
-                if (!geometry->VerifyPose(candidate).safe) continue;
+                if (!geometry->VerifyPose(candidate, options.goal_clearance_reserve).safe)
+                    continue;
                 best = distance; origin = candidate;
             }
             if (best < std::numeric_limits<double>::infinity()) {
@@ -78,6 +81,36 @@ ViewpointSamplingResult ViewpointSampler::Sample(
     if (reachable.canceled()) {
         result.canceled = true;
         return result;
+    }
+    // If the measured pose is inside the near-wall admission band, the
+    // bounded safe anchor is useful as a recovery viewpoint itself, not only
+    // as the seed of a reachability field. Without this candidate the planner
+    // can see many useful frontier cells but no route from an unsafe start.
+    if (!start_check.safe && autonomy::navigation::Distance(origin, start) > 1e-9) {
+        origin.yaw = start.yaw;
+        if (geometry->VerifyPose(origin).safe) {
+            const double distance = autonomy::navigation::Distance(start, origin);
+            for (unsigned sample = 0; sample < options.yaw_samples &&
+                 result.candidates.size() < options.maximum_candidates; ++sample) {
+                Pose2d view_pose = origin;
+                view_pose.yaw = 2 * autonomy::navigation::kPi * sample / options.yaw_samples;
+                auto contribution = evaluator.Predict(view_pose, state, map, active);
+                const double gain = CoverageFusion::Gain(state, contribution);
+                if (gain <= 0) continue;
+                ++result.evaluated;
+                Viewpoint view;
+                view.id = total + sample + 1;
+                view.pose = view_pose;
+                view.region_id = regions.RegionFor(view_pose);
+                view.contributions = std::move(contribution);
+                view.predicted_gain = gain;
+                view.travel_time = distance / options.nominal_speed;
+                view.turn_time = std::abs(autonomy::navigation::NormalizeAngle(
+                    view_pose.yaw - start.yaw)) / options.angular_speed;
+                view.observation_time = options.observation_time;
+                result.candidates.push_back(std::move(view));
+            }
+        }
     }
     int checked_cell = -1;
     bool cell_safe = false;
@@ -109,12 +142,14 @@ ViewpointSamplingResult ViewpointSampler::Sample(
         const int cell_index = static_cast<int>(cursor / options.yaw_samples);
         if (cell_index != checked_cell) {
             checked_cell = cell_index;
-            const auto verified = geometry->VerifyPose(pose);
-            // Admit exactly what the route owner admits: its bounded start/goal
-            // escape tolerance, not the strict footprint verdict alone.
-            const double radius = safety.robot_radius + safety.horizontal_margin;
-            cell_safe = verified.safe ||
-                geometry->Clearance(pose) + .02 + 1e-12 >= radius;
+            // A viewpoint is also an execution target. Keep a small clearance
+            // reserve beyond the robot radius so ordinary tracking error and a
+            // newly observed neighbouring cell do not turn a nominally safe goal
+            // into an unrecoverable command-gate rejection on approach.
+            const auto verified = geometry->VerifyPose(pose, options.goal_clearance_reserve);
+            // Vista may admit a bounded escape for a start pose, but its execution
+            // planner requires every goal to pass the footprint check.
+            cell_safe = verified.safe;
         }
         if (!cell_safe) continue;
         pose.yaw = 2 * autonomy::navigation::kPi * (cursor % options.yaw_samples) /

@@ -356,7 +356,8 @@ void FramePanels::syncDeletePanelMenu() {
   }
   QVector<PanelDockWidget*> visible_docks;
   for (PanelDockWidget* dock : frame_->layout_->orderedDockWidgets()) {
-    if (dock != nullptr && dock->isVisible()) {
+    if (dock != nullptr && dock->isVisible() &&
+        !dock->property("mosaicPlaceholder").toBool()) {
       visible_docks.push_back(dock);
     }
   }

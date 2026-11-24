@@ -26,6 +26,11 @@ class QApplication;
 
 namespace autoviz {
 
+/** Bounds for @ref AppUiPreferences::idle_render_divisor. */
+inline constexpr int kMinIdleRenderDivisor = 1;
+inline constexpr int kMaxIdleRenderDivisor = 10;
+inline constexpr int kDefaultIdleRenderDivisor = 3;
+
 /**
  * @struct AppShortcutDefinition
  * @brief Built-in shortcut catalog entry (id, label, default sequence).
@@ -48,7 +53,7 @@ struct AppUiPreferences {
    * App chrome theme: @c "system", @c "light", or @c "dark".
    * Legacy @c "liquid" is normalized to @c "light".
    */
-  QString theme_mode = QStringLiteral("dark");
+  QString theme_mode = QStringLiteral("light");
 
   /**
    * Optional accent override as @c #RRGGBB.
@@ -58,6 +63,12 @@ struct AppUiPreferences {
 
   bool start_maximized = true;
   bool viewport_hud_visible = false;
+
+  /**
+   * Idle repaint throttle: skip this many render ticks between paints when
+   * nothing requested a redraw (1 = always paint).
+   */
+  int idle_render_divisor = kDefaultIdleRenderDivisor;
   QHash<QString, QKeySequence> shortcuts;
 };
 

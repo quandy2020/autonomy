@@ -12,6 +12,7 @@ python3 tools/configure.py          # CMake configure (Ogre viewport always ON)
 python3 tools/configure.py --release
 # --ogre is a deprecated no-op
 python3 tools/build.py              # Build autoviz target
+python3 tools/build.py --test       # Build + run core / UI regression tests
 python3 tools/translations/autoviz_lupdate.py
 ```
 
@@ -35,7 +36,9 @@ Runtime helpers for packaging live under [`../deploy/`](../deploy/).
 | Task | Command |
 |------|---------|
 | Configure Debug | `python3 tools/configure.py` |
+| Configure with tests | `python3 tools/configure.py --tests` |
 | Release build | `python3 tools/configure.py --release && python3 tools/build.py` |
+| Build + test | `python3 tools/build.py --test` |
 | Update translations | `python3 tools/translations/autoviz_lupdate.py` |
 | Clean build tree | `python3 tools/clean.py` |
 

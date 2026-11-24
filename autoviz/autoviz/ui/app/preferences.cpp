@@ -4,6 +4,8 @@
 
 #include "autoviz/ui/app/preferences.hpp"
 
+#include <algorithm>
+
 #include <QApplication>
 #include <QColor>
 #include <QSettings>
@@ -24,7 +26,7 @@ QString NormalizeThemeMode(const QString& theme_mode) {
   if (theme_mode == QLatin1String("liquid")) {
     return QStringLiteral("light");
   }
-  return QStringLiteral("dark");
+  return QStringLiteral("light");
 }
 
 }  // namespace
@@ -48,7 +50,7 @@ AppUiPreferences LoadAppUiPreferences() {
   QSettings settings;
   preferences.language_code = settings.value(QStringLiteral("ui/language")).toString();
   preferences.theme_mode = NormalizeThemeMode(
-      settings.value(QStringLiteral("ui/theme_mode"), QStringLiteral("dark"))
+      settings.value(QStringLiteral("ui/theme_mode"), QStringLiteral("light"))
           .toString());
   preferences.accent_color =
       settings.value(QStringLiteral("ui/accent_color")).toString().trimmed();
@@ -64,6 +66,12 @@ AppUiPreferences LoadAppUiPreferences() {
       settings.value(QStringLiteral("ui/start_maximized"), true).toBool();
   preferences.viewport_hud_visible =
       settings.value(QStringLiteral("ui/viewport_hud_visible"), false).toBool();
+  preferences.idle_render_divisor = std::clamp(
+      settings
+          .value(QStringLiteral("ui/idle_render_divisor"),
+                 kDefaultIdleRenderDivisor)
+          .toInt(),
+      kMinIdleRenderDivisor, kMaxIdleRenderDivisor);
 
   settings.beginGroup(QStringLiteral("ui/shortcuts"));
   for (const AppShortcutDefinition& definition : DefaultShortcutDefinitions()) {
@@ -88,6 +96,10 @@ void SaveAppUiPreferences(const AppUiPreferences& preferences) {
   settings.setValue(QStringLiteral("ui/start_maximized"), preferences.start_maximized);
   settings.setValue(QStringLiteral("ui/viewport_hud_visible"),
                     preferences.viewport_hud_visible);
+  settings.setValue(
+      QStringLiteral("ui/idle_render_divisor"),
+      std::clamp(preferences.idle_render_divisor, kMinIdleRenderDivisor,
+                 kMaxIdleRenderDivisor));
   settings.beginGroup(QStringLiteral("ui/shortcuts"));
   for (auto it = preferences.shortcuts.constBegin();
        it != preferences.shortcuts.constEnd(); ++it) {

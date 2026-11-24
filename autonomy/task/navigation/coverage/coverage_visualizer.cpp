@@ -1,5 +1,24 @@
-// Copyright (c) 2023 Open Navigation LLC; Autonomy adaptation 2026.
-// SPDX-License-Identifier: Apache-2.0
+/*
+ * Copyright 2026 Autodriver contributors duyongquan (quandy2020@126.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * @file coverage_visualizer.cpp
+ * @brief Coverage visualizer.
+ */
+
 #include "autonomy/task/navigation/coverage/coverage_visualizer.hpp"
 
 #include <array>
@@ -23,7 +42,9 @@ constexpr std::array<Palette, 8> kPalette{{
     {{0.62f, 0.50f, 0.32f}}, {{0.72f, 0.86f, 0.22f}},
 }};
 
-/** @brief Create a line strip marker with an explicit colour and height. */
+/**
+ * @brief Create a line strip marker with an explicit colour and height.
+ */
 Marker* Line(Markers& markers, const std::string& frame, const std::string& name,
              int id, const Palette& color, float alpha, float width, float z) {
   auto* marker = markers.add_markers();
@@ -42,7 +63,9 @@ Marker* Line(Markers& markers, const std::string& frame, const std::string& name
   return marker;
 }
 
-/** @brief Ray-casting point-in-ring test used to rasterise a room fill. */
+/**
+ * @brief Ray-casting point-in-ring test used to rasterise a room fill.
+ */
 bool Inside(const Ring& ring, double x, double y) {
   bool inside = false;
   for (std::size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
@@ -59,7 +82,9 @@ bool Inside(const Ring& ring, double x, double y) {
   return inside;
 }
 
-/** @brief Collect closed rings of a cell group without the closing vertex. */
+/**
+ * @brief Collect closed rings of a cell group without the closing vertex.
+ */
 std::vector<Ring> RingsOf(const F2CCells& cells) {
   std::vector<Ring> rings;
   for (const auto& cell : cells) {
@@ -81,7 +106,9 @@ std::vector<Ring> RingsOf(const F2CCells& cells) {
   return rings;
 }
 
-/** @brief Even-odd containment across all rings, i.e. outer minus holes. */
+/**
+ * @brief Even-odd containment across all rings, i.e. outer minus holes.
+ */
 bool Contains(const std::vector<Ring>& rings, double x, double y) {
   bool inside = false;
   for (const auto& ring : rings) {

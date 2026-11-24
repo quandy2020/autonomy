@@ -10,12 +10,17 @@
 
 #include <QAbstractAnimation>
 #include <QColor>
+#include <QCoreApplication>
+#include <QFont>
+#include <QLabel>
 #include <QDockWidget>
 #include <QEasingCurve>
 #include <QEnterEvent>
 #include <QEvent>
 #include <QLinearGradient>
 #include <QPalette>
+#include <QPainterPath>
+#include <QRegion>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -32,14 +37,20 @@
 #include <QVBoxLayout>
 #include <QWidget>
 
+#include <glog/logging.h>
+
+#include "autoviz/ui/panel/dock.hpp"
 #include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
 
 namespace autoviz {
 namespace {
 
-/** Hit target width — visual line stays 1px so the seam reads as a border. */
-constexpr int kSplitterHit = 7;
+/** Hit target width — the seam is a canvas gutter, not a drawn border. */
+int SplitterHitWidth() { return theme::Shell().gutter; }
+
+/** One-pixel hairline used by card frames. */
+constexpr qreal kCardHairline = 1.0;
 constexpr int kMinPaneSpan = 80;
 
 void ApplyExpandingPolicy(QWidget* widget) {
@@ -168,12 +179,16 @@ class PanelSplitterHandle : public QSplitterHandle {
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing, false);
     const theme::ShellTokens shell = theme::Shell();
-    painter.fillRect(rect(), shell.panel_surface);
+    // Canvas gutter: panes read as separate cards with a ~7px gap between
+    // them. Painting panel_surface here fused the mosaic into one slab.
+    painter.fillRect(rect(), shell.window);
 
-    // Idle seam; hover: accent drag affordance.
-    const bool hover = underMouse();
-    QColor line = hover ? shell.accent : shell.border;
-    painter.setPen(QPen(line, 1));
+    // Idle: no seam (the gutter itself separates cards). Hover: accent drag
+    // affordance so the splitter stays discoverable.
+    if (!underMouse()) {
+      return;
+    }
+    painter.setPen(QPen(shell.accent, 1));
     if (orientation() == Qt::Horizontal) {
       const int x = width() / 2;
       painter.drawLine(x, 0, x, height());
@@ -199,7 +214,7 @@ class PanelSplitter : public QSplitter {
   explicit PanelSplitter(Qt::Orientation orientation, QWidget* parent = nullptr)
       : QSplitter(orientation, parent) {
     setChildrenCollapsible(false);
-    setHandleWidth(kSplitterHit);
+    setHandleWidth(SplitterHitWidth());
     setOpaqueResize(true);
     // Clear theme QSS borders so only the 1px painted seam shows.
     setStyleSheet(style::sheet(QStringLiteral("chrome/layout")));
@@ -215,7 +230,7 @@ void RaiseSplitterHandles(QSplitter* splitter) {
   if (splitter == nullptr) {
     return;
   }
-  splitter->setHandleWidth(kSplitterHit);
+  splitter->setHandleWidth(SplitterHitWidth());
   for (int i = 1; i < splitter->count(); ++i) {
     if (QSplitterHandle* handle = splitter->handle(i)) {
       handle->setAttribute(Qt::WA_TransparentForMouseEvents, false);
@@ -231,6 +246,116 @@ void RaiseSplitterHandles(QSplitter* splitter) {
   }
 }
 
+/**
+ * @brief Mosaic pane chrome — card fill plus a 1px border.
+ *
+ * The border needs a 1px layout inset: the dock itself paints an opaque
+ * surface and would otherwise cover the frame.
+ *
+ * Rounded corners are opt-in: a 3D View hosts a native GLX child, which is
+ * never clipped by a child widget mask. Those panes stay square; every other
+ * center panel gets the shell card radius applied through a widget mask so the
+ * dock content is clipped alongside the painted frame.
+ */
+class MainPanelCard : public QWidget {
+ public:
+  explicit MainPanelCard(bool rounded, QWidget* parent = nullptr)
+      : QWidget(parent), rounded_(rounded) {
+    setAttribute(Qt::WA_OpaquePaintEvent, true);
+    setAttribute(Qt::WA_StyledBackground, false);
+    setAutoFillBackground(false);
+    if (rounded_) {
+      // Corners are painted with the canvas colour; clipping the pane itself
+      // would punch a hole through the window and reveal the desktop / the
+      // backing store (the dark triangle seen at card corners).
+      setAttribute(Qt::WA_NoSystemBackground, false);
+    }
+  }
+
+  ~MainPanelCard() override {
+    if (QWidget* child = clipped_child_.data()) {
+      if (child->parentWidget() == this) {
+        child->clearMask();
+      }
+    }
+  }
+
+  qreal cardRadius() const {
+    return rounded_ ? static_cast<qreal>(theme::Shell().panel_radius) : 0.0;
+  }
+
+  /**
+   * @brief Clips @p child to the rounded card outline.
+   *
+   * Masking the child (not this pane) keeps the pane's corner pixels painted,
+   * so the cut corners show the canvas colour instead of an unpainted hole.
+   */
+  void setClippedChild(QWidget* child) {
+    clipped_child_ = child;
+    if (child != nullptr) {
+      child->installEventFilter(this);
+      updateChildMask();
+    }
+  }
+
+ protected:
+  bool eventFilter(QObject* watched, QEvent* event) override {
+    if (watched == clipped_child_.data() && event != nullptr &&
+        (event->type() == QEvent::Resize ||
+         event->type() == QEvent::ParentChange ||
+         event->type() == QEvent::Show)) {
+      updateChildMask();
+    }
+    return QWidget::eventFilter(watched, event);
+  }
+
+  void paintEvent(QPaintEvent* /*event*/) override {
+    QPainter painter(this);
+    const theme::ShellTokens shell = theme::Shell();
+    if (!rounded_) {
+      painter.fillRect(rect(), shell.panel_surface);
+      painter.setPen(QPen(shell.panel_border, kCardHairline));
+      painter.drawRect(rect().adjusted(0, 0, -1, -1));
+      return;
+    }
+    // Canvas base: the child mask cuts the corners down to this colour.
+    painter.fillRect(rect(), shell.window);
+    painter.setRenderHint(QPainter::Antialiasing, true);
+    const qreal inset = kCardHairline / 2.0;
+    const QRectF frame =
+        QRectF(rect()).adjusted(inset, inset, -inset, -inset);
+    painter.setPen(QPen(shell.panel_border, kCardHairline));
+    painter.setBrush(shell.panel_surface);
+    painter.drawRoundedRect(frame, cardRadius(), cardRadius());
+  }
+
+  void resizeEvent(QResizeEvent* event) override {
+    QWidget::resizeEvent(event);
+    updateChildMask();
+  }
+
+ private:
+  /** Clip the dock content to the painted card outline. */
+  void updateChildMask() {
+    QWidget* child = clipped_child_.data();
+    if (child == nullptr) {
+      return;
+    }
+    if (!rounded_ || child->parentWidget() != this || child->width() <= 0 ||
+        child->height() <= 0) {
+      child->clearMask();
+      return;
+    }
+    QPainterPath path;
+    const qreal radius = cardRadius();
+    path.addRoundedRect(QRectF(child->rect()), radius, radius);
+    child->setMask(QRegion(path.toFillPolygon().toPolygon()));
+  }
+
+  bool rounded_ = false;
+  QPointer<QWidget> clipped_child_;
+};
+
 QWidget* WrapDockInPane(QDockWidget* dock) {
   if (dock == nullptr) {
     return nullptr;
@@ -245,7 +370,12 @@ QWidget* WrapDockInPane(QDockWidget* dock) {
       // Do not setParent(nullptr): QDockWidget becomes a top-level window.
     }
   }
-  auto* pane = new QWidget();
+  // Native GLX viewports cannot be clipped by a widget mask, so only docks
+  // without a 3D View get the rounded card treatment.
+  const bool is_viewport =
+      dock->property("panelTypeId").toString() == QLatin1String("ViewportDock") ||
+      dock->objectName().startsWith(QLatin1String("ViewportDock"));
+  auto* pane = new MainPanelCard(!is_viewport);
   pane->setProperty("mainPanelPane", true);
   // Wide enough for dock title tools (settings/split/change/expand/close).
   pane->setMinimumSize(220, 80);
@@ -265,13 +395,17 @@ QWidget* WrapDockInPane(QDockWidget* dock) {
   }
   pane->setStyleSheet(style::mark(style::Mark::Clear));
   auto* layout = new QVBoxLayout(pane);
-  layout->setContentsMargins(0, 0, 0, 0);
+  // 1px inset keeps the card border visible under the opaque dock.
+  layout->setContentsMargins(1, 1, 1, 1);
   layout->setSpacing(0);
   ApplyExpandingPolicy(dock);
   if (QWidget* content = dock->widget()) {
     ApplyExpandingPolicy(content);
   }
   layout->addWidget(dock, /*stretch=*/1);
+  if (auto* card = dynamic_cast<MainPanelCard*>(pane)) {
+    card->setClippedChild(dock);
+  }
   return pane;
 }
 
@@ -627,7 +761,16 @@ QJsonObject SerializeMosaicNode(QWidget* widget) {
   }
   if (QDockWidget* dock = DockFromPane(widget)) {
     node.insert(QStringLiteral("type"), QStringLiteral("leaf"));
-    node.insert(QStringLiteral("name"), dock->objectName());
+    QString name = dock->objectName();
+    if (dock->property("mosaicPlaceholder").toBool()) {
+      // Persist the original leaf so a later session can retry the real panel
+      // once the plugin/type is available again.
+      const QString missing = dock->property("mosaicMissingName").toString();
+      if (!missing.isEmpty()) {
+        name = missing;
+      }
+    }
+    node.insert(QStringLiteral("name"), name);
     return node;
   }
   if (auto* splitter = qobject_cast<QSplitter*>(widget)) {
@@ -654,6 +797,49 @@ QJsonObject SerializeMosaicNode(QWidget* widget) {
   return node;
 }
 
+/**
+ * @brief Placeholder pane for a mosaic leaf whose panel type is unavailable.
+ *
+ * Keeps the saved split geometry and tells the user which type is missing;
+ * @ref SerializeMosaicNode writes the original leaf name back so a future
+ * session can restore the real panel.
+ */
+QDockWidget* CreateMosaicPlaceholder(const QString& missing_name) {
+  const QString title = QCoreApplication::translate(
+      "autoviz", "Missing: %1").arg(missing_name);
+  auto* dock = new PanelDockWidget(title);
+  dock->setObjectName(QStringLiteral("MosaicPlaceholder_") + missing_name);
+  dock->setProperty("mosaicPlaceholder", true);
+  dock->setProperty("mosaicMissingName", missing_name);
+
+  auto* body = new QWidget(dock);
+  auto* layout = new QVBoxLayout(body);
+  layout->setContentsMargins(16, 16, 16, 16);
+  layout->setSpacing(6);
+  const theme::ShellTokens shell = theme::Shell();
+  auto* heading = new QLabel(
+      QCoreApplication::translate("autoviz", "Panel unavailable"), body);
+  heading->setAlignment(Qt::AlignHCenter);
+  QFont heading_font = heading->font();
+  heading_font.setWeight(QFont::DemiBold);
+  heading->setFont(heading_font);
+  heading->setStyleSheet(
+      QStringLiteral("color: %1;").arg(theme::Hex(shell.text)));
+  auto* detail = new QLabel(missing_name, body);
+  detail->setAlignment(Qt::AlignHCenter);
+  detail->setWordWrap(true);
+  detail->setStyleSheet(
+      QStringLiteral("color: %1;").arg(theme::Hex(shell.secondary_text)));
+  layout->addStretch(1);
+  layout->addWidget(heading);
+  layout->addWidget(detail);
+  layout->addStretch(1);
+  body->setStyleSheet(
+      QStringLiteral("background: %1;").arg(theme::Hex(shell.panel_surface)));
+  dock->setWidget(body);
+  return dock;
+}
+
 QWidget* BuildMosaicNode(
     const QJsonObject& node,
     const std::function<QDockWidget*(const QString&)>& resolve,
@@ -666,7 +852,7 @@ QWidget* BuildMosaicNode(
     const QString name = node.value(QStringLiteral("name")).toString();
     QDockWidget* dock = resolve ? resolve(name) : nullptr;
     if (dock == nullptr) {
-      return nullptr;
+      dock = CreateMosaicPlaceholder(name);
     }
     PrepareDockForSplitter(dock);
     placed->push_back(dock);
@@ -1850,12 +2036,30 @@ bool MainPanelHost::restoreMosaicLayout(
     if (dock == nullptr) {
       continue;
     }
+    if (dock->property("mosaicPlaceholder").toBool()) {
+      // Placeholders are derived state: drop them so repeated restores cannot
+      // stack duplicates, and let the rebuild recreate the ones still needed.
+      dock->setProperty("panelDisposed", true);
+      dock->deleteLater();
+      continue;
+    }
     PrepareDockForSplitter(dock);
     parkDock(dock);
   }
 
   QList<QDockWidget*> placed;
-  QWidget* built = BuildMosaicNode(root_object, resolve, &placed);
+  const auto logging_resolve =
+      [&resolve](const QString& name) -> QDockWidget* {
+    QDockWidget* dock = resolve ? resolve(name) : nullptr;
+    if (dock == nullptr) {
+      LOG(WARNING) << "mosaic: unresolved dock '" << name.toStdString()
+                   << "'";
+    }
+    return dock;
+  };
+  QWidget* built = BuildMosaicNode(root_object, logging_resolve, &placed);
+  LOG(INFO) << "mosaic: placed " << placed.size() << " pane(s), built="
+            << (built != nullptr);
   if (built == nullptr || placed.isEmpty()) {
     mutating_mosaic_ = was_mutating;
     return false;

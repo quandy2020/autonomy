@@ -6,9 +6,13 @@
 #include <stdexcept>
 namespace autonomy::task::exploration {
 GoalPoseAdapter::GoalPoseAdapter(std::shared_ptr<const PathProvider> paths,
-    std::shared_ptr<const ViewpointEvaluator> evaluator,autonomy::navigation::SafetyOptions safety)
-    :paths_(std::move(paths)),evaluator_(std::move(evaluator)),safety_(safety){
+    std::shared_ptr<const ViewpointEvaluator> evaluator,autonomy::navigation::SafetyOptions safety,
+    double goal_clearance_reserve)
+    :paths_(std::move(paths)),evaluator_(std::move(evaluator)),safety_(safety),
+     goal_clearance_reserve_(goal_clearance_reserve){
     if(!paths_ || !evaluator_)throw std::invalid_argument("observation adapter requires route and visibility providers");
+    if(!std::isfinite(goal_clearance_reserve_) || goal_clearance_reserve_<0 || goal_clearance_reserve_>.30)
+        throw std::invalid_argument("invalid observation goal clearance reserve");
 }
 std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGoal& goal,const Pose2d& start,
     const MapReadView& map,const CoverageState& coverage,perception::SensorMask active,
@@ -33,7 +37,10 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
            std::abs(autonomy::navigation::NormalizeAngle(pose.yaw-goal.original_pose.yaw))>goal.allowed_yaw_change+1e-9) {
             ++translation_rejected;return;
         }
-        const auto geometry=safety->VerifyPose(pose);
+        // Adaptation must keep the same executable clearance the sampler used
+        // to choose this intent; otherwise a shifted goal can sit a millimetre
+        // inside the route model's footprint band and every route is rejected.
+        const auto geometry=safety->VerifyPose(pose,goal_clearance_reserve_);
         if(!geometry.safe){++geometry_rejected;return;}
         auto adapted_intent=goal;
         if(adapted_intent.required_views.empty())adapted_intent.required_views={goal.original_pose.yaw};
@@ -42,7 +49,7 @@ std::optional<AdaptedObservationGoal> GoalPoseAdapter::Adapt(const ObservationGo
         for(auto& yaw:adapted_intent.required_views) {
             yaw=autonomy::navigation::NormalizeAngle(yaw+shift);
             auto view_pose=pose;view_pose.yaw=yaw;
-            if(!safety->VerifyPose(view_pose).safe){++geometry_rejected;return;}
+            if(!safety->VerifyPose(view_pose,goal_clearance_reserve_).safe){++geometry_rejected;return;}
             const auto visible=evaluator_->Predict(view_pose,coverage,map,active,{},true);
             const auto union_coverage=CoverageFusion::Fuse(visible);
             for(const auto& id:goal.required_coverage_units)
