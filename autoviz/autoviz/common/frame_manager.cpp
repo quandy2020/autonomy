@@ -54,45 +54,18 @@ bool FrameManager::getTransform(const std::string& frame, QVector3D* position,
   if (buffer_ == nullptr) {
     return false;
   }
-
-  // New transforms can arrive between display updates; dropping the cache on a
-  // revision bump keeps results fresh without a per-call lookup.
-  const std::uint64_t revision = buffer_->revision();
-  if (revision != cache_revision_) {
-    pose_cache_.clear();
-    cache_revision_ = revision;
-  }
-  const auto cached = pose_cache_.find(frame);
-  if (cached != pose_cache_.end()) {
-    if (cached->second.ok) {
-      *position = cached->second.position;
-      *orientation = cached->second.orientation;
-    }
-    return cached->second.ok;
-  }
-
-  const double lookup_time =
-      std::isnan(cache_time_sec_) ? currentTimeSec() : cache_time_sec_;
-  const automsgs::msgs::builtin_interfaces::Time time = TimeAt(lookup_time);
-  CachedPose pose;
+  const automsgs::msgs::builtin_interfaces::Time time = TimeAt(currentTimeSec());
   try {
     const automsgs::msgs::geometry_msgs::TransformStamped tf =
         buffer_->lookupTransform(fixed_frame_, frame, time);
-    pose.ok = true;
-    pose.position = QVector3D(tf.transform().translation().x(),
-                              tf.transform().translation().y(),
-                              tf.transform().translation().z());
-    pose.orientation = FromProtoQuat(tf.transform().rotation());
+    *position = QVector3D(tf.transform().translation().x(),
+                          tf.transform().translation().y(),
+                          tf.transform().translation().z());
+    *orientation = FromProtoQuat(tf.transform().rotation());
+    return true;
   } catch (...) {
-    pose.ok = false;
-  }
-  pose_cache_.emplace(frame, pose);
-  if (!pose.ok) {
     return false;
   }
-  *position = pose.position;
-  *orientation = pose.orientation;
-  return true;
 }
 
 bool FrameManager::transformHasProblems(const std::string& frame,
@@ -163,12 +136,7 @@ std::vector<std::string> FrameManager::allFrameNames() const {
 }
 
 void FrameManager::update() {
-  // Freeze one lookup timestamp per tick and drop last tick's poses.
-  cache_time_sec_ = currentTimeSec();
-  pose_cache_.clear();
-  if (buffer_ != nullptr) {
-    cache_revision_ = buffer_->revision();
-  }
+  // Per-frame cache hook; TF lookups remain in Buffer for now.
 }
 
 }  // namespace common

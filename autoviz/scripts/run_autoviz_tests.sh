@@ -29,14 +29,14 @@ echo "build:  ${BUILD_DIR}"
 echo "result: ${RESULT_DIR}"
 
 cmake --build "${BUILD_DIR}" \
-  --target autoviz_interaction_test autoviz_mosaic_restore_test \
+  --target autoviz_interaction_test autoviz_mosaic_restore_test autoviz_session_config_test autoviz_channel_payload_test autoviz_ws_frame_test autoviz_display_registry_test autoviz_tf_buffer_test autoviz_ws_server_test \
   -j "${JOBS}"
 
 rm -rf "${RESULT_DIR}"
 mkdir -p "${RESULT_DIR}"
 
 ctest --test-dir "${BUILD_DIR}" \
-  -R '^autoviz_(interaction|mosaic_restore)_test$' \
+  -R '^autoviz_(interaction|mosaic_restore|session_config|channel_payload|ws_frame|display_registry|tf_buffer|ws_server)_test$' \
   --output-on-failure \
   --output-junit "${RESULT_DIR}/junit.xml"
 

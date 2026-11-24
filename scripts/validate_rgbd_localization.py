@@ -127,7 +127,7 @@ def main():
     args = parser.parse_args()
     if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 200000:
         parser.error('use an isolated validation prefix and 500..200000 steps')
-    if not 1 <= args.exploration_time_budget <= 1800:
+    if not 1 <= args.exploration_time_budget <= 5400:
         parser.error('exploration time budget must be within 1..1800 seconds')
     if not (args.region[0] < args.region[2] and args.region[1] < args.region[3]):
         parser.error('exploration region minimum must be below its maximum')

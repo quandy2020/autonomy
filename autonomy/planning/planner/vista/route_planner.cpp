@@ -51,7 +51,11 @@ std::optional<Pose2d> FindStartAnchor(const perception::MapReadView& map,
   const auto center = map.grid->WorldToCell(start);
   if (!center) return {};
   const double resolution = map.grid->resolution();
-  const int span = std::max(1, static_cast<int>(std::ceil(.30 / resolution)));
+  // A 0.30 m ring can be entirely inside the footprint band in a corner or
+  // doorway, which left the route planner with no admissible origin at all.
+  // The anchor only seeds the search; the command gate still certifies the
+  // actual motion, so a bounded 0.60 m ring keeps the planner usable.
+  const int span = std::max(1, static_cast<int>(std::ceil(.60 / resolution)));
   std::optional<Pose2d> best;
   double best_distance = std::numeric_limits<double>::infinity();
   for (int dy = -span; dy <= span; ++dy) for (int dx = -span; dx <= span; ++dx) {
@@ -61,7 +65,7 @@ std::optional<Pose2d> FindStartAnchor(const perception::MapReadView& map,
     auto candidate = map.grid->CellCenter(x, y);
     candidate.yaw = start.yaw;
     const double distance = autonomy::navigation::Distance(start, candidate);
-    if (distance <= 1e-9 || distance > .30 + 1e-9 || distance >= best_distance) continue;
+    if (distance <= 1e-9 || distance > .60 + 1e-9 || distance >= best_distance) continue;
     if (!validator.PoseSafe(candidate)) continue;
     best = candidate; best_distance = distance;
   }

@@ -8,6 +8,7 @@
 #include "autoviz/commsgs/time_utils.hpp"
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/plugins/displays/camera/camera_utils.hpp"
 #include "autoviz/plugins/displays/image/image_utils.hpp"
 #include "autoviz/plugins/displays/common/transform_utils.hpp"
@@ -47,31 +48,31 @@ void CameraDisplay::onEnable() {
   }
   camera_info_channel_ =
       propertyValue("camera_info_channel", "");
-  if (!image_channel_.empty()) {
-    image_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-            image_channel_,
-            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-              if (msg != nullptr) {
-                image_queue_.push(msg->message);
-              }
-            });
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (!image_channel_.empty() && image_subscription_id_ == 0) {
+    image_subscription_id_ = registry.subscribe(
+        image_channel_, [this](const std::string& payload) {
+          image_queue_.push(payload);
+        });
   }
-  if (!camera_info_channel_.empty()) {
-    camera_info_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-            camera_info_channel_,
-            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-              if (msg != nullptr) {
-                camera_info_queue_.push(msg->message);
-              }
-            });
+  if (!camera_info_channel_.empty() && camera_info_subscription_id_ == 0) {
+    camera_info_subscription_id_ = registry.subscribe(
+        camera_info_channel_, [this](const std::string& payload) {
+          camera_info_queue_.push(payload);
+        });
   }
 }
 
 void CameraDisplay::onDisable() {
-  image_reader_.reset();
-  camera_info_reader_.reset();
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (image_subscription_id_ != 0) {
+    registry.unsubscribe(image_subscription_id_);
+    image_subscription_id_ = 0;
+  }
+  if (camera_info_subscription_id_ != 0) {
+    registry.unsubscribe(camera_info_subscription_id_);
+    camera_info_subscription_id_ = 0;
+  }
 }
 
 void CameraDisplay::reset() {
@@ -91,13 +92,13 @@ void CameraDisplay::reset() {
 void CameraDisplay::onUpdate() {
   while (auto payload = camera_info_queue_.pop()) {
     automsgs::msgs::sensor_msgs::CameraInfo info;
-    if (info.ParseFromString(*payload)) {
+    if (integration::ParseChannelMessage(*payload, &info)) {
       processCameraInfo(info);
     }
   }
   while (auto payload = image_queue_.pop()) {
     automsgs::msgs::sensor_msgs::Image image;
-    if (image.ParseFromString(*payload)) {
+    if (integration::ParseChannelMessage(*payload, &image)) {
       processImage(image);
     }
   }

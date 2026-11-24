@@ -4,6 +4,8 @@
 
 #include "autoviz/ui/teleop/teleop_config_io.hpp"
 
+#include <algorithm>
+
 namespace autoviz {
 namespace teleop {
 namespace {
@@ -56,9 +58,11 @@ TeleopPanelConfig FromPersistConfig(
   if (!persist.topic.empty()) {
     config.topic = QString::fromStdString(persist.topic);
   }
-  if (persist.publish_rate_hz > 0.0) {
-    config.publish_rate_hz = persist.publish_rate_hz;
-  }
+  // Autosim watchdog is 0.5 s; below ~4 Hz the plant stops between ticks.
+  config.publish_rate_hz =
+      persist.publish_rate_hz > 0.0
+          ? std::max(4.0, persist.publish_rate_hz)
+          : 20.0;
   config.stop_on_release = persist.stop_on_release;
   config.smart_teleop_enabled = persist.smart_teleop_enabled;
   config.stick_mode = persist.stick_mode == static_cast<int>(TeleopStickMode::kArcade)

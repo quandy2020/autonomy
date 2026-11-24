@@ -9,7 +9,6 @@
 
 #include <vector>
 
-#include "autolink/message/raw_message.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_namespace_property.hpp"
 #include "autoviz/plugins/tools/common/publish_tool_utils.hpp"
@@ -75,19 +74,23 @@ void InteractiveMarkerDisplay::onEnable() {
       context_->autolink == nullptr || context_->autolink->node() == nullptr) {
     return;
   }
-  init_reader_ =
-      context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-          init_channel,
-          [queue = init_queue_](
-              const std::shared_ptr<autolink::message::RawMessage>& msg) {
-            if (msg != nullptr) {
-              queue->push(msg->message);
-            }
-          });
+  if (init_subscription_id_ == 0) {
+    init_subscription_id_ =
+        integration::ChannelReaderRegistry::instance().subscribe(
+            init_channel, [queue = init_queue_](const std::string& payload) {
+              if (queue) {
+                queue->push(payload);
+              }
+            });
+  }
 }
 
 void InteractiveMarkerDisplay::onDisable() {
-  init_reader_.reset();
+  if (init_subscription_id_ != 0) {
+    integration::ChannelReaderRegistry::instance().unsubscribe(
+        init_subscription_id_);
+    init_subscription_id_ = 0;
+  }
   eraseAllMarkers();
   if (registry_ != nullptr) {
     registry_->removeSource(sourceId());

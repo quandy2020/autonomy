@@ -13,7 +13,6 @@
 #include "autoviz/ui/publish/publish_topic_panel.hpp"
 #include "autoviz/ui/record/record_action_panel.hpp"
 #include "autoviz/ui/teleop/robot_command_interface_panel.hpp"
-#include "autoviz/ui/publish/select_point_cloud_publish_panel.hpp"
 #include "autoviz/ui/teleop/tablet_controller_panel.hpp"
 #include "autoviz/ui/dialog/yes_no_button_panel.hpp"
 #include "autoviz/ui/theme/panel.hpp"
@@ -33,8 +32,6 @@ OperatorToolsPanel::OperatorToolsPanel(common::VisualizationManager* manager,
   tabs->addTab(new RobotCommandInterfacePanel(manager, tabs), tr("Robot Cmd"));
   tabs->addTab(new TabletControllerPanel(manager, tabs), tr("Tablet"));
   tabs->addTab(new CancelActionPanel(manager, tabs), tr("Cancel"));
-  tabs->addTab(new SelectPointCloudPublishPanel(manager, tabs),
-               tr("Select Cloud"));
   auto* layout = new QVBoxLayout(this);
   layout->setContentsMargins(0, 0, 0, 0);
   layout->addWidget(tabs);

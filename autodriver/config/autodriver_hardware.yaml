@@ -49,7 +49,7 @@ chassis:
 # Joystick teleop — DualSense USB or Bluetooth → /cmd_vel.
 # Left stick Y forward, right stick X yaw. See config/joy/dualsense.yaml.
 joy:
-  enable: false
+  enable: true
   profile: dualsense            # dualsense | ps5 | generic
   device: /dev/input/js0        # jstest /dev/input/js0
   joy_channel: /joy
@@ -143,7 +143,7 @@ sensors:
   # ICL1122 / EVB1122 (UM10034P) USB CDC — RadarScan + tracks/points.
   radar:
     - name: front
-      enable: true
+      enable: false
       channel: /radar/front/scan
       backend: icl1122
       params_file: radar/icl1122.yaml

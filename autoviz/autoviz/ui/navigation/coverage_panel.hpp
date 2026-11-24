@@ -36,12 +36,12 @@
 #undef forever
 #include "autolink/action/client.hpp"
 #pragma pop_macro("forever")
-#include "autolink/node/reader.hpp"
 #include "autolink/node/writer.hpp"
 #include "automsgs/msgs/geometry_msgs/point_stamped.pb.h"
 #include "automsgs/msgs/nav_msgs/odometry.pb.h"
 #include "automsgs/msgs/visualization_msgs/marker_array.pb.h"
 #include "autonomy/task/navigation/coverage/proto/coverage.pb.h"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 
 class QCheckBox;
 class QComboBox;
@@ -226,6 +226,7 @@ class CoveragePanel : public QWidget {
   double robot_y_{0.0};
   bool have_robot_pose_{false};
   QDoubleSpinBox* headland_{nullptr};
+  QSpinBox* headland_passes_{nullptr};
   QComboBox* route_mode_{nullptr};
   QComboBox* path_mode_{nullptr};
   QCheckBox* approach_{nullptr};
@@ -256,10 +257,8 @@ class CoveragePanel : public QWidget {
   std::vector<std::pair<double, double>> draft_;
   std::shared_ptr<autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>>
       sketch_writer_;
-  std::shared_ptr<autolink::Reader<automsgs::msgs::geometry_msgs::PointStamped>>
-      click_reader_;
-  std::shared_ptr<autolink::Reader<automsgs::msgs::nav_msgs::Odometry>>
-      odom_reader_;
+  integration::ChannelReaderRegistry::SubscriptionId click_subscription_id_{0};
+  integration::ChannelReaderRegistry::SubscriptionId odom_subscription_id_{0};
   bool coverage_displays_seeded_{false};
   bool busy_{false};
   bool cancel_requested_{false};

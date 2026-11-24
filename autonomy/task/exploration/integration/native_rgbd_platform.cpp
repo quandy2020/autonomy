@@ -867,6 +867,38 @@ public:
     }
 
     /** @brief Add the bounded support hint only while the robot is still inside it. */
+    /** @brief Re-create the validation fallback reader when its callbacks stop.
+     * A localization backend that exits can take the shared callback executor
+     * path down with it; without this watchdog the fallback history stops
+     * growing and the session waits forever on a stale pose.
+     */
+    void EnsureFallbackReader(const std::weak_ptr<Impl>& weak) {
+        if (options_.localization.fallback_odometry_topic.empty() || closed_.load()) return;
+        const double now = Now();
+        if (last_fallback_injection_ > 0 && now - last_fallback_injection_ <= 1.0) return;
+        if (fallback_reader_busy_.exchange(true)) return;
+        struct Guard { std::atomic<bool>* flag; ~Guard() { *flag = false; } } guard{&fallback_reader_busy_};
+        try {
+            if (fallback_odometry_reader_) {
+                fallback_odometry_reader_->Shutdown();
+                (void)node_->DeleteReader(options_.localization.fallback_odometry_topic);
+                fallback_odometry_reader_.reset();
+            }
+            fallback_odometry_reader_ = node_->CreateReader<::automsgs::msgs::nav_msgs::Odometry>(
+                options_.localization.fallback_odometry_topic, [weak](const auto& message) {
+                    if (auto self = weak.lock(); self && message && !self->closed_.load()) {
+                        self->last_fallback_injection_ = Now();
+                        self->localization_->InjectFallbackPose(*message);
+                        self->PoseReady();
+                    }
+                });
+            AINFO_EVERY(20) << "NATIVE_FALLBACK_READER_RECREATED success="
+                            << static_cast<bool>(fallback_odometry_reader_);
+        } catch (...) {
+            AWARN_EVERY(20) << "NATIVE_FALLBACK_READER_RECREATED reason=exception";
+        }
+    }
+
     void AttachStartupSupport(MapReadView& map) {
         const auto feedback = ReadControlState();
         std::lock_guard<std::mutex> lock(startup_support_mutex_);
@@ -886,7 +918,13 @@ public:
                             << " feedback=" << position.x() << ","
                             << position.y() << " distance=" << distance
                             << " radius=" << startup_support_->radius;
-            if (distance > startup_support_->radius) {
+            // Re-centre well before the robot reaches the closure boundary.
+            // At the boundary the cells beside the footprint fall outside the
+            // closure and become obstacles, which zeroes the measured clearance
+            // at the robot's own (still unknown) cell and makes every route
+            // start unsafe.  Half a radius keeps 0.4 m of closure around the
+            // body at the configured 0.8 m support radius.
+            if (distance > startup_support_->radius * .5) {
                 // Keep the measured floor/ceiling closure local to the moving
                 // robot. The closure still only substitutes unknown cells and
                 // therefore cannot erase an observed occupied/conflicting cell.
@@ -1317,6 +1355,42 @@ public:
                 ::autonomy::map::costmap_2d::FREE_SPACE :
                 state == autonomy::navigation::CellState::kOccupied ? ::autonomy::map::costmap_2d::LETHAL_OBSTACLE : ::autonomy::map::costmap_2d::NO_INFORMATION);
         }
+        // Clear the robot's own footprint in the planning copy. A depth return
+        // from the chassis, or a wall discretised into the cell the robot
+        // already occupies, marks that cell lethal and makes every route start
+        // invalid - the robot then spins at the spawn point forever. Only the
+        // planning costmap is touched; the published occupancy keeps the
+        // measurement. A non-blocking pose read avoids nesting pose_mutex_.
+        {
+            std::unique_lock<std::mutex> pose_lock(pose_mutex_, std::try_to_lock);
+            if (pose_lock.owns_lock() && control_state_ && control_state_->has_pose() &&
+                control_state_->pose().has_pose() && control_state_->pose().pose().has_pose()) {
+                const auto& p = control_state_->pose().pose().pose().position();
+                const double radius =
+                    options_.exploration.coverage.safety.robot_radius +
+                    options_.exploration.coverage.safety.horizontal_margin;
+                const double resolution = view.grid->resolution();
+                const auto center = view.grid->WorldToCell({p.x(), p.y(), 0.0});
+                if (center && std::isfinite(radius) && radius > 0) {
+                    const int span = std::max(1, static_cast<int>(std::ceil(radius / resolution)));
+                    unsigned int cleared = 0;
+                    for (int dy = -span; dy <= span; ++dy) for (int dx = -span; dx <= span; ++dx) {
+                        const int x = center->x + dx, y = center->y + dy;
+                        if (x < 0 || y < 0 || x >= static_cast<int>(map->getSizeInCellsX()) ||
+                            y >= static_cast<int>(map->getSizeInCellsY())) continue;
+                        const auto cell_center = view.grid->CellCenter(x, y);
+                        if (std::hypot(cell_center.x - p.x(), cell_center.y - p.y()) > radius + resolution)
+                            continue;
+                        if (map->getCost(x, y) != ::autonomy::map::costmap_2d::FREE_SPACE) {
+                            map->setCost(x, y, ::autonomy::map::costmap_2d::FREE_SPACE);
+                            ++cleared;
+                        }
+                    }
+                    AINFO_EVERY(100) << "NATIVE_CONTROL_SELF_CLEAR cells=" << cleared
+                                     << " radius=" << radius;
+                }
+            }
+        }
         unsigned int start_x = 0, start_y = 0;
         if (map->worldToMap(0.0, 0.0, start_x, start_y)) {
             const auto source = view.grid->WorldToCell({0.0, 0.0, 0});
@@ -1342,8 +1416,27 @@ public:
         }
         const auto& source_pose = camera->pose().pose().pose();
         if (!localization_->WorldAlignment()) {
+            // A backend that just lost tracking can publish a zero or
+            // non-normalised rotation. Rigid() rejects that, and the exception
+            // used to escape this timer path and terminate the whole task.
+            // Treat it as a missing pose so the session simply waits.
+            const auto& source_q = source_pose.orientation();
+            const double norm = source_q.w()*source_q.w() + source_q.x()*source_q.x() +
+                                source_q.y()*source_q.y() + source_q.z()*source_q.z();
+            if (!std::isfinite(norm) || std::abs(norm - 1.0) > 1e-3) {
+                AINFO_EVERY(20) << "NATIVE_POSE_STALE reason=degenerate_rotation norm=" << norm;
+                return;
+            }
             const auto& mount = options_.localization.base_from_camera.transform();
-            const auto transform = Rigid(mount.translation(),mount.rotation()) * Rigid(source_pose.position(),source_pose.orientation()).inverse();
+            Eigen::Isometry3d transform = Eigen::Isometry3d::Identity();
+            try {
+                transform = Rigid(mount.translation(),mount.rotation()) *
+                            Rigid(source_pose.position(),source_pose.orientation()).inverse();
+            } catch (const std::exception& error) {
+                AINFO_EVERY(20) << "NATIVE_POSE_STALE reason=invalid_alignment "
+                                << error.what();
+                return;
+            }
             ::automsgs::msgs::geometry_msgs::TransformStamped alignment;
             *alignment.mutable_header()->mutable_stamp() = camera->header().stamp();
             alignment.mutable_header()->set_frame_id(options_.localization.navigation_frame); alignment.set_child_frame_id(options_.localization.backend_frame);
@@ -1351,7 +1444,17 @@ public:
             if (!localization_->SetWorldAlignment(alignment,now)) return;
         }
         const double stamp = camera->header().stamp().sec()+camera->header().stamp().nanosec()*1e-9;
-        const auto proof = localization_->Lookup(perception::SensorKind::kRgbd,options_.localization.camera_frame,stamp,now);
+        auto proof = localization_->Lookup(perception::SensorKind::kRgbd,options_.localization.camera_frame,stamp,now);
+        const bool degraded_pose = !proof;
+        if (degraded_pose) {
+            // Keep the session alive on the fallback odometry. Without this the
+            // task waits for a pose, camera frames stop being admitted, and the
+            // acquisition never advances - a self-sustaining deadlock.
+            proof = localization_->LatestFallbackProof(now, options_.localization.camera_frame);
+            if (proof) {
+                AINFO_EVERY(20) << "NATIVE_POSE_DEGRADED reason=fallback_proof";
+            }
+        }
         if (!proof) {
             AINFO_EVERY(20) << "NATIVE_POSE_STALE reason=no_calibrated_proof stamp=" << stamp
                            << " now=" << now << " " << localization_->LatestSampleSummary(now);
@@ -1429,6 +1532,8 @@ public:
     std::atomic<bool> closed_{false};  ///< Immediate provider-admission revocation.
     std::mutex pose_mutex_;  ///< Serializes actual pose alignment/publication across native callbacks.
     double next_map_snapshot_ = 0;  ///< Wall-clock deadline for the next periodic map evidence file.
+    double last_fallback_injection_ = 0;  ///< Wall clock of the last admitted fallback odometry sample.
+    std::atomic<bool> fallback_reader_busy_{false};  ///< Serializes fallback reader replacement.
     std::uint64_t reported_session_ = 0;  ///< Last actual Session identity reported by the sole task packet owner.
     perception::SensorMask reported_losses_ = 0;  ///< Last actual unresolved-loss mask logged by the task owner.
     std::uint64_t last_epoch_ = 0, last_stamp_ = 0;  ///< Previous actual same-epoch native acquisition used for base velocity.
@@ -1582,6 +1687,7 @@ bool NativeRgbdPlatform::Install() {
             state->fallback_odometry_reader_ = state->node_->CreateReader<::automsgs::msgs::nav_msgs::Odometry>(
                 state->options_.localization.fallback_odometry_topic, [weak](const auto& message) {
                     if (auto self = weak.lock(); self && message && !self->closed_.load()) {
+                        self->last_fallback_injection_ = Now();
                         self->localization_->InjectFallbackPose(*message);
                         self->PoseReady();
                     }
@@ -1589,6 +1695,34 @@ bool NativeRgbdPlatform::Install() {
             if (!state->fallback_odometry_reader_)
                 throw std::runtime_error("validation fallback odometry reader creation failed");
         }
+        // Pose publication must not depend on one sensor callback. When the
+        // localization backend exits, its readers stop firing, PoseReady()
+        // never runs again, and the session waits forever even though the
+        // fallback odometry keeps publishing. A bounded heartbeat keeps the
+        // pose path alive; repeated stamps are rejected inside PoseReady().
+        std::thread([state] {
+            unsigned long long ticks = 0;
+            while (!state->closed_.load()) {
+                state->PoseReady();
+                state->EnsureFallbackReader(std::weak_ptr<Impl>(state));
+                if (++ticks % 100 == 0) {
+                    const double now = Now();
+                    const auto camera = state->localization_->LatestBackendPose(now);
+                    double stamp = -1;
+                    if (camera && camera->has_header() && camera->header().has_stamp())
+                        stamp = camera->header().stamp().sec() +
+                                camera->header().stamp().nanosec() * 1e-9;
+                    AINFO_EVERY(2) << "NATIVE_POSE_HEARTBEAT ticks=" << ticks
+                                   << " camera=" << (camera ? 1 : 0)
+                                   << " stamp=" << stamp
+                                   << " last_stamp=" << state->last_stamp_
+                                   << " fallback_age="
+                                   << (state->last_fallback_injection_ > 0
+                                           ? now - state->last_fallback_injection_ : -1.0);
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            }
+        }).detach();
         if (!state->odometry_reader_ || !state->status_reader_ || !state->odometry_writer_ || !state->occupancy_writer_ || !state->grid_writer_ ||
             !state->measured_coverage_writer_ || !state->coverage_metadata_writer_)
             throw std::runtime_error("actual native RGB-D reader/writer creation failed");

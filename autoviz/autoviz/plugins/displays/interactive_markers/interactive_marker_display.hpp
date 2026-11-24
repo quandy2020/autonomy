@@ -27,9 +27,8 @@
 #include <automsgs/msgs/visualization_msgs/interactive_marker_feedback.pb.h>
 #include <automsgs/msgs/visualization_msgs/interactive_marker_init.pb.h>
 #include <automsgs/msgs/visualization_msgs/interactive_marker_update.pb.h>
-#include "autolink/message/raw_message.hpp"
-#include "autolink/node/reader.hpp"
 #include "autoviz/plugins/displays/channel_display.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker.hpp"
 #include "autoviz/plugins/displays/interactive_markers/interactive_marker_registry.hpp"
 #include "autoviz/common/interaction/message_queue.hpp"
@@ -91,7 +90,7 @@ class InteractiveMarkerDisplay
   InteractiveMarkerRegistry* registry_ = nullptr;
   std::map<std::string, InteractiveMarker::SharedPtr> interactive_markers_map_;
 
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> init_reader_;
+  integration::ChannelReaderRegistry::SubscriptionId init_subscription_id_ = 0;
   std::shared_ptr<integration::MessageQueue> init_queue_ =
       std::make_shared<integration::MessageQueue>();
 };

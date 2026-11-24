@@ -96,7 +96,7 @@ TeleopJoystickWidget::TeleopJoystickWidget(const QString& label, QWidget* parent
   setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   setMouseTracking(true);
   setCursor(Qt::OpenHandCursor);
-  setFocusPolicy(Qt::StrongFocus);
+  setFocusPolicy(Qt::NoFocus);
   setAttribute(Qt::WA_StyledBackground, true);
 }
 

@@ -6,6 +6,7 @@
 
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/plugins/displays/camera/camera_utils.hpp"
 #include "autoviz/plugins/displays/depth_cloud/depth_cloud_utils.hpp"
 #include "autoviz/plugins/displays/common/ogre_colored_points_draw.hpp"
@@ -53,42 +54,39 @@ void DepthCloudDisplay::onEnable() {
   camera_info_channel_ =
       propertyValue("camera_info_channel", "");
   color_channel_ = propertyValue("color_channel", "");
-  if (!depth_channel_.empty()) {
-    depth_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-            depth_channel_,
-            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-              if (msg != nullptr) {
-                depth_queue_.push(msg->message);
-              }
-            });
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (!depth_channel_.empty() && depth_subscription_id_ == 0) {
+    depth_subscription_id_ = registry.subscribe(
+        depth_channel_,
+        [this](const std::string& payload) { depth_queue_.push(payload); });
   }
-  if (!camera_info_channel_.empty()) {
-    camera_info_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-            camera_info_channel_,
-            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-              if (msg != nullptr) {
-                camera_info_queue_.push(msg->message);
-              }
-            });
+  if (!camera_info_channel_.empty() && camera_info_subscription_id_ == 0) {
+    camera_info_subscription_id_ = registry.subscribe(
+        camera_info_channel_, [this](const std::string& payload) {
+          camera_info_queue_.push(payload);
+        });
   }
-  if (!color_channel_.empty()) {
-    color_reader_ =
-        context_->autolink->node()->CreateReader<autolink::message::RawMessage>(
-            color_channel_,
-            [this](const std::shared_ptr<autolink::message::RawMessage>& msg) {
-              if (msg != nullptr) {
-                color_queue_.push(msg->message);
-              }
-            });
+  if (!color_channel_.empty() && color_subscription_id_ == 0) {
+    color_subscription_id_ = registry.subscribe(
+        color_channel_,
+        [this](const std::string& payload) { color_queue_.push(payload); });
   }
 }
 
 void DepthCloudDisplay::onDisable() {
-  depth_reader_.reset();
-  camera_info_reader_.reset();
-  color_reader_.reset();
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (depth_subscription_id_ != 0) {
+    registry.unsubscribe(depth_subscription_id_);
+    depth_subscription_id_ = 0;
+  }
+  if (camera_info_subscription_id_ != 0) {
+    registry.unsubscribe(camera_info_subscription_id_);
+    camera_info_subscription_id_ = 0;
+  }
+  if (color_subscription_id_ != 0) {
+    registry.unsubscribe(color_subscription_id_);
+    color_subscription_id_ = 0;
+  }
 }
 
 void DepthCloudDisplay::reset() {
@@ -108,20 +106,20 @@ void DepthCloudDisplay::reset() {
 void DepthCloudDisplay::onUpdate() {
   while (auto payload = camera_info_queue_.pop()) {
     automsgs::msgs::sensor_msgs::CameraInfo info;
-    if (info.ParseFromString(*payload)) {
+    if (integration::ParseChannelMessage(*payload, &info)) {
       camera_info_ = info;
       have_camera_info_ = true;
     }
   }
   while (auto payload = color_queue_.pop()) {
     automsgs::msgs::sensor_msgs::Image image;
-    if (image.ParseFromString(*payload)) {
+    if (integration::ParseChannelMessage(*payload, &image)) {
       color_image_ = imageFromProto(image);
     }
   }
   while (auto payload = depth_queue_.pop()) {
     automsgs::msgs::sensor_msgs::Image image;
-    if (image.ParseFromString(*payload)) {
+    if (integration::ParseChannelMessage(*payload, &image)) {
       depth_image_ = image;
       have_depth_ = true;
     }

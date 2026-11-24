@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
@@ -45,6 +46,27 @@ namespace {
 
 using autonomy::planning::planner::fields2cover::pp::detail::FreeSpace;
 
+/**
+ * @brief Emit a planner trace line when AUTONOMY_COVERAGE_TRACE is enabled.
+ *
+ * A map-level plan can add hundreds of "routed link" lines, which drowns the
+ * node log during a normal run. The trace stays available for debugging by
+ * exporting AUTONOMY_COVERAGE_TRACE=1.
+ * @param[in] format printf style format string.
+ */
+void TracePlan(const char* format, ...) {
+  static const bool enabled = [] {
+    const char* value = std::getenv("AUTONOMY_COVERAGE_TRACE");
+    return value != nullptr && *value != '\0' && *value != '0';
+  }();
+  if (!enabled) {
+    return;
+  }
+  va_list arguments;
+  va_start(arguments, format);
+  std::vfprintf(stderr, format, arguments);
+  va_end(arguments);
+}
 
 void Validate(const F2CCells& cells) {
   using BPoint = boost::geometry::model::d2::point_xy<double>;
@@ -232,7 +254,7 @@ std::vector<F2CPoint> RouteAround(const F2CPoint& from, const F2CPoint& to,
   const int start = nearest_open(from);
   const int goal = nearest_open(to);
   if (start < 0 || goal < 0) {
-    std::fprintf(stderr, "route: no open grid start=%d goal=%d\n", start, goal);
+    TracePlan( "route: no open grid start=%d goal=%d\n", start, goal);
     return {};
   }
   std::vector<double> cost(static_cast<std::size_t>(count),
@@ -287,7 +309,7 @@ std::vector<F2CPoint> RouteAround(const F2CPoint& from, const F2CPoint& to,
     }
   }
   if (start != goal && parent[static_cast<std::size_t>(goal)] < 0) {
-    std::fprintf(stderr, "route: no path\n");
+    TracePlan( "route: no path\n");
     return {};
   }
   std::vector<F2CPoint> raw;
@@ -307,7 +329,7 @@ std::vector<F2CPoint> RouteAround(const F2CPoint& from, const F2CPoint& to,
   }
   if (!SegmentClear(free, from, forward.front()) ||
       !SegmentClear(free, forward.back(), to)) {
-    std::fprintf(stderr, "route: endpoint segment failed from=%d to=%d\n",
+    TracePlan( "route: endpoint segment failed from=%d to=%d\n",
                  SegmentClear(free, from, forward.front()),
                  SegmentClear(free, forward.back(), to));
     return {};
@@ -358,7 +380,7 @@ bool AddTraversableLink(F2CPath& path, const F2CPoint& from,
     AddLine(path, route[index - 1], route[index],
             f2c::types::PathSectionType::TURN, velocity);
   }
-  std::fprintf(stderr,
+  TracePlan(
                "coverage: routed link %.2f,%.2f -> %.2f,%.2f via %zu points\n",
                from.GetX(), from.GetY(), to.GetX(), to.GetY(), route.size());
   return true;
@@ -799,7 +821,7 @@ F2CPath BuildSweepPath(const F2CSwaths& swaths, const F2CCells& free,
         // in-place turn: an A* detour per gap drew the diagonal scrawl and
         // dominated plan time on obstacle-dense maps.
         // No room for the arc: rotate in place instead of leaving the room.
-        std::fprintf(stderr,
+        TracePlan(
                      "pivot %.2f,%.2f -> %.2f,%.2f chord %.2f\n",
                      previous_end.GetX(), previous_end.GetY(), start.GetX(),
                      start.GetY(), previous_end.Distance(start));
@@ -870,7 +892,6 @@ F2CPath SmoothCorners(const F2CPath& path, double radius, double step,
     points.push_back(state.point);
   }
   points.push_back(path.AtEnd());
-
   F2CPath out;
   F2CPoint previous = points.front();
   for (std::size_t i = 1; i + 1 < points.size(); ++i) {
@@ -1033,11 +1054,13 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   if (!band_mode.has_width()) {
     band_mode.set_width(config.headland_width);
   }
-  // Keep the inset and the ring count consistent: one 0.15 m ring needs a
-  // 0.15 m band, otherwise the core starts a ring too far in and leaves a
-  // strip between the wall pass and the serpentine.
-  if (config.headland_passes > 0) {
-    band_mode.set_width(static_cast<double>(config.headland_passes) *
+  // The request wins over the configuration so the panel can change the ring
+  // count per run. One ring needs a band exactly as wide as a pass, otherwise
+  // the core starts too far in and leaves a strip beside the wall loop.
+  const unsigned headland_passes =
+      goal.has_headland_passes() ? goal.headland_passes() : config.headland_passes;
+  if (headland_passes > 0) {
+    band_mode.set_width(static_cast<double>(headland_passes) *
                         config.operation_width);
   }
   // Map regions are segmented on the complete free space.  A headland band
@@ -1064,6 +1087,11 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     } catch (const std::exception&) {
     }
   }
+  TracePlan("plan: cells x[%.2f,%.2f] work x[%.2f,%.2f] area %.2f -> %.2f "
+            "margin %.2f band %.2f\n",
+            cells.GetDimMinX(), cells.GetDimMaxX(), work.GetDimMinX(),
+            work.GetDimMaxX(), cells.Area(), work.Area(), wall_margin,
+            band_mode.width());
   F2CCells core = work.Clone();
   bool band = false;
   if (use_band) {
@@ -1071,7 +1099,7 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
       core = headlands.GenerateHeadlands(work, band_mode);
       band = !core.IsEmpty() && core.Area() > 1e-3;
     } catch (const std::exception& error) {
-      std::fprintf(stderr, "headland inset failed: %s\n", error.what());
+      TracePlan( "headland inset failed: %s\n", error.what());
       core = work.Clone();
       band = false;
       // A room too narrow for the configured band still needs a wall pass
@@ -1115,7 +1143,7 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
     try {
       for (const auto& band_cells : headlands.GenerateHeadlandSwaths(
                work, config.operation_width, band_mode,
-               static_cast<int>(config.headland_passes))) {
+               static_cast<int>(headland_passes))) {
         // Rings around pillars measure about 2 m2 and only add clutter; the row
         // passes beside them cover that sliver.  A real wall band (corridors,
         // narrow strips) is 4 m2 and up, so it keeps its coverage.
@@ -1136,7 +1164,7 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
         }
       }
     } catch (const std::exception& error) {
-      std::fprintf(stderr, "headland band failed: %s\n", error.what());
+      TracePlan( "headland band failed: %s\n", error.what());
       band_path = F2CPath();
     }
   }
@@ -1214,7 +1242,7 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   if (perimeter) {
     if (std::getenv("COV_DUMP_BAND") != nullptr) {
       for (const auto& state : band_path) {
-        std::fprintf(stderr, "BAND %.3f %.3f %.3f\n", state.point.GetX(),
+        TracePlan( "BAND %.3f %.3f %.3f\n", state.point.GetX(),
                      state.point.GetY(), state.len);
       }
     }
@@ -1236,7 +1264,7 @@ RoomCoverage PlanRoom(const F2CCells& cells, const Configuration& config,
   output.pivot_turns = tight;
   output.link_turns = links;
   if (tight > 0) {
-    std::fprintf(stderr, "room sweep: %d arc turns, %d in-place turns\n", smooth,
+    TracePlan( "room sweep: %d arc turns, %d in-place turns\n", smooth,
                  tight);
   }
   double core_coverage = 0.0;

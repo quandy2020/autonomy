@@ -5,14 +5,14 @@
   "patch": 0,
   "name": "Automanip",
   "description": "Manipulator HAL and OCS2 kinematic arm controller",
-  "full_version": "0.4.0+gc7e28d9e-dirty",
-  "git_describe": "v0.4.0-56-gc7e28d9e-dirty",
-  "git_commit": "c7e28d9e",
+  "full_version": "0.4.0+g2e352265-dirty",
+  "git_describe": "v0.4.0-57-g2e352265-dirty",
+  "git_commit": "2e352265",
   "git_branch": "feature/library",
-  "git_commit_date": "2026-11-24 00:05:49",
+  "git_commit_date": "2026-11-24 19:01:00",
   "git_author": "quandy2020",
   "git_email": "quandy2020@126.com",
   "git_dirty": true,
   "build_date": "2026-11-24",
-  "build_time": "2026-11-24 11:00:42.470"
+  "build_time": "2026-11-24 22:51:04.792"
 }

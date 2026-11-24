@@ -25,8 +25,17 @@ ensure_tools_dir(__file__)
 
 from common import autoviz_build_dir, find_autoviz_root, log_ok, log_step
 
-TEST_TARGETS = ("autoviz_interaction_test", "autoviz_mosaic_restore_test")
-TEST_FILTER = r"^autoviz_(interaction|mosaic_restore)_test$"
+TEST_TARGETS = (
+    "autoviz_interaction_test",
+    "autoviz_mosaic_restore_test",
+    "autoviz_session_config_test",
+    "autoviz_channel_payload_test",
+    "autoviz_ws_frame_test",
+    "autoviz_display_registry_test",
+    "autoviz_tf_buffer_test",
+    "autoviz_ws_server_test",
+)
+TEST_FILTER = r"^autoviz_(interaction|mosaic_restore|session_config|channel_payload|ws_frame|display_registry|tf_buffer|ws_server)_test$"
 
 
 def _resolve_build_dir(root: Path) -> Path:

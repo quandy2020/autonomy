@@ -161,6 +161,23 @@ ImagePanels:
     FlipHorizontal: false
     FlipVertical: false
     HoverPublishChannel: ""
+    ImageChannel: /camera/semantic/image_raw
+    LabelScale: 1
+    ObjectName: SemanticDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Habitat Semantic
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
     ImageChannel: /atlas/tracking_image
     LabelScale: 1
     ObjectName: ImageDock
@@ -210,6 +227,7 @@ Window:
     - DisplaysDock
     - TfTreeDock
     - ChaseDock
+    - SemanticDock
     - ImageDock
     - FeatureMatchesDock
     - ViewsDock

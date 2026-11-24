@@ -653,6 +653,9 @@ class ImagePanel : public QWidget {
   /** Main image subscription id (@c 0 = none). */
   integration::ChannelReaderRegistry::SubscriptionId main_subscription_id_ = 0;
 
+  /** Last main-image subscribe attempt (ms since epoch); 0 = never. */
+  qint64 last_main_subscribe_attempt_ms_ = 0;
+
   /** Calibration subscription id (@c 0 = none). */
   integration::ChannelReaderRegistry::SubscriptionId calibration_subscription_id_ = 0;
 

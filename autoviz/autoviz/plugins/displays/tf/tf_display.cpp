@@ -146,7 +146,7 @@ std::vector<common::DisplayPropertySpec> TfDisplay::propertySpecs() const {
       {"show_arrows", "Show Arrows", "false"},
       {"auto_scale", "Auto Scale", "true"},
       {"marker_scale", "Marker Scale", "1.0"},
-      {"update_interval", "Update Interval", "0"},
+      {"update_interval", "Update Interval", "0.1"},
       {"frame_timeout", "Frame Timeout", "15.0"},
       {"filter_whitelist", "Filter (whitelist)", "", {},
        common::DisplayPropertyKind::kRegex},

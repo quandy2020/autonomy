@@ -9,6 +9,7 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <deque>
 #include <mutex>
 #include <stdexcept>
 #include <tuple>
@@ -20,7 +21,11 @@ using Time = ::automsgs::msgs::builtin_interfaces::Time;
 using Status = ::automsgs::msgs::diagnostic_msgs::DiagnosticStatus;
 using BackendIdentity = std::tuple<std::string, std::uint64_t, std::uint64_t, std::uint64_t>;
 /// Producer/consumer clock skew tolerated when correlating status and pose.
-constexpr double kLatestStampSkew = .01;
+// Transport and simulator publish ordering can put a sample a few tens of
+// milliseconds ahead of this process's wall clock. 10 ms rejected ordinary
+// 19 ms skew, which silently disabled the validation fallback the moment Atlas
+// stopped producing healthy samples.
+constexpr double kLatestStampSkew = .05;
 
 /** @brief Keep source identity in integer nanoseconds before any source-clock conversion. */
 std::optional<std::int64_t> Stamp(const Time& time) {
@@ -192,7 +197,7 @@ public:
     std::uint64_t epoch_ = 0;  ///< Nonzero monotonic consumer identity, independent from raw zero-valued Atlas ids.
     std::optional<::automsgs::msgs::geometry_msgs::TransformStamped> alignment_;  ///< Explicit alignment revoked on coordinate changes.
     std::optional<RigidTransform> navigation_from_backend_;  ///< Validated composition transform for current epoch only.
-    std::optional<Fallback> fallback_;  ///< Latest validation-only fallback sample.
+    std::deque<Fallback> fallback_history_;  ///< Bounded validation-only fallback samples.
     std::optional<RigidTransform> fallback_anchor_;  ///< native_from_odom captured from one Atlas pose.
 };
 
@@ -267,15 +272,46 @@ std::string NativeAtlasLocalization::LatestSampleSummary(double now) const {
     return result;
 }
 
+std::optional<AcquisitionLocalization> NativeAtlasLocalization::LatestFallbackProof(
+    double now, const std::string& frame) const {
+    if (impl_->options_.fallback_odometry_topic.empty()) return std::nullopt;
+    std::lock_guard<std::mutex> lock(impl_->mutex_);
+    if (impl_->fallback_history_.empty()) return std::nullopt;
+    const auto& fallback = impl_->fallback_history_.back();
+    const double stamp = static_cast<double>(fallback.stamp) * 1e-9;
+    if (!std::isfinite(stamp) || now + kLatestStampSkew < stamp ||
+        now > stamp + impl_->options_.evidence_lifetime) return std::nullopt;
+    AcquisitionLocalization result;
+    result.world_from_base = fallback.world_from_base;
+    result.world_from_sensor = Compose(result.world_from_base, fallback.camera_from_base);
+    result.world_frame = impl_->options_.navigation_frame;
+    result.sensor_frame = frame;
+    result.map_epoch = impl_->epoch_ ? impl_->epoch_ : 1;
+    result.calibration_revision = impl_->options_.calibration_revision;
+    result.support = Mask(SensorKind::kRgbd);
+    result.healthy = true;
+    result.valid_from = stamp - .05;
+    result.valid_until = stamp + impl_->options_.evidence_lifetime;
+    return result;
+}
+
 std::optional<::automsgs::msgs::nav_msgs::Odometry> NativeAtlasLocalization::LatestBackendPose(double now) const {
     std::lock_guard<std::mutex> lock(impl_->mutex_);
     const auto sample = impl_->Latest(now);
     if (sample) return sample->pose;
-    if (impl_->options_.fallback_odometry_topic.empty() || !impl_->fallback_) return std::nullopt;
-    const auto& fallback = *impl_->fallback_;
+    if (impl_->options_.fallback_odometry_topic.empty() || impl_->fallback_history_.empty()) {
+        AINFO_EVERY(20) << "NATIVE_FALLBACK_REJECT reason=no_sample";
+        return std::nullopt;
+    }
+    const auto& fallback = impl_->fallback_history_.back();
     const double stamp = static_cast<double>(fallback.stamp) * 1e-9;
     if (!std::isfinite(stamp) || now + kLatestStampSkew < stamp ||
-        now > stamp + impl_->options_.evidence_lifetime) return std::nullopt;
+        now > stamp + impl_->options_.evidence_lifetime) {
+        AINFO_EVERY(20) << "NATIVE_FALLBACK_REJECT reason=stamp now=" << now
+                        << " stamp=" << stamp << " age=" << (now - stamp)
+                        << " future=" << (stamp - now);
+        return std::nullopt;
+    }
     ::automsgs::msgs::nav_msgs::Odometry result;
     auto* header = result.mutable_header();
     header->set_frame_id(impl_->options_.navigation_frame);
@@ -338,7 +374,13 @@ void NativeAtlasLocalization::InjectFallbackPose(const ::automsgs::msgs::nav_msg
     }
     const RigidTransform world_from_base = impl_->fallback_anchor_
         ? Compose(*impl_->fallback_anchor_, *rigid) : *rigid;
-    impl_->fallback_ = Impl::Fallback{*stamp, world_from_base, Inverse(*installation)};
+    impl_->fallback_history_.push_back(
+        Impl::Fallback{*stamp, world_from_base, Inverse(*installation)});
+    // About one second at the 50 Hz validation odometry rate. Keeping history
+    // matters because Lookup() is asked for a past acquisition stamp, not for
+    // "whatever is newest"; a single slot never matched frames that were a few
+    // tens of milliseconds behind the latest sample.
+    while (impl_->fallback_history_.size() > 64) impl_->fallback_history_.pop_front();
 }
 
 std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(
@@ -349,14 +391,27 @@ std::optional<AcquisitionLocalization> NativeAtlasLocalization::Lookup(
     // fresh proof. Disabled unless an explicit fallback odometry topic is configured.
     if (impl_->options_.fallback_odometry_topic.empty()) return {};
     std::lock_guard<std::mutex> lock(impl_->mutex_);
-    if (!impl_->fallback_) return {};
-    const double fallback_stamp = static_cast<double>(impl_->fallback_->stamp) * 1e-9;
-    if (!std::isfinite(acquisition) || std::abs(fallback_stamp - acquisition) > .05) return {};
+    if (impl_->fallback_history_.empty()) return {};
+    if (!std::isfinite(acquisition)) return {};
+    const Impl::Fallback* nearest = nullptr;
+    double best = std::numeric_limits<double>::infinity();
+    for (const auto& candidate : impl_->fallback_history_) {
+        const double stamp = static_cast<double>(candidate.stamp) * 1e-9;
+        const double difference = std::abs(stamp - acquisition);
+        if (difference < best) { best = difference; nearest = &candidate; }
+    }
+    if (!nearest || best > .10) {
+        AINFO_EVERY(20) << "NATIVE_FALLBACK_LOOKUP_REJECT acquisition=" << acquisition
+                        << " nearest=" << (nearest ? static_cast<double>(nearest->stamp) * 1e-9 : -1.0)
+                        << " delta=" << best;
+        return {};
+    }
+    const double fallback_stamp = static_cast<double>(nearest->stamp) * 1e-9;
     if (now + kLatestStampSkew < fallback_stamp ||
         now > acquisition + impl_->options_.evidence_lifetime) return {};
     AcquisitionLocalization result;
-    result.world_from_base = impl_->fallback_->world_from_base;
-    result.world_from_sensor = Compose(result.world_from_base, impl_->fallback_->camera_from_base);
+    result.world_from_base = nearest->world_from_base;
+    result.world_from_sensor = Compose(result.world_from_base, nearest->camera_from_base);
     result.world_frame = impl_->options_.navigation_frame;
     result.sensor_frame = frame;
     result.map_epoch = impl_->epoch_ ? impl_->epoch_ : 1;

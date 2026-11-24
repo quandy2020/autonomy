@@ -36,7 +36,15 @@ int main(int argc,char** argv) {
     Action::Goal goal;*goal.mutable_request()=request;auto acceptance=client->AsyncSendGoal(goal);
     if(acceptance.wait_for(std::chrono::seconds(10))!=std::future_status::ready){std::cerr<<"Coverage goal acceptance deadline exceeded\n";return 1;}
     auto handle=acceptance.get();if(!handle){std::cerr<<"Coverage goal rejected\n";return 1;}std::cerr<<"Coverage goal accepted\n";auto result=client->AsyncGetResult(handle);
-    if(result.wait_for(std::chrono::seconds(60))!=std::future_status::ready){client->AsyncCancelGoal(handle);std::cerr<<"Coverage planning result deadline exceeded\n";return 1;}
+    // A 36-room household map needs about a minute; keep polling so a long plan
+    // reports progress instead of failing on a fixed wait.
+    const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(600);
+    auto last_report=std::chrono::steady_clock::now();
+    while(result.wait_for(std::chrono::milliseconds(200))!=std::future_status::ready){
+      const auto now=std::chrono::steady_clock::now();
+      if(now>=deadline){client->AsyncCancelGoal(handle);std::cerr<<"Coverage planning result deadline exceeded\n";return 1;}
+      if(now-last_report>=std::chrono::seconds(5)){last_report=now;std::cerr<<"planning... "<<std::chrono::duration_cast<std::chrono::seconds>(now-(deadline-std::chrono::seconds(600))).count()<<" s\n";}
+    }
     auto wrapped=result.get();if(!wrapped.result)return 1;std::ofstream(output+"-result.pb.txt")<<wrapped.result->DebugString();std::cout<<wrapped.result->error_code()<<' '<<wrapped.result->error_msg()<<" coverage="<<wrapped.result->core_coverage()<<'\n';return wrapped.result->error_code()==0?0:1;
   }
   using Action=coverage::NavigateCompleteCoverageAction;auto client=std::make_shared<autolink::action::Client<Action>>(node,"/navigate_complete_coverage");

@@ -45,6 +45,7 @@
 #include <QListWidget>
 #include <QPlainTextEdit>
 #include <QPointer>
+#include <QMetaObject>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QRegularExpression>
@@ -68,6 +69,8 @@
 #include <utility>
 #include <vector>
 
+#include "autoviz/common/interaction/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/session_config.hpp"
 #include "autoviz/common/visualization_manager.hpp"
 #include "autoviz/plugins/displays/display.hpp"
@@ -144,7 +147,18 @@ CoveragePanel::CoveragePanel(common::VisualizationManager* manager,
   BuildUi();
 }
 
-CoveragePanel::~CoveragePanel() { CancelCoverage(); }
+CoveragePanel::~CoveragePanel() {
+  CancelCoverage();
+  auto& registry = integration::ChannelReaderRegistry::instance();
+  if (odom_subscription_id_ != 0) {
+    registry.unsubscribe(odom_subscription_id_);
+    odom_subscription_id_ = 0;
+  }
+  if (click_subscription_id_ != 0) {
+    registry.unsubscribe(click_subscription_id_);
+    click_subscription_id_ = 0;
+  }
+}
 
 void CoveragePanel::BuildUi() {
   setObjectName(QStringLiteral("CoveragePanel"));
@@ -249,10 +263,27 @@ void CoveragePanel::BuildUi() {
   headland_->setSingleStep(0.05);
   headland_->setValue(0.3);
   headland_->setSuffix(tr(" m"));
+  headland_->setToolTip(
+      tr("Wall band width used when Wall loops is 0. With one loop or more the "
+         "band is Wall loops x swath spacing so the loops meet the serpentine."));
   headland_->setButtonSymbols(QAbstractSpinBox::NoButtons);
   headland_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
   StyleCompactSettingsField(headland_);
   form->addRow(MakeSettingsFormLabel(tr("Headland"), content), headland_);
+
+  headland_passes_ = new QSpinBox(content);
+  headland_passes_->setObjectName(QStringLiteral("coverageHeadlandPasses"));
+  headland_passes_->setRange(0, 5);
+  headland_passes_->setValue(1);
+  headland_passes_->setButtonSymbols(QAbstractSpinBox::NoButtons);
+  headland_passes_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+  headland_passes_->setToolTip(
+      tr("Number of wall loops drawn before the serpentine. One loop keeps a "
+         "single clean perimeter pass, raise it for a wide headland, or use 0 "
+         "to size the band from the Headland field."));
+  StyleCompactSettingsField(headland_passes_);
+  form->addRow(MakeSettingsFormLabel(tr("Wall loops"), content),
+               headland_passes_);
 
   route_mode_ = new QComboBox(content);
   route_mode_->setObjectName(QStringLiteral("coverageRoute"));
@@ -580,23 +611,31 @@ void CoveragePanel::EnsureClients() {
     empty.mutable_header()->set_frame_id("map");
     preview_writer_->Write(empty);
   }
-  if (!odom_reader_) {
+  if (odom_subscription_id_ == 0) {
     QPointer<CoveragePanel> self(this);
-    odom_reader_ = node->CreateReader<automsgs::msgs::nav_msgs::Odometry>(
-        "/odom", [self](const std::shared_ptr<automsgs::msgs::nav_msgs::Odometry>& msg) {
-          if (!self || !msg) return;
-          const double x = msg->pose().pose().pose().position().x();
-          const double y = msg->pose().pose().pose().position().y();
-          QMetaObject::invokeMethod(self, [self, x, y] {
-            if (!self) {
-              return;
-            }
-            self->robot_x_ = x;
-            self->robot_y_ = y;
-            self->have_robot_pose_ = true;
-            self->UpdateCurrentRegion(x, y);
-          }, Qt::QueuedConnection);
-        });
+    odom_subscription_id_ =
+        integration::ChannelReaderRegistry::instance().subscribe(
+            "/odom", [self](const std::string& payload) {
+              automsgs::msgs::nav_msgs::Odometry msg;
+              if (!self ||
+                  !integration::ParseChannelMessage(payload, &msg)) {
+                return;
+              }
+              const double x = msg.pose().pose().pose().position().x();
+              const double y = msg.pose().pose().pose().position().y();
+              QMetaObject::invokeMethod(
+                  self,
+                  [self, x, y] {
+                    if (!self) {
+                      return;
+                    }
+                    self->robot_x_ = x;
+                    self->robot_y_ = y;
+                    self->have_robot_pose_ = true;
+                    self->UpdateCurrentRegion(x, y);
+                  },
+                  Qt::QueuedConnection);
+            });
   }
   if (!sketch_writer_) {
     sketch_writer_ = node->CreateWriter<
@@ -1028,6 +1067,7 @@ void CoveragePanel::SetBusy(bool busy) {
   enable(radius_);
   enable(swath_);
   enable(headland_);
+  enable(headland_passes_);
   enable(route_mode_);
   enable(path_mode_);
   enable(approach_);
@@ -1133,6 +1173,8 @@ autonomy::task::coverage::proto::CoverageRequest CoveragePanel::BuildRequest()
   }
   request.mutable_headland_mode()->set_mode("CONSTANT");
   request.mutable_headland_mode()->set_width(headland_->value());
+  request.set_headland_passes(
+      static_cast<unsigned>(headland_passes_->value()));
   request.mutable_route_mode()->set_mode(
       route_mode_->currentData().toString().toStdString());
   request.mutable_route_mode()->set_spiral_n(4);
@@ -1472,29 +1514,29 @@ void CoveragePanel::ToggleObstacleDrawing() {
     SetStatus(tr("Autolink is not ready"), QStringLiteral("error"));
     return;
   }
-  if (!click_reader_) {
+  if (click_subscription_id_ == 0) {
     QPointer<CoveragePanel> self(this);
-    click_reader_ = manager_->autolinkNode()->CreateReader<
-        automsgs::msgs::geometry_msgs::PointStamped>(
-        "/clicked_point",
-        [self](const std::shared_ptr<
-               automsgs::msgs::geometry_msgs::PointStamped>& message) {
-          if (!self || !message) {
-            return;
-          }
-          const double x = message->point().x();
-          const double y = message->point().y();
-          const QString frame =
-              QString::fromStdString(message->header().frame_id());
-          QMetaObject::invokeMethod(
-              self,
-              [self, x, y, frame] {
-                if (self) {
-                  self->HandleClickedPoint(x, y, frame);
-                }
-              },
-              Qt::QueuedConnection);
-        });
+    click_subscription_id_ =
+        integration::ChannelReaderRegistry::instance().subscribe(
+            "/clicked_point", [self](const std::string& payload) {
+              automsgs::msgs::geometry_msgs::PointStamped message;
+              if (!self ||
+                  !integration::ParseChannelMessage(payload, &message)) {
+                return;
+              }
+              const double x = message.point().x();
+              const double y = message.point().y();
+              const QString frame =
+                  QString::fromStdString(message.header().frame_id());
+              QMetaObject::invokeMethod(
+                  self,
+                  [self, x, y, frame] {
+                    if (self) {
+                      self->HandleClickedPoint(x, y, frame);
+                    }
+                  },
+                  Qt::QueuedConnection);
+            });
   }
   // Keep Publish Point armed until the polygon is finished; its default
   // single-click mode would revert to Interact after the first vertex.

@@ -63,6 +63,30 @@ inline std::string_view ChannelPayloadView(const std::string& raw) {
  * @param raw Bytes received from an Autolink reader callback.
  * @return Protobuf (or other) content bytes without the framing header.
  */
+/**
+ * @brief Parses @p raw into @p proto, stripping Autolink framing when present.
+ *
+ * Tries the framed content first, then the raw bytes, so callers work with
+ * both registry payloads and already-decoded protobuf strings.
+ *
+ * @tparam ProtoT Protobuf message type with @c ParseFromArray.
+ * @param raw Bytes from @ref ChannelReaderRegistry.
+ * @param proto Output message; must not be null.
+ * @return @c true if either parse succeeded.
+ */
+template <typename ProtoT>
+inline bool ParseChannelMessage(const std::string& raw, ProtoT* proto) {
+  if (proto == nullptr) {
+    return false;
+  }
+  const std::string_view framed = ChannelPayloadView(raw);
+  if (!framed.empty() &&
+      proto->ParseFromArray(framed.data(), static_cast<int>(framed.size()))) {
+    return true;
+  }
+  return proto->ParseFromArray(raw.data(), static_cast<int>(raw.size()));
+}
+
 inline std::string DecodeChannelPayload(const std::string& raw) {
   using autolink::message::MessageHeader;
   if (raw.size() < sizeof(MessageHeader)) {

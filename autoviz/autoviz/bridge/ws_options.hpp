@@ -15,7 +15,7 @@ constexpr uint16_t kDefaultWsPort = 8765;
 /** Listen options for Autoviz's civetweb WebSocket server. */
 struct WsServerOptions {
   bool enabled = true;
-  std::string host = "0.0.0.0";
+  std::string host = "127.0.0.1";
   uint16_t port = kDefaultWsPort;
   std::string server_name = "autoviz";
 };

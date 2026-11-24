@@ -167,6 +167,89 @@ def test_constrain_motion_nudges_out_of_occupied_start():
     assert mapper.disc_occupied(x, y, radius=0.16) is False
 
 
+def test_constrain_motion_keeps_forward_when_start_disc_grazes_wall():
+    """Navmesh progress must win over GT occupancy veto near walls."""
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+
+    class Pathfinder:
+        is_loaded = True
+
+        def snap_point(self, point):
+            return (float(point[0]), float(point[1]), float(point[2]))
+
+        def try_step(self, start, end):
+            del start
+            return (float(end[0]), float(end[1]), float(end[2]))
+
+        def try_step_no_sliding(self, start, end):
+            return self.try_step(start, end)
+
+    class Session:
+        pathfinder = Pathfinder()
+
+    from autosim.scene.map import Map
+
+    # Occupancy marks the whole row occupied — old path vetoed linear.x.
+    mapper = Map({"grid": {"resolution": 1.0, "z_min": 0.1, "z_max": 2.0}})
+    mapper.cached_grid = (
+        np.array([[100, 100, 100]], dtype=np.int8),
+        1.0,
+        0.0,
+        0.0,
+        3,
+        1,
+    )
+    simulator.session = Session()
+    simulator.map_builder = mapper
+    simulator.floor_y = 0.0
+    x, y = simulator.constrain_motion(0.5, 0.5, 1.2, 0.5)
+    assert x == pytest.approx(1.2)
+    assert y == pytest.approx(0.5)
+
+
+def test_constrain_motion_try_step_uses_navmesh_height_not_mesh_floor():
+    """try_step at mesh-refined floor_y below navmesh must not freeze XY."""
+    simulator = Simulator(
+        backend="minimal",
+        width=64,
+        height=48,
+        settings={"habitat": {"path": "", "spawn": [0.0, 0.0, 0.0], "robot": {"urdf": ""}}},
+        open_session=False,
+    )
+
+    class Pathfinder:
+        is_loaded = True
+
+        def snap_point(self, point):
+            # Navmesh is 0.12 above the mesh-refined floor.
+            return (float(point[0]), 0.12, float(point[2]))
+
+        def try_step(self, start, end):
+            # Reject steps that are not on the navmesh height.
+            if abs(float(start[1]) - 0.12) > 1e-6:
+                return start
+            return (float(end[0]), 0.12, float(end[2]))
+
+        def try_step_no_sliding(self, start, end):
+            return self.try_step(start, end)
+
+    class Session:
+        pathfinder = Pathfinder()
+
+    simulator.session = Session()
+    simulator.floor_y = 0.01  # mesh-refined, below navmesh
+    x, y = simulator.constrain_motion(0.0, 0.0, 0.5, 0.0)
+    assert x == pytest.approx(0.5)
+    assert y == pytest.approx(0.0)
+    assert simulator.floor_y == pytest.approx(0.12)
+
+
 def test_simulator_has_no_mock_backend():
     simulator = Simulator(
         backend="minimal",

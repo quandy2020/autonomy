@@ -18,7 +18,7 @@ ChannelsBrowser:
   ProbeEnabled: true
   TypeFilter: 0
 CurrentView:
-  Distance: 26
+  Distance: 1.16031813621521
   FarClipDistance: 1e+05
   FocalShapeFixedSize: true
   FocalShapeSize: 0.05000000074505806
@@ -31,13 +31,13 @@ CurrentView:
   InvertZAxis: false
   Name: Current
   NearClipDistance: 0.009999999776482582
-  Pitch: 1.45
+  Pitch: 0.9550002813339233
   Target:
     X: 0
     Y: 0
     Z: 0
   Type: Orbit
-  Yaw: 0
+  Yaw: 1.5749996900558472
 Displays:
   - Channel: /mppi_controller/transformed_global_plan
     Enabled: false
@@ -121,76 +121,6 @@ Displays:
       visual_enabled: true
       visual_style: solid
     Type: RobotModel
-  - Channel: /odom
-    Enabled: true
-    Name: RobotPose
-    Properties:
-      alpha: 1.0
-      angle_tolerance: 0.1
-      color: 107;168;255
-      keep: 1
-      position_tolerance: 0.1
-      shape: Arrow
-      show_velocity: true
-    Type: Odometry
-  - Channel: /scan
-    Enabled: true
-    Name: SensorFov
-    Properties:
-      alpha: 0.22
-      color: 0;229;255
-      color_transform: Flat
-      decay_time: 0
-      point_size: 2
-      style: Flat Squares
-    Type: LaserScan
-  - Channel: /odom
-    Enabled: true
-    Name: MotionTrail
-    Properties:
-      alpha: 0.95
-      duration: 12.0
-      frame: base_link
-      glow_layers: 2
-      glow_width: 0.2
-      line_color: 140;120;255
-      line_width: 0.065
-      min_distance: 0.025
-      z_lift: 0.1
-    Type: TFTrajectory
-  - Channel: /goal_pose
-    Enabled: true
-    Name: NavGoalRings
-    Properties:
-      alpha: 1.0
-      arrive_morph_sec: 0.85
-      auto_clear: true
-      auto_clear_distance: 0.3
-      axis_length: 0.25
-      color: 255;180;84
-      heading_length: 0.4
-      inner_radius: 0.32
-      inner_width: 0.12
-      outer_color: 255;210;140
-      outer_radius: 0.72
-      outer_width: 0.085
-      rings: 72
-      robot_frame: base_link
-      show_axes: false
-      show_heading: true
-      success_color: 80;220;120
-      success_hold_sec: 1.4
-      z_lift: 0.16
-    Type: TargetVisualizer
-  - Channel: /waypoints
-    Enabled: true
-    Name: Waypoints
-    Properties:
-      color: 0;255;0
-      mesh_style: solid
-      point_size: 4
-      use_custom_color: false
-    Type: MarkerArray
   - Channel: /camera/depth/points
     Enabled: true
     Name: points PointCloud2
@@ -438,20 +368,6 @@ Displays:
       point_size: 2
       style: Flat Squares
     Type: LaserScan
-  - Channel: /odom
-    Enabled: true
-    Name: MotionTrail
-    Properties:
-      alpha: 0.95
-      duration: 12.0
-      frame: base_link
-      glow_layers: 2
-      glow_width: 0.2
-      line_color: 140;120;255
-      line_width: 0.065
-      min_distance: 0.025
-      z_lift: 0.1
-    Type: TFTrajectory
   - Channel: /goal_pose
     Enabled: true
     Name: NavGoalRings
@@ -476,15 +392,6 @@ Displays:
       success_hold_sec: 1.4
       z_lift: 0.16
     Type: TargetVisualizer
-  - Channel: /waypoints
-    Enabled: true
-    Name: Waypoints
-    Properties:
-      color: 0;255;0
-      mesh_style: solid
-      point_size: 4
-      use_custom_color: false
-    Type: MarkerArray
   - Channel: /camera/depth/points
     Enabled: true
     Name: points PointCloud2
@@ -514,52 +421,22 @@ Displays:
       use_fixed_frame: true
       use_rainbow: true
     Type: PointCloud2
-  - Channel: /coverage/plan
-    Enabled: true
-    Name: Coverage plan
-    Properties:
-      alpha: 0.95
-      arrive_distance: 0.35
-      buffer_length: 1
-      color: 26;190;71
-      dash_length: 0.26
-      flow_arrow_size: 0.12
-      flow_arrow_spacing: 0.55
-      flow_speed: 0.9
-      gap_length: 0.18
-      hide_when_arrived: false
-      line_style: Billboards
-      line_width: 0.06
-      offset: 0;0;0.30
-      path_pattern: Solid
-      pose_arrow_head_diameter: 0.3
-      pose_arrow_head_length: 0.2
-      pose_arrow_shaft_diameter: 0.1
-      pose_arrow_shaft_length: 0.1
-      pose_axes_length: 0.3
-      pose_axes_radius: 0.03
-      pose_color: 26;190;71
-      pose_style: None
-      prune_behind_robot: false
-      robot_frame: base_link
-      show_flow_arrows: false
-    Type: Path
   - Channel: /coverage/regions
     Enabled: true
     Name: Coverage rooms
     Properties:
-      use_custom_color: false
-    Type: MarkerArray
-  - Channel: /coverage/markers
-    Enabled: true
-    Name: Coverage swaths
-    Properties:
+      color: 200;200;200
+      mesh_style: solid
+      point_size: 3
       use_custom_color: false
     Type: MarkerArray
   - Channel: /coverage/sketch
     Enabled: true
     Name: Coverage obstacles
     Properties:
+      color: 200;200;200
+      mesh_style: solid
+      point_size: 3
       use_custom_color: false
     Type: MarkerArray
 Global:
@@ -718,6 +595,30 @@ PlotPanels:
     YMaxRight: 1
     YMin: 0
     YMinRight: 0
+PublishPanels:
+  - ActivePresetName: ""
+    ButtonColor: ""
+    ButtonLabel: Publish
+    ButtonTooltip: ""
+    Channel: /cmd_vel
+    CustomChannels:
+      - /cmd_vel
+    EditingMode: false
+    LoopPublish: false
+    MessageJson: "{}\n"
+    MessageType: automsgs.msgs.geometry_msgs.TwistStamped
+    ObjectName: PublishDock
+    PublishRateHz: 1
+    Publishers:
+      - Channel: /cmd_vel
+        Id: 57225beb-e0b5-4a09-815a-c2cae00e2821
+        MessageJson: "{}\n"
+        MessageType: automsgs.msgs.geometry_msgs.TwistStamped
+        PublishRateHz: 1
+        Publishing: false
+    SelectedPublisherIndex: -1
+    SettingsVisible: false
+    Title: ""
 RawMessages:
   Channel: ""
   DiffHighlight: true
@@ -739,7 +640,7 @@ TeleopPanels:
       Value: -0.5
     SettingsVisible: false
     SmartTeleop: false
-    StickMode: 0
+    StickMode: 1
     Stop:
       Field: 0
       Value: 0
@@ -792,16 +693,12 @@ Views: ~
 Window:
   Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAQgAAAEUAAAn/AAAFnwAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
   Height: 1371
-  HideLeftDock: true
+  HideLeftDock: false
   HideRightDock: false
-  # Single 3D View under the image strip — ViewportDock_2/_3 removed (drag left
-  # transparent GLX holes / crash). Re-open extras from Panels if needed.
-  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0OTAsNzg4XSwiY2hpbGRyZW4iOlt7InR5cGUiOiJzcGxpdCIsIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjEyLDE4NzVdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9jayIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYxOSwxMjQ5XSwiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJ0eXBlIjoic3BsaXQiLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYyMSw2MjFdLCJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dfV19XX0seyJuYW1lIjoiVmlld3BvcnREb2NrIiwidHlwZSI6ImxlYWYifV19fQ==
+  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2siLCJ0eXBlIjoibGVhZiJ9LHsiY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn0seyJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja18zIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzQ0Myw0NDJdLCJ0eXBlIjoic3BsaXQifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNDgxLDg5Ml0sInR5cGUiOiJzcGxpdCJ9XSwib3JpZW50YXRpb24iOiJob3Jpem9udGFsIiwic2l6ZXMiOls0NjcsMTM4MF0sInR5cGUiOiJzcGxpdCJ9LHsibmFtZSI6IlZpZXdwb3J0RG9jayIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls0MTUsODYzXSwidHlwZSI6InNwbGl0In19
   Panels:
     - Name: ViewportDock
-    - Name: NavigationDock
-    - Collapsed: true
-      Name: DisplaysDock
+    - Name: DisplaysDock
     - Name: RecordDock
     - Name: SelectionDock
     - Name: ToolPropertiesDock
@@ -813,21 +710,24 @@ Window:
     - Name: ImageDock
     - Name: PlotDock
     - Name: TeleopDock
+    - Name: NavigationDock
     - Name: ChannelGraphDock
     - Name: ImageDock_2
     - Name: ImageDock_3
     - Name: ImageDock_4
-    - Collapsed: true
-      Name: PropertiesDock
+    - Name: PublishDock
+    - Name: PropertiesDock
   PlotSettingsVisible: false
-  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFMAAAFBfwCAAAAAfwAAABAAAAFBQAAAAAA////+v////8CAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAAAAAAD/////AAAA3QD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsAAAAAAP////8AAAB6AP///wAAAAEAAAEYAAAFBfwCAAAABfsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAAD/////AAAAyAD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABSQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawAAAABAAAABvgAAAIcA////+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawAAAAIEAAADQQAAAIYA////+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAAAA/////wAAAe4A////AAAAAwAAAAAAAAAA/AEAAAAB+wAAABAAVABpAG0AZQBEAG8AYwBrAAAAAAD/////AAAD5AD///8AAAm+AAAFBQAAAAEAAAACAAAACAAAAAj8AAAAAQAAAAIAAAABAAAAHABBAHUAdABvAHYAaQB6AFQAbwBvAGwAQgBhAHIBAAAAAP////8AAAAAAAAAAA==
+  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFcAAAFBfwCAAAAAfwAAABAAAAFBQAAAQEBAAAV+gAAAAACAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAAD/////AAAA6wD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsBAAAAAP////8AAACHAP///wAAAAEAAAEYAAAFBfwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAAD/////AAAA2AD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABUgD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawAAAABAAAABvgAAAJsA////+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawAAAAIEAAADQQAAAJIA////+wAAABQAVABlAGwAZQBvAHAARABvAGMAawEAAABAAAAFBQAAAfwA////+wAAABwATgBhAHYAaQBnAGEAdABpAG8AbgBEAG8AYwBrAAAAAEAAAAUFAAAAowD///8AAAADAAAAAAAAAAD8AQAAAAH7AAAAEABUAGkAbQBlAEQAbwBjAGsAAAAAAP////8AAAPWAP///wAABz4AAAUFAAAAAQAAAAIAAAAIAAAACPwAAAABAAAAAgAAAAEAAAAcAEEAdQB0AG8AdgBpAHoAVABvAG8AbABCAGEAcgEAAAAA/////wAAAAAAAAAA
   VisiblePanels:
-    - NavigationDock
+    - ViewportDock
+    - DisplaysDock
     - ImageDock
+    - TeleopDock
     - ImageDock_2
     - ImageDock_3
     - ImageDock_4
-    - ViewportDock
+    - PropertiesDock
   Width: 2494
   X: 66
   Y: 69

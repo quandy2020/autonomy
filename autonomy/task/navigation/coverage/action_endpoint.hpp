@@ -22,6 +22,7 @@
 #ifndef AUTONOMY_TASK_NAVIGATION_COVERAGE_ACTION_ENDPOINT_HPP_
 #define AUTONOMY_TASK_NAVIGATION_COVERAGE_ACTION_ENDPOINT_HPP_
 
+#include <cstdio>
 #include <functional>
 #include <thread>
 #include "autolink/action/create_server.hpp"
@@ -47,7 +48,15 @@ class ActionEndpoint {
     server_ = autolink::action::CreateServer<Action>(node, name,
       [state](const auto&, auto) {
         std::lock_guard<std::mutex> lock(state->mutex);
-        if (state->stopping || state->reserved) return autolink::action::GoalResponse::REJECT;
+        if (state->stopping || state->reserved) {
+          // One goal runs at a time. Report the rejection on the node log so a
+          // dropped click in the panel is not mistaken for a planner failure.
+          std::fprintf(stderr,
+                       "coverage: goal rejected, %s\n",
+                       state->stopping ? "endpoint is stopping"
+                                       : "another goal is still running");
+          return autolink::action::GoalResponse::REJECT;
+        }
         state->reserved = true;
         return autolink::action::GoalResponse::ACCEPT_AND_EXECUTE;
       },

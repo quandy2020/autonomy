@@ -80,6 +80,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   spin->setAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
   spin->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
   spin->setFixedHeight(28);
+  spin->setFocusPolicy(Qt::ClickFocus);
   spin->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_spin")));
   root->addWidget(spin);
 
@@ -106,6 +107,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   minus->setText(QStringLiteral("−"));
   minus->setToolTip(tip);
   minus->setCursor(Qt::PointingHandCursor);
+  minus->setFocusPolicy(Qt::NoFocus);
   minus->setFixedSize(28, 28);
   minus->setStyleSheet(step_style);
   steppers->addWidget(minus);
@@ -114,6 +116,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   plus->setText(QStringLiteral("+"));
   plus->setToolTip(tip);
   plus->setCursor(Qt::PointingHandCursor);
+  plus->setFocusPolicy(Qt::NoFocus);
   plus->setFixedSize(28, 28);
   plus->setStyleSheet(step_style);
   steppers->addWidget(plus);
@@ -323,6 +326,18 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   if (arcade_joystick_ != nullptr) {
     arcade_joystick_->installEventFilter(this);
   }
+  if (move_joystick_ != nullptr) {
+    move_joystick_->installEventFilter(this);
+  }
+  if (turn_joystick_ != nullptr) {
+    turn_joystick_->installEventFilter(this);
+  }
+  if (max_linear_spin_ != nullptr) {
+    max_linear_spin_->installEventFilter(this);
+  }
+  if (max_angular_spin_ != nullptr) {
+    max_angular_spin_->installEventFilter(this);
+  }
   updateSmartTeleopHint();
   applyModeUi();
 }
@@ -410,6 +425,9 @@ void TeleopControlWidget::emitMaxSpeedsFromUi() {
   max_linear_speed_ = max_linear_spin_->value();
   max_angular_speed_ = max_angular_spin_->value();
   emit maxSpeedsChanged(max_linear_speed_, max_angular_speed_);
+  if (stick_mode_ == TeleopStickMode::kArcade) {
+    setFocus(Qt::OtherFocusReason);
+  }
 }
 
 void TeleopControlWidget::setStickMode(TeleopStickMode mode) {
@@ -589,32 +607,40 @@ void TeleopControlWidget::focusInEvent(QFocusEvent* event) {
 }
 
 bool TeleopControlWidget::eventFilter(QObject* watched, QEvent* event) {
-  if (stick_mode_ == TeleopStickMode::kArcade &&
-      event->type() == QEvent::MouseButtonPress &&
-      (watched == this || watched == arcade_joystick_)) {
+  const bool is_drive_surface =
+      watched == this || watched == arcade_joystick_ ||
+      watched == move_joystick_ || watched == turn_joystick_;
+  if (event->type() == QEvent::MouseButtonPress && is_drive_surface) {
     setFocus(Qt::MouseFocusReason);
   }
-  if (stick_mode_ == TeleopStickMode::kArcade && watched == arcade_joystick_) {
-    if (event->type() == QEvent::ShortcutOverride) {
-      auto* key_event = static_cast<QKeyEvent*>(event);
-      if (IsArcadeDriveKey(key_event->key())) {
-        event->accept();
-        return true;
-      }
+  if (stick_mode_ != TeleopStickMode::kArcade) {
+    return QWidget::eventFilter(watched, event);
+  }
+  const bool steal_keys =
+      watched == arcade_joystick_ || watched == max_linear_spin_ ||
+      watched == max_angular_spin_;
+  if (!steal_keys) {
+    return QWidget::eventFilter(watched, event);
+  }
+  if (event->type() == QEvent::ShortcutOverride) {
+    auto* key_event = static_cast<QKeyEvent*>(event);
+    if (IsArcadeDriveKey(key_event->key())) {
+      event->accept();
+      return true;
     }
-    if (event->type() == QEvent::KeyPress) {
-      auto* key_event = static_cast<QKeyEvent*>(event);
-      if (IsArcadeDriveKey(key_event->key())) {
-        keyPressEvent(key_event);
-        return true;
-      }
+  }
+  if (event->type() == QEvent::KeyPress) {
+    auto* key_event = static_cast<QKeyEvent*>(event);
+    if (IsArcadeDriveKey(key_event->key())) {
+      keyPressEvent(key_event);
+      return true;
     }
-    if (event->type() == QEvent::KeyRelease) {
-      auto* key_event = static_cast<QKeyEvent*>(event);
-      if (IsArcadeDriveKey(key_event->key())) {
-        keyReleaseEvent(key_event);
-        return true;
-      }
+  }
+  if (event->type() == QEvent::KeyRelease) {
+    auto* key_event = static_cast<QKeyEvent*>(event);
+    if (IsArcadeDriveKey(key_event->key())) {
+      keyReleaseEvent(key_event);
+      return true;
     }
   }
   return QWidget::eventFilter(watched, event);

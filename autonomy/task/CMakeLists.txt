@@ -96,6 +96,12 @@ if(AUTONOMY_BUILD_COVERAGE)
     target_link_libraries(task.coverage_test PRIVATE autonomy_task)
     add_test(NAME task.coverage_test COMMAND task.coverage_test)
     set_tests_properties(task.coverage_test PROPERTIES TIMEOUT 120)
+
+    add_executable(task.coverage_stress_test
+        navigation/coverage/tests/coverage_stress_test.cpp)
+    target_link_libraries(task.coverage_stress_test PRIVATE autonomy_task)
+    add_test(NAME task.coverage_stress_test COMMAND task.coverage_stress_test)
+    set_tests_properties(task.coverage_stress_test PROPERTIES TIMEOUT 900)
     add_executable(task.coverage_endpoint_test navigation/coverage/tests/coverage_endpoint_test.cpp)
     target_link_libraries(task.coverage_endpoint_test PRIVATE autonomy_task)
     add_test(NAME task.coverage_endpoint_test COMMAND task.coverage_endpoint_test)

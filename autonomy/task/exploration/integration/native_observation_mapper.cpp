@@ -85,7 +85,12 @@ public:
             grid.resolution = options_.resolution; grid.maximum_rays_per_frame = options_.maximum_rays;
             grid.maximum_cells = options_.maximum_voxels; grid.maximum_snapshot_cells = options_.maximum_voxels;
             grid.ray_angle_bins = std::min<std::size_t>(360, options_.maximum_rays);
-            grid.sensor_height = options_.sensor_heights[i]; grid.use_sensor_height = true; grid.estimate_ground_plane = true;
+            grid.sensor_height = options_.sensor_heights[i]; grid.use_sensor_height = true;
+            // A flat indoor floor is better served by the sensor-height prior
+            // than by a per-frame plane fit: a drifting fit on far, shallow
+            // floor returns lifted points that get classified as obstacles and
+            // leave large false-occupied patches inside free rooms.
+            grid.estimate_ground_plane = false;
             grid.ground_distance_threshold = options_.ground_tolerance;
             grid.minimum_obstacle_height = options_.ground_tolerance;
             grid.maximum_obstacle_height = options_.robot_height + options_.vertical_margin;

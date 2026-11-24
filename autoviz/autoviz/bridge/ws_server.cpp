@@ -3,6 +3,7 @@
  *****************************************************************************/
 
 #include "autoviz/bridge/ws_server.hpp"
+#include "autoviz/bridge/ws_frame.hpp"
 
 #include <array>
 #include <chrono>
@@ -15,21 +16,6 @@
 namespace autoviz {
 namespace bridge {
 namespace {
-
-constexpr uint8_t kMessageOpcode = 1;
-
-void WriteUint32LE(uint8_t* buf, uint32_t val) {
-  buf[0] = static_cast<uint8_t>(val & 0xff);
-  buf[1] = static_cast<uint8_t>((val >> 8) & 0xff);
-  buf[2] = static_cast<uint8_t>((val >> 16) & 0xff);
-  buf[3] = static_cast<uint8_t>((val >> 24) & 0xff);
-}
-
-void WriteUint64LE(uint8_t* buf, uint64_t val) {
-  for (int i = 0; i < 8; ++i) {
-    buf[i] = static_cast<uint8_t>((val >> (8 * i)) & 0xff);
-  }
-}
 
 nlohmann::json ChannelToJson(const ChannelInfo& c) {
   return nlohmann::json{
@@ -180,18 +166,17 @@ void WsServer::BroadcastMessage(ChannelId channel_id, uint64_t timestamp_ns,
     return;
   }
 
-  std::array<uint8_t, 1 + 4 + 8> header{};
-  header[0] = kMessageOpcode;
-  WriteUint32LE(header.data() + 1, channel_id);
-  WriteUint64LE(header.data() + 5, timestamp_ns);
-
-  std::vector<uint8_t> frame(header.size() + payload_size);
-  std::memcpy(frame.data(), header.data(), header.size());
-  if (payload_size > 0) {
-    std::memcpy(frame.data() + header.size(), payload, payload_size);
-  }
+  const std::string_view payload_view =
+      payload == nullptr ? std::string_view()
+                         : std::string_view(
+                               reinterpret_cast<const char*>(payload),
+                               payload_size);
+  const std::string frame =
+      EncodeMessageFrame(channel_id, timestamp_ns, payload_view);
+  const auto* frame_bytes =
+      reinterpret_cast<const uint8_t*>(frame.data());
   for (auto* conn : targets) {
-    SendBinary(conn, frame.data(), frame.size());
+    SendBinary(conn, frame_bytes, frame.size());
   }
 }
 

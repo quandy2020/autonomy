@@ -26,12 +26,11 @@
 #include <QImage>
 #include <QVector3D>
 
-#include "autolink/message/raw_message.hpp"
-#include "autolink/node/reader.hpp"
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/display.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
@@ -149,15 +148,15 @@ class DepthCloudDisplay : public Display {
   /** Color image payload queue. */
   integration::MessageQueue color_queue_;
 
-  /** Autolink reader for depth. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> depth_reader_;
+  /** Registry subscription for depth. */
+  integration::ChannelReaderRegistry::SubscriptionId depth_subscription_id_ = 0;
 
-  /** Autolink reader for CameraInfo. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      camera_info_reader_;
+  /** Registry subscription for CameraInfo. */
+  integration::ChannelReaderRegistry::SubscriptionId
+      camera_info_subscription_id_ = 0;
 
-  /** Autolink reader for color image. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> color_reader_;
+  /** Registry subscription for color image. */
+  integration::ChannelReaderRegistry::SubscriptionId color_subscription_id_ = 0;
 
   /** Latest depth image protobuf. */
   automsgs::msgs::sensor_msgs::Image depth_image_;

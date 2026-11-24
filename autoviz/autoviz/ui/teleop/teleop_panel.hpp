@@ -12,7 +12,8 @@
  *
  * ## Data flow
  *
- * - **Out:** stick motion → compose Twist → @c publish_timer_ / writers;
+ * - **Out:** stick motion → compose TwistStamped → ChannelWriterRegistry
+ *   @c /cmd_vel (and TeleopGoal when smart teleop is confirmed active);
  *   config edits emit @ref configChanged().
  * - **In:** @ref setConfig() / @ref applySettings() restore topic, rates,
  *   stick mode, and smart-teleop routing.
@@ -33,9 +34,9 @@
 
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 
-#include <autolink/node/reader.hpp>
 #include <autolink/node/writer.hpp>
 #include <automsgs/task/teleop.pb.h>
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/ui/teleop/teleop_types.hpp"
 
 class QElapsedTimer;
@@ -72,9 +73,10 @@ namespace teleop {
  *
  * ## Publish paths
  *
- * - **Direct:** writes Twist to @ref TeleopPanelConfig::topic.
+ * - **Direct:** writes TwistStamped to @ref TeleopPanelConfig::topic.
  * - **Smart teleop:** session start/stop + velocity goals via
- *   @c TeleopGoal writer; status from @c TeleopFeedback reader.
+ *   @c TeleopGoal writer; status from @c TeleopFeedback reader. Until
+ *   feedback reports ACTIVE, velocity still goes to @c /cmd_vel.
  *
  * @note Owns autolink reader/writer shared_ptrs for smart teleop; does not
  *       own @ref common::VisualizationManager.
@@ -262,9 +264,19 @@ class TeleopPanel : public QWidget {
   /**
    * @brief Publishes @p twist on the configured cmd_vel-style topic.
    *
+   * Routes through smart-teleop when a task session is confirmed; otherwise
+   * writes TwistStamped via @ref integration::ChannelWriterRegistry.
+   *
    * @param twist Velocity command to write.
    */
   void publishTwist(const automsgs::msgs::geometry_msgs::Twist& twist);
+
+  /**
+   * @brief Writes TwistStamped on @ref TeleopPanelConfig::topic.
+   *
+   * @param twist Velocity command to serialize and publish.
+   */
+  void publishCmdVel(const automsgs::msgs::geometry_msgs::Twist& twist);
 
   /**
    * @brief Publishes velocity through the smart-teleop goal channel.
@@ -364,17 +376,18 @@ class TeleopPanel : public QWidget {
   double angular_turn_ = 0.0; /**< Normalized yaw from Turn / Arcade. */
   bool linear_active_ = false;  /**< Move / Arcade stick currently held. */
   bool angular_active_ = false; /**< Turn stick currently held. */
-  bool smart_teleop_session_active_ = false; /**< Session start sent, not stopped. */
+  bool smart_teleop_session_active_ = false; /**< True after TeleopFeedback ACTIVE. */
   bool teleop_start_logged_this_connect_ = false; /**< Dedup start log per connect. */
+  bool cmd_vel_advertised_ = false; /**< True after the first non-zero /cmd_vel. */
   QString smart_teleop_status_text_; /**< Last status shown in the control UI. */
 
   /** Smart-teleop goal writer (created lazily). */
   std::shared_ptr<::autolink::Writer<::autonomy::task::proto::TeleopGoal>>
       teleop_goal_writer_;
 
-  /** Smart-teleop feedback reader (created lazily). */
-  std::shared_ptr<::autolink::Reader<::autonomy::task::proto::TeleopFeedback>>
-      teleop_feedback_reader_;
+  /** Smart-teleop feedback subscription (created lazily). */
+  integration::ChannelReaderRegistry::SubscriptionId
+      teleop_feedback_subscription_id_ = 0;
 
   /** Waits / retries while establishing a smart-teleop session. */
   QTimer* session_connect_timer_ = nullptr;

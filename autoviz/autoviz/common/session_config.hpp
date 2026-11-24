@@ -711,7 +711,7 @@ struct TeleopPanelPersistConfig {
 
   std::string title = "Teleop";
   std::string topic = "/cmd_vel";
-  double publish_rate_hz = 1.0;
+  double publish_rate_hz = 20.0;
   bool stop_on_release = true;
   bool smart_teleop_enabled = false;
   /** @ref teleop::TeleopStickMode as int. */

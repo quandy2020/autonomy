@@ -1398,6 +1398,7 @@ void ImagePanel::unsubscribeMain() {
 
 void ImagePanel::subscribeMain() {
   unsubscribeMain();
+  last_main_subscribe_attempt_ms_ = QDateTime::currentMSecsSinceEpoch();
   const std::string channel = config_.image_channel.toStdString();
   if (channel.empty()) {
     return;
@@ -1630,7 +1631,12 @@ void ImagePanel::tick() { onFrameTick(); }
 
 void ImagePanel::onFrameTick() {
   if (main_subscription_id_ == 0 && !config_.image_channel.isEmpty()) {
-    subscribeMain();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    // Do not CreateReader every frame when the channel is already owned.
+    if (last_main_subscribe_attempt_ms_ == 0 ||
+        now - last_main_subscribe_attempt_ms_ >= 2000) {
+      subscribeMain();
+    }
   }
   // Handlers already call updateRenderedFrame() when a payload arrives.
   drainIncomingQueues();

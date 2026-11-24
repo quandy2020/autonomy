@@ -81,24 +81,54 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
                                          false,normal_cursor_,cancel_checker);
     normal_cursor_=sampled.finished?0:sampled.next_cursor;
     if (sampled.canceled) { decision.canceled = true; return decision; }
-    if(sampled.candidates.empty() || now-last_fair_selection_>=options_.fairness_interval){
-        if(!sweep_cursor_) {
-            sweep_start_map_revision_=map.geometry_revision;
-            sweep_start_coverage_revision_=state.requirements_revision();sweep_start_sensors_=active;
+    // The oldest pending unit is the one fair selection must serve.  It has to
+    // be known before the sweep runs so paging can keep looking for a view that
+    // actually sees it; choosing a page without a contributor silently degraded
+    // the fair pass into another local selection and kept the robot shuttling
+    // inside one room while whole rooms stayed pending.
+    const bool fairness_due = now - last_fair_selection_ >= options_.fairness_interval;
+    std::optional<CoverageId> mandatory;
+    if (fairness_due) mandatory = queue_.OldestDue(now);
+    if(sampled.candidates.empty() || fairness_due){
+        const auto contributes = [](const ViewpointSamplingResult& page,
+                                    const CoverageId& id) {
+            return std::any_of(page.candidates.begin(), page.candidates.end(),
+                [&](const Viewpoint& view) {
+                    return std::any_of(view.contributions.begin(), view.contributions.end(),
+                        [&](const auto& contribution) {
+                            return contribution.id == id && contribution.quality > 0;
+                        });
+                });
+        };
+        const auto sample_page = [&] {
+            if (!sweep_cursor_) {
+                sweep_start_map_revision_ = map.geometry_revision;
+                sweep_start_coverage_revision_ = state.requirements_revision();
+                sweep_start_sensors_ = active;
+            }
+            auto page = ViewpointSampler{}.Sample(start, map, state, *evaluator_, regions_,
+                active, options_.safety, options_.sampling, true, sweep_cursor_, cancel_checker);
+            if (page.canceled) return page;
+            if (page.finished) {
+                sweep_completed_ = sweep_start_map_revision_ == map.geometry_revision &&
+                    sweep_start_coverage_revision_ == state.requirements_revision() &&
+                    sweep_start_sensors_ == active;
+                if (sweep_completed_) sweep_completed_at_ = now;
+                sweep_cursor_ = 0;
+            } else {
+                sweep_cursor_ = page.next_cursor;
+            }
+            return page;
+        };
+        auto swept = sample_page();
+        for (unsigned extra = 0; fairness_due && mandatory && !swept.canceled &&
+             !swept.finished && !contributes(swept, *mandatory) && extra < 3; ++extra) {
+            swept = sample_page();
         }
-        auto swept=ViewpointSampler{}.Sample(start,map,state,*evaluator_,regions_,active,options_.safety,options_.sampling,
-                                             true,sweep_cursor_,cancel_checker);
         if (swept.canceled) {
-            sweep_cursor_ = swept.next_cursor;
             decision.canceled = true;
             return decision;
         }
-        if(swept.finished){
-            sweep_completed_=sweep_start_map_revision_==map.geometry_revision &&
-                sweep_start_coverage_revision_==state.requirements_revision() && sweep_start_sensors_==active;
-            if (sweep_completed_) sweep_completed_at_ = now;
-            sweep_cursor_=0;
-        }else sweep_cursor_=swept.next_cursor;
         sampled=std::move(swept);
     }
     if(sampled.canceled){decision.canceled=true;return decision;}
@@ -127,8 +157,6 @@ StrategyDecision HierarchicalCoverageStrategy::Select(const Pose2d& start,const 
     }
     decision.global_route=VisitOrderOptimizer{}.Optimize(start,global,*paths_,options_.sampling.nominal_speed,
                                                          options_.sampling.angular_speed,home,false,cancel_checker);
-    std::optional<CoverageId> mandatory;
-    if(now-last_fair_selection_>=options_.fairness_interval)mandatory=queue_.OldestDue(now);
     std::vector<Viewpoint> local;
     const auto target_region=decision.global_route.views.empty()?regions_.RegionFor(start):decision.global_route.views.front().region_id;
     for(const auto& candidate:sampled.candidates)if(autonomy::navigation::Distance(candidate.pose,start)<=options_.local_radius ||

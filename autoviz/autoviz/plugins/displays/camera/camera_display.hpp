@@ -24,12 +24,11 @@
 
 #include <QImage>
 
-#include "autolink/message/raw_message.hpp"
-#include "autolink/node/reader.hpp"
 #include <automsgs/msgs/sensor_msgs/camera_info.pb.h>
 #include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/display.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/interaction/message_queue.hpp"
 
 namespace autoviz {
@@ -39,8 +38,9 @@ namespace display {
  * @class CameraDisplay
  * @brief Visualizes a camera image projected on its frustum far plane.
  *
- * Uses dedicated Autolink readers (not @ref ChannelDisplay) because two
- * channels (image + CameraInfo) must stay in sync. Properties include
+ * Uses @ref integration::ChannelReaderRegistry (not a second Autolink
+ * reader) because two channels (image + CameraInfo) must stay in sync
+ * with Image / CameraInfo displays. Properties include
  * @c camera_info_channel, near/far distances, and frustum color.
  *
  * @note @ref image() exposes the latest decoded frame for optional 2D UI
@@ -151,12 +151,12 @@ class CameraDisplay : public Display {
   /** Incoming CameraInfo payload queue. */
   integration::MessageQueue camera_info_queue_;
 
-  /** Autolink reader for the image channel. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>> image_reader_;
+  /** Registry subscription for the image channel. */
+  integration::ChannelReaderRegistry::SubscriptionId image_subscription_id_ = 0;
 
-  /** Autolink reader for the CameraInfo channel. */
-  std::shared_ptr<autolink::Reader<autolink::message::RawMessage>>
-      camera_info_reader_;
+  /** Registry subscription for the CameraInfo channel. */
+  integration::ChannelReaderRegistry::SubscriptionId
+      camera_info_subscription_id_ = 0;
 
   /** Latest decoded image for texture / UI. */
   QImage image_;

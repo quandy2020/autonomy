@@ -5,7 +5,7 @@
 # synchronized sensor data, odom -> base_footprint, static sensor TF and ground
 # truth only.
 
-extends: scenes/jtcxE69GiFV.yaml
+extends: scenes/kEZ7cmS4wCh.yaml
 
 habitat:
   backend: habitat
@@ -86,9 +86,11 @@ habitat:
       rgb_channel: /camera/rgb/image_raw
       depth_channel: /camera/depth/image_raw
       info_channel: /camera/camera_info
-      semantic_enabled: false
+      # MP3D scene ships ``*_semantic.ply`` + ``*.house``; publish colored
+      # semantics for Autoviz and mono16 ids for Atlas PLP.
+      semantic_enabled: true
       semantic_channel: /camera/semantic/image_raw
-      semantic_ids_channel: ""
+      semantic_ids_channel: /camera/semantic/instance_ids
       frame: camera_optical_frame
       rate_hz: 15.0
       range_min: 0.15
@@ -140,7 +142,7 @@ habitat:
     frame: map
     rate_hz: 1.0
     ply:
-      source: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/jtcxE69GiFV/jtcxE69GiFV_semantic.ply
+      source: ${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/kEZ7cmS4wCh/kEZ7cmS4wCh_semantic.ply
       channel: /overall/map
       # ~2.9M verts after grid z-band; stride keeps SHM under 32 MiB.
       stride: 5

@@ -2,6 +2,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
@@ -16,71 +17,186 @@ namespace autonomy::planning::planner::fields2cover::pp::detail {
 
 // Prepared ring coordinates keep collision checking independent of repeatedly
 // allocating native geometry objects for every steering sample.
+
+/**
+ * @class FreeSpace
+ * @brief Polygon free space used by the steering search and link checks.
+ *
+ * The constructor copies every ring into plain doubles, so the hot
+ * Contains() path performs no native geometry calls and no allocation. Each
+ * ring keeps a bounding box that rejects far-away candidates with two
+ * comparisons, which keeps the point test cheap on maps with many polygons.
+ */
 class FreeSpace {
  public:
+  /**
+   * @brief Flattens the cells into cached ring coordinates.
+   * @param[in] cells Free-space polygons; holes follow their outer ring.
+   */
   explicit FreeSpace(const F2CCells& cells) {
     for (const auto& cell : cells) {
-      std::vector<std::vector<F2CPoint>> rings;
+      std::vector<Ring> rings;
       for (const auto& ring : cell) {
-        std::vector<F2CPoint> points;
-        for (size_t i = 0; i < ring.size(); ++i) points.push_back(ring[i]);
-        if (points.size() > 2) rings.push_back(std::move(points));
+        Ring cached;
+        for (size_t i = 0; i < ring.size(); ++i) {
+          cached.points.push_back({ring[i].GetX(), ring[i].GetY()});
+        }
+        if (cached.points.size() <= 2) {
+          continue;
+        }
+        cached.box = BoxOf(cached.points);
+        rings.push_back(std::move(cached));
       }
-      if (!rings.empty()) cells_.push_back(std::move(rings));
+      if (!rings.empty()) {
+        cells_.push_back(std::move(rings));
+      }
     }
-    min_x = cells.GetDimMinX(); min_y = cells.GetDimMinY();
-    max_x = cells.GetDimMaxX(); max_y = cells.GetDimMaxY();
+    min_x = cells.GetDimMinX();
+    min_y = cells.GetDimMinY();
+    max_x = cells.GetDimMaxX();
+    max_y = cells.GetDimMaxY();
   }
 
+  /**
+   * @brief Point-in-free-space test.
+   * @param[in] p Query point in map coordinates.
+   * @return True when @p p is inside a cell and outside every hole.
+   */
   bool Contains(const F2CPoint& p) const {
-    if (p.GetX() < min_x - 1e-8 || p.GetX() > max_x + 1e-8 ||
-        p.GetY() < min_y - 1e-8 || p.GetY() > max_y + 1e-8) return false;
+    return Contains(p.GetX(), p.GetY());
+  }
+
+  /**
+   * @brief Point-in-free-space test on raw coordinates.
+   * @param[in] x Query abscissa in map coordinates.
+   * @param[in] y Query ordinate in map coordinates.
+   * @return True when the point is inside a cell and outside every hole.
+   */
+  bool Contains(double x, double y) const {
+    if (x < min_x - 1e-8 || x > max_x + 1e-8 || y < min_y - 1e-8 ||
+        y > max_y + 1e-8) {
+      return false;
+    }
     for (const auto& rings : cells_) {
-      if (!InsideRing(p, rings.front())) continue;
+      if (!InsideRing(rings.front(), x, y)) {
+        continue;
+      }
       bool hole = false;
-      for (size_t i = 1; i < rings.size(); ++i)
-        if (InsideRing(p, rings[i])) { hole = true; break; }
-      if (!hole) return true;
+      for (size_t i = 1; i < rings.size(); ++i) {
+        if (InsideRing(rings[i], x, y)) {
+          hole = true;
+          break;
+        }
+      }
+      if (!hole) {
+        return true;
+      }
     }
     return false;
   }
 
+  /**
+   * @brief Straight-line test used by the steering validator.
+   * @param[in] a Segment start point.
+   * @param[in] b Segment end point.
+   * @return True when the open segment stays inside the free space.
+   */
   bool Segment(const F2CPoint& a, const F2CPoint& b) const {
-    if (!Contains(a) || !Contains(b) || !Contains((a + b) * .5)) return false;
+    if (!Contains(a) || !Contains(b) || !Contains((a + b) * .5)) {
+      return false;
+    }
+    const double ax = a.GetX();
+    const double ay = a.GetY();
+    const double bx = b.GetX();
+    const double by = b.GetY();
     // End points can lie inside while a long straight cuts a concave boundary
     // or a small hole. Check every boundary edge as well as the midpoint.
-    for (const auto& cell : cells_) for (const auto& ring : cell)
-      for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
-        const double a1 = Cross(a, b, ring[j]), a2 = Cross(a, b, ring[i]);
-        const double b1 = Cross(ring[j], ring[i], a), b2 = Cross(ring[j], ring[i], b);
-        if (((a1 > 1e-9 && a2 < -1e-9) || (a1 < -1e-9 && a2 > 1e-9)) &&
-            ((b1 > 1e-9 && b2 < -1e-9) || (b1 < -1e-9 && b2 > 1e-9))) return false;
+    for (const auto& rings : cells_)
+      for (const auto& ring : rings) {
+        if (ring.points.size() < 2) {
+          continue;
+        }
+        for (size_t i = 0, j = ring.points.size() - 1; i < ring.points.size();
+             j = i++) {
+          const double xj = ring.points[j][0];
+          const double yj = ring.points[j][1];
+          const double xi = ring.points[i][0];
+          const double yi = ring.points[i][1];
+          const double a1 = Cross(ax, ay, bx, by, xj, yj);
+          const double a2 = Cross(ax, ay, bx, by, xi, yi);
+          const double b1 = Cross(xj, yj, xi, yi, ax, ay);
+          const double b2 = Cross(xj, yj, xi, yi, bx, by);
+          if (((a1 > 1e-9 && a2 < -1e-9) || (a1 < -1e-9 && a2 > 1e-9)) &&
+              ((b1 > 1e-9 && b2 < -1e-9) || (b1 < -1e-9 && b2 > 1e-9))) {
+            return false;
+          }
+        }
       }
     return true;
   }
 
   double min_x, min_y, max_x, max_y;
+
  private:
-  std::vector<std::vector<std::vector<F2CPoint>>> cells_;
-  static double Cross(const F2CPoint& a, const F2CPoint& b, const F2CPoint& p) {
-    return (b.GetX() - a.GetX()) * (p.GetY() - a.GetY()) -
-        (b.GetY() - a.GetY()) * (p.GetX() - a.GetX());
-  }
-  static bool InsideRing(const F2CPoint& p, const std::vector<F2CPoint>& ring) {
-    bool in = false;
-    for (size_t i = 0, j = ring.size() - 1; i < ring.size(); j = i++) {
-      const auto& a = ring[j]; const auto& b = ring[i];
-      if (std::fabs(Cross(a, b, p)) < 1e-8 &&
-          p.GetX() >= std::min(a.GetX(), b.GetX()) - 1e-8 &&
-          p.GetX() <= std::max(a.GetX(), b.GetX()) + 1e-8 &&
-          p.GetY() >= std::min(a.GetY(), b.GetY()) - 1e-8 &&
-          p.GetY() <= std::max(a.GetY(), b.GetY()) + 1e-8) return true;
-      if ((a.GetY() > p.GetY()) != (b.GetY() > p.GetY()) &&
-          p.GetX() < (b.GetX() - a.GetX()) * (p.GetY() - a.GetY()) /
-              (b.GetY() - a.GetY()) + a.GetX()) in = !in;
+  struct Box {
+    double min_x, min_y, max_x, max_y;
+  };
+  struct Ring {
+    std::vector<std::array<double, 2>> points;
+    Box box{0.0, 0.0, 0.0, 0.0};
+  };
+
+  static Box BoxOf(const std::vector<std::array<double, 2>>& points) {
+    Box box{points.front()[0], points.front()[1], points.front()[0],
+            points.front()[1]};
+    for (const auto& point : points) {
+      box.min_x = std::min(box.min_x, point[0]);
+      box.min_y = std::min(box.min_y, point[1]);
+      box.max_x = std::max(box.max_x, point[0]);
+      box.max_y = std::max(box.max_y, point[1]);
     }
-    return in;
+    return box;
   }
+
+  static double Cross(double ax, double ay, double bx, double by, double px,
+                      double py) {
+    return (bx - ax) * (py - ay) - (by - ay) * (px - ax);
+  }
+
+  /**
+   * @brief Even-odd point in ring test with a bounding box prefilter.
+   * @param[in] ring Cached ring coordinates and its bounding box.
+   * @param[in] x Query abscissa.
+   * @param[in] y Query ordinate.
+   * @return True when the point lies inside or on the ring boundary.
+   */
+  static bool InsideRing(const Ring& ring, double x, double y) {
+    const Box& box = ring.box;
+    if (x < box.min_x - 1e-8 || x > box.max_x + 1e-8 || y < box.min_y - 1e-8 ||
+        y > box.max_y + 1e-8) {
+      return false;
+    }
+    bool inside = false;
+    const auto& points = ring.points;
+    for (size_t i = 0, j = points.size() - 1; i < points.size(); j = i++) {
+      const double ax = points[j][0];
+      const double ay = points[j][1];
+      const double bx = points[i][0];
+      const double by = points[i][1];
+      if (std::fabs(Cross(ax, ay, bx, by, x, y)) < 1e-8 &&
+          x >= std::min(ax, bx) - 1e-8 && x <= std::max(ax, bx) + 1e-8 &&
+          y >= std::min(ay, by) - 1e-8 && y <= std::max(ay, by) + 1e-8) {
+        return true;
+      }
+      if ((ay > y) != (by > y) &&
+          x < (bx - ax) * (y - ay) / (by - ay) + ax) {
+        inside = !inside;
+      }
+    }
+    return inside;
+  }
+
+  std::vector<std::vector<Ring>> cells_;
 };
 
 inline bool ValidPath(const F2CPath& path, const F2CRobot& robot,

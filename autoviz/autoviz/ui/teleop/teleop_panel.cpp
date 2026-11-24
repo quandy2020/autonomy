@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 #include <QAction>
 #include <QApplication>
@@ -23,12 +24,12 @@
 
 #include <glog/logging.h>
 
-#include <unordered_map>
-
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
 
 #include "autoviz/common/visualization_manager.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_writer_registry.hpp"
 #include "autoviz/common/interaction/teleop_channels.hpp"
 #include "autoviz/ui/theme/tokens.hpp"
 #include "autoviz/ui/theme/style.hpp"
@@ -170,6 +171,9 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
             config_.right.value = -max_angular;
             syncSettingsWidgetFromConfig();
             emit configChanged();
+            if (linear_active_ || angular_active_) {
+              publishComposedTwist();
+            }
           });
   connect(control_, &TeleopControlWidget::smartTeleopChanged, this,
           [this](bool enabled) {
@@ -244,6 +248,9 @@ TeleopPanelConfig TeleopPanel::config() const { return config_; }
 void TeleopPanel::setConfig(const TeleopPanelConfig& config) {
   if (config_.smart_teleop_enabled && !config.smart_teleop_enabled) {
     publishTeleopSessionStop();
+  }
+  if (config_.topic != config.topic) {
+    cmd_vel_advertised_ = false;
   }
   config_ = config;
   updatePublishTimer();
@@ -341,46 +348,48 @@ void TeleopPanel::setActiveTwist(
 void TeleopPanel::publishTwist(const automsgs::msgs::geometry_msgs::Twist& twist) {
   if (config_.smart_teleop_enabled) {
     publishTeleopVelocity(twist);
-    return;
+    // Keep driving /cmd_vel until autonomy.task actually ACKs ACTIVE. Write()
+    // can succeed with no reader (eager SHM enable), which used to drop all
+    // stick motion on a dead TeleopGoal channel.
+    if (smart_teleop_session_active_) {
+      return;
+    }
   }
+  publishCmdVel(twist);
+}
+
+void TeleopPanel::publishCmdVel(
+    const automsgs::msgs::geometry_msgs::Twist& twist) {
   if (config_.topic.isEmpty() || manager_ == nullptr) {
     return;
   }
-  auto node = manager_->autolinkNode();
-  if (node == nullptr) {
-    return;
-  }
-  // Must advertise TwistStamped — same type as controller_server / autosim_bridge.
-  // Skip creating a writer for all-zero stop unless we already published (avoids
-  // declaring /cmd_vel at panel open and fighting autonomy.control).
+  // Skip creating a writer for all-zero stop unless we already published
+  // (avoids declaring /cmd_vel at panel open and fighting autonomy.control).
   const bool is_zero =
       std::abs(twist.linear().x()) < 1e-9 && std::abs(twist.linear().y()) < 1e-9 &&
       std::abs(twist.linear().z()) < 1e-9 && std::abs(twist.angular().x()) < 1e-9 &&
       std::abs(twist.angular().y()) < 1e-9 && std::abs(twist.angular().z()) < 1e-9;
-
-  static thread_local std::unordered_map<
-      std::string,
-      std::shared_ptr<
-          ::autolink::Writer<automsgs::msgs::geometry_msgs::TwistStamped>>>
-      writers;
-  const std::string channel = config_.topic.toStdString();
-  auto& writer = writers[channel];
-  if (writer == nullptr) {
-    if (is_zero) {
-      return;
-    }
-    writer =
-        node->CreateWriter<automsgs::msgs::geometry_msgs::TwistStamped>(channel);
-  }
-  if (writer == nullptr) {
+  if (is_zero && !cmd_vel_advertised_) {
     return;
   }
+
   automsgs::msgs::geometry_msgs::TwistStamped stamped;
   *stamped.mutable_header()->mutable_stamp() =
       automsgs::msgs::builtin_interfaces::TimeNow();
   stamped.mutable_header()->set_frame_id("base_link");
   *stamped.mutable_twist() = twist;
-  writer->Write(stamped);
+  std::string payload;
+  if (!stamped.SerializeToString(&payload)) {
+    LOG_EVERY_N(WARNING, 40) << "Teleop TwistStamped serialize failed";
+    return;
+  }
+  const std::string channel = config_.topic.toStdString();
+  if (!integration::ChannelWriterRegistry::instance().publishLoop(
+          channel, payload, stamped.GetTypeName())) {
+    LOG_EVERY_N(WARNING, 40) << "Teleop /cmd_vel publish failed on " << channel;
+    return;
+  }
+  cmd_vel_advertised_ = true;
 }
 
 void TeleopPanel::publishTeleopSessionStart() {
@@ -408,10 +417,11 @@ void TeleopPanel::publishTeleopSessionStart() {
         this, [this]() { updateSmartTeleopUiStatus(); }, Qt::QueuedConnection);
   } else {
     goal_write_fail_streak_ = 0;
-    smart_teleop_session_active_ = true;
+    // Session stays inactive until TeleopFeedback reports ACTIVE so /cmd_vel
+    // still drives the plant when autonomy.task is not running.
     if (!teleop_start_logged_this_connect_) {
       teleop_start_logged_this_connect_ = true;
-      LOG(INFO) << "TeleopPanel: wrote TELEOP_CMD_START";
+      LOG(INFO) << "TeleopPanel: wrote TELEOP_CMD_START (waiting for feedback)";
     }
   }
 }
@@ -537,35 +547,33 @@ void TeleopPanel::ensureTeleopGoalWriter() {
 }
 
 void TeleopPanel::ensureTeleopFeedbackReader() {
-  if (teleop_feedback_reader_ != nullptr || manager_ == nullptr) {
+  if (teleop_feedback_subscription_id_ != 0 || manager_ == nullptr) {
     return;
   }
-  auto node = manager_->autolinkNode();
-  if (node == nullptr) {
+  if (manager_->autolinkNode() == nullptr) {
     return;
   }
-  node->DeleteReader(integration::kTeleopFeedbackChannel);
-  teleop_feedback_reader_ =
-      node->CreateReader<::autonomy::task::proto::TeleopFeedback>(
+  teleop_feedback_subscription_id_ =
+      integration::ChannelReaderRegistry::instance().subscribe(
           integration::kTeleopFeedbackChannel,
-          [this](const std::shared_ptr<tp::TeleopFeedback>& feedback) {
-            if (!feedback) {
+          [this](const std::string& payload) {
+            tp::TeleopFeedback feedback;
+            if (!integration::ParseChannelMessage(payload, &feedback)) {
               return;
             }
-            if (feedback->status() == tp::TELEOP_STATUS_ACTIVE) {
+            if (feedback.status() == tp::TELEOP_STATUS_ACTIVE) {
               smart_teleop_session_active_ = true;
               stopSessionConnectTimer();
-            } else if (feedback->status() == tp::TELEOP_STATUS_REJECTED ||
-                       feedback->status() == tp::TELEOP_STATUS_IDLE) {
+            } else if (feedback.status() == tp::TELEOP_STATUS_REJECTED ||
+                       feedback.status() == tp::TELEOP_STATUS_IDLE) {
               smart_teleop_session_active_ = false;
             }
-            smart_teleop_status_text_ =
-                TeleopStatusLabel(feedback->status());
+            smart_teleop_status_text_ = TeleopStatusLabel(feedback.status());
             QMetaObject::invokeMethod(
                 this, [this]() { updateSmartTeleopUiStatus(); },
                 Qt::QueuedConnection);
           });
-  if (!teleop_feedback_reader_) {
+  if (teleop_feedback_subscription_id_ == 0) {
     LOG(WARNING) << "TeleopPanel: failed to subscribe "
                  << integration::kTeleopFeedbackChannel;
   }
@@ -573,13 +581,11 @@ void TeleopPanel::ensureTeleopFeedbackReader() {
 
 void TeleopPanel::shutdownTeleopReaders() {
   stopSessionConnectTimer();
-  auto node = manager_ != nullptr ? manager_->autolinkNode() : nullptr;
   teleop_goal_writer_.reset();
-  if (teleop_feedback_reader_) {
-    teleop_feedback_reader_.reset();
-    if (node != nullptr) {
-      node->DeleteReader(integration::kTeleopFeedbackChannel);
-    }
+  if (teleop_feedback_subscription_id_ != 0) {
+    integration::ChannelReaderRegistry::instance().unsubscribe(
+        teleop_feedback_subscription_id_);
+    teleop_feedback_subscription_id_ = 0;
   }
   smart_teleop_status_text_.clear();
   smart_teleop_session_active_ = false;
@@ -596,14 +602,14 @@ void TeleopPanel::updateSmartTeleopUiStatus() {
     return;
   }
   QString status;
-  if (!teleop_goal_writer_) {
-    status = tr("Channel not ready");
-  } else if (goal_write_fail_streak_ > 0 && !smart_teleop_session_active_) {
-    status = tr("Waiting for task…");
-  } else if (!smart_teleop_status_text_.isEmpty()) {
-    status = smart_teleop_status_text_;
+  if (smart_teleop_session_active_) {
+    status = smart_teleop_status_text_.isEmpty()
+                 ? tr("Connected — drag stick to drive")
+                 : smart_teleop_status_text_;
+  } else if (!teleop_goal_writer_) {
+    status = tr("Task offline — driving %1").arg(config_.topic);
   } else {
-    status = tr("Connected — drag stick to drive");
+    status = tr("Waiting for task — driving %1").arg(config_.topic);
   }
   control_->setSmartTeleopStatusText(status);
 }
@@ -632,9 +638,8 @@ void TeleopPanel::publishStop() {
   setActiveTwist(ZeroTwist());
   if (config_.smart_teleop_enabled) {
     publishTeleopSessionStop();
-  } else {
-    publishTwist(ZeroTwist());
   }
+  publishCmdVel(ZeroTwist());
   publish_timer_->stop();
 }
 
@@ -681,13 +686,12 @@ void TeleopPanel::onLinearReleased() {
   linear_y_ = 0.0;
   linear_active_ = false;
   if (config_.stop_on_release && !angular_active_) {
+    setActiveTwist(ZeroTwist());
     if (config_.smart_teleop_enabled) {
-      setActiveTwist(ZeroTwist());
       publishTeleopVelocity(ZeroTwist());
-      publish_timer_->stop();
-      return;
     }
-    publishStop();
+    publishCmdVel(ZeroTwist());
+    publish_timer_->stop();
     return;
   }
   publishComposedTwist();
@@ -697,13 +701,12 @@ void TeleopPanel::onAngularReleased() {
   angular_turn_ = 0.0;
   angular_active_ = false;
   if (config_.stop_on_release && !linear_active_) {
+    setActiveTwist(ZeroTwist());
     if (config_.smart_teleop_enabled) {
-      setActiveTwist(ZeroTwist());
       publishTeleopVelocity(ZeroTwist());
-      publish_timer_->stop();
-      return;
     }
-    publishStop();
+    publishCmdVel(ZeroTwist());
+    publish_timer_->stop();
     return;
   }
   publishComposedTwist();

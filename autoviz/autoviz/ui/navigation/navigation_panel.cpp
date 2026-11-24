@@ -47,7 +47,6 @@
 
 #include <autolink/action/client.hpp>
 #include <autolink/node/node.hpp>
-#include <autolink/node/reader.hpp>
 #include <autolink/node/writer.hpp>
 #include <automsgs/actions/nav_actions.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
@@ -57,6 +56,8 @@
 #include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
 #include <automsgs/task/navigation.pb.h>
 
+#include "autoviz/common/interaction/channel_payload.hpp"
+#include "autoviz/common/interaction/channel_reader_registry.hpp"
 #include "autoviz/common/session_config.hpp"
 #ifdef AUTONOMY_BUILD_COVERAGE
 #include "autoviz/ui/navigation/coverage_panel.hpp"
@@ -437,8 +438,8 @@ struct NavigationPanel::Impl {
       goal_poses_writer;
   std::shared_ptr<autolink::Writer<automsgs::msgs::std_msgs::Bool>> cancel_writer;
   std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>> plan_clear_writer;
-  std::shared_ptr<autolink::Reader<autonomy::task::proto::NavigationFeedback>>
-      feedback_reader;
+  integration::ChannelReaderRegistry::SubscriptionId feedback_subscription_id =
+      0;
   int cancel_epoch = 0;
   int markers_epoch = 0;
   bool suppress_nav_feedback = false;
@@ -478,6 +479,11 @@ NavigationPanel::NavigationPanel(common::VisualizationManager* manager,
 
 NavigationPanel::~NavigationPanel() {
   cancelAllGoals();
+  if (impl_->feedback_subscription_id != 0) {
+    integration::ChannelReaderRegistry::instance().unsubscribe(
+        impl_->feedback_subscription_id);
+    impl_->feedback_subscription_id = 0;
+  }
 }
 
 void NavigationPanel::installTitleBarTools(PanelDockWidget* dock) {
@@ -868,19 +874,18 @@ void NavigationPanel::ensureClients() {
     impl_->plan_clear_writer =
         node->CreateWriter<automsgs::msgs::nav_msgs::Path>(kPlanTopic);
   }
-  if (!impl_->feedback_reader) {
-    impl_->feedback_reader =
-        node->CreateReader<autonomy::task::proto::NavigationFeedback>(
-            kNavigationFeedback,
-            [this](const std::shared_ptr<autonomy::task::proto::NavigationFeedback>&
-                       feedback) {
-              if (!feedback) {
+  if (impl_->feedback_subscription_id == 0) {
+    impl_->feedback_subscription_id =
+        integration::ChannelReaderRegistry::instance().subscribe(
+            kNavigationFeedback, [this](const std::string& payload) {
+              autonomy::task::proto::NavigationFeedback feedback;
+              if (!integration::ParseChannelMessage(payload, &feedback)) {
                 return;
               }
-              const int status = static_cast<int>(feedback->status());
-              const float distance = feedback->distance_remaining();
-              const int total = feedback->total_waypoints();
-              const int index = feedback->current_waypoint_index();
+              const int status = static_cast<int>(feedback.status());
+              const float distance = feedback.distance_remaining();
+              const int total = feedback.total_waypoints();
+              const int index = feedback.current_waypoint_index();
               const int remaining = total > index ? total - index : 0;
               runOnUi([this, status, distance, remaining]() {
                 onNavigationFeedback(status, distance, remaining);

@@ -1754,11 +1754,17 @@ class Simulator:
     def constrain_motion(
         self, start_x: float, start_y: float, end_x: float, end_y: float
     ) -> Tuple[float, float]:
-        """Keep a planar step on the Habitat navmesh and occupancy grid.
+        """Keep a planar step on the Habitat navmesh (occupancy is fallback).
 
         Kinematic ``cmd_vel`` integration otherwise teleports through walls.
         Yaw is unchanged: the robot may still turn in place when translation
         is blocked.
+
+        When a loaded pathfinder is available, ``try_step`` is authoritative.
+        GT occupancy from ``/overall/map`` PLY is often denser than the
+        navigable surface and was vetoing every linear step (pose stuck,
+        ``/odom.twist.linear.x`` still non-zero). Occupancy recover/clip runs
+        only when navmesh is missing.
         """
         if not self.block_motion:
             return float(end_x), float(end_y)
@@ -1768,12 +1774,27 @@ class Simulator:
         if self.session is not None:
             pathfinder = getattr(self.session, "pathfinder", None)
         if pathfinder is not None and bool(getattr(pathfinder, "is_loaded", False)):
+            # Mesh-refined floor_y can sit a few cm below the navmesh; try_step
+            # at that height silently returns the start pose (no linear motion).
+            height = float(self.floor_y)
+            snapped_start = self.try_snap_point(pathfinder, sx, height, -sy)
+            if snapped_start is None:
+                for probe in self.navmesh_height_candidates(pathfinder):
+                    snapped_start = self.try_snap_point(pathfinder, sx, probe, -sy)
+                    if snapped_start is not None:
+                        break
+            if snapped_start is not None:
+                sx = float(snapped_start[0])
+                sy = -float(snapped_start[2])
+                if math.isfinite(float(snapped_start[1])):
+                    height = float(snapped_start[1])
+                    self.floor_y = height
             try_step = getattr(pathfinder, "try_step_no_sliding", None)
             if not callable(try_step):
                 try_step = getattr(pathfinder, "try_step", None)
             if callable(try_step):
-                start_h = (sx, float(self.floor_y), -sy)
-                end_h = (placed_x, float(self.floor_y), -placed_y)
+                start_h = (sx, height, -sy)
+                end_h = (placed_x, height, -placed_y)
                 hit = None
                 try:
                     hit = try_step(start_h, end_h)
@@ -1793,6 +1814,11 @@ class Simulator:
                         self.floor_y = float(xyz[1])
                 else:
                     placed_x, placed_y = sx, sy
+            nav_progress = (abs(placed_x - sx) + abs(placed_y - sy)) > 1e-4
+            if nav_progress:
+                return float(placed_x), float(placed_y)
+            return float(sx), float(sy)
+
         radius = 0.16
         if self.urdf is not None:
             poly = getattr(self.urdf, "footprint", ()) or ()
@@ -1807,15 +1833,13 @@ class Simulator:
         start_hit = callable(occupied) and occupied(sx, sy, radius=radius)
         if callable(recover):
             rx, ry = recover(sx, sy, radius=radius)
-            # Occupied start + cmd_vel into the wall: try_step stays put.
-            # Nudge onto the nearest free disc so recovery BackUp can move.
+            # Occupied start + zero step: nudge onto the nearest free disc.
             if start_hit and (abs(rx - sx) + abs(ry - sy) > 1e-4):
                 return float(rx), float(ry)
             sx, sy = rx, ry
         clip = getattr(mapper, "last_free_on_segment", None)
         if callable(clip):
             return clip(sx, sy, placed_x, placed_y, radius=radius)
-        occupied = getattr(mapper, "disc_occupied", None)
         if callable(occupied) and occupied(placed_x, placed_y, radius=radius):
             return sx, sy
         return float(placed_x), float(placed_y)

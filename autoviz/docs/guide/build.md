@@ -69,6 +69,12 @@ Ogre 细节见 [rendering/ogre.md](../rendering/ogre.md)。
 |------|------|
 | `autoviz_interaction_test` | `MessageQueue` 最新值 / FIFO / 移动语义 / 全局清理 |
 | `autoviz_mosaic_restore_test` | 会话 `MainPanelState` 恢复、嵌套 split、缺失面板占位与持久化 |
+| `autoviz_session_config_test` | `.autoviz` 读写 round-trip：全局项、显示树/分组、属性、视图、工具与布局 blob |
+| `autoviz_channel_payload_test` | Autolink 帧头剥离与异常回退（截断/异常 magic/短包） |
+| `autoviz_ws_frame_test` | WebSocket 二进制帧：opcode + channel id + timestamp 字节序与回退 |
+| `autoviz_display_registry_test` | 42 个已注册 Display 逐个工厂创建 + 默认属性完整性 |
+| `autoviz_tf_buffer_test` | TF 插入、链式 lookup、revision 增量与 clear |
+| `autoviz_ws_server_test` | 本机 WebSocket 握手 + 订阅 + 二进制广播（回环集成） |
 
 ```bash
 # 一条命令：构建 + 跑测试（自动打开测试选项）

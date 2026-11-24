@@ -53,6 +53,12 @@ public:
      * @return The original automsgs message, preserving its integer acquisition Header.
      */
     std::optional<::automsgs::msgs::nav_msgs::Odometry> LatestBackendPose(double now) const;
+    /** @brief Degraded proof from the freshest validation fallback sample.
+     * @details Used only when Atlas has no healthy proof, so the exploration
+     * session keeps observing instead of deadlocking on "no pose -> no frames".
+     */
+    std::optional<AcquisitionLocalization> LatestFallbackProof(
+        double now, const std::string& frame) const;
     /** @brief Feed one odometry sample used only when Atlas has no fresh proof.
      * @param odometry Actual base pose with its acquisition stamp.
      */

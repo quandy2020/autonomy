@@ -128,8 +128,9 @@ int main(int argc, char** argv) {
   parser.addOption(no_ws_option);
   QCommandLineOption ws_host_option(
       QStringLiteral("ws-host"),
-      QStringLiteral("WebSocket bind address"),
-      QStringLiteral("host"), QStringLiteral("0.0.0.0"));
+      QStringLiteral(
+          "WebSocket bind address (default 127.0.0.1; use 0.0.0.0 for LAN)"),
+      QStringLiteral("host"), QStringLiteral("127.0.0.1"));
   parser.addOption(ws_host_option);
   QCommandLineOption ws_port_option(
       QStringLiteral("ws-port"),
