@@ -109,8 +109,12 @@ bool VoxelSlamSystem::AddScan(const sensor::PointCloudXYZI& cloud,
   odometry_.AddLidar(std::make_shared<sensor::PointCloudXYZI>(cloud), time);
   ::argus::odometry::OdometryOutput output;
   while (odometry_.Process(&output)) {
-    if (output.status == ::argus::odometry::ProcessStatus::kOk) {
-      trajectory_.push_back(odometry_.x_curr());
+    if (output.status == ::argus::odometry::ProcessStatus::kOk ||
+        output.status == ::argus::odometry::ProcessStatus::kPropagateOnly) {
+      const vxslam::ImuState state = odometry_.x_curr();
+      if (std::isfinite(state.t) && state.t > 0.0 && state.p.allFinite()) {
+        trajectory_.push_back(state);
+      }
     }
   }
   return true;

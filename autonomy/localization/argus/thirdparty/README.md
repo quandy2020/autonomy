@@ -3,6 +3,7 @@
 | Path | Upstream | Role |
 |------|----------|------|
 | `gtsam/` | [borglab/gtsam](https://github.com/borglab/gtsam) | Pose-graph / Voxel PGO (`ARGUS_USE_GTSAM`) |
+| `orb_slam3/` | [UZ-SLAMLab/ORB_SLAM3](https://github.com/UZ-SLAMLab/ORB_SLAM3) | Private g2o / Sophus for visual ORB (`ARGUS_BUILD_VISUAL_SLAM`) |
 
 ## Init
 

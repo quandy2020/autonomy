@@ -19,6 +19,7 @@
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 
 #include <Eigen/Geometry>
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -88,6 +89,18 @@ bool VoxelSlamMessageAdapter::AddScan(
   }
   sensor::PointCloudXYZI cloud;
   sensor::FromProto(message, &cloud);
+  auto is_finite = [](const sensor::PointType& point) {
+    return std::isfinite(point.x) && std::isfinite(point.y) &&
+           std::isfinite(point.z) && std::isfinite(point.intensity) &&
+           std::isfinite(point.curvature);
+  };
+  cloud.points.erase(std::remove_if(cloud.points.begin(), cloud.points.end(),
+                                    [&](const sensor::PointType& point) {
+                                      return !is_finite(point);
+                                    }),
+                     cloud.points.end());
+  cloud.width = static_cast<uint32_t>(cloud.points.size());
+  cloud.height = 1;
   if (cloud.empty()) {
     return false;
   }
@@ -108,7 +121,12 @@ bool VoxelSlamMessageAdapter::GetOdometry(
   output.mutable_header()->set_frame_id(frame_id);
   output.set_child_frame_id(child_frame_id);
 
-  auto* pose = output.mutable_pose()->mutable_pose();
+  auto* stamped = output.mutable_pose()->mutable_pose();
+  if (!SetStamp(state.t, stamped->mutable_header()->mutable_stamp())) {
+    return false;
+  }
+  stamped->mutable_header()->set_frame_id(frame_id);
+  auto* pose = stamped->mutable_pose();
   pose->mutable_position()->set_x(state.p.x());
   pose->mutable_position()->set_y(state.p.y());
   pose->mutable_position()->set_z(state.p.z());
@@ -118,16 +136,15 @@ bool VoxelSlamMessageAdapter::GetOdometry(
   pose->mutable_orientation()->set_z(rotation.z());
   pose->mutable_orientation()->set_w(rotation.w());
 
-  auto* pose_covariance = output.mutable_pose()->mutable_covariance();
   for (int index = 0; index < 36; ++index) {
-    pose_covariance->add_covariance(0.0);
+    output.mutable_pose()->add_covariance(0.0);
   }
   for (int row = 0; row < 6; ++row) {
     const int state_row = row < 3 ? row + 3 : row - 3;
     for (int column = 0; column < 6; ++column) {
       const int state_column = column < 3 ? column + 3 : column - 3;
-      pose_covariance->set_covariance(row * 6 + column,
-                                      state.cov(state_row, state_column));
+      output.mutable_pose()->set_covariance(
+          row * 6 + column, state.cov(state_row, state_column));
     }
   }
 
@@ -138,13 +155,12 @@ bool VoxelSlamMessageAdapter::GetOdometry(
   linear->set_x(velocity_in_body.x());
   linear->set_y(velocity_in_body.y());
   linear->set_z(velocity_in_body.z());
-  auto* twist_covariance = output.mutable_twist()->mutable_covariance();
   for (int index = 0; index < 36; ++index) {
-    twist_covariance->add_covariance(0.0);
+    output.mutable_twist()->add_covariance(0.0);
   }
   for (int row = 0; row < 3; ++row) {
     for (int column = 0; column < 3; ++column) {
-      twist_covariance->set_covariance(
+      output.mutable_twist()->set_covariance(
           row * 6 + column, velocity_covariance_in_body(row, column));
     }
   }

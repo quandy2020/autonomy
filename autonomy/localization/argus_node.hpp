@@ -10,57 +10,42 @@
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * See the License for the specific language governing terms.
  */
 
 /**
  * @file argus_node.hpp
- * @brief Autolink adapter for Argus LivoOdometry (sensors in, viz out).
+ * @brief Autolink adapter: IMU + PointCloud2 into Voxel-SLAM, Autoviz outputs.
  */
 
 #ifndef AUTONOMY_LOCALIZATION_ARGUS_NODE_HPP_
 #define AUTONOMY_LOCALIZATION_ARGUS_NODE_HPP_
 
 #include <atomic>
-#include <condition_variable>
 #include <cstdint>
-#include <deque>
 #include <memory>
 #include <mutex>
 #include <string>
-#include <thread>
-#include <vector>
+#include <unordered_map>
 
-#include <Eigen/Core>
-#include <Eigen/Geometry>
+#include "sensor/point_types.hpp"
 
 #include "autolink/autolink.hpp"
 #include "autonomy/transform/buffer.hpp"
 
-#include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
-#include <automsgs/msgs/sensor_msgs/image.pb.h>
 #include <automsgs/msgs/sensor_msgs/imu.pb.h>
 #include <automsgs/msgs/sensor_msgs/point_cloud2.pb.h>
 #include <automsgs/msgs/tf2_msgs/tf_message.pb.h>
 
-#include "argus/map/ikd_tree.hpp"
-#include "argus/map/occupancy_grid_builder.hpp"
-#include "argus/odometry/livo_odometry.hpp"
-#include "argus/odometry/livo_odometry_config.hpp"
-#include "argus/sensor/point_types.hpp"
+#include "slam_system_config.hpp"
+#include "voxel_slam_message_adapter.hpp"
+#include "voxel_slam_system.hpp"
 
 namespace autonomy {
 namespace localization {
 
-/**
- * @brief Runs Argus LivoOdometry from autolink topics.
- *
- * Publishes map-frame odometry, trajectory, registered / global clouds,
- * 2D occupancy grid, and TF (map→odom, optional odom→base_link).
- */
 class ArgusNode {
 public:
     struct Options {
@@ -71,123 +56,18 @@ public:
         std::string map_frame = "map";
         std::string odom_frame = "odom";
         std::string base_frame = "base_link";
-        std::string lidar_frame;
-        /** Map-frame odom (GT seed applied when ready) for Autoviz overlay. */
+        std::string imu_frame = "imu_link";
+        std::string lidar_frame = "lidar_link";
         std::string odometry_topic = "/argus/odometry";
-        /**
-         * LIO-local odom (no GT seed) — same pose offline writes to estimate.tum.
-         * Use this for online ATE so Umeyama protocol matches offline.
-         */
-        std::string odometry_lio_topic = "/argus/odometry_lio";
         std::string trajectory_topic = "/argus/trajectory";
         std::string cloud_map_topic = "/argus/cloud_map";
         std::string cloud_registered_topic = "/argus/cloud_registered";
-        std::string occupancy_topic = "/argus/occupancy";
         std::string tf_topic = "/tf";
-        std::string tf_static_topic = "/tf_static";
-        double map_period_sec = 2.0;
-        /** Off by default: huge grids blow SHM and starve /argus/trajectory. */
-        bool enable_occupancy_publish = false;
-        /** Soft cap on Path poses kept/published (full Path each Write). */
         int trajectory_max_poses = 800;
-        /** Min interval between /argus/trajectory SHM writes (sec). */
-        double trajectory_period_sec = 0.2;
-        /**
-         * Soft cap on unique voxels in /argus/cloud_map (never FIFO-evict).
-         * When hit, later path segments get trajectory but no new points —
-         * raise this for long Spires runs (was 5e6 → empty loop regions).
-         */
-        int global_cloud_max_points = 20000000;
-        /**
-         * Downsample every Nth point from each scan before ikd insert.
-         * 1 = every point (densest viz map).
-         */
-        int global_cloud_stride = 1;
-        /** World-frame voxel leaf for ikd downsample (m). */
-        float global_cloud_leaf_m = 0.05f;
-        /** Ikd rebuild when size grows by this factor since last balance. */
-        double global_ikd_rebuild_ratio = 1.5;
-        /**
-         * Cap points in each SHM PointCloud2 publish. Autolink SHM has few
-         * large blocks; huge clouds stall writers in TryLockForWrite and
-         * starve all subsequent Argus logs/topics.
-         */
-        /** ~2.4MB XYZI — 8M SHM tier. */
-        int registered_publish_max_points = 150000;
-        /**
-         * Full-snapshot cap (~24MB XYZI → 32M SHM tier). Keep high enough
-         * that long maps do not look like "holes" under index stride.
-         */
-        int map_publish_max_points = 1500000;
-        /**
-         * Publish /argus/cloud_map as deltas (new voxels) for Autoviz Decay
-         * accumulation. Prefer false for live Autoviz: full strided snapshots
-         * with decay_time=0 never "forget" early map when max_points caps FIFO.
-         */
-        bool map_publish_incremental = false;
-        /**
-         * When incremental=true, every N map publishes also send a full ikd
-         * snapshot so Autoviz can heal regions dropped by max_points FIFO.
-         * 1 = every map publish is full (same as incremental=false for pub).
-         */
-        int map_full_snapshot_every_n = 10;
-        /** Min interval between /argus/cloud_registered publishes (sec). */
-        double registered_period_sec = 0.35;
-        /**
-         * Insert into viz ikd only every N ok frames (1 = every frame).
-         */
-        int global_map_insert_every_n = 1;
-        /** Cap spilled IMU samples when sensor mutex is busy (drop oldest). */
-        int imu_spill_max = 2000;
-        float occupancy_resolution = 0.1f;
-        double occupancy_min_height = 0.2;
-        double occupancy_max_height = 2.5;
-        double occupancy_floor_height = 0.0;
-        double occupancy_lidar_height = 0.2;
-        /** Skip /argus/occupancy Write when W*H exceeds this (SHM blow-up). */
-        int occupancy_publish_max_cells = 1500 * 1500;
-        /** Stop feeding occupancy once map span exceeds this (m). */
-        double occupancy_max_extent_m = 200.0;
-        /**
-         * Viz-only: after ~gt_align_min_span_m of travel, lock ONE planar
-         * rigid (yaw+XY, scale=1) via Umeyama so Autoviz Argus⟷GT overlay.
-         * First-pose SE3 alone fails when both start ≈I but body/world axes
-         * differ by ~90° (Spires). Does NOT update ESIKF; odometry_lio raw.
-         * GT messages are never modified.
-         */
-        bool seed_map_frame_from_gt = true;
-        /**
-         * Debug only: multi-pair planar Umeyama+scale on publish. Leave false.
-         */
-        bool align_to_gt = false;
-        std::string gt_odom_topic = "/gt/odometry";
-        /**
-         * Max |t_est - t_gt| when pairing samples (sec).
-         * LIO stamps scan-end (~header+0.1s); datasets stamps GT at lidar
-         * header — 0.15 covers one sweep without accepting a full prior frame.
-         */
-        double gt_align_max_dt = 0.15;
-        /** Keep recent GT samples for nearest-stamp pairing. */
-        int gt_pose_buffer = 64;
-        /** Min horizontal travel (m) of Argus before locking planar align. */
-        double gt_align_min_span_m = 3.0;
-        /** Min time-matched pairs before locking planar align. */
-        int gt_align_min_pairs = 20;
-        /**
-         * Reject seed if planar RMSE after rigid lock exceeds this (m).
-         * Prevents locking onto a diverged LIO (looks like traj "too fast").
-         */
-        double gt_seed_max_rmse_xy_m = 1.5;
-        /**
-         * Reject seed if est_span / gt_span is outside [1/r, r].
-         * Catches scale blow-up before Autoviz shows one traj racing ahead.
-         */
-        double gt_seed_max_span_ratio = 2.0;
-        /**
-         * Debug-only: replace traj translation with GT (breaks traj↔cloud
-         * consistency). Default off — Fast-LIVO2 keeps one estimate for both.
-         */
-        bool trajectory_snap_to_gt = false;
+        double map_period_sec = 0.5;
+        float map_leaf_m = 0.25f;
+        int map_max_points = 400000;
+        int map_stride = 4;
     };
 
     explicit ArgusNode(Options options);
@@ -202,166 +82,36 @@ public:
 private:
     using ImuMsg = automsgs::msgs::sensor_msgs::Imu;
     using CloudMsg = automsgs::msgs::sensor_msgs::PointCloud2;
-    using ImageMsg = automsgs::msgs::sensor_msgs::Image;
-    using TfMsg = automsgs::msgs::tf2_msgs::TFMessage;
-
     using OdomMsg = automsgs::msgs::nav_msgs::Odometry;
+    using PathMsg = automsgs::msgs::nav_msgs::Path;
+    using TfMsg = automsgs::msgs::tf2_msgs::TFMessage;
 
     void OnImu(const std::shared_ptr<ImuMsg>& msg);
     void OnCloud(const std::shared_ptr<CloudMsg>& msg);
-    void OnImage(const std::shared_ptr<ImageMsg>& msg);
-    void OnGtOdom(const std::shared_ptr<OdomMsg>& msg);
-    void IngestTf(const TfMsg& message, const std::string& authority);
-    /**
-     * @brief Under sensor mutex: only Process + snapshot into @p heavy.
-     *
-     * Pose / ikd / SHM PointCloud2 / TF are deferred to FlushHeavyPublishes
-     * (outside the sensor mutex). Holding the mutex across those stalls the
-     * 400 Hz OnImu AddImu path → SHM ring drops IMU → live Z/XY diverge.
-     */
-    struct HeavyPublish {
-        double stamp = -1.0;
-        uint64_t frame_id = 0;
-        argus::frontend::StatesGroup state;
-        argus::sensor::PointCloudXYZI::Ptr body;
-        bool publish_pose = false;
-        bool append_map = false;
-        bool publish_map = false;
-        bool publish_registered = false;
-    };
-    void DrainAndPublish(std::vector<HeavyPublish>* heavy);
-    void FlushHeavyPublishes(const std::vector<HeavyPublish>& heavy);
-    void EnqueueHeavyPublishes(std::vector<HeavyPublish>&& heavy);
-    void FlushPendingImuUnlocked();
-    void PublishWorkerLoop();
-    bool NeedsGtSubscription() const;
-    bool MapFrameReady() const;
-    /** Header frame for published traj/clouds: map only if GT seed locked. */
-    const std::string& PublishFrame() const;
-    bool TrySeedMapFrameFromGt(double timestamp_sec,
-                               const Eigen::Matrix4d& T_est);
-    bool TryAlignToGt(double timestamp_sec, const Eigen::Matrix4d& T_est);
-    bool FindNearestGtUnlocked(double timestamp_sec, Eigen::Matrix4d* T_gt,
-                               double* gt_stamp) const;
-    void FlushBufferedTrajectory();
-    Eigen::Matrix4d AlignedPose(const Eigen::Matrix4d& T_est) const;
-    argus::sensor::PointCloudXYZI AlignedWorldCloud(
-        const argus::frontend::StatesGroup& state,
-        const argus::sensor::PointCloudXYZI& body) const;
-    void PublishPose(double timestamp_sec,
-                     const argus::frontend::StatesGroup& state);
-    void PublishMapOdomTf(double timestamp_sec,
-                          const argus::frontend::StatesGroup& state);
-    void PublishRegisteredCloud(double timestamp_sec,
-                                const argus::frontend::StatesGroup& state,
-                                const argus::sensor::PointCloudXYZI& body);
-    void PublishMapCloud(double timestamp_sec);
-    /** Encode @p cloud (XYZ + jet-by-z rgb) into PointCloud2 and Write. */
-    bool WriteMapCloudMsg(double timestamp_sec,
-                          const argus::sensor::PointCloudXYZI& cloud,
-                          const char* mode_tag);
-    void PublishOccupancy(double timestamp_sec);
-    void AppendToGlobalMap(const argus::frontend::StatesGroup& state,
-                           const argus::sensor::PointCloudXYZI& body);
-    void UpdateOccupancy(const argus::frontend::StatesGroup& state,
-                         const argus::sensor::PointCloudXYZI& body);
-    void SyncGlobalMapCloud();
-    void ResetGlobalIkd();
+    void PublishOutputs(const CloudMsg& cloud);
+    void PublishTf(double time_sec, const OdomMsg& odometry);
+    void AccumulateWorldMap(const CloudMsg& cloud,
+                            const automsgs::msgs::geometry_msgs::Pose& pose);
+    void PublishWorldCloud(const CloudMsg& lidar,
+                           const automsgs::msgs::geometry_msgs::Pose& pose,
+                           double time_sec);
 
     Options options_;
-    argus::odometry::LivoOdometryConfig config_;
-    std::unique_ptr<argus::odometry::LivoOdometry> odom_;
-    std::unique_ptr<argus::map::OccupancyGridBuilder> occupancy_;
+    argus::app::SlamSystemConfig slam_config_;
+    std::unique_ptr<argus::app::VoxelSlamSystem> system_;
+    std::unique_ptr<argus::app::VoxelSlamMessageAdapter> adapter_;
     std::shared_ptr<autolink::Node> node_;
-    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Odometry>>
-        odom_writer_;
-    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Odometry>>
-        odom_lio_writer_;
-    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
-        trajectory_writer_;
-    std::shared_ptr<autolink::Writer<CloudMsg>> cloud_writer_;
+    std::shared_ptr<autolink::Writer<OdomMsg>> odom_writer_;
+    std::shared_ptr<autolink::Writer<PathMsg>> trajectory_writer_;
+    std::shared_ptr<autolink::Writer<CloudMsg>> map_writer_;
     std::shared_ptr<autolink::Writer<CloudMsg>> registered_writer_;
-    std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
-        occ_writer_;
-    std::shared_ptr<autolink::Writer<automsgs::msgs::tf2_msgs::TFMessage>>
-        tf_writer_;
-    automsgs::msgs::nav_msgs::Path trajectory_;
-    /**
-     * Incremental ikd global map (GT-aligned world) for /argus/cloud_map.
-     * One point per voxel leaf; never time-FIFO trimmed.
-     */
-    std::unique_ptr<argus::map::IkdTree> global_ikd_;
-    argus::sensor::PointCloudXYZI global_map_;
-    bool global_map_dirty_ = false;
-    /**
-     * New voxels since last /argus/cloud_map publish (incremental mode).
-     * Cleared after each successful delta Write (or after full snapshot).
-     */
-    argus::sensor::PointCloudXYZI pending_map_delta_;
-    /** Next map publish is a full ikd export (startup / rewind reset). */
-    bool map_publish_full_next_ = true;
-    /** Serializes AddImu / AddLidar / Process only. */
-    std::mutex mutex_;
-    /** Serializes deferred pose/map/cloud publishes (outside sensor mutex). */
-    std::mutex publish_mutex_;
-    /** Async publish queue — sensor callbacks must not block on SHM/ikd. */
-    std::mutex publish_queue_mutex_;
-    std::condition_variable publish_cv_;
-    std::deque<std::vector<HeavyPublish>> publish_queue_;
-    std::thread publish_thread_;
-    std::atomic<bool> publish_worker_running_{false};
-    /** IMU samples that arrived while Process held mutex_ (drop oldest). */
-    std::mutex imu_spill_mutex_;
-    std::deque<argus::sensor::ImuData> imu_spill_;
+    std::shared_ptr<autolink::Writer<TfMsg>> tf_writer_;
     transform::Buffer* tf_buffer_ = nullptr;
+    PathMsg trajectory_;
+    std::unordered_map<std::uint64_t, argus::sensor::PointType> world_voxels_;
+    std::mutex mutex_;
     std::atomic<bool> running_{false};
     double last_map_pub_sec_ = -1.0;
-    double last_registered_pub_sec_ = -1.0;
-    double last_traj_pub_sec_ = -1.0;
-    uint64_t ok_frames_ = 0;
-    /** Successful /argus/cloud_map publishes (for periodic full snapshots). */
-    uint64_t map_pub_count_ = 0;
-    struct PublishStats {
-        uint64_t traj_ok = 0;
-        uint64_t traj_fail = 0;
-        uint64_t map_ok = 0;
-        uint64_t map_fail = 0;
-        uint64_t reg_ok = 0;
-        uint64_t reg_fail = 0;
-        uint64_t occ_ok = 0;
-        uint64_t occ_fail = 0;
-        uint64_t occ_skip = 0;
-    } pub_stats_;
-    bool occupancy_extent_capped_ = false;
-    bool use_lidar_ = true;
-    bool use_camera_ = false;
-    bool logged_identity_odom_tf_ = false;
-    bool logged_lidar_tf_ = false;
-    bool logged_global_cap_ = false;
-    std::string lidar_frame_;
-    /**
-     * Publish transform: T_pub = Sim(T_gt_align_, scale) * T_est.
-     * Seed path: rigid SE(3), scale=1. Umeyama path: planar + scale.
-     */
-    Eigen::Matrix4d T_gt_align_ = Eigen::Matrix4d::Identity();
-    double gt_align_scale_ = 1.0;
-    bool map_frame_seeded_ = false;
-    bool gt_aligned_ = false;
-    mutable std::mutex gt_mutex_;
-    struct GtSample {
-        double stamp = -1.0;
-        Eigen::Matrix4d pose = Eigen::Matrix4d::Identity();
-    };
-    std::deque<GtSample> gt_samples_;
-    bool have_gt_ = false;
-    struct AlignPair {
-        double stamp = -1.0;
-        Eigen::Vector3d est_xyz = Eigen::Vector3d::Zero();
-        Eigen::Vector3d gt_xyz = Eigen::Vector3d::Zero();
-        Eigen::Matrix4d T_est = Eigen::Matrix4d::Identity();
-        Eigen::Matrix4d T_gt = Eigen::Matrix4d::Identity();
-    };
-    std::vector<AlignPair> align_pairs_;
 };
 
 }  // namespace localization

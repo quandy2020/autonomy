@@ -235,25 +235,5 @@ PointCloud2 ToProto(const LidarCloud<PointXYZI>& cloud, double stamp_sec,
   return msg;
 }
 
-TimedPointCloudData ToTimedPointCloudData(const PointCloudXYZI& cloud,
-                                          double time,
-                                          const Eigen::Vector3f& origin) {
-  TimedPointCloudData data;
-  data.time = time;
-  data.origin = origin;
-  data.ranges.reserve(cloud.size());
-  data.intensities.reserve(cloud.size());
-  float latest = 0.f;
-  for (const PointXYZINormal& point : cloud.points) {
-    latest = std::max(latest, point.curvature);
-  }
-  for (const PointXYZINormal& point : cloud.points) {
-    data.ranges.push_back(TimedRangefinderPoint{
-        Eigen::Vector3f(point.x, point.y, point.z), point.curvature - latest});
-    data.intensities.push_back(point.intensity);
-  }
-  return data;
-}
-
 }  // namespace sensor
 }  // namespace argus

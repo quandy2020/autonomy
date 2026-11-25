@@ -66,6 +66,9 @@ endif()
 # Argus may be removed independently. Atlas must remain buildable without
 # restoring or changing that external component.
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/argus/CMakeLists.txt")
+  # Autolink ArgusNode feeds AutoMsgs IMU/clouds into Voxel-SLAM.
+  set(ARGUS_BUILD_MESSAGE_ADAPTERS ON CACHE BOOL
+    "Build Argus AutoMsgs conversions" FORCE)
   if(NOT DEFINED CACHE{ARGUS_BUILD_INSTALL})
     set(ARGUS_BUILD_INSTALL OFF CACHE BOOL
       "Install/export Argus as a standalone CMake package")

@@ -11,7 +11,7 @@ find_package(Boost REQUIRED COMPONENTS serialization)
 find_package(OpenSSL REQUIRED COMPONENTS Crypto)
 
 add_subdirectory(
-  ${CMAKE_CURRENT_SOURCE_DIR}/../third_party/orb_slam3
+  ${CMAKE_CURRENT_SOURCE_DIR}/../thirdparty/orb_slam3
   ${CMAKE_CURRENT_BINARY_DIR}/orb_slam3_third_party
 )
 

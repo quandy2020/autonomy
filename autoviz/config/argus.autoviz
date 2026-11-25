@@ -1,5 +1,5 @@
 CurrentView:
-  Distance: 25
+  Distance: 80
   FocalShapeFixedSize: true
   FocalShapeSize: 0.05000000074505806
   FpsPitch: 0
@@ -57,27 +57,26 @@ Displays:
     Enabled: true
     Name: ArgusCloudRegistered
     Properties:
-      alpha: "0.65"
+      alpha: "0.45"
       color: 0;200;255
       color_transform: FlatColor
       decay_time: "0"
       decimate: "1"
       max_points: "500000"
-      point_world_size: "0.02"
+      point_world_size: "0.04"
       style: Points
-      point_size: "2"
+      point_size: "3"
     Type: PointCloud2
   - Channel: /argus/cloud_map
     Enabled: true
     Name: ArgusCloudMap
     Properties:
       alpha: "1.0"
-      color_transform: RGB8
-      # denser Argus snapshots; decay=0 ⇒ replace (no forget).
+      color_transform: Intensity
       decay_time: "0"
       decimate: "1"
       max_points: "5000000"
-      point_world_size: "0.02"
+      point_world_size: "0.04"
       style: Points
       point_size: "2"
     Type: PointCloud2
@@ -88,7 +87,7 @@ Displays:
       alpha: "1.0"
       color: 0;255;80
       line_style: Billboards
-      line_width: "0.06"
+      line_width: "0.18"
     Type: Path
   - Channel: /gt/path
     Enabled: true
@@ -97,7 +96,7 @@ Displays:
       alpha: "0.9"
       color: 255;200;0
       line_style: Billboards
-      line_width: "0.05"
+      line_width: "0.12"
     Type: Path
   - Channel: /argus/odometry
     Enabled: true

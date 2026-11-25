@@ -23,7 +23,7 @@
   <module>
     <name>localization_argus</name>
     <type>binary</type>
-    <process_name>autonomy.localization --localization_mode=argus --argus_config=autonomy/localization/conf/argus/livo_autosim.yaml --argus_imu_topic=/imu --argus_lidar_topic=/points --argus_image_topic=/camera/rgb/image_raw</process_name>
+    <process_name>autonomy.localization --localization_mode=argus --argus_config=autonomy/localization/conf/argus/voxel_slam_default.yaml --argus_imu_topic=/imu --argus_lidar_topic=/points --argus_image_topic=/camera/rgb/image_raw</process_name>
     <exception_handler>respawn</exception_handler>
     <respawn_limit>3</respawn_limit>
   </module>
