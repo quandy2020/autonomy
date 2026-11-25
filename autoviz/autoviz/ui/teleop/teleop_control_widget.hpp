@@ -29,6 +29,7 @@ class QFocusEvent;
 class QFrame;
 class QKeyEvent;
 class QLabel;
+class QPushButton;
 
 namespace autoviz {
 namespace widget {
@@ -151,6 +152,16 @@ class TeleopControlWidget : public QWidget {
    */
   void setSmartTeleopStatusText(const QString& status);
 
+  /**
+   * @brief Compact floating HUD: only the circular stick, royal black-gold.
+   *
+   * Hides header / speeds / E-STOP / captions. Dual mode keeps the Move
+   * stick only so the overlay stays a single circle.
+   *
+   * @param enabled When @c true, HUD chrome; otherwise docked panel chrome.
+   */
+  void setHudMode(bool enabled);
+
  signals:
   /**
    * @brief Dual Move stick / Arcade stick Y: @p x = strafe (dual only),
@@ -267,6 +278,9 @@ class TeleopControlWidget : public QWidget {
   /** @brief Refreshes the hint label from smart-teleop status text. */
   void updateSmartTeleopHint();
 
+  /** @brief Applies docked vs HUD stylesheets to this widget and children. */
+  void applyHudChrome();
+
   TeleopStickMode stick_mode_ =
       TeleopStickMode::kDual;         /**< Active stick layout. */
   bool smart_teleop_enabled_ = false; /**< Smart-teleop checkbox state. */
@@ -289,6 +303,8 @@ class TeleopControlWidget : public QWidget {
   bool key_right_ = false;        /**< Keyboard: right / turn right held. */
   bool keyboard_driving_ = false; /**< @c true while keys drive sticks. */
   bool suppress_speed_signal_ = false; /**< Guard while syncing speed spins. */
+  bool hud_mode_ = false; /**< Compact dark chrome while hosted in the HUD. */
+  QPushButton* stop_button_ = nullptr; /**< E-STOP. */
 };
 
 }  // namespace teleop

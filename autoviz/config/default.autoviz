@@ -419,6 +419,24 @@ ImagePanels:
     FlipHorizontal: false
     FlipVertical: false
     HoverPublishChannel: ""
+    ImageChannel: /camera/semantic/image_raw
+    LabelScale: 1
+    ObjectName: ImageDock_5
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Image
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    ContentOnlyDisplay: false
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
     ImageChannel: /atlas/feature_matches
     LabelScale: 1
     ObjectName: ImageDock_6
@@ -511,6 +529,12 @@ TeleopPanels:
     MaxAngularSpeed: 0.5
     MaxLinearSpeed: 0.5
     ObjectName: TeleopDock
+    OverlayEnabled: true
+    OverlayH: 200
+    OverlayOpacity: 0.9200000166893005
+    OverlayW: 200
+    OverlayX: 2354
+    OverlayY: 1200
     PublishRateHz: 20
     Right:
       Field: 5
@@ -570,12 +594,13 @@ Views: ~
 Window:
   Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAQgAAAEUAAAn/AAAFnwAAAAACAAAACgAAAABCAAAARQAACf8AAAWf
   Height: 1371
-  HideLeftDock: false
-  HideRightDock: false
-  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7ImNoaWxkcmVuIjpbeyJuYW1lIjoiSW1hZ2VEb2NrIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfMyIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYwNyw2MDZdLCJ0eXBlIjoic3BsaXQifSx7Im5hbWUiOiJJbWFnZURvY2tfMiIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzEyMjAsNjE0XSwidHlwZSI6InNwbGl0In0seyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7Im5hbWUiOiJJbWFnZURvY2tfNiIsInR5cGUiOiJsZWFmIn0seyJuYW1lIjoiSW1hZ2VEb2NrXzQiLCJ0eXBlIjoibGVhZiJ9XSwib3JpZW50YXRpb24iOiJ2ZXJ0aWNhbCIsInNpemVzIjpbMzE4LDM2Nl0sInR5cGUiOiJzcGxpdCJ9LHsibmFtZSI6IlZpZXdwb3J0RG9jayIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzU5OCwxMjM2XSwidHlwZSI6InNwbGl0In1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls1ODcsNjkxXSwidHlwZSI6InNwbGl0In19
+  HideLeftDock: true
+  HideRightDock: true
+  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3siY2hpbGRyZW4iOlt7ImNoaWxkcmVuIjpbeyJuYW1lIjoiSW1hZ2VEb2NrIiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfMyIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzYxOSw2MThdLCJ0eXBlIjoic3BsaXQifSx7ImNoaWxkcmVuIjpbeyJuYW1lIjoiSW1hZ2VEb2NrXzIiLCJ0eXBlIjoibGVhZiJ9LHsibmFtZSI6IkltYWdlRG9ja181IiwidHlwZSI6ImxlYWYifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbNjE3LDYxOV0sInR5cGUiOiJzcGxpdCJ9XSwib3JpZW50YXRpb24iOiJob3Jpem9udGFsIiwic2l6ZXMiOlsxMjQ0LDEyNDNdLCJ0eXBlIjoic3BsaXQifSx7ImNoaWxkcmVuIjpbeyJjaGlsZHJlbiI6W3sibmFtZSI6IkltYWdlRG9ja182IiwidHlwZSI6ImxlYWYifSx7Im5hbWUiOiJJbWFnZURvY2tfNCIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOlszODMsMzgzXSwidHlwZSI6InNwbGl0In0seyJuYW1lIjoiVmlld3BvcnREb2NrIiwidHlwZSI6ImxlYWYifV0sIm9yaWVudGF0aW9uIjoiaG9yaXpvbnRhbCIsInNpemVzIjpbMTI0NCwxMjQzXSwidHlwZSI6InNwbGl0In1dLCJvcmllbnRhdGlvbiI6InZlcnRpY2FsIiwic2l6ZXMiOls1MDUsNzczXSwidHlwZSI6InNwbGl0In19
   Panels:
     - Name: ViewportDock
-    - Name: DisplaysDock
+    - Collapsed: true
+      Name: DisplaysDock
     - Name: RecordDock
     - Name: SelectionDock
     - Name: ToolPropertiesDock
@@ -586,27 +611,28 @@ Window:
     - Name: TfTreeDock
     - Name: ImageDock
     - Name: PlotDock
-    - Name: TeleopDock
+    - Collapsed: true
+      Name: TeleopDock
     - Name: NavigationDock
     - Name: ChannelGraphDock
     - Name: ImageDock_3
     - Name: ImageDock_2
+    - Name: ImageDock_5
     - Name: ImageDock_6
     - Name: ImageDock_4
     - Name: PublishDock
-    - Name: PropertiesDock
+    - Collapsed: true
+      Name: PropertiesDock
   PlotSettingsVisible: false
-  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFcAAAFBfwCAAAAAfwAAABAAAAFBQAAAQEBAAAV+gAAAAACAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAAD/////AAAA6wD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsBAAAAAP////8AAACHAP///wAAAAEAAAElAAAFBfwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAEAAAAMBAAAA2AD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABVQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABQAVABlAGwAZQBvAHAARABvAGMAawEAAABAAAAFBQAAAfwA////+wAAABwATgBhAHYAaQBnAGEAdABpAG8AbgBEAG8AYwBrAAAAAAD/////AAAAowD///8AAAADAAAAAAAAAAD8AQAAAAH7AAAAEABUAGkAbQBlAEQAbwBjAGsAAAAAAP////8AAAPWAP///wAABzEAAAUFAAAAAQAAAAIAAAAIAAAACPwAAAABAAAAAgAAAAEAAAAcAEEAdQB0AG8AdgBpAHoAVABvAG8AbABCAGEAcgEAAAAA/////wAAAAAAAAAA
+  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFcAAAFBfwCAAAAAfwAAABAAAAFBQAAAAAA////+v////8CAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAAAAAAD/////AAAAqwD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsAAAAAAP////8AAACHAP///wAAAAEAAAEYAAAFBfwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAAAAAEAAAAMBAAAA2AD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABVQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawAAAAAA/////wAAAJsA////+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawAAAAAA/////wAAAJIA////+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAABAAAAFBQAAAHYA////+wAAABwATgBhAHYAaQBnAGEAdABpAG8AbgBEAG8AYwBrAAAAAAD/////AAAAowD///8AAAADAAAAAAAAAAD8AQAAAAH7AAAAEABUAGkAbQBlAEQAbwBjAGsAAAAAAP////8AAAPWAP///wAACb4AAAUFAAAAAQAAAAIAAAAIAAAACPwAAAABAAAAAgAAAAEAAAAcAEEAdQB0AG8AdgBpAHoAVABvAG8AbABCAGEAcgEAAAAA/////wAAAAAAAAAA
   VisiblePanels:
     - ViewportDock
-    - DisplaysDock
     - ImageDock
-    - TeleopDock
     - ImageDock_3
     - ImageDock_2
+    - ImageDock_5
     - ImageDock_6
     - ImageDock_4
-    - PropertiesDock
   Width: 2494
   X: 66
   Y: 69

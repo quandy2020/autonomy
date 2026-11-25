@@ -48,6 +48,12 @@ common::TeleopPanelPersistConfig ToPersistConfig(
   persist.right = ToButton(config.right);
   persist.stop = ToButton(config.stop);
   persist.settings_visible = config.settings_visible;
+  persist.overlay_enabled = config.overlay_enabled;
+  persist.overlay_opacity = config.overlay_opacity;
+  persist.overlay_x = config.overlay_x;
+  persist.overlay_y = config.overlay_y;
+  persist.overlay_w = config.overlay_w;
+  persist.overlay_h = config.overlay_h;
   return persist;
 }
 
@@ -80,6 +86,15 @@ TeleopPanelConfig FromPersistConfig(
   config.right = FromButton(persist.right);
   config.stop = FromButton(persist.stop);
   config.settings_visible = persist.settings_visible;
+  config.overlay_enabled = persist.overlay_enabled;
+  config.overlay_opacity =
+      persist.overlay_opacity > 0.0
+          ? std::clamp(persist.overlay_opacity, 0.35, 1.0)
+          : 0.92;
+  config.overlay_x = persist.overlay_x;
+  config.overlay_y = persist.overlay_y;
+  config.overlay_w = persist.overlay_w;
+  config.overlay_h = persist.overlay_h;
   return config;
 }
 

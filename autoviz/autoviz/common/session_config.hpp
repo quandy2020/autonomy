@@ -724,6 +724,12 @@ struct TeleopPanelPersistConfig {
   TeleopButtonPersistConfig right;
   TeleopButtonPersistConfig stop;
   bool settings_visible = false;
+  bool overlay_enabled = false;
+  double overlay_opacity = 0.92;
+  int overlay_x = -1;
+  int overlay_y = -1;
+  int overlay_w = 0;
+  int overlay_h = 0;
 };
 
 /**

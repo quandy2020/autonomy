@@ -105,6 +105,14 @@ struct TeleopPanelConfig {
   TeleopButtonConfig right; /**< Discrete Right button mapping. */
   TeleopButtonConfig stop;  /**< Discrete Stop button mapping. */
   bool settings_visible = false; /**< Whether settings UI starts visible. */
+  /** Gamepad HUD overlay (frameless, always-on-top, no mosaic snap). */
+  bool overlay_enabled = false;
+  /** HUD window opacity in [0.35, 1.0]. */
+  double overlay_opacity = 0.92;
+  int overlay_x = -1; /**< Saved HUD x, or -1 if unset. */
+  int overlay_y = -1; /**< Saved HUD y, or -1 if unset. */
+  int overlay_w = 0;  /**< Saved HUD width, or 0 if unset. */
+  int overlay_h = 0;  /**< Saved HUD height, or 0 if unset. */
 };
 
 /**

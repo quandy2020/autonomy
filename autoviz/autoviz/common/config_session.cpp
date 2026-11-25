@@ -847,6 +847,15 @@ void ReadTeleopPanelFromConfig(const Config& node,
   ReadTeleopButtonFromConfig(node.mapGetChild("Right"), &panel->right);
   ReadTeleopButtonFromConfig(node.mapGetChild("Stop"), &panel->stop);
   node.mapGetBool("SettingsVisible", &panel->settings_visible);
+  node.mapGetBool("OverlayEnabled", &panel->overlay_enabled);
+  float overlay_opacity = static_cast<float>(panel->overlay_opacity);
+  if (node.mapGetFloat("OverlayOpacity", &overlay_opacity)) {
+    panel->overlay_opacity = static_cast<double>(overlay_opacity);
+  }
+  node.mapGetInt("OverlayX", &panel->overlay_x);
+  node.mapGetInt("OverlayY", &panel->overlay_y);
+  node.mapGetInt("OverlayW", &panel->overlay_w);
+  node.mapGetInt("OverlayH", &panel->overlay_h);
 }
 
 void WriteTeleopPanelToConfig(const TeleopPanelPersistConfig& panel,
@@ -875,6 +884,12 @@ void WriteTeleopPanelToConfig(const TeleopPanelPersistConfig& panel,
   Config stop = node->mapMakeChild("Stop");
   WriteTeleopButtonToConfig(panel.stop, &stop);
   node->mapSetValue("SettingsVisible", panel.settings_visible);
+  node->mapSetValue("OverlayEnabled", panel.overlay_enabled);
+  node->mapSetValue("OverlayOpacity", static_cast<float>(panel.overlay_opacity));
+  node->mapSetValue("OverlayX", panel.overlay_x);
+  node->mapSetValue("OverlayY", panel.overlay_y);
+  node->mapSetValue("OverlayW", panel.overlay_w);
+  node->mapSetValue("OverlayH", panel.overlay_h);
 }
 
 bool ReadConfigDouble(const Config& node, const QString& key, double* out) {

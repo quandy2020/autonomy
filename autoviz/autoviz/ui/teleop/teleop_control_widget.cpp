@@ -13,8 +13,10 @@
 #include <QHBoxLayout>
 #include <QKeyEvent>
 #include <QLabel>
+#include <QList>
 #include <QPushButton>
 #include <QSizePolicy>
+#include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
 #include <algorithm>
@@ -64,6 +66,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   root->setSpacing(0);
 
   auto* title_label = new QLabel(title, card);
+  title_label->setObjectName(QStringLiteral("TeleopSpeedCaption"));
   title_label->setAlignment(Qt::AlignHCenter);
   title_label->setStyleSheet(
       style::sheet(QStringLiteral("teleop/speed_caption")));
@@ -85,12 +88,14 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   root->addWidget(spin);
 
   auto* unit_label = new QLabel(unit.trimmed(), card);
+  unit_label->setObjectName(QStringLiteral("TeleopSpeedUnit"));
   unit_label->setAlignment(Qt::AlignHCenter);
   unit_label->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_unit")));
   root->addWidget(unit_label);
   root->addSpacing(8);
 
   auto* rule = new QFrame(card);
+  rule->setObjectName(QStringLiteral("TeleopSpeedRule"));
   rule->setFixedHeight(1);
   rule->setStyleSheet(style::sheet(QStringLiteral("teleop/speed_rule")));
   root->addWidget(rule);
@@ -104,6 +109,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   const QString step_style = style::sheet(QStringLiteral("teleop/step_button"));
 
   auto* minus = new QToolButton(card);
+  minus->setObjectName(QStringLiteral("TeleopSpeedStep"));
   minus->setText(QStringLiteral("−"));
   minus->setToolTip(tip);
   minus->setCursor(Qt::PointingHandCursor);
@@ -113,6 +119,7 @@ QWidget* MakeSpeedChip(const QString& title, const QString& tip,
   steppers->addWidget(minus);
 
   auto* plus = new QToolButton(card);
+  plus->setObjectName(QStringLiteral("TeleopSpeedStep"));
   plus->setText(QStringLiteral("+"));
   plus->setToolTip(tip);
   plus->setCursor(Qt::PointingHandCursor);
@@ -221,6 +228,7 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
     *stick_out = stick;
     col_layout->addWidget(stick, 1);
     auto* cap = new QLabel(caption, col);
+    cap->setObjectName(QStringLiteral("TeleopPadCaption"));
     cap->setAlignment(Qt::AlignHCenter);
     cap->setStyleSheet(style::sheet(QStringLiteral("teleop/pad_caption")));
     col_layout->addWidget(cap);
@@ -260,13 +268,14 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
   hint_label_->setStyleSheet(style::sheet(QStringLiteral("teleop/hint")));
   root->addWidget(hint_label_);
 
-  auto* stop_button = new QPushButton(tr("E-STOP"), this);
-  stop_button->setToolTip(tr("Emergency stop (Space)"));
-  stop_button->setMinimumHeight(40);
-  stop_button->setCursor(Qt::PointingHandCursor);
-  stop_button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-  stop_button->setStyleSheet(style::sheet(QStringLiteral("teleop/estop")));
-  root->addWidget(stop_button);
+  stop_button_ = new QPushButton(tr("E-STOP"), this);
+  stop_button_->setObjectName(QStringLiteral("TeleopEstop"));
+  stop_button_->setToolTip(tr("Emergency stop (Space)"));
+  stop_button_->setMinimumHeight(40);
+  stop_button_->setCursor(Qt::PointingHandCursor);
+  stop_button_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+  stop_button_->setStyleSheet(style::sheet(QStringLiteral("teleop/estop")));
+  root->addWidget(stop_button_);
 
   connect(mode_control_, &widget::SegmentedControl::SegmentClicked, this,
           [this](int index) {
@@ -317,7 +326,7 @@ TeleopControlWidget::TeleopControlWidget(QWidget* parent) : QWidget(parent) {
       emitArcadeFromStick(0.0, 0.0, true);
     }
   });
-  connect(stop_button, &QPushButton::clicked, this, [this]() {
+  connect(stop_button_, &QPushButton::clicked, this, [this]() {
     clearKeyboardState();
     emit stopClicked();
   });
@@ -369,6 +378,88 @@ void TeleopControlWidget::setSmartTeleopAvailable(bool available) {
 void TeleopControlWidget::setSmartTeleopStatusText(const QString& status) {
   smart_teleop_status_text_ = status;
   updateSmartTeleopHint();
+}
+
+void TeleopControlWidget::setHudMode(bool enabled) {
+  if (hud_mode_ == enabled) {
+    return;
+  }
+  hud_mode_ = enabled;
+  applyHudChrome();
+  applyModeUi();
+}
+
+void TeleopControlWidget::applyHudChrome() {
+  const bool hud = hud_mode_;
+  // Translucency lives only on TeleopHudOverlay. Setting it here while the
+  // control is still in the docked panel makes the main window see-through.
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  setAttribute(Qt::WA_NoSystemBackground, hud);
+  setAutoFillBackground(false);
+  setMinimumWidth(hud ? 0 : 220);
+  if (auto* root = qobject_cast<QVBoxLayout*>(layout())) {
+    const int m = hud ? 0 : 10;
+    root->setContentsMargins(m, m, m, m);
+    root->setSpacing(hud ? 0 : 10);
+  }
+  setStyleSheet(style::sheet(
+      hud ? QStringLiteral("teleop/control_hud")
+          : QStringLiteral("teleop/control_root")));
+
+  if (auto* header = findChild<QFrame*>(QStringLiteral("TeleopHeader"))) {
+    header->setVisible(!hud);
+  }
+  if (hint_label_ != nullptr) {
+    hint_label_->setVisible(!hud);
+  }
+  if (stop_button_ != nullptr) {
+    stop_button_->setVisible(!hud);
+  }
+  const QList<QLabel*> captions =
+      findChildren<QLabel*>(QStringLiteral("TeleopPadCaption"));
+  for (QLabel* cap : captions) {
+    cap->setVisible(!hud);
+  }
+  if (turn_joystick_ != nullptr) {
+    if (QWidget* col = turn_joystick_->parentWidget()) {
+      col->setVisible(!hud);
+    }
+  }
+
+  const QString clear = QStringLiteral(
+      "background: transparent; border: none;");
+  if (dual_frame_ != nullptr) {
+    dual_frame_->setMinimumHeight(hud ? 0 : 180);
+    dual_frame_->setStyleSheet(
+        hud ? clear : style::sheet(QStringLiteral("teleop/sticks_card")));
+    if (auto* lay = qobject_cast<QVBoxLayout*>(dual_frame_->layout())) {
+      const int m = hud ? 0 : 14;
+      lay->setContentsMargins(m, hud ? 0 : 16, m, hud ? 0 : 14);
+    }
+  }
+  if (arcade_frame_ != nullptr) {
+    arcade_frame_->setMinimumHeight(hud ? 0 : 180);
+    arcade_frame_->setStyleSheet(
+        hud ? clear : style::sheet(QStringLiteral("teleop/arcade_card")));
+    if (auto* lay = qobject_cast<QVBoxLayout*>(arcade_frame_->layout())) {
+      const int m = hud ? 0 : 20;
+      lay->setContentsMargins(m, hud ? 0 : 18, m, hud ? 0 : 18);
+    }
+  }
+  if (move_joystick_ != nullptr) {
+    move_joystick_->setRoyalStyle(hud);
+  }
+  if (turn_joystick_ != nullptr) {
+    turn_joystick_->setRoyalStyle(hud);
+  }
+  if (arcade_joystick_ != nullptr) {
+    arcade_joystick_->setRoyalStyle(hud);
+  }
+  if (QStyle* st = style()) {
+    st->unpolish(this);
+    st->polish(this);
+  }
+  update();
 }
 
 void TeleopControlWidget::updateSmartTeleopHint() {

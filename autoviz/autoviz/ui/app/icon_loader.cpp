@@ -200,6 +200,7 @@ QString MapPanelTitleIcon(const QString& role) {
       {"panel.close", "panel/close"},
       {"panel.expand", "panel/expand"},
       {"panel.float", "panel/float"},
+      {"panel.hud", "panel/hud"},
       {"panel.content_only", "panel/content_only"},
       {"panel.more", "panel/more"},
       {"panel.settings", "panel/settings"},

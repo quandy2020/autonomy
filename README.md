@@ -19,49 +19,68 @@
 <p align="center">
   <a href="https://autonomy.readthedocs.io/en/latest/index.html">Documentation</a>
   ·
-  <a href="#build">Build</a>
-  ·
   <a href="#demo">Demo</a>
   ·
-  <a href="#architecture">Architecture</a>
+  <a href="#quick-start">Quick start</a>
   ·
   <a href="#guides">Guides</a>
 </p>
 
 <p align="center">
-    <img src="images/autonomy-cover-header.png" alt="Autonomy" width="100%"/>
-</p>
-
-* System architecture
-<p align="center">
-  <a href="docs/source/01_Instructions/03_system_architecture.md">
-    <img src="images/autonomy_architecture.png" alt="Autonomy architecture" width="100%"/>
-  </a>
+  <img src="images/autonomy-cover-header.png" alt="Autonomy" width="100%"/>
 </p>
 
 ---
 
 ## About
 
-Autonomy is an open-source stack for building and shipping autonomous mobile robots — localization, mapping, planning, control, task orchestration, simulation, and visualization — without depending on a ROS runtime.
+This tree is one robot product, split into packages that share **one message set** and **one IPC runtime**. It is not a ROS 2 workspace.
 
-Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. Domains stay plugins. You can run the full stack, or trim it with `AUTONOMY_BUILD_*` / `BUILD_*` flags.
+<p align="center">
+  <img src="images/autonomy_stack.png" alt="Autonomy stack: tasks, robot core, automsgs, autolink, and satellite packages" width="100%"/>
+</p>
 
-**Good for:** indoor navigation demos, SLAM bring-up, MPPI / RPP control, Isaac + AutoViz simulation, and production Docker / Ansible deploys on x86_64 and ARM64.
+Hardware (or a simulator) never talks to planners directly. Drivers publish sensor streams; the core turns those into a map, a path, and `cmd_vel`; the chassis executes. Everything in between uses the same Protobuf types and the same Autolink channels.
 
-**Also for machines:** Protobuf messages (`automsgs`), optional gRPC bridge (`BUILD_GRPC`), and launch files that compose multi-process Goal → Task (BT) → Planning → Control.
+| Package | Role |
+|---------|------|
+| **autodriver** | Hardware I/O: sensors in, `cmd_vel` out. |
+| **autolink** | IPC: Node, Channel, Service, Action, Parameter (SHM / RTPS). |
+| **automsgs** | Shared Protobuf types for every process. |
+| **autonomy** | On-robot core (table below). |
+| **automanip** | Arm planning and control. |
+| **autosim** | Sim (Habitat / Fake / Isaac); same topics as hardware. |
+| **autoviz** | 3D view, teleop, operator UI. |
+| **autoloop** | Record, replay, datasets, training. |
+| **ansible** | Deploy and ship (with Docker). |
+
+**`autonomy/` is the on-robot brain.** Servers and plugins live here; Autolink only moves bytes.
+
+| Domain | Role |
+|--------|------|
+| **task** | BT jobs: navigate, recover, dock, follow, voice, teleop. |
+| **perception** | Detect, track, occupancy. |
+| **prediction** | Agent motion. |
+| **localization** | SLAM / odom; TF `map → odom → base_link`. |
+| **map** | Occupancy and costmaps. |
+| **planning** | Global path. |
+| **control** | Path → `cmd_vel`. |
+| **bridge** | App / cloud (gRPC). |
+| **system** | Monitor, safety, OTA, launch. |
+| **audio / voice** | Speech → task. |
+
+Swap **autodriver** for **autosim** and the same core runs in simulation. **autoviz** and **autoloop** attach on Autolink without changing algorithms. Build only the domains you need (`AUTONOMY_BUILD_*` / `BUILD_*`). Linux x86_64 and ARM64 are the primary targets.
 
 ---
 
 ## Highlights
 
-- 🚫 **No ROS runtime required.** Autolink carries Node · Channel · Service · Action · Parameter on SHM / RTPS.
-- 🧩 **Modular by design.** Stable plugins across algorithms, drivers, simulation, and visualization.
-- 🗺️ **Localization that scales.** Cartographer, Atlas-SLAM, and Argus (ESIKF) in one tree.
-- 🧭 **Navigation you can see.** Global plan, MPPI candidates, costmaps, goal rings, and cmd/odom plots in AutoViz.
-- 🧠 **Behavior-tree orchestration.** TaskServer + BT navigator for navigate-to-pose, recover, cancel.
-- 🎮 **Simulation & sensors.** AutoSim (Habitat · Fake · Isaac + PhysX) and AutoDriver for real hardware.
-- 🚢 **Production oriented.** Docker, Ansible, observability — x86_64 and ARM64 ready.
+- **No ROS.** Autolink + automsgs: Node · Channel · Service · Action · Parameter.
+- **Swap the ends.** autodriver or AutoSim in; AutoViz / autoloop on the side.
+- **SLAM in-tree.** Cartographer, Atlas, Argus (ESIKF).
+- **Nav in AutoViz.** Plan, costmap, `cmd_vel` / odom.
+- **BT tasks.** Navigate, recover, dock, follow, voice.
+- **Ship it.** Docker + Ansible; Linux x86_64 and ARM64.
 
 ---
 
@@ -123,180 +142,95 @@ Everything talks over **Autolink**: Node, Channel, Service, Action, Parameter. D
 
 ---
 
-## Build
+## Quick start
 
-Two ways in:
+Linux x86_64 / ARM64. Layout is a colcon workspace: `autonomy/src/autonomy`. Full install: [docs](https://autonomy.readthedocs.io/en/latest/index.html).
 
-1. **[Documentation](https://autonomy.readthedocs.io/en/latest/index.html)** — install, run, and architecture guides. Start here if you are new.
-2. **Docker quick path** below — clone, enter the container, build, launch.
-
-Autonomy is under active development. [Say so](https://github.com/quandy2020/autonomy/issues) when you find an edge.
-
-**Platforms**
-
-- ✅ **Linux** · x86_64 and ARM64 (primary)
-- 🚧 **macOS / Windows** · AutoViz deploy scripts exist; full stack is Linux-first
-
-Work from the **source root** (the directory with top-level `CMakeLists.txt`, `scripts/`, `docker/`). In a monorepo that is often `…/src/autonomy`.
-
-You need a Linux host (or the project Docker image), CMake, Ninja, a C++20 compiler, and the dependencies installed by `scripts/install_dependencies.py`.
-
-**① Clone & enter Docker**
+**1. Clone**
 
 ```bash
-git clone --recurse-submodules \
-  https://github.com/quandy2020/autonomy.git
-cd autonomy   # or cd …/src/autonomy
-
-export AUTONOMY_ENV="$PWD"
-# optional offline datasets → container /data
-# export AUTONOMY_DATASETS=/path/to/datasets
-
-python3 docker/run_autonomy.py -p x86_64
-# GPU image:
-# python3 docker/run_autonomy.py -p x86_64 -n yes
+mkdir -p autonomy/src && cd autonomy/src
+git clone --recurse-submodules https://github.com/quandy2020/autonomy.git
+cd ..
+export AUTONOMY_ENV="$PWD"   # …/autonomy  (workspace root)
 ```
 
-**② Build & launch**
+**2. Pull the image**
 
 ```bash
-cd /workspace/autonomy   # inside container
+docker pull quandy/autonomy.platform.x86_64.nvidia:latest
+docker tag quandy/autonomy.platform.x86_64.nvidia:latest \
+  autonomy.platform.x86_64.nvidia:latest
+```
 
-python3 scripts/install_dependencies.py --skip-installed
-cmake -S . -B build -G Ninja \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DCMAKE_PREFIX_PATH=/usr/local
-cmake --build build -j"$(nproc)"
+**3. Start the container**
 
-source scripts/setup_environment.bash
+```bash
+python3 src/autonomy/docker/run_autonomy.py -p x86_64 -n yes
+docker exec -it SpaceHero bash
+cd /workspace/autonomy
+```
+
+**4. Build and run**
+
+```bash
+colcon build --packages-up-to autonomy
+source src/autonomy/scripts/setup_environment.bash
 autolink_launch autonomy.launch
 ```
 
-Nav-only smoke (planning + control + task — do **not** run together with `autonomy.launch`):
+**5. Download MP3D scenes into `autonomy/src`**
 
-```bash
-autolink launch start task.launch
+Habitat defaults to `${AUTOSIM_SCENE_ROOT:-/workspace/autonomy/src}/<id>/<id>.glb`. Put Matterport3D rooms next to the repo (not inside `src/autonomy/`):
+
+```text
+autonomy/src/
+  autonomy/                 # this git tree
+  17DRP5sb8fy/17DRP5sb8fy.glb
+  17DRP5sb8fy/17DRP5sb8fy_semantic.ply   # optional, for /overall/map
 ```
 
-<details>
-<summary><b>Argus localization</b> (autosim / Oxford Spires → <code>/imu</code> · <code>/points</code>)</summary>
+Request the dataset from [Matterport3D](https://niessner.github.io/Matterport/), then copy a scene folder onto the host `autonomy/src/` (same path as `/workspace/autonomy/src` in the container).
 
 ```bash
-# Host: mount datasets, then recreate the container if needed
-export AUTONOMY_DATASETS=/path/to/datasets
-AUTONOMY_FORCE_RECREATE=1 python3 docker/run_autonomy.py -p x86_64 -n yes
-
-# Container: localization
-export AUTOLINK_LAUNCH_PATH="$PWD/autonomy/localization/launch"
-autolink launch start localization_argus.launch
-
-# Another terminal: publish sequence (under /data)
-export LD_LIBRARY_PATH="/workspace/autonomy/install/autonomy/lib:/workspace/autonomy/build/autonomy/lib:${LD_LIBRARY_PATH:-}"
-export PYTHONPATH="/workspace/autonomy/src/autonomy:/workspace/autonomy/install/autonomy/python:/workspace/autonomy/install/autonomy/lib/python:${PYTHONPATH:-}"
-/usr/bin/python3 -m autonomy.tools.datasets publish \
-  --dataset spires \
-  --path /data/Oxford/sequences/2024-03-12-keble-college-02 \
-  --rate 1.0
+# inside SpaceHero
+SCENE=17DRP5sb8fy ROBOT=unitree_go2 SENSORS=basic \
+  src/autonomy/autosim/scripts/run.sh sim
 ```
 
-See [datasets](docs/source/18_Tools/08_datasets.md) and [localization](autonomy/localization/README.md).
-
-</details>
-
----
-
-## Architecture
-
-<p align="center">
-  <a href="docs/architecture/archify/autonomy-runtime.architecture.html">
-    <img src="docs/architecture/archify/autonomy-runtime.architecture.gif" alt="Runtime architecture" width="100%"/>
-  </a>
-</p>
-
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <a href="docs/architecture/archify/navigation-task.workflow.html">
-        <img src="docs/architecture/archify/navigation-task.workflow.gif" alt="Navigation workflow" width="100%"/>
-      </a>
-      <br/>
-      <b>Navigation</b> — goal · plan · recover · cancel
-    </td>
-    <td align="center" width="50%">
-      <a href="docs/architecture/archify/person-following.dataflow.html">
-        <img src="docs/architecture/archify/person-following.dataflow.gif" alt="Person-following flow" width="100%"/>
-      </a>
-      <br/>
-      <b>Person-following</b> — RGB · track · path · control
-    </td>
-  </tr>
-</table>
-
-Multi-process by default: Goal → `task` (BT) → `planning` (Path) → `control` (`cmd_vel`), with TF `map → odom → base_link`.
-
-### Stack
-
-| Area | Path | Notes |
-|------|------|--------|
-| Runtime | `autolink/` | SHM · RTPS · Action |
-| Messages | `automsgs/` | Protobuf · codegen |
-| Localization | `autonomy/localization/` | Cartographer · Atlas · Argus |
-| Perception | `autonomy/perception/` | Base · Follow · costmap layers |
-| Map / Plan / Ctrl | `map` · `planning` · `control` | Costmap · NavFn · RPP / MPPI |
-| Tasks | `autonomy/task/` | BT navigator · TaskServer |
-| Bridge | `autonomy/bridge/` | gRPC · `BUILD_GRPC` |
-| HW / Sim / Viz | `autodriver` · `autosim` · `autoviz` | Sensors · Isaac · Qt |
-
----
-
-## How to Contribute
-
-> [!IMPORTANT]
-> The best way to contribute is to build the stack, run a nav or SLAM bring-up, and [say where it breaks](https://github.com/quandy2020/autonomy/issues) or could be clearer.
->
-> Ready to write code? Start from [Getting started](docs/source/01_Instructions/00_guide.md) and [CMake](cmake/README.md). Prefer small, reviewable changes that match existing module boundaries (`autolink`, `automsgs`, `autonomy/*`, `autoviz`, …).
->
-> Questions and demos live best next to the module READMEs in [Guides](#guides).
-
----
+Registered scene ids: `17DRP5sb8fy`, `29hnd4uzFmX`, `2azQ1b91cZZ`, `S9hNv5qa7GM`, `jtcxE69GiFV`, `kEZ7cmS4wCh`, `mJXqzFtmKg4`, `q9vSo1VnCiC`, `vyrNrziPKCB`, `zsNo4HB9uLZ`. Empty studio (no GLB): `SCENE=empty`. Override the root with `AUTOSIM_SCENE_ROOT`.
 
 ## Guides
 
-<p align="center">
-  <a href="autolink/README.md">Autolink</a>
-  ·
-  <a href="automsgs/README.md">AutoMsgs</a>
-  ·
-  <a href="autonomy/localization/README.md">Localization</a>
-  ·
-  <a href="autonomy/bridge/README.md">Bridge</a>
-  ·
-  <a href="autodriver/README.md">AutoDriver</a>
-  ·
-  <a href="autosim/README.md">AutoSim</a>
-  ·
-  <a href="autoviz/README.md">AutoViz</a>
-  ·
-  <a href="ansible/README.md">Ansible</a>
-</p>
+| Package | Guide |
+|---------|--------|
+| autolink | [README](autolink/README.md) · [IPC](docs/source/03_Communication/00_guide.md) |
+| automsgs | [README](automsgs/README.md) |
+| autodriver | [README](autodriver/README.md) |
+| automanip | [README](automanip/README.md) |
+| autosim | [README](autosim/README.md) |
+| autoviz | [README](autoviz/README.md) |
+| autoloop | [README](autoloop/README.md) |
+| ansible | [README](ansible/README.md) |
 
-<p align="center">
-  <sub>
-    <a href="docs/source/02_Installation/00_guide.md">Install</a> ·
-    <a href="docs/source/03_Communication/00_guide.md">Autolink</a> ·
-    <a href="docs/source/04_Running/00_guide.md">Run</a> ·
-    <a href="docs/source/06_Localization/00_guide.md">Localization</a> ·
-    <a href="docs/source/08_Planning/00_guide.md">Planning</a> ·
-    <a href="docs/source/09_Control/00_guide.md">Control</a> ·
-    <a href="docs/source/15_Bridge/00_guide.md">Bridge</a> ·
-    <a href="docs/source/16_Navigator/00_guide.md">Navigator</a> ·
-    <a href="docs/source/18_Tools/08_datasets.md">Datasets</a> ·
-    <a href="docs/source/19_FAQs/00_guide.md">FAQs</a> ·
-    <a href="docs/source/01_Instructions/03_system_architecture.md">Architecture</a> ·
-    <a href="cmake/README.md">CMake</a> ·
-    <a href="https://autonomy.readthedocs.io/en/latest/index.html">readthedocs</a>
-  </sub>
-</p>
+| Core | Guide |
+|------|--------|
+| task | [README](autonomy/task/README.md) · [Navigator](docs/source/16_Navigator/00_guide.md) |
+| localization | [README](autonomy/localization/README.md) |
+| perception | [README](autonomy/perception/README.md) |
+| map | [Map](docs/source/07_Map/00_guide.md) |
+| planning | [Planning](docs/source/08_Planning/00_guide.md) |
+| control | [Control](docs/source/09_Control/00_guide.md) |
+| bridge | [README](autonomy/bridge/README.md) |
+| system | [README](autonomy/system/README.md) |
+
+[Install](docs/source/02_Installation/00_guide.md) ·
+[Run](docs/source/04_Running/00_guide.md) ·
+[Architecture](docs/source/01_Instructions/03_system_architecture.md) ·
+[Datasets](docs/source/18_Tools/08_datasets.md) ·
+[FAQs](docs/source/19_FAQs/00_guide.md) ·
+[CMake](cmake/README.md) ·
+[Docs](https://autonomy.readthedocs.io/en/latest/index.html)
 
 ---
 

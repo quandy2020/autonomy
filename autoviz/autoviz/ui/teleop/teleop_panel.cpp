@@ -14,9 +14,12 @@
 #include <QElapsedTimer>
 #include <QFocusEvent>
 #include <QFrame>
+#include <QGuiApplication>
 #include <QHBoxLayout>
+#include <QLabel>
 #include <QMenu>
 #include <QMetaObject>
+#include <QRect>
 #include <QScrollArea>
 #include <QTimer>
 #include <QToolButton>
@@ -39,6 +42,7 @@
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/panel/title_tools.hpp"
 #include "autoviz/ui/teleop/teleop_control_widget.hpp"
+#include "autoviz/ui/teleop/teleop_hud_overlay.hpp"
 #include "autoviz/ui/teleop/teleop_settings_widget.hpp"
 #include "autoviz/ui/teleop/teleop_twist_utils.hpp"
 
@@ -116,6 +120,19 @@ TeleopPanel::TeleopPanel(common::VisualizationManager* manager, QWidget* parent)
   settings_widget_ = new TeleopSettingsWidget(manager_, settings_scroll_);
   settings_scroll_->setWidget(settings_widget_);
   settings_layout->addWidget(settings_scroll_);
+
+  hud_placeholder_ = new QLabel(this);
+  hud_placeholder_->setObjectName(QStringLiteral("TeleopHudPlaceholder"));
+  hud_placeholder_->setAlignment(Qt::AlignCenter);
+  hud_placeholder_->setWordWrap(true);
+  hud_placeholder_->setText(
+      tr("Gamepad HUD is floating above all panels.\n"
+         "Click the HUD button in the title bar to return it here."));
+  hud_placeholder_->setStyleSheet(
+      style::sheet(QStringLiteral("teleop/hud_placeholder")));
+  hud_placeholder_->setMinimumHeight(80);
+  hud_placeholder_->hide();
+  root->addWidget(hud_placeholder_, 1);
 
   control_ = new TeleopControlWidget(this);
   root->addWidget(control_, 1);
@@ -215,6 +232,12 @@ TeleopPanel::~TeleopPanel() {
   publishStop();
   publish_timer_->stop();
   shutdownTeleopReaders();
+  restoreControlFromHud();
+  if (overlay_ != nullptr) {
+    overlay_->hide();
+    overlay_->deleteLater();
+    overlay_ = nullptr;
+  }
 }
 
 void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
@@ -240,10 +263,47 @@ void TeleopPanel::installTitleBarTools(PanelDockWidget* dock) {
   const PanelTitleBarTools tools =
       CreatePanelTitleBarTools(dock, callbacks, options);
   settings_button_ = tools.settings_button;
+
+  if (tools.widget != nullptr) {
+    hud_button_ = CreateTitleToolButton(
+        tools.widget, IconLoader::panelTitleIcon(QStringLiteral("panel.hud")),
+        tr("Gamepad overlay — float above all panels"), true);
+    hud_button_->setChecked(config_.overlay_enabled);
+    hud_button_->setToolTip(
+        hud_button_->isChecked()
+            ? tr("Return gamepad to this panel")
+            : tr("Gamepad overlay — float above all panels, no snap"));
+    if (auto* layout = qobject_cast<QHBoxLayout*>(tools.widget->layout())) {
+      int insert_at = 0;
+      if (settings_button_ != nullptr) {
+        const int settings_index = layout->indexOf(settings_button_);
+        if (settings_index >= 0) {
+          insert_at = settings_index + 1;
+        }
+      }
+      layout->insertWidget(insert_at, hud_button_);
+    }
+    QObject::connect(hud_button_, &QToolButton::clicked, this, [this](bool checked) {
+      setHudVisible(checked, true);
+    });
+  }
+
   dock->setTitleBarTools(tools.widget);
 }
 
-TeleopPanelConfig TeleopPanel::config() const { return config_; }
+TeleopPanelConfig TeleopPanel::config() const {
+  TeleopPanelConfig out = config_;
+  if (overlay_ != nullptr && overlay_->isVisible()) {
+    const QRect geo = overlay_->geometry();
+    out.overlay_enabled = true;
+    out.overlay_opacity = overlay_->opacity();
+    out.overlay_x = geo.x();
+    out.overlay_y = geo.y();
+    out.overlay_w = geo.width();
+    out.overlay_h = geo.height();
+  }
+  return out;
+}
 
 void TeleopPanel::setConfig(const TeleopPanelConfig& config) {
   if (config_.smart_teleop_enabled && !config.smart_teleop_enabled) {
@@ -269,17 +329,21 @@ void TeleopPanel::setConfig(const TeleopPanelConfig& config) {
   }
   syncSettingsWidgetFromConfig();
   syncSettingsToolState();
+  applyHudFromConfig();
 }
 
 void TeleopPanel::cloneConfigFrom(const TeleopPanelConfig& config) {
   publishStop();
   config_ = config;
+  // A split panel should not spawn a second HUD over the same pad.
+  config_.overlay_enabled = false;
   if (control_ != nullptr) {
     control_->setStickMode(config_.stick_mode);
     control_->setMaxSpeeds(config_.max_linear_speed, config_.max_angular_speed);
   }
   syncSettingsWidgetFromConfig();
   syncSettingsToolState();
+  applyHudFromConfig();
 }
 
 void TeleopPanel::applySettings(const TeleopPanelConfig& config) {
@@ -309,6 +373,146 @@ QWidget* TeleopPanel::settingsWidgetForInspector() {
 
 void TeleopPanel::recallSettingsWidget() {
   RecallSettingsScrollToContainer(settings_scroll_, settings_container_);
+}
+
+void TeleopPanel::setHudVisible(bool visible) { setHudVisible(visible, true); }
+
+bool TeleopPanel::hudVisible() const {
+  return overlay_ != nullptr && overlay_->isVisible();
+}
+
+void TeleopPanel::setHudVisible(bool visible, bool persist) {
+  if (visible) {
+    ensureHudOverlay();
+    if (overlay_ == nullptr || control_ == nullptr) {
+      return;
+    }
+    if (overlay_->control() != control_) {
+      if (auto* root = qobject_cast<QVBoxLayout*>(layout())) {
+        root->removeWidget(control_);
+      }
+      overlay_->setControl(control_);
+      control_->setHudMode(true);
+    }
+    overlay_->setOpacity(config_.overlay_opacity);
+    const bool was_visible = overlay_->isVisible();
+    if (!was_visible) {
+      const QRect saved(config_.overlay_x, config_.overlay_y, config_.overlay_w,
+                        config_.overlay_h);
+      if (!overlay_->applyGeometryIfOnScreen(saved)) {
+        overlay_->placeDefault(this);
+      }
+    }
+    overlay_->show();
+    overlay_->raise();
+    if (!was_visible) {
+      overlay_->activateWindow();
+      control_->setFocus(Qt::OtherFocusReason);
+    }
+    if (hud_placeholder_ != nullptr) {
+      hud_placeholder_->show();
+    }
+  } else {
+    restoreControlFromHud();
+    if (overlay_ != nullptr) {
+      overlay_->hide();
+    }
+    if (hud_placeholder_ != nullptr) {
+      hud_placeholder_->hide();
+    }
+  }
+  config_.overlay_enabled = visible;
+  syncHudButton();
+  if (persist) {
+    captureHudGeometry();
+    emit configChanged();
+  }
+}
+
+void TeleopPanel::ensureHudOverlay() {
+  if (overlay_ != nullptr) {
+    return;
+  }
+  overlay_ = new TeleopHudOverlay(window());
+  overlay_->setOpacity(config_.overlay_opacity);
+  connect(overlay_, &TeleopHudOverlay::closeRequested, this, [this]() {
+    setHudVisible(false, true);
+  });
+  connect(overlay_, &TeleopHudOverlay::opacityChanged, this,
+          [this](double opacity) {
+            config_.overlay_opacity = opacity;
+            emit configChanged();
+          });
+  connect(overlay_, &TeleopHudOverlay::geometryChanged, this, [this]() {
+    captureHudGeometry();
+    emit configChanged();
+  });
+  connect(qApp, &QGuiApplication::applicationStateChanged, overlay_,
+          [this](Qt::ApplicationState state) {
+            if (overlay_ == nullptr || !config_.overlay_enabled) {
+              return;
+            }
+            if (state == Qt::ApplicationActive) {
+              overlay_->show();
+              overlay_->raise();
+            } else {
+              overlay_->lower();
+            }
+          });
+}
+
+void TeleopPanel::restoreControlFromHud() {
+  if (control_ == nullptr) {
+    return;
+  }
+  QWidget* hosted = nullptr;
+  if (overlay_ != nullptr) {
+    hosted = overlay_->takeControl();
+  }
+  if (hosted != control_ && control_->parentWidget() == this) {
+    return;
+  }
+  control_->setParent(this);
+  control_->setHudMode(false);
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  if (auto* root = qobject_cast<QVBoxLayout*>(layout())) {
+    if (root->indexOf(control_) < 0) {
+      root->addWidget(control_, 1);
+    }
+  }
+  control_->show();
+}
+
+void TeleopPanel::applyHudFromConfig() {
+  if (overlay_ != nullptr) {
+    overlay_->setOpacity(config_.overlay_opacity);
+  }
+  setHudVisible(config_.overlay_enabled, false);
+}
+
+void TeleopPanel::captureHudGeometry() {
+  if (overlay_ == nullptr) {
+    return;
+  }
+  const QRect geo = overlay_->geometry();
+  config_.overlay_opacity = overlay_->opacity();
+  config_.overlay_x = geo.x();
+  config_.overlay_y = geo.y();
+  config_.overlay_w = geo.width();
+  config_.overlay_h = geo.height();
+}
+
+void TeleopPanel::syncHudButton() {
+  if (hud_button_ == nullptr) {
+    return;
+  }
+  const bool on = hudVisible() || config_.overlay_enabled;
+  hud_button_->blockSignals(true);
+  hud_button_->setChecked(on);
+  hud_button_->setToolTip(
+      on ? tr("Return gamepad to this panel")
+         : tr("Gamepad overlay — float above all panels, no snap"));
+  hud_button_->blockSignals(false);
 }
 
 void TeleopPanel::syncSettingsWidgetFromConfig() {

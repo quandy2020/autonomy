@@ -41,6 +41,7 @@
 
 class QElapsedTimer;
 class QFocusEvent;
+class QLabel;
 class QScrollArea;
 class QTimer;
 class QToolButton;
@@ -53,6 +54,7 @@ class VisualizationManager;
 }
 namespace teleop {
 class TeleopControlWidget;
+class TeleopHudOverlay;
 class TeleopSettingsWidget;
 }
 
@@ -65,9 +67,10 @@ namespace teleop {
  * ## Layout
  *
  * @code
- * ┌─ dock title bar [⚙ settings] … ──────────────────────────┐
+ * ┌─ dock title bar [⚙] [HUD] … ─────────────────────────────┐
  * │ TeleopControlWidget (sticks / speeds / smart teleop)      │
  * │ optional settings scroll (topic / rate / button maps)     │
+ * │ HUD button → frameless always-on-top gamepad overlay      │
  * └───────────────────────────────────────────────────────────┘
  * @endcode
  *
@@ -100,11 +103,27 @@ class TeleopPanel : public QWidget {
   ~TeleopPanel() override;
 
   /**
-   * @brief Installs settings (and related) tools on the dock title bar.
+   * @brief Installs settings and HUD overlay tools on the dock title bar.
    *
    * @param dock Hosting @ref PanelDockWidget; tools are held via @c QPointer.
    */
   void installTitleBarTools(PanelDockWidget* dock);
+
+  /**
+   * @brief Shows or hides the frameless gamepad HUD overlay.
+   *
+   * When shown, the control pad is reparented into a Tool window that does
+   * not snap to the mosaic. The overlay stays above Autoviz and follows the
+   * main window into the background. Opacity is independent of docking.
+   *
+   * @param visible When @c true, float the pad as a HUD.
+   */
+  void setHudVisible(bool visible);
+
+  /**
+   * @brief Whether the gamepad HUD overlay is currently shown.
+   */
+  bool hudVisible() const;
 
   /**
    * @brief Returns the combined control + settings configuration.
@@ -320,6 +339,30 @@ class TeleopPanel : public QWidget {
   /** @brief Updates title-bar tool checked state from settings visibility. */
   void syncSettingsToolState();
 
+  /**
+   * @brief Toggles the HUD overlay and optionally persists the choice.
+   *
+   * @param visible Desired HUD visibility.
+   * @param persist When @c true, writes @c overlay_enabled and emits
+   *        @ref configChanged().
+   */
+  void setHudVisible(bool visible, bool persist);
+
+  /** @brief Creates the HUD window if needed (parented to the main window). */
+  void ensureHudOverlay();
+
+  /** @brief Reparents the control pad back into this panel. */
+  void restoreControlFromHud();
+
+  /** @brief Applies overlay on/opacity/geometry from @c config_. */
+  void applyHudFromConfig();
+
+  /** @brief Copies live HUD geometry into @c config_. */
+  void captureHudGeometry();
+
+  /** @brief Syncs the title-bar HUD tool checked state. */
+  void syncHudButton();
+
   /** @brief Lazily creates the smart-teleop @c TeleopGoal writer. */
   void ensureTeleopGoalWriter();
 
@@ -364,6 +407,15 @@ class TeleopPanel : public QWidget {
 
   /** Dock title-bar settings tool (weak). */
   QPointer<QToolButton> settings_button_;
+
+  /** Dock title-bar HUD overlay tool (weak). */
+  QPointer<QToolButton> hud_button_;
+
+  /** Frameless always-on-top gamepad overlay (parented to the main window). */
+  QPointer<TeleopHudOverlay> overlay_;
+
+  /** Shown in the dock while the pad is floating in the HUD. */
+  QLabel* hud_placeholder_ = nullptr;
 
   /** Periodic publish while sticks are held. */
   QTimer* publish_timer_ = nullptr;

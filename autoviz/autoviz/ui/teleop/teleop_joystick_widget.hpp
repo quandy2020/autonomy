@@ -18,6 +18,9 @@
 
 #include <QWidget>
 
+class QEvent;
+class QPainter;
+
 namespace autoviz {
 namespace teleop {
 
@@ -126,6 +129,19 @@ class TeleopJoystickWidget : public QWidget {
    */
   TeleopStickAxes axes() const { return axes_; }
 
+  /**
+   * @brief Compact glass pad used by the HUD overlay.
+   *
+   * Docked and HUD bezels both follow @c theme::Shell().accent. HUD paints a
+   * translucent disc so the 3D view shows through.
+   *
+   * @param enabled When @c true, royal HUD paint; otherwise the docked look.
+   */
+  void setRoyalStyle(bool enabled);
+
+  /** @brief Whether royal HUD paint is active. */
+  bool royalStyle() const { return royal_style_; }
+
  signals:
   /**
    * @brief Emitted when the normalized knob position changes.
@@ -176,6 +192,13 @@ class TeleopJoystickWidget : public QWidget {
    */
   void mouseReleaseEvent(QMouseEvent* event) override;
 
+  /**
+   * @brief Repaints when the application palette / style changes.
+   *
+   * @param event Qt change event.
+   */
+  void changeEvent(QEvent* event) override;
+
  private:
   /**
    * @brief Maps a local widget position to a clamped normalized knob value.
@@ -213,10 +236,19 @@ class TeleopJoystickWidget : public QWidget {
    */
   double radius() const;
 
+  /** @brief Paints the docked bezel pad using the live theme accent. */
+  void paintDocked(QPainter& painter, const QPointF& c, double R, double well_r,
+                   double knob_r, double travel);
+
+  /** @brief Paints the floating glass pad using the live theme accent. */
+  void paintRoyal(QPainter& painter, const QPointF& c, double R, double well_r,
+                  double knob_r, double travel);
+
   QString label_;                              /**< Caption drawn on the pad. */
   TeleopStickAxes axes_ = TeleopStickAxes::kOmni; /**< Interactive axes. */
   QPointF knob_{0.0, 0.0};                     /**< Normalized knob position. */
   bool dragging_ = false;                      /**< @c true while mouse drag active. */
+  bool royal_style_ = false; /**< HUD glass paint (theme accent rim). */
 };
 
 }  // namespace teleop

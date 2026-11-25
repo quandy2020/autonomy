@@ -7,12 +7,16 @@
 #include <algorithm>
 #include <cmath>
 
+#include <QEvent>
 #include <QFontMetrics>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPainterPath>
+#include <QRadialGradient>
 #include <QResizeEvent>
+
+#include "autoviz/ui/theme/tokens.hpp"
 
 namespace autoviz {
 namespace teleop {
@@ -24,17 +28,19 @@ constexpr double kTravelRatio = 0.28; // max knob offset / outer
 constexpr int kLabelBand = 0;
 constexpr int kMinPadSide = 108;
 
-/** Flat colors — no gradients. */
-constexpr QColor kRing(0xF0, 0x8C, 0x28);
-constexpr QColor kRingActive(0xE0, 0x72, 0x12);
-constexpr QColor kSectorPress(0xC2, 0x41, 0x0C);  // pressed direction wedge
+/** Flat neutrals — accent comes from theme::Shell() at paint time. */
 constexpr QColor kIcon(255, 255, 255);
-constexpr QColor kIconPress(0xFE, 0xF3, 0xC7);    // warm highlight on press
 constexpr QColor kWell(0xF1, 0xF5, 0xF9);
 constexpr QColor kWellRim(0xCB, 0xD5, 0xE1);
 constexpr QColor kKnob(0xFF, 0xFF, 0xFF);
 constexpr QColor kKnobRim(0x94, 0xA3, 0xB8);
-constexpr QColor kKnobCore(0xF0, 0x8C, 0x28);
+
+QColor WithAlpha(QColor color, int alpha) {
+  color.setAlpha(alpha);
+  return color;
+}
+
+QColor ThemeAccent() { return theme::Shell().accent; }
 
 constexpr double kPressThreshold = 0.28;
 
@@ -123,6 +129,20 @@ void TeleopJoystickWidget::setAxes(TeleopStickAxes axes) {
   update();
 }
 
+void TeleopJoystickWidget::setRoyalStyle(bool enabled) {
+  if (royal_style_ == enabled) {
+    return;
+  }
+  royal_style_ = enabled;
+  // Never set WA_TranslucentBackground here: on X11 it punches a hole through
+  // the main Autoviz window when the pad is still parented to the docked panel.
+  setAttribute(Qt::WA_TranslucentBackground, false);
+  setAttribute(Qt::WA_NoSystemBackground, enabled);
+  setAttribute(Qt::WA_StyledBackground, !enabled);
+  setAutoFillBackground(false);
+  update();
+}
+
 void TeleopJoystickWidget::setNormalizedValue(const QPointF& value,
                                               bool emit_signal) {
   const QPointF clamped = clampToAxes(value);
@@ -156,8 +176,9 @@ void TeleopJoystickWidget::resetVisual() {
 }
 
 QRectF TeleopJoystickWidget::outerRect() const {
-  const int side =
-      std::max(kMinPadSide, std::min(width(), height() - kLabelBand) - 8);
+  const int inset = royal_style_ ? 2 : 8;
+  const int side = std::max(
+      kMinPadSide, std::min(width(), height() - kLabelBand) - inset);
   const double x = (width() - side) * 0.5;
   const double y = (height() - kLabelBand - side) * 0.5;
   return QRectF(x, y, side, side);
@@ -209,53 +230,66 @@ void TeleopJoystickWidget::paintEvent(QPaintEvent* /*event*/) {
   const double well_r = R * kWellRatio;
   const double knob_r = R * kKnobRatio;
   const double travel = R * kTravelRatio;
+  if (royal_style_) {
+    painter.setCompositionMode(QPainter::CompositionMode_Source);
+    painter.fillRect(rect(), Qt::transparent);
+    painter.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    paintRoyal(painter, c, R, well_r, knob_r, travel);
+  } else {
+    paintDocked(painter, c, R, well_r, knob_r, travel);
+  }
+}
+
+void TeleopJoystickWidget::paintDocked(QPainter& painter, const QPointF& c,
+                                       double R, double well_r, double knob_r,
+                                       double travel) {
   const bool active = dragging_ || std::hypot(knob_.x(), knob_.y()) > 1e-3;
   const bool omni = axes_ == TeleopStickAxes::kOmni;
   constexpr double kPi = 3.14159265358979323846;
-
-  // Knob rests in the bowl and slides — physical thumbstick, no drawn shaft.
   const QPointF stick(c.x() + knob_.x() * travel, c.y() + knob_.y() * travel);
 
-  // Pad shadow
+  const QColor accent = ThemeAccent();
+  const QColor ring = active ? accent.darker(118) : accent;
+  const QColor sector = accent.darker(140);
+  const QColor icon_press = accent.lighter(160);
+
   painter.setPen(Qt::NoPen);
   painter.setBrush(QColor(15, 23, 42, 26));
-  painter.drawEllipse(outer.translated(0, 3));
+  painter.drawEllipse(QRectF(c.x() - R, c.y() - R, R * 2.0, R * 2.0)
+                          .translated(0, 3));
 
-  // Orange bezel ring
   {
-    QPainterPath ring;
-    ring.addEllipse(outer);
+    QPainterPath ring_path;
+    ring_path.addEllipse(c, R, R);
     QPainterPath hole;
     hole.addEllipse(c, well_r, well_r);
-    ring = ring.subtracted(hole);
-    painter.fillPath(ring, active ? kRingActive : kRing);
+    ring_path = ring_path.subtracted(hole);
+    painter.fillPath(ring_path, ring);
   }
 
-  // Pressed direction sectors (flat color change)
   const bool press_f = omni && knob_.y() < -kPressThreshold;
   const bool press_b = omni && knob_.y() > kPressThreshold;
   const bool press_l = knob_.x() < -kPressThreshold;
   const bool press_r = knob_.x() > kPressThreshold;
-  constexpr double kHalfSpan = 0.42;  // ~24°
+  constexpr double kHalfSpan = 0.42;
   painter.setPen(Qt::NoPen);
   if (press_f) {
-    DrawDirSector(painter, c, R, well_r, -kPi * 0.5, kHalfSpan, kSectorPress);
+    DrawDirSector(painter, c, R, well_r, -kPi * 0.5, kHalfSpan, sector);
   }
   if (press_b) {
-    DrawDirSector(painter, c, R, well_r, kPi * 0.5, kHalfSpan, kSectorPress);
+    DrawDirSector(painter, c, R, well_r, kPi * 0.5, kHalfSpan, sector);
   }
   if (press_l) {
-    DrawDirSector(painter, c, R, well_r, kPi, kHalfSpan, kSectorPress);
+    DrawDirSector(painter, c, R, well_r, kPi, kHalfSpan, sector);
   }
   if (press_r) {
-    DrawDirSector(painter, c, R, well_r, 0.0, kHalfSpan, kSectorPress);
+    DrawDirSector(painter, c, R, well_r, 0.0, kHalfSpan, sector);
   }
 
-  // Direction glyphs — brighter / larger when that way is pressed
   const double glyph_r = (well_r + R) * 0.5;
   const double glyph = std::max(6.5, R * 0.10);
-  const auto glyph_color = [](bool pressed) {
-    return pressed ? kIconPress : kIcon;
+  const auto glyph_color = [&](bool pressed) {
+    return pressed ? icon_press : kIcon;
   };
   const auto glyph_size = [&](bool pressed) {
     return pressed ? glyph * 1.18 : glyph;
@@ -272,23 +306,16 @@ void TeleopJoystickWidget::paintEvent(QPaintEvent* /*event*/) {
   DrawDirDouble(painter, c, 0.0, glyph_r, glyph_size(press_r) * 0.92,
                 glyph_color(press_r));
 
-  // Recessed bowl (flat)
-  {
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(QColor(15, 23, 42, 20));
-    painter.drawEllipse(c + QPointF(0, 1.5), well_r, well_r);
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(QColor(15, 23, 42, 20));
+  painter.drawEllipse(c + QPointF(0, 1.5), well_r, well_r);
+  painter.setBrush(kWell);
+  painter.setPen(QPen(kWellRim, 1.2));
+  painter.drawEllipse(c, well_r, well_r);
+  painter.setPen(QPen(QColor(148, 163, 184, 90), 1.0));
+  painter.setBrush(Qt::NoBrush);
+  painter.drawEllipse(c, well_r - 3.0, well_r - 3.0);
 
-    painter.setBrush(kWell);
-    painter.setPen(QPen(kWellRim, 1.2));
-    painter.drawEllipse(c, well_r, well_r);
-
-    // Inner lip — suggests depth without gradient
-    painter.setPen(QPen(QColor(148, 163, 184, 90), 1.0));
-    painter.setBrush(Qt::NoBrush);
-    painter.drawEllipse(c, well_r - 3.0, well_r - 3.0);
-  }
-
-  // Contact shadow under knob (offset opposite tilt = lifts toward viewer)
   {
     const QPointF shadow =
         stick + QPointF(-knob_.x() * 1.5, 2.0 + std::abs(knob_.y()) * 1.2);
@@ -297,17 +324,51 @@ void TeleopJoystickWidget::paintEvent(QPaintEvent* /*event*/) {
     painter.drawEllipse(shadow, knob_r * 1.05, knob_r * 0.92);
   }
 
-  // Thumbstick head
-  {
-    painter.setBrush(kKnob);
-    painter.setPen(QPen(active ? kRingActive : kKnobRim, 1.6));
-    painter.drawEllipse(stick, knob_r, knob_r);
+  painter.setBrush(kKnob);
+  painter.setPen(QPen(active ? ring : kKnobRim, 1.6));
+  painter.drawEllipse(stick, knob_r, knob_r);
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(ring);
+  painter.drawEllipse(stick, knob_r * 0.34, knob_r * 0.34);
+}
 
-    // Flat core cue (not a shaft)
-    painter.setPen(Qt::NoPen);
-    painter.setBrush(active ? kRingActive : kKnobCore);
-    painter.drawEllipse(stick, knob_r * 0.34, knob_r * 0.34);
+void TeleopJoystickWidget::paintRoyal(QPainter& painter, const QPointF& c,
+                                      double R, double well_r, double knob_r,
+                                      double travel) {
+  const bool omni = axes_ == TeleopStickAxes::kOmni;
+  constexpr double kPi = 3.14159265358979323846;
+  const QPointF stick(c.x() + knob_.x() * travel, c.y() + knob_.y() * travel);
+  const QColor accent = WithAlpha(ThemeAccent(), 220);
+  const QColor well = WithAlpha(ThemeAccent(), 42);
+  QColor knob = ThemeAccent().lighter(165);
+  knob.setAlpha(235);
+
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(QColor(12, 10, 8, 150));
+  painter.drawEllipse(c, R, R);
+
+  painter.setBrush(Qt::NoBrush);
+  painter.setPen(QPen(accent, 2.0));
+  painter.drawEllipse(c, R - 1.5, R - 1.5);
+
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(well);
+  painter.drawEllipse(c, well_r, well_r);
+
+  const double glyph_r = (well_r + R) * 0.52;
+  const double glyph = std::max(5.0, R * 0.08);
+  painter.setPen(Qt::NoPen);
+  painter.setBrush(accent);
+  if (omni) {
+    DrawDirTriangle(painter, c, -kPi * 0.5, glyph_r, glyph, accent);
+    DrawDirTriangle(painter, c, kPi * 0.5, glyph_r, glyph, accent);
   }
+  DrawDirTriangle(painter, c, kPi, glyph_r, glyph, accent);
+  DrawDirTriangle(painter, c, 0.0, glyph_r, glyph, accent);
+
+  painter.setBrush(knob);
+  painter.setPen(QPen(accent, 1.6));
+  painter.drawEllipse(stick, knob_r, knob_r);
 }
 
 void TeleopJoystickWidget::resizeEvent(QResizeEvent* event) {
@@ -315,9 +376,35 @@ void TeleopJoystickWidget::resizeEvent(QResizeEvent* event) {
   update();
 }
 
+void TeleopJoystickWidget::changeEvent(QEvent* event) {
+  QWidget::changeEvent(event);
+  if (event == nullptr) {
+    return;
+  }
+  switch (event->type()) {
+    case QEvent::StyleChange:
+    case QEvent::PaletteChange:
+    case QEvent::ApplicationPaletteChange:
+      update();
+      break;
+    default:
+      break;
+  }
+}
+
 void TeleopJoystickWidget::mousePressEvent(QMouseEvent* event) {
   if (event->button() != Qt::LeftButton) {
+    event->ignore();
     return;
+  }
+  if (royal_style_) {
+    // Only the knob drives. The rest of the disc lets the HUD overlay drag.
+    const QPointF delta = event->position() - center();
+    const double drive_r = radius() * kKnobRatio * 1.85;
+    if (std::hypot(delta.x(), delta.y()) > drive_r) {
+      event->ignore();
+      return;
+    }
   }
   dragging_ = true;
   setCursor(Qt::ClosedHandCursor);

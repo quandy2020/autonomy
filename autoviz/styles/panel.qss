@@ -1402,6 +1402,185 @@ QFrame#TeleopSticksCard {
 }
 /* @end */
 
+/* @section teleop.control_hud */
+QWidget#TeleopControlContent {
+  background: transparent;
+  color: #F2F2F7;
+}
+/* @end */
+
+/* @section teleop.hud_header */
+QFrame#TeleopHeader {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(240,140,40,0.28);
+  border-radius: 12px;
+}
+/* @end */
+
+/* @section teleop.hud_sticks */
+QFrame#TeleopSticksCard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(240,140,40,0.22);
+  border-radius: 16px;
+}
+/* @end */
+
+/* @section teleop.hud_arcade */
+QFrame#TeleopArcadeCard {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(240,140,40,0.22);
+  border-radius: 16px;
+}
+/* @end */
+
+/* @section teleop.hud_speed_card */
+QFrame#TeleopSpeedCard {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+}
+/* @end */
+
+/* @section teleop.hud_speed_caption */
+color: #AEAEB2; font-size: 10px; font-weight: 700; letter-spacing: 1.6px;
+/* @end */
+
+/* @section teleop.hud_speed_spin */
+QDoubleSpinBox {
+  background: transparent; color: #F2F2F7;
+  border: none; padding: 0;
+  font-weight: 300; font-size: 20px;
+  font-family: 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+}
+QDoubleSpinBox:focus { color: #F08C28; }
+/* @end */
+
+/* @section teleop.hud_speed_unit */
+color: #8E8E93; font-size: 11px; font-weight: 600; letter-spacing: 0.6px;
+/* @end */
+
+/* @section teleop.hud_speed_rule */
+background: rgba(240,140,40,0.28); border: none;
+/* @end */
+
+/* @section teleop.hud_step_button */
+QToolButton {
+  background: rgba(255,255,255,0.08); color: #AEAEB2;
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 8px;
+  font-size: 16px; font-weight: 500;
+}
+QToolButton:hover {
+  background: #F08C28; color: white; border-color: #F08C28;
+}
+QToolButton:pressed {
+  background: #E07212; color: white; border-color: #E07212;
+}
+/* @end */
+
+/* @section teleop.hud_smart_check */
+QCheckBox {
+  color: #AEAEB2; font-size: 11px; font-weight: 700;
+  spacing: 6px; padding: 4px 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.10); border-radius: 10px;
+}
+QCheckBox:checked {
+  color: #F08C28; background: rgba(240,140,40,0.16);
+  border-color: #F08C28;
+}
+QCheckBox:disabled { color: #636366; }
+/* @end */
+
+/* @section teleop.hud_hint */
+color: #8E8E93; font-size: 11px; font-weight: 600; letter-spacing: 0.2px;
+/* @end */
+
+/* @section teleop.hud_pad_caption */
+color: #AEAEB2; font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+/* @end */
+
+/* @section teleop.hud_estop */
+QPushButton {
+  background: #E11D48;
+  border: 1px solid #E11D48;
+  border-radius: 14px;
+  color: white;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 1.2px;
+  padding: 8px 16px;
+}
+QPushButton:hover {
+  background: #BE123C; border-color: #BE123C;
+}
+QPushButton:pressed {
+  background: #9F1239; border-color: #9F1239;
+}
+/* @end */
+
+/* @section teleop.hud_placeholder */
+QLabel#TeleopHudPlaceholder {
+  color: {{muted}};
+  font-size: 12px;
+  font-weight: 600;
+  padding: 24px;
+}
+/* @end */
+
+/* @section teleop.hud_handle */
+QWidget#TeleopHudHandle {
+  background: transparent;
+}
+/* @end */
+
+/* @section teleop.hud_title */
+QLabel#TeleopHudTitle {
+  color: #F08C28;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.8px;
+}
+/* @end */
+
+/* @section teleop.hud_opacity_caption */
+color: #8E8E93; font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+/* @end */
+
+/* @section teleop.hud_opacity_label */
+color: #F2F2F7; font-size: 11px; font-weight: 700;
+/* @end */
+
+/* @section teleop.hud_opacity_slider */
+QSlider::groove:horizontal {
+  height: 4px;
+  background: rgba(255,255,255,0.12);
+  border-radius: 2px;
+}
+QSlider::handle:horizontal {
+  width: 12px; height: 12px;
+  margin: -4px 0;
+  background: #F08C28;
+  border: none;
+  border-radius: 6px;
+}
+QSlider::sub-page:horizontal {
+  background: #F08C28;
+  border-radius: 2px;
+}
+/* @end */
+
+/* @section teleop.hud_close */
+QToolButton {
+  background: transparent;
+  border: none;
+  border-radius: 11px;
+  padding: 2px;
+}
+QToolButton:hover {
+  background: rgba(225,29,72,0.85);
+}
+/* @end */
+
 /* @section tf_tree.detail_body */
 QWidget {
   background: {{panel-surface-raised}}; border: 1px solid {{panel-border}}; border-radius: {{r-md}}px;
