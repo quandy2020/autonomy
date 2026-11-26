@@ -1,0 +1,69 @@
+CurrentView:
+  Distance: 40
+  FocalShapeFixedSize: true
+  FocalShapeSize: 0.05000000074505806
+  InvertZAxis: false
+  Name: Current
+  NearClipDistance: 0.009999999776482582
+  Pitch: 0.9
+  Target:
+    X: 0
+    Y: 0
+    Z: 0
+  Type: Orbit
+  Yaw: 0.8
+Displays:
+  - Channel: ""
+    Enabled: true
+    Name: TF
+    Type: TF
+  - Channel: ""
+    Enabled: true
+    Name: Grid
+    Properties:
+      alpha: 0.4
+      cell_count: 80
+      cell_size: 1.0
+      color: 160;160;160
+      line_style: Lines
+      line_width: 0.03
+      plane: XY
+      reference_frame: <Fixed Frame>
+    Type: Grid
+  - Channel: /map
+    Enabled: true
+    Name: OccupancyMap
+    Properties:
+      alpha: "0.85"
+      color_scheme: map
+      decimate: "1"
+      draw_behind: "true"
+      use_timestamp: "false"
+    Type: Map
+  - Channel: /tracked_pose
+    Enabled: true
+    Name: TrackedPose
+    Properties:
+      shape: Arrow
+      color: 255;100;0
+      shaft_length: "1.0"
+      head_length: "0.3"
+    Type: Pose
+Global:
+  ActiveTool: Interact
+  BackgroundColor: 48;48;48
+  FixedFrame: map
+  FrameRate: 30
+  RenderBackend: Ogre
+  Transformer: autoviz/AutolinkTf
+  ViewController: Orbit
+Views:
+  - Distance: 40
+    Name: Orbit
+    Pitch: 0.9
+    Target:
+      X: 0
+      Y: 0
+      Z: 0
+    Type: Orbit
+    Yaw: 0.8

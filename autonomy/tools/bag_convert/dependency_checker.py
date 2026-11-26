@@ -46,7 +46,11 @@ class DependencyChecker:
             return f"{key}{spec}" if spec else key
 
         missing: list[str] = []
-        for module, package in (("rosbags", "rosbags"), ("grpc_tools", "grpcio-tools")):
+        for module, package in (
+            ("rosbags", "rosbags"),
+            ("grpc_tools", "grpcio-tools"),
+            ("lz4.block", "lz4"),
+        ):
             try:
                 __import__(module)
             except ImportError:

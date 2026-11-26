@@ -6,12 +6,14 @@ ROS1 `.bag` → autolink `.record`。
 
 ### 用法
 
-在 **`src/autonomy` 根**或已设 `PYTHONPATH` 的环境：
+在 **`src/autonomy` 根**（容器 `/workspace/autonomy/src/autonomy`）或已设 `PYTHONPATH` 的环境。Isaac 用 `/usr/bin/python3`，不要用 Kit 的 `python`：
 
 ```bash
-python -m autonomy.tools.bag_convert input.bag -o ./data/records --backpack-2d
-python -m autonomy.tools.bag_convert --list-types
-python -m autonomy.tools.bag_convert --info input.bag
+cd /workspace/autonomy/src/autonomy
+export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
+/usr/bin/python3 -m autonomy.tools.bag_convert input.bag -o ./data/records --backpack-2d
+/usr/bin/python3 -m autonomy.tools.bag_convert --list-types
+/usr/bin/python3 -m autonomy.tools.bag_convert --info input.bag
 ```
 
 ### 预设
@@ -25,12 +27,26 @@ python -m autonomy.tools.bag_convert --info input.bag
 |------|------|
 | `-o` | 输出目录 |
 | `--duration-sec` | 截取时长 |
+| `--compress` | chunk 压缩：`lz4`（默认）、`bz2`、`none`。旧的未压缩 record 仍可播放 |
 
 ### 依赖
 
+宿主机（不要用 Anaconda 3.7）：
+
 ```bash
-python -m pip install -r autonomy/autonomy/tools/bag_convert/requirements.txt
+cd /home/quandy/workspace/github/autonomy/src/autonomy
+/usr/bin/python3.12 -m pip install --user --break-system-packages \
+  -r autonomy/tools/bag_convert/requirements.txt
 ```
+
+SpaceHero 容器：
+
+```bash
+cd /workspace/autonomy/src/autonomy
+/usr/bin/python3 -m pip install -r autonomy/tools/bag_convert/requirements.txt
+```
+
+当前目录若是 `/workspace/autonomy/src`，改为 `-r autonomy/autonomy/tools/bag_convert/requirements.txt`。
 
 源码目录：`autonomy/autonomy/tools/bag_convert/`（模块名 `autonomy.tools.bag_convert`）。
 

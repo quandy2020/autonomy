@@ -23,7 +23,8 @@
 | `localization_atlas_kitti_stereo.launch` | `stereo` | KITTI 00–02 |
 | `localization_atlas_autosim.launch` | `rgbd_inertial` | AutoSim `atlas.yaml` |
 | `localization_argus.launch` | Argus | `conf/argus/voxel_slam_default.yaml` → `argus/config/` |
-| `localization_cartographer.launch` | Cartographer | `conf/cartographer/autosim_2d.lua` |
+| `localization_cartographer.launch` | Cartographer backpack | `conf/cartographer/backpack_2d.lua`（Museum record） |
+| `localization_cartographer_autosim.launch` | Cartographer 2D | `conf/cartographer/autosim_2d.lua` |
 
 相对路径（`--atlas_config`、`--argus_config`、词表）相对**源码包根**解析。必须在 `/workspace/autonomy/src/autonomy` 启动 launch。
 

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Copyright 2026 The Openbot Authors
 #
-# Start Cartographer SLAM (autosim slam mode).
+# Start Cartographer 2D (backpack / museum record by default).
+# AutoSim Habitat: autolink launch start localization_cartographer_autosim.launch
 #
 #   ./autonomy/localization/scripts/start_cartographer.sh
 #   ./autonomy/localization/scripts/start_cartographer.sh stop

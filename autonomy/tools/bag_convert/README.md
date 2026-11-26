@@ -4,21 +4,42 @@
 
 ## 依赖
 
+`rosbags` 需要 Python ≥ 3.8。本机 `python3` 若指向 Anaconda 3.7，改用 `/usr/bin/python3.12`。Ubuntu 的系统 Python 受 PEP 668 保护，加 `--break-system-packages` 装到用户目录。
+
+宿主机：
+
 ```bash
-python -m pip install -r autonomy/tools/bag_convert/requirements.txt
+cd /home/quandy/workspace/github/autonomy/src/autonomy
+/usr/bin/python3.12 -m pip install --user --break-system-packages \
+  -r autonomy/tools/bag_convert/requirements.txt
+export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
+/usr/bin/python3.12 -m autonomy.tools.bag_convert --list-types
+# Chunk bodies default to LZ4. Override with --compress none|bz2.
 ```
+
+SpaceHero 容器内 Isaac 的 `python` 是 Kit 包装器，用系统解释器。cwd 为 `/workspace/autonomy/src/autonomy`：
+
+```bash
+cd /workspace/autonomy/src/autonomy
+/usr/bin/python3 -m pip install -r autonomy/tools/bag_convert/requirements.txt
+```
+
+当前目录若是 `/workspace/autonomy/src`，路径多一层：`autonomy/autonomy/tools/bag_convert/requirements.txt`。
 
 ## 用法
 
-```bash
-python -m autonomy.tools.bag_convert input.bag -o ./data/records --backpack-2d
-python -m autonomy.tools.bag_convert --list-types
-python -m autonomy.tools.bag_convert --info input.bag
-python -m autonomy.tools.bag_convert /data/mv/campus_train0_04.bag -o ./data/records --vbr
-python -m autonomy.tools.bag_convert /data/mv/campus_train0_04.bag -o ./data/records --vbr --duration-sec 60
-```
+在仓库根（`/workspace/autonomy/src/autonomy`）下执行，保证 `autonomy.tools.bag_convert` 可导入。Isaac 下同样用 `/usr/bin/python3`：
 
-在仓库根（`src/autonomy`）下执行，保证 `python -m autonomy.tools.bag_convert` 可导入。
+```bash
+cd /workspace/autonomy/src/autonomy
+export PYTHONPATH="${PWD}:${PYTHONPATH:-}"
+
+/usr/bin/python3 -m autonomy.tools.bag_convert input.bag -o ./data/records --backpack-2d
+/usr/bin/python3 -m autonomy.tools.bag_convert --list-types
+/usr/bin/python3 -m autonomy.tools.bag_convert --info input.bag
+/usr/bin/python3 -m autonomy.tools.bag_convert /data/mv/campus_train0_04.bag -o ./data/records --vbr
+/usr/bin/python3 -m autonomy.tools.bag_convert /data/mv/campus_train0_04.bag -o ./data/records --vbr --duration-sec 60
+```
 
 预设见 `presets/`:
 
@@ -53,5 +74,6 @@ total, counts = BagConverter().convert_bag(
     topic_filter=preset.topics,
     topic_remap=preset.topic_remap,
     skip_unsupported=bool(preset.skip_unsupported),
+    compress="lz4",
 )
 ```

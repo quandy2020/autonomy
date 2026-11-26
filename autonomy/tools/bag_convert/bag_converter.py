@@ -91,6 +91,7 @@ class BagConverter:
         max_messages: int | None = None,
         start_offset_sec: float = 0.0,
         duration_sec: float | None = None,
+        compress: str = "lz4",
     ) -> Tuple[int, Dict[str, int]]:
         self._registry.setup_proto_import_path()
 
@@ -108,7 +109,7 @@ class BagConverter:
             {normalize_topic(t) for t in topic_filter} if topic_filter else None
         )
 
-        writer = RecordWriter()
+        writer = RecordWriter(compress=compress)
         writer.open_record(str(output_record))
 
         registered_topics: set[str] = set()

@@ -16,6 +16,7 @@
 
 from __future__ import annotations
 
+import bz2
 import os
 import struct
 from typing import Dict, List
@@ -35,16 +36,40 @@ _HEADER_DEFAULTS = {
 }
 
 
+def _compress_chunk_body(compress: int, raw: bytes, record_pb2) -> bytes:
+    if compress == record_pb2.COMPRESS_NONE:
+        return raw
+    prefix = struct.pack("<Q", len(raw))
+    if compress == record_pb2.COMPRESS_LZ4:
+        try:
+            import lz4.block
+        except ImportError as exc:
+            raise RuntimeError(
+                "lz4 is required for --compress lz4; pip install lz4"
+            ) from exc
+        return prefix + lz4.block.compress(raw, store_size=False)
+    if compress == record_pb2.COMPRESS_BZ2:
+        return prefix + bz2.compress(raw, compresslevel=9)
+    raise RuntimeError(f"unknown record compress type: {compress}")
+
+
 class RecordWriter:
     """Write autolink record files consumable by autolink recorder play."""
 
-    def __init__(self) -> None:
+    def __init__(self, compress: str = "lz4") -> None:
         from autolink.proto import record_pb2
 
         self._record_proto = record_pb2
+        named = {
+            "none": record_pb2.COMPRESS_NONE,
+            "lz4": record_pb2.COMPRESS_LZ4,
+            "bz2": record_pb2.COMPRESS_BZ2,
+        }
+        if compress not in named:
+            raise ValueError(f"compress must be none, lz4, or bz2, got {compress!r}")
         self._fd: int | None = None
         self._header = record_pb2.Header(
-            compress=record_pb2.COMPRESS_NONE,
+            compress=named[compress],
             **_HEADER_DEFAULTS,
         )
         self._index = record_pb2.Index()
@@ -132,7 +157,12 @@ class RecordWriter:
         header_idx.chunk_header_cache.raw_size = chunk_header.raw_size
 
         pos = os.lseek(self._fd, 0, os.SEEK_CUR)
-        self._write_section(self._record_proto.SECTION_CHUNK_BODY, chunk_body)
+        payload = _compress_chunk_body(
+            self._header.compress,
+            chunk_body.SerializeToString(),
+            self._record_proto,
+        )
+        self._write_bytes(self._record_proto.SECTION_CHUNK_BODY, payload)
         body_idx = self._index.indexes.add()
         body_idx.type = self._record_proto.SECTION_CHUNK_BODY
         body_idx.position = pos
@@ -164,9 +194,8 @@ class RecordWriter:
 
         return build(message.DESCRIPTOR.file).SerializeToString()
 
-    def _write_section(self, section_type: int, message: Message) -> None:
+    def _write_bytes(self, section_type: int, payload: bytes) -> None:
         assert self._fd is not None
-        payload = message.SerializeToString()
         os.write(self._fd, _SECTION.pack(section_type, len(payload)))
         os.write(self._fd, payload)
         if section_type == self._record_proto.SECTION_HEADER:
@@ -174,3 +203,6 @@ class RecordWriter:
             if padding > 0:
                 os.write(self._fd, b"\0" * padding)
         self._header.size = os.lseek(self._fd, 0, os.SEEK_CUR)
+
+    def _write_section(self, section_type: int, message: Message) -> None:
+        self._write_bytes(section_type, message.SerializeToString())

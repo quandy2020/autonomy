@@ -111,6 +111,13 @@ class BagConvertCli:
             default=None,
             help="Convert only this many seconds of bag time",
         )
+        parser.add_argument(
+            "--compress",
+            choices=("lz4", "bz2", "none"),
+            default="lz4",
+            help="Chunk-body compression written into the record header "
+            "(default: lz4). Use none to match older uncompressed files.",
+        )
         args = parser.parse_args(argv)
 
         DependencyChecker(self._config).check_runtime_dependencies()
@@ -209,6 +216,7 @@ class BagConvertCli:
                     max_messages=args.max_messages,
                     start_offset_sec=args.start_offset_sec,
                     duration_sec=args.duration_sec,
+                    compress=args.compress,
                 )
             except Exception as exc:  # noqa: BLE001
                 print(f"error: failed to convert {bag_path}: {exc}", file=sys.stderr)
