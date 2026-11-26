@@ -42,6 +42,7 @@
 #include <sstream>
 #include <unordered_set>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "autolink/node/node.hpp"
 #include "autolink/node/reader_base.hpp"
 #include "autonomy/common/logging.hpp"
@@ -958,8 +959,9 @@ bool Costmap2DWrapper::snapshotOccupancyGrid(
 
     const unsigned char* costmap_data = costmap->getCharMap();
     const unsigned int total_size = size_x * size_y;
-    grid.mutable_data()->Clear();
-    grid.mutable_data()->Reserve(total_size);
+    automsgs::msgs::map_msgs::OccupancyGridClearCells(&grid);
+    automsgs::msgs::map_msgs::OccupancyGridReserveCells(
+        &grid, static_cast<int>(total_size));
 
     // Match nav2 costmap_2d_publisher cost_translation_table_ so RViz / Autoviz
     // costmap palettes (0 free, 1..98 blue→red, 99 cyan, 100 purple) align.
@@ -978,7 +980,7 @@ bool Costmap2DWrapper::snapshotOccupancyGrid(
             // 1..252 → 1..98 (inclusive), same as nav2 publisher.
             occ_value = static_cast<int8_t>(1 + (97 * (cost - 1)) / 251);
         }
-        grid.mutable_data()->Add(occ_value);
+        automsgs::msgs::map_msgs::OccupancyGridAppendCell(&grid, occ_value);
     }
     return true;
 }

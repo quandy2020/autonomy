@@ -25,5 +25,6 @@ message OccupancyGridUpdate {
   int32 y = 3;
   uint32 width = 4;
   uint32 height = 5;
-  repeated int32 data = 6;
+  // ROS map_msgs/OccupancyGridUpdate: int8[] data. Same encoding as OccupancyGrid.
+  repeated sint32 data = 6;
 }

@@ -10,8 +10,13 @@ namespace autonomy::planning::planner::vista {
 /** @brief Update affected graph regions, preserving matching contour identities. */
 class GraphUpdater {
 public:
-    /** @brief Bound contour vertex count and connection length in meters. */
-    explicit GraphUpdater(std::size_t maximum_nodes = 4096, double maximum_edge_length = 30.0);
+    /** @brief Bound contour vertex count, connection length and edge confirmation votes.
+     * @param confirmation_votes Consecutive valid observations required before an
+     * edge becomes usable; 1 reproduces immediate admission, higher values add
+     * FAR planner style hysteresis.
+     */
+    explicit GraphUpdater(std::size_t maximum_nodes = 4096, double maximum_edge_length = 30.0,
+                          unsigned confirmation_votes = 1);
     /** @brief Apply a view; missing revisions or differences require a full refresh.
      * @param full_refresh Force all current and previous bounds to be reconsidered.
      * @details The owning planner serializes mutation and clears state on exceptions.
@@ -24,6 +29,7 @@ public:
 private:
     std::size_t maximum_nodes_;  ///< Maximum retained contour vertices.
     double maximum_edge_length_;  ///< Maximum chord length, meters.
+    unsigned confirmation_votes_ = 1;  ///< Consecutive validations required for admission.
     NodeId next_id_ = 1;  ///< Monotonic IDs excluding reserved search endpoints.
     EdgeSpatialIndex index_;  ///< Spatial membership of valid and blocked edges.
     std::optional<Bounds2d> previous_extent_;  ///< Prior bounds needed to remove vanished vertices.

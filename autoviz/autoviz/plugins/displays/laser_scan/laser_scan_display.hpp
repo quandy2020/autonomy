@@ -66,6 +66,10 @@ class LaserScanDisplay
    *
    * @param message sensor_msgs/LaserScan protobuf.
    */
+  bool parseChannelPayload(
+      const std::string& payload,
+      automsgs::msgs::sensor_msgs::LaserScan* proto) override;
+
   void processMessage(
       const automsgs::msgs::sensor_msgs::LaserScan& message) override;
 

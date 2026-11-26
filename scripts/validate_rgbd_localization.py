@@ -124,6 +124,8 @@ def main():
                         help='Additional native footprint inflation in metres')
     parser.add_argument('--mapping-resolution', type=float, default=.15,
                         help='Native occupancy resolution in metres')
+    parser.add_argument('--vista-edge-votes', type=int, default=0,
+                        help='FAR style edge confirmation votes (0 keeps the planner default)')
     args = parser.parse_args()
     if not args.prefix.startswith('/validation/exploration/') or not 500 <= args.steps <= 200000:
         parser.error('use an isolated validation prefix and 500..200000 steps')
@@ -329,6 +331,7 @@ def main():
                                'max_x': args.region[2], 'max_y': args.region[3]},
                     'mapping_resolution': args.mapping_resolution,
                     'mapping_maximum_voxels': 8000000,
+                    'vista_edge_confirmation_votes': args.vista_edge_votes,
                     'observation_valid_for': 2.0,
                     'localization_evidence_lifetime': 2.0,
                     'goal_clearance_reserve': .10,

@@ -1,0 +1,21 @@
+// Copyright 2026 The Openbot Authors.
+// Native 2-D adapter settings for the TARE exploration algorithm.
+syntax = "proto3";
+package autonomy.planning.proto;
+
+message TareExplorerOptions {
+  // Minimum connected frontier cells accepted as an exploration subspace.
+  optional uint32 min_frontier_cluster_size = 1;
+  // Maximum global subspaces stitched into one exploration cycle.
+  optional uint32 max_global_viewpoints = 2;
+  // Required obstacle clearance around a frontier viewpoint, in cells.
+  optional uint32 viewpoint_clearance_cells = 3;
+  // Weight of log(frontier cell count) in global viewpoint selection.
+  optional double information_gain_weight = 4;
+  // Weight of metric travel distance in global viewpoint selection.
+  optional double travel_cost_weight = 5;
+  // Permit local A* routes through unknown cells. Default: false.
+  optional bool allow_unknown_transit = 6;
+  // Hard work bound for each local A* search.
+  optional uint64 max_search_iterations = 7;
+}

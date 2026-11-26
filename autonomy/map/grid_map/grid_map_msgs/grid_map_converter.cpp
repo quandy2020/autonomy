@@ -11,6 +11,7 @@
 #include <limits>
 #include <unordered_map>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 #include <automsgs/msgs/time_utils.hpp>
 
@@ -222,7 +223,8 @@ bool GridMapConverter::fromOccupancyGrid(
   }
 
   if (static_cast<size_t>(size.prod()) !=
-      static_cast<size_t>(occupancyGrid.data_size())) {
+      static_cast<size_t>(
+          automsgs::msgs::map_msgs::OccupancyGridCellCount(occupancyGrid))) {
     AWARN << "Conversion of occupancy grid: Size of data does not correspond "
              "to width * height.";
     return false;
@@ -240,10 +242,12 @@ bool GridMapConverter::fromOccupancyGrid(
   }
 
   Matrix data(size(0), size(1));
-  const int n = occupancyGrid.data_size();
+  const int n =
+      automsgs::msgs::map_msgs::OccupancyGridCellCount(occupancyGrid);
   for (int reverse_i = 0; reverse_i < n; ++reverse_i) {
     const int src = n - 1 - reverse_i;
-    const int value = occupancyGrid.data(src);
+    const int value =
+        automsgs::msgs::map_msgs::OccupancyGridCell(occupancyGrid, src);
     data(reverse_i) = (value != -1) ? static_cast<float>(value)
                                     : std::numeric_limits<float>::quiet_NaN();
   }
@@ -275,7 +279,8 @@ void GridMapConverter::toOccupancyGrid(
   setIdentityOrientation(info->mutable_origin());
 
   const size_t nCells = static_cast<size_t>(gridMap.getSize().prod());
-  occupancyGrid.mutable_data()->Resize(static_cast<int>(nCells), 0);
+  automsgs::msgs::map_msgs::OccupancyGridResizeCells(
+      &occupancyGrid, static_cast<int>(nCells), 0);
 
   constexpr float cellMin = 0.0f;
   constexpr float cellMax = 100.0f;
@@ -294,8 +299,9 @@ void GridMapConverter::toOccupancyGrid(
         getLinearIndexFromIndex(iterator.getUnwrappedIndex(), gridMap.getSize(),
                                 false);
     // Reverse cell order because of different conventions.
-    occupancyGrid.set_data(static_cast<int>(nCells - index - 1),
-                           static_cast<int32_t>(value));
+    automsgs::msgs::map_msgs::OccupancyGridSetCell(
+        &occupancyGrid, static_cast<int>(nCells - index - 1),
+        static_cast<int>(value));
   }
 }
 

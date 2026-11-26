@@ -17,10 +17,16 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <string>
+
+#include <nlohmann/json.hpp>
+#include "autolink/autolink.hpp"
+#include "autolink/service_discovery/topology_manager.hpp"
+#include "autoviz/bridge/ws_bridge.hpp"
 
 #include "autoviz/bridge/ws_frame.hpp"
 #include "autoviz/bridge/ws_server.hpp"
@@ -138,6 +144,106 @@ bool SendMaskedText(int fd, const std::string& text) {
   return SendAll(fd, frame);
 }
 
+template <typename Predicate>
+bool WaitFor(Predicate predicate) {
+  for (int n = 0; n < 200; ++n) {
+    if (predicate()) return true;
+    usleep(10000);
+  }
+  return false;
+}
+
+void TestBridgeNodeLifecycle(const std::string& request) {
+  auto nodes = autolink::service_discovery::TopologyManager::Instance()->node_manager();
+  auto channels = autolink::service_discovery::TopologyManager::Instance()->channel_manager();
+  const std::string suffix = std::to_string(getpid());
+  const std::string bridge_name = "autoviz_ws_" + suffix;
+  const std::string topic = "/autoviz_ws_test_" + suffix;
+  auto reader_count = [&] {
+    std::vector<autolink::proto::RoleAttributes> readers;
+    channels->GetReadersOfNode(bridge_name, &readers);
+    return readers.size();
+  };
+  auto publisher = autolink::CreateNode("autoviz_ws_test_publisher_" + suffix);
+  auto writer = publisher->CreateWriter<autolink::message::RawMessage>(topic);
+  auto other_writer = publisher->CreateWriter<autolink::message::RawMessage>(topic + "_other");
+  autoviz::bridge::WsServerOptions options;
+  options.port = static_cast<std::uint16_t>(FreeLocalPort());
+  auto bridge = std::make_shared<autoviz::bridge::WsBridge>(options);
+  Check(bridge->Start(), "bridge starts");
+  Check(!nodes->HasNode(bridge_name), "idle WebSocket server creates no empty node");
+
+  const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+  addr.sin_port = htons(options.port);
+  Check(::connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0,
+        "bridge client connects");
+  Check(SendAll(fd, request), "bridge handshake sent");
+  std::string response;
+  char byte;
+  while (response.find("\r\n\r\n") == std::string::npos && response.size() < 4096 &&
+         RecvExact(fd, &byte, 1)) response.push_back(byte);
+  Check(response.find("101 Switching Protocols") != std::string::npos,
+        "bridge handshake succeeds");
+  autoviz::bridge::ChannelId id = 0, other_id = 0;
+  for (int n = 0; n < 10 && (!id || !other_id); ++n) {
+    std::uint8_t opcode;
+    std::string frame;
+    if (!ReadFrame(fd, &opcode, &frame)) break;
+    if (opcode != 1) continue;
+    const auto msg = nlohmann::json::parse(frame);
+    if (msg.value("op", "") != "channels") continue;
+    for (const auto& ch : msg["channels"]) {
+      if (ch["topic"] == topic) id = ch["id"];
+      if (ch["topic"] == topic + "_other") other_id = ch["id"];
+    }
+  }
+  Check(id && other_id, "bridge advertises both publisher channels");
+  auto send = [&](const char* op, autoviz::bridge::ChannelId channel_id) {
+    Check(SendMaskedText(fd, nlohmann::json{{"op", op}, {"channelId", channel_id}}.dump()),
+          "bridge subscription command sent");
+  };
+  Check(!nodes->HasNode(bridge_name), "connected client without subscriptions creates no node");
+  for (int round = 0; round < 3 && id && other_id; ++round) {
+    send("subscribe", id);
+    send("subscribe", other_id);
+    Check(WaitFor([&] { return nodes->HasNode(bridge_name); }),
+          "subscription creates bridge node");
+    const std::string payload = "bridge-test-" + std::to_string(round);
+    bool delivered = false;
+    // Topology notices and older in-flight frames may precede the new payload.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!delivered && std::chrono::steady_clock::now() < deadline) {
+      writer->Write(std::make_shared<autolink::message::RawMessage>(payload));
+      std::uint8_t opcode;
+      std::string frame;
+      if (!ReadFrame(fd, &opcode, &frame, 100)) continue;
+      autoviz::bridge::DecodedMessageFrame decoded;
+      delivered = opcode == 2 && autoviz::bridge::DecodeMessageFrame(frame, &decoded) &&
+                  decoded.channel_id == id && decoded.payload == payload;
+    }
+    Check(delivered, "Autolink data reaches WebSocket after subscribe/resubscribe");
+    Check(WaitFor([&] { return reader_count() == 2; }), "both channels have active readers");
+    send("unsubscribe", id);
+    Check(WaitFor([&] { return reader_count() == 1; }) && nodes->HasNode(bridge_name),
+          "other active channel keeps its reader and the bridge node");
+    send("unsubscribe", other_id);
+    Check(WaitFor([&] { return !nodes->HasNode(bridge_name); }),
+          "last unsubscribe releases empty bridge node");
+  }
+  send("subscribe", id);
+  Check(WaitFor([&] { return nodes->HasNode(bridge_name); }), "client subscribes before disconnect");
+  ::close(fd);
+  Check(WaitFor([&] { return !nodes->HasNode(bridge_name); }),
+        "client disconnect releases bridge node");
+  bridge->Stop();
+  Check(bridge->Start(), "bridge restarts without subscriptions");
+  Check(!nodes->HasNode(bridge_name), "restarted idle bridge has no node");
+  bridge->Stop();
+}
+
 }  // namespace
 
 int main() {
@@ -247,6 +353,10 @@ int main() {
   ::close(fd);
   server.Stop();
   server.Stop();
+
+  Check(autolink::Init("autoviz_ws_lifecycle_test"), "Autolink initializes");
+  TestBridgeNodeLifecycle(request);
+  autolink::Clear();
 
   if (g_failures != 0) {
     std::fprintf(stderr, "%d ws server test(s) failed\n", g_failures);

@@ -77,6 +77,12 @@ public:
 
     bool Init(std::shared_ptr<autolink::Node> node);
 
+    /** URDF-equivalent mounts (base_link→imu/laser). Appended to each /tf
+     *  at the SLAM stamp so Autoviz can look up LaserScan without a latched
+     *  /tf_static. */
+    void SetExtrinsicTransforms(
+        automsgs::msgs::geometry_msgs::TransformStampeds transforms);
+
     void FinishAllTrajectories();
     bool FinishTrajectory(int trajectory_id);
     void RunFinalOptimization();
@@ -114,6 +120,7 @@ private:
 
     void PublishSubmapList();
     void PublishLocalTrajectoryData();
+    void PublishTrajectory();
     void PublishOccupancyGrid();
 
     /** Updates occupancy_submap_slices_ (version-cached) and returns it. */
@@ -165,6 +172,9 @@ private:
     std::shared_ptr<autolink::Writer<proto::SubmapList>> submap_list_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PoseStamped>>
         tracked_pose_writer_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
+        trajectory_writer_;
+    automsgs::msgs::nav_msgs::Path live_trajectory_ GUARDED_BY(mutex_);
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occupancy_grid_writer_;
     /** Cached painted submap textures; skip HandleSubmapQuery when version
@@ -173,6 +183,7 @@ private:
         occupancy_submap_slices_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::tf2_msgs::TFMessage>>
         tf_writer_;
+    automsgs::msgs::geometry_msgs::TransformStampeds extrinsic_transforms_;
 
     std::vector<std::unique_ptr<autolink::Timer>> timers_;
 

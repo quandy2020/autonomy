@@ -38,6 +38,10 @@ VistaPlannerSettings ReadVistaPlannerSettings(const proto::VistaPlannerOptions& 
     }
     if (!settings.maximum_nodes || !settings.maximum_cells)
         throw std::invalid_argument("Vista capacities must be positive");
+    if (options.has_edge_confirmation_votes())
+        settings.edge_confirmation_votes = options.edge_confirmation_votes();
+    if (!settings.edge_confirmation_votes || settings.edge_confirmation_votes > 32)
+        throw std::invalid_argument("Vista edge confirmation votes must be within [1, 32]");
     if (options.has_horizontal_margin()) settings.safety.horizontal_margin = options.horizontal_margin();
     if (options.has_robot_height()) settings.safety.robot_height = options.robot_height();
     if (options.has_vertical_margin()) settings.safety.vertical_margin = options.vertical_margin();
@@ -72,7 +76,8 @@ void VistaPlanner::Initialize(VistaPlannerSettings settings) {
     // Validate the actual safety values, independently from a preinflated map.
     auto validation_map = std::make_shared<autonomy::navigation::GridMap>(1,1,1.0);
     autonomy::navigation::GeometrySafety check(validation_map,settings.safety);
-    auto routes = std::make_shared<VistaRoutePlanner>(settings.safety,settings.maximum_nodes);
+    auto routes = std::make_shared<VistaRoutePlanner>(settings.safety,settings.maximum_nodes,
+                                                      settings.edge_confirmation_votes);
     auto reader = std::make_shared<NativeCostmapReader>(settings.maximum_cells);
     settings_ = settings; route_planner_ = std::move(routes); costmap_reader_ = std::move(reader);
     ++configuration_version_;

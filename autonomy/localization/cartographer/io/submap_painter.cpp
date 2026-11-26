@@ -34,7 +34,7 @@ void CairoPaintSubmapSlices(const double scale, const std::map<::cartographer::m
     for (auto& pair : submaps) {
         const auto& submap_slice = pair.second;
         if (submap_slice.surface == nullptr) {
-            return;
+            continue;
         }
         const Eigen::Matrix4d homo = ToEigen(submap_slice.pose * submap_slice.slice_pose).matrix();
 

@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <limits>
+#include <map>
+#include <set>
 #include <mutex>
 #include <vector>
 
@@ -234,15 +236,16 @@ void UploadTexturedBatches(
     Ogre::SceneManager* scene,
     const std::vector<SceneOverlay::TexturedBatch>& batches,
     std::vector<Ogre::ManualObject*>* objects,
-    std::vector<Ogre::String>* texture_names,
+    std::map<qint64, Ogre::String>* texture_cache,
     std::vector<Ogre::String>* material_names) {
-  if (scene == nullptr || objects == nullptr || texture_names == nullptr ||
+  if (scene == nullptr || objects == nullptr || texture_cache == nullptr ||
       material_names == nullptr) {
     return;
   }
   // Process-wide counter: multiple viewports share TextureManager and must not
   // both mint AvizDynTex0Tex in the same frame.
-  static int dyn_tex_serial = 0;
+  static uint64_t dyn_tex_serial = 0;
+  std::set<qint64> used_textures;
   for (const auto& batch : batches) {
     if (batch.vertices.empty() || batch.image.isNull()) {
       continue;
@@ -253,8 +256,15 @@ void UploadTexturedBatches(
             : batch.image.convertToFormat(QImage::Format_RGBA8888);
     const Ogre::String base_name =
         "AvizDynTex" + Ogre::StringConverter::toString(dyn_tex_serial++);
-    const Ogre::String tex_name = base_name + "Tex";
-    CreateDynamicTexture(tex_name, rgba);
+    const qint64 key = batch.image.cacheKey();
+    used_textures.insert(key);
+    auto texture = texture_cache->find(key);
+    if (texture == texture_cache->end()) {
+      const Ogre::String name = base_name + "Tex";
+      CreateDynamicTexture(name, rgba);
+      texture = texture_cache->emplace(key, name).first;
+    }
+    const Ogre::String& tex_name = texture->second;
 
     const Ogre::String mat_name = base_name + "Mat";
     RemoveMaterialIfExists(mat_name);
@@ -267,7 +277,8 @@ void UploadTexturedBatches(
     // Map / camera image quads lie in XY; Autoviz cameras look down -Z. Default
     // clockwise cull then drops the whole OccupancyGrid when viewing top-down.
     pass->setCullingMode(Ogre::CULL_NONE);
-    pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+    pass->setSceneBlending(batch.premultiplied_alpha ? Ogre::SBF_ONE : Ogre::SBF_SOURCE_ALPHA,
+                           Ogre::SBF_ONE_MINUS_SOURCE_ALPHA);
     // /map writes depth; costmap (higher Z, later queue) depth-tests above it.
     // Both depth-write-off caused white free cells to composite-fight cyan/purple.
     pass->setDepthWriteEnabled(batch.depth_write);
@@ -302,8 +313,16 @@ void UploadTexturedBatches(
     object->end();
     scene->getRootSceneNode()->attachObject(object);
     objects->push_back(object);
-    texture_names->push_back(tex_name);
     material_names->push_back(mat_name);
+  }
+  // Retain only images used in this frame, so live maps cannot grow the cache.
+  for (auto it = texture_cache->begin(); it != texture_cache->end();) {
+    if (used_textures.count(it->first) == 0) {
+      RemoveTextureIfExists(it->second);
+      it = texture_cache->erase(it);
+    } else {
+      ++it;
+    }
   }
 }
 
@@ -406,6 +425,7 @@ struct OgreRenderBackend::Impl {
   Ogre::Light* directional_light = nullptr;
   std::vector<Ogre::ManualObject*> textured_objects;
   std::vector<Ogre::String> dynamic_texture_names;
+  std::map<qint64, Ogre::String> overlay_texture_cache;
   std::vector<Ogre::String> dynamic_material_names;
   Ogre::ColourValue background_color{48.f / 255.f, 48.f / 255.f, 48.f / 255.f};
   GlPickFramebuffer pick_framebuffer;
@@ -729,15 +749,14 @@ bool OgreRenderBackend::render(bool show_grid,
   ClearDynamicTexturedResources(
       impl_->scene, &impl_->textured_objects, &impl_->dynamic_texture_names,
       &impl_->dynamic_material_names);
+  const auto textured_batches = overlay != nullptr
+      ? overlay->expandedTexturedBatches(view)
+      : std::vector<SceneOverlay::TexturedBatch>{};
+  UploadTexturedBatches(impl_->scene, textured_batches,
+                        &impl_->textured_objects,
+                        &impl_->overlay_texture_cache,
+                        &impl_->dynamic_material_names);
   if (overlay != nullptr) {
-    const std::vector<SceneOverlay::TexturedBatch> textured_batches =
-        overlay->expandedTexturedBatches(view);
-    if (!textured_batches.empty()) {
-      UploadTexturedBatches(impl_->scene, textured_batches,
-                            &impl_->textured_objects,
-                            &impl_->dynamic_texture_names,
-                            &impl_->dynamic_material_names);
-    }
     const std::vector<SceneOverlay::PbrTexturedBatch>& pbr_textured_batches =
         overlay->pbrTexturedBatches();
     if (!pbr_textured_batches.empty()) {
@@ -915,6 +934,10 @@ void OgreRenderBackend::shutdown() {
   ClearDynamicTexturedResources(
       impl_->scene, &impl_->textured_objects, &impl_->dynamic_texture_names,
       &impl_->dynamic_material_names);
+  for (const auto& texture : impl_->overlay_texture_cache) {
+    RemoveTextureIfExists(texture.second);
+  }
+  impl_->overlay_texture_cache.clear();
   if (impl_->point_billboards != nullptr) {
     impl_->scene->destroyBillboardSet(impl_->point_billboards);
     impl_->point_billboards = nullptr;

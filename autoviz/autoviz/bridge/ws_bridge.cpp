@@ -4,6 +4,7 @@
 
 #include "autoviz/bridge/ws_bridge.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <unistd.h>
 #include <utility>
@@ -44,14 +45,6 @@ bool WsBridge::Start() {
   if (running_) {
     return true;
   }
-  // Own node so WS readers never collide with Autoviz display subscriptions
-  // (Autolink allows one reader per channel per node).
-  node_ = ::autolink::CreateNode("autoviz_ws_" + std::to_string(getpid()));
-  if (node_ == nullptr) {
-    LOG(ERROR) << "WebSocket server failed to create Autolink node";
-    return false;
-  }
-
   server_ = std::make_unique<WsServer>(options_);
   server_->SetSubscribeHandler(
       [this](ChannelId channel_id, mg_connection* conn) {
@@ -204,16 +197,32 @@ void WsBridge::OnUnsubscribe(ChannelId channel_id, mg_connection* /*conn*/) {
     entry.subscriber_count--;
   }
   if (entry.subscriber_count == 0) {
+    if (node_ != nullptr) {
+      node_->DeleteReader(entry.topic);
+    }
     entry.reader.reset();
+    if (std::none_of(channels_by_topic_.begin(), channels_by_topic_.end(),
+                     [](const auto& channel) { return channel.second.reader != nullptr; })) {
+      node_.reset();
+    }
   }
 }
 
 bool WsBridge::EnsureReader(ChannelEntry* entry) {
-  if (entry->reader != nullptr || node_ == nullptr) {
-    return entry->reader != nullptr;
+  if (entry->reader != nullptr) {
+    return true;
   }
   try {
     std::weak_ptr<WsBridge> weak_this = shared_from_this();
+    // Only active WS subscriptions need a separate node to avoid reader conflicts.
+    const bool new_node = node_ == nullptr;
+    if (new_node) {
+      node_ = ::autolink::CreateNode("autoviz_ws_" + std::to_string(getpid()));
+      if (node_ == nullptr) {
+        LOG(ERROR) << "WebSocket server failed to create Autolink node";
+        return false;
+      }
+    }
     const auto channel_id = entry->id;
     auto callback =
         [weak_this, channel_id](
@@ -232,6 +241,9 @@ bool WsBridge::EnsureReader(ChannelEntry* entry) {
         node_->CreateReader<::autolink::message::RawMessage>(config, callback);
     if (entry->reader == nullptr) {
       LOG(ERROR) << "WebSocket CreateReader failed for " << entry->topic;
+      if (new_node) {
+        node_.reset();
+      }
       return false;
     }
     LOG(INFO) << "WebSocket subscribed Autolink reader on " << entry->topic;

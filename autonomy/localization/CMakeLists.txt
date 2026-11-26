@@ -194,6 +194,11 @@ autocmake_binary(autonomy.localization
     autonomy::cli11
 )
 
+# --- tests -------------------------------------------------------------------
+autocmake_test(localization.cartographer_occupancy_grid_test
+  SOURCES cartographer/node/occupancy_grid_builder_test.cpp
+  DEPENDENCIES autonomy_localization)
+
 # --- install -----------------------------------------------------------------
 autocmake_install_share(localization
   CONF

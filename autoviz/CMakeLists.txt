@@ -41,6 +41,13 @@ autocmake_library(autoviz SHARED
   DEPENDENCIES automsgs autolink)
 autoviz_finalize_library(autoviz)
 
+if(TARGET autonomy_proto AND AUTONOMY_BUILD_LOCALIZATION)
+  find_package(ZLIB REQUIRED)
+  target_compile_definitions(autoviz PRIVATE AUTOVIZ_HAS_CARTOGRAPHER=1)
+  target_include_directories(autoviz PRIVATE ${CMAKE_SOURCE_DIR} ${CMAKE_BINARY_DIR})
+  target_link_libraries(autoviz PRIVATE autonomy_proto ZLIB::ZLIB)
+endif()
+
 autocmake_binary(autoviz_app
   NO_EXPORT
   OUTPUT_NAME autoviz

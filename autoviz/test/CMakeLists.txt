@@ -69,6 +69,45 @@ if(AUTOVIZ_BUILD_CORE_TESTS)
     ENVIRONMENT "QT_QPA_PLATFORM=offscreen"
     TIMEOUT 30)
 
+  add_executable(autoviz_map_display_color_test core/map_display_color_test.cpp)
+  target_include_directories(autoviz_map_display_color_test
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_compile_features(autoviz_map_display_color_test PRIVATE cxx_std_17)
+  target_link_libraries(autoviz_map_display_color_test PRIVATE autoviz)
+  add_test(NAME autoviz_map_display_color_test COMMAND autoviz_map_display_color_test)
+  set_tests_properties(autoviz_map_display_color_test PROPERTIES TIMEOUT 30)
+
+  add_executable(autoviz_map_display_performance_test core/map_display_performance_test.cpp)
+  target_include_directories(autoviz_map_display_performance_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_link_libraries(autoviz_map_display_performance_test PRIVATE autoviz)
+  add_test(NAME autoviz_map_display_performance_test COMMAND autoviz_map_display_performance_test)
+  set_tests_properties(autoviz_map_display_performance_test PROPERTIES TIMEOUT 30)
+
+  add_executable(autoviz_channel_reader_registry_test core/channel_reader_registry_test.cpp)
+  target_include_directories(autoviz_channel_reader_registry_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_link_libraries(autoviz_channel_reader_registry_test PRIVATE autoviz Threads::Threads)
+  add_test(NAME autoviz_channel_reader_registry_test COMMAND autoviz_channel_reader_registry_test)
+  set_tests_properties(autoviz_channel_reader_registry_test PROPERTIES TIMEOUT 30)
+
+  if(TARGET OgreMain)
+    add_executable(autoviz_ogre_texture_cache_test core/ogre_texture_cache_test.cpp)
+    target_include_directories(autoviz_ogre_texture_cache_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+    target_link_libraries(autoviz_ogre_texture_cache_test PRIVATE autoviz OgreMain Qt6::Widgets)
+    add_test(NAME autoviz_ogre_texture_cache_test COMMAND autoviz_ogre_texture_cache_test)
+    set_tests_properties(autoviz_ogre_texture_cache_test PROPERTIES TIMEOUT 60 SKIP_RETURN_CODE 77)
+  endif()
+
+  if(TARGET autonomy_proto AND AUTONOMY_BUILD_LOCALIZATION)
+    add_executable(autoviz_submaps_display_test core/submaps_display_test.cpp)
+    target_compile_definitions(autoviz_submaps_display_test PRIVATE AUTOVIZ_HAS_CARTOGRAPHER=1)
+    target_include_directories(autoviz_submaps_display_test PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/.." "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}")
+    target_link_libraries(autoviz_submaps_display_test PRIVATE autoviz autonomy_proto ZLIB::ZLIB Qt6::Widgets)
+    add_test(NAME autoviz_submaps_display_test COMMAND autoviz_submaps_display_test)
+    set_tests_properties(autoviz_submaps_display_test PROPERTIES TIMEOUT 30
+      ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+  endif()
+
   # TF buffer: insert, chain lookup, revision, clear.
   add_executable(autoviz_tf_buffer_test core/tf_buffer_test.cpp)
   target_include_directories(autoviz_tf_buffer_test
@@ -83,7 +122,7 @@ if(AUTOVIZ_BUILD_CORE_TESTS)
   target_include_directories(autoviz_ws_server_test
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..)
   target_compile_features(autoviz_ws_server_test PRIVATE cxx_std_17)
-  target_link_libraries(autoviz_ws_server_test PRIVATE autoviz)
+  target_link_libraries(autoviz_ws_server_test PRIVATE autoviz nlohmann_json::nlohmann_json)
   add_test(NAME autoviz_ws_server_test COMMAND autoviz_ws_server_test)
   set_tests_properties(autoviz_ws_server_test PROPERTIES TIMEOUT 30)
 endif()

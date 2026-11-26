@@ -55,6 +55,7 @@
 #include "autonomy/planning/planner/dijkstra/dijkstra_planner.hpp"
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
 #include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
+#include "autonomy/planning/planner/tare_explorer/tare_explorer.hpp"
 #include "autonomy/planning/planner/vista/vista_planner.hpp"
 #include "autonomy/planning/planner/vista/vista_graph_visualizer.hpp"
 #include "autonomy/planning/utils/geometry_utils.hpp"
@@ -79,6 +80,7 @@ const std::unordered_map<std::string, std::string>& PlannerClassAliases() {
         {"navfn_planner", "NavfnPlanner"},
         {"dijkstra_planner", "DijkstraPlanner"},
         {"theta_star_planner", "ThetaStarPlanner"},
+        {"tare_explorer", "TareExplorerPlanner"},
         {"vista_planner", "VistaPlanner"},
     };
     return kAliases;
@@ -123,6 +125,7 @@ void LoadExternalPlugins(const proto::PlannerOptions& options) {
     pm->RegisterInProcessClass<common::GlobalPlanner>("NavfnPlanner");
     pm->RegisterInProcessClass<common::GlobalPlanner>("DijkstraPlanner");
     pm->RegisterInProcessClass<common::GlobalPlanner>("ThetaStarPlanner");
+    pm->RegisterInProcessClass<common::GlobalPlanner>("TareExplorerPlanner");
     pm->RegisterInProcessClass<common::GlobalPlanner>("VistaPlanner");
     for (const auto& path : options.planner_plugin_libraries()) {
         if (path.empty()) {
@@ -159,6 +162,10 @@ common::GlobalPlanner::SharedPtr CreatePlannerInstance(
     }
     if (resolved == "ThetaStarPlanner") {
         return std::make_shared<planner::theta_star::ThetaStarPlanner>(
+            options, id, costmap);
+    }
+    if (resolved == "TareExplorerPlanner") {
+        return std::make_shared<planner::tare_explorer::TareExplorerPlanner>(
             options, id, costmap);
     }
     if (resolved == "VistaPlanner") {

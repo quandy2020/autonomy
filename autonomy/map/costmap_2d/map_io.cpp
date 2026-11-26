@@ -32,6 +32,7 @@
 #include <opencv2/imgproc.hpp>
 
 #include "autonomy/common/logging.hpp"
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <automsgs/msgs/time_utils.hpp>
 #include "autonomy/common/time.hpp"
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
@@ -351,7 +352,8 @@ void loadMapFromFile(const LoadParameters& load_parameters,
     *msg.mutable_info()->mutable_origin()->mutable_orientation() =
         utils::OrientationAroundZAxis(load_parameters.origin[2]);
 
-    msg.mutable_data()->Resize(msg.info().width() * msg.info().height(), 0);
+    automsgs::msgs::map_msgs::OccupancyGridResizeCells(
+        &msg, static_cast<int>(msg.info().width() * msg.info().height()), 0);
 
     double shade_min = 1.0;
     double shade_max = 0.0;
@@ -374,8 +376,12 @@ void loadMapFromFile(const LoadParameters& load_parameters,
             shade_min = std::min(shade_min, shade);
             shade_max = std::max(shade_max, shade);
 
-            msg.mutable_data()->Set(msg.info().width() * (msg.info().height() - y - 1) + x, static_cast<int16_t>(
-                    assignMapCell(shade, has_transparency)));
+            automsgs::msgs::map_msgs::OccupancyGridSetCell(
+                &msg,
+                static_cast<int>(msg.info().width() *
+                                     (msg.info().height() - y - 1) +
+                                 x),
+                assignMapCell(shade, has_transparency));
         }
     }
 
@@ -387,8 +393,9 @@ void loadMapFromFile(const LoadParameters& load_parameters,
 
     size_t occupied = 0;
     size_t unknown = 0;
-    for (int i = 0; i < msg.data_size(); ++i) {
-        const int32_t cell = msg.data(i);
+    for (int i = 0; i < automsgs::msgs::map_msgs::OccupancyGridCellCount(msg);
+         ++i) {
+        const int32_t cell = automsgs::msgs::map_msgs::OccupancyGridCell(msg, i);
         if (cell == utils::OCC_GRID_OCCUPIED) {
             ++occupied;
         } else if (cell < 0) {
@@ -566,9 +573,12 @@ void tryWriteMapToFile(const automsgs::msgs::map_msgs::OccupancyGrid& map,
 
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
-                const int8_t map_cell = map.data(map.info().width() *
-                                                     (map.info().height() - y - 1) +
-                                                 x);
+                const int8_t map_cell = static_cast<int8_t>(
+                    automsgs::msgs::map_msgs::OccupancyGridCell(
+                        map, static_cast<int>(
+                                 map.info().width() *
+                                     (map.info().height() - y - 1) +
+                                 x)));
 
                 switch (save_parameters.mode) {
                     case MapMode::Trinary: {

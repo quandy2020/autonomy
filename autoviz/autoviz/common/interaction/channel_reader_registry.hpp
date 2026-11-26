@@ -67,8 +67,8 @@ class ChannelReaderRegistry {
   /**
    * @brief Attaches the Autolink node used to create readers.
    *
-   * @param node Shared node from @ref AutolinkContext; empty clears the weak
-   *        handle (existing readers may fail until a new node is set).
+   * @param node Shared node from @ref AutolinkContext. Replacing or clearing
+   *        it releases existing readers and subscriptions.
    */
   void setNode(const std::shared_ptr<::autolink::Node>& node);
 
@@ -115,8 +115,6 @@ class ChannelReaderRegistry {
     std::shared_ptr<::autolink::Reader<::autolink::message::RawMessage>> reader;
     /** Active fan-out subscribers. */
     std::vector<Subscription> subscriptions;
-    /** True while CreateReader is in flight (prevents duplicate create). */
-    bool creating_reader = false;
   };
 
   /**
@@ -126,6 +124,9 @@ class ChannelReaderRegistry {
    * @param payload Payload string from the reader.
    */
   void fanOut(const std::string& channel, const std::string& payload);
+
+  /** Serializes reader lifecycle operations, outside the callback mutex. */
+  std::mutex reader_mutex_;
 
   /** Guards @c node_, @c channels_, and @c next_subscription_id_. */
   std::mutex mutex_;

@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <cstring>
 #include <limits>
 
@@ -53,16 +54,23 @@ QColor LerpColor(float t, const QColor& min_c, const QColor& max_c) {
       min_c.blueF() + t * (max_c.blueF() - min_c.blueF()));
 }
 
-/** RViz map palette: free=white … occupied=black; unknown teal. */
+/** RViz MapDisplay::makeMapPalette: linear 0–100 gray, unknown 0x708986. */
 QColor OccupancyPalette(int32_t value, float alpha) {
-  if (value < 0) {
-    return WithAlpha(QColor(0x70, 0x89, 0x86), alpha);
+  const int8_t as_int8 = static_cast<int8_t>(
+      std::clamp(value, static_cast<int32_t>(-128), static_cast<int32_t>(127)));
+  const uint8_t index = static_cast<uint8_t>(as_int8);
+  if (index <= 100) {
+    const int shade = 255 - (255 * static_cast<int>(index)) / 100;
+    return WithAlpha(QColor(shade, shade, shade), alpha);
   }
-  if (value > 100) {
+  if (index <= 127) {
     return WithAlpha(QColor(0, 255, 0), alpha);
   }
-  const int shade = 255 - (255 * value) / 100;
-  return WithAlpha(QColor(shade, shade, shade), alpha);
+  if (index <= 254) {
+    const int green = (255 * (static_cast<int>(index) - 128)) / (254 - 128);
+    return WithAlpha(QColor(255, green, 0), alpha);
+  }
+  return WithAlpha(QColor(0x70, 0x89, 0x86), alpha);
 }
 
 bool ParseLayerMatrix(const automsgs::msgs::std_msgs::Float32MultiArray& array,

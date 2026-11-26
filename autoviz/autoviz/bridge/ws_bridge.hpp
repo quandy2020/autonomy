@@ -29,7 +29,8 @@ namespace bridge {
  *
  * Uses a dedicated Autolink node so WS readers never collide with Autoviz
  * display subscriptions (one reader per channel per node). Clients subscribe
- * by channel id; the first subscriber lazily creates a @c Reader<RawMessage>.
+ * by channel id; the first subscriber lazily creates the node and reader.
+ * The last unsubscribe or disconnect releases them, leaving no idle node.
  */
 class WsBridge : public std::enable_shared_from_this<WsBridge> {
  public:

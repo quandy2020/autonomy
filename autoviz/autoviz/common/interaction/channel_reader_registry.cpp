@@ -9,13 +9,13 @@
 
 #include <glog/logging.h>
 
+#include "autolink/common/global_data.hpp"
 #include "autolink/message/raw_message.hpp"
 
 #include "autoviz/common/interaction/channel_stats_registry.hpp"
 
 namespace autoviz {
 namespace integration {
-
 ChannelReaderRegistry& ChannelReaderRegistry::instance() {
   static ChannelReaderRegistry registry;
   return registry;
@@ -23,8 +23,23 @@ ChannelReaderRegistry& ChannelReaderRegistry::instance() {
 
 void ChannelReaderRegistry::setNode(
     const std::shared_ptr<::autolink::Node>& node) {
-  std::lock_guard<std::mutex> lock(mutex_);
-  node_ = node;
+  std::lock_guard<std::mutex> lifecycle_lock(reader_mutex_);
+  std::shared_ptr<::autolink::Node> old_node;
+  std::unordered_map<std::string, ChannelEntry> old_channels;
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    old_node = node_.lock();
+    if (old_node == node) {
+      return;
+    }
+    old_channels.swap(channels_);
+    node_ = node;
+  }
+  for (const auto& entry : old_channels) {
+    if (old_node != nullptr) {
+      old_node->DeleteReader(entry.first);
+    }
+  }
 }
 
 ChannelReaderRegistry::SubscriptionId ChannelReaderRegistry::subscribe(
@@ -32,140 +47,73 @@ ChannelReaderRegistry::SubscriptionId ChannelReaderRegistry::subscribe(
   if (channel.empty() || channel.front() == '-' || !callback) {
     return 0;
   }
-
+  // Serialize reader creation/destruction, without blocking fanOut's mutex.
+  std::lock_guard<std::mutex> lifecycle_lock(reader_mutex_);
+  const std::string canonical =
+      autolink::common::GlobalData::CanonicalChannelName(channel);
   std::shared_ptr<::autolink::Node> node;
-  SubscriptionId subscription_id = 0;
-  bool need_create_reader = false;
+  SubscriptionId id;
   {
     std::lock_guard<std::mutex> lock(mutex_);
     node = node_.lock();
     if (node == nullptr) {
       return 0;
     }
-
-    ChannelEntry& entry = channels_[channel];
-    subscription_id = next_subscription_id_++;
-    entry.subscriptions.push_back({subscription_id, std::move(callback)});
-    // Serialize CreateReader: concurrent/stacked subscribe on a new channel
-    // used to both call CreateReader and hit "reader already exists".
-    need_create_reader =
-        (entry.reader == nullptr && !entry.creating_reader);
-    if (need_create_reader) {
-      entry.creating_reader = true;
+    auto& entry = channels_[canonical];
+    id = next_subscription_id_++;
+    entry.subscriptions.push_back({id, std::move(callback)});
+    if (entry.reader != nullptr) {
+      return id;
     }
   }
-  if (!need_create_reader) {
-    return subscription_id;
-  }
-
-  // CreateReader may deliver messages immediately on the scheduler thread.
-  // Those callbacks call fanOut() which needs mutex_ — never create under lock.
-  auto reader_callback =
-      [this, channel](
-          const std::shared_ptr<::autolink::message::RawMessage>& message) {
+  auto reader = node->CreateReader<::autolink::message::RawMessage>(
+      canonical, [this, canonical](const auto& message) {
         if (message != nullptr) {
-          fanOut(channel, message->message);
+          fanOut(canonical, message->message);
         }
-      };
-
-  // Never DeleteReader+retry: another owner (e.g. PlaybackController before it
-  // used this registry) may already hold the channel. Stealing it races the
-  // scheduler croutine name and causes Create Task Failed / segfault.
-  auto reader =
-      node->CreateReader<::autolink::message::RawMessage>(channel,
-                                                          reader_callback);
-
-  std::shared_ptr<::autolink::Reader<::autolink::message::RawMessage>> discard;
-  {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto found = channels_.find(channel);
-    if (found == channels_.end()) {
-      discard = std::move(reader);
-      subscription_id = 0;
-    } else {
-      found->second.creating_reader = false;
-      const bool still_subscribed =
-          std::any_of(found->second.subscriptions.begin(),
-                      found->second.subscriptions.end(),
-                      [subscription_id](const Subscription& subscription) {
-                        return subscription.id == subscription_id;
-                      });
-      if (!still_subscribed) {
-        discard = std::move(reader);
-        if (found->second.subscriptions.empty() &&
-            found->second.reader == nullptr) {
-          channels_.erase(found);
-        }
-        subscription_id = 0;
-      } else if (found->second.reader != nullptr) {
-        discard = std::move(reader);
-      } else if (reader == nullptr) {
-        LOG(WARNING) << "Failed to subscribe autoviz display channel: "
-                     << channel;
-        found->second.subscriptions.erase(
-            std::remove_if(found->second.subscriptions.begin(),
-                           found->second.subscriptions.end(),
-                           [subscription_id](const Subscription& subscription) {
-                             return subscription.id == subscription_id;
-                           }),
-            found->second.subscriptions.end());
-        if (found->second.subscriptions.empty()) {
-          channels_.erase(found);
-        }
-        subscription_id = 0;
-      } else {
-        found->second.reader = std::move(reader);
-      }
-    }
+      });
+  std::lock_guard<std::mutex> lock(mutex_);
+  if (reader == nullptr) {
+    channels_.erase(canonical);
+    LOG(WARNING) << "Failed to subscribe autoviz display channel: " << canonical;
+    return 0;
   }
-
-  if (discard != nullptr) {
-    discard.reset();
-    node->DeleteReader(channel);
-  }
-  return subscription_id;
+  channels_.at(canonical).reader = std::move(reader);
+  return id;
 }
 
 void ChannelReaderRegistry::unsubscribe(SubscriptionId subscription_id) {
   if (subscription_id == 0) {
     return;
   }
-
-  std::shared_ptr<::autolink::Reader<::autolink::message::RawMessage>> doomed;
-  std::string doomed_channel;
+  std::lock_guard<std::mutex> lifecycle_lock(reader_mutex_);
   std::shared_ptr<::autolink::Node> node;
-
+  std::shared_ptr<::autolink::Reader<::autolink::message::RawMessage>> reader;
+  std::string channel;
   {
     std::lock_guard<std::mutex> lock(mutex_);
-    node = node_.lock();
-
-    for (auto channel_it = channels_.begin(); channel_it != channels_.end();) {
-      ChannelEntry& entry = channel_it->second;
-      entry.subscriptions.erase(
-          std::remove_if(entry.subscriptions.begin(), entry.subscriptions.end(),
-                         [subscription_id](const Subscription& subscription) {
-                           return subscription.id == subscription_id;
-                         }),
-          entry.subscriptions.end());
-
-      if (entry.subscriptions.empty()) {
-        // Destroy reader outside the lock: RemoveCRoutine waits for the
-        // scheduler thread, which may be blocked in fanOut() on this mutex.
-        doomed = std::move(entry.reader);
-        doomed_channel = channel_it->first;
-        channel_it = channels_.erase(channel_it);
-        break;
+    for (auto it = channels_.begin(); it != channels_.end(); ++it) {
+      auto& subscriptions = it->second.subscriptions;
+      const auto found = std::find_if(subscriptions.begin(), subscriptions.end(),
+          [subscription_id](const Subscription& s) { return s.id == subscription_id; });
+      if (found == subscriptions.end()) {
+        continue;
       }
-      ++channel_it;
+      subscriptions.erase(found);
+      if (subscriptions.empty()) {
+        reader = std::move(it->second.reader);
+        channel = it->first;
+        node = node_.lock();
+        channels_.erase(it);
+      }
+      break;
     }
   }
-
-  if (doomed != nullptr) {
-    doomed.reset();
+  // The node also owns the reader; release both owners before another subscribe.
+  if (node != nullptr && !channel.empty()) {
+    node->DeleteReader(channel);
   }
-  if (node != nullptr && !doomed_channel.empty()) {
-    node->DeleteReader(doomed_channel);
-  }
+  reader.reset();
 }
 
 void ChannelReaderRegistry::fanOut(const std::string& channel,

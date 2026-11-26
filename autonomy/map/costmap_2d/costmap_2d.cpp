@@ -16,6 +16,7 @@
 
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 
@@ -39,7 +40,8 @@ Costmap2D::Costmap2D(const automsgs::msgs::map_msgs::OccupancyGrid& map)
 
     // fill the costmap with a data
     for (unsigned int it = 0; it < size_x_ * size_y_; it++) {
-        const int16_t data = map.data(it);
+        const int16_t data = static_cast<int16_t>(
+            automsgs::msgs::map_msgs::OccupancyGridCell(map, static_cast<int>(it)));
         if (data == utils::OCC_GRID_UNKNOWN) {
             costmap_[it] = NO_INFORMATION;
         } else {

@@ -207,6 +207,60 @@ void DeltaPreflight() {
     Require(planner.GraphSnapshot().map_epoch == next_epoch.map_epoch,
             "late old-epoch view rolled back footprint admission");
 }
+/** @brief FAR style votes keep a new edge pending until it is confirmed twice. */
+void ConfirmationVotes() {
+    auto map = Scene(); p::MapReader reader;
+    n::SafetyOptions options; options.robot_radius = .05; options.horizontal_margin = 0;
+    v::VistaRoutePlanner planner(options, 150, 2);
+    planner.Update(reader.Read(map, 1, 0, 1));
+    const auto first = planner.GraphSnapshot();
+    std::size_t valid = 0, pending = 0;
+    for (const auto& entry : first.edges) {
+        valid += entry.second.valid ? 1 : 0;
+        pending += (!entry.second.valid && entry.second.confirmations > 0) ? 1 : 0;
+    }
+    Require(valid == 0, "votes=2 admitted an edge on its first observation");
+    Require(pending > 0, "votes=2 produced no pending edge to confirm");
+    // A real exploration map changes every frame; move one far corner cell so a
+    // new geometry revision exists to carry the second observation.
+    map.Set(1, 1, {n::CellState::kOccupied, 0});
+    planner.Update(reader.Read(map, 2, 0, 2));
+    const auto second = planner.GraphSnapshot();
+    std::size_t confirmed = 0;
+    for (const auto& entry : second.edges) confirmed += entry.second.valid ? 1 : 0;
+    Require(confirmed > 0, "second observation did not confirm a pending edge");
+}
+/** @brief Contour vertices carry FAR style classes and stable contour identities. */
+void ContourClasses() {
+    auto map = Scene(); p::MapReader reader;
+    n::SafetyOptions options; options.robot_radius = .05; options.horizontal_margin = 0;
+    v::VistaRoutePlanner planner(options, 150);
+    planner.Update(reader.Read(map, 1, 0, 1));
+    const auto graph = planner.GraphSnapshot();
+    Require(!graph.nodes.empty(), "scene produced no contour vertices");
+    std::size_t convex = 0, identified = 0;
+    for (const auto& entry : graph.nodes) {
+        convex += entry.second.direct == v::ContourDirect::kConvex ? 1 : 0;
+        identified += entry.second.contour_id ? 1 : 0;
+    }
+    Require(convex > 0, "obstacle corners were not classified convex");
+    Require(identified > 0, "contour vertices carry no obstacle identity");
+}
+/** @brief A walled goal yields a FAR style attempted path instead of silence. */
+void AttemptedPath() {
+    n::GridMap map(40, 20, .2);
+    map.Fill({n::CellState::kFree, 0});
+    for (int y = 0; y < 20; ++y) for (int x = 19; x <= 20; ++x)
+        map.Set(x, y, {n::CellState::kOccupied, 0});
+    p::MapReader reader;
+    n::SafetyOptions options; options.robot_radius = .05; options.horizontal_margin = 0;
+    v::VistaRoutePlanner planner(options, 150);
+    planner.Update(reader.Read(map, 1, 0, 1));
+    const auto route = planner.CreateRoute({1.0, 2.0, 0.0}, {7.0, 2.0, 0.0});
+    Require(!route.success, "wall-separated goal was reported as a verified route");
+    Require(route.attempted, "wall-separated goal produced no attempted path");
+    Require(route.path.poses.size() >= 2, "attempted path has fewer than two poses");
+}
 }  // namespace
 
 /** @brief Run portable production algorithms; baseline selects only bounded known failures. */
@@ -222,6 +276,9 @@ int main(int argc, char** argv) {
         tests.emplace_back("delta_preflight", DeltaPreflight);
         tests.emplace_back("consecutive_delta", ConsecutiveDelta);
         tests.emplace_back("changing_extent", ChangingExtent);
+        tests.emplace_back("edge_confirmation_votes", ConfirmationVotes);
+        tests.emplace_back("contour_classes", ContourClasses);
+        tests.emplace_back("attempted_path", AttemptedPath);
     }
     for (const auto& test : tests) {
         try { test.second(); std::cout << "PASS " << test.first << '\n'; }

@@ -21,6 +21,7 @@
 #include <utility>
 
 #include <opencv2/core.hpp>
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 
 namespace autonomy::localization::atlas {
 namespace {
@@ -530,9 +531,11 @@ bool MessageAdapter::GetOccupancyGrid(
     origin->mutable_orientation()->set_y(origin_rotation.y());
     origin->mutable_orientation()->set_z(origin_rotation.z());
     origin->mutable_orientation()->set_w(origin_rotation.w());
-    message->mutable_data()->Reserve(static_cast<int>(grid.data.size()));
-    for (const std::int8_t value : grid.data)
-        message->add_data(static_cast<int>(value));
+    automsgs::msgs::map_msgs::OccupancyGridReserveCells(
+        message, static_cast<int>(grid.data.size()));
+    for (const std::int8_t value : grid.data) {
+        automsgs::msgs::map_msgs::OccupancyGridAppendCell(message, value);
+    }
     return true;
 }
 

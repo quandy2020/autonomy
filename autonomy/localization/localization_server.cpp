@@ -22,6 +22,7 @@
 #include <utility>
 
 #include "autolink/autolink.hpp"
+#include "autolink/timer/timer.hpp"
 #include "autonomy/common/logging.hpp"
 #include "autonomy/localization/cartographer/mapping/map_builder.hpp"
 #include "autonomy/localization/cartographer/node/cartographer_node.hpp"
@@ -154,7 +155,20 @@ public:
         }
 
         if (static_tf_publisher_.IsLoaded()) {
+            node_->SetExtrinsicTransforms(
+                static_tf_publisher_.GetTransformStampeds());
             static_tf_publisher_.Publish(autolink_node_);
+            // Autolink has no latched /tf_static. Republish so Autoviz started
+            // after localization still gets base_link→laser/imu.
+            static_tf_timer_ = std::make_unique<autolink::Timer>(
+                200,
+                [this]() {
+                    if (autolink_node_) {
+                        static_tf_publisher_.Publish(autolink_node_);
+                    }
+                },
+                false);
+            static_tf_timer_->Start();
         }
 
         if (!options_.load_state_filename.empty()) {
@@ -186,6 +200,7 @@ public:
             node_->SerializeState(path, true);
             AINFO << "LocalizationServer: saved Cartographer state to " << path;
         }
+        static_tf_timer_.reset();
         node_.reset();
         autolink_node_.reset();
     }
@@ -194,6 +209,7 @@ private:
     LocalizationOptions options_;
     cartographer::node::TrajectoryOptions trajectory_options_;
     transform::StaticTransformPublisher static_tf_publisher_;
+    std::unique_ptr<autolink::Timer> static_tf_timer_;
     std::unique_ptr<cartographer::node::CartographerNode> node_;
     std::shared_ptr<autolink::Node> autolink_node_;
 };

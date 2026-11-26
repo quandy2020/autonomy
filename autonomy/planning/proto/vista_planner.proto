@@ -21,4 +21,8 @@ message VistaPlannerOptions {
   optional double vertical_margin = 6;
   // Maximum supported floor discontinuity in metres. Default: 0.08.
   optional double max_floor_step = 7;
+  // Consecutive geometrically valid observations required before an edge is
+  // usable. 1 admits immediately; higher values add FAR planner style
+  // hysteresis against flickering depth. Default: 1.
+  optional uint32 edge_confirmation_votes = 8;
 }

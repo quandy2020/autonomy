@@ -589,19 +589,25 @@ float TfDisplay::estimateCharacteristicLength() const {
     }
   }
 
-  float characteristic = kTfDefaultAxisLength;
+  float edge_char = 0.f;
   if (!edges.empty()) {
     const auto mid =
         edges.begin() + static_cast<std::ptrdiff_t>(edges.size() / 2);
     std::nth_element(edges.begin(), mid, edges.end());
-    characteristic = *mid;
-  } else if (have_pos) {
+    edge_char = *mid;
+  }
+  float bbox_char = 0.f;
+  if (have_pos) {
     const float dx = max_x - min_x;
     const float dy = max_y - min_y;
     const float dz = max_z - min_z;
-    characteristic = std::sqrt(dx * dx + dy * dy + dz * dz) * 0.2f;
+    bbox_char = std::sqrt(dx * dx + dy * dy + dz * dz) * 0.04f;
   }
-  return std::clamp(characteristic, 0.04f, 1.5f);
+  const float characteristic =
+      std::max(edge_char, bbox_char) > 0.f
+          ? std::max(edge_char, bbox_char)
+          : kTfDefaultAxisLength;
+  return std::clamp(characteristic, 0.04f, 8.f);
 }
 
 void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
@@ -619,7 +625,7 @@ void TfDisplay::onDraw(rendering::SceneOverlay& scene) {
   // buried under RViz's fixed 0.2 m / 0.02 m shafts.
   const float base_len =
       props_.auto_scale
-          ? std::clamp(estimateCharacteristicLength() * 0.45f, 0.025f, 0.25f)
+          ? std::clamp(estimateCharacteristicLength() * 0.45f, 0.025f, 4.f)
           : kTfDefaultAxisLength;
   const float axis_len = base_len * user_scale;
   const float axis_radius = axis_len * kTfAxisRadiusRatio;

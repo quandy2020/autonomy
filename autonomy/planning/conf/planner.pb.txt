@@ -125,10 +125,25 @@ theta_star {
   w_euc_cost: 2
 }
 
+# ---------- TARE native exploration adapter ----------
+# Exploration clients use CreateExplorationPlan; GlobalPlanner calls retain
+# strict start-to-goal semantics.
+tare_explorer {
+  min_frontier_cluster_size: 5
+  max_global_viewpoints: 8
+  viewpoint_clearance_cells: 1
+  information_gain_weight: 1.0
+  travel_cost_weight: 1.0
+  allow_unknown_transit: false
+  max_search_iterations: 1000000
+}
+
 # ---------- Plugins / rates ----------
 expected_planner_frequency: 5
 costmap_update_timeout: 5
 planner_plugins: "navfn_planner"
 planner_plugins: "dijkstra_planner"
 planner_plugins: "theta_star_planner"
+# Add "tare_explorer" only for strict start-to-goal routing. Exploration
+# scheduling must call the dedicated TareExplorerPlanner API.
 smoother_plugins: "simple_smoother"

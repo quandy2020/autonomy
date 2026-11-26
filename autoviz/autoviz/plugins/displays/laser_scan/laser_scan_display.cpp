@@ -11,7 +11,9 @@
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include "autoviz/commsgs/time_utils.hpp"
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
+#include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
 #include "autoviz/common/display_property.hpp"
+#include "autoviz/common/interaction/channel_payload.hpp"
 #include "autoviz/plugins/displays/common/ogre_colored_points_draw.hpp"
 #include "autoviz/plugins/displays/pointcloud/point_cloud_utils.hpp"
 #include "autoviz/plugins/displays/common/transform_utils.hpp"
@@ -19,6 +21,42 @@
 
 namespace autoviz {
 namespace display {
+namespace {
+
+template <typename MsgT>
+bool ParseBytes(const std::string& payload, MsgT* proto) {
+  const std::string_view framed = integration::ChannelPayloadView(payload);
+  return proto->ParseFromArray(framed.data(), static_cast<int>(framed.size())) ||
+         proto->ParseFromArray(payload.data(), static_cast<int>(payload.size()));
+}
+
+void FirstEchoToLaserScan(
+    const automsgs::msgs::sensor_msgs::MultiEchoLaserScan& echo,
+    automsgs::msgs::sensor_msgs::LaserScan* scan) {
+  *scan->mutable_header() = echo.header();
+  scan->set_angle_min(echo.angle_min());
+  scan->set_angle_max(echo.angle_max());
+  scan->set_angle_increment(echo.angle_increment());
+  scan->set_time_increment(echo.time_increment());
+  scan->set_scan_time(echo.scan_time());
+  scan->set_range_min(echo.range_min());
+  scan->set_range_max(echo.range_max());
+  scan->clear_ranges();
+  scan->clear_intensities();
+  for (int i = 0; i < echo.ranges_size(); ++i) {
+    const auto& echoes = echo.ranges(i).echoes();
+    scan->add_ranges(echoes.size() == 0 ? std::numeric_limits<float>::infinity()
+                                       : echoes.Get(0));
+  }
+  if (echo.intensities_size() == echo.ranges_size()) {
+    for (int i = 0; i < echo.intensities_size(); ++i) {
+      const auto& echoes = echo.intensities(i).echoes();
+      scan->add_intensities(echoes.size() == 0 ? 0.f : echoes.Get(0));
+    }
+  }
+}
+
+}  // namespace
 
 LaserScanDisplay::LaserScanDisplay(std::string channel)
     : ChannelDisplay<automsgs::msgs::sensor_msgs::LaserScan>(
@@ -39,6 +77,25 @@ std::vector<common::DisplayPropertySpec> LaserScanDisplay::propertySpecs()
           {"color", "Color", "255;255;255", {}, common::DisplayPropertyKind::kColor}};
 }
 
+bool LaserScanDisplay::parseChannelPayload(
+    const std::string& payload,
+    automsgs::msgs::sensor_msgs::LaserScan* proto) {
+  if (proto == nullptr) {
+    return false;
+  }
+  automsgs::msgs::sensor_msgs::LaserScan scan;
+  if (ParseBytes(payload, &scan) && scan.ranges_size() > 0) {
+    proto->Swap(&scan);
+    return true;
+  }
+  automsgs::msgs::sensor_msgs::MultiEchoLaserScan echo;
+  if (ParseBytes(payload, &echo) && echo.ranges_size() > 0) {
+    FirstEchoToLaserScan(echo, proto);
+    return true;
+  }
+  return false;
+}
+
 void LaserScanDisplay::processMessage(
     const automsgs::msgs::sensor_msgs::LaserScan& message) {
   points_.clear();
@@ -52,17 +109,22 @@ void LaserScanDisplay::processMessage(
   automsgs::msgs::geometry_msgs::TransformStamped tf;
   bool have_tf = false;
   if (frame != context_->fixed_frame) {
+    // Bag playback stamps are 2015-era; prefer latest (ZeroTime) then the
+    // scan stamp so a missing interpolation instant still draws.
     try {
-      // Instantaneous sim scans must use the message stamp. Falling back to
-      // "latest" TF during yaw makes the whole ring rotate with the live pose
-      // while ranges still belong to an older heading (classic spin smear).
       tf = context_->tf_buffer->lookupTransform(
-          context_->fixed_frame, frame, message.header().stamp());
+          context_->fixed_frame, frame, autoviz::commsgs::ZeroTime());
       have_tf = true;
     } catch (...) {
-      setStatusWarn("TF missing: " + frame + " -> " + context_->fixed_frame +
-                    " @ scan stamp");
-      return;
+      try {
+        tf = context_->tf_buffer->lookupTransform(
+            context_->fixed_frame, frame, message.header().stamp());
+        have_tf = true;
+      } catch (...) {
+        setStatusWarn("TF missing: " + frame + " -> " +
+                      context_->fixed_frame);
+        return;
+      }
     }
   }
 

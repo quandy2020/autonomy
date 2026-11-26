@@ -1,32 +1,78 @@
+ChannelGraphPanels:
+  - AutoRefresh: true
+    ChannelArrange: 1
+    Filter: ""
+    HideDeadEndChannels: false
+    HideLeafChannels: false
+    NeighborhoodMode: true
+    ObjectName: ChannelGraphDock
+    PrefixFilter: ""
+    ProbeEnabled: false
+    QuietMode: false
+    ServiceArrange: 1
+    ShowChannels: true
+    ShowEdgeLabels: false
+    ShowServices: true
+ChannelsBrowser:
+  FilterText: ""
+  ProbeEnabled: true
+  TypeFilter: 0
 CurrentView:
-  Distance: 40
+  Distance: 29.657014846801758
+  FarClipDistance: 1e+05
   FocalShapeFixedSize: true
   FocalShapeSize: 0.05000000074505806
+  FpsPitch: 0
+  FpsPosition:
+    X: -4.579870223999023
+    Y: 3.181950569152832
+    Z: 8.129056930541992
+  FpsYaw: 3.140000104904175
   InvertZAxis: false
   Name: Current
   NearClipDistance: 0.009999999776482582
-  Pitch: 0.9
+  Pitch: 1.399999976158142
   Target:
-    X: 0
-    Y: 0
+    X: -3.6391327381134033
+    Y: 2.165369749069214
     Z: 0
+  TargetFrame: map
   Type: Orbit
-  Yaw: 0.8
+  Yaw: 0.5500002503395081
 Displays:
   - Channel: ""
     Enabled: true
     Name: TF
+    Properties:
+      all_enabled: true
+      auto_scale: false
+      filter_blacklist: ""
+      filter_whitelist: ""
+      frame_enabled.base_link: true
+      frame_enabled.horizontal_laser_link: true
+      frame_enabled.imu_link: true
+      frame_enabled.map: true
+      frame_enabled.odom: true
+      frame_enabled.vertical_laser_link: true
+      frame_timeout: 15.0
+      marker_scale: 12.0
+      show_arrows: false
+      show_axes: true
+      show_names: true
+      update_interval: 0.1
     Type: TF
   - Channel: ""
     Enabled: true
     Name: Grid
     Properties:
-      alpha: 0.4
-      cell_count: 80
-      cell_size: 1.0
+      alpha: 0.35
+      cell_count: 20
+      cell_size: 5.0
       color: 160;160;160
       line_style: Lines
       line_width: 0.03
+      normal_cell_count: 0
+      offset: 0;0;0
       plane: XY
       reference_frame: <Fixed Frame>
     Type: Grid
@@ -34,36 +80,266 @@ Displays:
     Enabled: true
     Name: OccupancyMap
     Properties:
-      alpha: "0.85"
+      alpha: 0.7
       color_scheme: map
-      decimate: "1"
-      draw_behind: "true"
-      use_timestamp: "false"
+      decimate: 1
+      draw_behind: true
+      use_timestamp: false
     Type: Map
+  - Channel: /submap_list
+    Enabled: false
+    Name: Submaps
+    Properties:
+      submap_query_service: /submap_query
+      tracking_frame: base_link
+      high_resolution: true
+      low_resolution: false
+      show_axes: true
+      show_ids: true
+      trajectory_id: -1
+      alpha: 1.0
+      fade_distance: 1.0
+    Type: Submaps
+  - Channel: /echoes_1
+    Enabled: true
+    Name: LaserScan
+    Properties:
+      alpha: 1.0
+      color: 0;220;255
+      color_transform: Flat
+      decay_time: 0
+      point_size: 8
+      style: Flat Squares
+    Type: LaserScan
   - Channel: /tracked_pose
     Enabled: true
     Name: TrackedPose
     Properties:
-      shape: Arrow
+      alpha: 1.0
+      axis_length: 0.3
+      axis_radius: 0.03
       color: 255;100;0
-      shaft_length: "1.0"
-      head_length: "0.3"
+      head_diameter: 0.16
+      head_length: 0.2
+      shaft_diameter: 0.08
+      shaft_length: 0.6
+      shape: Arrow
     Type: Pose
+  - Channel: /trajectory
+    Enabled: true
+    Name: Trajectory
+    Properties:
+      alpha: 1.0
+      arrive_distance: 0.35
+      buffer_length: 1
+      color: 0;255;80
+      dash_length: 0.28
+      flow_arrow_size: 0.12
+      flow_arrow_spacing: 0.55
+      flow_speed: 0.9
+      gap_length: 0.18
+      hide_when_arrived: false
+      line_style: Lines
+      line_width: 0.12
+      offset: 0;0;0
+      path_pattern: Solid
+      pose_arrow_head_diameter: 0.3
+      pose_arrow_head_length: 0.2
+      pose_arrow_shaft_diameter: 0.1
+      pose_arrow_shaft_length: 0.1
+      pose_axes_length: 0.3
+      pose_axes_radius: 0.03
+      pose_color: 255;85;255
+      pose_style: None
+      prune_behind_robot: false
+      robot_frame: base_link
+      show_flow_arrows: true
+    Type: Path
 Global:
   ActiveTool: Interact
   BackgroundColor: 48;48;48
   FixedFrame: map
   FrameRate: 30
   RenderBackend: Ogre
+  TimeSyncMode: 0
+  TimeSyncSource: ""
   Transformer: autoviz/AutolinkTf
   ViewController: Orbit
+ImagePanels:
+  - BackgroundColor: "#000000"
+    CalibrationChannel: ""
+    ClickPublishChannel: ""
+    ColorMax: 255
+    ColorMin: 0
+    ColorMode: 0
+    ContentOnlyDisplay: false
+    EnableUndistort: false
+    FlipHorizontal: false
+    FlipVertical: false
+    HoverPublishChannel: ""
+    ImageChannel: ""
+    LabelScale: 1
+    ObjectName: ImageDock
+    Rotation: 0
+    SettingsVisible: false
+    StrictTimeSync: false
+    Title: Image
+PlotPanels:
+  - KeepRatioXy: true
+    LockAxisScales: false
+    MaxPointsPerSeries: 20000
+    MessagePathMode: 1
+    ObjectName: PlotDock
+    ReferenceTrackerSec: 0
+    ReferenceY: 0
+    SettingsVisible: false
+    SettingsWidth: 300
+    ShowGrid: true
+    ShowLegend: true
+    ShowLegendValues: true
+    ShowReferenceTracker: false
+    ShowReferenceY: false
+    SyncCursor: true
+    SyncGroup: ""
+    SyncWithOtherPlots: false
+    SyncYAxis: false
+    Title: Plot
+    XAxisMode: 0
+    XWindowSec: 30
+    YAutoScale: true
+    YAutoScaleRight: true
+    YMax: 1
+    YMaxRight: 1
+    YMin: 0
+    YMinRight: 0
+RawMessages:
+  Channel: ""
+  DiffHighlight: true
+  Freeze: false
+  MessagePath: ""
+TeleopPanels:
+  - Down:
+      Field: 0
+      Value: -0.5
+    Left:
+      Field: 5
+      Value: 0.5
+    MaxAngularSpeed: 0.5
+    MaxLinearSpeed: 0.5
+    ObjectName: TeleopDock
+    OverlayEnabled: false
+    OverlayH: 0
+    OverlayOpacity: 0.9200000166893005
+    OverlayW: 0
+    OverlayX: -1
+    OverlayY: -1
+    PublishRateHz: 20
+    Right:
+      Field: 5
+      Value: -0.5
+    SettingsVisible: false
+    SmartTeleop: false
+    StickMode: 0
+    Stop:
+      Field: 0
+      Value: 0
+    StopOnRelease: true
+    Title: Teleop
+    Topic: /cmd_vel
+    Up:
+      Field: 0
+      Value: 0.5
+TfTreePanels:
+  - Filter: ""
+    MaxAgeSec: 1
+    ObjectName: TfTreeDock
+    StaleOnly: false
+    TabIndex: 0
+Toolbar:
+  - Interact
+  - MoveCamera
+  - Select
+  - FocusCamera
+  - Measure
+  - PoseEstimate
+  - NavGoal
+  - PublishPoint
+Tools:
+  - Id: Interact
+    Properties:
+      client_id: autoviz
+      hide_inactive: true
+  - Id: Measure
+    Properties:
+      color: 255;0;0
+  - Id: PoseEstimate
+    Properties:
+      covariance_x: 0.25
+      covariance_y: 0.25
+      covariance_yaw: 0.0685385
+      topic: /initialpose
+  - Id: NavGoal
+    Properties:
+      topic: /goal_pose
+  - Id: PublishPoint
+    Properties:
+      single_click: true
+      topic: /clicked_point
+  - Id: ScreenshotListener
+    Properties:
+      screenshot_path: /tmp/autoviz_screenshot.png
 Views:
   - Distance: 40
+    FarClipDistance: 1e+05
+    FocalShapeFixedSize: true
+    FocalShapeSize: 0.05000000074505806
+    FpsPitch: 0
+    FpsPosition:
+      X: 0
+      Y: 2
+      Z: 8
+    FpsYaw: 3.140000104904175
+    InvertZAxis: false
     Name: Orbit
-    Pitch: 0.9
+    NearClipDistance: 0.009999999776482582
+    Pitch: 1.3700000047683716
     Target:
       X: 0
       Y: 0
       Z: 0
+    TargetFrame: base_link
     Type: Orbit
-    Yaw: 0.8
+    Yaw: 0.800000011920929
+Window:
+  Geometry: AdnQywADAAAAAABCAAAAIAAACf8AAAWfAAAAQgAAAEUAAAn/AAAFnwAAAAAAAAAACgAAAABCAAAARQAACf8AAAWf
+  Height: 1371
+  HideLeftDock: false
+  HideRightDock: false
+  MainPanelState: bW9zYWljOnYxOnsicm9vdCI6eyJjaGlsZHJlbiI6W3sibmFtZSI6IlZpZXdwb3J0RG9jayIsInR5cGUiOiJsZWFmIn1dLCJvcmllbnRhdGlvbiI6Imhvcml6b250YWwiLCJzaXplcyI6WzE4NDFdLCJ0eXBlIjoic3BsaXQifX0=
+  Panels:
+    - Name: ViewportDock
+    - Name: DisplaysDock
+    - Name: RecordDock
+    - Name: SelectionDock
+    - Name: ToolPropertiesDock
+    - Name: ViewsDock
+    - Name: TimeDock
+    - Name: ChannelsDock
+    - Name: ChannelBrowserDock
+    - Name: TfTreeDock
+    - Name: ImageDock
+    - Name: PlotDock
+    - Name: TeleopDock
+    - Name: NavigationDock
+    - Name: ChannelGraphDock
+    - Name: PropertiesDock
+  PlotSettingsVisible: false
+  State: AAAA/wAAAAD9AAAAAwAAAAAAAAFcAAAFBfwCAAAAAfwAAABAAAAFBQAAAMEBAAAV+gAAAAACAAAAAvsAAAAYAEQAaQBzAHAAbABhAHkAcwBEAG8AYwBrAQAAAAD/////AAAAqwD////7AAAAHABQAHIAbwBwAGUAcgB0AGkAZQBzAEQAbwBjAGsBAAAAAP////8AAACHAP///wAAAAEAAAElAAAFBfwCAAAABvsAAAASAFYAaQBlAHcAcwBEAG8AYwBrAQAAAEAAAAUFAAAA2AD////7AAAAFABSAGUAYwBvAHIAZABEAG8AYwBrAAAAAAD/////AAABVQD////7AAAAJABUAG8AbwBsAFAAcgBvAHAAZQByAHQAaQBlAHMARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABoAUwBlAGwAZQBjAHQAaQBvAG4ARABvAGMAawEAAAAA/////wAAAAAAAAAA+wAAABQAVABlAGwAZQBvAHAARABvAGMAawAAAAAA/////wAAAf4A////+wAAABwATgBhAHYAaQBnAGEAdABpAG8AbgBEAG8AYwBrAAAAAAD/////AAAAowD///8AAAADAAAAAAAAAAD8AQAAAAH7AAAAEABUAGkAbQBlAEQAbwBjAGsAAAAAAP////8AAAPWAP///wAABzEAAAUFAAAAAQAAAAIAAAAIAAAACPwAAAABAAAAAgAAAAEAAAAcAEEAdQB0AG8AdgBpAHoAVABvAG8AbABCAGEAcgEAAAAA/////wAAAAAAAAAA
+  VisiblePanels:
+    - ViewportDock
+    - DisplaysDock
+    - ViewsDock
+    - PropertiesDock
+  Width: 2494
+  X: 66
+  Y: 69

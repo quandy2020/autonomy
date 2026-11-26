@@ -22,11 +22,13 @@
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
 
 #include <cmath>
+#include <cstdint>
 #include <memory>
 
 #include <cairo/cairo.h>
 #include <glog/logging.h>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <automsgs/msgs/sensor_msgs/point_cloud2_iterator.hpp>
 #include <automsgs/msgs/sensor_msgs/multi_echo_laser_scan.pb.h>
 #include "autonomy/localization/cartographer/common/math.hpp"
@@ -340,14 +342,24 @@ std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
     origin->mutable_orientation()->set_y(0.);
     origin->mutable_orientation()->set_z(0.);
 
-    const uint32_t* pixel_data = reinterpret_cast<uint32_t*>(
-        cairo_image_surface_get_data(painted_slices.surface.get()));
-    occupancy_grid->mutable_data()->Reserve(width * height);
+    cairo_surface_flush(painted_slices.surface.get());
+    const unsigned char* bytes =
+        cairo_image_surface_get_data(painted_slices.surface.get());
+    const int stride =
+        cairo_image_surface_get_stride(painted_slices.surface.get());
+    automsgs::msgs::map_msgs::OccupancyGridResizeCells(
+        occupancy_grid.get(), width * height, -1);
+    int cell_index = 0;
     for (int y = height - 1; y >= 0; --y) {
+        const auto* row = reinterpret_cast<const uint32_t*>(
+            bytes + static_cast<size_t>(y) * static_cast<size_t>(stride));
         for (int x = 0; x < width; ++x) {
-            const uint32_t packed = pixel_data[y * width + x];
-            const unsigned char color = packed >> 16;
-            const unsigned char observed = packed >> 8;
+            // Red carries occupancy intensity; green marks observed cells.
+            const uint32_t packed = row[x];
+            const unsigned char color =
+                static_cast<unsigned char>(packed >> 16);
+            const unsigned char observed =
+                static_cast<unsigned char>(packed >> 8);
             const int value =
                 observed == 0
                     ? -1
@@ -355,7 +367,8 @@ std::unique_ptr<automsgs::msgs::map_msgs::OccupancyGrid> CreateOccupancyGridMsg(
                           (1. - color / 255.) * 100.);
             CHECK_LE(-1, value);
             CHECK_GE(100, value);
-            occupancy_grid->add_data(value);
+            automsgs::msgs::map_msgs::OccupancyGridSetCell(
+                occupancy_grid.get(), cell_index++, value);
         }
     }
 

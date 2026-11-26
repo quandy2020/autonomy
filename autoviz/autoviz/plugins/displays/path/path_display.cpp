@@ -616,11 +616,15 @@ void PathDisplay::onDraw(rendering::SceneOverlay& scene) {
   // The coverage preview is a plan, not a live route: pruning at the robot
   // hides every already-passed room and makes covered blocks look empty.
   const bool coverage_plan = channel() == "/coverage/plan";
+  const bool slam_path =
+      channel() == "/trajectory" || channel() == "trajectory";
+  const bool keep_full_path = coverage_plan || slam_path;
   const bool prune = common::ParseBoolProperty(
-      propertyValue("prune_behind_robot", coverage_plan ? "false" : "true"),
-      !coverage_plan);
+      propertyValue("prune_behind_robot", keep_full_path ? "false" : "true"),
+      !keep_full_path);
   const bool hide_arrived = common::ParseBoolProperty(
-      propertyValue("hide_when_arrived", "true"), true);
+      propertyValue("hide_when_arrived", keep_full_path ? "false" : "true"),
+      !keep_full_path);
 
   for (std::size_t i = 0; i < path_buffers_.size(); ++i) {
     const std::string suffix = "/buffer/" + std::to_string(i);

@@ -229,16 +229,7 @@ class ChannelDisplay : public Display {
     bool handled_any = false;
     auto handle_payload = [this, &handled_any](const std::string& payload) {
       ProtoT proto;
-      // Parse in place: payloads can be multi-megabyte point clouds and the
-      // old path copied them twice (DecodeChannelPayload + ParseFromString).
-      const std::string_view framed =
-          integration::ChannelPayloadView(payload);
-      const bool framed_ok =
-          proto.ParseFromArray(framed.data(), static_cast<int>(framed.size()));
-      const bool raw_ok =
-          !framed_ok && proto.ParseFromArray(payload.data(),
-                                             static_cast<int>(payload.size()));
-      if (framed_ok || raw_ok) {
+      if (parseChannelPayload(payload, &proto)) {
         has_received_message_ = true;
         parse_failed_ = false;
         handled_any = true;
@@ -280,6 +271,18 @@ class ChannelDisplay : public Display {
    *
    * @param message Typed protobuf instance for this frame's latest sample.
    */
+  virtual bool parseChannelPayload(const std::string& payload, ProtoT* proto) {
+    if (proto == nullptr) {
+      return false;
+    }
+    const std::string_view framed = integration::ChannelPayloadView(payload);
+    if (proto->ParseFromArray(framed.data(), static_cast<int>(framed.size()))) {
+      return true;
+    }
+    return proto->ParseFromArray(payload.data(),
+                                 static_cast<int>(payload.size()));
+  }
+
   virtual void processMessage(const ProtoT& message) = 0;
 
   /**

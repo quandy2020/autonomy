@@ -23,6 +23,7 @@ struct NativeRgbdPlatformOptions {
     std::string grid_output_topic;  ///< Existing GridMap from actual native layer storage.
     std::string measured_coverage_topic;  ///< Native target-ledger percentages, distinct from occupancy and whole-room coverage.
     bool host_vista_server = false;  ///< Embed the existing PlannerServer with this mapper as its sole immutable source.
+    unsigned vista_edge_confirmation_votes = 0;  ///< Optional FAR style edge hysteresis; 0 keeps the planner default.
     std::optional<control::proto::ControllerOptions> controller;  ///< Actual reviewed existing controller/checker/plugin options; absence leaves execution unconfigured.
     std::string command_topic;  ///< Actual isolated base TwistStamped transport after independent map admission.
     std::string controller_image_topic;  ///< Full original depth relayed with an explicitly calibrated private optical-frame alias.

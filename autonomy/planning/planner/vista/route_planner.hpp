@@ -33,13 +33,19 @@ struct VistaRoute {
     bool canceled = false;  ///< Caller requested cancellation before completion.
     bool execution_verified = false;  ///< Never asserted by this planar route planner.
     std::optional<VistaMapEvidence> evidence;  ///< Certificate from the same snapshot as this route.
+    bool attempted = false;  ///< Goal unreachable; path is the closest reachable approach.
+    double attempted_distance = 0;  ///< Remaining distance from the attempted end to the goal.
 };
 /** @brief Own one persistent graph and prevent routes from observing partial updates. */
 class VistaRoutePlanner {
 public:
-    /** @brief Configure footprint checks and the contour vertex budget. */
+    /** @brief Configure footprint checks, the contour vertex budget and edge votes.
+     * @param edge_confirmation_votes Consecutive valid observations required
+     * before an edge is usable; 1 admits immediately.
+     */
     explicit VistaRoutePlanner(autonomy::navigation::SafetyOptions options = {},
-                                std::size_t maximum_nodes = 4096);
+                                std::size_t maximum_nodes = 4096,
+                                unsigned edge_confirmation_votes = 1);
     /** @brief Apply consecutive deltas, or fully refresh after a missing revision.
      * @throws std::invalid_argument The view violates geometry or epoch contracts.
      * @details Malformed views preserve accepted state. An exception during graph

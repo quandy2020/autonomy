@@ -17,6 +17,7 @@ autonomy_cc_library(
         "planner/navfn/navfn.cpp",
         "planner/navfn/navfn_planner.cpp",
         "planner/theta_star/theta_star_planner.cpp",
+        "planner/tare_explorer/tare_explorer.cpp",
         "planner_autolink_actions.cpp",
         "planner_options.cpp",
         "planner_server.cpp",
@@ -35,6 +36,7 @@ autonomy_cc_library(
         "planner/navfn/navfn.hpp",
         "planner/navfn/navfn_planner.hpp",
         "planner/theta_star/theta_star_planner.hpp",
+        "planner/tare_explorer/tare_explorer.hpp",
         "planner_options.hpp",
         "planner_server.hpp",
         "utils/geometry_utils.hpp",
@@ -57,6 +59,17 @@ autonomy_cc_library(
         "@com_google_protobuf//:protobuf",
         "//:pthread",
     ],
+)
+
+autonomy_cc_binary(
+    name = "tare_explorer_test",
+    srcs = [
+        "planner/tare_explorer/tare_explorer.cpp",
+        "planner/tare_explorer/tare_explorer.hpp",
+        "planner/tare_explorer/tare_explorer_test.cpp",
+    ],
+    testonly = True,
+    defines = ["TARE_EXPLORER_CORE_ONLY"],
 )
 
 autonomy_cc_binary(

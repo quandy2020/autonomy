@@ -23,6 +23,7 @@
 #include <algorithm>
 
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -702,10 +703,12 @@ private:
         }
         const int linear =
             index->y * static_cast<int>(grid_.info().width()) + index->x;
-        if (linear < 0 || linear >= grid_.data_size()) {
+        if (linear < 0 ||
+            linear >= automsgs::msgs::map_msgs::OccupancyGridCellCount(grid_)) {
             return std::nullopt;
         }
-        return static_cast<int8_t>(grid_.data(linear));
+        return static_cast<int8_t>(
+            automsgs::msgs::map_msgs::OccupancyGridCell(grid_, linear));
     }
 
     const automsgs::msgs::map_msgs::OccupancyGrid& grid_;

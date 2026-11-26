@@ -532,7 +532,8 @@ void SceneOverlay::addTexturedQuad(const QVector3D& top_left,
                                    const QImage& image,
                                    TextureFilterMode filter_mode,
                                    int draw_order, bool depth_write,
-                                   bool depth_check) {
+                                   bool depth_check, const QVector4D& tint,
+                                   bool premultiplied_alpha) {
   if (image.isNull()) {
     return;
   }
@@ -542,6 +543,7 @@ void SceneOverlay::addTexturedQuad(const QVector3D& top_left,
   batch.draw_order = draw_order;
   batch.depth_write = depth_write;
   batch.depth_check = depth_check;
+  batch.premultiplied_alpha = premultiplied_alpha;
   // CCW when viewed from +Z so top-down cameras (looking toward -Z) see the
   // front face. Matches REP-103 map plane (XY, Z up).
   batch.vertices = {
@@ -552,6 +554,7 @@ void SceneOverlay::addTexturedQuad(const QVector3D& top_left,
       {bottom_right, QVector2D(1.f, 1.f)},
       {top_right, QVector2D(1.f, 0.f)},
   };
+  for (auto& vertex : batch.vertices) vertex.color = tint;
   textured_batches_.push_back(std::move(batch));
   textured_dirty_ = true;
 }
@@ -987,6 +990,7 @@ void SceneOverlay::renderTexturedBatches(const QMatrix4x4& view,
     if (batch.vertices.empty() || batch.image.isNull()) {
       continue;
     }
+    gl_extra->glBlendFuncSeparate(batch.premultiplied_alpha ? 1 : 0x0302, 0x0303, 0, 1);
     // /map depth_write; costmap stays depth-write off above it.
     gl->glDepthMask(batch.depth_write ? 0x0001 : 0x0000);
     if (batch.depth_check) {

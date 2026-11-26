@@ -31,6 +31,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose2d.pb.h>
 #include <automsgs/msgs/map_msgs/occupancy_grid.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>
 #include <automsgs/msgs/time_utils.hpp>
@@ -233,7 +234,9 @@ protected:
     inline int8_t getMaskData(
         std::shared_ptr<const automsgs::msgs::map_msgs::OccupancyGrid> filter_mask,
         const unsigned int mx, const unsigned int my) const {
-        return filter_mask->data(my * filter_mask->info().width() + mx);
+        return static_cast<int8_t>(automsgs::msgs::map_msgs::OccupancyGridCell(
+            *filter_mask,
+            static_cast<int>(my * filter_mask->info().width() + mx)));
     }
 
     /**

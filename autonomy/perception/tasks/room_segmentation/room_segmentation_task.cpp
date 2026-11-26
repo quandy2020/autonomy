@@ -1,5 +1,6 @@
 #include "autonomy/perception/tasks/room_segmentation/room_segmentation_task.hpp"
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <cmath>
 #include <cstring>
 #include <utility>
@@ -23,7 +24,8 @@ bool PrepareRoomGrid(
     if (!tensor || !transform || grid.header().frame_id().empty() ||
         info.width() == 0 || info.height() == 0 ||
         static_cast<uint64_t>(info.width()) * info.height() !=
-            static_cast<uint64_t>(grid.data_size()) ||
+            static_cast<uint64_t>(
+                automsgs::msgs::map_msgs::OccupancyGridCellCount(grid)) ||
         !std::isfinite(info.resolution()) || info.resolution() <= 0 ||
         !std::isfinite(pose.position().x()) || !std::isfinite(pose.position().y()) ||
         !std::isfinite(norm) || std::abs(norm - 1) > 1e-3 ||
@@ -33,14 +35,20 @@ bool PrepareRoomGrid(
     std::vector<int64_t> shape;
     if (input.element_type != common::network::ElementType::kFloat32 ||
         !common::network::ResolveShapeForElementCount(
-            input, static_cast<size_t>(grid.data_size()), &shape, error) ||
+            input,
+            static_cast<size_t>(
+                automsgs::msgs::map_msgs::OccupancyGridCellCount(grid)),
+            &shape, error) ||
         shape != std::vector<int64_t>{1, 1, info.height(), info.width()}) {
         return fail("RRCE grid input must match float32 [1,1,height,width].");
     }
 
     std::vector<float> cells;
-    cells.reserve(grid.data_size());
-    for (const auto value : grid.data()) {
+    const int cell_count =
+        automsgs::msgs::map_msgs::OccupancyGridCellCount(grid);
+    cells.reserve(static_cast<size_t>(cell_count));
+    for (int i = 0; i < cell_count; ++i) {
+        const int value = automsgs::msgs::map_msgs::OccupancyGridCell(grid, i);
         if (value < -1 || value > 100)
             return fail("Occupancy values must be -1 or in [0,100].");
         cells.push_back(value < 0 ? -1.0F : value / 100.0F);

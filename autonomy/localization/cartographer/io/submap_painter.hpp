@@ -17,6 +17,8 @@
 #ifndef CARTOGRAPHER_IO_SUBMAP_PAINTER_H_
 #define CARTOGRAPHER_IO_SUBMAP_PAINTER_H_
 
+#include <vector>
+
 #include "Eigen/Geometry"
 #include "autonomy/localization/cartographer/io/image.hpp"
 #include "autonomy/localization/cartographer/io/proto_stream_deserializer.hpp"

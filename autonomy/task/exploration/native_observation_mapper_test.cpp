@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <unistd.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "autonomy/task/exploration/integration/native_observation_mapper.hpp"
 #include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
 
@@ -103,7 +104,7 @@ void PrefixAndPersistence(const std::filesystem::path& directory) {
     Require(reply && reply->success && reply->fusion_confirmed,"native save follows actual file synchronization");
     const auto occupancy = Read<::automsgs::msgs::map_msgs::OccupancyGrid>(directory/"actual_map.occupancy.pb");
     const auto grid = Read<::automsgs::msgs::map_msgs::GridMap>(directory/"actual_map.grid.pb");
-    Require(occupancy.data_size() == 400 && occupancy.header().frame_id() == "map" && grid.layers_size() == 5 &&
+    Require(automsgs::msgs::map_msgs::OccupancyGridCellCount(occupancy) == 400 && occupancy.header().frame_id() == "map" && grid.layers_size() == 5 &&
         std::find(grid.layers().begin(),grid.layers().end(),"navigation_state") != grid.layers().end(),
         "both persisted maps retain actual bounded geometry and native grid_map layers");
     ::grid_map::GridMap restored;
@@ -136,7 +137,8 @@ void UnknownHeight(const std::filesystem::path& directory) {
     const auto mapped = mapper.Process(9,Packet(1),10.01); const auto occupancy = mapper.Occupancy();
     Require(mapped && occupancy,"actual tall-robot geometry produced");
     std::size_t planar_free = 0, volume_free = 0;
-    for (int value : occupancy->data()) if (value == 0) ++planar_free;
+    for (int i = 0; i < automsgs::msgs::map_msgs::OccupancyGridCellCount(*occupancy); ++i)
+        if (automsgs::msgs::map_msgs::OccupancyGridCell(*occupancy, i) == 0) ++planar_free;
     for (int x = 0; x < mapped->grid->width(); ++x) for (int y = 0; y < mapped->grid->height(); ++y)
         if (mapped->grid->At(x,y).state == n::CellState::kFree) ++volume_free;
     Require(planar_free > 0 && volume_free == 0,

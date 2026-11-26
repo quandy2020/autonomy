@@ -73,8 +73,9 @@ std::optional<Pose2d> FindStartAnchor(const perception::MapReadView& map,
 }
 }  // namespace
 
-VistaRoutePlanner::VistaRoutePlanner(autonomy::navigation::SafetyOptions options, std::size_t nodes)
-    : options_(options), updater_(nodes) {}
+VistaRoutePlanner::VistaRoutePlanner(autonomy::navigation::SafetyOptions options, std::size_t nodes,
+                                     unsigned edge_confirmation_votes)
+    : options_(options), updater_(nodes, 30.0, edge_confirmation_votes) {}
 GraphUpdateStats VistaRoutePlanner::Update(const perception::MapReadView& map) {
     std::lock_guard<std::mutex> lock(mutex_);
     if (map_ && (map.map_epoch < map_->map_epoch ||
@@ -210,6 +211,27 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
         result.length += distances.at(target); result.success = true;
     } else {
         result.used_grid_fallback = true;
+        // FAR planner style attempted path: the reachable approach that gets
+        // closest to the goal. It is exposed as an attempt, never as success,
+        // so callers keep the freedom to reject it.
+        std::vector<Pose2d> attempted;
+        double best_remaining = std::numeric_limits<double>::infinity();
+        NodeId best = std::numeric_limits<NodeId>::max();
+        for (const auto& entry : distances) {
+            if (entry.first == source) continue;
+            const double remaining = autonomy::navigation::Distance(poses.at(entry.first), goal);
+            if (remaining < best_remaining) { best_remaining = remaining; best = entry.first; }
+        }
+        if (best != std::numeric_limits<NodeId>::max()) {
+            NodeId n = best;
+            while (n != source) { attempted.push_back(poses.at(n)); n = parent.at(n); }
+            attempted.push_back(route_start);
+            std::reverse(attempted.begin(), attempted.end());
+            if (autonomy::navigation::Distance(start, route_start) > 1e-9)
+                attempted.insert(attempted.begin(), start);
+            result.attempted = true;
+            result.attempted_distance = best_remaining;
+        }
         // Grid connectivity is a fallback, so graph sparsification cannot declare unreachable.
         // The fallback must expand from the admitted route origin: the raw pose can
         // be inside its own safety margin and would yield an empty field.
@@ -221,6 +243,13 @@ VistaRoute VistaRoutePlanner::CreateRoute(const Pose2d& start, const Pose2d& goa
             result.path = route; result.success = true;
             for (std::size_t i = 1; i < route.poses.size(); ++i)
                 result.length += autonomy::navigation::Distance(route.poses[i-1],route.poses[i]);
+        } else if (!attempted.empty()) {
+            result.path.poses = std::move(attempted);
+            for (std::size_t i = 1; i < result.path.poses.size(); ++i)
+                result.length += autonomy::navigation::Distance(result.path.poses[i-1],
+                                                                result.path.poses[i]);
+            AINFO_EVERY(20) << "VISTA_ROUTE_ATTEMPTED nodes=" << result.path.poses.size()
+                            << " remaining=" << result.attempted_distance;
         }
     }
     // A 2D route is geometrically checked, but 3D/dynamic Safety still owns execution permission.

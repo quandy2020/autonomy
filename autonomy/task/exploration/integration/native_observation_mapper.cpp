@@ -23,6 +23,7 @@
 #include "autonomy/map/esdf/raycast.hpp"
 #include "autonomy/map/grid_map/grid_map_core/grid_map.hpp"
 #include "autonomy/map/grid_map/grid_map_msgs/grid_map_converter.hpp"
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 
 namespace autonomy::task::exploration {
 namespace {
@@ -230,8 +231,10 @@ public:
         info->mutable_origin()->mutable_orientation()->set_w(1);
         for (int y = 0; y < sizes_.y(); ++y) for (int x = 0; x < sizes_.x(); ++x) {
             double probability = 0;
-            occupancy_message_.add_data(occupancy_->ProbabilityAt(grid->CellCenter(x,y).x,grid->CellCenter(x,y).y,&probability) ?
-                probability >= .5 ? 100 : 0 : -1);
+            automsgs::msgs::map_msgs::OccupancyGridAppendCell(
+                &occupancy_message_,
+                occupancy_->ProbabilityAt(grid->CellCenter(x,y).x,grid->CellCenter(x,y).y,&probability) ?
+                    probability >= .5 ? 100 : 0 : -1);
         }
         layers_->setTimestamp(static_cast<::grid_map::Time>(std::llround(stamp_*1e9)));
         ::grid_map::GridMapConverter::toMessage(*layers_,grid_message_);

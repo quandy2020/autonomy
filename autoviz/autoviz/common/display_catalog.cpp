@@ -34,8 +34,11 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
                "Shows the TF transform tree from the shared buffer "
                "(/tf and /tf_static).",
                {"automsgs.msgs.tf2_msgs.TFMessage", "tf2_msgs.TFMessage"}),
-      MakeInfo("LaserScan", "autoviz", "Shows a sensor_msgs/LaserScan message.",
-               {"automsgs.msgs.sensor_msgs.LaserScan", "sensor_msgs.LaserScan"}),
+      MakeInfo("LaserScan", "autoviz",
+               "Shows sensor_msgs/LaserScan (first echo of MultiEchoLaserScan).",
+               {"automsgs.msgs.sensor_msgs.LaserScan", "sensor_msgs.LaserScan",
+                "automsgs.msgs.sensor_msgs.MultiEchoLaserScan",
+                "sensor_msgs.MultiEchoLaserScan"}),
       MakeInfo("RadarFov", "autoviz",
                "EVB1122 / TrafficRadar sector chart: road strip, FOV fan, "
                "range rings and distance labels."),
@@ -55,9 +58,15 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
       // the center Image panel (ImageDock). Factory still registers the type.
       MakeInfo("Camera", "autoviz", "Shows a camera image and frustum.",
                {"automsgs.msgs.sensor_msgs.Image", "sensor_msgs.Image"}),
-      MakeInfo("Map", "autoviz", "Shows a map from map_msgs/OccupancyGrid.",
+      MakeInfo("Map", "autoviz",
+               "Shows a nav_msgs/OccupancyGrid occupancy map.",
                {"automsgs.msgs.map_msgs.OccupancyGrid",
-                "map_msgs.OccupancyGrid"}),
+                "map_msgs.OccupancyGrid", "automsgs.msgs.nav_msgs.OccupancyGrid",
+                "nav_msgs.OccupancyGrid"}),
+#ifdef AUTOVIZ_HAS_CARTOGRAPHER
+      MakeInfo("Submaps", "cartographer", "Cartographer submap textures, IDs and pose axes.",
+               {"autonomy.localization.cartographer.proto.SubmapList"}),
+#endif
       MakeInfo("GridMap", "autoviz",
                "Shows map_msgs/GridMap (mesh / point_cloud / occupancy_grid / "
                "grid_cells / map_region / vectors — grid_map_visualization + "

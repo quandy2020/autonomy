@@ -124,6 +124,7 @@ class SceneOverlay {
     /** Base /map writes depth so costmap can depth-test above it. */
     bool depth_write = false;
     bool depth_check = true;
+    bool premultiplied_alpha = false; /**< Cartographer's additive probability textures. */
   };
 
   /**
@@ -325,7 +326,9 @@ class SceneOverlay {
                        const QVector3D& bottom_left, const QImage& image,
                        TextureFilterMode filter_mode = TextureFilterMode::kLinear,
                        int draw_order = 0, bool depth_write = false,
-                       bool depth_check = true);
+                       bool depth_check = true,
+                       const QVector4D& tint = QVector4D(1.f, 1.f, 1.f, 1.f),
+                       bool premultiplied_alpha = false);
 
   /**
    * @brief Screen-aligned quad (TEXT markers, billboards). Expanded at render time.

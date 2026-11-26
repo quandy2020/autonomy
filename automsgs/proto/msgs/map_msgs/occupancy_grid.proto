@@ -24,5 +24,8 @@ import "automsgs/msgs/std_msgs/header.proto";
 message OccupancyGrid {
   automsgs.msgs.std_msgs.Header header = 1;
   MapMetaData info = 2;
-  repeated int32 data = 3;
+  // ROS nav_msgs/OccupancyGrid: int8[] data (-1 unknown, 0–100 occupancy).
+  // proto3 has no int8; packed sint32 is the signed cell array (same values as
+  // ROS int8[]). Unknown -1 is one byte on the wire.
+  repeated sint32 data = 3;
 }

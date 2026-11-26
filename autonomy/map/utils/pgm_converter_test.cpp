@@ -32,6 +32,7 @@
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
 #include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/utils/occ_grid_values.hpp"
 #include "gtest/gtest.h"
@@ -54,14 +55,16 @@ std::shared_ptr<map::costmap_2d::Costmap2D> CreateTestCostmap(
     grid.mutable_info()->mutable_origin()->mutable_orientation()->set_w(1.0);
 
     const size_t size = width * height;
-    grid.mutable_data()->Resize(static_cast<int>(size),
-                                map::costmap_2d::utils::OCC_GRID_FREE);
+    automsgs::msgs::map_msgs::OccupancyGridResizeCells(
+        &grid, static_cast<int>(size),
+        map::costmap_2d::utils::OCC_GRID_FREE);
 
     // Add some obstacles in the center
     for (unsigned int y = height / 3; y < 2 * height / 3; ++y) {
         for (unsigned int x = width / 3; x < 2 * width / 3; ++x) {
-            grid.set_data(static_cast<int>(y * width + x),
-                          map::costmap_2d::utils::OCC_GRID_OCCUPIED);
+            automsgs::msgs::map_msgs::OccupancyGridSetCell(
+                &grid, static_cast<int>(y * width + x),
+                map::costmap_2d::utils::OCC_GRID_OCCUPIED);
         }
     }
 

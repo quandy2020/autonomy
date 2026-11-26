@@ -224,6 +224,14 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(const std::filesystem::p
     options.odometry_output_topic = yaml["base_odometry_topic"].as<std::string>();
     options.occupancy_output_topic = yaml["occupancy_topic"].as<std::string>(); options.grid_output_topic = yaml["grid_topic"].as<std::string>();
     options.host_vista_server = yaml["host_vista_server"].as<bool>();
+    if (yaml["vista_edge_confirmation_votes"]) {
+        // 0 is the explicit "use the planner default" value, so validation
+        // harnesses can always write the key without changing behaviour.
+        const auto votes = yaml["vista_edge_confirmation_votes"].as<int>();
+        if (votes < 0 || votes > 32)
+            throw std::invalid_argument("vista_edge_confirmation_votes must be within [0, 32]");
+        options.vista_edge_confirmation_votes = static_cast<unsigned>(votes);
+    }
     options.measured_coverage_topic = yaml["measured_coverage_topic"] ? yaml["measured_coverage_topic"].as<std::string>() :
         options.grid_output_topic+"/measured_coverage";
     if (yaml["controller_options_file"]) {
@@ -330,6 +338,8 @@ public:
             }
             planner.mutable_vista()->set_robot_height(options_.mapping.robot_height); planner.mutable_vista()->set_vertical_margin(options_.mapping.vertical_margin);
             planner.mutable_vista()->set_horizontal_margin(options_.exploration.coverage.safety.horizontal_margin);
+            if (options_.vista_edge_confirmation_votes)
+                planner.mutable_vista()->set_edge_confirmation_votes(options_.vista_edge_confirmation_votes);
             planner_ = std::make_unique<planning::PlannerServer>(planner);
             // Stop/join this newly owned updater before changing its frame
             // string; no external shared-map object is modified.

@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "gtest/gtest.h"
 
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
@@ -49,7 +50,7 @@ TEST(GridMapConverter, OccupancyGridRoundTrip) {
   GridMapConverter::toOccupancyGrid(map, "occupancy", 0.0f, 100.0f, occupancy);
   ASSERT_EQ(occupancy.info().width(), 2u);
   ASSERT_EQ(occupancy.info().height(), 2u);
-  ASSERT_EQ(occupancy.data_size(), 4);
+  ASSERT_EQ(automsgs::msgs::map_msgs::OccupancyGridCellCount(occupancy), 4);
 
   GridMap restored;
   ASSERT_TRUE(

@@ -79,6 +79,7 @@
 #include "autoviz/common/widget/feedback/info_bar.hpp"
 #include "autoviz/ui/theme/panel.hpp"
 #include "autoviz/ui/theme/style.hpp"
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "automsgs/msgs/geometry_msgs/point_stamped.pb.h"
 #include "automsgs/msgs/visualization_msgs/marker_array.pb.h"
 
@@ -1774,8 +1775,10 @@ bool CoveragePanel::AttachLiveMap(
   const auto& q = grid->info().origin().orientation();
   map->set_origin_yaw(std::atan2(2.0 * (q.w() * q.z() + q.x() * q.y()),
                                  1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z())));
-  for (const int value : grid->data()) {
-    map->add_data(value);
+  const int cell_count =
+      automsgs::msgs::map_msgs::OccupancyGridCellCount(*grid);
+  for (int i = 0; i < cell_count; ++i) {
+    map->add_data(automsgs::msgs::map_msgs::OccupancyGridCell(*grid, i));
   }
   return true;
 }

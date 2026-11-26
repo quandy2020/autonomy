@@ -12,6 +12,7 @@
 #include <memory>
 #include <string>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <gtest/gtest.h>
 #include <Eigen/Geometry>
 
@@ -201,7 +202,7 @@ TEST(MessageAdapterMapSnapshotTest, EncodesOneCallerPinnedGeneration) {
     EXPECT_NEAR(grid.info().origin().position().x(), 1.0, 1e-12);
     EXPECT_NEAR(grid.info().origin().position().y(), 2.0, 1e-12);
     EXPECT_NEAR(grid.info().origin().position().z(), 0.0, 1e-12);
-    EXPECT_EQ(grid.data_size(), 2);
+    EXPECT_EQ(automsgs::msgs::map_msgs::OccupancyGridCellCount(grid), 2);
 }
 
 TEST(MessageAdapterMapSnapshotTest, PublishesGlobalDenseMapNotRollingNavigation) {

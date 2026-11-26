@@ -3,6 +3,7 @@
  * @brief Area-weighted native coverage projection without map/prediction substitution.
  */
 #include "autonomy/task/exploration/coverage/measured_coverage_map.hpp"
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <algorithm>
 #include <cmath>
 #include <limits>
@@ -46,8 +47,11 @@ namespace autonomy::task::exploration {
     info->mutable_origin()->mutable_position()->set_x(map.grid->origin_x());
     info->mutable_origin()->mutable_position()->set_y(map.grid->origin_y());
     info->mutable_origin()->mutable_orientation()->set_w(1);
-    for (const auto& cell : cells) output.add_data(cell.area == 0 ? -1 : cell.complete ? 100 :
-        std::clamp(static_cast<int>(std::floor(100*cell.observed/cell.area)),0,99));
+    for (const auto& cell : cells) {
+        automsgs::msgs::map_msgs::OccupancyGridAppendCell(
+            &output, cell.area == 0 ? -1 : cell.complete ? 100 :
+            std::clamp(static_cast<int>(std::floor(100*cell.observed/cell.area)),0,99));
+    }
     return output;
 }
 }  // namespace autonomy::task::exploration

@@ -16,6 +16,7 @@
 
 #include "autonomy/map/costmap_2d/filters/costmap_filter.hpp"
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <cmath>
 
 #include "autonomy/common/logging.hpp"
@@ -217,7 +218,9 @@ unsigned char CostmapFilter::getMaskCost(
         return NO_INFORMATION;
     }
 
-    const int8_t data = filter_mask->data(index);
+    const int8_t data = static_cast<int8_t>(
+        automsgs::msgs::map_msgs::OccupancyGridCell(*filter_mask,
+                                                     static_cast<int>(index)));
     if (data == utils::OCC_GRID_UNKNOWN) {
         return NO_INFORMATION;
     }

@@ -38,6 +38,7 @@
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
 #include "autonomy/localization/cartographer/node/node_utils.hpp"
 #include "autonomy/localization/cartographer/node/occupancy_grid_builder.hpp"
+#include "autonomy/localization/cartographer/common/time.hpp"
 #include "autonomy/localization/cartographer/node/time_conversion.hpp"
 #include "autonomy/transform/buffer_utils.hpp"
 
@@ -106,6 +107,11 @@ CartographerNode::CartographerNode(
 
 CartographerNode::~CartographerNode() { FinishAllTrajectories(); }
 
+void CartographerNode::SetExtrinsicTransforms(
+    automsgs::msgs::geometry_msgs::TransformStampeds transforms) {
+    extrinsic_transforms_ = std::move(transforms);
+}
+
 bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
     node_ = std::move(node);
     if (!node_) {
@@ -119,6 +125,10 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
         tracked_pose_writer_ =
             node_->CreateWriter<automsgs::msgs::geometry_msgs::PoseStamped>(
                 kTrackedPoseTopic);
+    }
+    if (node_options_.trajectory_publish_period_sec > 0.) {
+        trajectory_writer_ =
+            node_->CreateWriter<automsgs::msgs::nav_msgs::Path>(kTrajectoryTopic);
     }
     if (node_options_.publish_occupancy_grid) {
         occupancy_grid_writer_ =
@@ -186,6 +196,14 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
         timers_.emplace_back(std::make_unique<autolink::Timer>(
             TimerPeriodMs(node_options_.pose_publish_period_sec),
             [this]() { PublishLocalTrajectoryData(); }, false));
+    }
+    if (node_options_.trajectory_publish_period_sec > 0.) {
+        // Lua keeps cartographer_ros' 30 ms; a full Path does not need that rate.
+        const double period_sec =
+            std::max(node_options_.trajectory_publish_period_sec, 0.2);
+        timers_.emplace_back(std::make_unique<autolink::Timer>(
+            TimerPeriodMs(period_sec), [this]() { PublishTrajectory(); },
+            false));
     }
     if (node_options_.publish_occupancy_grid) {
         timers_.emplace_back(std::make_unique<autolink::Timer>(
@@ -448,13 +466,25 @@ void CartographerNode::PublishLocalTrajectoryData() {
         const bool external_odom_publish =
             trajectory_data.trajectory_options.published_frame ==
             trajectory_data.trajectory_options.odom_frame;
-        const carto::common::Time wall_now = std::max(
-            FromCommsgs(automsgs::msgs::builtin_interfaces::Now()),
-            extrapolator.GetLastExtrapolatedTime());
+        const carto::common::Time slam_time =
+            trajectory_data.local_slam_data->time;
+        const carto::common::Time wall_now =
+            FromCommsgs(automsgs::msgs::builtin_interfaces::Now());
+        // Autolink Now() is wall time. Bag playback is 2015-era sensor stamps;
+        // extrapolating to wall now (~11 years) freezes/explodes TF. Only
+        // extrapolate when the host clock is aligned with SLAM time (live).
+        const double clock_skew_sec =
+            (wall_now >= slam_time)
+                ? carto::common::ToSeconds(wall_now - slam_time)
+                : carto::common::ToSeconds(slam_time - wall_now);
+        const bool live_clock = clock_skew_sec < 1.0;
+        const bool extrapolate =
+            node_options_.use_pose_extrapolator && !external_odom_publish &&
+            live_clock;
         const carto::common::Time publish_time =
-            (node_options_.use_pose_extrapolator && !external_odom_publish)
-                ? wall_now
-                : trajectory_data.local_slam_data->time;
+            extrapolate
+                ? std::max(wall_now, extrapolator.GetLastExtrapolatedTime())
+                : slam_time;
 
         automsgs::msgs::geometry_msgs::TransformStamped stamped_transform;
         *stamped_transform.mutable_header()->mutable_stamp() =
@@ -471,9 +501,8 @@ void CartographerNode::PublishLocalTrajectoryData() {
             stamped_transform.header().stamp();
 
         const Rigid3d tracking_to_local_3d =
-            (node_options_.use_pose_extrapolator && !external_odom_publish)
-                ? extrapolator.ExtrapolatePose(publish_time)
-                : trajectory_data.local_slam_data->local_pose;
+            extrapolate ? extrapolator.ExtrapolatePose(publish_time)
+                        : trajectory_data.local_slam_data->local_pose;
         const Rigid3d tracking_to_local = [&] {
             if (trajectory_data.trajectory_options
                     .publish_frame_projected_to_2d) {
@@ -485,6 +514,25 @@ void CartographerNode::PublishLocalTrajectoryData() {
 
         const Rigid3d tracking_to_map =
             trajectory_data.local_to_map * tracking_to_local;
+
+        if (trajectory_writer_) {
+            if (live_trajectory_.header().frame_id().empty()) {
+                live_trajectory_.mutable_header()->set_frame_id(
+                    node_options_.map_frame);
+            }
+            *live_trajectory_.mutable_header()->mutable_stamp() =
+                stamped_transform.header().stamp();
+            auto* pose = live_trajectory_.add_poses();
+            pose->mutable_header()->set_frame_id(node_options_.map_frame);
+            *pose->mutable_header()->mutable_stamp() =
+                stamped_transform.header().stamp();
+            *pose->mutable_pose() = ToGeometryMsgPose(tracking_to_map);
+            constexpr int kMaxLivePoses = 8000;
+            const int extra = live_trajectory_.poses_size() - kMaxLivePoses;
+            if (extra > 0) {
+                live_trajectory_.mutable_poses()->DeleteSubrange(0, extra);
+            }
+        }
 
         // Look up published→tracking at the same time as tracking_to_map.
         std::unique_ptr<Rigid3d> published_to_tracking;
@@ -504,9 +552,15 @@ void CartographerNode::PublishLocalTrajectoryData() {
         if (node_options_.publish_to_tf && tf_broadcaster_) {
             std::vector<automsgs::msgs::geometry_msgs::TransformStamped>
                 stamped_transforms;
+            std::string published_frame =
+                trajectory_data.trajectory_options.published_frame;
+            if (published_to_tracking == nullptr) {
+                published_to_tracking =
+                    std::make_unique<Rigid3d>(Rigid3d::Identity());
+                published_frame =
+                    trajectory_data.trajectory_options.tracking_frame;
+            }
             if (published_to_tracking != nullptr) {
-                std::string published_frame =
-                    trajectory_data.trajectory_options.published_frame;
                 if (trajectory_data.trajectory_options.provide_odom_frame) {
                     stamped_transform.mutable_header()->set_frame_id(
                         node_options_.map_frame);
@@ -550,6 +604,16 @@ void CartographerNode::PublishLocalTrajectoryData() {
                     for (const auto& published : stamped_transforms) {
                         *tf_msg.add_transforms() = published;
                     }
+                    // Museum / backpack URDF joints are not on /tf_static in
+                    // Autoviz (no latch). Stamp them with this SLAM tick so
+                    // map→horizontal_laser_link exists at the scan time.
+                    for (const auto& extrinsic :
+                         extrinsic_transforms_.transforms()) {
+                        auto* added = tf_msg.add_transforms();
+                        *added = extrinsic;
+                        *added->mutable_header()->mutable_stamp() =
+                            stamped_transform.header().stamp();
+                    }
                     tf_writer_->Write(tf_msg);
                 }
             }
@@ -562,6 +626,53 @@ void CartographerNode::PublishLocalTrajectoryData() {
             *pose_msg.mutable_pose() = ToGeometryMsgPose(tracking_to_map);
             tracked_pose_writer_->Write(pose_msg);
         }
+    }
+}
+
+void CartographerNode::PublishTrajectory() {
+    if (!trajectory_writer_) {
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (live_trajectory_.poses_size() >= 2) {
+        trajectory_writer_->Write(live_trajectory_);
+        return;
+    }
+    auto* pose_graph = map_builder_bridge_->map_builder()->pose_graph();
+    if (pose_graph == nullptr) {
+        return;
+    }
+    const auto node_poses = pose_graph->GetTrajectoryNodePoses();
+    if (node_poses.empty()) {
+        return;
+    }
+
+    automsgs::msgs::nav_msgs::Path path;
+    path.mutable_header()->set_frame_id(node_options_.map_frame);
+    *path.mutable_header()->mutable_stamp() =
+        automsgs::msgs::builtin_interfaces::Now();
+    const size_t node_count = node_poses.size();
+    constexpr size_t kMaxPathPoses = 8000;
+    const size_t stride =
+        std::max<size_t>(1, (node_count + kMaxPathPoses - 1) / kMaxPathPoses);
+    size_t index = 0;
+    for (const auto& node_id_data : node_poses) {
+        const bool keep = (index % stride) == 0 || index + 1 == node_count;
+        ++index;
+        if (!keep) {
+            continue;
+        }
+        automsgs::msgs::geometry_msgs::PoseStamped pose;
+        pose.mutable_header()->set_frame_id(node_options_.map_frame);
+        if (node_id_data.data.constant_pose_data.has_value()) {
+            *pose.mutable_header()->mutable_stamp() =
+                ToCommsgs(node_id_data.data.constant_pose_data->time);
+        }
+        *pose.mutable_pose() = ToGeometryMsgPose(node_id_data.data.global_pose);
+        *path.add_poses() = std::move(pose);
+    }
+    if (path.poses_size() >= 2) {
+        trajectory_writer_->Write(path);
     }
 }
 

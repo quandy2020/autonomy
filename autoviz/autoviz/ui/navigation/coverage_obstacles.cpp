@@ -4,6 +4,7 @@
  * @brief Live occupancy-grid obstacle extraction implementation. */
 #include "autoviz/ui/navigation/coverage_obstacles.hpp"
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <algorithm>
 #include <cmath>
 #include <cstring>
@@ -62,7 +63,8 @@ bool Occupied(const automsgs::msgs::map_msgs::OccupancyGrid& grid, int x,
       y >= static_cast<int>(info.height())) {
     return false;
   }
-  const int value = grid.data(static_cast<int>(Index(info, x, y)));
+  const int value = automsgs::msgs::map_msgs::OccupancyGridCell(
+      grid, static_cast<int>(Index(info, x, y)));
   return value >= threshold;
 }
 
@@ -86,7 +88,8 @@ std::vector<ObstacleRing> CoverageObstacleExtractor::Extract(
   const int width = static_cast<int>(info.width());
   const int height = static_cast<int>(info.height());
   if (width <= 0 || height <= 0 || info.resolution() <= 0.f ||
-      grid.data_size() != width * height) {
+      automsgs::msgs::map_msgs::OccupancyGridCellCount(grid) !=
+          width * height) {
     return {};
   }
 

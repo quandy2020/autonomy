@@ -17,6 +17,7 @@
 #include "autonomy/task/teleop/path_selector.hpp"
 #include "autonomy/task/teleop/obstacle_grid.hpp"
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <memory>
 
 #include "autonomy/map/costmap_2d/cost_values.hpp"
@@ -204,10 +205,7 @@ TEST(IntentPathSelectorTest, OccupancyGridSelection) {
     grid.mutable_info()->set_height(200);
     grid.mutable_info()->mutable_origin()->mutable_position()->set_x(-5.0);
     grid.mutable_info()->mutable_origin()->mutable_position()->set_y(-5.0);
-    grid.mutable_data()->Reserve(200 * 200);
-    for (int i = 0; i < 200 * 200; ++i) {
-        grid.add_data(0);
-    }
+    automsgs::msgs::map_msgs::OccupancyGridResizeCells(&grid, 200 * 200, 0);
     const auto path = selector.Select(grid, 0.0, 0.5);
     EXPECT_TRUE(path.has_value());
 }

@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "autonomy/common/logging.hpp"
 #include "autonomy/map/costmap_2d/utils/validate_messages.hpp"
 #include "autonomy/map/proto/map_2d_option.pb.h"
@@ -169,7 +170,9 @@ void StaticLayer::processMap(const automsgs::msgs::map_msgs::OccupancyGrid& new_
     int count_free = 0, count_occupied = 0, count_unknown = 0, count_other = 0;
     for (unsigned int i = 0; i < size_y; ++i) {
         for (unsigned int j = 0; j < size_x; ++j) {
-            const int16_t raw_value = new_map.data(index);
+            const int16_t raw_value = static_cast<int16_t>(
+                automsgs::msgs::map_msgs::OccupancyGridCell(
+                    new_map, static_cast<int>(index)));
             unsigned char cost;
             if (raw_value < 0) {
                 cost = track_unknown_space_ ? NO_INFORMATION : FREE_SPACE;
@@ -297,7 +300,8 @@ void StaticLayer::incomingUpdate(
         unsigned int index_base = (update->y() + y) * size_x_;
         for (unsigned int x = 0; x < update->width(); x++) {
             unsigned int index = index_base + x + update->x();
-            costmap_[index] = interpretValue(update->data(di++));
+            costmap_[index] = interpretValue(
+                automsgs::msgs::map_msgs::OccupancyGridCell(*update, static_cast<int>(di++)));
         }
     }
 

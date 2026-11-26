@@ -16,6 +16,7 @@
 
 #include "autonomy/map/costmap_2d/filters/keepout_filter.hpp"
 
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include <algorithm>
 #include <cstdint>
 
@@ -212,7 +213,9 @@ unsigned char KeepoutFilter::keepoutCostFromMaskCell(unsigned int mx,
         return NO_INFORMATION;
     }
 
-    const int8_t occ = filter_mask_->data(index);
+    const int8_t occ = static_cast<int8_t>(
+        automsgs::msgs::map_msgs::OccupancyGridCell(*filter_mask_,
+                                                     static_cast<int>(index)));
     if (occ == utils::OCC_GRID_UNKNOWN) {
         return NO_INFORMATION;
     }

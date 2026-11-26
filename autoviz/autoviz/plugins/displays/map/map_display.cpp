@@ -14,6 +14,7 @@
 #include <string>
 
 #include <automsgs/msgs/builtin_interfaces/time.pb.h>
+#include <automsgs/msgs/map_msgs/occupancy_grid_cells.hpp>
 #include "autoviz/commsgs/time_utils.hpp"
 #include "autoviz/common/display_property.hpp"
 #include "autoviz/plugins/displays/common/transform_utils.hpp"
@@ -23,9 +24,11 @@ namespace autoviz {
 namespace display {
 namespace {
 
-// RViz Map palettes (rviz_default_plugins/.../palette_builder.cpp).
-// RViz uploads OccupancyGrid int8 cells as uint8 indices into a 256-entry
-// palette (swatch.cpp → PF_L8 + Indexed8BitImage). Mirror that exactly.
+// OccupancyGrid int8[] coloring.
+// "map" matches RViz MapDisplay::makeMapPalette (rviz_default_plugins):
+//   0–100 linear gray 255-(255*i)/100, unknown (uint8 255 / int8 -1) =
+//   RGB 0x70,0x89,0x86, illegal 101–127 green / 128–254 red→yellow.
+// "costmap" keeps the RViz costmap palette.
 
 using Palette = std::array<QColor, 256>;
 
@@ -58,7 +61,6 @@ const Palette& MapPalette() {
     }
     FillIllegalPositive(&palette);
     FillIllegalNegative(&palette);
-    // Legal unknown (-1 as uint8 255): blueish/greenish gray.
     SetPaletteColor(&palette, 255, 0x70, 0x89, 0x86, 255);
     return palette;
   }();
@@ -99,13 +101,14 @@ const Palette& RawPalette() {
 }
 
 uint8_t OccupancyPaletteIndex(int32_t value) {
-  // nav_msgs int8 bit-pattern. Bridges that widen unknown -1 to 255 keep index
-  // 255 (same palette slot as signed -1).
-  if (value == 255) {
+  // ROS int8[]: -1 unknown. Some publishers send unknown as unsigned 255.
+  if (value == -1 || value == 255) {
     return 255;
   }
-  return static_cast<uint8_t>(
-      static_cast<int8_t>(std::clamp(value, -128, 127)));
+  // RViz indexes the palette with the occupancy byte as uint8 (int8 -1 → 255).
+  const int8_t as_int8 = static_cast<int8_t>(
+      std::clamp(value, static_cast<int32_t>(-128), static_cast<int32_t>(127)));
+  return static_cast<uint8_t>(as_int8);
 }
 
 QColor ApplyDisplayAlpha(QColor palette_color, float display_alpha) {
@@ -127,22 +130,20 @@ std::string NormalizeColorScheme(std::string scheme) {
   return "map";
 }
 
-QColor ColorForScheme(const std::string& scheme, int32_t value, float alpha) {
-  const std::string normalized = NormalizeColorScheme(scheme);
-  const Palette& palette = (normalized == "costmap") ? CostmapPalette()
-                         : (normalized == "raw")     ? RawPalette()
-                                                     : MapPalette();
-  return ApplyDisplayAlpha(palette[OccupancyPaletteIndex(value)], alpha);
-}
-
 int32_t AggregateBlock(const automsgs::msgs::map_msgs::OccupancyGrid& message,
                        uint32_t width, uint32_t height, uint32_t start_x,
                        uint32_t start_y, uint32_t step) {
+  if (step == 1) {
+    // Preserve signed byte values for RViz's diagnostic palette colors.
+    return automsgs::msgs::map_msgs::OccupancyGridCell(
+        message, static_cast<int>(start_y * width + start_x));
+  }
   int32_t best = -1;
   bool saw_known = false;
   for (uint32_t y = start_y; y < std::min(height, start_y + step); ++y) {
     for (uint32_t x = start_x; x < std::min(width, start_x + step); ++x) {
-      const int32_t value = message.data(y * width + x);
+      const int32_t value = automsgs::msgs::map_msgs::OccupancyGridCell(
+          message, static_cast<int>(y * width + x));
       if (value < 0) {
         continue;
       }
@@ -168,7 +169,7 @@ MapDisplay::MapDisplay(std::string channel)
 }
 
 std::vector<common::DisplayPropertySpec> MapDisplay::propertySpecs() const {
-  return {{"alpha", "Alpha", "0.85"},
+  return {{"alpha", "Alpha", "0.7"},
           {"color_scheme", "Color Scheme", "map", {"map", "costmap", "raw"}},
           {"use_timestamp", "Use Timestamp", "false"},
           {"draw_behind", "Draw Behind", "true"},
@@ -254,9 +255,10 @@ void MapDisplay::clearGeometry() {
 uint64_t MapDisplay::HashOccupancyData(
     const automsgs::msgs::map_msgs::OccupancyGrid& message) {
   uint64_t hash = 14695981039346656037ull;
-  const auto& data = message.data();
-  for (int i = 0; i < data.size(); ++i) {
-    hash ^= static_cast<uint64_t>(static_cast<uint8_t>(data.Get(i)));
+  const int count = automsgs::msgs::map_msgs::OccupancyGridCellCount(message);
+  for (int i = 0; i < count; ++i) {
+    const int cell = automsgs::msgs::map_msgs::OccupancyGridCell(message, i);
+    hash ^= static_cast<uint64_t>(static_cast<uint8_t>(cell));
     hash *= 1099511628211ull;
   }
   hash ^= message.info().width();
@@ -277,7 +279,7 @@ void MapDisplay::rebuildTexture() {
   const uint32_t width = info.width();
   const uint32_t height = info.height();
   if (width == 0 || height == 0 || resolution <= 0.f ||
-      static_cast<int>(current_message_.data_size()) <
+      automsgs::msgs::map_msgs::OccupancyGridCellCount(current_message_) <
           static_cast<int>(width * height)) {
     clearGeometry();
     return;
@@ -293,20 +295,27 @@ void MapDisplay::rebuildTexture() {
   }
 
   const float alpha = std::clamp(
-      common::ParseFloatProperty(propertyValue("alpha", "0.85"), 0.85f), 0.f,
+      common::ParseFloatProperty(propertyValue("alpha", "0.7"), 0.7f), 0.f,
       1.f);
   const std::string scheme =
       NormalizeColorScheme(propertyValue("color_scheme", "map"));
   QImage new_image(static_cast<int>(image_width),
                    static_cast<int>(image_height), QImage::Format_RGBA8888);
-  new_image.fill(Qt::transparent);
+  const Palette& colors = scheme == "costmap" ? CostmapPalette()
+                          : scheme == "raw" ? RawPalette() : MapPalette();
+  std::array<std::array<uchar, 4>, 256> rgba;
+  for (std::size_t i = 0; i < rgba.size(); ++i) {
+    const QColor color = ApplyDisplayAlpha(colors[i], alpha);
+    rgba[i] = {static_cast<uchar>(color.red()), static_cast<uchar>(color.green()),
+               static_cast<uchar>(color.blue()), static_cast<uchar>(color.alpha())};
+  }
   for (uint32_t by = 0, iy = 0; by < height; by += step, ++iy) {
+    uchar* row = new_image.scanLine(static_cast<int>(image_height - 1 - iy));
     for (uint32_t bx = 0, ix = 0; bx < width; bx += step, ++ix) {
       const int32_t value =
           AggregateBlock(current_message_, width, height, bx, by, step);
-      new_image.setPixelColor(static_cast<int>(ix),
-                              static_cast<int>(image_height - 1 - iy),
-                              ColorForScheme(scheme, value, alpha));
+      const auto& pixel = rgba[OccupancyPaletteIndex(value)];
+      std::copy(pixel.begin(), pixel.end(), row + 4 * ix);
     }
   }
 
@@ -356,9 +365,13 @@ bool MapDisplay::rebuildPose() {
   } else if (scheme == "raw") {
     draw_order = 1;
     z_offset = draw_behind ? -0.01f : 0.01f;
+    depth_write = !draw_behind;
   } else {
+    // Occupancy map: RViz "Draw Behind" disables depth write so TF / Path /
+    // LaserScan are not buried in the occupancy quad.
     draw_order = 0;
-    z_offset = draw_behind ? -0.02f : 0.0f;
+    z_offset = draw_behind ? 0.0f : 0.01f;
+    depth_write = !draw_behind;
   }
 
   QMatrix4x4 local_to_frame;
@@ -441,14 +454,17 @@ void MapDisplay::applyUpdate(
   const int uw = static_cast<int>(update.width());
   const int uh = static_cast<int>(update.height());
   if (ux < 0 || uy < 0 || uw <= 0 || uh <= 0 || ux + uw > width ||
-      uy + uh > height || update.data_size() < uw * uh) {
+      uy + uh > height ||
+      automsgs::msgs::map_msgs::OccupancyGridCellCount(update) < uw * uh) {
     return;
   }
   for (int row = 0; row < uh; ++row) {
     for (int col = 0; col < uw; ++col) {
       const int dst = (uy + row) * width + (ux + col);
       const int src = row * uw + col;
-      current_message_.set_data(dst, update.data(src));
+      automsgs::msgs::map_msgs::OccupancyGridSetCell(
+          &current_message_, dst,
+          automsgs::msgs::map_msgs::OccupancyGridCell(update, src));
     }
   }
   if (update.has_header()) {

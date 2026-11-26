@@ -22,6 +22,7 @@ struct VistaPlannerSettings {
     autonomy::navigation::SafetyOptions safety;  ///< Platform clearance and floor limits, in metres.
     std::size_t maximum_nodes = 4096;       ///< Maximum persistent visibility nodes.
     std::size_t maximum_cells = 2000000;    ///< Maximum cells in accumulated read history.
+    unsigned edge_confirmation_votes = 1;   ///< Consecutive validations required before an edge is usable.
     bool costmap_footprint_inflated = false; ///< Input already accounts for the robot footprint.
 };
 

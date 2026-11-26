@@ -72,22 +72,37 @@ bool VistaGraphVisualizer::Publish(const VisibilityGraph& graph,
   edges->mutable_color()->set_a(0.48F);
   edges->set_frame_locked(true);
 
-  auto* nodes = AddMarker(output.add_markers(), frame, "vista_nodes", 2,
-                          Marker::POINTS);
-  nodes->mutable_scale()->set_x(0.055);
-  nodes->mutable_scale()->set_y(0.055);
-  nodes->mutable_color()->set_r(0.0F);
-  nodes->mutable_color()->set_g(0.92F);
-  nodes->mutable_color()->set_b(0.95F);
-  nodes->mutable_color()->set_a(0.90F);
-  nodes->set_frame_locked(true);
+  // FAR planner style classification: convex corners, concave corners,
+  // pillars, frontier (unknown boundary) vertices and remaining samples.
+  const auto make_points = [&](const char* name, int id, float r, float g, float b) {
+    auto* marker = AddMarker(output.add_markers(), frame, name, id, Marker::POINTS);
+    marker->mutable_scale()->set_x(0.055);
+    marker->mutable_scale()->set_y(0.055);
+    marker->mutable_color()->set_r(r);
+    marker->mutable_color()->set_g(g);
+    marker->mutable_color()->set_b(b);
+    marker->mutable_color()->set_a(0.90F);
+    marker->set_frame_locked(true);
+    return marker;
+  };
+  auto* nodes_convex = make_points("vista_nodes_convex", 2, 0.0F, 0.92F, 0.95F);
+  auto* nodes_concave = make_points("vista_nodes_concave", 6, 0.98F, 0.72F, 0.16F);
+  auto* nodes_pillar = make_points("vista_nodes_pillar", 7, 0.85F, 0.25F, 0.85F);
+  auto* nodes_other = make_points("vista_nodes", 8, 0.72F, 0.76F, 0.78F);
+  auto* nodes_frontier = make_points("vista_nodes_frontier", 9, 0.20F, 0.90F, 0.35F);
 
   for (const auto& entry : graph.nodes) {
-    const auto& pose = entry.second.pose;
+    const auto& node = entry.second;
+    const auto& pose = node.pose;
     if (!std::isfinite(pose.x) || !std::isfinite(pose.y)) {
       continue;
     }
-    auto* point = nodes->add_points();
+    Marker* target = nodes_other;
+    if (node.frontier) target = nodes_frontier;
+    else if (node.direct == ContourDirect::kConvex) target = nodes_convex;
+    else if (node.direct == ContourDirect::kConcave) target = nodes_concave;
+    else if (node.direct == ContourDirect::kPillar) target = nodes_pillar;
+    auto* point = target->add_points();
     point->set_x(pose.x);
     point->set_y(pose.y);
     point->set_z(0.055);
@@ -130,14 +145,15 @@ bool VistaGraphVisualizer::Publish(const VisibilityGraph& graph,
     point->set_z(0.05);
   }
 
-  if (route && route->success && route->path.poses.size() >= 2) {
+  if (route && (route->success || route->attempted) && route->path.poses.size() >= 2) {
     auto* path = AddMarker(output.add_markers(), frame, "vista_route", 3,
                            Marker::LINE_STRIP);
     path->mutable_scale()->set_x(0.095);
-    path->mutable_color()->set_r(0.18F);
-    path->mutable_color()->set_g(0.30F);
-    path->mutable_color()->set_b(0.96F);
-    path->mutable_color()->set_a(0.96F);
+    const bool attempted_only = route->attempted && !route->success;
+    path->mutable_color()->set_r(attempted_only ? 0.95F : 0.18F);
+    path->mutable_color()->set_g(attempted_only ? 0.55F : 0.30F);
+    path->mutable_color()->set_b(attempted_only ? 0.12F : 0.96F);
+    path->mutable_color()->set_a(attempted_only ? 0.85F : 0.96F);
     path->set_frame_locked(true);
     for (const auto& pose : route->path.poses) {
       if (!std::isfinite(pose.x) || !std::isfinite(pose.y)) {
