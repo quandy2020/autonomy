@@ -224,6 +224,7 @@ bool TfDisplayHasExpandedPoseRows(QTreeWidgetItem* display_item) {
 
 /** UserRole scratch: last synced TF Tree edge fingerprint (avoid rebuild flicker). */
 constexpr int kDisplayTreeRoleTfTreeFingerprint = Qt::UserRole + 20;
+constexpr int kDisplayTreeRoleSubmapFingerprint = Qt::UserRole + 21;
 
 /** UserRole data for conditional property visibility (DisplayPropertySpec::visible_when_*). */
 constexpr int kDisplayTreeRoleVisibleWhenKey    = Qt::UserRole + 14;
@@ -536,6 +537,10 @@ DisplaysPanel::DisplaysPanel(
   tf_pose_timer_->setTimerType(Qt::PreciseTimer);
   tf_pose_timer_->setInterval(50);  // 20Hz for expanded Frames pose fields
   connect(tf_pose_timer_, &QTimer::timeout, this, &DisplaysPanel::onTfPoseTick);
+  submap_list_timer_ = new QTimer(this);
+  submap_list_timer_->setInterval(500);
+  connect(submap_list_timer_, &QTimer::timeout, this, &DisplaysPanel::syncSubmapLists);
+  submap_list_timer_->start();
   status_refresh_grace_.start();
   // Build the tree under paint suppress so the first QTreeView::drawRow after
   // Ogre "RenderSystem ready" does not SEGV (Docker/X11 + live Argus).
@@ -564,6 +569,7 @@ DisplaysPanel::~DisplaysPanel() {
   if (tf_pose_timer_ != nullptr) {
     tf_pose_timer_->stop();
   }
+  if (submap_list_timer_ != nullptr) submap_list_timer_->stop();
   // Do not clear() here: Qt destroys the tree/header after this returns;
   // clear()+RebuildGuard re-enable raced QHeaderView::~QHeaderView (SEGV).
   if (tree_ != nullptr) {
@@ -714,6 +720,17 @@ void DisplaysPanel::setupUi() {
           &DisplaysPanel::onDisplayItemChanged);
   connect(tree_, &QTreeWidget::itemSelectionChanged, this,
           &DisplaysPanel::onDisplaySelectionChanged);
+  connect(tree_, &QTreeWidget::itemDoubleClicked, this, [this](QTreeWidgetItem* item, int) {
+    if (updating_ || !item || !manager_) return;
+    const QString key = item->data(kDisplayTreeColName, kDisplayTreeRolePropertyKey).toString();
+    const QString prefix = QStringLiteral("submaps/visible/");
+    if (!key.startsWith(prefix)) return;
+    const int index = item->data(kDisplayTreeColName, kDisplayTreeRoleDisplayIndex).toInt();
+    const int child = item->data(kDisplayTreeColName, kDisplayTreeRoleChildIndex).toInt();
+    manager_->setDisplayProperty(index, "submaps/only", key.mid(prefix.size()).toStdString(), child);
+    QTimer::singleShot(0, this, &DisplaysPanel::syncSubmapLists);
+    emit displaysChanged();
+  });
   // Expanding Frames / a frame row should fill pose fields immediately.
   connect(tree_, &QTreeWidget::itemExpanded, this, [this](QTreeWidgetItem* item) {
     if (updating_ || item == nullptr || manager_ == nullptr) {
@@ -975,7 +992,9 @@ void DisplaysPanel::populateDisplayProperties(QTreeWidgetItem* display_item,
                           checked ? Qt::Checked : Qt::Unchecked);
     } else {
       prop->setText(kDisplayTreeColValue, current_value);
-      prop->setFlags(NameColumnFlags(false) | ValueColumnFlags(true));
+      const bool editable = spec.kind != common::DisplayPropertyKind::kCategory &&
+                            spec.kind != common::DisplayPropertyKind::kReadOnly;
+      prop->setFlags(NameColumnFlags(false) | ValueColumnFlags(editable));
     }
     prop->setData(kDisplayTreeColName, kDisplayTreeRoleBoolDefault, default_lower);
     prop->setData(kDisplayTreeColValue, kDisplayTreeRoleBoolDefault, default_lower);
@@ -1053,6 +1072,10 @@ void DisplaysPanel::populateDisplayProperties(QTreeWidgetItem* display_item,
 
   // Apply initial conditional visibility based on current property values.
   RefreshPropertyVisibility(display_item);
+
+  if (display->typeId() == "Submaps") {
+    if (auto* list = props_by_key.value(QStringLiteral("submaps"), nullptr)) list->setExpanded(true);
+  }
 
   if (display->typeId() == "TF") {
     auto* frames = new QTreeWidgetItem(display_item);
@@ -1175,6 +1198,68 @@ void DisplaysPanel::refresh() {
     }
   }
   updating_ = false;
+}
+
+void DisplaysPanel::syncSubmapLists() {
+  if (!tree_ || !manager_ || updating_ || live_updates_paused_ || !isVisible() ||
+      tree_->isEditing() || tree_->isRebuilding() || tree_->isPaintSuppressed()) return;
+  std::vector<QTreeWidgetItem*> displays;
+  std::function<void(QTreeWidgetItem*)> collect = [&](QTreeWidgetItem* item) {
+    const auto kind = static_cast<DisplayTreeItemKind>(item->data(kDisplayTreeColName, kDisplayTreeRoleKind).toInt());
+    if (kind != DisplayTreeItemKind::kDisplay && kind != DisplayTreeItemKind::kDisplayChild) return;
+    displays.push_back(item);
+    for (int i = 0; i < item->childCount(); ++i) collect(item->child(i));
+  };
+  for (int i = 0; i < tree_->topLevelItemCount(); ++i) collect(tree_->topLevelItem(i));
+  for (auto* display_item : displays) {
+    if (!display_item->isExpanded()) continue;
+    const int index = display_item->data(kDisplayTreeColName, kDisplayTreeRoleDisplayIndex).toInt();
+    const int child = display_item->data(kDisplayTreeColName, kDisplayTreeRoleChildIndex).toInt();
+    const auto* display = manager_->displayAt(index, child);
+    if (!display || display->typeId() != "Submaps") continue;
+    auto* root = FindChildByPropertyKey(display_item, QStringLiteral("submaps"));
+    if (!root || !root->isExpanded()) continue;
+    const auto specs = display->propertySpecs();
+    QString fingerprint;
+    for (const auto& spec : specs) {
+      if (spec.key.rfind("submaps/", 0) != 0) continue;
+      fingerprint += QString::fromStdString(spec.key + "=" + display->propertyValue(spec.key, spec.default_value) + ":" + spec.label + "\n");
+    }
+    if (root->data(kDisplayTreeColName, kDisplayTreeRoleSubmapFingerprint).toString() == fingerprint) continue;
+    const QSignalBlocker blocker(tree_);
+    DisplayTreeWidget::RebuildGuard guard(tree_);
+    QHash<QString, QTreeWidgetItem*> existing;
+    std::vector<QTreeWidgetItem*> rows;
+    std::function<void(QTreeWidgetItem*)> collect_rows = [&](QTreeWidgetItem* item) {
+      existing.insert(item->data(kDisplayTreeColName, kDisplayTreeRolePropertyKey).toString(), item);
+      rows.push_back(item);
+      for (int i = 0; i < item->childCount(); ++i) collect_rows(item->child(i));
+    };
+    collect_rows(root);
+    QSet<QString> wanted{QStringLiteral("submaps")};
+    for (const auto& spec : specs) {
+      if (spec.key.rfind("submaps/", 0) != 0) continue;
+      const QString key = QString::fromStdString(spec.key);
+      wanted.insert(key);
+      auto* row = existing.value(key, nullptr);
+      if (!row) {
+        row = new QTreeWidgetItem(existing.value(QString::fromStdString(spec.parent_key), root));
+        row->setFlags(NameColumnFlags(false) | ValueColumnFlags(false, true));
+        SetTreeItemMeta(row, DisplayTreeItemKind::kDisplayProperty, index, key,
+                        tr("Toggle visibility. Double-click a submap row to show only that submap."), child);
+        row->setData(kDisplayTreeColName, kDisplayTreeRoleBoolDefault, QStringLiteral("true"));
+        existing.insert(key, row);
+      }
+      const QString label = QString::fromStdString(spec.label);
+      if (row->text(kDisplayTreeColName) != label) row->setText(kDisplayTreeColName, label);
+      const auto checked = common::ParseBoolProperty(display->propertyValue(spec.key, spec.default_value), true) ? Qt::Checked : Qt::Unchecked;
+      if (row->checkState(kDisplayTreeColValue) != checked) row->setCheckState(kDisplayTreeColValue, checked);
+    }
+    // Remove descendants before their parents, retaining every surviving row.
+    for (auto it = rows.rbegin(); it != rows.rend(); ++it)
+      if (!wanted.contains((*it)->data(kDisplayTreeColName, kDisplayTreeRolePropertyKey).toString())) delete *it;
+    root->setData(kDisplayTreeColName, kDisplayTreeRoleSubmapFingerprint, fingerprint);
+  }
 }
 
 void DisplaysPanel::syncTfDisplayProperties(QTreeWidgetItem* display_item,
@@ -1748,6 +1833,8 @@ void DisplaysPanel::onDisplayItemChanged(QTreeWidgetItem* item, int column) {
           item->checkState(kDisplayTreeColValue) == Qt::Checked;
       applyPropertyValue(item, checked ? QStringLiteral("true")
                                        : QStringLiteral("false"));
+      if (item->data(kDisplayTreeColName, kDisplayTreeRolePropertyKey).toString().startsWith(QStringLiteral("submaps/")))
+        QTimer::singleShot(0, this, &DisplaysPanel::syncSubmapLists);
       return;
     }
   }

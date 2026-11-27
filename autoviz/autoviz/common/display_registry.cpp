@@ -33,6 +33,7 @@
 #include "autoviz/plugins/displays/map/map_display.hpp"
 #ifdef AUTOVIZ_HAS_CARTOGRAPHER
 #include "autoviz/plugins/displays/submaps/submaps_display.hpp"
+#include "autoviz/plugins/displays/submaps/constraints_display.hpp"
 #endif
 #include "autoviz/plugins/displays/marker_array/marker_array_display.hpp"
 #include "autoviz/plugins/displays/marker/marker_display.hpp"
@@ -234,6 +235,12 @@ void DisplayRegistry::registerBuiltinTypes() {
         return FinalizeDisplay(std::make_unique<display::SubmapsDisplay>(config.channel), config);
       },
       [] { return MakeDefault("Submaps", "Submaps", "/submap_list"); });
+  registerType(
+      "CartographerConstraints",
+      [](const DisplayConfig& config) {
+        return FinalizeDisplay(std::make_unique<display::CartographerConstraintsDisplay>(config.channel), config);
+      },
+      [] { return MakeDefault("CartographerConstraints", "Constraints", "/constraint_list"); });
 #endif
 
   registerType(

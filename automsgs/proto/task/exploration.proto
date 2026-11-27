@@ -50,6 +50,7 @@ message ExplorationGoal {
   string map_name = 4;
   float coverage_target = 5;
   bool enable_mapping = 6;
+  repeated automsgs.msgs.geometry_msgs.Polygon no_go_areas = 7;
 }
 
 message ExplorationFeedback {

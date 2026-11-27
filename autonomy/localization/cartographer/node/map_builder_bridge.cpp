@@ -21,9 +21,12 @@
 #include "autonomy/localization/cartographer/node/map_builder_bridge.hpp"
 
 #include <glog/logging.h>
+#include <algorithm>
+#include "autonomy/localization/cartographer/io/color.hpp"
 
 #include "autonomy/localization/cartographer/io/proto_stream.hpp"
 #include "autonomy/localization/cartographer/node/msg_conversion.hpp"
+#include "autonomy/localization/cartographer/node/time_conversion.hpp"
 #include "autonomy/localization/cartographer/transform/transform.hpp"
 
 namespace autonomy {
@@ -49,6 +52,26 @@ automsgs::msgs::geometry_msgs::Pose ToProtoPose(const Rigid3d& rigid3d) {
 
 }  // namespace
 
+automsgs::msgs::nav_msgs::Path MapBuilderBridge::GetTrajectoryPath(
+    const automsgs::msgs::builtin_interfaces::Time& node_time) {
+    automsgs::msgs::nav_msgs::Path path;
+    path.mutable_header()->set_frame_id(node_options_.map_frame);
+    *path.mutable_header()->mutable_stamp() = node_time;
+    auto* pose_graph = map_builder_->pose_graph();
+    if (pose_graph == nullptr) return path;
+    // Publish all optimized SLAM nodes; a rolling TF-pose cache loses history.
+    for (const auto& node : pose_graph->GetTrajectoryNodePoses()) {
+        auto* pose = path.add_poses();
+        pose->mutable_header()->set_frame_id(node_options_.map_frame);
+        if (node.data.constant_pose_data.has_value()) {
+            *pose->mutable_header()->mutable_stamp() =
+                ToCommsgs(node.data.constant_pose_data->time);
+        }
+        *pose->mutable_pose() = ToGeometryMsgPose(node.data.global_pose);
+    }
+    return path;
+}
+
 MapBuilderBridge::MapBuilderBridge(
     const NodeOptions& node_options,
     std::unique_ptr<::cartographer::mapping::MapBuilderInterface> map_builder,
@@ -67,6 +90,8 @@ void MapBuilderBridge::LoadState(const std::string& state_filename,
              suffix)
         << "State file must be a .pbstream file.";
     LOG(INFO) << "Loading saved state '" << state_filename << "'...";
+    submap_textures_.clear();
+    texture_cursor_ = 0;
     ::cartographer::io::ProtoStreamReader stream(state_filename);
     map_builder_->LoadState(&stream, load_frozen_state);
 }
@@ -163,7 +188,8 @@ MapBuilderBridge::GetTrajectoryStates() {
 }
 
 proto::SubmapList MapBuilderBridge::GetSubmapList(
-    const automsgs::msgs::builtin_interfaces::Time& node_time) {
+    const automsgs::msgs::builtin_interfaces::Time& node_time,
+    bool include_textures) {
     proto::SubmapList submap_list;
     submap_list.mutable_header()->mutable_stamp()->set_sec(node_time.sec());
     submap_list.mutable_header()->mutable_stamp()->set_nanosec(
@@ -181,7 +207,112 @@ proto::SubmapList MapBuilderBridge::GetSubmapList(
         *submap_entry->mutable_pose() =
             ToProtoPose(submap_id_pose.data.pose);
     }
+    if (!include_textures) return submap_list;
+    std::set<::cartographer::mapping::SubmapId> listed;
+    std::vector<std::pair<int, bool>> updates, replay;
+    for (int i = submap_list.submap_size() - 1; i >= 0; --i) {
+        const auto& entry = submap_list.submap(i);
+        const ::cartographer::mapping::SubmapId id{entry.trajectory_id(), entry.submap_index()};
+        listed.insert(id);
+        const auto cached = submap_textures_.find(id);
+        if (cached == submap_textures_.end() || cached->second.submap_version() != entry.submap_version())
+            updates.emplace_back(i, false);
+    }
+    for (auto it = submap_textures_.begin(); it != submap_textures_.end();) {
+        if (!listed.count(it->first)) it = submap_textures_.erase(it);
+        else ++it;
+    }
+    const int count = submap_list.submap_size();
+    for (int n = 0; n < count; ++n) replay.emplace_back((texture_cursor_ + n) % count, true);
+    auto candidates = texture_updates_first_ ? updates : replay;
+    const auto& remaining = texture_updates_first_ ? replay : updates;
+    candidates.insert(candidates.end(), remaining.begin(), remaining.end());
+    texture_updates_first_ = !texture_updates_first_;
+    size_t bytes = 0;
+    int attached = 0, encoded = 0, deferred = -1;
+    std::set<int> visited;
+    for (const auto& [index, is_replay] : candidates) {
+        if (attached >= 6 || bytes >= 512 * 1024) break;
+        if (!visited.insert(index).second) continue;
+        auto* entry = submap_list.mutable_submap(index);
+        const ::cartographer::mapping::SubmapId id{entry->trajectory_id(), entry->submap_index()};
+        auto& cached = submap_textures_[id];
+        if (cached.textures().empty() || cached.submap_version() != entry->submap_version()) {
+            if (encoded >= 6) continue;
+            ++encoded;
+            proto::SubmapQueryRequest request;
+            request.set_trajectory_id(id.trajectory_id);
+            request.set_submap_index(id.submap_index);
+            cached.Clear();
+            HandleSubmapQuery(request, &cached);
+        }
+        if (cached.status().code() != proto::OK || cached.textures().empty()) continue;
+        const size_t size = cached.ByteSizeLong();
+        if (attached > 0 && bytes + size > 512 * 1024) {
+            if (is_replay && deferred < 0) deferred = index;
+            continue;
+        }
+        entry->mutable_textures()->CopyFrom(cached.textures());
+        entry->set_texture_version(cached.submap_version());
+        bytes += size;
+        ++attached;
+        if (is_replay) texture_cursor_ = index + 1;
+    }
+    if (deferred >= 0) texture_cursor_ = deferred;
     return submap_list;
+}
+
+automsgs::msgs::visualization_msgs::MarkerArray MapBuilderBridge::GetConstraintList() {
+    using Marker = automsgs::msgs::visualization_msgs::Marker;
+    automsgs::msgs::visualization_msgs::MarkerArray result;
+    const char* names[] = {"Intra constraints", "Intra residuals",
+        "Inter constraints, same trajectory", "Inter residuals, same trajectory",
+        "Inter constraints, different trajectories", "Inter residuals, different trajectories"};
+    for (int i = 0; i < 6; ++i) {
+        auto* marker = result.add_markers();
+        marker->set_id(i);
+        marker->set_ns(names[i]);
+        marker->set_type(Marker::LINE_LIST);
+        marker->mutable_header()->set_frame_id(node_options_.map_frame);
+        *marker->mutable_header()->mutable_stamp() = automsgs::msgs::builtin_interfaces::Now();
+        marker->mutable_pose()->mutable_orientation()->set_w(1.);
+        marker->mutable_pose()->mutable_position()->set_z(i == 0 ? 0. : .1);
+        marker->mutable_scale()->set_x(.025);
+        marker->mutable_color()->set_a(1.);
+    }
+    const auto nodes = map_builder_->pose_graph()->GetTrajectoryNodePoses();
+    const auto submaps = map_builder_->pose_graph()->GetAllSubmapPoses();
+    for (const auto& constraint : map_builder_->pose_graph()->constraints()) {
+        const auto submap = submaps.find(constraint.submap_id);
+        const auto node = nodes.find(constraint.node_id);
+        if (submap == submaps.end() || node == nodes.end()) continue;
+        int group = 0;
+        automsgs::msgs::std_msgs::ColorRGBA color, residual;
+        color.set_a(1.); residual.set_a(1.);
+        if (constraint.tag == ::cartographer::mapping::PoseGraphInterface::Constraint::INTRA_SUBMAP) {
+            const auto rgb = ::cartographer::io::GetColor(
+                constraint.submap_id.submap_index + constraint.submap_id.trajectory_id + 25);
+            color.set_r(rgb[0]); color.set_g(rgb[1]); color.set_b(rgb[2]);
+            residual.set_r(1.);
+        } else {
+            const bool same = constraint.node_id.trajectory_id == constraint.submap_id.trajectory_id;
+            group = same ? 2 : 4;
+            color.set_r(1.); color.set_g(same ? 1. : 165. / 255.);
+            residual.set_g(1.); residual.set_b(1.);
+        }
+        const auto estimated = submap->data.pose * constraint.pose.zbar_ij;
+        auto append = [](Marker* marker, const Eigen::Vector3d& a, const Eigen::Vector3d& b,
+                         const automsgs::msgs::std_msgs::ColorRGBA& c) {
+            for (const auto& p : {a, b}) {
+                auto* point = marker->add_points();
+                point->set_x(p.x()); point->set_y(p.y()); point->set_z(p.z());
+                *marker->add_colors() = c;
+            }
+        };
+        append(result.mutable_markers(group), submap->data.pose.translation(), estimated.translation(), color);
+        append(result.mutable_markers(group + 1), estimated.translation(), node->data.global_pose.translation(), residual);
+    }
+    return result;
 }
 
 std::unordered_map<int, MapBuilderBridge::LocalTrajectoryData>

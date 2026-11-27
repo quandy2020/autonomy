@@ -83,6 +83,18 @@ if(AUTOVIZ_BUILD_CORE_TESTS)
   add_test(NAME autoviz_map_display_performance_test COMMAND autoviz_map_display_performance_test)
   set_tests_properties(autoviz_map_display_performance_test PROPERTIES TIMEOUT 30)
 
+  add_executable(autoviz_scene_overlay_performance_test core/scene_overlay_performance_test.cpp)
+  target_include_directories(autoviz_scene_overlay_performance_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_link_libraries(autoviz_scene_overlay_performance_test PRIVATE autoviz)
+  add_test(NAME autoviz_scene_overlay_performance_test COMMAND autoviz_scene_overlay_performance_test)
+  set_tests_properties(autoviz_scene_overlay_performance_test PROPERTIES TIMEOUT 30)
+
+  add_executable(autoviz_path_display_history_test core/path_display_history_test.cpp)
+  target_include_directories(autoviz_path_display_history_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
+  target_link_libraries(autoviz_path_display_history_test PRIVATE autoviz)
+  add_test(NAME autoviz_path_display_history_test COMMAND autoviz_path_display_history_test)
+  set_tests_properties(autoviz_path_display_history_test PROPERTIES TIMEOUT 30)
+
   add_executable(autoviz_channel_reader_registry_test core/channel_reader_registry_test.cpp)
   target_include_directories(autoviz_channel_reader_registry_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/..")
   target_link_libraries(autoviz_channel_reader_registry_test PRIVATE autoviz Threads::Threads)
@@ -105,6 +117,14 @@ if(AUTOVIZ_BUILD_CORE_TESTS)
     target_link_libraries(autoviz_submaps_display_test PRIVATE autoviz autonomy_proto ZLIB::ZLIB Qt6::Widgets)
     add_test(NAME autoviz_submaps_display_test COMMAND autoviz_submaps_display_test)
     set_tests_properties(autoviz_submaps_display_test PROPERTIES TIMEOUT 30
+      ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    add_executable(autoviz_submap_list_test ui/submap_list_test.cpp)
+    target_compile_definitions(autoviz_submap_list_test PRIVATE AUTOVIZ_HAS_CARTOGRAPHER=1)
+    target_include_directories(autoviz_submap_list_test PRIVATE
+      "${CMAKE_CURRENT_SOURCE_DIR}/.." "${CMAKE_SOURCE_DIR}" "${CMAKE_BINARY_DIR}")
+    target_link_libraries(autoviz_submap_list_test PRIVATE autoviz autonomy_proto Qt6::Widgets)
+    add_test(NAME autoviz_submap_list_test COMMAND autoviz_submap_list_test)
+    set_tests_properties(autoviz_submap_list_test PROPERTIES TIMEOUT 30
       ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
   endif()
 

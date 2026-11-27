@@ -121,6 +121,7 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
 
     submap_list_writer_ =
         node_->CreateWriter<proto::SubmapList>(kSubmapListTopic);
+    constraint_list_writer_ = node_->CreateWriter<automsgs::msgs::visualization_msgs::MarkerArray>(kConstraintListTopic);
     if (node_options_.publish_tracked_pose) {
         tracked_pose_writer_ =
             node_->CreateWriter<automsgs::msgs::geometry_msgs::PoseStamped>(
@@ -192,6 +193,8 @@ bool CartographerNode::Init(std::shared_ptr<autolink::Node> node) {
     timers_.emplace_back(std::make_unique<autolink::Timer>(
         TimerPeriodMs(node_options_.submap_publish_period_sec),
         [this]() { PublishSubmapList(); }, false));
+    timers_.emplace_back(std::make_unique<autolink::Timer>(
+        500, [this]() { PublishConstraintList(); }, false));
     if (node_options_.pose_publish_period_sec > 0) {
         timers_.emplace_back(std::make_unique<autolink::Timer>(
             TimerPeriodMs(node_options_.pose_publish_period_sec),
@@ -441,7 +444,13 @@ void CartographerNode::PublishSubmapList() {
     std::lock_guard<std::mutex> lock(mutex_);
     const auto now = automsgs::msgs::builtin_interfaces::Now();
     submap_list_writer_->Write(
-        map_builder_bridge_->GetSubmapList(now));
+        map_builder_bridge_->GetSubmapList(now, submap_list_writer_->HasReader()));
+}
+
+void CartographerNode::PublishConstraintList() {
+    if (!constraint_list_writer_ || !constraint_list_writer_->HasReader()) return;
+    std::lock_guard<std::mutex> lock(mutex_);
+    constraint_list_writer_->Write(map_builder_bridge_->GetConstraintList());
 }
 
 void CartographerNode::PublishLocalTrajectoryData() {
@@ -514,25 +523,6 @@ void CartographerNode::PublishLocalTrajectoryData() {
 
         const Rigid3d tracking_to_map =
             trajectory_data.local_to_map * tracking_to_local;
-
-        if (trajectory_writer_) {
-            if (live_trajectory_.header().frame_id().empty()) {
-                live_trajectory_.mutable_header()->set_frame_id(
-                    node_options_.map_frame);
-            }
-            *live_trajectory_.mutable_header()->mutable_stamp() =
-                stamped_transform.header().stamp();
-            auto* pose = live_trajectory_.add_poses();
-            pose->mutable_header()->set_frame_id(node_options_.map_frame);
-            *pose->mutable_header()->mutable_stamp() =
-                stamped_transform.header().stamp();
-            *pose->mutable_pose() = ToGeometryMsgPose(tracking_to_map);
-            constexpr int kMaxLivePoses = 8000;
-            const int extra = live_trajectory_.poses_size() - kMaxLivePoses;
-            if (extra > 0) {
-                live_trajectory_.mutable_poses()->DeleteSubrange(0, extra);
-            }
-        }
 
         // Look up published→tracking at the same time as tracking_to_map.
         std::unique_ptr<Rigid3d> published_to_tracking;
@@ -634,43 +624,8 @@ void CartographerNode::PublishTrajectory() {
         return;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    if (live_trajectory_.poses_size() >= 2) {
-        trajectory_writer_->Write(live_trajectory_);
-        return;
-    }
-    auto* pose_graph = map_builder_bridge_->map_builder()->pose_graph();
-    if (pose_graph == nullptr) {
-        return;
-    }
-    const auto node_poses = pose_graph->GetTrajectoryNodePoses();
-    if (node_poses.empty()) {
-        return;
-    }
-
-    automsgs::msgs::nav_msgs::Path path;
-    path.mutable_header()->set_frame_id(node_options_.map_frame);
-    *path.mutable_header()->mutable_stamp() =
-        automsgs::msgs::builtin_interfaces::Now();
-    const size_t node_count = node_poses.size();
-    constexpr size_t kMaxPathPoses = 8000;
-    const size_t stride =
-        std::max<size_t>(1, (node_count + kMaxPathPoses - 1) / kMaxPathPoses);
-    size_t index = 0;
-    for (const auto& node_id_data : node_poses) {
-        const bool keep = (index % stride) == 0 || index + 1 == node_count;
-        ++index;
-        if (!keep) {
-            continue;
-        }
-        automsgs::msgs::geometry_msgs::PoseStamped pose;
-        pose.mutable_header()->set_frame_id(node_options_.map_frame);
-        if (node_id_data.data.constant_pose_data.has_value()) {
-            *pose.mutable_header()->mutable_stamp() =
-                ToCommsgs(node_id_data.data.constant_pose_data->time);
-        }
-        *pose.mutable_pose() = ToGeometryMsgPose(node_id_data.data.global_pose);
-        *path.add_poses() = std::move(pose);
-    }
+    const auto path = map_builder_bridge_->GetTrajectoryPath(
+        automsgs::msgs::builtin_interfaces::Now());
     if (path.poses_size() >= 2) {
         trajectory_writer_->Write(path);
     }

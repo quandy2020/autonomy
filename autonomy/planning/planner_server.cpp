@@ -26,39 +26,39 @@
 #include <utility>
 #include <vector>
 
-#include "autolink/node/node.hpp"
-#include "autolink/plugin_manager/plugin_manager.hpp"
-#include "autonomy/common/logging.hpp"
-#include "autonomy/common/nav_log.hpp"
-#include "autonomy/common/time.hpp"
-#include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/builtin_interfaces/duration.pb.h>
-#include <automsgs/msgs/time_utils.hpp>
+#include <automsgs/msgs/builtin_interfaces/time.pb.h>
 #include <automsgs/msgs/geometry_msgs/point.pb.h>
-#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose.pb.h>
 #include <automsgs/msgs/geometry_msgs/pose_stamped.pb.h>
+#include <automsgs/msgs/geometry_msgs/quaternion.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform.pb.h>
 #include <automsgs/msgs/geometry_msgs/transform_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist.pb.h>
 #include <automsgs/msgs/geometry_msgs/twist_stamped.pb.h>
 #include <automsgs/msgs/geometry_msgs/vector3.pb.h>
-#include <automsgs/msgs/nav_msgs/path.pb.h>
 #include <automsgs/msgs/nav_msgs/odometry.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
+#include <automsgs/msgs/time_utils.hpp>
+#include "autolink/node/node.hpp"
+#include "autolink/plugin_manager/plugin_manager.hpp"
+#include "autonomy/common/logging.hpp"
+#include "autonomy/common/nav_log.hpp"
+#include "autonomy/common/time.hpp"
 #include "autonomy/map/costmap_2d/cost_values.hpp"
 #include "autonomy/map/costmap_2d/costmap_2d.hpp"
 #include "autonomy/map/costmap_2d/footprint_collision_checker.hpp"
 #include "autonomy/planning/common/planner_exceptions.hpp"
 #include "autonomy/planning/common/smoother_exceptions.hpp"
 #include "autonomy/planning/constants.hpp"
-#include "autonomy/planning/utils/simple_smoother.hpp"
 #include "autonomy/planning/planner/dijkstra/dijkstra_planner.hpp"
 #include "autonomy/planning/planner/navfn/navfn_planner.hpp"
+#include "autonomy/planning/planner/tare_explorer/tare_explorer_planner.hpp"
 #include "autonomy/planning/planner/theta_star/theta_star_planner.hpp"
-#include "autonomy/planning/planner/tare_explorer/tare_explorer.hpp"
-#include "autonomy/planning/planner/vista/vista_planner.hpp"
 #include "autonomy/planning/planner/vista/vista_graph_visualizer.hpp"
+#include "autonomy/planning/planner/vista/vista_planner.hpp"
 #include "autonomy/planning/utils/geometry_utils.hpp"
+#include "autonomy/planning/utils/simple_smoother.hpp"
 #include "autonomy/transform/tf2/utils.h"
 
 namespace autonomy {
@@ -142,23 +142,24 @@ void LoadExternalPlugins(const proto::PlannerOptions& options) {
 bool IsPlannerClassRegistered(const std::string& type) {
     const std::string resolved = ResolvePlannerClass(type);
     const auto names =
-        PluginPm::Instance()->GetDerivedClassNameByBaseClass<
-            common::GlobalPlanner>();
+        PluginPm::Instance()
+            ->GetDerivedClassNameByBaseClass<common::GlobalPlanner>();
     return std::find(names.begin(), names.end(), resolved) != names.end();
 }
 
 common::GlobalPlanner::SharedPtr CreatePlannerInstance(
     const std::string& type, const proto::PlannerOptions& options,
     const std::string& id,
-    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>& costmap) {
+    const std::shared_ptr<map::costmap_2d::Costmap2DWrapper>& costmap,
+    const std::shared_ptr<planner::vista::VistaPlanner>& shared_vista) {
     const std::string resolved = ResolvePlannerClass(type);
     if (resolved == "NavfnPlanner") {
         return std::make_shared<planner::navfn::NavfnPlanner>(options, id,
                                                               costmap);
     }
     if (resolved == "DijkstraPlanner") {
-        return std::make_shared<planner::dijkstra::DijkstraPlanner>(
-            options, id, costmap);
+        return std::make_shared<planner::dijkstra::DijkstraPlanner>(options, id,
+                                                                    costmap);
     }
     if (resolved == "ThetaStarPlanner") {
         return std::make_shared<planner::theta_star::ThetaStarPlanner>(
@@ -166,13 +167,13 @@ common::GlobalPlanner::SharedPtr CreatePlannerInstance(
     }
     if (resolved == "TareExplorerPlanner") {
         return std::make_shared<planner::tare_explorer::TareExplorerPlanner>(
-            options, id, costmap);
+            options, id, costmap, shared_vista);
     }
     if (resolved == "VistaPlanner") {
-        return std::make_shared<planner::vista::VistaPlanner>(options, id, costmap);
+        return shared_vista;
     }
-    auto instance = PluginPm::Instance()->CreateInstance<common::GlobalPlanner>(
-        resolved);
+    auto instance =
+        PluginPm::Instance()->CreateInstance<common::GlobalPlanner>(resolved);
     if (!instance) {
         return nullptr;
     }
@@ -182,8 +183,21 @@ common::GlobalPlanner::SharedPtr CreatePlannerInstance(
     return common::GlobalPlanner::SharedPtr(std::move(instance));
 }
 
+std::shared_ptr<planner::vista::VistaPlanner> ResolveVistaOwner(
+    const common::GlobalPlanner::SharedPtr& instance) {
+    if (auto vista =
+            std::dynamic_pointer_cast<planner::vista::VistaPlanner>(instance)) {
+        return vista;
+    }
+    if (const auto tare = std::dynamic_pointer_cast<
+            planner::tare_explorer::TareExplorerPlanner>(instance)) {
+        return tare->SharedVistaPlanner();
+    }
+    return {};
+}
+
 void NormalizePoseFrame(automsgs::msgs::geometry_msgs::PoseStamped& pose,
-                          const std::string& global_frame) {
+                        const std::string& global_frame) {
     if (pose.header().frame_id().empty()) {
         AWARN << "Pose has empty frame_id; assuming costmap global frame '"
               << global_frame << "'";
@@ -245,9 +259,8 @@ bool FindNearestFreeCell(map::costmap_2d::Costmap2D* grid, unsigned int mx,
 
 // Lethal start with no nearby free cell cannot be planned. Inscribed start is
 // projected onto free space when possible so the path begins outside the wall.
-void MaybeSnapOccupiedStart(
-    map::costmap_2d::Costmap2D* grid,
-    automsgs::msgs::geometry_msgs::PoseStamped& start) {
+void MaybeSnapOccupiedStart(map::costmap_2d::Costmap2D* grid,
+                            automsgs::msgs::geometry_msgs::PoseStamped& start) {
     if (grid == nullptr) {
         return;
     }
@@ -262,8 +275,8 @@ void MaybeSnapOccupiedStart(
         return;
     }
     const double res = grid->getResolution();
-    const unsigned int max_r =
-        static_cast<unsigned int>(std::max(1.0, std::ceil(1.5 / std::max(res, 0.01))));
+    const unsigned int max_r = static_cast<unsigned int>(
+        std::max(1.0, std::ceil(1.5 / std::max(res, 0.01))));
     unsigned int ox = mx;
     unsigned int oy = my;
     if (FindNearestFreeCell(grid, mx, my, max_r, &ox, &oy)) {
@@ -341,7 +354,8 @@ PlannerServer::PlannerServer(const proto::PlannerOptions& options)
 
     LoadPlannerPlugins();
 
-    const double expected_planner_frequency = options_.expected_planner_frequency();
+    const double expected_planner_frequency =
+        options_.expected_planner_frequency();
     if (expected_planner_frequency > 0.0) {
         max_planner_duration_ = 1.0 / expected_planner_frequency;
     } else {
@@ -424,6 +438,35 @@ void PlannerServer::LoadPlannerPlugins() {
     LoadExternalPlugins(options_);
 
     const auto specs = ParsePluginSpecs(plugin_entries);
+    std::unordered_map<std::string,
+                       std::shared_ptr<planner::vista::VistaPlanner>>
+        vista_owners;
+    bool needs_tare_owner = false;
+    for (const auto& spec : specs) {
+        const auto type = ResolvePlannerClass(spec.type);
+        if (type == "VistaPlanner" && !vista_owners.count(spec.id)) {
+            vista_owners.emplace(spec.id,
+                                 std::make_shared<planner::vista::VistaPlanner>(
+                                     options_, spec.id, costmap_wrapper_));
+        } else if (type == "TareExplorerPlanner") {
+            needs_tare_owner = true;
+        }
+    }
+    std::shared_ptr<planner::vista::VistaPlanner> tare_vista;
+    if (needs_tare_owner) {
+        const std::string vista_id =
+            options_.tare_explorer().has_vista_planner_id()
+                ? options_.tare_explorer().vista_planner_id()
+                : "vista_planner";
+        const auto owner = vista_owners.find(vista_id);
+        if (owner == vista_owners.end()) {
+            AFATAL
+                << "TARE compatibility requires configured Vista planner id: "
+                << vista_id;
+            return;
+        }
+        tare_vista = owner->second;
+    }
 
     for (const auto& spec : specs) {
         if (planners_.count(spec.id) > 0) {
@@ -436,8 +479,12 @@ void PlannerServer::LoadPlannerPlugins() {
             return;
         }
 
-        auto planner_instance =
-            CreatePlannerInstance(spec.type, options_, spec.id, costmap_wrapper_);
+        auto vista_owner = tare_vista;
+        if (ResolvePlannerClass(spec.type) == "VistaPlanner") {
+            vista_owner = vista_owners.at(spec.id);
+        }
+        auto planner_instance = CreatePlannerInstance(
+            spec.type, options_, spec.id, costmap_wrapper_, vista_owner);
         if (!planner_instance) {
             AFATAL << "Failed to create planner plugin: " << spec.id;
             return;
@@ -492,7 +539,7 @@ void PlannerServer::PublishCorrelatedPlan(
 }
 
 void PlannerServer::PublishPlan(const automsgs::msgs::nav_msgs::Path& path,
-                               const std::string& request_id) {
+                                const std::string& request_id) {
     PublishCorrelatedPlan(path, request_id);
     if (plan_writer_) {
         plan_writer_->Write(path);
@@ -509,9 +556,7 @@ void PlannerServer::PublishVistaGraph(const std::string& planner_id) {
     if (!vista_graph_visualizer_) {
         return;
     }
-    const auto instance = GetPlanner(planner_id);
-    const auto vista =
-        std::dynamic_pointer_cast<planner::vista::VistaPlanner>(instance);
+    const auto vista = ResolveVistaOwner(GetPlanner(planner_id));
     if (!vista) {
         return;
     }
@@ -526,7 +571,8 @@ void PlannerServer::PublishVistaGraph(const std::string& planner_id) {
     }
     const auto graph = routes->GraphSnapshot();
     const auto route = vista->LastRoute();
-    const bool published = vista_graph_visualizer_->Publish(graph, route, frame_id);
+    const bool published =
+        vista_graph_visualizer_->Publish(graph, route, frame_id);
     AINFO_EVERY(5) << "VISTA_GRAPH publish nodes=" << graph.nodes.size()
                    << " edges=" << graph.edges.size()
                    << " route=" << (route ? route->path.poses.size() : 0)
@@ -539,36 +585,43 @@ automsgs::msgs::nav_msgs::Path PlannerServer::GetPlan(
     const std::string& planner_id, std::function<bool()> cancel_checker) {
     automsgs::msgs::nav_msgs::Path path;
     automsgs::msgs::geometry_msgs::PoseStamped start_pose = start;
-    MaybeSnapOccupiedStart(costmap_, start_pose);
-    AINFO_EVERY(10) << "nav plan try planner=" << planner_id << " from="
-                    << ::autonomy::common::NavXY{start_pose.pose().position().x(),
+    if (!ResolveVistaOwner(GetPlanner(planner_id))) {
+        MaybeSnapOccupiedStart(costmap_, start_pose);
+    }
+    AINFO_EVERY(10)
+        << "nav plan try planner=" << planner_id << " from="
+        << ::autonomy::common::NavXY{start_pose.pose().position().x(),
                                      start_pose.pose().position().y()}
-                    << " to="
-                    << ::autonomy::common::NavXY{goal.pose().position().x(),
+        << " to="
+        << ::autonomy::common::NavXY{goal.pose().position().x(),
                                      goal.pose().position().y()}
-                    << " frames=" << start_pose.header().frame_id() << ","
-                    << goal.header().frame_id();
+        << " frames=" << start_pose.header().frame_id() << ","
+        << goal.header().frame_id();
 
     uint32_t return_code = 0;
     std::string resolved_planner_id = planner_id;
     try {
         if (planners_.find(planner_id) != planners_.end()) {
-            return_code = planners_[planner_id]->CreatePlan(start_pose, goal, path,
-                                                            cancel_checker);
+            return_code = planners_[planner_id]->CreatePlan(
+                start_pose, goal, path, cancel_checker);
         } else if (planners_.size() == 1 && planner_id.empty()) {
             resolved_planner_id = planners_.begin()->first;
             AWARN << "No planner specified; using " << resolved_planner_id;
             return_code = planners_[resolved_planner_id]->CreatePlan(
                 start_pose, goal, path, cancel_checker);
         } else {
-            throw common::InvalidPlanner("Planner id " + planner_id +
-                                         " is invalid. Available: " +
-                                         planner_ids_concat_);
+            throw common::InvalidPlanner(
+                "Planner id " + planner_id +
+                " is invalid. Available: " + planner_ids_concat_);
         }
     } catch (...) {
         // The route graph is still useful when the requested endpoints are
-        // rejected. Publish its admitted snapshot without manufacturing a route.
-        try { PublishVistaGraph(resolved_planner_id); } catch (...) {}
+        // rejected. Publish its admitted snapshot without manufacturing a
+        // route.
+        try {
+            PublishVistaGraph(resolved_planner_id);
+        } catch (...) {
+        }
         throw;
     }
 
@@ -643,7 +696,7 @@ bool PlannerServer::ValidatePath(
     if (path.poses().empty()) {
         AWARN << "nav plan empty planner=" << planner_id << " to="
               << ::autonomy::common::NavXY{curr_goal.pose().position().x(),
-                               curr_goal.pose().position().y()};
+                                           curr_goal.pose().position().y()};
         return false;
     }
 
@@ -653,15 +706,16 @@ bool PlannerServer::ValidatePath(
     if (!IsPathValid(path, map::costmap_2d::LETHAL_OBSTACLE,
                      /*consider_unknown_as_obstacle=*/false)) {
         AWARN_EVERY(10) << "nav plan collide planner=" << planner_id << " to="
-                        << ::autonomy::common::NavXY{curr_goal.pose().position().x(),
-                                         curr_goal.pose().position().y()};
+                        << ::autonomy::common::NavXY{
+                               curr_goal.pose().position().x(),
+                               curr_goal.pose().position().y()};
         return false;
     }
 
     AINFO << "nav plan ok planner=" << planner_id
           << " poses=" << path.poses_size() << " to="
           << ::autonomy::common::NavXY{curr_goal.pose().position().x(),
-                           curr_goal.pose().position().y()};
+                                       curr_goal.pose().position().y()};
     return true;
 }
 
@@ -706,8 +760,8 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
 
     for (size_t i = closest_point_index; i < path.poses_size(); ++i) {
         const auto& position = path.poses(i).pose().position();
-        const float dist_from_robot = static_cast<float>(utils::EuclideanDistance(
-            current_point, position));
+        const float dist_from_robot = static_cast<float>(
+            utils::EuclideanDistance(current_point, position));
         // Occupied cells under the robot (start in inflation) are skipped so a
         // valid free-space remainder can still be accepted.
         if (dist_from_robot < 0.60f) {
@@ -722,8 +776,9 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
         } else {
             const double theta =
                 transform::tf2::getYaw(path.poses(i).pose().orientation());
-            cost = static_cast<unsigned int>(collision_checker.footprintCostAtPose(
-                position.x(), position.y(), theta, footprint));
+            cost =
+                static_cast<unsigned int>(collision_checker.footprintCostAtPose(
+                    position.x(), position.y(), theta, footprint));
         }
 
         if (cost == map::costmap_2d::NO_INFORMATION &&
@@ -734,8 +789,7 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
         }
 
         if (use_radius &&
-            (cost >= max_cost ||
-             cost == map::costmap_2d::LETHAL_OBSTACLE)) {
+            (cost >= max_cost || cost == map::costmap_2d::LETHAL_OBSTACLE)) {
             return false;
         }
         if (!use_radius &&
@@ -747,8 +801,7 @@ bool PlannerServer::IsPathValid(const automsgs::msgs::nav_msgs::Path& path,
     return true;
 }
 
-void PlannerServer::ClearEntireCostmap()
-{
+void PlannerServer::ClearEntireCostmap() {
     if (!costmap_wrapper_) {
         AWARN << "PlannerServer: clear costmap ignored (no costmap)";
         return;

@@ -29,8 +29,10 @@ namespace n = autonomy::navigation;
 using exploration_test::Require;
 using namespace std::chrono_literals;
 
-/** @brief Deterministic rendezvous; no test relies on a guessed thread delay. */
-class Rendezvous {
+/** @brief Deterministic rendezvous; no test relies on a guessed thread delay.
+ */
+class Rendezvous
+{
 public:
     /// Mark the callback entered and block until the test releases it.
     void Enter() {
@@ -52,6 +54,7 @@ public:
         released_ = true;
         changed_.notify_all();
     }
+
 private:
     /// Protects this callback's state independently of task synchronization.
     std::mutex mutex_;
@@ -86,7 +89,8 @@ struct Evidence {
         std::lock_guard<std::mutex> lock(sessions_mutex);
         int count = released_started;
         for (const auto* session : sessions)
-            if (session->Snapshot().session_id != 0) ++count;
+            if (session->Snapshot().session_id != 0)
+                ++count;
         return count;
     }
     /// Optional rendezvous at session-factory return, clock and native submit.
@@ -112,11 +116,13 @@ void Await(Predicate predicate, const char* reason) {
 }
 
 /** @brief Fresh, unstarted native Session factory with real route geometry. */
-class Harness {
+class Harness
+{
 public:
     /// Install cooperative, versioned native services before starting a task.
-    explicit Harness(std::shared_ptr<Evidence> evidence = std::make_shared<Evidence>(),
-                     bool cooperative = true)
+    explicit Harness(
+        std::shared_ptr<Evidence> evidence = std::make_shared<Evidence>(),
+        bool cooperative = true)
         : evidence(std::move(evidence)) {
         grid.Fill({n::CellState::kFree, 0});
         map = reader.Read(grid, 1, 0, 1);
@@ -131,23 +137,33 @@ public:
         auto visibility = std::make_shared<e::CameraVisibilityModel>(
             p::CameraModel{80, 60, 80, 80, 40, 30, .1, 8}, extrinsics);
         auto evaluator = std::make_shared<e::ViewpointEvaluator>(
-            std::vector<std::shared_ptr<const e::SensorVisibilityModel>>{visibility});
-        adapter = std::make_shared<e::GoalPoseAdapter>(paths, evaluator, safety);
-        if (cooperative) task.SetGuardedSubmitNavigation(
-            [state = this->evidence](const auto&, const auto& permit) {
-                if (!permit()) return false;
-                ++state->submitted;
-                if (state->native_reentry) state->native_reentry();
-                if (state->submit) state->submit->Enter();
-                // Deliberately return a late acceptance after revocation.
-                return true;
-            });
+            std::vector<std::shared_ptr<const e::SensorVisibilityModel>>{
+                visibility});
+        adapter =
+            std::make_shared<e::GoalPoseAdapter>(paths, evaluator, safety);
+        if (cooperative)
+            task.SetGuardedSubmitNavigation(
+                [state = this->evidence](const auto&, const auto& permit) {
+                    if (!permit())
+                        return false;
+                    ++state->submitted;
+                    if (state->native_reentry)
+                        state->native_reentry();
+                    if (state->submit)
+                        state->submit->Enter();
+                    // Deliberately return a late acceptance after revocation.
+                    return true;
+                });
         task.SetVersionedNavigationProbe(
             [](const auto&, auto*) { return false; },
-            [state = this->evidence](const auto&) { ++state->canceled; return true; });
+            [state = this->evidence](const auto&) {
+                ++state->canceled;
+                return true;
+            });
         bindings.clock = [state = this->evidence] {
             ++state->clock_calls;
-            if (state->clock && state->block_next_clock.exchange(false)) state->clock->Enter();
+            if (state->clock && state->block_next_clock.exchange(false))
+                state->clock->Enter();
             return state->now.load();
         };
         bindings.prepare_mapping = [state = this->evidence](const auto&) {
@@ -155,29 +171,41 @@ public:
             return state->mapping_ok;
         };
         bindings.options.driver = e::ExplorationDriver::kBehaviorTree;
-        bindings.options.validated_controller_modes = {p::Mask(p::SensorMode::kRgbdOnly)};
+        bindings.options.validated_controller_modes = {
+            p::Mask(p::SensorMode::kRgbdOnly)};
         bindings.options.allowed_region = e::Bounds2d{0, 0, 4, 4};
         bindings.options.map_max_age = bindings.options.pose_max_age = 10;
         bindings.options.health.maximum_age = 10;
         bindings.options.health.recovery_hold = 0;
         bindings.options.require_return = bindings.options.require_save = false;
         bindings.options.maximum_sensor_wait = .2;
-        bindings.create_session = [this, state = this->evidence](const auto&, const auto& options) {
+        bindings.create_session = [this, state = this->evidence](
+                                      const auto&, const auto& options) {
             auto services = task.NavigationServices("map");
-            services.update_route_map = [routes = planner](const auto& view) { routes->Update(view); };
-            services.navigation_still_valid = [](const auto&, const auto&, const auto&) { return true; };
+            services.update_route_map = [routes = planner](const auto& view) {
+                routes->Update(view);
+            };
+            services.navigation_still_valid = [](const auto&, const auto&,
+                                                 const auto&) { return true; };
             const auto owner = std::this_thread::get_id();
             auto candidate = std::shared_ptr<e::ExplorationSession>(
-                new e::ExplorationSession(std::make_shared<exploration_test::OneGoal>(
-                    std::vector<double>{0}), adapter, paths, services, options),
+                new e::ExplorationSession(
+                    std::make_shared<exploration_test::OneGoal>(
+                        std::vector<double>{0}),
+                    adapter, paths, services, options),
                 [state, owner](e::ExplorationSession* session) {
                     {
                         std::lock_guard<std::mutex> lock(state->sessions_mutex);
-                        if (session->Snapshot().session_id != 0) ++state->released_started;
-                        const auto found = std::find(state->sessions.begin(), state->sessions.end(), session);
-                        if (found != state->sessions.end()) state->sessions.erase(found);
+                        if (session->Snapshot().session_id != 0)
+                            ++state->released_started;
+                        const auto found =
+                            std::find(state->sessions.begin(),
+                                      state->sessions.end(), session);
+                        if (found != state->sessions.end())
+                            state->sessions.erase(found);
                     }
-                    if (owner != std::this_thread::get_id()) state->wrong_owner = true;
+                    if (owner != std::this_thread::get_id())
+                        state->wrong_owner = true;
                     delete session;
                     ++state->destroyed;
                 });
@@ -186,19 +214,24 @@ public:
                 state->sessions.push_back(candidate.get());
             }
             ++state->created;
-            if (state->factory && state->factory_calls++ == 0) state->factory->Enter();
+            if (state->factory && state->factory_calls++ == 0)
+                state->factory->Enter();
             return candidate;
         };
-        Require(task.ConfigureSession(bindings), "native dependencies configured while idle");
+        Require(task.ConfigureSession(bindings),
+                "native dependencies configured while idle");
         proto::TaskServerOptions options;
         options.mutable_scheduler()->set_feedback_period_ms(2);
         Require(task.Initialize(options), "native owner initialized");
     }
     /// Release controlled callbacks before joining native runtime cleanup.
     ~Harness() {
-        if (evidence->factory) evidence->factory->Release();
-        if (evidence->clock) evidence->clock->Release();
-        if (evidence->submit) evidence->submit->Release();
+        if (evidence->factory)
+            evidence->factory->Release();
+        if (evidence->clock)
+            evidence->clock->Release();
+        if (evidence->submit)
+            evidence->submit->Release();
         task.Shutdown();
     }
     /// Submit a distinct native task identity; rejections preserve prior ID.
@@ -214,20 +247,28 @@ public:
         map.source_stamp = evidence->now;
         Require(task.PushMap(map), "seed map admitted");
         Require(task.PushPose({1, 1, 0}, evidence->now, map.map_epoch,
-                              p::Mask(p::SensorKind::kRgbd)), "seed pose admitted");
+                              p::Mask(p::SensorKind::kRgbd)),
+                "seed pose admitted");
     }
-    /// Admit a real requirement and an observation looking away from its surface.
+    /// Admit a real requirement and an observation looking away from its
+    /// surface.
     void Observe() {
         e::CoverageUnit unit;
         unit.id = {10, 5, 2, 0, e::CoverageKind::kSurface};
-        unit.center = {2, 1, .5}; unit.normal = {-1, 0, 0}; unit.required_quality = .5;
+        unit.center = {2, 1, .5};
+        unit.normal = {-1, 0, 0};
+        unit.required_quality = .5;
         Require(task.PushCoverageUnit(unit), "coverage requirement admitted");
         p::SensorObservation observation;
         observation.sensor = p::SensorKind::kRgbd;
-        observation.sequence = 1; observation.map_epoch = map.map_epoch;
-        observation.stamp = evidence->now; observation.valid_until = observation.stamp + 10;
-        observation.valid_fraction = 1; observation.localization_valid = true;
-        observation.rays.push_back({{1, 1, .5}, {0, 1, 0}, .2, true, 1, observation.stamp});
+        observation.sequence = 1;
+        observation.map_epoch = map.map_epoch;
+        observation.stamp = evidence->now;
+        observation.valid_until = observation.stamp + 10;
+        observation.valid_fraction = 1;
+        observation.localization_valid = true;
+        observation.rays.push_back(
+            {{1, 1, .5}, {0, 1, 0}, .2, true, 1, observation.stamp});
         Require(task.PushObservation(std::move(observation), evidence->now),
                 "real source observation admitted");
     }
@@ -248,26 +289,42 @@ public:
     t::ExplorationTask task;
 };
 
-/** @brief Cancel during factory construction must prevent actual Session::Start. */
+/** @brief Cancel during factory construction must prevent actual
+ * Session::Start. */
 void FactoryCancellation() {
-    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("cancel-factory"), "START accepted"); h.Seed();
-    state->factory->WaitEntered(); Require(h.task.Cancel(), "cancel accepted during factory");
+    auto state = std::make_shared<Evidence>();
+    state->factory = std::make_shared<Rendezvous>();
+    Harness h(state);
+    Require(h.Start("cancel-factory"), "START accepted");
+    h.Seed();
+    state->factory->WaitEntered();
+    Require(h.task.Cancel(), "cancel accepted during factory");
     state->factory->Release();
-    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kCanceled; }, "factory cancel reaches terminal state");
-    Await([&] { return state->destroyed == 1; }, "unstarted candidate released");
-    Require(state->StartedCount() == 0 && !state->wrong_owner, "canceled factory never starts and is disposed on owner");
+    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kCanceled; },
+          "factory cancel reaches terminal state");
+    Await([&] { return state->destroyed == 1; },
+          "unstarted candidate released");
+    Require(state->StartedCount() == 0 && !state->wrong_owner,
+            "canceled factory never starts and is disposed on owner");
 }
 
-/** @brief A paused factory candidate is retained and starts once after resume. */
+/** @brief A paused factory candidate is retained and starts once after resume.
+ */
 void FactoryPauseResume() {
-    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("pause-factory"), "START accepted"); h.Seed();
-    state->factory->WaitEntered(); Require(h.task.Pause(), "pause accepted during factory");
-    state->factory->Release(); Require(state->StartedCount() == 0, "paused candidate is unstarted");
+    auto state = std::make_shared<Evidence>();
+    state->factory = std::make_shared<Rendezvous>();
+    Harness h(state);
+    Require(h.Start("pause-factory"), "START accepted");
+    h.Seed();
+    state->factory->WaitEntered();
+    Require(h.task.Pause(), "pause accepted during factory");
+    state->factory->Release();
+    Require(state->StartedCount() == 0, "paused candidate is unstarted");
     Require(h.task.Resume(), "resume accepted");
-    Await([&] { return state->StartedCount() == 1; }, "resume starts retained candidate");
-    Require(state->created == 1, "pause does not recreate factory or retire its resumable services");
+    Await([&] { return state->StartedCount() == 1; },
+          "resume starts retained candidate");
+    Require(state->created == 1,
+            "pause does not recreate factory or retire its resumable services");
     Require(h.task.Cancel(), "cancel active runtime");
     Await([&] { return state->destroyed == 1; }, "active candidate cleaned up");
     Require(!state->wrong_owner, "construction and disposal share real owner");
@@ -275,48 +332,77 @@ void FactoryPauseResume() {
 
 /** @brief Pause before mapping initialization must not let Resume bypass it. */
 void MappingPreparationAfterPause() {
-    auto state = std::make_shared<Evidence>(); state->clock = std::make_shared<Rendezvous>();
+    auto state = std::make_shared<Evidence>();
+    state->clock = std::make_shared<Rendezvous>();
     state->block_next_clock = true;
-    Harness h(state); Require(h.Start("pause-mapping", true), "mapping START accepted");
-    state->clock->WaitEntered(); Require(h.task.Pause(), "pause before prepare");
-    h.Seed(); state->clock->Release();
-    Await([&] { return state->clock_calls > 1; }, "owner processed paused initialization");
+    Harness h(state);
+    Require(h.Start("pause-mapping", true), "mapping START accepted");
+    state->clock->WaitEntered();
+    Require(h.task.Pause(), "pause before prepare");
+    h.Seed();
+    state->clock->Release();
+    Await([&] { return state->clock_calls > 1; },
+          "owner processed paused initialization");
     Require(h.task.Resume(), "resume mapping initialization");
-    Await([&] { return state->StartedCount() == 1; }, "mapping runtime eventually starts");
-    Require(state->prepared == 1, "actual mapping preparation is required after resume");
+    Await([&] { return state->StartedCount() == 1; },
+          "mapping runtime eventually starts");
+    Require(state->prepared == 1,
+            "actual mapping preparation is required after resume");
 }
 
-/** @brief Failed initialization releases runtime admission before reconfiguration. */
+/** @brief Failed initialization releases runtime admission before
+ * reconfiguration. */
 void InitializationFailureCleanup() {
-    auto state = std::make_shared<Evidence>(); state->mapping_ok = false;
-    Harness h(state); Require(h.Start("mapping-refused", true), "mapping request admitted");
-    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kFailed; }, "mapping refusal is explicit failure");
-    Await([&] { return h.task.ConfigureSession(h.bindings); }, "failed preparation releases idle runtime");
+    auto state = std::make_shared<Evidence>();
+    state->mapping_ok = false;
+    Harness h(state);
+    Require(h.Start("mapping-refused", true), "mapping request admitted");
+    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kFailed; },
+          "mapping refusal is explicit failure");
+    Await([&] { return h.task.ConfigureSession(h.bindings); },
+          "failed preparation releases idle runtime");
     Require(state->StartedCount() == 0, "refused mapping never starts Session");
 }
 
 /** @brief Missing seed evidence times out and releases runtime ownership. */
 void SeedTimeoutCleanup() {
-    auto state = std::make_shared<Evidence>(); state->clock = std::make_shared<Rendezvous>();
+    auto state = std::make_shared<Evidence>();
+    state->clock = std::make_shared<Rendezvous>();
     state->block_next_clock = true;
-    Harness h(state); Require(h.Start("no-seed"), "START accepted without fabricated seed");
-    state->clock->WaitEntered(); state->clock->Release();
-    Await([&] { return state->clock_calls > 1; }, "initial clock captured before timeout advance");
+    Harness h(state);
+    Require(h.Start("no-seed"), "START accepted without fabricated seed");
+    state->clock->WaitEntered();
+    state->clock->Release();
+    Await([&] { return state->clock_calls > 1; },
+          "initial clock captured before timeout advance");
     state->now = 2;
-    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kFailed; }, "seed timeout fails explicitly");
-    Await([&] { return h.task.ConfigureSession(h.bindings); }, "seed timeout releases runtime admission");
-    Require(state->created == 0, "no Session constructed without seed evidence");
+    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kFailed; },
+          "seed timeout fails explicitly");
+    Await([&] { return h.task.ConfigureSession(h.bindings); },
+          "seed timeout releases runtime admission");
+    Require(state->created == 0,
+            "no Session constructed without seed evidence");
 }
 
-/** @brief A superseded factory cannot start or publish under a newer identity. */
+/** @brief A superseded factory cannot start or publish under a newer identity.
+ */
 void FactoryPreemption() {
-    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("old"), "old START accepted"); h.Seed();
-    state->factory->WaitEntered(); Require(h.Start("new"), "replacement START accepted");
-    h.Seed(); state->factory->Release();
-    Await([&] { return state->StartedCount() == 1; }, "only replacement Session starts");
-    Require(state->created == 2 && h.task.GetSnapshot().task_id() == "new", "replacement retains correct native identity");
-    h.task.Shutdown(); Require(state->destroyed == 2 && !state->wrong_owner, "both generations disposed on owner");
+    auto state = std::make_shared<Evidence>();
+    state->factory = std::make_shared<Rendezvous>();
+    Harness h(state);
+    Require(h.Start("old"), "old START accepted");
+    h.Seed();
+    state->factory->WaitEntered();
+    Require(h.Start("new"), "replacement START accepted");
+    h.Seed();
+    state->factory->Release();
+    Await([&] { return state->StartedCount() == 1; },
+          "only replacement Session starts");
+    Require(state->created == 2 && h.task.GetSnapshot().task_id() == "new",
+            "replacement retains correct native identity");
+    h.task.Shutdown();
+    Require(state->destroyed == 2 && !state->wrong_owner,
+            "both generations disposed on owner");
 }
 
 /** @brief Cancel during final clock validation cannot start an old session. */
@@ -324,23 +410,31 @@ void FactoryClockCancellation() {
     auto state = std::make_shared<Evidence>();
     state->factory = std::make_shared<Rendezvous>();
     state->clock = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("cancel-start-clock"), "START accepted"); h.Seed();
+    Harness h(state);
+    Require(h.Start("cancel-start-clock"), "START accepted");
+    h.Seed();
     state->factory->WaitEntered();
     state->block_next_clock = true;
     state->factory->Release();
     state->clock->WaitEntered();
-    Require(h.task.Cancel(), "cancel accepted while final seed clock is blocked");
+    Require(h.task.Cancel(),
+            "cancel accepted while final seed clock is blocked");
     state->clock->Release();
-    Await([&] { return state->destroyed == 1; }, "canceled prepared candidate released");
-    Require(state->StartedCount() == 0, "final clock return cannot start a revoked generation");
+    Await([&] { return state->destroyed == 1; },
+          "canceled prepared candidate released");
+    Require(state->StartedCount() == 0,
+            "final clock return cannot start a revoked generation");
 }
 
-/** @brief A pause during final seed validation retains an unstarted candidate. */
+/** @brief A pause during final seed validation retains an unstarted candidate.
+ */
 void FactoryClockPauseResume() {
     auto state = std::make_shared<Evidence>();
     state->factory = std::make_shared<Rendezvous>();
     state->clock = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("pause-start-clock"), "START accepted"); h.Seed();
+    Harness h(state);
+    Require(h.Start("pause-start-clock"), "START accepted");
+    h.Seed();
     state->factory->WaitEntered();
     state->block_next_clock = true;
     state->factory->Release();
@@ -348,157 +442,276 @@ void FactoryClockPauseResume() {
     Require(h.task.Pause(), "pause accepted while final seed clock is blocked");
     const auto calls = state->clock_calls.load();
     state->clock->Release();
-    Await([&] { return state->clock_calls > calls; }, "owner processed the paused start window");
-    Require(state->StartedCount() == 0, "paused generation remains unstarted after clock return");
+    Await([&] { return state->clock_calls > calls; },
+          "owner processed the paused start window");
+    Require(state->StartedCount() == 0,
+            "paused generation remains unstarted after clock return");
     Require(h.task.Resume(), "prepared start resumes with a new permit");
-    Await([&] { return state->StartedCount() == 1; }, "retained candidate starts after resume");
-    Require(state->created == 1, "final validation pause preserves factory candidate");
+    Await([&] { return state->StartedCount() == 1; },
+          "retained candidate starts after resume");
+    Require(state->created == 1,
+            "final validation pause preserves factory candidate");
 }
 
 /** @brief Legacy submission alone cannot manufacture cooperative acceptance. */
 void CooperativeBindingsRequired() {
     Harness h(std::make_shared<Evidence>(), false);
-    Require(h.Start("missing-cooperation"), "initial request accepted for dependency validation"); h.Seed();
-    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kFailed; }, "missing guarded backend fails explicitly");
-    Require(h.evidence->StartedCount() == 0, "missing native cooperation never starts a Session");
+    Require(h.Start("missing-cooperation"),
+            "initial request accepted for dependency validation");
+    h.Seed();
+    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kFailed; },
+          "missing guarded backend fails explicitly");
+    Require(h.evidence->StartedCount() == 0,
+            "missing native cooperation never starts a Session");
 }
 
-/** @brief Paused initialization does not consume the resumed seed wait budget. */
+/** @brief Paused initialization does not consume the resumed seed wait budget.
+ */
 void PausedInitializationBudget() {
     auto state = std::make_shared<Evidence>();
-    state->clock = std::make_shared<Rendezvous>(); state->block_next_clock = true;
-    Harness h(state); Require(h.Start("paused-seed-budget"), "START admitted without seed");
-    state->clock->WaitEntered(); Require(h.task.Pause(), "initialization pause admitted");
+    state->clock = std::make_shared<Rendezvous>();
+    state->block_next_clock = true;
+    Harness h(state);
+    Require(h.Start("paused-seed-budget"), "START admitted without seed");
+    state->clock->WaitEntered();
+    Require(h.task.Pause(), "initialization pause admitted");
     state->clock->Release();
-    Await([&] { return state->clock_calls > 1; }, "owner reached paused seed wait");
+    Await([&] { return state->clock_calls > 1; },
+          "owner reached paused seed wait");
     state->now = 100;
     const auto before = state->clock_calls.load();
-    Await([&] { return state->clock_calls > before; }, "paused clock advance processed");
+    Await([&] { return state->clock_calls > before; },
+          "paused clock advance processed");
     Require(h.task.Resume(), "resume permits a fresh bounded seed wait");
     const auto resumed = state->clock_calls.load();
-    Await([&] { return state->clock_calls > resumed + 2; }, "resumed owner advanced without expired wait");
-    Require(h.task.GetLifecycle() != t::TaskLifecycle::kFailed, "paused duration does not cause seed timeout");
+    Await([&] { return state->clock_calls > resumed + 2; },
+          "resumed owner advanced without expired wait");
+    Require(h.task.GetLifecycle() != t::TaskLifecycle::kFailed,
+            "paused duration does not cause seed timeout");
     h.Seed();
-    Await([&] { return state->StartedCount() == 1; }, "fresh post-resume seed starts session");
+    Await([&] { return state->StartedCount() == 1; },
+          "fresh post-resume seed starts session");
 }
 
-/** @brief Paused owner consumes requirements without advancing navigation nodes. */
+/** @brief Paused owner consumes requirements without advancing navigation
+ * nodes. */
 void PausedMonitoring() {
-    Harness h; Require(h.Start("paused-monitor"), "START accepted"); h.Seed();
-    Await([&] { return h.evidence->StartedCount() == 1; }, "actual Session Start published");
+    Harness h;
+    Require(h.Start("paused-monitor"), "START accepted");
+    h.Seed();
+    Await([&] { return h.evidence->StartedCount() == 1; },
+          "actual Session Start published");
     Require(h.task.Pause(), "active pause admitted");
-    Await([&] {
-        const auto snapshot = h.task.GetExplorationSnapshot();
-        return snapshot && snapshot->state == e::ExplorationState::kPaused;
-    }, "authoritative pause reaches session before stage advancement");
+    Await(
+        [&] {
+            const auto snapshot = h.task.GetExplorationSnapshot();
+            return snapshot && snapshot->state == e::ExplorationState::kPaused;
+        },
+        "authoritative pause reaches session before stage advancement");
     h.Observe();
-    Await([&] {
-        const auto snapshot = h.task.GetExplorationSnapshot();
-        return snapshot && snapshot->pending_units == 1;
-    }, "paused monitoring consumes real coverage requirement");
-    Require(h.evidence->submitted == 0, "paused tree does not submit navigation");
+    Await(
+        [&] {
+            const auto snapshot = h.task.GetExplorationSnapshot();
+            return snapshot && snapshot->pending_units == 1;
+        },
+        "paused monitoring consumes real coverage requirement");
+    Require(h.evidence->submitted == 0,
+            "paused tree does not submit navigation");
     Require(h.task.Resume(), "original stage resumes");
-    Await([&] { return h.evidence->submitted == 1; }, "resumed stage issues one navigation request");
+    Await([&] { return h.evidence->submitted == 1; },
+          "resumed stage issues one navigation request");
 }
 
-/** @brief Cancel stays admissible while native submit blocks; late accept is canceled. */
+/** @brief Cancel stays admissible while native submit blocks; late accept is
+ * canceled. */
 void NativeSubmissionCancellation() {
-    auto state = std::make_shared<Evidence>(); state->submit = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("blocked-native"), "START accepted"); h.Seed(); h.Observe();
-    state->submit->WaitEntered(); Require(h.task.Cancel(), "cancel admission is independent of native readiness");
+    auto state = std::make_shared<Evidence>();
+    state->submit = std::make_shared<Rendezvous>();
+    Harness h(state);
+    Require(h.Start("blocked-native"), "START accepted");
+    h.Seed();
+    h.Observe();
+    state->submit->WaitEntered();
+    Require(h.task.Cancel(),
+            "cancel admission is independent of native readiness");
     state->submit->Release();
-    Await([&] { return state->canceled == 1; }, "late accepted native request canceled exactly once");
-    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kCanceled; }, "task finishes canceled");
+    Await([&] { return state->canceled == 1; },
+          "late accepted native request canceled exactly once");
+    Await([&] { return h.task.GetLifecycle() == t::TaskLifecycle::kCanceled; },
+          "task finishes canceled");
     Require(state->submitted == 1, "no duplicate native request");
 }
 
-/** @brief Native callback reentrant Shutdown cannot deadlock owner/dispatcher join. */
+/** @brief Native callback reentrant Shutdown cannot deadlock owner/dispatcher
+ * join. */
 void NativeShutdownReentry() {
-    auto state = std::make_shared<Evidence>(); Harness h(state);
+    auto state = std::make_shared<Evidence>();
+    Harness h(state);
     state->native_reentry = [&h] { h.task.Shutdown(); };
-    Require(h.Start("native-close"), "START accepted"); h.Seed(); h.Observe();
-    Await([&] { return state->canceled == 1; }, "reentrant close drains late acceptance");
+    Require(h.Start("native-close"), "START accepted");
+    h.Seed();
+    h.Observe();
+    Await([&] { return state->canceled == 1; },
+          "reentrant close drains late acceptance");
     h.task.Shutdown();
-    Require(state->destroyed == 1 && !state->wrong_owner, "external close joins owner after callback returns");
+    Require(state->destroyed == 1 && !state->wrong_owner,
+            "external close joins owner after callback returns");
 }
 
-/** @brief Build independently attested RGB-D evidence for the real Task inbox. */
+/** @brief Build independently attested RGB-D evidence for the real Task inbox.
+ */
 p::ObservationPacket SensorPacket(const Harness& h, std::uint64_t sequence) {
     p::ObservationPacket packet;
     auto& localization = packet.localization;
-    localization.world_frame = "map"; localization.sensor_frame = "depth_optical";
-    localization.map_epoch = h.map.map_epoch; localization.calibration_revision = 1;
-    localization.support = p::Mask(p::SensorKind::kRgbd); localization.healthy = true;
-    localization.valid_from = 0; localization.valid_until = 11;
+    localization.world_frame = "map";
+    localization.sensor_frame = "depth_optical";
+    localization.map_epoch = h.map.map_epoch;
+    localization.calibration_revision = 1;
+    localization.support = p::Mask(p::SensorKind::kRgbd);
+    localization.healthy = true;
+    localization.valid_from = 0;
+    localization.valid_until = 11;
     localization.world_from_base.translation = {1, 1, 0};
     localization.world_from_sensor.translation = {1, 1, .5};
     auto& observation = packet.observation;
-    observation.sensor = p::SensorKind::kRgbd; observation.sequence = sequence;
-    observation.map_epoch = h.map.map_epoch; observation.frame_id = "map";
-    observation.stamp = h.evidence->now; observation.valid_until = 11;
-    observation.valid_fraction = 1; observation.localization_valid = true;
-    observation.rays.push_back({{1, 1, .5}, {0, 1, 0}, .2, true, 1, observation.stamp});
-    Require(packet.Valid(h.evidence->now), "fixture is a valid actual localized packet");
+    observation.sensor = p::SensorKind::kRgbd;
+    observation.sequence = sequence;
+    observation.map_epoch = h.map.map_epoch;
+    observation.frame_id = "map";
+    observation.stamp = h.evidence->now;
+    observation.valid_until = 11;
+    observation.valid_fraction = 1;
+    observation.localization_valid = true;
+    observation.rays.push_back(
+        {{1, 1, .5}, {0, 1, 0}, .2, true, 1, observation.stamp});
+    Require(packet.Valid(h.evidence->now),
+            "fixture is a valid actual localized packet");
     return packet;
 }
 
-/** @brief A blocked old factory cannot let its input callbacks target the next START. */
+/** @brief A blocked old factory cannot let its input callbacks target the next
+ * START. */
 void SensorDestinationReplacement() {
-    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("sensor-first"), "first START accepted"); h.Seed();
+    auto state = std::make_shared<Evidence>();
+    state->factory = std::make_shared<Rendezvous>();
+    Harness h(state);
+    Require(h.Start("sensor-first"), "first START accepted");
+    h.Seed();
     state->factory->WaitEntered();
-    const auto old = h.task.SensorInputIdentity(); Require(old.has_value(), "old destination captured");
-    Require(h.Start("sensor-second"), "replacement START accepted without waiting on factory");
+    const auto old = h.task.SensorInputIdentity();
+    Require(old.has_value(), "old destination captured");
+    Require(h.Start("sensor-second"),
+            "replacement START accepted without waiting on factory");
     const auto current = h.task.SensorInputIdentity();
-    Require(current && current->instance == old->instance && current->generation != old->generation,
+    Require(current && current->instance == old->instance &&
+                current->generation != old->generation,
             "replacement advances the bound destination");
-    Require(!h.task.PushSensorPacket(*old, SensorPacket(h, 99), state->now), "late old packet rejected");
-    Require(!h.task.ReportSensorLoss(*old, p::SensorKind::kRgbd, 99), "late old loss rejected");
-    Require(h.task.PushSensorPacket(*current, SensorPacket(h, 1), state->now), "current packet admitted");
+    Require(!h.task.PushSensorPacket(*old, SensorPacket(h, 99), state->now),
+            "late old packet rejected");
+    Require(!h.task.ReportSensorLoss(*old, p::SensorKind::kRgbd, 99),
+            "late old loss rejected");
+    Require(h.task.PushSensorPacket(*current, SensorPacket(h, 1), state->now),
+            "current packet admitted");
     state->factory->Release();
-    Await([&] {
-        const auto snapshot = h.task.GetExplorationSnapshot();
-        return state->StartedCount() == 1 && snapshot &&
-            snapshot->valid_observations.sequence[1] == 1 &&
-            snapshot->processed_observations.sequence[1] == 1;
-    }, "replacement Session actually consumes the newly bound packet");
+    Await(
+        [&] {
+            const auto snapshot = h.task.GetExplorationSnapshot();
+            return state->StartedCount() == 1 && snapshot &&
+                   snapshot->valid_observations.sequence[1] == 1 &&
+                   snapshot->processed_observations.sequence[1] == 1 &&
+                   snapshot->acquisition_keyposes &&
+                   snapshot->acquisition_keyposes->size() == 1;
+        },
+        "replacement Session actually consumes the newly bound packet");
     const auto snapshot = h.task.GetExplorationSnapshot();
     Require(snapshot && snapshot->accepted_observations.sequence[1] == 1 &&
-            !snapshot->observation_losses.historical_gaps.sequence[1],
+                !snapshot->observation_losses.historical_gaps.sequence[1],
             "old loss never contaminates the new observation ledger");
+    const auto& keypose = snapshot->acquisition_keyposes->front();
+    Require(
+        snapshot->acquisition_keypose_generation != 0 &&
+            keypose.source_sensor == p::SensorKind::kRgbd &&
+            keypose.source_sequence == 1 &&
+            keypose.map_epoch == h.map.map_epoch &&
+            keypose.geometry_revision == h.map.geometry_revision &&
+            keypose.calibration_revision == 1 &&
+            keypose.acquisition_stamp == state->now &&
+            keypose.frame_id == "map" && keypose.base_pose.x == 1 &&
+            keypose.base_pose.y == 1,
+        "published keypose preserves exact packet and consumer-map provenance");
+    const auto immutable = snapshot->acquisition_keyposes;
+    const auto generation = snapshot->acquisition_keypose_generation;
+    Require(
+        h.task.PushSensorPacket(*current, SensorPacket(h, 2), state->now),
+        "same-position packet is admitted as measured observation evidence");
+    Await(
+        [&] {
+            const auto next = h.task.GetExplorationSnapshot();
+            return next && next->processed_observations.sequence[1] == 2;
+        },
+        "same-position packet reaches the session owner");
+    const auto filtered = h.task.GetExplorationSnapshot();
+    Require(filtered && filtered->acquisition_keyposes == immutable &&
+                filtered->acquisition_keypose_generation == generation &&
+                filtered->acquisition_keyposes->size() == 1,
+            "spacing-filtered packet preserves the immutable published keypose "
+            "snapshot");
 }
 
-/** @brief Invalid packets preserve same-generation loss without a separate public call. */
+/** @brief Invalid packets preserve same-generation loss without a separate
+ * public call. */
 void SensorPacketRejectionLoss() {
-    auto state = std::make_shared<Evidence>(); state->factory = std::make_shared<Rendezvous>();
-    Harness h(state); Require(h.Start("sensor-rejection"), "START accepted"); h.Seed();
+    auto state = std::make_shared<Evidence>();
+    state->factory = std::make_shared<Rendezvous>();
+    Harness h(state);
+    Require(h.Start("sensor-rejection"), "START accepted");
+    h.Seed();
     state->factory->WaitEntered();
-    const auto identity = h.task.SensorInputIdentity(); Require(identity.has_value(), "destination captured");
-    auto rejected = SensorPacket(h, 17); rejected.localization.healthy = false;
-    Require(!h.task.PushSensorPacket(*identity, std::move(rejected), state->now), "invalid packet rejected");
-    h.Observe(); state->factory->Release();
-    Await([&] {
-        const auto snapshot = h.task.GetExplorationSnapshot();
-        // Explicit validation rejection is a discard. It cannot fabricate a
-        // missing sequence interval in the admitted source's monotonic stream.
-        return snapshot && snapshot->observation_losses.historical_discards.sequence[1] == 17;
-    }, "rejection retained by the real Session owner");
+    const auto identity = h.task.SensorInputIdentity();
+    Require(identity.has_value(), "destination captured");
+    auto rejected = SensorPacket(h, 17);
+    rejected.localization.healthy = false;
+    Require(
+        !h.task.PushSensorPacket(*identity, std::move(rejected), state->now),
+        "invalid packet rejected");
+    h.Observe();
+    state->factory->Release();
+    Await(
+        [&] {
+            const auto snapshot = h.task.GetExplorationSnapshot();
+            // Explicit validation rejection is a discard. It cannot fabricate a
+            // missing sequence interval in the admitted source's monotonic
+            // stream.
+            return snapshot && snapshot->observation_losses.historical_discards
+                                       .sequence[1] == 17;
+        },
+        "rejection retained by the real Session owner");
     const auto snapshot = h.task.GetExplorationSnapshot();
     Require(snapshot &&
-        (snapshot->observation_losses.historical_discards.present & p::Mask(p::SensorKind::kRgbd)) &&
-        !snapshot->observation_losses.historical_gaps.sequence[1],
-        "same-generation rejection remains audited without inventing a sequence gap");
+                (snapshot->observation_losses.historical_discards.present &
+                 p::Mask(p::SensorKind::kRgbd)) &&
+                !snapshot->observation_losses.historical_gaps.sequence[1],
+            "same-generation rejection remains audited without inventing a "
+            "sequence gap");
 }
 
-/** @brief Pre-start and foreign-instance identities cannot seed accepted-task coverage. */
+/** @brief Pre-start and foreign-instance identities cannot seed accepted-task
+ * coverage. */
 void SensorIdentityScope() {
     Harness h;
-    const auto seed = h.task.SensorInputIdentity(); Require(seed && !seed->generation, "pre-start identity is explicit");
+    const auto seed = h.task.SensorInputIdentity();
+    Require(seed && !seed->generation, "pre-start identity is explicit");
     Require(h.Start("sensor-scope"), "START accepted");
-    Require(!h.task.PushSensorPacket(*seed, SensorPacket(h, 1), h.evidence->now), "pre-start binding expires at START");
-    auto foreign = *h.task.SensorInputIdentity(); ++foreign.instance;
-    Require(!h.task.PushSensorPacket(foreign, SensorPacket(h, 2), h.evidence->now), "other task instance rejected");
-    Require(!h.task.ReportSensorLoss(foreign, p::SensorKind::kRgbd, 2), "foreign loss rejected");
+    Require(
+        !h.task.PushSensorPacket(*seed, SensorPacket(h, 1), h.evidence->now),
+        "pre-start binding expires at START");
+    auto foreign = *h.task.SensorInputIdentity();
+    ++foreign.instance;
+    Require(
+        !h.task.PushSensorPacket(foreign, SensorPacket(h, 2), h.evidence->now),
+        "other task instance rejected");
+    Require(!h.task.ReportSensorLoss(foreign, p::SensorKind::kRgbd, 2),
+            "foreign loss rejected");
 }
 
 /** @brief Production binding callbacks do not keep a shut-down task alive. */
@@ -506,8 +719,11 @@ void WeakSensorBinding() {
     auto task = std::make_shared<t::ExplorationTask>();
     t::ExplorationTaskBindings bindings;
     bindings.clock = [] { return 1.; };
-    bindings.create_session = [](const auto&, const auto&) { return std::shared_ptr<e::ExplorationSession>{}; };
-    Require(task->ConfigureSession(bindings), "unstarted destination configured");
+    bindings.create_session = [](const auto&, const auto&) {
+        return std::shared_ptr<e::ExplorationSession>{};
+    };
+    Require(task->ConfigureSession(bindings),
+            "unstarted destination configured");
     proto::TaskServerOptions options;
     Require(task->Initialize(options), "real owner initialized");
     const auto binding = t::ExplorationTask::BindSensorInput(task);
@@ -520,26 +736,36 @@ void WeakSensorBinding() {
 }
 }  // namespace
 
-/** @brief Execute all real native lifecycle scenarios and retain each result. */
+/** @brief Execute all real native lifecycle scenarios and retain each result.
+ */
 int main() {
-    const std::vector<std::pair<const char*, void(*)()>> cases = {
-        {"factory_cancel", FactoryCancellation}, {"factory_pause_resume", FactoryPauseResume},
+    const std::vector<std::pair<const char*, void (*)()>> cases = {
+        {"factory_cancel", FactoryCancellation},
+        {"factory_pause_resume", FactoryPauseResume},
         {"mapping_pause_prepare", MappingPreparationAfterPause},
-        {"mapping_refusal_cleanup", InitializationFailureCleanup}, {"seed_timeout_cleanup", SeedTimeoutCleanup},
-        {"factory_preemption", FactoryPreemption}, {"cooperative_bindings", CooperativeBindingsRequired},
+        {"mapping_refusal_cleanup", InitializationFailureCleanup},
+        {"seed_timeout_cleanup", SeedTimeoutCleanup},
+        {"factory_preemption", FactoryPreemption},
+        {"cooperative_bindings", CooperativeBindingsRequired},
         {"factory_clock_cancel", FactoryClockCancellation},
         {"factory_clock_pause_resume", FactoryClockPauseResume},
         {"paused_initialization_budget", PausedInitializationBudget},
         {"paused_monitoring", PausedMonitoring},
-        {"native_submit_cancel", NativeSubmissionCancellation}, {"native_shutdown_reentry", NativeShutdownReentry},
+        {"native_submit_cancel", NativeSubmissionCancellation},
+        {"native_shutdown_reentry", NativeShutdownReentry},
         {"sensor_destination_replacement", SensorDestinationReplacement},
         {"sensor_rejection_loss", SensorPacketRejectionLoss},
-        {"sensor_identity_scope", SensorIdentityScope}, {"weak_sensor_binding", WeakSensorBinding}};
+        {"sensor_identity_scope", SensorIdentityScope},
+        {"weak_sensor_binding", WeakSensorBinding}};
     int failures = 0;
     for (const auto& test : cases) {
-        try { test.second(); std::cout << "PASS " << test.first << std::endl; }
-        catch (const std::exception& error) {
-            ++failures; std::cerr << "FAIL " << test.first << ": " << error.what() << std::endl;
+        try {
+            test.second();
+            std::cout << "PASS " << test.first << std::endl;
+        } catch (const std::exception& error) {
+            ++failures;
+            std::cerr << "FAIL " << test.first << ": " << error.what()
+                      << std::endl;
         }
     }
     return failures ? 1 : 0;

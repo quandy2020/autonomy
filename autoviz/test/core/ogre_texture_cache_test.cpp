@@ -5,7 +5,7 @@
 
 #include <QApplication>
 #include <QWidget>
-#include <OgreTextureManager.h>
+#include <Ogre.h>
 
 #include "autoviz/rendering/ogre_render_backend.hpp"
 #include "autoviz/rendering/scene_overlay.hpp"
@@ -40,9 +40,12 @@ int main(int argc, char** argv) {
   autoviz::rendering::ReferenceGridSettings grid;
   QImage image(2048, 2560, QImage::Format_RGBA8888);
   image.fill(QColor(112, 137, 134));
+  bool premultiplied = false;
   auto draw = [&] {
     autoviz::rendering::SceneOverlay overlay;
-    overlay.addTexturedQuad({0, 1, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, image);
+    overlay.addTexturedQuad({0, 1, 0}, {1, 1, 0}, {1, 0, 0}, {0, 0, 0}, image,
+        autoviz::rendering::SceneOverlay::TextureFilterMode::kNearest,
+        0, false, true, QVector4D(1, 1, 1, 1), premultiplied);
     check(backend.render(false, grid, &overlay, camera, 4.f/3.f), "frame renders");
   };
   draw();
@@ -50,6 +53,23 @@ int main(int argc, char** argv) {
   check(original.size() == 1, "one map texture allocated");
   for (int i = 0; i < 30; ++i) draw();
   check(Textures() == original, "unchanged image reuses the same GPU resource for 30 frames");
+  for (bool mode : {true, false}) {
+    premultiplied = mode;
+    draw();
+    auto materials = Ogre::MaterialManager::getSingleton().getResourceIterator();
+    bool found = false;
+    while (materials.hasMoreElements()) {
+      const auto resource = materials.getNext();
+      if (resource->getName().find("AvizDynTex") != 0) continue;
+      auto material = Ogre::MaterialManager::getSingleton().getByName(resource->getName());
+      auto* pass = material->getTechnique(0)->getPass(0);
+      check(pass->getSourceBlendFactor() == (mode ? Ogre::SBF_ONE : Ogre::SBF_SOURCE_ALPHA) &&
+                pass->getDestBlendFactor() == Ogre::SBF_ONE_MINUS_SOURCE_ALPHA,
+            "submap and ordinary map use their respective blend modes");
+      found = true;
+    }
+    check(found && Textures() == original, "changing blend mode reuses the texture");
+  }
   image.setPixelColor(0, 0, Qt::black);
   draw();
   check(Textures().size() == 1 && Textures() != original,

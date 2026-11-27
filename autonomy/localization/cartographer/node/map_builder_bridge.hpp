@@ -33,6 +33,8 @@
 #include "autonomy/localization/cartographer/node/trajectory_options.hpp"
 #include "autonomy/localization/cartographer/proto/cartographer_services.pb.h"
 #include "autonomy/transform/buffer.hpp"
+#include <automsgs/msgs/visualization_msgs/marker_array.pb.h>
+#include <automsgs/msgs/nav_msgs/path.pb.h>
 
 namespace autonomy {
 namespace localization {
@@ -80,6 +82,10 @@ public:
     GetTrajectoryStates();
 
     proto::SubmapList GetSubmapList(
+        const automsgs::msgs::builtin_interfaces::Time& node_time,
+        bool include_textures = false);
+    automsgs::msgs::visualization_msgs::MarkerArray GetConstraintList();
+    automsgs::msgs::nav_msgs::Path GetTrajectoryPath(
         const automsgs::msgs::builtin_interfaces::Time& node_time);
 
     std::unordered_map<int, LocalTrajectoryData> GetLocalTrajectoryData()
@@ -102,6 +108,9 @@ private:
 
     std::mutex mutex_;
     const NodeOptions node_options_;
+    std::map<::cartographer::mapping::SubmapId, proto::SubmapQueryResponse> submap_textures_;
+    size_t texture_cursor_ = 0;
+    bool texture_updates_first_ = false;
     std::unordered_map<int,
                        std::shared_ptr<const LocalTrajectoryData::LocalSlamData>>
         local_slam_data_ GUARDED_BY(mutex_);

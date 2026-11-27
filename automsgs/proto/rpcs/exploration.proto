@@ -69,6 +69,7 @@ message ExploreRequest {
   automsgs.msgs.geometry_msgs.Polygon area = 3;
   string map_name = 4;
   ExploreOptions options = 5;
+  repeated automsgs.msgs.geometry_msgs.Polygon no_go_areas = 6;
 }
 
 message ExploreResponse {
@@ -93,6 +94,7 @@ message GetStatusRequest {}
 message SetAreaRequest {
   string goal_id = 1;
   automsgs.msgs.geometry_msgs.Polygon area = 2;
+  repeated automsgs.msgs.geometry_msgs.Polygon no_go_areas = 3;
 }
 
 message SaveMapRequest {

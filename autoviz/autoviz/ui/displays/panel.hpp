@@ -268,6 +268,8 @@ class DisplaysPanel : public QWidget {
   void syncTfDisplayProperties(QTreeWidgetItem* display_item,
                                display::TfDisplay* tf);
 
+  void syncSubmapLists();
+
   /**
    * @brief Lightweight: refresh pose texts for expanded Frames only (~20Hz).
    */
@@ -353,6 +355,7 @@ class DisplaysPanel : public QWidget {
 
   /** ~20Hz timer for expanded TF pose field text. */
   QTimer* tf_pose_timer_ = nullptr;
+  QTimer* submap_list_timer_ = nullptr;
 
   /** When true, TF pose timer stays stopped (app backgrounded). */
   bool live_updates_paused_ = false;

@@ -78,7 +78,7 @@ bool StaticTransformPublisher::Publish(std::shared_ptr<autolink::Node> node) {
         return false;
     }
 
-    LOG(INFO) << "Published " << transforms_.transforms_size()
+    LOG_FIRST_N(INFO, 1) << "Published " << transforms_.transforms_size()
               << " static transforms on " << kTfStaticTopic;
     return true;
 }

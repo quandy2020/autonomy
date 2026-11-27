@@ -46,6 +46,9 @@ message SubmapEntry {
   int32 submap_version = 3;
   automsgs.msgs.geometry_msgs.Pose pose = 4;
   bool is_frozen = 5;
+  // A bounded rotating subset carries textures; omitted textures remain cached.
+  repeated SubmapTexture textures = 6;
+  int32 texture_version = 7;
 }
 
 message SubmapList {

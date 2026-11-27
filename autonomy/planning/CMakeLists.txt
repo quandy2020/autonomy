@@ -54,6 +54,16 @@ autocmake_library(autonomy_planning
     ${AUTONOMY_PLANNING_OPTIONAL_DEPENDENCIES})
 add_library(autonomy::planning ALIAS autonomy_planning)
 
+if(BUILD_TEST)
+  enable_testing()
+  add_executable(planning.tare_explorer_test
+    planner/tare_explorer/tare_explorer_test.cpp)
+  target_link_libraries(planning.tare_explorer_test PRIVATE autonomy_planning)
+  add_test(NAME planning.tare_explorer_test
+    COMMAND planning.tare_explorer_test)
+  set_tests_properties(planning.tare_explorer_test PROPERTIES TIMEOUT 30)
+endif()
+
 if(AUTONOMY_BUILD_FIELDS2COVER)
   find_package(Boost REQUIRED)
   target_include_directories(autonomy_planning PRIVATE ${Boost_INCLUDE_DIRS})

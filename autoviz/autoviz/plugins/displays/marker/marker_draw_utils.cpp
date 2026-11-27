@@ -5,6 +5,7 @@
 #include "autoviz/plugins/displays/marker/marker_draw_utils.hpp"
 
 #include <algorithm>
+#include <cmath>
 
 #include <QColor>
 #include <QQuaternion>
@@ -129,38 +130,21 @@ bool MarkerPointsInFixedFrame(
     return false;
   }
 
-  const std::string& marker_frame = marker.header().frame_id();
-  const bool same_frame =
-      context == nullptr || marker_frame.empty() ||
-      marker_frame == context->fixed_frame;
-  if (same_frame) {
-    for (const auto& point : marker.points()) {
-      points->emplace_back(static_cast<float>(point.x()),
-                           static_cast<float>(point.y()),
-                           static_cast<float>(point.z()));
-    }
-    return true;
-  }
-
-  const auto zero_time = autoviz::commsgs::ZeroTime();
   QMatrix4x4 matrix;
-  bool have_tf = false;
-  try {
-    const auto tf = context->tf_buffer->lookupTransform(
-        context->fixed_frame, marker_frame, zero_time);
-    matrix = transformToMatrix(tf);
-    have_tf = true;
-  } catch (...) {
+  const auto& pose = marker.pose();
+  matrix.translate(pose.position().x(), pose.position().y(), pose.position().z());
+  const auto& q = pose.orientation();
+  matrix.rotate(QQuaternion(q.w(), q.x(), q.y(), q.z()));
+  const auto& frame = marker.header().frame_id();
+  if (context && !frame.empty() && frame != context->fixed_frame) {
+    if (!context->tf_buffer) return false;
+    try {
+      matrix = transformToMatrix(context->tf_buffer->lookupTransform(
+          context->fixed_frame, frame, autoviz::commsgs::ZeroTime())) * matrix;
+    } catch (...) { return false; }
   }
-
-  for (const auto& point : marker.points()) {
-    QVector3D p(static_cast<float>(point.x()), static_cast<float>(point.y()),
-                static_cast<float>(point.z()));
-    if (have_tf) {
-      p = matrix.map(p);
-    }
-    points->push_back(p);
-  }
+  for (const auto& point : marker.points())
+    points->push_back(matrix.map(QVector3D(point.x(), point.y(), point.z())));
   return true;
 }
 
@@ -323,7 +307,7 @@ void drawStoredMarkers(
   };
 
   for (const auto& [key, stored] : markers) {
-    (void)key;
+    if (!common::ParseBoolProperty(propertyValue(properties, "namespace/" + key.ns, "true"), true)) continue;
     const auto& marker = stored.marker;
     const QColor color = ResolveMarkerDrawColor(marker, properties);
     const QMatrix4x4 transform = MarkerTransform(marker, context);
@@ -411,7 +395,16 @@ void drawStoredMarkers(
       std::vector<QVector3D> points;
       if (MarkerPointsInFixedFrame(marker, context, &points)) {
         for (std::size_t i = 1; i < points.size(); i += 2) {
-          scene.addLine(points[i - 1], points[i], color);
+          QColor segment_color = color;
+          if (marker.colors_size() == marker.points_size() &&
+              !common::ParseBoolProperty(propertyValue(properties, "use_custom_color", "false"), false)) {
+            const auto& c = marker.colors(static_cast<int>(i - 1));
+            segment_color = QColor::fromRgbF(std::clamp(c.r(), 0.f, 1.f), std::clamp(c.g(), 0.f, 1.f),
+                std::clamp(c.b(), 0.f, 1.f), std::clamp(c.a(), 0.f, 1.f));
+          }
+          if (std::isfinite(marker.scale().x()) && marker.scale().x() > 0.)
+            scene.addViewFacingPolylineStrip({points[i - 1], points[i]}, marker.scale().x(), segment_color);
+          else scene.addLine(points[i - 1], points[i], segment_color);
         }
       }
     } else if (marker.type() == kPoints && marker.points_size() >= 1) {

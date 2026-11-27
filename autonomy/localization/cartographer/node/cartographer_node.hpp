@@ -119,6 +119,7 @@ private:
     void AddSensorSamplers(int trajectory_id, const TrajectoryOptions& options);
 
     void PublishSubmapList();
+    void PublishConstraintList();
     void PublishLocalTrajectoryData();
     void PublishTrajectory();
     void PublishOccupancyGrid();
@@ -170,11 +171,11 @@ private:
     std::unique_ptr<MapBuilderBridge> map_builder_bridge_ GUARDED_BY(mutex_);
 
     std::shared_ptr<autolink::Writer<proto::SubmapList>> submap_list_writer_;
+    std::shared_ptr<autolink::Writer<automsgs::msgs::visualization_msgs::MarkerArray>> constraint_list_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::geometry_msgs::PoseStamped>>
         tracked_pose_writer_;
     std::shared_ptr<autolink::Writer<automsgs::msgs::nav_msgs::Path>>
         trajectory_writer_;
-    automsgs::msgs::nav_msgs::Path live_trajectory_ GUARDED_BY(mutex_);
     std::shared_ptr<autolink::Writer<automsgs::msgs::map_msgs::OccupancyGrid>>
         occupancy_grid_writer_;
     /** Cached painted submap textures; skip HandleSubmapQuery when version

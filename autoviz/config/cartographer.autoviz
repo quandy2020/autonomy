@@ -90,16 +90,21 @@ Displays:
     Enabled: false
     Name: Submaps
     Properties:
-      submap_query_service: /submap_query
-      tracking_frame: base_link
-      high_resolution: true
-      low_resolution: false
       show_axes: true
       show_ids: true
       trajectory_id: -1
+      submap_index: -1
+      show_textures: true
+      high_resolution: true
+      low_resolution: false
+      tracking_frame: base_link
+      fade_out_distance: 1.0
       alpha: 1.0
-      fade_distance: 1.0
     Type: Submaps
+  - Channel: /constraint_list
+    Enabled: false
+    Name: Constraints
+    Type: CartographerConstraints
   - Channel: /echoes_1
     Enabled: true
     Name: LaserScan

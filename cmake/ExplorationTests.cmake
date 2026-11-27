@@ -15,6 +15,12 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
   target_link_libraries(autonomy_measured_coverage_map_test PRIVATE autonomy_task)
   add_test(NAME autonomy.exploration.measured_coverage_map COMMAND autonomy_measured_coverage_map_test)
   set_tests_properties(autonomy.exploration.measured_coverage_map PROPERTIES TIMEOUT 30)
+  add_executable(autonomy_rolling_viewpoint_field_test
+    autonomy/task/exploration/rolling_viewpoint_field_test.cpp)
+  target_link_libraries(autonomy_rolling_viewpoint_field_test PRIVATE autonomy_task)
+  add_test(NAME autonomy.exploration.rolling_viewpoint_field
+    COMMAND autonomy_rolling_viewpoint_field_test)
+  set_tests_properties(autonomy.exploration.rolling_viewpoint_field PROPERTIES TIMEOUT 30)
   add_executable(autonomy_native_controller_io_test autonomy/control/native_controller_io_test.cpp)
   target_link_libraries(autonomy_native_controller_io_test PRIVATE autonomy_control)
   add_test(NAME autonomy.control.native_controller_io COMMAND autonomy_native_controller_io_test)
@@ -186,7 +192,7 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
 
   # Run coverage, session, phase and BT checks against the real domain libraries.
   # Test sources are excluded from the task library's recursive source collection.
-  foreach(suite IN ITEMS multisensor_exploration exploration_session exploration_phase native_exploration_bt navigation_dispatcher exploration_owner hierarchical_coverage_strategy exploration_input_prefix exploration_loss_recovery exploration_observation_source native_session_factory)
+  foreach(suite IN ITEMS acquisition_keypose_ledger momentum_tracker frontier_extractor surface_extractor frontier_queue region_manager visit_order_optimizer goal_pose_adapter route_lookahead_selector route_line_of_sight_view_producer multisensor_exploration exploration_session exploration_phase native_exploration_bt navigation_dispatcher exploration_owner hierarchical_coverage_strategy exploration_input_prefix exploration_loss_recovery exploration_observation_source native_session_factory)
     add_executable(autonomy_${suite}_test
       autonomy/task/exploration/${suite}_test.cpp)
     target_link_libraries(autonomy_${suite}_test PRIVATE

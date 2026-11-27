@@ -198,6 +198,11 @@ autocmake_binary(autonomy.localization
 autocmake_test(localization.cartographer_occupancy_grid_test
   SOURCES cartographer/node/occupancy_grid_builder_test.cpp
   DEPENDENCIES autonomy_localization)
+if(TARGET GTest::gmock)
+  autocmake_test(localization.cartographer_visualization_test
+    SOURCES cartographer/node/map_builder_visualization_test.cpp
+    DEPENDENCIES autonomy_localization GTest::gmock)
+endif()
 
 # --- install -----------------------------------------------------------------
 autocmake_install_share(localization

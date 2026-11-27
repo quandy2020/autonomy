@@ -1,7 +1,9 @@
 /**
  * @file vista_server_test.cpp
- * @brief Exercise native server alias resolution, settings and shared graph ownership.
- * @details Uses the actual Costmap and PlannerServer without a substitute plugin factory.
+ * @brief Exercise native server alias resolution, settings and shared graph
+ * ownership.
+ * @details Uses the actual Costmap and PlannerServer without a substitute
+ * plugin factory.
  */
 #include <cmath>
 #include <iostream>
@@ -9,8 +11,9 @@
 #include <stdexcept>
 
 #include "autonomy/map/costmap_2d/cost_values.hpp"
-#include "autonomy/planning/planner_server.hpp"
+#include "autonomy/planning/planner/tare_explorer/tare_explorer_planner.hpp"
 #include "autonomy/planning/planner/vista/vista_planner.hpp"
+#include "autonomy/planning/planner_server.hpp"
 #include "autonomy/task/exploration/integration/vista_path_provider.hpp"
 
 namespace {
@@ -18,12 +21,15 @@ namespace vista = autonomy::planning::planner::vista;
 namespace proto = autonomy::planning::proto;
 using Pose = automsgs::msgs::geometry_msgs::PoseStamped;
 
-/** @brief Fail the native regression immediately when a contract is violated. */
+/** @brief Fail the native regression immediately when a contract is violated.
+ */
 void Require(bool result, const char* reason) {
-    if (!result) throw std::runtime_error(reason);
+    if (!result)
+        throw std::runtime_error(reason);
 }
 
-/** @brief Construct a planar native goal in the configured global coordinate frame. */
+/** @brief Construct a planar native goal in the configured global coordinate
+ * frame. */
 Pose At(double x, double y, double yaw = 0) {
     Pose pose;
     pose.mutable_header()->set_frame_id("map");
@@ -34,7 +40,8 @@ Pose At(double x, double y, double yaw = 0) {
     return pose;
 }
 
-/** @brief Preserve explicit zero options and reject invalid capacity/geometry. */
+/** @brief Preserve explicit zero options and reject invalid capacity/geometry.
+ */
 void SettingsContract() {
     proto::VistaPlannerOptions options;
     auto settings = vista::ReadVistaPlannerSettings(options);
@@ -43,27 +50,38 @@ void SettingsContract() {
     options.set_horizontal_margin(0);
     options.set_vertical_margin(0);
     settings = vista::ReadVistaPlannerSettings(options);
-    Require(settings.safety.horizontal_margin == 0 && settings.safety.vertical_margin == 0,
+    Require(settings.safety.horizontal_margin == 0 &&
+                settings.safety.vertical_margin == 0,
             "explicit zero clearance is not confused with an omitted field");
     options.set_maximum_nodes(0);
     bool rejected = false;
-    try { (void)vista::ReadVistaPlannerSettings(options); }
-    catch (const std::invalid_argument&) { rejected = true; }
+    try {
+        (void)vista::ReadVistaPlannerSettings(options);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
     Require(rejected, "zero graph capacity must be rejected");
     options.set_maximum_nodes(1);
     options.set_horizontal_margin(std::numeric_limits<double>::quiet_NaN());
     rejected = false;
-    try { (void)vista::ReadVistaPlannerSettings(options); }
-    catch (const std::invalid_argument&) { rejected = true; }
-    Require(rejected, "nonfinite safety settings must be rejected before planning");
+    try {
+        (void)vista::ReadVistaPlannerSettings(options);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    Require(rejected,
+            "nonfinite safety settings must be rejected before planning");
 }
 
-/** @brief Verify that server ids construct configured Vista objects with one reusable graph. */
+/** @brief Verify that server ids construct configured Vista objects with one
+ * reusable graph. */
 void ServerContract() {
     proto::PlannerOptions options;
     options.add_planner_plugins("vista_planner");
     options.add_planner_plugins("secondary:VistaPlanner");
+    options.add_planner_plugins("tare_explorer");
     options.set_default_planner_id("vista_planner");
+    options.mutable_tare_explorer()->set_vista_planner_id("vista_planner");
     options.mutable_vista()->set_horizontal_margin(0);
     options.mutable_vista()->set_maximum_nodes(1);
     auto* map_options = options.mutable_costmap();
@@ -77,32 +95,59 @@ void ServerContract() {
     map_options->add_plugins("none");
 
     autonomy::planning::PlannerServer server(options);
-    auto primary = std::dynamic_pointer_cast<vista::VistaPlanner>(server.GetPlanner());
-    auto secondary = std::dynamic_pointer_cast<vista::VistaPlanner>(server.GetPlanner("secondary"));
+    auto primary =
+        std::dynamic_pointer_cast<vista::VistaPlanner>(server.GetPlanner());
+    auto secondary = std::dynamic_pointer_cast<vista::VistaPlanner>(
+        server.GetPlanner("secondary"));
     Require(primary && secondary && primary != secondary,
-            "alias and id:class entries create distinct configured native instances");
-    Require(primary == server.GetPlanner("vista_planner") && !server.GetPlanner("missing"),
+            "alias and id:class entries create distinct configured native "
+            "instances");
+    Require(primary == server.GetPlanner("vista_planner") &&
+                !server.GetPlanner("missing"),
             "shared access returns the actual configured registry object");
+    const auto tare = std::dynamic_pointer_cast<
+        autonomy::planning::planner::tare_explorer::TareExplorerPlanner>(
+        server.GetPlanner("tare_explorer"));
+    Require(tare && tare->SharedVistaPlanner() == primary,
+            "TARE id does not retain the explicitly selected Vista owner");
+    Require(tare->SharedVistaPlanner() != secondary,
+            "TARE id accidentally collapsed distinct Vista plugin instances");
     auto routes = primary->SharedRoutePlanner();
-    Require(routes != nullptr, "server constructor initializes the Vista graph");
+    Require(routes != nullptr,
+            "server constructor initializes the Vista graph");
     autonomy::task::exploration::VistaPathProvider provider(routes);
     Require(provider.planner() == primary->SharedRoutePlanner(),
             "exploration and navigation hold exactly the same route graph");
 
     auto* map = server.GetCostmapWrapper()->getCostmap();
     map->resetMapToValue(0, 0, map->getSizeInCellsX(), map->getSizeInCellsY(),
-                        autonomy::map::costmap_2d::FREE_SPACE);
+                         autonomy::map::costmap_2d::FREE_SPACE);
     const auto start = At(1, 1, -.2), goal = At(5, 1, .7);
-    const auto path = server.GetPlan(start, goal, "vista_planner", [] { return false; });
+    const auto path =
+        server.GetPlan(start, goal, "vista_planner", [] { return false; });
     Require(path.poses_size() >= 2 && path.header().frame_id() == "map",
             "native server returns a real protobuf path through Vista");
-    Require(path.poses(path.poses_size() - 1).pose().SerializeAsString() == goal.pose().SerializeAsString(),
-            "native server preserves the requested final observation orientation");
+    Require(path.poses(0).pose().SerializeAsString() ==
+                    start.pose().SerializeAsString() &&
+                path.poses(path.poses_size() - 1).pose().SerializeAsString() ==
+                    goal.pose().SerializeAsString(),
+            "native server preserves exact Vista endpoints");
+    const auto tare_path =
+        server.GetPlan(start, goal, "tare_explorer", [] { return false; });
+    Require(tare_path.poses_size() >= 2 &&
+                tare_path.poses(0).pose().SerializeAsString() ==
+                    start.pose().SerializeAsString() &&
+                tare_path.poses(tare_path.poses_size() - 1)
+                        .pose()
+                        .SerializeAsString() == goal.pose().SerializeAsString(),
+            "TARE id does not preserve exact Vista-delegated endpoints");
     Require(primary->LastRoute() && !primary->LastRoute()->execution_verified,
             "global planning success does not manufacture execution safety");
     const auto snapshot = primary->LatestMapView();
-    Require(snapshot && !snapshot->has_height_evidence && !snapshot->mapping_synchronized,
-            "server integration cannot manufacture height or upstream fusion evidence");
+    Require(snapshot && !snapshot->has_height_evidence &&
+                !snapshot->mapping_synchronized,
+            "server integration cannot manufacture height or upstream fusion "
+            "evidence");
 }
 }  // namespace
 

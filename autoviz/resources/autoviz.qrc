@@ -15,6 +15,7 @@
     <file>icons/classes/BoundingBox3DArray.png</file>
     <file>icons/classes/Camera.png</file>
     <file>icons/classes/CameraInfo.png</file>
+    <file>icons/classes/CartographerConstraints.svg</file>
     <file>icons/classes/DepthCloud.png</file>
     <file>icons/classes/Displays.svg</file>
     <file>icons/classes/Effort.png</file>
@@ -78,6 +79,7 @@
     <file>icons/classes/SetGoal.png</file>
     <file>icons/classes/SetInitialPose.png</file>
     <file>icons/classes/SimpleOccupancyGridArray.png</file>
+    <file>icons/classes/Submaps.svg</file>
     <file>icons/classes/TF.png</file>
     <file>icons/classes/TFTrajectory.png</file>
     <file>icons/classes/TargetVisualizer.png</file>

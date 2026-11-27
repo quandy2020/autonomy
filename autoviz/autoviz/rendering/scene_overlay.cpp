@@ -761,13 +761,22 @@ void SceneOverlay::appendViewFacingPolylineStrips(
   const QVector3D camera_up = inv_view.column(1).toVector3D();
   const QVector3D camera_right = inv_view.column(0).toVector3D();
 
+  // Reserve once: reserving for each constraint copies all preceding geometry.
+  std::size_t vertex_count = triangles->size();
+  for (const auto& strip : polyline_strip_requests_) {
+    if (strip.points.size() >= 2 && strip.half_width > 0.f)
+      vertex_count += (strip.points.size() - 1) * 6;
+  }
+  triangles->reserve(vertex_count);
+  std::vector<QVector3D> left;
+  std::vector<QVector3D> right;
   for (const PolylineStripRequest& strip : polyline_strip_requests_) {
     if (strip.points.size() < 2 || strip.half_width <= 0.f) {
       continue;
     }
     const std::size_t n = strip.points.size();
-    std::vector<QVector3D> left;
-    std::vector<QVector3D> right;
+    left.clear();
+    right.clear();
     left.reserve(n);
     right.reserve(n);
 
@@ -818,7 +827,6 @@ void SceneOverlay::appendViewFacingPolylineStrips(
       right.push_back(strip.points[i] + side);
     }
 
-    triangles->reserve(triangles->size() + (n - 1) * 6);
     for (std::size_t i = 1; i < n; ++i) {
       const QVector3D& p0 = left[i - 1];
       const QVector3D& p1 = right[i - 1];

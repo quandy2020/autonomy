@@ -11,6 +11,7 @@
 #include <limits>
 #include <mutex>
 #include <stdexcept>
+#include "autonomy/common/logging.hpp"
 #include <thread>
 
 #include "autolink/autolink.hpp"
@@ -175,6 +176,29 @@ public:
             result != ObservationIngressResult::kInvalidEvidence) {
             try { loss_(index == 0 ? SensorKind::kLidar : SensorKind::kRgbd, sequence); }
             catch (...) { Fail(); }
+        }
+        // Bounded ingress summary: explains a silent observation stall without
+        // turning every frame into a log line.
+        std::uint64_t received = 0, accepted = 0, rejected = 0, overflows = 0;
+        {
+            std::lock_guard<std::mutex> lock(stats_mutex_);
+            received = stats_.received[index];
+            accepted = stats_.accepted[index];
+            rejected = stats_.rejected[index];
+            overflows = stats_.localization_overflows[index];
+        }
+        if ((received % 100) == 0) {
+            std::size_t pending = 0;
+            {
+                std::lock_guard<std::mutex> lock(pending_mutex_);
+                pending = pending_[index].size();
+            }
+            AINFO_EVERY(2) << "NATIVE_INGRESS_SUMMARY sensor=" << index
+                           << " received=" << received
+                           << " accepted=" << accepted
+                           << " rejected=" << rejected
+                           << " overflow=" << overflows
+                           << " pending=" << pending;
         }
     }
     /** @brief Original wire message and calibration retained through delayed lookup. */

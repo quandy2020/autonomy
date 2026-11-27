@@ -1,23 +1,33 @@
 /* Copyright 2026 The Openbot Authors. */
 #pragma once
+#include "autonomy/task/exploration/routing/momentum_tracker.hpp"
 #include "autonomy/task/exploration/routing/visit_order_optimizer.hpp"
 namespace autonomy::task::exploration {
 struct StrategyDecision {
-    ExplorationRoute local_route,global_route;
+    ExplorationRoute local_route, global_route;
     std::optional<ObservationGoal> goal;
-    bool grid_fallback_checked=false,sweep_checked=false,sampling_limited=false;
-    bool canceled=false;
+    bool grid_fallback_checked = false, sweep_checked = false,
+         sampling_limited = false;
+    bool canceled = false;
 };
-class ExplorationStrategy {
+class ExplorationStrategy
+{
 public:
-    virtual ~ExplorationStrategy()=default;
+    virtual ~ExplorationStrategy() = default;
     // Called on the strategy worker before the first job of every session.
-    // Stateful implementations must clear cursors and selection/revisit history.
+    // Stateful implementations must clear cursors and selection/revisit
+    // history.
     virtual void Reset() {}
-    virtual StrategyDecision Select(const Pose2d& start,const Pose2d& home,const MapReadView& map,
-        const CoverageState& coverage,perception::SensorMask active,double now,
-        const std::function<bool()>& cancel_checker={})=0;
-    /** @brief Suppress a repeatedly unreachable viewpoint for a bounded cooldown. */
+    /** @brief Admit one exact acquisition-localized pose for relocation-only
+     * momentum ordering. Stateless strategies may ignore it. */
+    virtual void UpdateMeasuredMotion(const Pose2d&, double,
+                                      const MomentumSampleIdentity&) {}
+    virtual StrategyDecision Select(
+        const Pose2d& start, const Pose2d& home, const MapReadView& map,
+        const CoverageState& coverage, perception::SensorMask active,
+        double now, const std::function<bool()>& cancel_checker = {}) = 0;
+    /** @brief Suppress a repeatedly unreachable viewpoint for a bounded
+     * cooldown. */
     virtual void MarkFailed(const ObservationGoal&, double) {}
 };
 }  // namespace autonomy::task::exploration

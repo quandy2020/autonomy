@@ -64,8 +64,10 @@ const std::vector<DisplayTypeInfo>& BuiltinCatalog() {
                 "map_msgs.OccupancyGrid", "automsgs.msgs.nav_msgs.OccupancyGrid",
                 "nav_msgs.OccupancyGrid"}),
 #ifdef AUTOVIZ_HAS_CARTOGRAPHER
-      MakeInfo("Submaps", "cartographer", "Cartographer submap textures, IDs and pose axes.",
+      MakeInfo("Submaps", "cartographer", "Cartographer submap textures, IDs and pose axes from /submap_list.",
                {"autonomy.localization.cartographer.proto.SubmapList"}),
+      MakeInfo("CartographerConstraints", "cartographer", "Cartographer local constraints, loop closures and residuals.",
+               {"automsgs.msgs.visualization_msgs.MarkerArray"}),
 #endif
       MakeInfo("GridMap", "autoviz",
                "Shows map_msgs/GridMap (mesh / point_cloud / occupancy_grid / "
