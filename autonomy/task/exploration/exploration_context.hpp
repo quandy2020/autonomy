@@ -312,6 +312,10 @@ struct ExplorationSessionOptions {
              ///< meters.
     std::size_t minimum_frontier_cluster_size =
         1;  ///< Minimum connected frontier cells admitted as required work.
+    bool use_frontier_points = true;  ///< Include extracted frontier units in
+                                      ///< the authoritative requirement set.
+    double frontier_cluster_tolerance_m =
+        1;  ///< Maximum metric separation joining frontier samples.
     double keypose_spacing_m = 1;     ///< Minimum XY spacing between exact
                                       ///< packet-backed acquisition keyposes.
     double lookahead_distance_m = 1;  ///< Positive route arc length dispatched

@@ -198,7 +198,8 @@ public:
                            << " accepted=" << accepted
                            << " rejected=" << rejected
                            << " overflow=" << overflows
-                           << " pending=" << pending;
+                           << " pending=" << pending
+                           << " last_result=" << static_cast<int>(result);
         }
     }
     /** @brief Original wire message and calibration retained through delayed lookup. */

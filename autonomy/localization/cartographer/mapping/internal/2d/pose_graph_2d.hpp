@@ -99,6 +99,9 @@ public:
     void AddTrimmer(std::unique_ptr<PoseGraphTrimmer> trimmer) override;
     void RunFinalOptimization() override;
 
+    // Wait for background constraints without optimizing the frontend trajectory.
+    void WaitForAllComputations();
+
     std::vector<std::vector<int>> GetConnectedTrajectories() const override;
 
     PoseGraphInterface::SubmapData GetSubmapData(const SubmapId& submap_id) const override;
@@ -181,10 +184,6 @@ private:
     // Process pending tasks in the work queue on the calling thread, until the
     // queue is either empty or an optimization is required.
     void DrainWorkQueue();
-
-    // Waits until we caught up (i.e. nothing is waiting to be scheduled), and
-    // all computations have finished.
-    void WaitForAllComputations();
 
     // Runs the optimization. Callers have to make sure, that there is only one
     // optimization being run at a time.

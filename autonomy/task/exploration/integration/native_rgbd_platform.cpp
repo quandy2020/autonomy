@@ -162,7 +162,7 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(
         if (!input || !parsed.ok())
             throw std::invalid_argument(
                 "shared exploration options JSON failed to load: " +
-                file.string());
+                file.string() + " " + parsed.ToString());
         config.shared_options = std::move(shared);
     }
     config.input.mode = config.session.mode = config.coverage.mode =
@@ -452,30 +452,40 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(
     };
     if ((!shared.map_frame().empty() &&
          shared.map_frame() != options.localization.navigation_frame) ||
-        (shared.depth_min_m() > 0 &&
-         !same(shared.depth_min_m(), config.input.minimum_depth)) ||
-        (shared.depth_max_m() > 0 &&
-         !same(shared.depth_max_m(), config.input.maximum_depth)) ||
+        (shared.depth_min_m() != 0 &&
+         (!std::isfinite(shared.depth_min_m()) || shared.depth_min_m() <= 0 ||
+          !same(shared.depth_min_m(), config.input.minimum_depth))) ||
+        (shared.depth_max_m() != 0 &&
+         (!std::isfinite(shared.depth_max_m()) || shared.depth_max_m() <= 0 ||
+          !same(shared.depth_max_m(), config.input.maximum_depth))) ||
         (shared.depth_stride() != 0 &&
          (shared.depth_stride() < 0 ||
           static_cast<unsigned>(shared.depth_stride()) !=
               config.input.decoding.rgbd_pixel_stride)) ||
-        (shared.camera_height_m() > 0 &&
-         !same(shared.camera_height_m(), actual_mount.translation().z())) ||
-        (shared.ground_height_tol_m() > 0 &&
-         !same(shared.ground_height_tol_m(),
-               options.mapping.floor_span_tolerance)) ||
-        (shared.costmap_resolution_m() > 0 &&
-         !same(shared.costmap_resolution_m(), options.mapping.resolution)) ||
-        (shared.collision_radius_m() > 0 &&
-         !same(shared.collision_radius_m(),
-               config.coverage.safety.robot_radius))) {
+        (shared.camera_height_m() != 0 &&
+         (!std::isfinite(shared.camera_height_m()) ||
+          shared.camera_height_m() <= 0 ||
+          !same(shared.camera_height_m(), actual_mount.translation().z()))) ||
+        (shared.ground_height_tol_m() != 0 &&
+         (!std::isfinite(shared.ground_height_tol_m()) ||
+          shared.ground_height_tol_m() <= 0 ||
+          !same(shared.ground_height_tol_m(),
+                options.mapping.floor_span_tolerance))) ||
+        (shared.costmap_resolution_m() != 0 &&
+         (!std::isfinite(shared.costmap_resolution_m()) ||
+          shared.costmap_resolution_m() <= 0 ||
+          !same(shared.costmap_resolution_m(), options.mapping.resolution))) ||
+        (shared.collision_radius_m() != 0 &&
+         (!std::isfinite(shared.collision_radius_m()) ||
+          shared.collision_radius_m() <= 0 ||
+          !same(shared.collision_radius_m(),
+                config.coverage.safety.robot_radius)))) {
         throw std::invalid_argument(
             "shared exploration calibration disagrees with native RGB-D YAML");
     }
     if (shared.nogo_half_extent_m() != 0 || shared.use_prior_map() ||
         shared.use_lidar_primary() || shared.use_planner_costmap() ||
-        !shared.prior_map_topic().empty() ||
+        shared.costmap_size_cells() != 0 || !shared.prior_map_topic().empty() ||
         shared.prior_map_lethal_threshold() != 0 ||
         !shared.planner_costmap_topic().empty() ||
         shared.planner_costmap_lethal_threshold() != 0) {
@@ -483,24 +493,38 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(
             "unsupported shared map/no-go source cannot be silently enabled");
     }
     if (shared.default_area_half_extent_m() != 0 ||
-        shared.completion_coverage_ratio() != 0) {
+        shared.completion_coverage_ratio() != 0 || shared.grid_cols() != 0 ||
+        shared.grid_rows() != 0) {
         throw std::invalid_argument(
             "unsupported shared task lifecycle policy cannot be silently "
             "enabled");
     }
-    if (shared.use_terrain_height() || shared.point_cloud_voxel_m() != 0 ||
+    if (shared.point_cloud_voxel_m() != 0 ||
         shared.point_cloud_min_points_per_voxel() != 0 ||
         shared.lidar_h_res_deg() != 0 || shared.lidar_v_res_deg() != 0) {
         throw std::invalid_argument(
             "unsupported shared terrain/LiDAR policy cannot be silently "
             "enabled");
     }
-    if (shared.far_attempt_unknown() || shared.far_is_autoswitch() ||
+    if (shared.far_connect_dist_m() != 0 ||
+        shared.far_contour_stride_cells() != 0 ||
+        shared.far_attempt_unknown() || shared.far3d_voxel_dim_m() != 0 ||
+        shared.far3d_contour_thresh() != 0 ||
+        shared.far3d_contour_blur_size() != 0 ||
+        shared.far3d_graph_pool_size() != 0 ||
+        shared.far3d_edge_finalize_thred() != 0 ||
+        shared.far3d_height_margin_m() != 0 ||
+        shared.far3d_position_filter_m() != 0 ||
+        shared.far3d_pillar_perimeter_m() != 0 ||
+        shared.far3d_dumper_thred() != 0 || shared.far_is_autoswitch() ||
         shared.far_viewpoint_extend() ||
         shared.far_local_planner_range_m() != 0 || shared.far_is_static_env() ||
         shared.far_converge_dist_m() != 0 ||
+        shared.far_terrain_grid_res_m() != 0 ||
+        shared.far_scan_voxel_m() != 0 || shared.far2d_graph_pool_size() != 0 ||
+        shared.far2d_dumper_thred() != 0 ||
         shared.far_goal_distance_weight() != 0 ||
-        shared.far_goal_unknown_weight() != 0 ||
+        shared.far_goal_unknown_weight() != 0 || shared.publish_vg_markers() ||
         shared.far_use_trajectory_edges() ||
         shared.far_trajectory_node_count() != 0) {
         throw std::invalid_argument(
@@ -512,16 +536,18 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(
         throw std::invalid_argument(
             "shared explorer backend does not select native TARE exploration");
     }
-    if (shared.sensor_range_m() > 0) {
+    if (shared.sensor_range_m() != 0) {
         if (!std::isfinite(shared.sensor_range_m()) ||
+            shared.sensor_range_m() <= 0 ||
             shared.sensor_range_m() < config.input.minimum_depth ||
             shared.sensor_range_m() > config.input.maximum_depth) {
             throw std::invalid_argument(
                 "shared sensor range lies outside calibrated RGB-D depth");
         }
+        config.input.maximum_depth = shared.sensor_range_m();
         config.camera->camera.max_depth = shared.sensor_range_m();
     }
-    if (shared.use_line_of_sight_lookahead()) {
+    if (shared.use_line_of_sight_lookahead() || shared.use_terrain_height()) {
         if (shared.viewpoint_num_x() <= 0 || shared.viewpoint_num_y() <= 0 ||
             shared.viewpoint_num_z() <= 0 ||
             !std::isfinite(shared.viewpoint_resolution_m()) ||
@@ -531,7 +557,8 @@ NativeRgbdPlatformOptions LoadNativeRgbdPlatformOptions(
             !std::isfinite(options.mapping.resolution) ||
             options.mapping.resolution <= 0) {
             throw std::invalid_argument(
-                "line-of-sight lookahead requires a bounded metric 3-D field");
+                "terrain/line-of-sight policy requires a bounded metric 3-D "
+                "field");
         }
         const auto extent = [&](int count, double resolution) {
             const double cells =

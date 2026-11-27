@@ -49,6 +49,136 @@ void SameEpochPreservesMembershipAndHistory() {
             "a measured boundary crossing creates exactly one new visit");
 }
 
+/** @brief Empty-state debounce prevents status flapping and measured work
+ * reopens.
+ */
+void MeasuredWorkStatusHysteresis() {
+    e::CoverageState coverage;
+    coverage.Reset(7);
+    const auto unit = Unit(1);
+    coverage.Upsert(unit);
+    e::RegionManager regions(4);
+    regions.Update(coverage);
+    regions.ObserveRobotPose({1, 0, 0}, 1);
+    regions.SetRepresentative({0, 0}, 77);
+    Require(regions.regions().at({0, 0}).status ==
+                e::ExplorationRegionStatus::kExploring,
+            "measured pending work opens its region immediately");
+
+    coverage.Confirm(unit.id, p::SensorKind::kRgbd, 1, 2);
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).status ==
+                e::ExplorationRegionStatus::kExploring,
+            "one empty update cannot close an exploring region");
+    coverage.Invalidate(unit.id);
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).status ==
+                e::ExplorationRegionStatus::kExploring,
+            "reappearing measured work resets the empty-state debounce");
+
+    coverage.Confirm(unit.id, p::SensorKind::kRgbd, 1, 3);
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).status ==
+                e::ExplorationRegionStatus::kExploring,
+            "the reset debounce still requires a second empty update");
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).status ==
+                e::ExplorationRegionStatus::kCovered,
+            "two consecutive empty updates close the scheduling region");
+
+    coverage.Remove(unit.id);
+    regions.Update(coverage);
+    const auto& empty = regions.regions().at({0, 0});
+    Require(empty.member_units.empty() && empty.pending_units.empty() &&
+                empty.measured_visit_count == 1 &&
+                empty.last_representative_view_id == 77,
+            "same-epoch empty region records retain measured history");
+    coverage.Upsert(unit);
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).status ==
+                e::ExplorationRegionStatus::kExploring,
+            "new measured pending work reopens a covered empty region");
+}
+
+/** @brief Complete low-value passes suppress only coarse remote relocation. */
+void LowValuePassHysteresisIsSchedulingOnly() {
+    e::CoverageState coverage;
+    coverage.Reset(8);
+    coverage.Upsert(Unit(1));
+    e::RegionManager regions(4);
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).remote_relocation_eligible,
+            "new measured work did not admit remote relocation");
+
+    regions.CompleteRemoteCandidatePass({});
+    Require(regions.regions().at({0, 0}).remote_relocation_eligible,
+            "one complete low-value pass suppressed remote relocation");
+    regions.ObserveAdmissibleRemoteRegion({0, 0});
+    regions.CompleteRemoteCandidatePass({});
+    regions.CompleteRemoteCandidatePass({});
+    const auto& suppressed = regions.regions().at({0, 0});
+    Require(!suppressed.remote_relocation_eligible &&
+                suppressed.status == e::ExplorationRegionStatus::kExploring &&
+                coverage.PendingCount() == 1,
+            "low-value passes mutated measured exploration state");
+
+    regions.Update(coverage);
+    Require(!regions.regions().at({0, 0}).remote_relocation_eligible,
+            "an unchanged requirement bypassed low-value hysteresis");
+    coverage.Upsert(Unit(2));
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).remote_relocation_eligible,
+            "new measured work did not immediately reopen remote relocation");
+}
+
+/** @brief Completion-only subtraction stays suppressed; changed work reopens.
+ */
+void RequirementDeltaDirectionControlsReopening() {
+    e::CoverageState coverage;
+    coverage.Reset(10);
+    auto first = Unit(1);
+    auto second = Unit(2);
+    coverage.Upsert(first);
+    coverage.Upsert(second);
+    e::RegionManager regions(4);
+    regions.Update(coverage);
+    regions.CompleteRemoteCandidatePass({});
+    regions.CompleteRemoteCandidatePass({});
+
+    coverage.Confirm(first.id, p::SensorKind::kRgbd, 1, 1);
+    regions.Update(coverage);
+    Require(!regions.regions().at({0, 0}).remote_relocation_eligible,
+            "completion-only pending subtraction reopened relocation");
+
+    second.tolerance = .2;
+    coverage.Upsert(second);
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).remote_relocation_eligible,
+            "changed same-ID requirement did not reopen relocation");
+}
+
+/** @brief New work reopens only its own region's remote scheduling state. */
+void UnrelatedRegionWorkDoesNotReopenSuppressedRelocation() {
+    e::CoverageState coverage;
+    coverage.Reset(9);
+    coverage.Upsert(Unit(1));
+    coverage.Upsert(Unit(5));
+    e::RegionManager regions(4);
+    regions.Update(coverage);
+    regions.CompleteRemoteCandidatePass({});
+    regions.CompleteRemoteCandidatePass({});
+    Require(!regions.regions().at({0, 0}).remote_relocation_eligible &&
+                !regions.regions().at({1, 0}).remote_relocation_eligible,
+            "low-value regions were not suppressed before isolation check");
+
+    coverage.Upsert(Unit(2));
+    regions.Update(coverage);
+    Require(regions.regions().at({0, 0}).remote_relocation_eligible,
+            "new local work did not reopen its own region");
+    Require(!regions.regions().at({1, 0}).remote_relocation_eligible,
+            "unrelated local work reopened a suppressed remote region");
+}
+
 void EpochChangeClearsSchedulingHistory() {
     e::CoverageState coverage;
     coverage.Reset(1);
@@ -70,6 +200,10 @@ void EpochChangeClearsSchedulingHistory() {
 int main() {
     try {
         SameEpochPreservesMembershipAndHistory();
+        MeasuredWorkStatusHysteresis();
+        LowValuePassHysteresisIsSchedulingOnly();
+        RequirementDeltaDirectionControlsReopening();
+        UnrelatedRegionWorkDoesNotReopenSuppressedRelocation();
         EpochChangeClearsSchedulingHistory();
         std::cout << "PASS region_manager\n";
         return 0;

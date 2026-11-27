@@ -5,10 +5,53 @@
  */
 #include "autonomy/task/exploration/strategy/hierarchical_coverage_strategy.hpp"
 #include <algorithm>
+#include <set>
 #include <stdexcept>
+#include <vector>
+
 #include "autonomy/common/logging.hpp"
+#include "autonomy/task/exploration/coverage/coverage_fusion.hpp"
 #include "autonomy/task/exploration/coverage/local_coverage_planner.hpp"
+
 namespace autonomy::task::exploration {
+namespace {
+
+/** @brief Returns whether a view clears one semantic remote gain threshold. */
+bool HasAdmissibleRemoteGain(const Viewpoint& viewpoint,
+                             const CoverageState& state,
+                             const HierarchicalCoverageOptions& options) {
+    std::vector<CoverageContribution> surface;
+    std::vector<CoverageContribution> frontier;
+    std::vector<CoverageContribution> direction;
+    for (const auto& contribution : viewpoint.contributions) {
+        switch (contribution.id.kind) {
+            case CoverageKind::kSurface:
+                surface.push_back(contribution);
+                break;
+            case CoverageKind::kFrontier:
+                frontier.push_back(contribution);
+                break;
+            case CoverageKind::kDirection:
+                direction.push_back(contribution);
+                break;
+        }
+    }
+    const CoverageSelection none;
+    const double surface_gain =
+        CoverageFusion::MarginalGain(state, surface, none);
+    const double frontier_gain =
+        CoverageFusion::MarginalGain(state, frontier, none);
+    const double direction_gain =
+        CoverageFusion::MarginalGain(state, direction, none);
+    return (surface_gain > 0 &&
+            surface_gain >= options.minimum_incremental_surface_gain) ||
+           (frontier_gain > 0 &&
+            frontier_gain >= options.minimum_incremental_frontier_gain) ||
+           direction_gain > 0;
+}
+
+}  // namespace
+
 HierarchicalCoverageStrategy::HierarchicalCoverageStrategy(
     std::shared_ptr<const PathProvider> paths,
     std::shared_ptr<const ViewpointEvaluator> evaluator,
@@ -32,7 +75,14 @@ HierarchicalCoverageStrategy::HierarchicalCoverageStrategy(
         options.route_optimization.maximum_nodes > 128 ||
         !std::isfinite(options.local_radius) || options.local_radius <= 0 ||
         !std::isfinite(options.fairness_interval) ||
-        options.fairness_interval <= 0)
+        options.fairness_interval <= 0 ||
+        !std::isfinite(options.minimum_incremental_surface_gain) ||
+        options.minimum_incremental_surface_gain < 0 ||
+        !std::isfinite(options.minimum_incremental_frontier_gain) ||
+        options.minimum_incremental_frontier_gain < 0 ||
+        !std::isfinite(options.local_diversification_ratio) ||
+        options.local_diversification_ratio <= 0 ||
+        options.local_diversification_ratio > 1)
         throw std::invalid_argument("invalid hierarchical coverage strategy");
     if (!std::isfinite(options.sweep_max_age) || options.sweep_max_age <= 0)
         throw std::invalid_argument("invalid sweep proof lifetime");
@@ -58,6 +108,8 @@ void HierarchicalCoverageStrategy::Reset() {
     rolling_field_generation_ = 0;
     failed_viewpoints_.clear();
     retained_local_views_.clear();
+    remote_admissible_regions_in_pass_.clear();
+    remote_candidate_pass_compatible_ = true;
 }
 
 void HierarchicalCoverageStrategy::UpdateMeasuredMotion(
@@ -101,6 +153,8 @@ StrategyDecision HierarchicalCoverageStrategy::Select(
         sampling_start_cell_.reset();
         failed_viewpoints_.clear();
         retained_local_views_.clear();
+        remote_admissible_regions_in_pass_.clear();
+        remote_candidate_pass_compatible_ = true;
     }
     std::shared_ptr<const RollingViewpointFieldView> viewpoint_field;
     if (rolling_field_) {
@@ -138,6 +192,8 @@ StrategyDecision HierarchicalCoverageStrategy::Select(
             rolling_field_generation_ = viewpoint_field->generation;
             normal_cursor_ = sweep_cursor_ = region_cursor_ = 0;
             retained_local_views_.clear();
+            remote_admissible_regions_in_pass_.clear();
+            remote_candidate_pass_compatible_ = true;
             sweep_completed_ = false;
         }
     }
@@ -152,6 +208,8 @@ StrategyDecision HierarchicalCoverageStrategy::Select(
     if (viewpoint_dependencies_changed || sampling_start_cell_ != origin) {
         if (viewpoint_dependencies_changed)
             retained_local_views_.clear();
+        remote_admissible_regions_in_pass_.clear();
+        remote_candidate_pass_compatible_ = normal_cursor_ == 0;
         // Keep a bounded cursor moving, but do not accept a pass spanning new
         // work, changed geometry/capabilities or a different reachability seed.
         sweep_completed_ = false;
@@ -179,10 +237,31 @@ StrategyDecision HierarchicalCoverageStrategy::Select(
         decision.grid_fallback_checked = decision.sweep_checked = true;
         return decision;
     }
+    if (!normal_cursor_) {
+        remote_admissible_regions_in_pass_.clear();
+        remote_candidate_pass_compatible_ = true;
+    }
     auto sampled = ViewpointSampler{}.Sample(
         start, map, state, *evaluator_, regions_, active, options_.safety,
         options_.sampling, false, normal_cursor_, cancel_checker,
         viewpoint_field);
+    if (sampled.canceled) {
+        remote_candidate_pass_compatible_ = false;
+    } else {
+        for (const auto& candidate : sampled.candidates) {
+            if (!HasAdmissibleRemoteGain(candidate, state, options_))
+                continue;
+            remote_admissible_regions_in_pass_.insert(candidate.region_id);
+            regions_.ObserveAdmissibleRemoteRegion(candidate.region_id);
+        }
+        if (sampled.finished) {
+            if (remote_candidate_pass_compatible_) {
+                regions_.CompleteRemoteCandidatePass(
+                    remote_admissible_regions_in_pass_);
+            }
+            remote_admissible_regions_in_pass_.clear();
+        }
+    }
     normal_cursor_ = sampled.finished ? 0 : sampled.next_cursor;
     if (sampled.canceled) {
         decision.canceled = true;
@@ -300,6 +379,17 @@ StrategyDecision HierarchicalCoverageStrategy::Select(
             autonomy::navigation::Distance(candidate.pose, start) <=
                 options_.local_radius)
             continue;
+        const auto candidate_region =
+            regions_.regions().find(candidate.region_id);
+        if (candidate_region == regions_.regions().end() ||
+            candidate_region->second.status !=
+                ExplorationRegionStatus::kExploring ||
+            !candidate_region->second.remote_relocation_eligible) {
+            // Measured-empty and low-value state gate only coarse relocation.
+            // Dense local/mandatory work above remains eligible, and Vista
+            // still owns every route and cost used after admission.
+            continue;
+        }
         auto found = representatives.find(candidate.region_id);
         if (found == representatives.end() ||
             candidate.Utility(candidate.predicted_gain) >
@@ -379,16 +469,35 @@ StrategyDecision HierarchicalCoverageStrategy::Select(
             : std::min(options_.local_selection_attempts, local.size());
     bool have_local_route = false;
     for (std::size_t attempt = 0; attempt < selection_attempts; ++attempt) {
-        auto variant = local;
-        if (!variant.empty())
-            std::rotate(variant.begin(), variant.begin() + attempt,
-                        variant.end());
+        LocalCoverageSelectionOptions selection_options;
+        selection_options.minimum_incremental_surface_gain =
+            options_.minimum_incremental_surface_gain;
+        selection_options.minimum_incremental_frontier_gain =
+            options_.minimum_incremental_frontier_gain;
+        selection_options.diversification_ratio =
+            options_.local_diversification_ratio;
+        selection_options.diversification_seed =
+            options_.local_diversification_seed + attempt;
         auto selected = LocalCoveragePlanner{}.Select(
-            variant, state, options_.local_views, mandatory);
-        const bool mandatory_selected = !selected.empty() && mandatory;
-        if (selected.empty() && mandatory)
-            selected = LocalCoveragePlanner{}.Select(variant, state,
-                                                     options_.local_views);
+            local, state, options_.local_views, mandatory, selection_options,
+            retained_local_views_);
+        const bool mandatory_selected =
+            mandatory &&
+            std::any_of(selected.begin(), selected.end(),
+                        [&](const Viewpoint& viewpoint) {
+                            return std::any_of(
+                                viewpoint.contributions.begin(),
+                                viewpoint.contributions.end(),
+                                [&](const CoverageContribution& item) {
+                                    return item.id == *mandatory &&
+                                           item.quality > 0;
+                                });
+                        });
+        if (mandatory && !mandatory_selected) {
+            selected = LocalCoveragePlanner{}.Select(
+                local, state, options_.local_views, {}, selection_options,
+                retained_local_views_);
+        }
         auto route = VisitOrderOptimizer{}.Optimize(
             start, selected, *paths_, options_.sampling.nominal_speed,
             options_.sampling.angular_speed, {}, mandatory_selected,

@@ -99,7 +99,9 @@ void ExactRequestedPoseAndYawArePreserved() {
         fixture.map.map_epoch, fixture.map.geometry_revision);
     e::GoalPoseAdapter adapter(paths, fixture.evaluator, n::SafetyOptions{},
                                0.0);
-    const auto goal = fixture.Goal();
+    auto goal = fixture.Goal();
+    goal.allowed_translation = 0;
+    goal.allowed_yaw_change = 0;
     const auto result =
         adapter.Adapt(goal, {0.5, 0.5, 0}, fixture.map, fixture.coverage,
                       p::Mask(p::SensorKind::kRgbd));

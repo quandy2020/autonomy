@@ -86,11 +86,13 @@ void RegistryAndNativeFirstTick() {
 }
 
 void SeparateStagesAndActualObservation() {
-    Fixture fixture({0}, .05, {}, false, true, 10, 32,
-                    e::ExplorationDriver::kBehaviorTree, false,
-                    [](e::ExplorationSessionOptions& options) {
-                        options.lookahead_distance_m = .25;
-                    });
+    Fixture fixture(
+        {0}, .05,
+        std::make_shared<OneGoal>(std::vector<double>{0}, e::Pose2d{1.8, 1, 0}),
+        false, true, 10, 32, e::ExplorationDriver::kBehaviorTree, false,
+        [](e::ExplorationSessionOptions& options) {
+            options.lookahead_distance_m = .25;
+        });
     Nodes nodes(fixture);
     auto select = nodes.Make("<SelectObservationPose/>");
     auto adapt =
@@ -225,7 +227,7 @@ void OldHaltCannotCancelSaving() {
 class ObserveThenComplete final : public e::ExplorationStrategy
 {
 public:
-    ObserveThenComplete() : first_({0, .3}) {}
+    ObserveThenComplete() : first_({0, .3}, e::Pose2d{1.8, 1, 0}) {}
     void Reset() override {
         first_.Reset();
         selected_ = false;
@@ -275,7 +277,7 @@ void FullNativeTreeObservationReturnSave() {
         }
         if (!fixture.submissions.empty()) {
             const auto& submitted = fixture.submissions.back();
-            fixture.Pose(nodes.now, submitted.first.yaw);
+            fixture.PushPose(submitted.first, nodes.now);
             if (submitted.second.request_id != replied_navigation) {
                 returned_with_navigation |=
                     fixture.session->Snapshot().finishing;

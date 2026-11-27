@@ -1,0 +1,15 @@
+<!-- Disable raw wheel odom TF; provide calibrated base_link -> laser/IMU static TF. -->
+<autolink>
+  <module>
+    <name>wheel_imu_ekf</name>
+    <type>binary</type>
+    <process_name>autonomy.ekf --config=autonomy/localization/conf/cartographer/wheel_imu_ekf.yaml</process_name>
+    <exception_handler>exit</exception_handler>
+  </module>
+  <module>
+    <name>localization_cartographer_ekf</name>
+    <type>binary</type>
+    <process_name>autonomy.localization --localization_mode=cartographer --configuration_directory=autonomy/localization/conf/cartographer --configuration_basename=robot_2d_ekf.lua --save_state_filename=data/maps/cartographer_ekf.pbstream</process_name>
+    <exception_handler>exit</exception_handler>
+  </module>
+</autolink>

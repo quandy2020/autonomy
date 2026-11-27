@@ -3,6 +3,9 @@
  * @brief Global region ordering and resumable local/fair coverage enumeration.
  */
 #pragma once
+
+#include <set>
+
 #include "autonomy/task/exploration/frontier/frontier_queue.hpp"
 #include "autonomy/task/exploration/strategy/exploration_strategy.hpp"
 #include "autonomy/task/exploration/viewpoint/viewpoint_sampler.hpp"
@@ -18,11 +21,20 @@ struct HierarchicalCoverageOptions {
     std::size_t local_views =
         5;  ///< Maximum viewpoints in a local coverage route.
     std::size_t local_selection_attempts =
-        1;  ///< Greedy cover-set variants compared using Vista route length.
+        1;  ///< Seeded cover-set variants compared using Vista route length.
+    double minimum_incremental_surface_gain =
+        0.01;  ///< Minimum useful normalized surface increment per local view.
+    double minimum_incremental_frontier_gain =
+        0.01;  ///< Minimum useful normalized frontier increment per local view.
+    double local_diversification_ratio =
+        0.9;  ///< Near-best utility ratio eligible for seeded diversification.
+    std::uint64_t local_diversification_seed =
+        0;  ///< Stable base seed; each local attempt uses the next seed.
     std::size_t maximum_global_views =
         128;  ///< Maximum regional representatives routed in one page.
     bool use_frontier_points =
-        true;  ///< Admit frontier units to mandatory fair scheduling.
+        true;  ///< Static session policy; frontier requirements and fair
+               ///< scheduling agree.
     bool use_momentum =
         false;  ///< Bias only remote relocation ordering from measured motion.
     MomentumTrackerOptions momentum;  ///< Measured displacement hysteresis.
@@ -106,6 +118,10 @@ private:
     std::size_t sweep_cursor_ = 0;   ///< Next exhaustive candidate slot.
     std::size_t region_cursor_ =
         0;  ///< Next global region representative batch.
+    std::set<std::pair<int, int>>
+        remote_admissible_regions_in_pass_;  ///< Gain-qualified regions seen.
+    bool remote_candidate_pass_compatible_ =
+        true;  ///< Whether absence can update low-value hysteresis.
     std::optional<std::pair<int, int>>
         preferred_remote_region_;  ///< Sticky feasible remote relocation
                                    ///< target.

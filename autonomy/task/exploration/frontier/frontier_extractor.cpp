@@ -24,13 +24,11 @@ constexpr std::array<std::pair<int, int>, 4> kPlanarNeighbors{{
     {0, 1},
     {0, -1},
 }};
-const std::array<Eigen::Vector3i, 6> kVolumeNeighbors{{
+const std::array<Eigen::Vector3i, 4> kHorizontalVolumeNeighbors{{
     {1, 0, 0},
     {-1, 0, 0},
     {0, 1, 0},
     {0, -1, 0},
-    {0, 0, 1},
-    {0, 0, -1},
 }};
 
 using VoxelKey = std::tuple<int, int, int>;
@@ -41,6 +39,23 @@ VoxelKey Key(const Eigen::Vector3i& index) {
 
 Eigen::Vector3i Index(const VoxelKey& key) {
     return {std::get<0>(key), std::get<1>(key), std::get<2>(key)};
+}
+
+int MetricBucketWidth(double resolution, double tolerance) {
+    const double width = std::ceil(tolerance / resolution);
+    if (!std::isfinite(width) || width >= std::numeric_limits<int>::max()) {
+        return std::numeric_limits<int>::max();
+    }
+    return std::max(1, static_cast<int>(width));
+}
+
+VoxelKey Bucket(const VoxelKey& key, int width) {
+    return {std::get<0>(key) / width, std::get<1>(key) / width,
+            std::get<2>(key) / width};
+}
+
+std::pair<int, int> Bucket(const std::pair<int, int>& cell, int width) {
+    return {cell.first / width, cell.second / width};
 }
 
 bool InsideDomain(
@@ -62,10 +77,11 @@ std::vector<CoverageUnit> FrontierExtractor::Extract(
     std::size_t minimum_cluster_size,
     const std::optional<::automsgs::msgs::geometry_msgs::Polygon>&
         allowed_polygon,
-    const std::vector<::automsgs::msgs::geometry_msgs::Polygon>& no_go_areas)
-    const {
+    const std::vector<::automsgs::msgs::geometry_msgs::Polygon>& no_go_areas,
+    double cluster_tolerance_m) const {
     std::vector<CoverageUnit> result;
     if (!std::isfinite(height) || !minimum_cluster_size ||
+        !std::isfinite(cluster_tolerance_m) || cluster_tolerance_m <= 0 ||
         (allowed_polygon &&
          (!allowed_region ||
           !PolygonBoundaryWithinBounds(*allowed_polygon, *allowed_region))) ||
@@ -104,7 +120,10 @@ std::vector<CoverageUnit> FrontierExtractor::Extract(
             if (entry.second != perception::ObservedVoxelState::kFree)
                 continue;
             const Eigen::Vector3i free = Index(entry.first);
-            for (const auto& offset : kVolumeNeighbors) {
+            // Ground exploration retains vertical frontier surfaces only.
+            // Missing voxels above or below measured free space are
+            // observation-volume caps, not traversable boundary work.
+            for (const auto& offset : kHorizontalVolumeNeighbors) {
                 const Eigen::Vector3i unknown = free + offset;
                 if ((unknown.array() < 0).any() ||
                     (unknown.array() >= volume->dimensions.array()).any() ||
@@ -124,16 +143,45 @@ std::vector<CoverageUnit> FrontierExtractor::Extract(
             }
         }
 
+        const int bucket_width =
+            MetricBucketWidth(volume->resolution, cluster_tolerance_m);
+        std::map<VoxelKey, std::set<VoxelKey>> buckets;
+        for (const auto& cell : cells) {
+            buckets[Bucket(cell, bucket_width)].insert(cell);
+        }
+
         while (!cells.empty()) {
             std::vector<VoxelKey> cluster{*cells.begin()};
             cells.erase(cells.begin());
+            buckets[Bucket(cluster.front(), bucket_width)].erase(
+                cluster.front());
             for (std::size_t index = 0; index < cluster.size(); ++index) {
                 const Eigen::Vector3i cell = Index(cluster[index]);
-                for (const auto& offset : kVolumeNeighbors) {
-                    const auto found = cells.find(Key(cell + offset));
-                    if (found != cells.end()) {
-                        cluster.push_back(*found);
-                        cells.erase(found);
+                const Eigen::Vector3i bucket =
+                    Index(Bucket(cluster[index], bucket_width));
+                // A tolerance-sized spatial index limits each metric range
+                // query to 27 deterministic neighboring buckets while retaining
+                // transitive links.
+                for (int dz = -1; dz <= 1; ++dz) {
+                    for (int dy = -1; dy <= 1; ++dy) {
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            auto& candidates = buckets[Key(
+                                bucket + Eigen::Vector3i{dx, dy, dz})];
+                            for (auto candidate = candidates.begin();
+                                 candidate != candidates.end();) {
+                                const Eigen::Vector3d metric_delta =
+                                    (Index(*candidate) - cell).cast<double>() *
+                                    volume->resolution;
+                                if (metric_delta.squaredNorm() <=
+                                    cluster_tolerance_m * cluster_tolerance_m) {
+                                    cluster.push_back(*candidate);
+                                    cells.erase(*candidate);
+                                    candidate = candidates.erase(candidate);
+                                } else {
+                                    ++candidate;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -196,18 +244,40 @@ std::vector<CoverageUnit> FrontierExtractor::Extract(
         }
     }
 
+    const int bucket_width =
+        MetricBucketWidth(map.resolution(), cluster_tolerance_m);
+    std::map<std::pair<int, int>, std::set<std::pair<int, int>>> buckets;
+    for (const auto& cell : cells) {
+        buckets[Bucket(cell, bucket_width)].insert(cell);
+    }
+
     while (!cells.empty()) {
         std::vector<std::pair<int, int>> cluster{*cells.begin()};
         cells.erase(cells.begin());
+        buckets[Bucket(cluster.front(), bucket_width)].erase(cluster.front());
         for (std::size_t index = 0; index < cluster.size(); ++index) {
-            for (const auto& offset : kPlanarNeighbors) {
-                const std::pair<int, int> neighbor{
-                    cluster[index].first + offset.first,
-                    cluster[index].second + offset.second};
-                const auto found = cells.find(neighbor);
-                if (found != cells.end()) {
-                    cluster.push_back(*found);
-                    cells.erase(found);
+            const auto bucket = Bucket(cluster[index], bucket_width);
+            for (int dy = -1; dy <= 1; ++dy) {
+                for (int dx = -1; dx <= 1; ++dx) {
+                    auto& candidates =
+                        buckets[{bucket.first + dx, bucket.second + dy}];
+                    for (auto candidate = candidates.begin();
+                         candidate != candidates.end();) {
+                        const double dx =
+                            (candidate->first - cluster[index].first) *
+                            map.resolution();
+                        const double dy =
+                            (candidate->second - cluster[index].second) *
+                            map.resolution();
+                        if (dx * dx + dy * dy <=
+                            cluster_tolerance_m * cluster_tolerance_m) {
+                            cluster.push_back(*candidate);
+                            cells.erase(*candidate);
+                            candidate = candidates.erase(candidate);
+                        } else {
+                            ++candidate;
+                        }
+                    }
                 }
             }
         }

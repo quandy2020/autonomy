@@ -33,6 +33,13 @@ if(AUTONOMY_BUILD_EXPLORATION_TESTS)
     target_link_libraries(autonomy_native_observation_mapper_test PRIVATE autonomy_task)
     add_test(NAME autonomy.exploration.native_observation_mapper COMMAND autonomy_native_observation_mapper_test)
     set_tests_properties(autonomy.exploration.native_observation_mapper PROPERTIES TIMEOUT 45)
+    add_executable(autonomy_native_rgbd_platform_loader_test
+      autonomy/task/exploration/native_rgbd_platform_loader_test.cpp)
+    target_link_libraries(autonomy_native_rgbd_platform_loader_test PRIVATE autonomy_task)
+    add_test(NAME autonomy.exploration.native_rgbd_platform_loader
+      COMMAND autonomy_native_rgbd_platform_loader_test)
+    set_tests_properties(autonomy.exploration.native_rgbd_platform_loader
+      PROPERTIES TIMEOUT 30)
     add_executable(autonomy_atlas_acquisition_stamp_test
       autonomy/localization/atlas/tests/native_acquisition_stamp_test.cpp)
     target_link_libraries(autonomy_atlas_acquisition_stamp_test PRIVATE atlas_automsgs_bridge)

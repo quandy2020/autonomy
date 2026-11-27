@@ -29,6 +29,7 @@ public:
         const std::optional<::automsgs::msgs::geometry_msgs::Polygon>&
             allowed_polygon = {},
         const std::vector<::automsgs::msgs::geometry_msgs::Polygon>&
-            no_go_areas = {}) const;
+            no_go_areas = {},
+        double cluster_tolerance_m = 1) const;
 };
 }  // namespace autonomy::task::exploration

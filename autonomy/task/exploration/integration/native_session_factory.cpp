@@ -50,6 +50,16 @@ void ApplySharedExplorationOptions(
     if (source.min_frontier_cluster_size() <= 0) {
         throw std::invalid_argument("frontier cluster size must be positive");
     }
+    if (source.has_frontier_cluster_tolerance_m() &&
+        (!std::isfinite(source.frontier_cluster_tolerance_m()) ||
+         source.frontier_cluster_tolerance_m() <= 0)) {
+        throw std::invalid_argument(
+            "frontier cluster tolerance must be finite and positive");
+    }
+    if (source.rush_home()) {
+        throw std::invalid_argument(
+            "rush_home cannot bypass Vista-owned return route geometry");
+    }
     if (!source.boundary_ply_path().empty() ||
         !source.boundary_vgh_path().empty() ||
         !source.nogo_ply_path().empty()) {
@@ -67,6 +77,11 @@ void ApplySharedExplorationOptions(
     destination->keypose_spacing_m = source.keypose_spacing_m();
     destination->minimum_frontier_cluster_size =
         static_cast<std::size_t>(source.min_frontier_cluster_size());
+    destination->frontier_cluster_tolerance_m =
+        source.has_frontier_cluster_tolerance_m()
+            ? source.frontier_cluster_tolerance_m()
+            : 1.0;
+    destination->use_frontier_points = source.use_frontier_points();
     // keypose_connect_dist_m is intentionally ignored: acquisition keyposes own
     // no edges and never query a route graph.
     destination->lookahead_distance_m = source.lookahead_distance_m();
@@ -75,6 +90,20 @@ void ApplySharedExplorationOptions(
         source.use_line_of_sight_lookahead();
     if (!coverage)
         return;
+    if ((source.has_minimum_incremental_surface_gain() &&
+         (!std::isfinite(source.minimum_incremental_surface_gain()) ||
+          source.minimum_incremental_surface_gain() < 0 ||
+          source.minimum_incremental_surface_gain() > 1)) ||
+        (source.has_minimum_incremental_frontier_gain() &&
+         (!std::isfinite(source.minimum_incremental_frontier_gain()) ||
+          source.minimum_incremental_frontier_gain() < 0 ||
+          source.minimum_incremental_frontier_gain() > 1)) ||
+        (source.has_local_diversification_ratio() &&
+         (!std::isfinite(source.local_diversification_ratio()) ||
+          source.local_diversification_ratio() <= 0 ||
+          source.local_diversification_ratio() > 1))) {
+        throw std::invalid_argument("invalid shared local selection policy");
+    }
     if (!std::isfinite(source.grid_cell_size_m()) ||
         source.grid_cell_size_m() <= 0 || source.grid_nearby_radius() <= 0 ||
         !std::isfinite(source.viewpoint_resolution_m()) ||
@@ -98,7 +127,7 @@ void ApplySharedExplorationOptions(
     coverage->sampling.spacing = source.viewpoint_resolution_m();
     coverage->sampling.yaw_samples =
         static_cast<unsigned>(source.viewpoint_yaw_samples());
-    if (!source.use_line_of_sight_lookahead())
+    if (!source.use_line_of_sight_lookahead() && !source.use_terrain_height())
         coverage->rolling_field.reset();
     coverage->safety.robot_radius = source.collision_radius_m();
     coverage->maximum_global_views = 128;
@@ -108,6 +137,24 @@ void ApplySharedExplorationOptions(
     coverage->route_optimization.use_two_opt = source.tsp_use_two_opt();
     coverage->local_selection_attempts = std::max<std::size_t>(
         1, static_cast<std::size_t>(source.local_path_optimization_iters()));
+    // These normalized ratios adapt upstream point-count admission knobs to the
+    // same CoverageFusion gain semantics used by local candidate selection.
+    if (source.has_minimum_incremental_surface_gain()) {
+        coverage->minimum_incremental_surface_gain =
+            source.minimum_incremental_surface_gain();
+    }
+    if (source.has_minimum_incremental_frontier_gain()) {
+        coverage->minimum_incremental_frontier_gain =
+            source.minimum_incremental_frontier_gain();
+    }
+    if (source.has_local_diversification_ratio()) {
+        coverage->local_diversification_ratio =
+            source.local_diversification_ratio();
+    }
+    if (source.has_local_diversification_seed()) {
+        coverage->local_diversification_seed =
+            source.local_diversification_seed();
+    }
     coverage->use_frontier_points = source.use_frontier_points();
     coverage->use_momentum = source.use_momentum();
     coverage->momentum.sampling_distance = source.momentum_dist_m();
@@ -129,7 +176,42 @@ void Validate(const NativeExplorationConfiguration& config,
                         perception::Mask(perception::SensorKind::kRgbd)) != 0;
     const bool lidar = (perception::Mask(mode) &
                         perception::Mask(perception::SensorKind::kLidar)) != 0;
+    if (config.shared_options && config.shared_options->use_terrain_height()) {
+        if (!depth || lidar) {
+            throw std::invalid_argument(
+                "terrain-height clearance requires the measured native RGB-D "
+                "volume source");
+        }
+        if (!config.coverage.rolling_field) {
+            throw std::invalid_argument(
+                "terrain-height clearance requires a bounded measured 3-D "
+                "field");
+        }
+        const auto& body = config.coverage.safety;
+        if (!std::isfinite(body.robot_radius) || body.robot_radius <= 0 ||
+            !std::isfinite(body.horizontal_margin) ||
+            body.horizontal_margin < 0 || !std::isfinite(body.robot_height) ||
+            body.robot_height <= 0 || !std::isfinite(body.vertical_margin) ||
+            body.vertical_margin < 0 ||
+            !std::isfinite(config.coverage.sampling.goal_clearance_reserve) ||
+            config.coverage.sampling.goal_clearance_reserve < 0) {
+            throw std::invalid_argument(
+                "terrain-height clearance requires explicit finite 3-D body "
+                "collision geometry");
+        }
+    }
     if (config.input.mode != mode || config.coverage.mode != mode ||
+        config.session.use_frontier_points !=
+            config.coverage.use_frontier_points ||
+        !std::isfinite(config.coverage.minimum_incremental_surface_gain) ||
+        config.coverage.minimum_incremental_surface_gain < 0 ||
+        config.coverage.minimum_incremental_surface_gain > 1 ||
+        !std::isfinite(config.coverage.minimum_incremental_frontier_gain) ||
+        config.coverage.minimum_incremental_frontier_gain < 0 ||
+        config.coverage.minimum_incremental_frontier_gain > 1 ||
+        !std::isfinite(config.coverage.local_diversification_ratio) ||
+        config.coverage.local_diversification_ratio <= 0 ||
+        config.coverage.local_diversification_ratio > 1 ||
         config.camera.has_value() != depth ||
         config.lidar.has_value() != lidar ||
         config.session.validated_controller_modes.empty() ||

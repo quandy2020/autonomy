@@ -45,8 +45,13 @@ by `ApplySharedExplorationOptions`:
   upstream straight-line rush-home shortcut is neither needed nor reproduced;
 - camera/depth calibration and frames are checked against their native owners;
   a conservative shared sensor range becomes the camera visibility limit;
-  unsupported LiDAR, terrain, point-cloud, prior-map, planner-costmap, and task
-  lifecycle settings are rejected when non-default rather than ignored;
+  `use_terrain_height` reuses only measured per-cell floor heights and the
+  bounded measured RGB-D volume for 3-D body clearance. Viewpoints and routes
+  remain `Pose2d`, and Vista remains the sole route owner; missing measured
+  volume support, non-RGB-D terrain sources, or incomplete body collision
+  geometry fail explicitly rather than falling back to predicted heights;
+  unsupported LiDAR, point-cloud, prior-map, planner-costmap, and task lifecycle
+  settings are rejected when non-default rather than ignored;
 - file-based boundary/no-go settings are not used as hidden global geometry.
   Runtime `geometry_msgs::Polygon` task geometry is authoritative: allowed and
   no-go polygons are validated as finite, simple, and nondegenerate, computed
@@ -66,9 +71,13 @@ Completion is based only on measured coverage evidence. Sparse 3-D volume
 omissions remain unknown. Production extraction creates surface requirements
 only for occupied voxel faces adjacent to explicitly measured free voxels.
 When a compatible measured volume exists, frontier requirements are omitted
-in-bounds six-neighbors of explicitly measured free voxels and are clustered
-in 3-D; the planar grid is used only when no volume exists. Both paths enforce
-the configured connected-component minimum.
+in-bounds horizontal neighbors of explicitly measured free voxels; volume caps
+above and below measured free space are not ground-exploration frontiers. The
+requirements are clustered in 3-D by physical center separation, including
+vertical and diagonal links within `frontier_cluster_tolerance_m` (one meter by
+default), rather than by a fixed voxel-index stencil. The planar grid is used
+only when no volume exists. Both paths enforce the configured metric tolerance
+and connected-component minimum.
 
 The first admitted Vista route remains immutable evidence. Arc-length lookahead
 may execute an intermediate waypoint, after which Vista replans from the

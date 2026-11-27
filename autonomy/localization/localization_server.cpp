@@ -20,6 +20,7 @@
 #include "autonomy/localization/localization_server.hpp"
 
 #include <utility>
+#include <filesystem>
 
 #include "autolink/autolink.hpp"
 #include "autolink/timer/timer.hpp"
@@ -133,7 +134,7 @@ public:
             cartographer::node::ResolveStaticTransformYamlPath(
                 options_.configuration_directory,
                 options_.configuration_basename);
-        if (static_tf_publisher_.LoadFromFile(static_tf_yaml)) {
+        if (std::filesystem::exists(static_tf_yaml) && static_tf_publisher_.LoadFromFile(static_tf_yaml)) {
             static_tf_publisher_.ApplyToBuffer(transform::Buffer::Instance());
         }
 

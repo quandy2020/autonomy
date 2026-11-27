@@ -1,5 +1,6 @@
 /* Copyright 2026 The Openbot Authors. */
 #include "autonomy/task/exploration/exploration_session.hpp"
+#include <atomic>
 #include <chrono>
 #include <iostream>
 #include <stdexcept>
@@ -73,6 +74,60 @@ private:
     bool selected_ = false;
 };
 
+/** @brief Records whether session synchronization exposes frontier-only work.
+ */
+class FrontierPolicyProbe final : public e::ExplorationStrategy
+{
+public:
+    void Reset() override {
+        evaluated_.store(false);
+        selected_frontier_.store(false);
+    }
+
+    e::StrategyDecision Select(const e::Pose2d& pose, const e::Pose2d&,
+                               const e::MapReadView& map,
+                               const e::CoverageState& coverage, p::SensorMask,
+                               double,
+                               const std::function<bool()>& canceled) override {
+        e::StrategyDecision result;
+        if (canceled && canceled())
+            return result;
+        evaluated_.store(true);
+        for (const auto& [id, unit] : coverage.units()) {
+            (void)unit;
+            if (id.kind != e::CoverageKind::kFrontier)
+                continue;
+            selected_frontier_.store(true);
+            e::ObservationGoal goal;
+            goal.goal_id = 71;
+            goal.goal_version = 1;
+            goal.map_epoch = map.map_epoch;
+            goal.coverage_revision = coverage.revision();
+            goal.original_pose = pose;
+            goal.required_views = {pose.yaw};
+            goal.required_coverage_units = {id};
+            goal.minimum_gain = .01;
+            result.goal = std::move(goal);
+            return result;
+        }
+        // Keep the focused probe alive while queued map and coverage events are
+        // drained; this test does not claim an exhaustive completion sweep.
+        return result;
+    }
+
+    bool evaluated() const noexcept {
+        return evaluated_.load();
+    }
+
+    bool selected_frontier() const noexcept {
+        return selected_frontier_.load();
+    }
+
+private:
+    std::atomic<bool> evaluated_{false};
+    std::atomic<bool> selected_frontier_{false};
+};
+
 e::MapReadView SurfaceVolumeMap(Fixture& fixture, double stamp, bool live) {
     auto map = fixture.reader.Read(fixture.grid, stamp, 0, fixture.epoch);
     map.mapping_synchronized = true;
@@ -122,10 +177,11 @@ void SaveCannotHideLocalizationLoss() {
 
 /** @brief New 3-D evidence creates work without a planar geometry revision. */
 void MeasuredVolumeRefreshCreatesSurfaceRequirements() {
-    Fixture fixture({}, .05, std::make_shared<EmptyComplete>(), true, false, 10,
-                    32, e::ExplorationDriver::kAutomatic, false,
+    Fixture fixture({}, .05, std::make_shared<FrontierPolicyProbe>(), true,
+                    false, 10, 32, e::ExplorationDriver::kAutomatic, false,
                     [](e::ExplorationSessionOptions& options) {
                         options.completion_rounds = 3;
+                        options.use_frontier_points = false;
                     });
     auto map = fixture.reader.Read(fixture.grid, 1.02, 0, fixture.epoch);
     map.mapping_synchronized = true;
@@ -181,7 +237,8 @@ void MeasuredVolumeRefreshCreatesSurfaceRequirements() {
     Require(fixture.session->PushMap(std::move(cleared_map)),
             "same-stamp replacement volume queued");
     WaitFor(
-        fixture, 1.05, [&] { return fixture.refresh_request.has_value(); },
+        fixture, 1.06,
+        [&] { return fixture.session->Snapshot().pending_units == 0; },
         "explicit source-free evidence retires the stale surface");
 }
 
@@ -191,6 +248,7 @@ void AdjacentOccupiedRetiresSurfaceRequirement() {
                     32, e::ExplorationDriver::kAutomatic, false,
                     [](e::ExplorationSessionOptions& options) {
                         options.completion_rounds = 3;
+                        options.use_frontier_points = false;
                     });
     const auto make_map = [&](std::vector<p::ObservedVoxel> voxels) {
         auto map = fixture.reader.Read(fixture.grid, 1.02, 0, fixture.epoch);
@@ -222,7 +280,8 @@ void AdjacentOccupiedRetiresSurfaceRequirement() {
                           {{6, 5, 2}, p::ObservedVoxelState::kOccupied}})),
             "adjacent-occupied replacement queued");
     WaitFor(
-        fixture, 1.05, [&] { return fixture.refresh_request.has_value(); },
+        fixture, 1.05,
+        [&] { return fixture.session->Snapshot().pending_units == 0; },
         "explicit adjacent occupancy retires the stale surface");
 }
 
@@ -451,13 +510,95 @@ void IntermediateLookaheadContinuesWithoutObserving() {
             "continuation advances toward the immutable exact final pose");
 }
 
+/** @brief Volume-only evidence may update coverage without invalidating a
+ * geometry-compatible Vista execution leg. */
+void ObservedVolumeUpdatePreservesActiveVistaLeg() {
+    auto strategy =
+        std::make_shared<OneGoal>(std::vector<double>{0}, e::Pose2d{1.8, 1, 0});
+    Fixture fixture({0}, .05, strategy);
+    const auto command = fixture.submissions.front();
+    const auto before = fixture.session->Snapshot();
+    Require(before.goal.has_value(),
+            "fixture did not retain its active Vista-backed goal");
+
+    auto volume_update = SurfaceVolumeMap(fixture, 1.03, true);
+    Require(
+        volume_update.geometry_revision == before.goal->route.geometry_revision,
+        "volume-only fixture unexpectedly changed planar geometry");
+    const auto cancellation_count = fixture.cancellation_count;
+    Require(fixture.session->PushMap(std::move(volume_update)),
+            "volume-only coverage evidence queued during navigation");
+    WaitFor(
+        fixture, 1.03,
+        [&] {
+            return fixture.session->Snapshot().measured_coverage_revision >
+                   before.measured_coverage_revision;
+        },
+        "volume-only evidence did not update measured coverage");
+
+    const auto updated = fixture.session->Snapshot();
+    Require(updated.goal.has_value() && updated.active_request.has_value() &&
+                updated.active_request->SameRequest(command.second) &&
+                fixture.cancellation_count == cancellation_count &&
+                fixture.submissions.size() == 1 &&
+                updated.goal->route.geometry_revision ==
+                    before.goal->route.geometry_revision,
+            "same-geometry volume evidence invalidated the active Vista leg");
+
+    fixture.PushPose(command.first, 1.04);
+    fixture.reply = e::NavigationReply{command.second, true};
+    Require(
+        fixture.session->Tick(1.04).state == e::ExplorationState::kObserving,
+        "same-geometry volume evidence prevented active-leg arrival");
+}
+
+/** @brief A queued continuation result cannot cross a newer map geometry. */
+void NewGeometryRejectsQueuedStaleContinuation() {
+    auto strategy =
+        std::make_shared<OneGoal>(std::vector<double>{0}, e::Pose2d{1.8, 1, 0});
+    Fixture fixture({0}, .05, strategy, false, true, 10, 32,
+                    e::ExplorationDriver::kAutomatic, false,
+                    [](auto& options) { options.lookahead_distance_m = .2; });
+    const auto first = fixture.submissions.front();
+    fixture.PushPose(first.first, 1.03);
+    fixture.reply = e::NavigationReply{first.second, true};
+    const auto continuing = fixture.session->Tick(1.03);
+    Require(continuing.state != e::ExplorationState::kObserving &&
+                continuing.active_request.has_value() &&
+                continuing.active_request->geometry_revision ==
+                    first.second.geometry_revision,
+            "intermediate arrival did not start an old-geometry continuation");
+
+    // Let the worker enqueue its immutable old-geometry result without giving
+    // the owner a Tick in which it could submit that result.
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    fixture.grid.Set(18, 18, {n::CellState::kOccupied, 0});
+    auto newer_map =
+        fixture.reader.Read(fixture.grid, 1.04, 0, fixture.sequence);
+    Require(newer_map.geometry_revision > first.second.geometry_revision,
+            "fixture geometry revision did not advance");
+    const auto newer_revision = newer_map.geometry_revision;
+    Require(fixture.session->PushMap(std::move(newer_map)),
+            "newer geometry queued behind continuation result");
+    for (unsigned round = 0; round < 20; ++round) {
+        fixture.session->Tick(1.04 + round * .001);
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    for (std::size_t index = 1; index < fixture.submissions.size(); ++index) {
+        Require(
+            fixture.submissions[index].second.geometry_revision ==
+                newer_revision,
+            "stale continuation planning reply submitted after newer geometry");
+    }
+}
+
 void FinalObservationRequiresMeasuredPoseAndYaw() {
-    auto strategy = std::make_shared<OneGoal>(std::vector<double>{.6},
-                                              e::Pose2d{1.8, 1, .6});
-    Fixture fixture({.6}, .05, strategy);
+    auto strategy = std::make_shared<OneGoal>(std::vector<double>{.2},
+                                              e::Pose2d{1.8, 1, .2});
+    Fixture fixture({.2}, .05, strategy);
     const auto command = fixture.submissions.front();
     auto wrong_yaw = command.first;
-    wrong_yaw.yaw = -.6;
+    wrong_yaw.yaw = -.2;
     fixture.PushPose(wrong_yaw, 1.05);
     fixture.reply = e::NavigationReply{command.second, true};
     const auto state = fixture.session->Tick(1.05);
@@ -523,7 +664,11 @@ void FullFirstRouteControlsAdmissionBudget() {
 
 void DormantActiveSurfaceIsReleasedOnCancellation() {
     auto strategy = std::make_shared<SurfaceLifecycleGoal>();
-    Fixture fixture({}, .05, strategy, false, false);
+    Fixture fixture({}, .05, strategy, false, false, 10, 32,
+                    e::ExplorationDriver::kAutomatic, false,
+                    [](e::ExplorationSessionOptions& options) {
+                        options.minimum_frontier_cluster_size = 100;
+                    });
     Require(fixture.session->PushMap(SurfaceVolumeMap(fixture, 1.02, true)),
             "measured surface requirement queued");
     WaitFor(
@@ -554,6 +699,7 @@ void CompletedSurfaceReappearanceReopensMeasuredWork() {
                     e::ExplorationDriver::kAutomatic, false,
                     [](e::ExplorationSessionOptions& options) {
                         options.completion_rounds = 100;
+                        options.minimum_frontier_cluster_size = 100;
                     });
     Require(fixture.session->PushMap(SurfaceVolumeMap(fixture, 1.02, true)),
             "measured surface requirement queued");
@@ -588,16 +734,148 @@ void CompletedSurfaceReappearanceReopensMeasuredWork() {
             "reopens measured work");
 }
 
+void ConfirmBtFinishCandidate(Fixture& fixture, double now) {
+    auto ticket =
+        fixture.session->RequestPhase(e::ExplorationPhase::kSelect, now);
+    Require(ticket.has_value(), "BT selection phase admitted");
+    WaitFor(
+        fixture, now,
+        [&] {
+            return fixture.session->PhaseState(*ticket).status !=
+                   e::PhaseStatus::kPending;
+        },
+        "BT empty selection reaches a finish candidate");
+    if (!fixture.session->Snapshot().completion_confirmed) {
+        auto map =
+            fixture.reader.Read(fixture.grid, now + .001, 0, fixture.epoch);
+        map.mapping_synchronized = true;
+        map.observation_cut.Include(p::SensorKind::kRgbd, fixture.sequence);
+        Require(fixture.session->PushMap(std::move(map)),
+                "BT completion accepts a synchronized measured fusion barrier");
+        fixture.session->Tick(now + .001);
+        ticket = fixture.session->RequestPhase(e::ExplorationPhase::kSelect,
+                                               now + .002);
+        Require(ticket.has_value(), "BT selection retries after fusion");
+        WaitFor(
+            fixture, now + .002,
+            [&] {
+                return fixture.session->PhaseState(*ticket).status !=
+                       e::PhaseStatus::kPending;
+            },
+            "BT fused selection reaches a finish candidate");
+    }
+    Require(fixture.session->PhaseState(*ticket).status ==
+                    e::PhaseStatus::kRetryable &&
+                fixture.session->Snapshot().completion_confirmed,
+            "BT empty selection confirms completion before return");
+}
+
+void ConfirmAutomaticFusionBarrier(Fixture& fixture, double now) {
+    fixture.session->Tick(now);
+    auto map = fixture.reader.Read(fixture.grid, now + .001, 0, fixture.epoch);
+    map.mapping_synchronized = true;
+    map.observation_cut.Include(p::SensorKind::kRgbd, fixture.sequence);
+    Require(
+        fixture.session->PushMap(std::move(map)),
+        "automatic completion accepts a synchronized measured fusion barrier");
+    fixture.session->Tick(now + .001);
+}
+
+void BtReturnEntryUsesReturnPositionTolerance() {
+    Fixture fixture({}, .05, std::make_shared<EmptyComplete>(), false, false,
+                    10, 32, e::ExplorationDriver::kBehaviorTree, true,
+                    [](e::ExplorationSessionOptions& options) {
+                        options.completion_rounds = 1;
+                        options.position_tolerance = .1;
+                        options.return_position_tolerance = .5;
+                    });
+    fixture.PushPose({1.3, 1, 0}, 1.02);
+    fixture.session->Tick(1.02);
+    ConfirmBtFinishCandidate(fixture, 1.03);
+
+    const auto returned =
+        fixture.session->RequestPhase(e::ExplorationPhase::kReturn, 1.04);
+    Require(returned.has_value() &&
+                fixture.session->PhaseState(*returned).status ==
+                    e::PhaseStatus::kSucceeded &&
+                fixture.session->Snapshot().result.returned ==
+                    e::ReturnOutcome::kReturned &&
+                fixture.submissions.empty(),
+            "BT return entry uses its wider independent position tolerance");
+}
+
+void OwnerFinishAtHomeUsesReturnPositionTolerance() {
+    Fixture fixture({}, .05, std::make_shared<EmptyComplete>(), false, false,
+                    10, 32, e::ExplorationDriver::kAutomatic, true,
+                    [](e::ExplorationSessionOptions& options) {
+                        options.completion_rounds = 1;
+                        options.position_tolerance = .1;
+                        options.return_position_tolerance = .5;
+                    });
+    fixture.PushPose({1.3, 1, 0}, 1.011);
+    ConfirmAutomaticFusionBarrier(fixture, 1.012);
+    WaitFor(
+        fixture, 1.02,
+        [&] {
+            return fixture.session->Snapshot().state ==
+                       e::ExplorationState::kFinished ||
+                   !fixture.submissions.empty();
+        },
+        "owner finish resolves return or submits navigation");
+    const auto result = fixture.session->Snapshot();
+    Require(result.state == e::ExplorationState::kFinished &&
+                result.result.returned == e::ReturnOutcome::kReturned &&
+                fixture.submissions.empty(),
+            "owner finish already-home gate uses return position tolerance");
+}
+
+void ResumedBtReturnUsesReturnPositionTolerance() {
+    Fixture fixture({}, .05, std::make_shared<EmptyComplete>(), false, false,
+                    10, 32, e::ExplorationDriver::kBehaviorTree, true,
+                    [](e::ExplorationSessionOptions& options) {
+                        options.completion_rounds = 1;
+                        options.position_tolerance = .1;
+                        options.return_position_tolerance = .5;
+                    });
+    fixture.PushPose({2, 1, 0}, 1.02);
+    fixture.session->Tick(1.02);
+    ConfirmBtFinishCandidate(fixture, 1.03);
+    const auto returned =
+        fixture.session->RequestPhase(e::ExplorationPhase::kReturn, 1.04);
+    Require(returned.has_value(), "BT return phase admitted away from home");
+    WaitFor(
+        fixture, 1.04, [&] { return !fixture.submissions.empty(); },
+        "BT return phase submits navigation away from home");
+    const auto submissions_before_pause = fixture.submissions.size();
+
+    Require(fixture.session->PostCommand(e::SessionCommand::kPause),
+            "active BT return pause queued");
+    Require(fixture.session->Tick(1.05).state == e::ExplorationState::kPaused,
+            "active BT return pauses without losing its phase");
+    fixture.PushPose({1.3, 1, 0}, 1.06);
+    fixture.session->Tick(1.06);
+    Require(fixture.session->PostCommand(e::SessionCommand::kResume),
+            "active BT return resume queued");
+    const auto resumed = fixture.session->Tick(1.07);
+    Require(fixture.session->PhaseState(*returned).status ==
+                    e::PhaseStatus::kSucceeded &&
+                resumed.result.returned == e::ReturnOutcome::kReturned &&
+                fixture.submissions.size() == submissions_before_pause,
+            "resumed BT return uses return tolerance without resubmitting "
+            "navigation");
+}
+
 void ReturnArrivalIgnoresYawInsidePositionTolerance() {
     Fixture fixture({}, .05, std::make_shared<EmptyComplete>(), false, false,
                     10, 32, e::ExplorationDriver::kAutomatic, true,
                     [](e::ExplorationSessionOptions& options) {
-                        options.completion_rounds = 2;
+                        options.completion_rounds = 1;
                         options.position_tolerance = .1;
                         options.return_position_tolerance = .5;
                         options.yaw_tolerance = .05;
                     });
     fixture.PushPose({2, 1, 0}, 1.011);
+    ConfirmAutomaticFusionBarrier(fixture, 1.012);
     WaitFor(
         fixture, 1.02, [&] { return !fixture.submissions.empty(); },
         "completed exploration submits a Vista-owned return command");
@@ -612,16 +890,75 @@ void ReturnArrivalIgnoresYawInsidePositionTolerance() {
             "yaw mismatch");
 }
 
+/** @brief Disabled frontier work retires; enabled work remains selectable. */
+void FrontierPolicyControlsAuthoritativeRequirements() {
+    const auto configure = [](bool enabled) {
+        return [enabled](e::ExplorationSessionOptions& options) {
+            options.allowed_region = e::Bounds2d{0, 0, 4, 4};
+            options.completion_rounds = 5;
+            options.minimum_frontier_cluster_size = 1;
+            options.use_frontier_points = enabled;
+        };
+    };
+    const auto add_unknown_cell = [](Fixture& fixture, double stamp) {
+        fixture.grid.Set(10, 10, {n::CellState::kUnknown, 0});
+        fixture.Observe(stamp, false);
+        auto map = fixture.reader.Read(fixture.grid, stamp, 0, fixture.epoch);
+        map.mapping_synchronized = true;
+        map.observation_cut.Include(p::SensorKind::kRgbd, fixture.sequence);
+        Require(fixture.session->PushMap(std::move(map)),
+                "changed frontier map queued");
+        fixture.PushPose({1, 1, 0}, stamp);
+    };
+
+    auto disabled_probe = std::make_shared<FrontierPolicyProbe>();
+    Fixture disabled({}, .05, disabled_probe, false, false, 10, 32,
+                     e::ExplorationDriver::kAutomatic, false, configure(false));
+    e::CoverageUnit stale;
+    stale.id = {10, 10, 0, 0, e::CoverageKind::kFrontier};
+    stale.center = {2.1, 2.1, .5};
+    stale.required_quality = 1;
+    Require(disabled.session->PushCoverageUnit(stale),
+            "prior frontier requirement queued");
+    add_unknown_cell(disabled, 1.02);
+    WaitFor(
+        disabled, 1.03,
+        [&] {
+            const auto snapshot = disabled.session->Snapshot();
+            return disabled_probe->evaluated() && snapshot.pending_units == 0 &&
+                   snapshot.live_frontiers == 0;
+        },
+        "disabled frontier policy retained authoritative frontier work");
+    const auto disabled_snapshot = disabled.session->Snapshot();
+    Require(!disabled_probe->selected_frontier() &&
+                disabled_snapshot.pending_units == 0 &&
+                disabled_snapshot.live_frontiers == 0,
+            "disabled frontier policy selected or retained frontier-only work");
+
+    auto enabled_probe = std::make_shared<FrontierPolicyProbe>();
+    Fixture enabled({}, .05, enabled_probe, false, false, 10, 32,
+                    e::ExplorationDriver::kAutomatic, false, configure(true));
+    Require(enabled.session->PushCoverageUnit(stale),
+            "enabled frontier requirement queued");
+    add_unknown_cell(enabled, 1.02);
+    WaitFor(
+        enabled, 1.03, [&] { return enabled_probe->selected_frontier(); },
+        "enabled frontier policy did not preserve frontier-only selection");
+    Require(enabled_probe->selected_frontier() && !enabled.refresh_request,
+            "enabled frontier work was retired or falsely exhausted");
+}
+
 void ReturnArrivalOutsidePositionToleranceFailsDespiteNavigationSuccess() {
     Fixture fixture({}, .05, std::make_shared<EmptyComplete>(), false, false,
                     10, 32, e::ExplorationDriver::kAutomatic, true,
                     [](e::ExplorationSessionOptions& options) {
-                        options.completion_rounds = 2;
+                        options.completion_rounds = 1;
                         options.position_tolerance = .1;
                         options.return_position_tolerance = .5;
                         options.yaw_tolerance = .05;
                     });
     fixture.PushPose({2, 1, 0}, 1.011);
+    ConfirmAutomaticFusionBarrier(fixture, 1.012);
     WaitFor(
         fixture, 1.02, [&] { return !fixture.submissions.empty(); },
         "completed exploration submits a Vista-owned return command");
@@ -642,6 +979,10 @@ int main() {
     try {
         IntermediateLookaheadContinuesWithoutObserving();
         std::cout << "PASS intermediate_lookahead_continuation\n";
+        ObservedVolumeUpdatePreservesActiveVistaLeg();
+        std::cout << "PASS observed_volume_preserves_vista_leg\n";
+        NewGeometryRejectsQueuedStaleContinuation();
+        std::cout << "PASS stale_continuation_geometry_reply\n";
         FinalObservationRequiresMeasuredPoseAndYaw();
         std::cout << "PASS final_measured_pose_yaw\n";
         GeometryRevisionCancelsActiveLookahead();
@@ -652,10 +993,18 @@ int main() {
         std::cout << "PASS dormant_surface_release_on_cancel\n";
         CompletedSurfaceReappearanceReopensMeasuredWork();
         std::cout << "PASS completed_surface_reappearance\n";
+        BtReturnEntryUsesReturnPositionTolerance();
+        std::cout << "PASS bt_return_entry_position_tolerance\n";
+        OwnerFinishAtHomeUsesReturnPositionTolerance();
+        std::cout << "PASS owner_finish_return_position_tolerance\n";
+        ResumedBtReturnUsesReturnPositionTolerance();
+        std::cout << "PASS resumed_bt_return_position_tolerance\n";
         ReturnArrivalIgnoresYawInsidePositionTolerance();
         std::cout << "PASS return_position_ignores_yaw\n";
         ReturnArrivalOutsidePositionToleranceFailsDespiteNavigationSuccess();
         std::cout << "PASS return_outside_position_tolerance\n";
+        FrontierPolicyControlsAuthoritativeRequirements();
+        std::cout << "PASS frontier_policy_authoritative_requirements\n";
         ActualViewsAndMapUpdates();
         std::cout << "PASS actual_views_map_epoch\n";
         PauseDoesNotSatisfyDwell();

@@ -99,4 +99,11 @@ message ExplorationOptions {
   int32 planner_costmap_lethal_threshold = 146;
   bool far_use_trajectory_edges = 147;
   int32 far_trajectory_node_count = 148;
+  // Normalized CoverageFusion gains adapt upstream point-count thresholds.
+  optional double minimum_incremental_surface_gain = 149;
+  optional double minimum_incremental_frontier_gain = 150;
+  optional double local_diversification_ratio = 151;
+  optional uint64 local_diversification_seed = 152;
+  // Maximum metric separation of frontier samples in one connected cluster.
+  optional double frontier_cluster_tolerance_m = 153;
 }

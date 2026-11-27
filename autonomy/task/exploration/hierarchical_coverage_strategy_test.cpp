@@ -11,6 +11,8 @@
 #include <string>
 #include <utility>
 
+#include "autonomy/task/exploration/coverage/coverage_fusion.hpp"
+#include "autonomy/task/exploration/coverage/local_coverage_planner.hpp"
 #include "autonomy/task/exploration/integration/vista_path_provider.hpp"
 #include "autonomy/task/exploration/observation/camera_visibility_model.hpp"
 #include "autonomy/task/exploration/polygon_boundary.hpp"
@@ -40,6 +42,23 @@ public:
         return e::CoverageContribution{unit.id, sensor(), 1.0};
     }
     mutable std::size_t calls = 0;
+};
+
+class SpatialKindVisibility final : public e::SensorVisibilityModel
+{
+public:
+    p::SensorKind sensor() const override {
+        return p::SensorKind::kRgbd;
+    }
+    std::optional<e::CoverageContribution> Predict(
+        const e::Pose2d& viewpoint, const e::CoverageUnit& unit,
+        const e::MapReadView&, const e::ObservationQuality&) const override {
+        const bool local_view = viewpoint.x < .6;
+        if (local_view != (unit.id.x == 1))
+            return std::nullopt;
+        return e::CoverageContribution{unit.id, sensor(),
+                                       local_view ? 1.0 : .15};
+    }
 };
 
 class PagedVisibility final : public e::SensorVisibilityModel
@@ -224,7 +243,7 @@ void ConcaveTaskPolygonConstrainsSamplingDomain() {
     fixture.AddRequirement();
     fixture.options.sampling.maximum_evaluations = 1000;
     fixture.options.sampling.maximum_examined = 1000;
-    fixture.options.sampling.allowed_region = p::Bounds2d{0, 0, 1.2, .8};
+    fixture.options.sampling.allowed_region = p::Bounds2d{0, 0, 1.21, .81};
     ::automsgs::msgs::geometry_msgs::Polygon polygon;
     for (const auto [x, y] : {std::pair<float, float>{0, 0},
                               {1.2F, 0},
@@ -496,6 +515,325 @@ void UnknownMeasuredVolumeFailsClosedInSampler() {
         "omitted measured voxels were interpreted as free candidates");
 }
 
+/** @brief Candidate body clearance follows each measured cell floor height. */
+void MeasuredTerrainHeightOffsetsBodyClearance() {
+    Fixture fixture;
+    fixture.AddRequirement();
+    auto sensor = std::make_shared<CountingVisibility>();
+    e::ViewpointEvaluator evaluator(
+        std::vector<std::shared_ptr<const e::SensorVisibilityModel>>{sensor});
+    auto sampling = fixture.options.sampling;
+    sampling.yaw_samples = 1;
+    sampling.maximum_examined = 1000;
+    sampling.maximum_evaluations = 1000;
+    n::SafetyOptions body;
+    body.robot_radius = .01;
+    body.horizontal_margin = 0;
+    body.robot_height = .6;
+    body.vertical_margin = 0;
+
+    e::RollingViewpointFieldOptions field_options;
+    field_options.dimensions = {6, 4, 8};
+    field_options.rollover_step = {2, 2, 2};
+    field_options.maximum_cells = 192;
+    field_options.maximum_input_voxels = 192;
+    e::RollingViewpointField field(field_options);
+    std::vector<p::ObservedVoxel> voxels;
+    for (int z = 0; z < 8; ++z)
+        for (int y = 0; y < 4; ++y)
+            for (int x = 0; x < 6; ++x)
+                voxels.push_back({{x, y, z},
+                                  z == 1 ? p::ObservedVoxelState::kOccupied
+                                         : p::ObservedVoxelState::kFree});
+    p::ObservedVolumeView volume;
+    volume.map_epoch = fixture.map.map_epoch;
+    volume.geometry_revision = fixture.map.geometry_revision;
+    volume.source_stamp = 1;
+    volume.frame_id = fixture.map.frame_id;
+    volume.dimensions = {6, 4, 8};
+    volume.resolution = .2;
+    volume.mapping_synchronized = true;
+    volume.voxels = std::make_shared<const std::vector<p::ObservedVoxel>>(
+        std::move(voxels));
+    Require(
+        field.Update(volume, {fixture.start.x, fixture.start.y, .8}).status ==
+            e::ViewpointFieldUpdateStatus::kPublished,
+        "measured terrain fixture did not publish its 3-D field");
+
+    const auto low = e::ViewpointSampler{}.Sample(
+        fixture.start, fixture.map, fixture.coverage, evaluator,
+        e::RegionManager{}, p::Mask(p::SensorKind::kRgbd), body, sampling, true,
+        0, {}, field.Read());
+    Require(low.candidates.empty() && low.evaluated == 0,
+            "low measured floors ignored the occupied body-height plane");
+
+    n::GridMap elevated_grid(6, 4, .2);
+    elevated_grid.Fill({n::CellState::kFree, .8});
+    e::MapReader reader;
+    const auto elevated = reader.Read(elevated_grid, fixture.map.map_epoch, 0,
+                                      fixture.map.geometry_revision, true);
+    sensor->calls = 0;
+    const auto high = e::ViewpointSampler{}.Sample(
+        fixture.start, elevated, fixture.coverage, evaluator,
+        e::RegionManager{}, p::Mask(p::SensorKind::kRgbd), body, sampling, true,
+        0, {}, field.Read());
+    Require(
+        !high.candidates.empty() && high.evaluated > 0 && sensor->calls > 0,
+        "measured elevated floors were not used as the body-clearance datum");
+}
+
+/** @brief Measured candidate elevation changes sensor visibility and gain. */
+void MeasuredTerrainHeightOffsetsSensorVisibility() {
+    n::GridMap low_grid(6, 4, .2);
+    low_grid.Fill({n::CellState::kFree, 0});
+    n::GridMap elevated_grid(6, 4, .2);
+    elevated_grid.Fill({n::CellState::kFree, 1});
+    e::MapReader reader;
+    const auto low = reader.Read(low_grid, 1, 0, 1, true);
+    const auto elevated = reader.Read(elevated_grid, 1, 0, 1, true);
+
+    e::CoverageState coverage;
+    coverage.Reset(low.map_epoch);
+    e::CoverageUnit unit;
+    unit.id = {4, 0, 0, 0, e::CoverageKind::kSurface};
+    unit.center = {.9, .1, .5};
+    unit.normal = {-1, 0, 0};
+    unit.required_quality = 1;
+    unit.required_sensors = p::Mask(p::SensorKind::kRgbd);
+    coverage.Upsert(unit);
+
+    p::RigidTransform base_from_camera;
+    base_from_camera.rotation = {0, 0, 1, -1, 0, 0, 0, -1, 0};
+    base_from_camera.translation.z = .5;
+    auto camera = std::make_shared<e::CameraVisibilityModel>(
+        p::CameraModel{100, 100, 50, 50, 50, 50, .1, 8}, base_from_camera);
+    e::ViewpointEvaluator evaluator(
+        std::vector<std::shared_ptr<const e::SensorVisibilityModel>>{camera});
+    const e::Pose2d pose{.1, .1, 0};
+
+    const auto low_prediction =
+        evaluator.Predict(pose, coverage, low, p::Mask(p::SensorKind::kRgbd));
+    const auto elevated_prediction = evaluator.Predict(
+        pose, coverage, elevated, p::Mask(p::SensorKind::kRgbd));
+    Require(low_prediction.size() == 1 &&
+                e::CoverageFusion::Gain(coverage, low_prediction) > 0,
+            "floor-zero candidate lost visible measured coverage gain");
+    Require(elevated_prediction.empty() &&
+                e::CoverageFusion::Gain(coverage, elevated_prediction) == 0,
+            "elevated candidate predicted gain from a floor-zero sensor pose");
+}
+
+/** @brief Remote surface/frontier thresholds are independent and local-safe. */
+void RemoteIncrementThresholdsAreKindSpecific() {
+    const auto select = [](e::CoverageKind remote_kind,
+                           double surface_threshold,
+                           double frontier_threshold) {
+        Fixture fixture(n::CellState::kFree, 8, 8);
+        auto visibility = std::make_shared<SpatialKindVisibility>();
+        fixture.evaluator = std::make_shared<e::ViewpointEvaluator>(
+            std::vector<std::shared_ptr<const e::SensorVisibilityModel>>{
+                visibility});
+        fixture.options.region_size = .6;
+        fixture.options.local_radius = .15;
+        fixture.options.use_frontier_points = true;
+        fixture.options.fairness_interval = 1e31;
+        fixture.options.minimum_incremental_surface_gain = surface_threshold;
+        fixture.options.minimum_incremental_frontier_gain = frontier_threshold;
+        fixture.options.safety.robot_radius = .01;
+        fixture.options.sampling.spacing = .6;
+        fixture.options.sampling.yaw_samples = 1;
+        fixture.options.sampling.maximum_evaluations = 1000;
+        fixture.options.sampling.maximum_examined = 1000;
+
+        e::CoverageUnit local;
+        local.id = {1, 0, 0, 0, e::CoverageKind::kSurface};
+        local.center = {.1, .1, 0};
+        local.required_quality = 1;
+        fixture.coverage.Upsert(local);
+        e::CoverageUnit remote;
+        remote.id = {2, 0, 0, 0, remote_kind};
+        remote.center = {.7, .7, 0};
+        remote.required_quality = 1;
+        fixture.coverage.Upsert(remote);
+        e::HierarchicalCoverageStrategy strategy(
+            fixture.paths, fixture.evaluator, fixture.options);
+        const auto first =
+            strategy.Select(fixture.start, fixture.start, fixture.map,
+                            fixture.coverage, p::Mask(p::SensorKind::kRgbd), 1);
+        Require(
+            first.goal && !first.global_route.views.empty(),
+            "one low-value pass retired remote work or suppressed local work");
+        return strategy.Select(fixture.start, fixture.start, fixture.map,
+                               fixture.coverage, p::Mask(p::SensorKind::kRgbd),
+                               2);
+    };
+
+    const auto low_surface = select(e::CoverageKind::kSurface, .2, .1);
+    Require(
+        low_surface.global_route.views.empty() && low_surface.goal,
+        "low surface gain admitted remote relocation or suppressed local work");
+    const auto admitted_surface = select(e::CoverageKind::kSurface, .1, .2);
+    Require(!admitted_surface.global_route.views.empty(),
+            "surface gain used the frontier threshold");
+    const auto admitted_frontier = select(e::CoverageKind::kFrontier, .2, .1);
+    Require(!admitted_frontier.global_route.views.empty(),
+            "frontier gain used the surface threshold");
+    const auto low_frontier = select(e::CoverageKind::kFrontier, .1, .2);
+    Require(low_frontier.global_route.views.empty() && low_frontier.goal,
+            "low frontier gain admitted relocation or suppressed local work");
+}
+
+/** @brief Region hysteresis gates remote representatives but never local
+ * work.
+ */
+void RegionStatusGatesOnlyRemoteRepresentatives() {
+    Fixture fixture(n::CellState::kFree, 8, 8);
+    auto visibility = std::make_shared<CountingVisibility>();
+    fixture.evaluator = std::make_shared<e::ViewpointEvaluator>(
+        std::vector<std::shared_ptr<const e::SensorVisibilityModel>>{
+            visibility});
+    fixture.options.region_size = .6;
+    fixture.options.local_radius = .15;
+    fixture.options.safety.robot_radius = .01;
+    fixture.options.sampling.spacing = .6;
+    fixture.options.sampling.yaw_samples = 1;
+    fixture.options.sampling.maximum_evaluations = 1000;
+    fixture.options.sampling.maximum_examined = 1000;
+
+    e::CoverageUnit local;
+    local.id = {1, 0, 0, 0, e::CoverageKind::kSurface};
+    local.center = {.1, .1, 0};
+    local.required_quality = 1;
+    fixture.coverage.Upsert(local);
+    e::CoverageUnit remote;
+    remote.id = {2, 0, 0, 0, e::CoverageKind::kSurface};
+    remote.center = {.7, .7, 0};
+    remote.required_quality = 1;
+    fixture.coverage.Upsert(remote);
+
+    e::HierarchicalCoverageStrategy strategy(fixture.paths, fixture.evaluator,
+                                             fixture.options);
+    const auto initial =
+        strategy.Select(fixture.start, fixture.start, fixture.map,
+                        fixture.coverage, p::Mask(p::SensorKind::kRgbd), 1);
+    Require(!initial.global_route.views.empty() && initial.goal,
+            "measured remote and local work were not both admitted");
+
+    fixture.coverage.Confirm(remote.id, p::SensorKind::kRgbd, 1, 2);
+    const auto first_empty =
+        strategy.Select(fixture.start, fixture.start, fixture.map,
+                        fixture.coverage, p::Mask(p::SensorKind::kRgbd), 2);
+    Require(!first_empty.global_route.views.empty(),
+            "one empty frame retired a feasible remote representative");
+    Require(first_empty.goal.has_value(),
+            "remote-region debounce suppressed measured local candidates");
+
+    const auto second_empty =
+        strategy.Select(fixture.start, fixture.start, fixture.map,
+                        fixture.coverage, p::Mask(p::SensorKind::kRgbd), 3);
+    Require(second_empty.global_route.views.empty(),
+            "two empty frames retained a covered remote region");
+    Require(second_empty.goal.has_value(),
+            "covered remote status suppressed measured local work");
+}
+
+/** @brief Creates one pending requirement with normalized unit gain. */
+e::CoverageId AddRequirement(e::CoverageState& state, int x,
+                             e::CoverageKind kind) {
+    e::CoverageUnit unit;
+    unit.id = {x, 0, 0, 0, kind};
+    unit.center = {static_cast<double>(x), 0, 0};
+    unit.required_quality = 1;
+    state.Upsert(unit);
+    return unit.id;
+}
+
+/** @brief Creates one bounded-cost view contributing to exactly one unit. */
+e::Viewpoint MakeView(std::uint64_t id, const e::CoverageId& unit,
+                      double quality) {
+    e::Viewpoint viewpoint;
+    viewpoint.id = id;
+    viewpoint.observation_time = 1;
+    viewpoint.contributions.push_back({unit, p::SensorKind::kRgbd, quality});
+    return viewpoint;
+}
+
+/** @brief Attempt seeds diversify non-tied candidates inside the near-best set.
+ */
+void LocalSelectionAttemptsDiversifyNearBestViews() {
+    e::CoverageState state;
+    state.Reset(1);
+    const auto strongest = AddRequirement(state, 1, e::CoverageKind::kSurface);
+    const auto near = AddRequirement(state, 2, e::CoverageKind::kSurface);
+    const std::vector<e::Viewpoint> candidates{MakeView(10, strongest, 1),
+                                               MakeView(20, near, .95)};
+
+    e::LocalCoverageSelectionOptions options;
+    options.diversification_ratio = .9;
+    options.diversification_seed = 0;
+    const auto first =
+        e::LocalCoveragePlanner{}.Select(candidates, state, 1, {}, options);
+    options.diversification_seed = 1;
+    const auto second =
+        e::LocalCoveragePlanner{}.Select(candidates, state, 1, {}, options);
+    Require(first.size() == 1 && second.size() == 1,
+            "near-best attempts failed to select a view");
+    Require(first.front().id != second.front().id,
+            "attempt seeds only changed tie handling, not the cover set");
+}
+
+/** @brief Surface/frontier thresholds are independent; mandatory work is
+ * forced. */
+void LocalIncrementThresholdsAreKindSpecific() {
+    e::CoverageState state;
+    state.Reset(1);
+    const auto surface = AddRequirement(state, 1, e::CoverageKind::kSurface);
+    const auto frontier = AddRequirement(state, 2, e::CoverageKind::kFrontier);
+    const std::vector<e::Viewpoint> candidates{MakeView(10, surface, .15),
+                                               MakeView(20, frontier, .15)};
+
+    e::LocalCoverageSelectionOptions options;
+    options.minimum_incremental_surface_gain = .2;
+    options.minimum_incremental_frontier_gain = .1;
+    const auto thresholded =
+        e::LocalCoveragePlanner{}.Select(candidates, state, 2, {}, options);
+    Require(thresholded.size() == 1 && thresholded.front().id == 20,
+            "surface threshold incorrectly filtered an admissible frontier");
+
+    options.minimum_incremental_surface_gain = .1;
+    options.minimum_incremental_frontier_gain = .2;
+    const auto reversed =
+        e::LocalCoveragePlanner{}.Select(candidates, state, 2, {}, options);
+    Require(reversed.size() == 1 && reversed.front().id == 10,
+            "frontier threshold incorrectly filtered an admissible surface");
+
+    options.minimum_incremental_surface_gain = .2;
+    options.minimum_incremental_frontier_gain = .1;
+    const auto mandatory = e::LocalCoveragePlanner{}.Select(
+        candidates, state, 1, surface, options);
+    Require(mandatory.size() == 1 && mandatory.front().id == 10,
+            "a mandatory contributor was filtered by an incremental threshold");
+}
+
+/** @brief A prior local view is retained while it still adds useful coverage.
+ */
+void UsefulPriorLocalSelectionIsRetained() {
+    e::CoverageState state;
+    state.Reset(1);
+    const auto prior_unit = AddRequirement(state, 1, e::CoverageKind::kSurface);
+    const auto replacement_unit =
+        AddRequirement(state, 2, e::CoverageKind::kSurface);
+    const e::Viewpoint prior = MakeView(10, prior_unit, .5);
+    const e::Viewpoint replacement = MakeView(20, replacement_unit, 1);
+
+    e::LocalCoverageSelectionOptions options;
+    options.minimum_incremental_surface_gain = .1;
+    const auto selected = e::LocalCoveragePlanner{}.Select(
+        {prior, replacement}, state, 1, {}, options, {prior});
+    Require(selected.size() == 1 && selected.front().id == prior.id,
+            "a still-useful prior view was replaced before route ordering");
+}
+
 void ExcessiveLocalRouteVariantsAreRejected() {
     Fixture fixture;
     fixture.options.local_views = 32;
@@ -541,6 +879,20 @@ int main() {
               LocalViewsPersistAcrossSamplingPages},
              {"unknown_measured_volume_fails_closed",
               UnknownMeasuredVolumeFailsClosedInSampler},
+             {"measured_terrain_height_clearance",
+              MeasuredTerrainHeightOffsetsBodyClearance},
+             {"measured_terrain_height_visibility",
+              MeasuredTerrainHeightOffsetsSensorVisibility},
+             {"remote_increment_thresholds_by_kind",
+              RemoteIncrementThresholdsAreKindSpecific},
+             {"region_status_remote_representatives",
+              RegionStatusGatesOnlyRemoteRepresentatives},
+             {"local_attempts_diversify_near_best",
+              LocalSelectionAttemptsDiversifyNearBestViews},
+             {"local_increment_thresholds_by_kind",
+              LocalIncrementThresholdsAreKindSpecific},
+             {"useful_prior_local_selection_retained",
+              UsefulPriorLocalSelectionIsRetained},
              {"bounded_local_route_variants",
               ExcessiveLocalRouteVariantsAreRejected}}) {
         try {

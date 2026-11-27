@@ -330,6 +330,7 @@ def main():
                     'region': {'min_x': args.region[0], 'min_y': args.region[1],
                                'max_x': args.region[2], 'max_y': args.region[3]},
                     'mapping_resolution': args.mapping_resolution,
+                    'exploration_options_json': str(args.output / 'exploration_options.json'),
                     'mapping_maximum_voxels': 8000000,
                     'vista_edge_confirmation_votes': args.vista_edge_votes,
                     'observation_valid_for': 2.0,
@@ -345,6 +346,7 @@ def main():
                     'measured_coverage_topic': args.prefix + '/native/measured_coverage',
                     'host_vista_server': True,
                 }
+                (args.output / 'exploration_options.json').write_text(json.dumps({'minFrontierClusterSize': 3, 'keyposeSpacingM': 0.5,'lookaheadDistanceM': 1.0, 'atHomeDistM': 0.25,'gridCellSizeM': 5.0, 'gridNearbyRadius': 1,'viewpointResolutionM': 0.6, 'viewpointYawSamples': 8,'collisionRadiusM': 0.105, 'tspExactMaxNodes': 10}, indent=2) + chr(10))
                 config_file = args.output / 'native-rgbd-platform.yaml'
                 if args.controller_options:
                     options_copy = args.output / 'native-controller-options.json'

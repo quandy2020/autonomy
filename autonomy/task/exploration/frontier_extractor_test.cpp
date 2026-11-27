@@ -160,13 +160,13 @@ e::MapReadView VolumeMap(std::vector<p::ObservedVoxel> voxels) {
     return map;
 }
 
-void VolumeFrontiersUseSixConnectedMetricClusters() {
+void VolumeFrontiersUseVerticalMetricClusters() {
     auto map = VolumeMap({{{1, 1, 0}, p::ObservedVoxelState::kFree},
                           {{1, 1, 1}, p::ObservedVoxelState::kFree},
                           {{1, 1, 2}, p::ObservedVoxelState::kFree},
                           {{2, 1, 1}, p::ObservedVoxelState::kOccupied}});
     const auto frontiers = e::FrontierExtractor{}.Extract(map, .5, {}, 3);
-    Require(frontiers.size() == 9,
+    Require(frontiers.size() == 11,
             "3-D frontier clustering did not use vertical 6-connectivity");
     bool found_low = false;
     bool found_high = false;
@@ -191,6 +191,48 @@ void VolumeFrontiersUseSixConnectedMetricClusters() {
     Require(match != frontiers.end() && match->id.x == 4 && match->id.y == -3 &&
                 match->id.z == 8,
             "3-D frontier ID did not use the stable world lattice");
+}
+
+/** @brief Metric tolerance joins samples beyond one voxel index. */
+void VolumeFrontiersJoinAcrossMultipleVoxelIndices() {
+    const auto separated =
+        VolumeMap({{{0, 1, 0}, p::ObservedVoxelState::kFree},
+                   {{0, 0, 0}, p::ObservedVoxelState::kOccupied},
+                   {{0, 2, 0}, p::ObservedVoxelState::kOccupied},
+                   {{0, 1, 3}, p::ObservedVoxelState::kFree},
+                   {{0, 0, 3}, p::ObservedVoxelState::kOccupied},
+                   {{0, 2, 3}, p::ObservedVoxelState::kOccupied}});
+    Require(e::FrontierExtractor{}
+                    .Extract(separated, .5, {}, 2, {}, {}, 1.0)
+                    .size() == 2,
+            "one-meter tolerance did not join multi-index metric frontiers");
+    Require(e::FrontierExtractor{}
+                .Extract(separated, .5, {}, 2, {}, {}, .5)
+                .empty(),
+            "frontiers beyond the metric tolerance were joined");
+}
+
+/** @brief Ground frontiers reject horizontal caps and join metric diagonals. */
+void VolumeFrontiersFilterCapsAndJoinDiagonals() {
+    const auto caps =
+        VolumeMap({{{1, 1, 1}, p::ObservedVoxelState::kFree},
+                   {{0, 1, 1}, p::ObservedVoxelState::kOccupied},
+                   {{2, 1, 1}, p::ObservedVoxelState::kOccupied},
+                   {{1, 0, 1}, p::ObservedVoxelState::kOccupied},
+                   {{1, 2, 1}, p::ObservedVoxelState::kOccupied}});
+    Require(e::FrontierExtractor{}.Extract(caps).empty(),
+            "horizontal observation-volume caps became ground frontiers");
+
+    const auto diagonal =
+        VolumeMap({{{0, 1, 1}, p::ObservedVoxelState::kFree},
+                   {{0, 0, 1}, p::ObservedVoxelState::kOccupied},
+                   {{0, 2, 1}, p::ObservedVoxelState::kOccupied},
+                   {{1, 2, 2}, p::ObservedVoxelState::kFree},
+                   {{0, 2, 2}, p::ObservedVoxelState::kOccupied},
+                   {{1, 1, 2}, p::ObservedVoxelState::kOccupied},
+                   {{1, 3, 2}, p::ObservedVoxelState::kOccupied}});
+    Require(e::FrontierExtractor{}.Extract(diagonal, .5, {}, 2).size() == 2,
+            "diagonally close frontier samples were split by lattice axes");
 }
 
 void VolumeFrontiersFailClosedOnMalformedEvidence() {
@@ -240,8 +282,12 @@ int main() {
         std::cout << "PASS concave_polygon_frontier\n";
         ConcaveNoGoAndEdgeExcludeFrontiers();
         std::cout << "PASS concave_no_go_frontier\n";
-        VolumeFrontiersUseSixConnectedMetricClusters();
+        VolumeFrontiersUseVerticalMetricClusters();
         std::cout << "PASS metric_3d_frontier_connectivity\n";
+        VolumeFrontiersFilterCapsAndJoinDiagonals();
+        std::cout << "PASS vertical_frontier_caps_metric_diagonals\n";
+        VolumeFrontiersJoinAcrossMultipleVoxelIndices();
+        std::cout << "PASS multi_index_metric_frontier_cluster\n";
         VolumeFrontiersFailClosedOnMalformedEvidence();
         std::cout << "PASS malformed_3d_frontier_volume\n";
     } catch (const std::exception& error) {

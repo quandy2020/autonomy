@@ -1,0 +1,19 @@
+# Replace topic/frame names and calibrate noise for your robot before use.
+# Wheel twist must be raw encoder data, without an existing IMU fusion.
+wheel_topic: /wheel/odometry
+imu_topic: /imu
+output_topic: /odometry/filtered
+tf_topic: /tf
+odom_frame: odom
+base_frame: base_link
+publish_tf: true
+reorder_delay: 0.05
+wheel_timeout: 0.5
+
+# Used when a sensor covariance is absent or zero. These are variances, not stddev.
+wheel_velocity_variance: [0.0025, 0.0025, 0.0025]  # vx, vy, yaw rate
+gyro_variance: 0.0001
+gyro_bias: 0.0  # base-frame yaw-rate bias, rad/s; measure while stationary
+# Process-noise spectral density amplitudes for body acceleration / yaw acceleration.
+acceleration_noise: 0.5
+angular_acceleration_noise: 0.5

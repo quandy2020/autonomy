@@ -34,7 +34,10 @@ class MapBuilder : public MapBuilderInterface
 {
 public:
     explicit MapBuilder(const proto::MapBuilderOptions& options);
-    ~MapBuilder() override {}
+    ~MapBuilder() override {
+        // Drain background constraints before local builders release their grid conversion tables.
+        pose_graph_.reset();
+    }
 
     MapBuilder(const MapBuilder&) = delete;
     MapBuilder& operator=(const MapBuilder&) = delete;

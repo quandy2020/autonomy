@@ -194,7 +194,23 @@ autocmake_binary(autonomy.localization
     autonomy::cli11
 )
 
+autocmake_binary(autonomy.ekf
+  NO_EXPORT
+  SOURCES fusion/odometry_fusion_main.cpp
+  DEPENDENCIES autonomy_localization glog::glog autonomy::cli11)
+
+autocmake_binary(autonomy.cartographer_benchmark
+  NO_EXPORT
+  SOURCES fusion/cartographer_benchmark_main.cpp
+  DEPENDENCIES autonomy_localization glog::glog autonomy::cli11)
+
 # --- tests -------------------------------------------------------------------
+autocmake_test(localization.planar_ekf_test
+  SOURCES fusion/planar_ekf_test.cpp
+  DEPENDENCIES autonomy_localization)
+autocmake_test(localization.odometry_fusion_node_test
+  SOURCES fusion/odometry_fusion_node_test.cpp
+  DEPENDENCIES autonomy_localization)
 autocmake_test(localization.cartographer_occupancy_grid_test
   SOURCES cartographer/node/occupancy_grid_builder_test.cpp
   DEPENDENCIES autonomy_localization)
@@ -209,6 +225,8 @@ autocmake_install_share(localization
   CONF
   DAG_PATTERN "*.dag"
   LAUNCH_PATTERN "*.launch")
+install(PROGRAMS tools/tune_cartographer.py
+  DESTINATION share/autonomy/localization/tools)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/argus/config")
   install(DIRECTORY argus/config/
     DESTINATION share/autonomy/localization/conf/argus

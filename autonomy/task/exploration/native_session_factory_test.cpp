@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstring>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <stdexcept>
 #include <thread>
@@ -55,6 +56,23 @@ e::NativeCameraCoverage Camera() {
     result.camera = {2, 2, 2, 2, .5, .5, .1, 8};
     result.base_from_camera.rotation = {0, 0, 1, -1, 0, 0, 0, -1, 0};
     result.base_from_camera.translation.z = .5;
+    return result;
+}
+/** @brief Minimal generated policy exercising measured terrain clearance. */
+::autonomy::perception::exploration::proto::ExplorationOptions
+TerrainOptions() {
+    ::autonomy::perception::exploration::proto::ExplorationOptions result;
+    result.set_keypose_spacing_m(1);
+    result.set_lookahead_distance_m(1);
+    result.set_at_home_dist_m(.2);
+    result.set_min_frontier_cluster_size(1);
+    result.set_grid_cell_size_m(1);
+    result.set_grid_nearby_radius(1);
+    result.set_viewpoint_resolution_m(.2);
+    result.set_viewpoint_yaw_samples(1);
+    result.set_collision_radius_m(.1);
+    result.set_tsp_exact_max_nodes(1);
+    result.set_use_terrain_height(true);
     return result;
 }
 /** @brief Fixed three-mode settings with distinct real sensor channels. */
@@ -362,6 +380,19 @@ void ConfigurationRejectionIsAtomic() {
         rejected && !owner.task->GetObservationSourceSnapshot().configured &&
             owner.state->factories == 0,
         "invalid runtime did not partially install source or invoke factory");
+    invalid = owner.config;
+    invalid.coverage.local_diversification_ratio = 1.01;
+    rejected = false;
+    try {
+        (void)e::ConfigureNativeExploration(owner.task, owner.node, invalid,
+                                            platform);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    Require(rejected &&
+                !owner.task->GetObservationSourceSnapshot().configured &&
+                owner.state->factories == 0,
+            "invalid local selection policy did not fail before installation");
     auto foreign = autolink::CreateNode("native_factory_wrong_node");
     Require(!e::ConfigureNativeExploration(owner.task, foreign, owner.config,
                                            platform) &&
@@ -379,6 +410,50 @@ void ConfigurationRejectionIsAtomic() {
     }
     Require(rejected && !owner.task->GetObservationSourceSnapshot().configured,
             "LOS lookahead without the sole rolling field fails atomically");
+    invalid = owner.config;
+    invalid.shared_options = TerrainOptions();
+    rejected = false;
+    try {
+        (void)e::ConfigureNativeExploration(owner.task, owner.node, invalid,
+                                            platform);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    Require(rejected && !owner.task->GetObservationSourceSnapshot().configured,
+            "terrain height without a measured 3-D source fails atomically");
+    e::RollingViewpointFieldOptions terrain_field;
+    terrain_field.dimensions = {4, 4, 4};
+    terrain_field.rollover_step = {1, 1, 1};
+    terrain_field.maximum_cells = 64;
+    terrain_field.maximum_input_voxels = 64;
+    invalid.coverage.rolling_field = terrain_field;
+    auto unsupported_source =
+        Configuration(p::SensorMode::kLidarRgbd, "terrain_source");
+    unsupported_source.shared_options = TerrainOptions();
+    unsupported_source.coverage.rolling_field = terrain_field;
+    unsupported_source.coverage.safety.robot_height = .6;
+    rejected = false;
+    try {
+        (void)e::ConfigureNativeExploration(owner.task, owner.node,
+                                            unsupported_source, platform);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    Require(rejected && !owner.task->GetObservationSourceSnapshot().configured,
+            "terrain height accepted an unmeasured hybrid source policy");
+    invalid.coverage.safety.robot_height = 0;
+    rejected = false;
+    try {
+        (void)e::ConfigureNativeExploration(owner.task, owner.node, invalid,
+                                            platform);
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    Require(rejected && !owner.task->GetObservationSourceSnapshot().configured,
+            "terrain height without finite 3-D body geometry fails atomically");
+    owner.config.shared_options = TerrainOptions();
+    owner.config.coverage.rolling_field = terrain_field;
+    owner.config.coverage.safety.robot_height = .6;
     owner.Initialize();
     invalid = owner.config;
     invalid.session.validated_controller_modes = {
@@ -630,6 +705,21 @@ void SharedOptionsBridgeIsExact() {
     source.set_momentum_dist_m(1.25);
     source.set_momentum_thred(3);
     source.set_far_path_momentum_thred(8);
+    e::ExplorationSessionOptions default_destination;
+    e::HierarchicalCoverageOptions default_coverage;
+    e::ApplySharedExplorationOptions(source, &default_destination,
+                                     &default_coverage);
+    Require(default_destination.frontier_cluster_tolerance_m == 1.0 &&
+                default_coverage.minimum_incremental_surface_gain == .01 &&
+                default_coverage.minimum_incremental_frontier_gain == .01 &&
+                default_coverage.local_diversification_ratio == .9 &&
+                default_coverage.local_diversification_seed == 0,
+            "absent local selection policy did not preserve native defaults");
+    source.set_minimum_incremental_surface_gain(.125);
+    source.set_minimum_incremental_frontier_gain(.25);
+    source.set_local_diversification_ratio(.8);
+    source.set_local_diversification_seed(41);
+    source.set_frontier_cluster_tolerance_m(.8);
     e::ExplorationSessionOptions destination;
     e::HierarchicalCoverageOptions coverage;
     e::RollingViewpointFieldOptions field;
@@ -644,6 +734,8 @@ void SharedOptionsBridgeIsExact() {
                 destination.return_position_tolerance == .6 &&
                 destination.use_line_of_sight_lookahead &&
                 destination.minimum_frontier_cluster_size == 9 &&
+                destination.frontier_cluster_tolerance_m == .8 &&
+                !destination.use_frontier_points &&
                 coverage.region_size == 6.0 && coverage.local_radius == 30.0 &&
                 coverage.sampling.spacing == .75 &&
                 coverage.sampling.yaw_samples == 12 && coverage.rolling_field &&
@@ -657,11 +749,25 @@ void SharedOptionsBridgeIsExact() {
                 coverage.route_optimization.use_two_opt &&
                 coverage.route_optimization.improvement_iterations == 16 &&
                 coverage.local_selection_attempts == 7 &&
+                coverage.minimum_incremental_surface_gain == .125 &&
+                coverage.minimum_incremental_frontier_gain == .25 &&
+                coverage.local_diversification_ratio == .8 &&
+                coverage.local_diversification_seed == 41 &&
                 !coverage.use_frontier_points && coverage.use_momentum &&
                 coverage.momentum.sampling_distance == 1.25 &&
                 coverage.momentum.activation_count_threshold == 3 &&
                 coverage.momentum.release_count_threshold == 8,
             "generated native exploration policy maps exactly once");
+    auto terrain = source;
+    terrain.set_use_line_of_sight_lookahead(false);
+    terrain.set_use_terrain_height(true);
+    e::ApplySharedExplorationOptions(terrain, &destination, &coverage);
+    Require(coverage.rolling_field.has_value(),
+            "terrain height did not retain the measured 3-D clearance field");
+    terrain.set_use_terrain_height(false);
+    e::ApplySharedExplorationOptions(terrain, &destination, &coverage);
+    Require(!coverage.rolling_field,
+            "disabled 3-D policies retained a stale measured clearance field");
     auto polygon = source;
     polygon.set_boundary_ply_path("mission-boundary.ply");
     bool polygon_rejected = false;
@@ -672,6 +778,51 @@ void SharedOptionsBridgeIsExact() {
     }
     Require(polygon_rejected,
             "file polygons cannot be silently reduced to rectangular bounds");
+    auto rush_home = source;
+    rush_home.set_rush_home(true);
+    bool rush_home_rejected = false;
+    try {
+        e::ApplySharedExplorationOptions(rush_home, &destination, &coverage);
+    } catch (const std::invalid_argument&) {
+        rush_home_rejected = true;
+    }
+    Require(rush_home_rejected,
+            "rush-home cannot silently bypass the Vista-owned return route");
+    const auto policy_rejected = [&](const auto& mutation) {
+        auto invalid = source;
+        mutation(&invalid);
+        try {
+            e::ApplySharedExplorationOptions(invalid, &destination, &coverage);
+        } catch (const std::invalid_argument&) {
+            return true;
+        }
+        return false;
+    };
+    Require(
+        policy_rejected([](auto* invalid) {
+            invalid->set_minimum_incremental_surface_gain(-.01);
+        }) &&
+            policy_rejected([](auto* invalid) {
+                invalid->set_minimum_incremental_surface_gain(1.01);
+            }) &&
+            policy_rejected([](auto* invalid) {
+                invalid->set_minimum_incremental_frontier_gain(std::nan(""));
+            }) &&
+            policy_rejected([](auto* invalid) {
+                invalid->set_local_diversification_ratio(0);
+            }) &&
+            policy_rejected([](auto* invalid) {
+                invalid->set_local_diversification_ratio(1.01);
+            }),
+        "invalid normalized local selection policy was accepted");
+    Require(policy_rejected([](auto* invalid) {
+                invalid->set_frontier_cluster_tolerance_m(0);
+            }) &&
+                policy_rejected([](auto* invalid) {
+                    invalid->set_frontier_cluster_tolerance_m(
+                        std::numeric_limits<double>::infinity());
+                }),
+            "invalid metric frontier cluster tolerance was accepted");
     source.set_keypose_spacing_m(0);
     bool rejected = false;
     try {

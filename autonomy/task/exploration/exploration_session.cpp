@@ -268,7 +268,9 @@ public:
             options.return_margin < 0 ||
             !std::isfinite(options.frontier_observation_height) ||
             !options.minimum_frontier_cluster_size ||
-            options.minimum_frontier_cluster_size > 1000000)
+            options.minimum_frontier_cluster_size > 1000000 ||
+            !std::isfinite(options.frontier_cluster_tolerance_m) ||
+            options.frontier_cluster_tolerance_m <= 0)
             throw std::invalid_argument(
                 "invalid exploration return or observation configuration");
         worker_ = std::thread([this] { Work(); });
@@ -823,7 +825,7 @@ public:
                         return finish(PhaseStatus::kFailed,
                                       "home alignment is unavailable");
                     }
-                    if (At(home_)) {
+                    if (AtHome()) {
                         snapshot_.result.returned = ReturnOutcome::kReturned;
                         AfterReturn(now);
                     } else
@@ -1485,10 +1487,20 @@ public:
             return;
         // Keep an in-flight selection scan alive across geometry-only updates;
         // its result is versioned and revalidated by the Adapt phase.
-        const auto frontiers = FrontierExtractor{}.Extract(
-            *map_, options_.frontier_observation_height,
-            options_.allowed_region, options_.minimum_frontier_cluster_size,
-            options_.allowed_polygon, options_.no_go_areas);
+        // This static policy changes the authoritative requirement set rather
+        // than suppressing frontier contributions later in selection. An empty
+        // live set therefore retires any prior frontier requirements through
+        // the same synchronization path as frontiers that disappeared from the
+        // map.
+        const auto frontiers =
+            options_.use_frontier_points
+                ? FrontierExtractor{}.Extract(
+                      *map_, options_.frontier_observation_height,
+                      options_.allowed_region,
+                      options_.minimum_frontier_cluster_size,
+                      options_.allowed_polygon, options_.no_go_areas,
+                      options_.frontier_cluster_tolerance_m)
+                : std::vector<CoverageUnit>{};
         std::set<CoverageId> live_frontiers;
         for (const auto& unit : frontiers)
             live_frontiers.insert(unit.id);
@@ -2338,7 +2350,7 @@ public:
                 !snapshot_.sensors.ready) {
                 snapshot_.result.returned = ReturnOutcome::kReturnFailed;
                 BeginRefresh(now);
-            } else if (At(home_)) {
+            } else if (AtHome()) {
                 snapshot_.result.returned = ReturnOutcome::kReturned;
                 BeginRefresh(now);
             } else
@@ -2908,6 +2920,11 @@ public:
             else if (auto* packet = std::get_if<PacketEvent>(&event))
                 ApplyPacket(std::move(*packet), now);
             else if (const auto* unit = std::get_if<CoverageUnit>(&event)) {
+                if (!options_.use_frontier_points &&
+                    unit->id.kind == CoverageKind::kFrontier) {
+                    coverage_.Remove(unit->id);
+                    continue;
+                }
                 const Pose2d center{unit->center.x, unit->center.y, 0};
                 const bool inside =
                     (!options_.allowed_region ||
@@ -3085,7 +3102,7 @@ public:
                 snapshot_.state = ExplorationState::kExploring;
                 SubmitNavigation(snapshot_.goal->execution_pose, now);
             } else if (phase == ExplorationPhase::kReturn) {
-                if (At(home_)) {
+                if (AtHome()) {
                     snapshot_.result.returned = ReturnOutcome::kReturned;
                     AfterReturn(now);
                 } else
